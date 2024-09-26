@@ -1,0 +1,5 @@
+**/*.md
+**/*.gitattributes
+**/*.gitignore
+**/*.github
+*Ubuntu*
