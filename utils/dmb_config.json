@@ -164,6 +164,21 @@
         "config_dir": "/phalanx_db",
         "env": {}
     },
+    "plex": {
+        "enabled": false,
+        "process_name": "Plex Media Server",
+        "suppress_logging": false,
+        "log_level": "INFO",
+        "port": 32400,
+        "auto_update": false,
+        "auto_update_interval": 24,
+        "config_dir": "/plex",
+        "config_file": "/plex/Preferences.xml",
+        "log_file": "/plex/Plex Media Server/Logs/Plex Media Server.log",
+        "plex_claim": "",
+        "command": [],
+        "env": {}
+    },
     "plex_debrid": {
         "enabled": false,
         "process_name": "Plex Debrid",

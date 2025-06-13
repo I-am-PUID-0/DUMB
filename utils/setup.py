@@ -1,8 +1,10 @@
+from click import command
 from utils import postgres
 from utils.config_loader import CONFIG_MANAGER
 from utils.global_logger import logger
 from utils.download import Downloader
 from utils.versions import Versions
+from utils.plex import PlexInstaller
 from utils.user_management import chown_recursive
 import yaml, os, shutil, random, subprocess, re
 
@@ -303,6 +305,11 @@ def setup_project(process_handler, process_name):
             if not success:
                 return False, error
 
+        if key == "plex":
+            success, error = setup_plex()
+            if not success:
+                return False, error
+
         if key == "pgadmin":
             success, error = postgres.pgadmin_setup(process_handler)
             if not success:
@@ -523,6 +530,51 @@ def phalanx_setup(process_handler):
 
     except Exception as e:
         return False, f"Error during Phalanx setup: {e}"
+
+
+def setup_plex():
+    config = CONFIG_MANAGER.get("plex")
+
+    if not config or not config.get("enabled"):
+        logger.info("Plex is disabled. Skipping setup.")
+        return True, None
+
+    plex_media_server_dir = config.get(
+        "plex_media_server_dir", "/usr/lib/plexmediaserver"
+    )
+    if not os.path.exists(plex_media_server_dir):
+        logger.warning(
+            f"Plex Media Server directory {plex_media_server_dir} does not exist. Installing Plex Media Server..."
+        )
+        installer = PlexInstaller()
+        success, error = installer.install_plex_media_server()
+        if not success:
+            logger.error(f"Plex install failed: {error}")
+
+    os.makedirs(config["config_dir"], exist_ok=True)
+    chown_recursive(
+        config["config_dir"], CONFIG_MANAGER.get("puid"), CONFIG_MANAGER.get("pgid")
+    )
+    logger.info("Setting up Plex Media Server environment...")
+    env_vars = {
+        "PLEX_MEDIA_SERVER_APPLICATION_SUPPORT_DIR": config["config_dir"],
+        "PLEX_MEDIA_SERVER_HOME": "/usr/lib/plexmediaserver",
+        "PLEX_MEDIA_SERVER_INFO_VENDOR": "Docker",
+        "PLEX_MEDIA_SERVER_INFO_MODEL": "Linux",
+        "PLEX_MEDIA_SERVER_INFO_PLATFORM": "Docker",
+        "LD_LIBRARY_PATH": "/usr/lib/plexmediaserver",
+        "TMPDIR": "/tmp",
+    }
+    plex_claim = config.get("plex_claim", "")
+    if plex_claim:
+        env_vars["PLEX_CLAIM"] = plex_claim
+
+    config["env"] = env_vars
+
+    command = ["/usr/lib/plexmediaserver/Plex Media Server"]
+    config["command"] = command
+
+    return True, None
 
 
 def zurg_setup():

@@ -1,6 +1,8 @@
 from api.api_state import APIState
 from utils.processes import ProcessHandler
 from logging import Logger
+from pathlib import Path
+import shlex
 from api.connection_manager import ConnectionManager
 
 _shared_instances = {}
@@ -34,3 +36,16 @@ def get_logger() -> Logger:
 
 def get_api_state() -> APIState:
     return _shared_instances["api_state"]
+
+
+def resolve_path(path_str: str) -> Path:
+    path_str = path_str.strip()
+
+    if any(c in path_str for c in ["\\", '"', "'"]):
+        try:
+            parts = shlex.split(path_str)
+            return Path(parts[0]) if parts else Path(path_str)
+        except Exception:
+            pass
+
+    return Path(path_str)

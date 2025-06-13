@@ -530,6 +530,68 @@
         "env"
       ]
     },
+    "plex": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "process_name": {
+          "type": "string"
+        },
+        "suppress_logging": {
+          "type": "boolean"
+        },
+        "log_level": {
+          "type": "string"
+        },
+        "port": {
+          "type": "integer"
+        },
+        "auto_update": {
+          "type": "boolean"
+        },
+        "auto_update_interval": {
+          "type": "number"
+        },
+        "config_dir": {
+          "type": "string"
+        },
+        "config_file": {
+          "type": "string"
+        },
+        "log_file": {
+          "type": "string"
+        },
+        "plex_claim": {
+          "type": "string"
+        },
+        "command": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "env": {
+          "type": "object"
+        }
+      },
+      "required": [
+        "enabled",
+        "process_name",
+        "suppress_logging",
+        "log_level",
+        "port",
+        "auto_update",
+        "auto_update_interval",
+        "config_dir",
+        "config_file",
+        "log_file",
+        "plex_claim",
+        "command",
+        "env"
+      ]
+    },
     "plex_debrid": {
       "type": "object",
       "properties": {

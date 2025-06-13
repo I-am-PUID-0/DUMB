@@ -1,12 +1,12 @@
 from fastapi import APIRouter, HTTPException, Depends
 from typing import Union
 from pydantic import BaseModel
-from utils.dependencies import get_logger
+from utils.dependencies import get_logger, resolve_path
 from utils.config_loader import CONFIG_MANAGER, find_service_config
 from jsonschema import validate, ValidationError
 from ruamel.yaml import YAML
 from pathlib import Path
-import os, json, configparser
+import os, json, configparser, xmltodict
 
 
 class UpdateServiceConfigRequest(BaseModel):
@@ -139,6 +139,11 @@ def load_config_file(config_path):
             with open(config_path, "r") as file:
                 raw_config = file.read()
                 config_format = "python"
+        elif config_path.suffix == ".xml":
+            with config_path.open("r", encoding="utf-8") as file:
+                raw_config = file.read()
+                config_data = xmltodict.parse(raw_config)
+                config_format = "xml"
         else:
             raise HTTPException(
                 status_code=400,
@@ -172,6 +177,11 @@ def save_config_file(config_path, config_data, config_format, updates=None):
                 elif config_format == "python":
                     write_python_config(config_path, updates)
                     return
+                elif config_format == "xml":
+                    raise HTTPException(
+                        status_code=400,
+                        detail="Saving updates to XML config files is not supported.",
+                    )
                 else:
                     raise HTTPException(
                         status_code=400,
@@ -451,7 +461,7 @@ async def handle_service_config(
     if not config_file_path:
         raise HTTPException(status_code=400, detail="No config file path defined.")
 
-    config_path = Path(config_file_path)
+    config_path = resolve_path(config_file_path)
     if not config_path.exists():
         raise HTTPException(status_code=404, detail="Config file not found.")
 

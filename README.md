@@ -99,6 +99,7 @@ services:
       - /home/username/docker/DMB/cli_debrid:/cli_debrid/data        ## Location for cli_debrid data
       - /home/username/docker/DMB/phalanx_db:/phalanx_db/data        ## Location for phalanx_db data
       - /home/username/docker/DMB/decypharr:/decypharr               ## Location for decypharr data
+      - /home/username/docker/DMB/plex:/plex                         ## Location for plex data 
     environment:
       - TZ=
       - PUID=
@@ -113,6 +114,7 @@ services:
       - "5050:5050"                                                 ## pgAdmin 4
       - "5000:5000"                                                 ## CLI Debrid Frontend      
       - "8282:8282"                                                 ## Decypharr Frontend         
+      - "32400:32400"                                               ## Plex Media Server      
     devices:
       - /dev/fuse:/dev/fuse:rwm
     cap_add:
@@ -120,42 +122,6 @@ services:
     security_opt:
       - apparmor:unconfined
       - no-new-privileges
-```
-
-## 🎥 Example Plex Docker-compose
-
-> [!NOTE]
-> The Plex server must be started after the rclone mount is available. The below example uses the `depends_on` parameter to delay the start of the Plex server until the rclone mount is available. The rclone mount must be shared to the Plex container. The rclone mount location should not be added to the Plex library. The Riven symlink location must be shared to the Plex container and added to the Plex library.
-
-```YAML
-services:
-  plex:
-    image: plexinc/pms-docker:latest
-    container_name: plex
-    devices:
-      - /dev/dri:/dev/dri
-    volumes:
-      - /home/username/docker/plex/library:/config
-      - /home/username/docker/plex/transcode:/transcode
-      - /home/username/docker/DMB/Zurg/mnt:/data            ## rclone mount location from DMB must be shared to Plex container. Don't add to plex library
-      - /home/username/docker/DMB/Riven/mnt:/mnt            ## Riven symlink location from DMB must be shared to Plex container. Add to plex library
-    environment:
-      - TZ=
-      - PLEX_UID=                                           ## Same as PUID
-      - PLEX_GID=                                           ## Same as PGID
-      - PLEX_CLAIM=claimToken                               ## Need for the first run of Plex - get claimToken here https://www.plex.tv/claim/
-    ports:
-      - "32400:32400"
-    healthcheck:
-      test: curl --connect-timeout 15 --silent --show-error --fail http://localhost:32400/identity
-      interval: 1m00s
-      timeout: 15s
-      retries: 3
-      start_period: 1m00s
-    depends_on:                                             ## Used to delay the startup of plex to ensure the rclone mount is available.
-      DMB:                                                  ## The name of the container running rclone
-        condition: service_healthy
-        restart: true                                       ## Will automatically restart the plex container if the DMB container restarts
 ```
 
 ## 🌐 Environment Variables
@@ -192,6 +158,7 @@ The following table describes the ports used by the container. The mappings are 
 | `5000`         | TCP      | CLI Debrid - A web UI is accessible at the assigned port                             |
 | `8888`         | TCP      | Phalanx DB - The API is accessible at the assigned port                              |
 | `8282`         | TCP      | Decypharr - A web UI is accessible at the assigned port                              |
+| `32400`        | TCP      | Plex Media Server - PMS is accessible at the assigned port                           |
 
 ## 📂 Data Volumes
 
@@ -213,6 +180,7 @@ format: `<HOST_DIR>:<CONTAINER_DIR>[:PERMISSIONS]`.
 | `/cli_debrid/data` | rw             | This is where cli_debrid will store its data.                                                                                                                                                    |       
 | `/phalanx_db/data` | rw             | This is where phalanx_db will store its data.                                                                                                                                                    |  
 | `/decypharr`       | rw             | This is where decypharr will store its data.                                                                                                                                                     |  
+| `/plex`            | rw             | This is where Plex Media Server will store its data.                                                                                                                                                    |    
 
 ## 📝 TODO
 

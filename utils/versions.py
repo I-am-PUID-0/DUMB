@@ -46,6 +46,22 @@ class Versions:
                     raise ValueError(f"Configuration for {process_name} not found.")
                 version_path = config.get("config_dir") + "/zurg"
                 is_file = False
+            elif key == "plex":
+                try:
+                    import requests
+
+                    response = requests.get("http://localhost:32400", timeout=2)
+                    if response.status_code == 200:
+                        matches = re.findall(r'version="([^"]+)"', response.text)
+                        if matches and len(matches) > 1:
+                            return matches[1], None
+                        elif matches:
+                            return matches[0], None
+                        else:
+                            return None, "No version string found in Plex response"
+                    return None, f"Plex server returned status: {response.status_code}"
+                except Exception as e:
+                    return None, f"Error connecting to Plex: {e}"
             elif key == "postgres":
                 try:
                     result = subprocess.run(

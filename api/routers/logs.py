@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, Query
 from pathlib import Path
-from utils.dependencies import get_logger
+from utils.dependencies import get_logger, resolve_path
 from utils.config_loader import CONFIG_MANAGER
 import os, re, asyncio
 
@@ -11,7 +11,7 @@ def find_log_file(process_name: str, logger):
     logger.debug(f"Looking up process: {process_name}")
 
     if "dmb" in process_name.lower():
-        log_dir = Path("/log")
+        log_dir = resolve_path("/log")
         if log_dir.exists():
             log_files = sorted(
                 log_dir.glob("DMB-*.log"), key=os.path.getmtime, reverse=True
@@ -30,10 +30,10 @@ def find_log_file(process_name: str, logger):
         return None
 
     if "log_file" in service_config:
-        return Path(service_config["log_file"])
+        return resolve_path(service_config["log_file"])
 
     if "config_file" in service_config:
-        log_dir = Path(service_config["config_file"]).parent / "logs"
+        log_dir = resolve_path(service_config["config_file"]).parent / "logs"
         if log_dir.exists():
             log_files = sorted(
                 log_dir.glob("*.log"), key=os.path.getmtime, reverse=True
@@ -41,7 +41,7 @@ def find_log_file(process_name: str, logger):
             return log_files[0] if log_files else None
 
     if "config_dir" in service_config:
-        log_dir = Path(service_config["config_dir"]) / "logs"
+        log_dir = resolve_path(service_config["config_dir"]) / "logs"
         if log_dir.exists():
             log_files = sorted(
                 log_dir.glob("*.log"), key=os.path.getmtime, reverse=True
@@ -49,7 +49,7 @@ def find_log_file(process_name: str, logger):
             return log_files[0] if log_files else None
 
     if "zurg" in process_name.lower() and "config_dir" in service_config:
-        log_path = Path(service_config["config_dir"]) / "logs" / "zurg.log"
+        log_path = resolve_path(service_config["config_dir"]) / "logs" / "zurg.log"
         if log_path.exists():
             return log_path
 
