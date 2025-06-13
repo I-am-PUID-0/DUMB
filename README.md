@@ -78,36 +78,35 @@ A prebuilt image is hosted on [GitHub Container Registry](https://github.com/I-a
 
 ```YAML
 services:
-  DMB:
-    container_name: DMB
-    image: iampuid0/dmb:latest                                       ## Optionally, specify a specific version of DMB w/ image: iampuid0/dmb:2.0.0
-    stop_grace_period: 30s                                           ## Adjust as need to allow for graceful shutdown of the container
-    shm_size: 128mb                                                  ## Increased for PostgreSQL
-    stdin_open: true                                                 ## docker run -i
-    tty: true                                                        ## docker run -t
+  DUMB:
+    container_name: DUMB
+    image: iampuid0/dmb:DUMB                                          ## Optionally, specify a specific version of DMB w/ image: iampuid0/dmb:2.0.0
+    stop_grace_period: 30s                                            ## Adjust as need to allow for graceful shutdown of the container
+    shm_size: 128mb                                                   ## Increased for PostgreSQL
+    stdin_open: true                                                  ## docker run -i
+    tty: true                                                         ## docker run -t
     volumes:
-      - /home/username/docker/DMB/config:/config                     ## Location of configuration files. If a Zurg config.yml and/or Zurg app is placed here, it will be used to override the default configuration and/or app used at startup.
-      - /home/username/docker/DMB/log:/log                           ## Location for logs
-      - /home/username/docker/DMB/Zurg/RD:/zurg/RD                   ## Location for Zurg RealDebrid active configuration
-      - /home/username/docker/DMB/Zurg/mnt:/data:rshared             ## Location for rclone mount to host
-      - /home/username/docker/DMB/Riven/data:/riven/backend/data     ## Location for Riven backend data
-      - /home/username/docker/DMB/Riven/mnt:/mnt                     ## Location for Riven symlinks
-      - /home/username/docker/DMB/PostgreSQL/data:/postgres_data     ## Location for PostgreSQL database
-      - /home/username/docker/DMB/pgAdmin4/data:/pgadmin/data        ## Location for pgAdmin 4 data
-      - /home/username/docker/DMB/Zilean/data:/zilean/app/data       ## Location for Zilean data
-      - /home/username/docker/DMB/plex_debrid:/plex_debrid/config    ## Location for plex_debrid data
-      - /home/username/docker/DMB/cli_debrid:/cli_debrid/data        ## Location for cli_debrid data
-      - /home/username/docker/DMB/phalanx_db:/phalanx_db/data        ## Location for phalanx_db data
-      - /home/username/docker/DMB/decypharr:/decypharr               ## Location for decypharr data
-      - /home/username/docker/DMB/plex:/plex                         ## Location for plex data 
+      - /home/username/docker/DUMB/config:/config                     ## Location of configuration files. If a Zurg config.yml and/or Zurg app is placed here, it will be used to override the default configuration and/or app used at startup.
+      - /home/username/docker/DUMB/log:/log                           ## Location for logs
+      - /home/username/docker/DUMB/Zurg/RD:/zurg/RD                   ## Location for Zurg RealDebrid active configuration
+      - /home/username/docker/DUMB/Riven/data:/riven/backend/data     ## Location for Riven backend data
+      - /home/username/docker/DUMB/Riven/mnt:/mnt                     ## Location for Riven symlinks
+      - /home/username/docker/DUMB/PostgreSQL/data:/postgres_data     ## Location for PostgreSQL database
+      - /home/username/docker/DUMB/pgAdmin4/data:/pgadmin/data        ## Location for pgAdmin 4 data
+      - /home/username/docker/DUMB/Zilean/data:/zilean/app/data       ## Location for Zilean data
+      - /home/username/docker/DUMB/plex_debrid:/plex_debrid/config    ## Location for plex_debrid data
+      - /home/username/docker/DUMB/cli_debrid:/cli_debrid/data        ## Location for cli_debrid data
+      - /home/username/docker/DUMB/phalanx_db:/phalanx_db/data        ## Location for phalanx_db data 
+      - /home/username/docker/DMB/decypharr:/decypharr                ## Location for decypharr data      
+      - /home/username/docker/DUMB/plex:/plex                         ## Location for plex data 
     environment:
       - TZ=
       - PUID=
       - PGID=
       - DMB_LOG_LEVEL=INFO
       - ZURG_INSTANCES_REALDEBRID_API_KEY=
-      - RIVEN_FRONTEND_ENV_ORIGIN=http://0.0.0.0:3000               ## See Riven documentation for more details
-    # network_mode: container:gluetun                               ## Example to attach to gluetun vpn container if realdebrid blocks IP address
+      - RIVEN_FRONTEND_ENV_ORIGIN=http://0.0.0.0:3000                ## See Riven documentation for more details
+    # network_mode: container:gluetun                                ## Example to attach to gluetun vpn container if realdebrid blocks IP address
     ports:
       - "3005:3005"                                                 ## DMB Frontend
       - "3000:3000"                                                 ## Riven Frontend
