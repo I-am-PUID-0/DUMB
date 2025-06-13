@@ -116,6 +116,7 @@ services:
       - "32400:32400"                                               ## Plex Media Server      
     devices:
       - /dev/fuse:/dev/fuse:rwm
+      - /dev/dri:/dev/dri       
     cap_add:
       - SYS_ADMIN
     security_opt:
