@@ -97,7 +97,7 @@ services:
       - /home/username/docker/DUMB/plex_debrid:/plex_debrid/config    ## Location for plex_debrid data
       - /home/username/docker/DUMB/cli_debrid:/cli_debrid/data        ## Location for cli_debrid data
       - /home/username/docker/DUMB/phalanx_db:/phalanx_db/data        ## Location for phalanx_db data 
-      - /home/username/docker/DMB/decypharr:/decypharr                ## Location for decypharr data      
+      - /home/username/docker/DUMB/decypharr:/decypharr               ## Location for decypharr data      
       - /home/username/docker/DUMB/plex:/plex                         ## Location for plex data 
     environment:
       - TZ=
@@ -108,12 +108,12 @@ services:
       - RIVEN_FRONTEND_ENV_ORIGIN=http://0.0.0.0:3000                ## See Riven documentation for more details
     # network_mode: container:gluetun                                ## Example to attach to gluetun vpn container if realdebrid blocks IP address
     ports:
-      - "3005:3005"                                                 ## DMB Frontend
-      - "3000:3000"                                                 ## Riven Frontend
-      - "5050:5050"                                                 ## pgAdmin 4
-      - "5000:5000"                                                 ## CLI Debrid Frontend      
-      - "8282:8282"                                                 ## Decypharr Frontend         
-      - "32400:32400"                                               ## Plex Media Server      
+      - "3005:3005"                                                  ## DMB Frontend
+      - "3000:3000"                                                  ## Riven Frontend
+      - "5050:5050"                                                  ## pgAdmin 4
+      - "5000:5000"                                                  ## CLI Debrid Frontend      
+      - "8282:8282"                                                  ## Decypharr Frontend         
+      - "32400:32400"                                                ## Plex Media Server      
     devices:
       - /dev/fuse:/dev/fuse:rwm
       - /dev/dri:/dev/dri       
