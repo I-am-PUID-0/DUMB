@@ -29,7 +29,7 @@ jobs:
           ZILEAN_TAG=$(curl -s https://api.github.com/repos/iPromKnight/zilean/releases/latest | jq -r .tag_name)
           RIVEN_TAG=$(curl -s https://api.github.com/repos/rivenmedia/riven/releases/latest | jq -r .tag_name)
           RIVEN_FRONTEND_TAG=$(curl -s https://api.github.com/repos/rivenmedia/riven-frontend/releases/latest | jq -r .tag_name)
-          DMB_FRONTEND_TAG=$(curl -s https://api.github.com/repos/nicocapalbo/dmbdb/releases/latest | jq -r .tag_name)
+          DUMB_FRONTEND_TAG=$(curl -s https://api.github.com/repos/nicocapalbo/dmbdb/releases/latest | jq -r .tag_name)
           CLI_DEBRID_TAG=$(curl -s https://api.github.com/repos/godver3/cli_debrid/releases/latest | jq -r .tag_name)
           PLEX_DEBRID_TAG=$(curl -s https://raw.githubusercontent.com/elfhosted/plex_debrid/main/ui/ui_settings.py | \
             grep '^version\s*=' | \
@@ -40,7 +40,7 @@ jobs:
           echo "ZILEAN_TAG=$ZILEAN_TAG" >> $GITHUB_ENV
           echo "RIVEN_TAG=$RIVEN_TAG" >> $GITHUB_ENV
           echo "RIVEN_FRONTEND_TAG=$RIVEN_FRONTEND_TAG" >> $GITHUB_ENV
-          echo "DMB_FRONTEND_TAG=$DMB_FRONTEND_TAG" >> $GITHUB_ENV
+          echo "DUMB_FRONTEND_TAG=$DUMB_FRONTEND_TAG" >> $GITHUB_ENV
 
       - name: Load previous tags
         id: load_previous
@@ -58,7 +58,7 @@ jobs:
         id: compare_tags
         run: |
           if [ "$PREV_TAGS_FOUND" == "true" ]; then
-            DIFF=$(diff latest-tags.txt <(echo -e "$ZILEAN_TAG\n$RIVEN_TAG\n$RIVEN_FRONTEND_TAG\n$DMB_FRONTEND_TAG\n$PLEX_DEBRID_TAG\n$CLI_DEBRID_TAG") || true)
+            DIFF=$(diff latest-tags.txt <(echo -e "$ZILEAN_TAG\n$RIVEN_TAG\n$RIVEN_FRONTEND_TAG\n$DUMB_FRONTEND_TAG\n$PLEX_DEBRID_TAG\n$CLI_DEBRID_TAG") || true)
             if [ -n "$DIFF" ]; then
               echo "New versions found!"
               echo "update_found=true" >> $GITHUB_ENV
@@ -74,7 +74,7 @@ jobs:
           fi
 
       - name: Store latest tags in cache
-        run: echo -e "$ZILEAN_TAG\n$RIVEN_TAG\n$RIVEN_FRONTEND_TAG\n$DMB_FRONTEND_TAG\n$PLEX_DEBRID_TAG\n$CLI_DEBRID_TAG" > latest-tags.txt
+        run: echo -e "$ZILEAN_TAG\n$RIVEN_TAG\n$RIVEN_FRONTEND_TAG\n$DUMB_FRONTEND_TAG\n$PLEX_DEBRID_TAG\n$CLI_DEBRID_TAG" > latest-tags.txt
 
       - name: Cleanup old caches
         continue-on-error: true

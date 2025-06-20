@@ -2,9 +2,9 @@
     "puid": 1000,
     "pgid": 1000,
     "tz": "",
-    "dmb": {
+    "dumb": {
         "log_level": "INFO",
-        "log_name": "DMB",
+        "log_name": "DUMB",
         "log_dir": "/log",
         "log_count": 2,
         "log_size": "10M",
@@ -13,16 +13,17 @@
         "plex_address": "",
         "github_token": "",
         "github_username": "",
+        "onboarding_completed": false,
         "api_service": {
             "enabled": true,
-            "process_name": "DMB API",
+            "process_name": "DUMB API",
             "log_level": "INFO",
             "host": "127.0.0.1",
             "port": 8000
         },
         "frontend": {
             "enabled": true,
-            "process_name": "DMB Frontend",
+            "process_name": "DUMB Frontend",
             "repo_owner": "nicocapalbo",
             "repo_name": "dmbdb",
             "release_version_enabled": false,
@@ -47,7 +48,7 @@
                 "node",
                 ".output/server/index.mjs"
             ],
-            "config_dir": "/dmb/frontend",
+            "config_dir": "/dumb/frontend",
             "env": {}
         }
     },
@@ -210,7 +211,7 @@
         "env": {}
     },
     "postgres": {
-        "enabled": true,
+        "enabled": false,
         "process_name": "PostgreSQL",
         "suppress_logging": false,
         "log_level": "INFO",
@@ -237,7 +238,7 @@
         "config_dir": "/postgres_data",
         "config_file": "/postgres_data/postgresql.conf",
         "initdb_args": "--data-checksums",
-        "user": "DMB",
+        "user": "DUMB",
         "password": "postgres",
         "shared_buffers": "128MB",
         "max_connections": 100,
@@ -246,28 +247,29 @@
         "env": {}
     },
     "pgadmin": {
-        "enabled": true,
+        "enabled": false,
         "process_name": "pgAdmin4",
         "config_dir": "/pgadmin/data",
         "config_file": "/pgadmin/data/config_local.py",
         "log_file": "/pgadmin/data/pgadmin4.log",
         "port": 5050,
         "default_server": "0.0.0.0",
-        "setup_email": "DMB@DMB.DMB",
+        "setup_email": "DUMB@DUMB.DUMB",
         "setup_password": "postgres",
-        "command": []
+        "command": ""
     },
     "rclone": {
         "instances": {
             "RealDebrid": {
-                "enabled": true,
+                "enabled": false,
+                "core_service": "",
                 "process_name": "rclone w/ RealDebrid",
                 "suppress_logging": false,
                 "log_level": "INFO",
                 "key_type": "RealDebrid",
                 "zurg_enabled": true,
                 "decypharr_enabled": false,
-                "mount_dir": "/data",
+                "mount_dir": "/mnt/debrid",
                 "mount_name": "rclone_RD",
                 "cache_dir": "/cache",
                 "config_dir": "/config",
@@ -280,7 +282,7 @@
         }
     },
     "riven_backend": {
-        "enabled": true,
+        "enabled": false,
         "process_name": "Riven Backend",
         "repo_owner": "rivenmedia",
         "repo_name": "riven",
@@ -294,7 +296,7 @@
         "port": 8080,
         "auto_update": false,
         "auto_update_interval": 24,
-        "symlink_library_path": "/mnt",
+        "symlink_library_path": "/mnt/debrid/riven_symlinks",
         "clear_on_update": true,
         "exclude_dirs": [
             "/riven/backend/data"
@@ -315,10 +317,10 @@
         "config_dir": "/riven/backend",
         "config_file": "/riven/backend/data/settings.json",
         "env": {},
-        "wait_for_dir": "/data/rclone_RD/__all__"
+        "wait_for_dir": ""
     },
     "riven_frontend": {
-        "enabled": true,
+        "enabled": false,
         "process_name": "Riven Frontend",
         "repo_owner": "rivenmedia",
         "repo_name": "riven-frontend",
@@ -349,7 +351,7 @@
         }
     },
     "zilean": {
-        "enabled": true,
+        "enabled": false,
         "process_name": "Zilean",
         "repo_owner": "iPromKnight",
         "repo_name": "zilean",
@@ -396,7 +398,8 @@
     "zurg": {
         "instances": {
             "RealDebrid": {
-                "enabled": true,
+                "enabled": false,
+                "core_service": "",
                 "process_name": "Zurg w/ RealDebrid",
                 "repo_owner": "debridmediamanager",
                 "repo_name": "zurg-testing",
@@ -407,7 +410,7 @@
                 "host": "127.0.0.1",
                 "port": 9090,
                 "auto_update": false,
-                "auto_update_interval": 1,
+                "auto_update_interval": 24,
                 "clear_on_update": false,
                 "exclude_dirs": [
                     "/zurg/RD"

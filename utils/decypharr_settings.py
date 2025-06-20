@@ -17,9 +17,9 @@ def patch_decypharr_config():
             config_data = json.load(file)
 
         updated = False
-        dmb_config = CONFIG_MANAGER.get("decypharr", {})
-        desired_log_level = dmb_config.get("log_level", "INFO")
-        desired_port = str(dmb_config.get("port", 8282))
+        decypharr_config = CONFIG_MANAGER.get("decypharr", {})
+        desired_log_level = decypharr_config.get("log_level", "INFO")
+        desired_port = str(decypharr_config.get("port", 8282))
 
         if config_data.get("log_level") != desired_log_level:
             config_data["log_level"] = desired_log_level

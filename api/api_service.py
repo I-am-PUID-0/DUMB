@@ -35,14 +35,14 @@ def get_version_from_pyproject(path="pyproject.toml") -> str:
     try:
         with open(path, "rb") as f:
             data = tomllib.load(f)
-            return data["project"]["version"]
+            return data["tool"]["poetry"]["version"]
     except Exception:
         return "0.0.0"
 
 
 def create_app() -> FastAPI:
     app = FastAPI(
-        title="Debrid Media Bridge",
+        title="Debrid Unlimited Media Bridge",
         version=get_version_from_pyproject(),
         redoc_url=None,
         lifespan=lifespan,
@@ -74,7 +74,7 @@ def create_app() -> FastAPI:
             logger.debug(f"WebSocket Route: {route.path}")
 
     origin_from_config = (
-        CONFIG_MANAGER.config.get("dmb", {}).get("frontend", {}).get("origins", None)
+        CONFIG_MANAGER.config.get("dumb", {}).get("frontend", {}).get("origins", None)
     )
     origins = (
         [origin_from_config]
@@ -98,13 +98,15 @@ def start_fastapi_process():
     app = create_app()
 
     host = (
-        CONFIG_MANAGER.config.get("dmb", {})
+        CONFIG_MANAGER.config.get("dumb", {})
         .get("api_service", {})
         .get("host", "0.0.0.0")
     )
-    port = CONFIG_MANAGER.config.get("dmb", {}).get("api_service", {}).get("port", 8000)
+    port = (
+        CONFIG_MANAGER.config.get("dumb", {}).get("api_service", {}).get("port", 8000)
+    )
     log_level = (
-        CONFIG_MANAGER.config.get("dmb", {})
+        CONFIG_MANAGER.config.get("dumb", {})
         .get("api_service", {})
         .get("log_level", "info")
         .lower()

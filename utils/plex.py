@@ -22,8 +22,8 @@ class PlexInstaller:
 
     def get_download_info(self, build, distro="debian", channel=16, token=None):
         url = f"https://plex.tv/downloads/details/5?build={build}&channel={channel}&distro={distro}"
-        if CONFIG_MANAGER.get("dmb").get("plex_token"):
-            token = CONFIG_MANAGER.get("dmb").get("plex_token")
+        if CONFIG_MANAGER.get("dumb").get("plex_token"):
+            token = CONFIG_MANAGER.get("dumb").get("plex_token")
             url += f"&X-Plex-Token={token}"
 
         self.logger.info(f"Fetching Plex version info from: {url}")

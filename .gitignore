@@ -372,7 +372,7 @@ FodyWeavers.xsd
 *.pyproj*
 *.db*
 *Zone*
-/dmb
+/dumb
 *.VS*
 *.vs*
 *.pnpm-store*

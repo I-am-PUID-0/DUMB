@@ -225,7 +225,7 @@ def setup_project(process_handler, process_name):
                         )
                         postgres_port = CONFIG_MANAGER.get("postgres").get("port", 5432)
                         postgres_user = CONFIG_MANAGER.get("postgres").get(
-                            "user", "DMB"
+                            "user", "DUMB"
                         )
                         postgres_password = CONFIG_MANAGER.get("postgres").get(
                             "password", "postgres"
@@ -246,8 +246,8 @@ def setup_project(process_handler, process_name):
 
                     config["env"][env_key] = value
 
-        if key == "dmb_frontend":
-            success, error = dmb_frontend_setup()
+        if key == "dumb_frontend":
+            success, error = dumb_frontend_setup()
             if not success:
                 return False, error
 
@@ -349,7 +349,7 @@ def setup_decypharr():
     try:
         decypharr_config_dir = config.get("config_dir")
         decypharr_config_file = config.get("config_file")
-        decypharr_binary_file = config.get("binary_file", "decypharr")
+        decypharr_binary_file = "decypharr"
         binary_path = os.path.join(decypharr_config_dir, decypharr_binary_file)
 
         if not os.path.exists(decypharr_config_dir):
@@ -441,12 +441,12 @@ def plex_debrid_setup():
     return True, None
 
 
-def dmb_frontend_setup():
-    dmb_config = CONFIG_MANAGER.get("dmb")
-    config = dmb_config.get("frontend")
+def dumb_frontend_setup():
+    dumb_config = CONFIG_MANAGER.get("dumb")
+    config = dumb_config.get("frontend")
     if not config:
-        return False, "Configuration for DMB Frontend not found."
-    api_config = dmb_config.get("api_service", {})
+        return False, "Configuration for DUMB Frontend not found."
+    api_config = dumb_config.get("api_service", {})
     if not api_config:
         return False, "Configuration for API Service not found."
     frontend_host = config.get("host", "127.0.0.1")
@@ -457,7 +457,7 @@ def dmb_frontend_setup():
     env_vars = {
         "HOST": frontend_host,
         "PORT": frontend_port,
-        "DMB_API_URL": api_url,
+        "DUMB_API_URL": api_url,
         **config.get("env", {}),
     }
     config["env"] = env_vars
@@ -708,6 +708,7 @@ def zurg_setup():
         for key_type, instance in config.get("instances", {}).items():
             if instance.get("enabled"):
                 if not instance.get("api_key"):
+                    logger.error(f"API key not found for Zurg instance {key_type}")
                     raise ValueError(f"API key not found for Zurg instance {key_type}")
                 logger.info(f"Setting up enabled instance: {key_type}")
                 success, error = setup_zurg_instance(instance, key_type)
@@ -882,6 +883,15 @@ def rclone_setup():
                 logger.debug(f"Skipping disabled Rclone instance: {instance_name}")
                 return True, None
 
+            process_name = instance.get("process_name")
+            from utils.dependencies import get_api_state
+
+            api_state = get_api_state()
+
+            if api_state.get_status(process_name) == "running":
+                logger.info(f"{process_name} is already running. Skipping setup.")
+                return True, None
+
             config_file = instance["config_file"]
             config_dir = instance["config_dir"]
             mount_name = instance["mount_name"]
@@ -890,17 +900,13 @@ def rclone_setup():
             os.makedirs(config_dir, exist_ok=True)
             logger.info(f"Setting up Rclone instance: {instance_name}")
 
-            if instance.get("zurg_enabled", False) and instance.get(
-                "decypharr_enabled", False
-            ):
+            if instance.get("zurg_enabled") and instance.get("decypharr_enabled"):
                 return (
                     False,
                     "Both Zurg and Decypharr cannot be enabled at the same time for Rclone.",
                 )
 
-            elif instance.get("zurg_enabled", False) and not instance.get(
-                "decypharr_enabled", False
-            ):
+            elif instance.get("zurg_enabled") and not instance.get("decypharr_enabled"):
 
                 zurg_instance = (
                     CONFIG_MANAGER.get("zurg", {})
@@ -954,9 +960,7 @@ def rclone_setup():
                         f.write(f"[{section}]\n")
                         f.write("\n".join(lines) + "\n")
 
-            elif instance.get("decypharr_enabled", False) and not instance.get(
-                "zurg_enabled", False
-            ):
+            elif instance.get("decypharr_enabled") and not instance.get("zurg_enabled"):
                 decypharr_config = CONFIG_MANAGER.get("decypharr", {})
                 url = None
                 config_data = {}
@@ -981,8 +985,8 @@ def rclone_setup():
                         f.write(f"[{section}]\n")
                         f.write("\n".join(lines) + "\n")
 
-            elif not instance.get("zurg_enabled", False) and not instance.get(
-                "decypharr_enabled", False
+            elif not instance.get("zurg_enabled") and not instance.get(
+                "decypharr_enabled"
             ):
                 config_data = {}
                 if os.path.exists(config_file):
@@ -1093,7 +1097,7 @@ def rclone_setup():
                     "--log-level": log_level,
                 }
 
-                if instance.get("decypharr_enabled", False):
+                if instance.get("decypharr_enabled"):
                     required_flags.update(
                         {
                             "--rc": None,

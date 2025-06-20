@@ -117,10 +117,10 @@ RUN curl -L https://github.com/rivenmedia/riven/archive/refs/tags/${RIVEN_TAG}.z
     poetry install --no-root --without dev
 
 ####################################################################################################################################################
-# Stage 6: dmb-frontend-builder (Ubuntu 24.04 with Node.js)
+# Stage 6: dumb-frontend-builder (Ubuntu 24.04 with Node.js)
 ####################################################################################################################################################
-FROM ubuntu:24.04 AS dmb-frontend-builder
-ARG DMB_FRONTEND_TAG
+FROM ubuntu:24.04 AS dumb-frontend-builder
+ARG DUMB_FRONTEND_TAG
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y curl unzip build-essential gnupg2 lsb-release && \
     curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
@@ -128,12 +128,12 @@ RUN apt-get update && apt-get install -y curl unzip build-essential gnupg2 lsb-r
     node -v && npm install -g npm@10 && npm -v && \
     npm install -g pnpm@latest-10 && pnpm -v && \
     rm -rf /var/lib/apt/lists/*
-RUN curl -L https://github.com/nicocapalbo/dmbdb/archive/refs/tags/${DMB_FRONTEND_TAG}.zip -o dmb-frontend.zip && \
-    unzip dmb-frontend.zip && \
-    mkdir -p dmb/frontend && \
-    mv dmbdb*/* /dmb/frontend && rm dmb-frontend.zip && \
-    cd dmb/frontend && \
-    echo "store-dir=./.pnpm-store" > /dmb/frontend/.npmrc && \
+RUN curl -L https://github.com/nicocapalbo/dmbdb/archive/refs/tags/${DUMB_FRONTEND_TAG}.zip -o dumb-frontend.zip && \
+    unzip dumb-frontend.zip && \
+    mkdir -p dumb/frontend && \
+    mv dmbdb*/* /dumb/frontend && rm dumb-frontend.zip && \
+    cd dumb/frontend && \
+    echo "store-dir=./.pnpm-store" > /dumb/frontend/.npmrc && \
     pnpm install --reporter=verbose && \
     pnpm run build --log-level verbose
 
@@ -202,15 +202,15 @@ RUN apt-get update && apt-get install -y software-properties-common wget gnupg2 
     poetry install --no-root
 
 ####################################################################################################################################################
-# Stage 10: final-stage (Ubuntu 24.04 with Python 3.11, .NET SDK, PostgreSQL, pgAdmin4, Node.js, Rclone, Zilean, SystemStats, Riven, Plex Debrid, & DMB)
+# Stage 10: final-stage (Ubuntu 24.04 with Python 3.11, .NET SDK, PostgreSQL, pgAdmin4, Node.js, Rclone, Zilean, SystemStats, Riven, Plex Debrid, & DUMB)
 ####################################################################################################################################################
 FROM ubuntu:24.04 AS final-stage
 ARG TARGETARCH
 ENV DEBIAN_FRONTEND=noninteractive
 ENV PATH="/usr/lib/postgresql/16/bin:$PATH"
-LABEL name="DMB" \
-      description="Debrid Media Bridge" \
-      url="https://github.com/I-am-PUID-0/DMB" \
+LABEL name="DUMB" \
+      description="Debrid Unlimited Media Bridge" \
+      url="https://github.com/I-am-PUID-0/DUMB" \
       maintainer="I-am-PUID-0"
       
 RUN apt-get update && \
@@ -251,7 +251,7 @@ COPY --from=systemstats-builder /usr/lib/postgresql/16/lib/system_stats.so /usr/
 COPY --from=zilean-builder /zilean /zilean
 COPY --from=riven-frontend-builder /riven/frontend /riven/frontend
 COPY --from=riven-backend-builder /riven/backend /riven/backend
-COPY --from=dmb-frontend-builder /dmb/frontend /dmb/frontend
+COPY --from=dumb-frontend-builder /dumb/frontend /dumb/frontend
 COPY --from=plex_debrid-builder /plex_debrid /plex_debrid
 COPY --from=cli_debrid-builder /cli_debrid /cli_debrid
 COPY --from=rclone/rclone:latest /usr/local/bin/rclone /usr/local/bin/rclone

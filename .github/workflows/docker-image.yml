@@ -24,7 +24,7 @@ jobs:
       ZILEAN_TAG: ${{ env.ZILEAN_TAG }}
       RIVEN_TAG: ${{ env.RIVEN_TAG }}
       RIVEN_FRONTEND_TAG: ${{ env.RIVEN_FRONTEND_TAG }}
-      DMB_FRONTEND_TAG: ${{ env.DMB_FRONTEND_TAG }}
+      DUMB_FRONTEND_TAG: ${{ env.DUMB_FRONTEND_TAG }}
       PLEX_DEBRID_TAG: ${{ env.PLEX_DEBRID_TAG }}
       CLI_DEBRID_TAG: ${{ env.CLI_DEBRID_TAG }}      
     steps:
@@ -55,8 +55,8 @@ jobs:
 
       - name: Fetch latest dmbdb release tag
         run: |
-          DMB_FRONTEND_TAG=$(curl -s https://api.github.com/repos/nicocapalbo/dmbdb/releases/latest | jq -r .tag_name)
-          echo "DMB_FRONTEND_TAG=$DMB_FRONTEND_TAG" >> $GITHUB_ENV 
+          DUMB_FRONTEND_TAG=$(curl -s https://api.github.com/repos/nicocapalbo/dmbdb/releases/latest | jq -r .tag_name)
+          echo "DUMB_FRONTEND_TAG=$DUMB_FRONTEND_TAG" >> $GITHUB_ENV 
 
       - name: Fetch latest plex_debrid version from source
         run: |
@@ -150,7 +150,7 @@ jobs:
             ZILEAN_TAG=${{ needs.fetch-latest-tags.outputs.ZILEAN_TAG }}
             RIVEN_TAG=${{ needs.fetch-latest-tags.outputs.RIVEN_TAG }}
             RIVEN_FRONTEND_TAG=${{ needs.fetch-latest-tags.outputs.RIVEN_FRONTEND_TAG }}
-            DMB_FRONTEND_TAG=${{ needs.fetch-latest-tags.outputs.DMB_FRONTEND_TAG }}
+            DUMB_FRONTEND_TAG=${{ needs.fetch-latest-tags.outputs.DUMB_FRONTEND_TAG }}
             PLEX_DEBRID_TAG=${{ needs.fetch-latest-tags.outputs.PLEX_DEBRID_TAG }}
             CLI_DEBRID_TAG=${{ needs.fetch-latest-tags.outputs.CLI_DEBRID_TAG }}
           provenance: true
@@ -174,7 +174,7 @@ jobs:
             ZILEAN_TAG=${{ needs.fetch-latest-tags.outputs.ZILEAN_TAG }}
             RIVEN_TAG=${{ needs.fetch-latest-tags.outputs.RIVEN_TAG }}
             RIVEN_FRONTEND_TAG=${{ needs.fetch-latest-tags.outputs.RIVEN_FRONTEND_TAG }}
-            DMB_FRONTEND_TAG=${{ needs.fetch-latest-tags.outputs.DMB_FRONTEND_TAG }}
+            DUMB_FRONTEND_TAG=${{ needs.fetch-latest-tags.outputs.DUMB_FRONTEND_TAG }}
             PLEX_DEBRID_TAG=${{ needs.fetch-latest-tags.outputs.PLEX_DEBRID_TAG }}
             CLI_DEBRID_TAG=${{ needs.fetch-latest-tags.outputs.CLI_DEBRID_TAG }}
           load: true 
@@ -211,7 +211,7 @@ jobs:
           echo "**Docker Tags:**" >> $GITHUB_STEP_SUMMARY
           echo "\`${{ env.DOCKER_TAGS }}\`" >> $GITHUB_STEP_SUMMARY
           echo "**Dependency Versions:**" >> $GITHUB_STEP_SUMMARY
-          echo "- DMB Frontend: \`${{ needs.fetch-latest-tags.outputs.DMB_FRONTEND_TAG }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- DUMB Frontend: \`${{ needs.fetch-latest-tags.outputs.DUMB_FRONTEND_TAG }}\`" >> $GITHUB_STEP_SUMMARY
           echo "- Riven: \`${{ needs.fetch-latest-tags.outputs.RIVEN_TAG }}\`" >> $GITHUB_STEP_SUMMARY
           echo "- Riven Frontend: \`${{ needs.fetch-latest-tags.outputs.RIVEN_FRONTEND_TAG }}\`" >> $GITHUB_STEP_SUMMARY 
           echo "- Zilean: \`${{ needs.fetch-latest-tags.outputs.ZILEAN_TAG }}\`" >> $GITHUB_STEP_SUMMARY

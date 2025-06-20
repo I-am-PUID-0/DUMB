@@ -4,7 +4,7 @@ from json import load, dump, JSONDecodeError
 import os, time, re, requests
 
 
-dmb_config = CONFIG_MANAGER.config.get("dmb")
+dumb_config = CONFIG_MANAGER.config.get("dumb")
 riven_backend_config = CONFIG_MANAGER.config.get("riven_backend")
 riven_frontend_config = CONFIG_MANAGER.config.get("riven_frontend")
 postgres_config = CONFIG_MANAGER.config.get("postgres")
@@ -28,43 +28,50 @@ def parse_config_keys(config):
     zurg_instances = config.get("zurg", {}).get("instances", {})
 
     key_map = {
-        "RealDebrid": "DOWNLOADERS_REAL_DEBRID_API_KEY",
-        "AllDebrid": "DOWNLOADERS_ALL_DEBRID_API_KEY",
-        "TorBox": "DOWNLOADERS_TORBOX_API_KEY",
+        "realdebrid": "DOWNLOADERS_REAL_DEBRID_API_KEY",
+        "alldebrid": "DOWNLOADERS_ALL_DEBRID_API_KEY",
+        "torbox": "DOWNLOADERS_TORBOX_API_KEY",
     }
 
     enabled_rclone_instances = []
-    for instance_name, rclone_instance in rclone_instances.items():
-        if not rclone_instance.get("enabled", False):
+    for instance_name, instance in rclone_instances.items():
+        if instance.get("core_service") != "riven_backend":
+            continue
+        if not instance.get("enabled", False):
             continue
 
-        enabled_rclone_instances.append(rclone_instance)
-        zurg_instance = zurg_instances.get(instance_name, {})
-        if rclone_instance.get("zurg_enabled", False) and zurg_instance.get(
-            "enabled", False
-        ):
-            api_key = zurg_instance.get("api_key")
+        enabled_rclone_instances.append(instance)
+
+        key_type = instance.get("key_type", "").lower()
+        api_key = None
+
+        if instance.get("zurg_enabled", False):
+            zurg_instance = next(
+                (
+                    z
+                    for z in zurg_instances.values()
+                    if z.get("core_service") == "riven_backend" and z.get("enabled")
+                ),
+                None,
+            )
+            if zurg_instance:
+                api_key = zurg_instance.get("api_key")
         else:
-            api_key = rclone_instance.get("api_key")
+            api_key = instance.get("api_key")
 
-        if instance_name in key_map:
-            config_keys[key_map[instance_name]] = api_key
+        if key_type in key_map:
+            config_keys[key_map[key_type]] = api_key
 
-    if len(enabled_rclone_instances) == 1:
-        rclone_instance = enabled_rclone_instances[0]
-        mount_dir = rclone_instance.get("mount_dir", "")
-        mount_name = rclone_instance.get("mount_name", "")
-        symlink_path = f"{mount_dir}/{mount_name}/__all__"
-        config_keys["SYMLINK_RCLONE_PATH"] = symlink_path
-    elif len(enabled_rclone_instances) > 1:
+    if enabled_rclone_instances:
         first_instance = enabled_rclone_instances[0]
         mount_dir = first_instance.get("mount_dir", "")
         mount_name = first_instance.get("mount_name", "")
         config_keys["SYMLINK_RCLONE_PATH"] = f"{mount_dir}/{mount_name}/__all__"
 
-    CONFIG_MANAGER.config["riven_backend"]["wait_for_dir"] = config_keys.get(
+    CONFIG_MANAGER.config["riven_backend"]["wait_for_dir"] = config_keys[
         "SYMLINK_RCLONE_PATH"
-    )
+    ]
+
     return config_keys
 
 
@@ -176,11 +183,11 @@ def set_env_variables():
         "RIVEN_DOWNLOADERS_TORBOX_API_KEY": torbox_api_key,
         "RIVEN_UPDATERS_PLEX_URL": (
             None
-            if not dmb_config.get("plex_address")
-            else dmb_config.get("plex_address")
+            if not dumb_config.get("plex_address")
+            else dumb_config.get("plex_address")
         ),
         "RIVEN_UPDATERS_PLEX_TOKEN": (
-            None if not dmb_config.get("plex_token") else dmb_config.get("plex_token")
+            None if not dumb_config.get("plex_token") else dumb_config.get("plex_token")
         ),
         "RIVEN_SYMLINK_RCLONE_PATH": symlink_rclone_path,
         "RIVEN_SYMLINK_LIBRARY_PATH": riven_backend_config.get("symlink_library_path"),

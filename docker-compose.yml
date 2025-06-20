@@ -1,7 +1,7 @@
 services:
   DUMB:
     container_name: DUMB
-    image: iampuid0/dmb:DUMB                                          ## Optionally, specify a specific version of DMB w/ image: iampuid0/dmb:2.0.0
+    image: iampuid0/dumb:latest                                       ## Optionally, specify a specific version of DUMB w/ image: iampuid0/dumb:2.0.0
     stop_grace_period: 30s                                            ## Adjust as need to allow for graceful shutdown of the container
     shm_size: 128mb                                                   ## Increased for PostgreSQL
     stdin_open: true                                                  ## docker run -i
@@ -11,7 +11,6 @@ services:
       - /home/username/docker/DUMB/log:/log                           ## Location for logs
       - /home/username/docker/DUMB/Zurg/RD:/zurg/RD                   ## Location for Zurg RealDebrid active configuration
       - /home/username/docker/DUMB/Riven/data:/riven/backend/data     ## Location for Riven backend data
-      - /home/username/docker/DUMB/Riven/mnt:/mnt                     ## Location for Riven symlinks
       - /home/username/docker/DUMB/PostgreSQL/data:/postgres_data     ## Location for PostgreSQL database
       - /home/username/docker/DUMB/pgAdmin4/data:/pgadmin/data        ## Location for pgAdmin 4 data
       - /home/username/docker/DUMB/Zilean/data:/zilean/app/data       ## Location for Zilean data
@@ -24,19 +23,14 @@ services:
       - TZ=
       - PUID=
       - PGID=
-      - DMB_LOG_LEVEL=INFO
-      - ZURG_INSTANCES_REALDEBRID_API_KEY=
-      - RIVEN_FRONTEND_ENV_ORIGIN=http://0.0.0.0:3000                ## See Riven documentation for more details
+      - DUMB_LOG_LEVEL=INFO
     # network_mode: container:gluetun                                ## Example to attach to gluetun vpn container if realdebrid blocks IP address
     ports:
-      - "3005:3005"                                                  ## DMB Frontend
+      - "3005:3005"                                                  ## DUMB Frontend
       - "3000:3000"                                                  ## Riven Frontend
-      - "5050:5050"                                                  ## pgAdmin 4
+      - "5050:5050"                                                  ## pgAdmin 4 Frontend
       - "5000:5000"                                                  ## CLI Debrid Frontend      
       - "8282:8282"                                                  ## Decypharr Frontend         
-      - "3005:3005"                                                  ## DMB Frontend
-      - "3000:3000"                                                  ## Riven Frontend
-      - "5050:5050"                                                  ## pgAdmin 4
       - "32400:32400"                                                ## Plex Media Server      
     devices:
       - /dev/fuse:/dev/fuse:rwm

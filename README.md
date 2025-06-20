@@ -1,9 +1,9 @@
 ﻿<div align="center" style="max-width: 100%; height: auto;">
-  <h1>🎬 Debrid Media Bridge 🎬</h1>
-  <a href="https://github.com/I-am-PUID-0/DMB">
+  <h1>🎬 Debrid Unlimited Media Bridge 🎬</h1>
+  <a href="https://github.com/I-am-PUID-0/DUMB">
     <picture>
-      <source media="(prefers-color-scheme: dark)" srcset="https://github.com/I-am-PUID-0/DMB/assets/36779668/d0cbc785-2e09-41da-b226-924fdfcc1f21">
-      <img alt="DMB" src="https://github.com/I-am-PUID-0/DMB/assets/36779668/d0cbc785-2e09-41da-b226-924fdfcc1f21" style="max-width: 100%; height: auto;">
+      <source media="(prefers-color-scheme: dark)" srcset="https://i-am-puid-0.github.io/DUMB/assets/images/DUMB.png">
+      <img alt="DUMB" src="https://i-am-puid-0.github.io/DUMB/assets/images/DUMB.png" style="max-width: 100%; height: auto;">
     </picture>
   </a>
 </div>
@@ -11,37 +11,37 @@
   align="center"
   style="display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-top: 1em;"
 >
-  <a href="https://github.com/I-am-PUID-0/DMB/stargazers">
+  <a href="https://github.com/I-am-PUID-0/DUMB/stargazers">
     <img
       alt="GitHub Repo stars"
-      src="https://img.shields.io/github/stars/I-am-PUID-0/DMB?style=for-the-badge"
+      src="https://img.shields.io/github/stars/I-am-PUID-0/DUMB?style=for-the-badge"
     />
   </a>
-  <a href="https://github.com/I-am-PUID-0/DMB/issues">
+  <a href="https://github.com/I-am-PUID-0/DUMB/issues">
     <img
       alt="Issues"
-      src="https://img.shields.io/github/issues/I-am-PUID-0/DMB?style=for-the-badge"
+      src="https://img.shields.io/github/issues/I-am-PUID-0/DUMB?style=for-the-badge"
     />
   </a>
-  <a href="https://github.com/I-am-PUID-0/DMB/blob/master/COPYING">
+  <a href="https://github.com/I-am-PUID-0/DUMB/blob/master/COPYING">
     <img
       alt="License"
-      src="https://img.shields.io/github/license/I-am-PUID-0/DMB?style=for-the-badge"
+      src="https://img.shields.io/github/license/I-am-PUID-0/DUMB?style=for-the-badge"
     />
   </a>
-  <a href="https://github.com/I-am-PUID-0/DMB/graphs/contributors">
+  <a href="https://github.com/I-am-PUID-0/DUMB/graphs/contributors">
     <img
       alt="Contributors"
-      src="https://img.shields.io/github/contributors/I-am-PUID-0/DMB?style=for-the-badge"
+      src="https://img.shields.io/github/contributors/I-am-PUID-0/DUMB?style=for-the-badge"
     />
   </a>
-  <a href="https://hub.docker.com/r/iampuid0/dmb">
+  <a href="https://hub.docker.com/r/iampuid0/dumb">
     <img
       alt="Docker Pulls"
-      src="https://img.shields.io/docker/pulls/iampuid0/dmb?style=for-the-badge&logo=docker&logoColor=white"
+      src="https://img.shields.io/docker/pulls/iampuid0/dumb?style=for-the-badge&logo=docker&logoColor=white"
     />
   </a>
-  <a href="https://discord.gg/8dqKUBtbp5">
+  <a href="https://discord.gg/T6uZGy5XYb">
     <img
       alt="Join Discord"
       src="https://img.shields.io/badge/Join%20us%20on%20Discord-5865F2?style=for-the-badge&logo=discord&logoColor=white"
@@ -51,25 +51,25 @@
 
 ## 📜 Description
 
-**Debrid Media Bridge (DMB)** is an All-In-One (AIO) docker image for the unified deployment of **[Riven Media's](https://github.com/rivenmedia)**, **[itsToggle's](https://github.com/itsToggle)**, **[godver3's](https://github.com/godver3)**, **[yowmamasita's](https://github.com/yowmamasita)**, **[iPromKnight's](https://github.com/iPromKnight/zilean)**, **[Mukhtar Akere's](https://github.com/sirrobot01)**, **[Nick Craig-Wood's](https://github.com/ncw)**, **[Michael Stonebraker's](https://en.wikipedia.org/wiki/Michael_Stonebraker)**, and **[Dave Page's](https://github.com/dpage)** projects -- **[Riven](https://github.com/rivenmedia/riven)**, **[plex_debrid](https://github.com/itsToggle/plex_debrid)**, **[cli_debrid](https://github.com/godver3/cli_debrid)**, **[Zurg](https://github.com/debridmediamanager/zurg-testing)**, **[Zilean](https://github.com/iPromKnight/zilean)**, **[Decypharr](https://github.com/sirrobot01/decypharr)**,**[rclone](https://github.com/rclone/rclone)**, **[PostgreSQL](https://www.postgresql.org/)**, and **[pgAdmin 4](https://www.pgadmin.org/)**.
+**Debrid Unlimited Media Bridge (DUMB)** is an All-In-One (AIO) docker image for the unified deployment of **[Riven Media's](https://github.com/rivenmedia)**, **[itsToggle's](https://github.com/itsToggle)**, **[godver3's](https://github.com/godver3)**, **[yowmamasita's](https://github.com/yowmamasita)**, **[iPromKnight's](https://github.com/iPromKnight/zilean)**, **[Mukhtar Akere's](https://github.com/sirrobot01)**, **[Nick Craig-Wood's](https://github.com/ncw)**, **[Michael Stonebraker's](https://en.wikipedia.org/wiki/Michael_Stonebraker)**, and **[Dave Page's](https://github.com/dpage)** projects -- **[Riven](https://github.com/rivenmedia/riven)**, **[plex_debrid](https://github.com/itsToggle/plex_debrid)**, **[cli_debrid](https://github.com/godver3/cli_debrid)**, **[Zurg](https://github.com/debridmediamanager/zurg-testing)**, **[Zilean](https://github.com/iPromKnight/zilean)**, **[Decypharr](https://github.com/sirrobot01/decypharr)**,**[rclone](https://github.com/rclone/rclone)**, **[PostgreSQL](https://www.postgresql.org/)**, and **[pgAdmin 4](https://www.pgadmin.org/)**.
 
-> ⚠️ **IMPORTANT**: Docker Desktop **CANNOT** be used to run DMB. Docker Desktop does not support the [mount propagation](https://docs.docker.com/storage/bind-mounts/#configure-bind-propagation) required for rclone mounts.
+> ⚠️ **IMPORTANT**: Docker Desktop **CANNOT** be used to run DUMB. Docker Desktop does not support the [mount propagation](https://docs.docker.com/storage/bind-mounts/#configure-bind-propagation) required for rclone mounts.
 >
-> ![image](https://github.com/I-am-PUID-0/DMB/assets/36779668/aff06342-1099-4554-a5a4-72a7c82cb16e)
+> ![image](https://github.com/I-am-PUID-0/DUMB/assets/36779668/aff06342-1099-4554-a5a4-72a7c82cb16e)
 >
-> See the DMB Docs for [alternative deployment options](https://i-am-puid-0.github.io/DMB/deployment/wsl) to run DMB on Windows through WSL2.
+> See the DUMB Docs for [alternative deployment options](https://i-am-puid-0.github.io/DUMB/deployment/wsl) to run DUMB on Windows through WSL2.
 
 ## 🌟 Features
 
-See the DMB [Docs](https://i-am-puid-0.github.io/DMB/features) for a full list of features and settings.
+See the DUMB [Docs](https://i-am-puid-0.github.io/DUMB/features) for a full list of features and settings.
 
 ## 🐳 Docker Hub
 
-A prebuilt image is hosted on [Docker Hub](https://hub.docker.com/r/iampuid0/dmb).
+A prebuilt image is hosted on [Docker Hub](https://hub.docker.com/r/iampuid0/dumb).
 
 ## 🏷️ GitHub Container Registry
 
-A prebuilt image is hosted on [GitHub Container Registry](https://github.com/I-am-PUID-0/DMB/pkgs/container/DMB).
+A prebuilt image is hosted on [GitHub Container Registry](https://github.com/I-am-PUID-0/DUMB/pkgs/container/DUMB).
 
 ## 🐳 Docker-compose
 
@@ -80,7 +80,7 @@ A prebuilt image is hosted on [GitHub Container Registry](https://github.com/I-a
 services:
   DUMB:
     container_name: DUMB
-    image: iampuid0/dmb:DUMB                                          ## Optionally, specify a specific version of DMB w/ image: iampuid0/dmb:2.0.0
+    image: iampuid0/dumb:latest                                       ## Optionally, specify a specific version of DUMB w/ image: iampuid0/dumb:2.0.0
     stop_grace_period: 30s                                            ## Adjust as need to allow for graceful shutdown of the container
     shm_size: 128mb                                                   ## Increased for PostgreSQL
     stdin_open: true                                                  ## docker run -i
@@ -90,7 +90,6 @@ services:
       - /home/username/docker/DUMB/log:/log                           ## Location for logs
       - /home/username/docker/DUMB/Zurg/RD:/zurg/RD                   ## Location for Zurg RealDebrid active configuration
       - /home/username/docker/DUMB/Riven/data:/riven/backend/data     ## Location for Riven backend data
-      - /home/username/docker/DUMB/Riven/mnt:/mnt                     ## Location for Riven symlinks
       - /home/username/docker/DUMB/PostgreSQL/data:/postgres_data     ## Location for PostgreSQL database
       - /home/username/docker/DUMB/pgAdmin4/data:/pgadmin/data        ## Location for pgAdmin 4 data
       - /home/username/docker/DUMB/Zilean/data:/zilean/app/data       ## Location for Zilean data
@@ -103,14 +102,12 @@ services:
       - TZ=
       - PUID=
       - PGID=
-      - DMB_LOG_LEVEL=INFO
-      - ZURG_INSTANCES_REALDEBRID_API_KEY=
-      - RIVEN_FRONTEND_ENV_ORIGIN=http://0.0.0.0:3000                ## See Riven documentation for more details
+      - DUMB_LOG_LEVEL=INFO
     # network_mode: container:gluetun                                ## Example to attach to gluetun vpn container if realdebrid blocks IP address
     ports:
-      - "3005:3005"                                                  ## DMB Frontend
+      - "3005:3005"                                                  ## DUMB Frontend
       - "3000:3000"                                                  ## Riven Frontend
-      - "5050:5050"                                                  ## pgAdmin 4
+      - "5050:5050"                                                  ## pgAdmin 4 Frontend
       - "5000:5000"                                                  ## CLI Debrid Frontend      
       - "8282:8282"                                                  ## Decypharr Frontend         
       - "32400:32400"                                                ## Plex Media Server      
@@ -128,16 +125,14 @@ services:
 
 The following table lists the required environment variables used by the container. The environment variables are set via the `-e` parameter or via the docker-compose file within the `environment:` section or with a .env file saved to the config directory. Value of this parameter is listed as `<VARIABLE_NAME>=<Value>`
 
-Variables required by DMB:
-| Variable       | Default  | Description                                                       | Required for DMB |
-| -------------- | -------- | ------------------------------------------------------------------|----------------- |
-| `PUID`         | `1000`   | Your User ID | :heavy_check_mark: |
-| `PGID`         | `1000`   | Your Group ID |:heavy_check_mark: |
-| `TZ`           | `(null)` | Your time zone listed as `Area/Location` | :heavy_check_mark: |
-| `ZURG_INSTANCES_REALDEBRID_API_KEY` | `(null)` | Enter your Real-Debrid API Token | :heavy_check_mark: |
-| `RIVEN_FRONTEND_ENV_ORIGIN` | `http://0.0.0.0:3000` | The IP address used to access the DMB frontend.  Change this to the IP address you use in the browser for Riven Frontend. | :heavy_check_mark: |
+Variables required by DUMB:
+| Variable       | Default  | Description                                                       |
+| -------------- | -------- | ------------------------------------------------------------------|
+| `PUID`         | `1000`   | Your User ID |
+| `PGID`         | `1000`   | Your Group ID |
+| `TZ`           | `(null)` | Your time zone listed as `Area/Location` |
 
-See the [.env.example](https://github.com/I-am-PUID-0/DMB/blob/master/.env.example)
+See the [.env.example](https://github.com/I-am-PUID-0/DUMB/blob/master/.env.example)
 
 ## 🌐 Ports Used
 
@@ -148,7 +143,7 @@ The following table describes the ports used by the container. The mappings are 
 
 | Container port | Protocol | Description                                                                          |
 | -------------- | -------- | ------------------------------------------------------------------------------------ |
-| `3005`         | TCP      | DMB frontend - a web UI is accessible at the assigned port                           |
+| `3005`         | TCP      | DUMB frontend - a web UI is accessible at the assigned port                           |
 | `3000`         | TCP      | Riven frontend - A web UI is accessible at the assigned port                         |
 | `8080`         | TCP      | Riven backend - The API is accessible at the assigned port                           |
 | `5432`         | TCP      | PostgreSQL - The SQL server is accessible at the assigned port                       |
@@ -170,10 +165,8 @@ format: `<HOST_DIR>:<CONTAINER_DIR>[:PERMISSIONS]`.
 | --------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `/config`             | rw          | This is where the application stores the rclone.conf, and any files needing persistence. CAUTION: rclone.conf is overwritten upon start/restart of the container. Do NOT use an existing rclone.conf file if you have other rclone services |
 | `/log`                | rw          | This is where the application stores its log files                                                                                                                                                                                          |
-| `/data`               | rshared     | This is where rclone will be mounted.                                                                                                                                                                                                       |
 | `/zurg/RD`            | rw          | This is where Zurg will store the active configuration and data for RealDebrid.                                                                                                    |
 | `/riven/data`         | rw          | This is where Riven will store its data.                                                                                                                                                               |
-| `/riven/mnt`          | rw          | This is where Riven will set its symlinks.                                                                                                                                                             |
 | `/postgres_data`      | rw          | This is where PostgreSQL will store its data.                                                                                                                                                          |
 | `/pgadmin/data`       | rw          | This is where pgAdmin 4 will store its data.                                                                                                                                                          |
 | `/plex_debrid/config` | rw          | This is where plex_debrid will store its data.                                                                                                                                                   |
@@ -184,7 +177,7 @@ format: `<HOST_DIR>:<CONTAINER_DIR>[:PERMISSIONS]`.
 
 ## 📝 TODO
 
-See the [DMB roadmap](https://github.com/users/I-am-PUID-0/projects/6) for a list of planned features and enhancements.
+See the [DUMB roadmap](https://github.com/users/I-am-PUID-0/projects/7) for a list of planned features and enhancements.
 
 ## 🛠️ DEV
 
@@ -200,17 +193,17 @@ See the [DMB roadmap](https://github.com/users/I-am-PUID-0/projects/6) for a lis
 
 ## 🚀 Deployment
 
-DMB allows for the simultaneous or individual deployment of any of the services
+DUMB allows for the simultaneous or individual deployment of any of the services
 
-For additional details on deployment, see the [DMB Docs](https://i-am-puid-0.github.io/DMB/services/)
+For additional details on deployment, see the [DUMB Docs](https://i-am-puid-0.github.io/DUMB/services/)
 
 ## 🌍 Community
 
-### DMB
+### DUMB
 
-- For questions related to DMB, see the GitHub [discussions](https://github.com/I-am-PUID-0/DMB/discussions)
-- or create a new [issue](https://github.com/I-am-PUID-0/DMB/issues) if you find a bug or have an idea for an improvement.
-- or join the DMB [discord server](https://discord.gg/8dqKUBtbp5)
+- For questions related to DUMB, see the GitHub [discussions](https://github.com/I-am-PUID-0/DUMB/discussions)
+- or create a new [issue](https://github.com/I-am-PUID-0/DUMB/issues) if you find a bug or have an idea for an improvement.
+- or join the DUMB [discord server](https://discord.gg/T6uZGy5XYb)
 
 ### Riven Media
 
@@ -262,4 +255,4 @@ If you enjoy the underlying projects and want to buy PostgreSQL a beer/coffee, f
 
 ## ✅ GitHub Workflow Status
 
-![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/I-am-PUID-0/DMB/docker-image.yml)
+![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/I-am-PUID-0/DUMB/docker-image.yml)
