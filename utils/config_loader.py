@@ -8,11 +8,11 @@ from collections import OrderedDict
 class ConfigManager:
     def __init__(
         self,
-        file_path="/config/dmb_config.json",
-        schema_path="/utils/dmb_config_schema.json",
+        file_path="/config/dumb_config.json",
+        schema_path="/utils/dumb_config_schema.json",
     ):
         if not os.path.exists(file_path):
-            shutil.copyfile("/utils/dmb_config.json", file_path)
+            shutil.copyfile("/utils/dumb_config.json", file_path)
 
         load_dotenv(find_dotenv("/config/.env"))
 
@@ -44,7 +44,7 @@ class ConfigManager:
 
     def update_config_with_top_level_defaults(self):
         try:
-            with open("/utils/dmb_config.json", "r") as default_file:
+            with open("/utils/dumb_config.json", "r") as default_file:
                 default_config = load(default_file, object_pairs_hook=OrderedDict)
 
             existing_config = self._load_config()
@@ -70,7 +70,7 @@ class ConfigManager:
 
     def update_config_with_defaults(self):
         try:
-            with open("/utils/dmb_config.json", "r") as default_file:
+            with open("/utils/dumb_config.json", "r") as default_file:
                 default_config = load(default_file, object_pairs_hook=OrderedDict)
 
             existing_config = self._load_config()
@@ -254,14 +254,14 @@ class ConfigManager:
     def get_instance(self, instance_name=None, key=None):
         if instance_name:
             config = self.get(key).get("instances").get(instance_name)
-        elif key and key == "dmb_frontend" or key == "dmb_api_service":
+        elif key and key == "dumb_frontend" or key == "dumb_api_service":
             section, key = key.split("_")
             config = self.get(key, section)
         else:
             config = self.get(key)
         return config
 
-    def set(self, key, value, section=None):
+    def set(self, section, key, value):
         if section:
             if section not in self.config:
                 self.config[section] = {}
@@ -282,7 +282,7 @@ class ConfigManager:
                     if instance_config.get("process_name") == process_name:
                         return key, instance_name
 
-            if key == "dmb" and isinstance(value, dict):
+            if key == "dumb" and isinstance(value, dict):
                 for subkey, subvalue in value.items():
                     if (
                         isinstance(subvalue, dict)

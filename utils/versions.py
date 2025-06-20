@@ -13,11 +13,11 @@ class Versions:
         self, process_name=None, instance_name=None, key=None, version_path=None
     ):
         try:
-            if key == "dmb_api_service":
+            if key == "dumb_api_service":
                 version_path = "/pyproject.toml"
                 is_file = True
-            elif key == "dmb_frontend":
-                version_path = "/dmb/frontend/package.json"
+            elif key == "dumb_frontend":
+                version_path = "/dumb/frontend/package.json"
                 is_file = True
             elif key == "decypharr":
                 version_path = "/decypharr/version.txt"
@@ -118,7 +118,7 @@ class Versions:
             if is_file:
                 try:
                     with open(version_path, "r") as f:
-                        if key == "dmb_frontend":
+                        if key == "dumb_frontend":
                             try:
                                 data = json.load(f)
                                 version = f'v{data["version"]}'
@@ -133,7 +133,7 @@ class Versions:
                             version = f"v{f.read().strip()}"
                         elif (
                             key == "riven_backend"
-                            or key == "dmb_api_service"
+                            or key == "dumb_api_service"
                             or key == "plex_debrid"
                         ):
                             for line in f:

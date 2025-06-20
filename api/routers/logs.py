@@ -10,11 +10,11 @@ logs_router = APIRouter()
 def find_log_file(process_name: str, logger):
     logger.debug(f"Looking up process: {process_name}")
 
-    if "dmb" in process_name.lower():
+    if "dumb" in process_name.lower():
         log_dir = resolve_path("/log")
         if log_dir.exists():
             log_files = sorted(
-                log_dir.glob("DMB-*.log"), key=os.path.getmtime, reverse=True
+                log_dir.glob("DUMB-*.log"), key=os.path.getmtime, reverse=True
             )
             return log_files[0] if log_files else None
 
@@ -57,8 +57,8 @@ def find_log_file(process_name: str, logger):
     return None
 
 
-def filter_dmb_log(log_path, logger):
-    logger.debug(f"Filtering DMB log for latest startup from {log_path}")
+def filter_dumb_log(log_path, logger):
+    logger.debug(f"Filtering DUMB log for latest startup from {log_path}")
     try:
         with open(log_path, "r") as log_file:
             lines = log_file.readlines()
@@ -69,16 +69,16 @@ def filter_dmb_log(log_path, logger):
                     if re.match(r"^.* - INFO - ", lines[i]) and re.match(
                         r"^\s*DDDDDDDDDDDDD", lines[i + 2]
                     ):
-                        logger.debug(f"Found latest DMB startup banner at line {i}")
+                        logger.debug(f"Found latest DUMB startup banner at line {i}")
                         return "".join(lines[i:])
                 except Exception as e:
                     logger.warning(f"Error matching log lines at index {i}: {e}")
 
-        logger.warning("No DMB startup banner found; returning full log")
+        logger.warning("No DUMB startup banner found; returning full log")
         return "".join(lines)
 
     except Exception as e:
-        logger.error(f"Error filtering DMB log file: {e}")
+        logger.error(f"Error filtering DUMB log file: {e}")
         return ""
 
 
@@ -89,8 +89,8 @@ def _read_log_for_process(process_name: str, logger):
         return ""
 
     try:
-        if "dmb" in process_name.lower():
-            return filter_dmb_log(log_path, logger)
+        if "dumb" in process_name.lower():
+            return filter_dumb_log(log_path, logger)
         else:
             with open(log_path, "r") as log_file:
                 return log_file.read()

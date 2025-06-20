@@ -58,7 +58,7 @@ def chown_recursive(directory, user_id, group_id):
         return False, f"Error changing ownership of '{directory}': {e}"
 
 
-def create_system_user(username="DMB"):
+def create_system_user(username="DUMB"):
     try:
         start_time = time.time()
         group_check_start = time.time()
@@ -115,7 +115,7 @@ def create_system_user(username="DMB"):
 
         zurg_dir = "/zurg"
         # mnt_dir = config.get("riven_backend").get("symlink_library_path")
-        log_dir = config.get("dmb").get("log_dir")
+        log_dir = config.get("dumb").get("log_dir")
         config_dir = "/config"
         riven_dir = "/riven/backend/data"
         zilean_dir = "/zilean/app/data"

@@ -9,9 +9,9 @@ class Downloader:
 
     def get_headers(self):
         headers = {}
-        if CONFIG_MANAGER.get("dmb").get("github_token"):
+        if CONFIG_MANAGER.get("dumb").get("github_token"):
             headers["Authorization"] = (
-                f"token {CONFIG_MANAGER.get('dmb').get('github_token')}"
+                f"token {CONFIG_MANAGER.get('dumb').get('github_token')}"
             )
         else:
             headers = {"Accept": "application/vnd.github.v3+json"}
@@ -82,7 +82,7 @@ class Downloader:
 
             if key == "zurg":
                 architecture = self.get_architecture()
-                if CONFIG_MANAGER.get("dmb").get("github_token"):
+                if CONFIG_MANAGER.get("dumb").get("github_token"):
                     logger.debug("Using GitHub token for downloading zurg.")
                     # repo_name = "zurg"
                     if "nightly" in release_version:

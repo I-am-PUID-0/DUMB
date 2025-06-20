@@ -50,7 +50,7 @@ DDDDDDDDDDDDD        MMMMMMMM               MMMMMMMMBBBBBBBBBBBBBBBBB
         logger=logger,
     )
 
-    if config.get("dmb", {}).get("api_service", {}).get("enabled"):
+    if config.get("dumb", {}).get("api_service", {}).get("enabled"):
         start_fastapi_process()
 
     try:
@@ -60,10 +60,10 @@ DDDDDDDDDDDDD        MMMMMMMM               MMMMMMMMBBBBBBBBBBBBBBBBB
         process_handler.shutdown(exit_code=1)
 
     try:
-        dmb_config = config.get("dmb", {})
-        frontend_config = dmb_config.get("frontend", {})
+        dumb_config = config.get("dumb", {})
+        frontend_config = dumb_config.get("frontend", {})
         process_name = frontend_config.get("process_name")
-        api_config = dmb_config.get("api_service", {})
+        api_config = dumb_config.get("api_service", {})
         if frontend_config.get("enabled") and api_config.get("enabled"):
             if frontend_config.get("auto_update", False):
                 updater.auto_update(process_name, True)
@@ -72,7 +72,7 @@ DDDDDDDDDDDDD        MMMMMMMM               MMMMMMMMBBBBBBBBBBBBBBBBB
         else:
             logger.info(f"{process_name} is disabled. Skipping process start.")
     except Exception as e:
-        logger.error(f"An error occurred in the DMB Frontend setup: {e}")
+        logger.error(f"An error occurred in the DUMB Frontend setup: {e}")
         process_handler.shutdown(exit_code=1)
 
     try:
@@ -98,7 +98,7 @@ DDDDDDDDDDDDD        MMMMMMMM               MMMMMMMMBBBBBBBBBBBBBBBBB
 
     try:
         key = "rclone"
-        duplicate_cleanup_enabled = config.get("dmb", {}).get("duplicate_cleanup")
+        duplicate_cleanup_enabled = config.get("dumb", {}).get("duplicate_cleanup")
         rclone_instances = config.get(key, {}).get("instances", {})
         enabled_rclone_instances = [
             name

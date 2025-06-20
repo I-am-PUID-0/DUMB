@@ -470,8 +470,8 @@ class WebSocketHandler(logging.Handler):
 
 
 def get_logger(log_name=None, log_dir=None, websocket_manager=None):
-    log_name = log_name or CONFIG_MANAGER.get("dmb").get("log_name", "DMB")
-    log_dir = log_dir or CONFIG_MANAGER.get("dmb").get("log_dir", "/log")
+    log_name = log_name or CONFIG_MANAGER.get("dumb").get("log_name", "DUMB")
+    log_dir = log_dir or CONFIG_MANAGER.get("dumb").get("log_dir", "/log")
 
     if not os.path.exists(log_dir):
         os.makedirs(log_dir, exist_ok=True)
@@ -480,19 +480,19 @@ def get_logger(log_name=None, log_dir=None, websocket_manager=None):
     log_filename = f"{log_name}-{current_date}.log"
     logger = logging.getLogger(log_name)
     logger.debug(f"Existing handlers: {[type(h).__name__ for h in logger.handlers]}")
-    backupCount_env = CONFIG_MANAGER.get("dmb").get("log_count", 2)
+    backupCount_env = CONFIG_MANAGER.get("dumb").get("log_count", 2)
     try:
         backupCount = int(backupCount_env)
     except (ValueError, TypeError):
         backupCount = 2
-    log_level_env = CONFIG_MANAGER.get("dmb").get("log_level", "INFO")
+    log_level_env = CONFIG_MANAGER.get("dumb").get("log_level", "INFO")
     if log_level_env:
         log_level = log_level_env.upper()
     else:
         log_level = "INFO"
     numeric_level = getattr(logging, log_level, logging.INFO)
     logger.setLevel(numeric_level)
-    max_log_size_env = CONFIG_MANAGER.get("dmb").get("log_size", "10M")
+    max_log_size_env = CONFIG_MANAGER.get("dumb").get("log_size", "10M")
     try:
         max_log_size = (
             parse_size(max_log_size_env) if max_log_size_env else 10 * 1024 * 1024
@@ -515,7 +515,7 @@ def get_logger(log_name=None, log_dir=None, websocket_manager=None):
     )
     handler.setFormatter(file_formatter)
 
-    enable_color_log = CONFIG_MANAGER.get("dmb").get("color_log", False)
+    enable_color_log = CONFIG_MANAGER.get("dumb").get("color_log", False)
     if enable_color_log:
         color_formatter = ColoredFormatter(
             "%(log_color)s%(asctime)s - %(levelname)s - %(message)s",
