@@ -1,0 +1,59 @@
+{
+  "name": "DUMB Dev Container",
+  "image": "iampuid0/dumb:latest",
+  "workspaceFolder": "/workspace",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "ms-python.black-formatter"
+      ],
+      "settings": {
+        "terminal.integrated.defaultProfile.linux": "sh",
+        "python.formatting.provider": "black",
+        "editor.formatOnSave": true,
+        "python.defaultInterpreterPath": "/venv/bin/python",
+        "git.path": "/usr/bin/git"
+      }
+    }
+  },
+  "forwardPorts": [
+    3005,
+    8000,
+    3000,
+    9090,
+    5050,
+    8182
+  ],
+  "mounts": [
+    "source=${localWorkspaceFolder},target=/workspace,type=bind",
+    "source=${localWorkspaceFolder}/main.py,target=/main.py,type=bind",
+    "source=${localWorkspaceFolder}/config,target=/config,type=bind",
+    "source=${localWorkspaceFolder}/utils,target=/utils,type=bind",
+    "source=${localWorkspaceFolder}/zurg/RD,target=/zurg/RD,type=bind",
+    "source=${localWorkspaceFolder}/riven/backend/data,target=/riven/backend/data,type=bind",
+    "source=${localWorkspaceFolder}/zilean/app/data,target=/zilean/app/data,type=bind",
+    "source=${localWorkspaceFolder}/log,target=/log,type=bind",
+    "source=${localWorkspaceFolder}/mnt/debrid,target=/mnt/debrid,type=bind,bind-propagation=rshared",
+    "source=${localWorkspaceFolder}/postgres_data,target=/postgres_data,type=bind",
+    "source=${localWorkspaceFolder}/pgadmin/data,target=/pgadmin/data,type=bind",
+    "source=${localWorkspaceFolder}/plex_debrid/config,target=/plex_debrid/config,type=bind",
+    "source=${localWorkspaceFolder}/cli_debrid/data,target=/cli_debrid/data,type=bind",
+    "source=${localWorkspaceFolder}/decypharr,target=/decypharr,type=bind",
+    "source=${localWorkspaceFolder}/plex,target=/plex,type=bind",
+    "source=${localWorkspaceFolder}/phalanx_db/data,target=/phalanx_db/data,type=bind"
+  ],
+  "runArgs": [
+    "--name=dumb_dev",
+    "--hostname=dumb_dev",
+    "--dns=8.8.8.8",
+    "--dns=8.8.4.4",
+    "--device=/dev/fuse:/dev/fuse:rwm",
+    "--cap-add=SYS_ADMIN",
+    "--security-opt=apparmor:unconfined",
+    "--security-opt=no-new-privileges",
+    "--shm-size=128m",
+    "--pull=always"
+  ],
+  "postCreateCommand": "apt update && apt install -y gcc python3.11-dev libpq-dev && curl -sSL https://install.python-poetry.org | python - && export PATH=\"$HOME/.local/bin:$PATH\" && poetry config virtualenvs.create false && poetry install --no-root --with dev && git config --global --add safe.directory /workspace"
+}

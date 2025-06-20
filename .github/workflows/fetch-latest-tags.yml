@@ -1,0 +1,104 @@
+name: Check for New Release Tags
+
+on:
+  schedule:
+    - cron: "0 */3 * * *"
+  workflow_dispatch:
+
+jobs:
+  check-latest-tags:
+    runs-on: ubuntu-latest
+    outputs:
+      update_found: ${{ steps.compare_tags.outputs.update_found }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Restore previous tags from cache
+        id: cache-latest-tags
+        uses: actions/cache@v4
+        with:
+          path: latest-tags.txt
+          key: latest-tags-${{ github.ref_name }}-${{ github.run_id }}
+          restore-keys: |
+            latest-tags-${{ github.ref_name }}
+
+      - name: Fetch latest release tags
+        run: |
+          echo "Fetching latest release tags..."
+          ZILEAN_TAG=$(curl -s https://api.github.com/repos/iPromKnight/zilean/releases/latest | jq -r .tag_name)
+          RIVEN_TAG=$(curl -s https://api.github.com/repos/rivenmedia/riven/releases/latest | jq -r .tag_name)
+          RIVEN_FRONTEND_TAG=$(curl -s https://api.github.com/repos/rivenmedia/riven-frontend/releases/latest | jq -r .tag_name)
+          DUMB_FRONTEND_TAG=$(curl -s https://api.github.com/repos/nicocapalbo/dmbdb/releases/latest | jq -r .tag_name)
+          CLI_DEBRID_TAG=$(curl -s https://api.github.com/repos/godver3/cli_debrid/releases/latest | jq -r .tag_name)
+          PLEX_DEBRID_TAG=$(curl -s https://raw.githubusercontent.com/elfhosted/plex_debrid/main/ui/ui_settings.py | \
+            grep '^version\s*=' | \
+            sed -E "s/.*=\s*\[\s*'([^']+)'.*/\1/")
+
+          echo "CLI_DEBRID_TAG=$CLI_DEBRID_TAG" >> $GITHUB_ENV
+          echo "PLEX_DEBRID_TAG=$PLEX_DEBRID_TAG" >> $GITHUB_ENV
+          echo "ZILEAN_TAG=$ZILEAN_TAG" >> $GITHUB_ENV
+          echo "RIVEN_TAG=$RIVEN_TAG" >> $GITHUB_ENV
+          echo "RIVEN_FRONTEND_TAG=$RIVEN_FRONTEND_TAG" >> $GITHUB_ENV
+          echo "DUMB_FRONTEND_TAG=$DUMB_FRONTEND_TAG" >> $GITHUB_ENV
+
+      - name: Load previous tags
+        id: load_previous
+        run: |
+          if [ -f latest-tags.txt ]; then
+            echo "Previous tags found:"
+            cat latest-tags.txt
+            echo "PREV_TAGS_FOUND=true" >> $GITHUB_ENV
+          else
+            echo "No previous tags found."
+            echo "PREV_TAGS_FOUND=false" >> $GITHUB_ENV
+          fi
+
+      - name: Compare tags and detect changes
+        id: compare_tags
+        run: |
+          if [ "$PREV_TAGS_FOUND" == "true" ]; then
+            DIFF=$(diff latest-tags.txt <(echo -e "$ZILEAN_TAG\n$RIVEN_TAG\n$RIVEN_FRONTEND_TAG\n$DUMB_FRONTEND_TAG\n$PLEX_DEBRID_TAG\n$CLI_DEBRID_TAG") || true)
+            if [ -n "$DIFF" ]; then
+              echo "New versions found!"
+              echo "update_found=true" >> $GITHUB_ENV
+              echo "update_found=true" >> $GITHUB_OUTPUT
+            else
+              echo "No updates found."
+              echo "update_found=false" >> $GITHUB_ENV
+            fi
+          else
+            echo "First run - proceeding with build."
+            echo "update_found=true" >> $GITHUB_ENV
+            echo "update_found=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Store latest tags in cache
+        run: echo -e "$ZILEAN_TAG\n$RIVEN_TAG\n$RIVEN_FRONTEND_TAG\n$DUMB_FRONTEND_TAG\n$PLEX_DEBRID_TAG\n$CLI_DEBRID_TAG" > latest-tags.txt
+
+      - name: Cleanup old caches
+        continue-on-error: true
+        run: |
+          echo "Fetching list of cache keys..."
+          cacheKeys=$(gh cache list --ref $BRANCH --limit 100 --json key,id --jq '.[] | select(.key | startswith("latest-tags-${{ github.ref_name }}")) | .id')
+
+          echo "Deleting caches matching latest-tags-${{ github.ref_name }}..."
+          for cacheKey in $cacheKeys; do
+              gh cache delete $cacheKey || true
+          done
+          echo "Cleanup complete."
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          BRANCH: ${{ github.ref }}
+
+  trigger-docker-ci:
+    needs: check-latest-tags
+    runs-on: ubuntu-latest
+    if: ${{ needs.check-latest-tags.outputs.update_found == 'true' }}
+    steps:      
+      - name: Trigger Docker CI if new versions found
+        uses: benc-uk/workflow-dispatch@v1
+        with:
+          workflow: Docker Image CI
+          token: ${{ secrets.GITHUB_TOKEN }}

@@ -1,0 +1,428 @@
+{
+    "puid": 1000,
+    "pgid": 1000,
+    "tz": "",
+    "dumb": {
+        "log_level": "INFO",
+        "log_name": "DUMB",
+        "log_dir": "/log",
+        "log_count": 2,
+        "log_size": "10M",
+        "color_log": true,
+        "plex_token": "",
+        "plex_address": "",
+        "github_token": "",
+        "github_username": "",
+        "onboarding_completed": false,
+        "api_service": {
+            "enabled": true,
+            "process_name": "DUMB API",
+            "log_level": "INFO",
+            "host": "127.0.0.1",
+            "port": 8000
+        },
+        "frontend": {
+            "enabled": true,
+            "process_name": "DUMB Frontend",
+            "repo_owner": "nicocapalbo",
+            "repo_name": "dmbdb",
+            "release_version_enabled": false,
+            "release_version": "v1.2.0",
+            "branch_enabled": false,
+            "branch": "main",
+            "suppress_logging": false,
+            "log_level": "INFO",
+            "origins": [
+                "http://0.0.0.0:3005"
+            ],
+            "host": "0.0.0.0",
+            "port": 3005,
+            "auto_update": false,
+            "auto_update_interval": 24,
+            "clear_on_update": true,
+            "exclude_dirs": [],
+            "platforms": [
+                "pnpm"
+            ],
+            "command": [
+                "node",
+                ".output/server/index.mjs"
+            ],
+            "config_dir": "/dumb/frontend",
+            "env": {}
+        }
+    },
+    "cli_debrid": {
+        "enabled": false,
+        "process_name": "CLI Debrid",
+        "repo_owner": "godver3",
+        "repo_name": "cli_debrid",
+        "release_version_enabled": false,
+        "release_version": "v0.6.07",
+        "branch_enabled": false,
+        "branch": "main",
+        "suppress_logging": false,
+        "log_level": "INFO",
+        "port": 5000,
+        "auto_update": false,
+        "auto_update_interval": 24,
+        "clear_on_update": true,
+        "exclude_dirs": [
+            "/cli_debrid/data"
+        ],
+        "platforms": [
+            "python"
+        ],
+        "command": [
+            "/cli_debrid/venv/bin/python",
+            "main.py"
+        ],
+        "config_dir": "/cli_debrid",
+        "config_file": "/cli_debrid/data/config/config.json",
+        "log_file": "/cli_debrid/data/logs/debug.log",
+        "env": {
+            "USER_CONFIG": "/cli_debrid/data/config/",
+            "USER_LOGS": "/cli_debrid/data/logs/",
+            "USER_DB_CONTENT": "/cli_debrid/data/db_content/",
+            "CLI_DEBRID_PORT": "{port}"
+        }
+    },
+    "cli_battery": {
+        "enabled": false,
+        "process_name": "CLI Battery",
+        "suppress_logging": false,
+        "log_level": "INFO",
+        "port": 5001,
+        "platforms": [
+            "python"
+        ],
+        "command": [
+            "/cli_debrid/venv/bin/python",
+            "cli_battery/main.py"
+        ],
+        "config_dir": "/cli_debrid",
+        "config_file": "/cli_debrid/data/config/settings.json",
+        "log_file": "/cli_debrid/data/logs/battery_debug.log",
+        "env": {
+            "PYTHONPATH": "/cli_debrid",
+            "USER_CONFIG": "/cli_debrid/data/config/",
+            "USER_LOGS": "/cli_debrid/data/logs/",
+            "USER_DB_CONTENT": "/cli_debrid/data/db_content/",
+            "CLI_DEBRID_BATTERY_PORT": "{port}"
+        }
+    },
+    "decypharr": {
+        "enabled": false,
+        "process_name": "Decypharr",
+        "repo_owner": "sirrobot01",
+        "repo_name": "decypharr",
+        "release_version_enabled": false,
+        "release_version": "v1.0.0",
+        "branch_enabled": false,
+        "branch": "main",
+        "suppress_logging": false,
+        "log_level": "INFO",
+        "port": 8282,
+        "auto_update": false,
+        "auto_update_interval": 24,
+        "clear_on_update": false,
+        "exclude_dirs": [],
+        "command": [
+            "/decypharr/decypharr",
+            "--config",
+            "/decypharr"
+        ],
+        "config_dir": "/decypharr",
+        "config_file": "/decypharr/config.json",
+        "log_file": "/decypharr/logs/decypharr.log",
+        "env": {}
+    },
+    "phalanx_db": {
+        "enabled": false,
+        "process_name": "Phalanx DB",
+        "repo_owner": "godver3",
+        "repo_name": "phalanx_db_hyperswarm",
+        "release_version_enabled": false,
+        "release_version": "v0.50",
+        "branch_enabled": false,
+        "branch": "main",
+        "suppress_logging": false,
+        "log_level": "INFO",
+        "port": 8888,
+        "auto_update": false,
+        "auto_update_interval": 24,
+        "clear_on_update": true,
+        "exclude_dirs": [
+            "/phalanx_db/data"
+        ],
+        "platforms": [
+            "pnpm"
+        ],
+        "command": [
+            "node",
+            "phalanx_db_rest.js"
+        ],
+        "config_dir": "/phalanx_db",
+        "env": {}
+    },
+    "plex": {
+        "enabled": false,
+        "process_name": "Plex Media Server",
+        "suppress_logging": false,
+        "log_level": "INFO",
+        "port": 32400,
+        "auto_update": false,
+        "auto_update_interval": 24,
+        "config_dir": "/plex",
+        "config_file": "/plex/Plex Media Server/Preferences.xml",
+        "log_file": "/plex/Plex Media Server/Logs/Plex Media Server.log",
+        "plex_claim": "",
+        "command": [],
+        "env": {}
+    },
+    "plex_debrid": {
+        "enabled": false,
+        "process_name": "Plex Debrid",
+        "repo_owner": "elfhosted",
+        "repo_name": "plex_debrid",
+        "branch_enabled": false,
+        "branch": "main",
+        "suppress_logging": false,
+        "log_level": "INFO",
+        "auto_update": false,
+        "auto_update_interval": 24,
+        "clear_on_update": true,
+        "exclude_dirs": [
+            "/plex_debrid/config"
+        ],
+        "platforms": [
+            "python"
+        ],
+        "command": [
+            "/plex_debrid/venv/bin/python",
+            "main.py",
+            "-service",
+            "--config-dir",
+            "./config"
+        ],
+        "config_dir": "/plex_debrid",
+        "config_file": "/plex_debrid/config/settings.json",
+        "log_file": "/plex_debrid/config/plex_debrid.log",
+        "env": {}
+    },
+    "postgres": {
+        "enabled": false,
+        "process_name": "PostgreSQL",
+        "suppress_logging": false,
+        "log_level": "INFO",
+        "host": "127.0.0.1",
+        "port": 5432,
+        "databases": [
+            {
+                "name": "postgres",
+                "enabled": true
+            },
+            {
+                "name": "pgadmin",
+                "enabled": true
+            },
+            {
+                "name": "zilean",
+                "enabled": true
+            },
+            {
+                "name": "riven",
+                "enabled": true
+            }
+        ],
+        "config_dir": "/postgres_data",
+        "config_file": "/postgres_data/postgresql.conf",
+        "initdb_args": "--data-checksums",
+        "user": "DUMB",
+        "password": "postgres",
+        "shared_buffers": "128MB",
+        "max_connections": 100,
+        "run_directory": "/run/postgresql",
+        "command": "postgres -D {postgres_config_dir} -c config_file={postgres_config_file}",
+        "env": {}
+    },
+    "pgadmin": {
+        "enabled": false,
+        "process_name": "pgAdmin4",
+        "config_dir": "/pgadmin/data",
+        "config_file": "/pgadmin/data/config_local.py",
+        "log_file": "/pgadmin/data/pgadmin4.log",
+        "port": 5050,
+        "default_server": "0.0.0.0",
+        "setup_email": "DUMB@DUMB.DUMB",
+        "setup_password": "postgres",
+        "command": ""
+    },
+    "rclone": {
+        "instances": {
+            "RealDebrid": {
+                "enabled": false,
+                "core_service": "",
+                "process_name": "rclone w/ RealDebrid",
+                "suppress_logging": false,
+                "log_level": "INFO",
+                "key_type": "RealDebrid",
+                "zurg_enabled": true,
+                "decypharr_enabled": false,
+                "mount_dir": "/mnt/debrid",
+                "mount_name": "rclone_RD",
+                "cache_dir": "/cache",
+                "config_dir": "/config",
+                "config_file": "/config/rclone.config",
+                "log_file": "/log/rclone_w_realdebrid.log",
+                "zurg_config_file": "/zurg/RD/config.yml",
+                "command": [],
+                "api_key": ""
+            }
+        }
+    },
+    "riven_backend": {
+        "enabled": false,
+        "process_name": "Riven Backend",
+        "repo_owner": "rivenmedia",
+        "repo_name": "riven",
+        "release_version_enabled": false,
+        "release_version": "v0.20.1",
+        "branch_enabled": false,
+        "branch": "release-please--branches--main",
+        "suppress_logging": false,
+        "log_level": "INFO",
+        "host": "127.0.0.1",
+        "port": 8080,
+        "auto_update": false,
+        "auto_update_interval": 24,
+        "symlink_library_path": "/mnt/debrid/riven_symlinks",
+        "clear_on_update": true,
+        "exclude_dirs": [
+            "/riven/backend/data"
+        ],
+        "env_copy": {
+            "source": "/riven/backend/data/.env",
+            "destination": "/riven/backend/src/.env"
+        },
+        "platforms": [
+            "python"
+        ],
+        "command": [
+            "/riven/backend/venv/bin/python",
+            "src/main.py",
+            "-p",
+            "{port}"
+        ],
+        "config_dir": "/riven/backend",
+        "config_file": "/riven/backend/data/settings.json",
+        "env": {},
+        "wait_for_dir": ""
+    },
+    "riven_frontend": {
+        "enabled": false,
+        "process_name": "Riven Frontend",
+        "repo_owner": "rivenmedia",
+        "repo_name": "riven-frontend",
+        "release_version_enabled": false,
+        "release_version": "v0.17.0",
+        "branch_enabled": false,
+        "branch": "release-please--branches--main",
+        "suppress_logging": false,
+        "log_level": "INFO",
+        "host": "0.0.0.0",
+        "port": 3000,
+        "auto_update": false,
+        "auto_update_interval": 24,
+        "clear_on_update": true,
+        "exclude_dirs": [],
+        "platforms": [
+            "pnpm"
+        ],
+        "command": [
+            "node",
+            "build"
+        ],
+        "config_dir": "/riven/frontend",
+        "env": {
+            "ORIGIN": "http://0.0.0.0:{port}",
+            "PORT": "{port}",
+            "HOST": "{host}"
+        }
+    },
+    "zilean": {
+        "enabled": false,
+        "process_name": "Zilean",
+        "repo_owner": "iPromKnight",
+        "repo_name": "zilean",
+        "release_version_enabled": false,
+        "release_version": "v3.3.0",
+        "branch_enabled": false,
+        "branch": "main",
+        "suppress_logging": false,
+        "log_level": "INFO",
+        "host": "127.0.0.1",
+        "port": 8182,
+        "auto_update": false,
+        "auto_update_interval": 24,
+        "clear_on_update": true,
+        "exclude_dirs": [
+            "/zilean/app/data"
+        ],
+        "env_copy": {
+            "source": "/zilean/app/data/.env",
+            "destination": "/zilean/app/src/.env"
+        },
+        "platforms": [
+            "python",
+            "dotnet"
+        ],
+        "command": [
+            "/zilean/app/zilean-api"
+        ],
+        "config_dir": "/zilean",
+        "config_file": "/zilean/app/data/settings.json",
+        "env": {
+            "DOTNET_RUNNING_IN_CONTAINER": "true",
+            "DOTNET_gcServer": "1",
+            "DOTNET_GCDynamicAdaptationMode": "1",
+            "DOTNET_SYSTEM_GLOBALIZATION_INVARIANT": "false",
+            "PYTHONUNBUFFERED": "1",
+            "ASPNETCORE_URLS": "http://+:{port}",
+            "PYTHONPATH": "/zilean/venv/lib/python3.11/site-packages",
+            "PATH": "/zilean/venv/bin:${PATH}",
+            "ZILEAN_PYTHON_PYLIB": "/usr/local/lib/libpython3.11.so.1.0",
+            "Zilean__Database__ConnectionString": "Host={postgres_host};Port={postgres_port};Database=zilean;Username={postgres_user};Password={postgres_password};Timeout=300;CommandTimeout=3600;"
+        }
+    },
+    "zurg": {
+        "instances": {
+            "RealDebrid": {
+                "enabled": false,
+                "core_service": "",
+                "process_name": "Zurg w/ RealDebrid",
+                "repo_owner": "debridmediamanager",
+                "repo_name": "zurg-testing",
+                "release_version_enabled": false,
+                "release_version": "v0.9.3-final",
+                "suppress_logging": false,
+                "log_level": "INFO",
+                "host": "127.0.0.1",
+                "port": 9090,
+                "auto_update": false,
+                "auto_update_interval": 24,
+                "clear_on_update": false,
+                "exclude_dirs": [
+                    "/zurg/RD"
+                ],
+                "key_type": "RealDebrid",
+                "config_dir": "/zurg/RD",
+                "config_file": "/zurg/RD/config.yml",
+                "command": "/zurg/RD/zurg",
+                "user": "",
+                "password": "",
+                "api_key": ""
+            }
+        }
+    }
+}

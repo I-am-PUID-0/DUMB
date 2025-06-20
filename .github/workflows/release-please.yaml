@@ -1,0 +1,47 @@
+name: "Release Please"
+
+on:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  wait-for-previous-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Wait for Previous Release PR to be Tagged
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "Checking for pending release PR..."
+          while true; do
+            PENDING_PR=$(gh pr list --repo ${{ github.repository }} --state closed --base master --json number,labels --jq '.[] | select(.labels | any(.name == "autorelease: pending")) | .number')
+            
+            if [[ -z "$PENDING_PR" ]]; then
+              echo "No pending release PR found. Proceeding..."
+              break
+            fi
+
+            echo "Previous release PR #$PENDING_PR is still pending. Waiting for it to be tagged..."
+            sleep 300  # Wait 5 minutes before checking again
+          done
+
+  release-please:
+    needs: wait-for-previous-release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: googleapis/release-please-action@v4
+        id: release
+        with:
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+          config-file: .github/release-please-config.json
+          manifest-file: .github/.release-please-manifest.json
+          skip-github-release: true

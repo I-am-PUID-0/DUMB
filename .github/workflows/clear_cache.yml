@@ -1,0 +1,109 @@
+name: Clear All Caches
+
+on:
+  workflow_dispatch:
+
+jobs:
+  clear-caches:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install jq (JSON Processor)
+        run: sudo apt-get update && sudo apt-get install -y jq
+
+      - name: Get Caches
+        id: get-caches
+        run: |
+          echo "Listing caches..."
+          curl -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+               -H "Accept: application/vnd.github+json" \
+               https://api.github.com/repos/${{ github.repository }}/actions/caches > caches.json
+          echo "Caches retrieved:"
+          cat caches.json
+
+      - name: Verify Caches Exist
+        id: verify-caches
+        run: |
+          cache_count=$(jq '.total_count' caches.json)
+          echo "Number of caches found: $cache_count"
+          if [ "$cache_count" -eq 0 ]; then
+            echo "No caches found. Exiting..."
+            exit 0
+          fi
+
+      - name: Delete Caches
+        if: success()
+        run: |
+          echo "Deleting caches..."
+          for cache_id in $(jq -r '.actions_caches[].id' caches.json); do
+            echo "Attempting to delete cache with ID: $cache_id"
+            response=$(curl -s -o /dev/null -w "%{http_code}" -X DELETE \
+              -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+              -H "Accept: application/vnd.github+json" \
+              https://api.github.com/repos/${{ github.repository }}/actions/caches/$cache_id)
+            if [ "$response" -eq 204 ]; then
+              echo "Successfully deleted cache with ID: $cache_id"
+            else
+              echo "Failed to delete cache with ID: $cache_id (HTTP $response)"
+            fi
+            sleep 1
+          done
+          echo "Cache deletion completed."
+
+      - name: Retry Remaining Cache Deletions
+        if: success()
+        run: |
+          max_attempts=5
+          attempt=1
+
+          while [ $attempt -le $max_attempts ]; do
+            echo "Checking for remaining caches (Attempt $attempt)..."
+            curl -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+                 -H "Accept: application/vnd.github+json" \
+                 https://api.github.com/repos/${{ github.repository }}/actions/caches > remaining_caches.json
+            remaining_count=$(jq '.total_count' remaining_caches.json)
+            echo "Number of remaining caches: $remaining_count"
+
+            if [ "$remaining_count" -eq 0 ]; then
+              echo "All caches successfully deleted."
+              exit 0
+            fi
+
+            echo "Retrying deletion for $remaining_count remaining caches..."
+            for cache_id in $(jq -r '.actions_caches[].id' remaining_caches.json); do
+              echo "Retrying deletion for cache ID: $cache_id"
+              response=$(curl -s -o /dev/null -w "%{http_code}" -X DELETE \
+                -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+                -H "Accept: application/vnd.github+json" \
+                https://api.github.com/repos/${{ github.repository }}/actions/caches/$cache_id)
+              if [ "$response" -eq 204 ]; then
+                echo "Successfully deleted cache with ID: $cache_id"
+              else
+                echo "Failed to delete cache with ID: $cache_id (HTTP $response)"
+              fi
+              sleep 1
+            done
+
+            attempt=$((attempt + 1))
+            echo "Retry completed. Attempt $attempt of $max_attempts."
+          done
+
+          echo "Some caches could not be deleted after $max_attempts attempts."
+          exit 1
+
+      - name: Verify Cache Deletion
+        if: success()
+        run: |
+          echo "Verifying caches have been deleted..."
+          curl -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+               -H "Accept: application/vnd.github+json" \
+               https://api.github.com/repos/${{ github.repository }}/actions/caches > caches_post_delete.json
+          echo "Remaining caches:"
+          cat caches_post_delete.json
+          cache_count=$(jq '.total_count' caches_post_delete.json)
+          echo "Number of remaining caches: $cache_count"
+          if [ "$cache_count" -eq 0 ]; then
+            echo "All caches successfully deleted."
+          else
+            echo "Some caches could not be deleted. Remaining: $cache_count"
+            exit 1
+          fi

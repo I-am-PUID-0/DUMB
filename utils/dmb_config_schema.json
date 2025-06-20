@@ -1,0 +1,1422 @@
+{
+  "type": "object",
+  "properties": {
+    "puid": {
+      "type": "integer"
+    },
+    "pgid": {
+      "type": "integer"
+    },
+    "tz": {
+      "type": "string"
+    },
+    "dumb": {
+      "type": "object",
+      "properties": {
+        "log_level": {
+          "type": "string"
+        },
+        "log_name": {
+          "type": "string"
+        },
+        "log_dir": {
+          "type": "string"
+        },
+        "log_count": {
+          "type": "integer"
+        },
+        "log_size": {
+          "type": "string"
+        },
+        "color_log": {
+          "type": "boolean"
+        },
+        "plex_token": {
+          "type": "string"
+        },
+        "plex_address": {
+          "type": "string"
+        },
+        "github_token": {
+          "type": "string"
+        },
+        "github_username": {
+          "type": "string"
+        },
+        "onboarding_completed": {
+          "type": "boolean"
+        },
+        "api_service": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "process_name": {
+              "type": "string"
+            },
+            "log_level": {
+              "type": "string"
+            },
+            "host": {
+              "type": "string"
+            },
+            "port": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "enabled",
+            "process_name",
+            "log_level",
+            "host",
+            "port"
+          ]
+        },
+        "frontend": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "process_name": {
+              "type": "string"
+            },
+            "repo_owner": {
+              "type": "string"
+            },
+            "repo_name": {
+              "type": "string"
+            },
+            "release_version_enabled": {
+              "type": "boolean"
+            },
+            "release_version": {
+              "type": "string"
+            },
+            "branch_enabled": {
+              "type": "boolean"
+            },
+            "branch": {
+              "type": "string"
+            },
+            "suppress_logging": {
+              "type": "boolean"
+            },
+            "log_level": {
+              "type": "string"
+            },
+            "origins": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "host": {
+              "type": "string"
+            },
+            "port": {
+              "type": "integer"
+            },
+            "auto_update": {
+              "type": "boolean"
+            },
+            "auto_update_interval": {
+              "type": "number"
+            },
+            "clear_on_update": {
+              "type": "boolean"
+            },
+            "exclude_dirs": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "platforms": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "command": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "config_dir": {
+              "type": "string"
+            },
+            "env": {
+              "type": "object"
+            }
+          },
+          "required": [
+            "enabled",
+            "process_name",
+            "repo_owner",
+            "repo_name",
+            "release_version_enabled",
+            "release_version",
+            "branch_enabled",
+            "branch",
+            "suppress_logging",
+            "log_level",
+            "origins",
+            "host",
+            "port",
+            "auto_update",
+            "auto_update_interval",
+            "clear_on_update",
+            "exclude_dirs",
+            "platforms",
+            "command",
+            "config_dir",
+            "env"
+          ]
+        }
+      },
+      "required": [
+        "log_level",
+        "log_name",
+        "log_dir",
+        "log_count",
+        "log_size",
+        "color_log",
+        "plex_token",
+        "plex_address",
+        "github_token",
+        "github_username",
+        "onboarding_completed",
+        "api_service",
+        "frontend"
+      ]
+    },
+    "cli_debrid": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "process_name": {
+          "type": "string"
+        },
+        "repo_owner": {
+          "type": "string"
+        },
+        "repo_name": {
+          "type": "string"
+        },
+        "release_version_enabled": {
+          "type": "boolean"
+        },
+        "release_version": {
+          "type": "string"
+        },
+        "branch_enabled": {
+          "type": "boolean"
+        },
+        "branch": {
+          "type": "string"
+        },
+        "suppress_logging": {
+          "type": "boolean"
+        },
+        "log_level": {
+          "type": "string"
+        },
+        "port": {
+          "type": "integer"
+        },
+        "auto_update": {
+          "type": "boolean"
+        },
+        "auto_update_interval": {
+          "type": "number"
+        },
+        "clear_on_update": {
+          "type": "boolean"
+        },
+        "exclude_dirs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "platforms": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "command": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "config_dir": {
+          "type": "string"
+        },
+        "config_file": {
+          "type": "string"
+        },
+        "log_file": {
+          "type": "string"
+        },
+        "env": {
+          "type": "object"
+        }
+      },
+      "required": [
+        "enabled",
+        "process_name",
+        "repo_owner",
+        "repo_name",
+        "release_version_enabled",
+        "release_version",
+        "branch_enabled",
+        "branch",
+        "suppress_logging",
+        "log_level",
+        "port",
+        "auto_update",
+        "auto_update_interval",
+        "clear_on_update",
+        "exclude_dirs",
+        "platforms",
+        "command",
+        "config_dir",
+        "config_file",
+        "log_file",
+        "env"
+      ]
+    },
+    "cli_battery": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "process_name": {
+          "type": "string"
+        },
+        "suppress_logging": {
+          "type": "boolean"
+        },
+        "log_level": {
+          "type": "string"
+        },
+        "port": {
+          "type": "integer"
+        },
+        "platforms": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "command": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "config_dir": {
+          "type": "string"
+        },
+        "config_file": {
+          "type": "string"
+        },
+        "log_file": {
+          "type": "string"
+        },
+        "env": {
+          "type": "object"
+        }
+      },
+      "required": [
+        "enabled",
+        "process_name",
+        "suppress_logging",
+        "log_level",
+        "port",
+        "platforms",
+        "command",
+        "config_dir",
+        "config_file",
+        "log_file",
+        "env"
+      ]
+    },
+    "decypharr": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "process_name": {
+          "type": "string"
+        },
+        "repo_owner": {
+          "type": "string"
+        },
+        "repo_name": {
+          "type": "string"
+        },
+        "release_version_enabled": {
+          "type": "boolean"
+        },
+        "release_version": {
+          "type": "string"
+        },
+        "branch_enabled": {
+          "type": "boolean"
+        },
+        "branch": {
+          "type": "string"
+        },
+        "suppress_logging": {
+          "type": "boolean"
+        },
+        "log_level": {
+          "type": "string"
+        },
+        "port": {
+          "type": "integer"
+        },
+        "auto_update": {
+          "type": "boolean"
+        },
+        "auto_update_interval": {
+          "type": "number"
+        },
+        "clear_on_update": {
+          "type": "boolean"
+        },
+        "exclude_dirs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "command": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "config_dir": {
+          "type": "string"
+        },
+        "config_file": {
+          "type": "string"
+        },
+        "log_file": {
+          "type": "string"
+        },
+        "env": {
+          "type": "object"
+        }
+      },
+      "required": [
+        "enabled",
+        "process_name",
+        "repo_owner",
+        "repo_name",
+        "release_version_enabled",
+        "release_version",
+        "branch_enabled",
+        "branch",
+        "suppress_logging",
+        "log_level",
+        "port",
+        "auto_update",
+        "auto_update_interval",
+        "clear_on_update",
+        "exclude_dirs",
+        "command",
+        "config_dir",
+        "config_file",
+        "log_file",
+        "env"
+      ]
+    },
+    "phalanx_db": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "process_name": {
+          "type": "string"
+        },
+        "repo_owner": {
+          "type": "string"
+        },
+        "repo_name": {
+          "type": "string"
+        },
+        "release_version_enabled": {
+          "type": "boolean"
+        },
+        "release_version": {
+          "type": "string"
+        },
+        "branch_enabled": {
+          "type": "boolean"
+        },
+        "branch": {
+          "type": "string"
+        },
+        "suppress_logging": {
+          "type": "boolean"
+        },
+        "log_level": {
+          "type": "string"
+        },
+        "port": {
+          "type": "integer"
+        },
+        "auto_update": {
+          "type": "boolean"
+        },
+        "auto_update_interval": {
+          "type": "number"
+        },
+        "clear_on_update": {
+          "type": "boolean"
+        },
+        "exclude_dirs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "platforms": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "command": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "config_dir": {
+          "type": "string"
+        },
+        "env": {
+          "type": "object"
+        }
+      },
+      "required": [
+        "enabled",
+        "process_name",
+        "repo_owner",
+        "repo_name",
+        "release_version_enabled",
+        "release_version",
+        "branch_enabled",
+        "branch",
+        "suppress_logging",
+        "log_level",
+        "port",
+        "auto_update",
+        "auto_update_interval",
+        "clear_on_update",
+        "exclude_dirs",
+        "platforms",
+        "command",
+        "config_dir",
+        "env"
+      ]
+    },
+    "plex": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "process_name": {
+          "type": "string"
+        },
+        "suppress_logging": {
+          "type": "boolean"
+        },
+        "log_level": {
+          "type": "string"
+        },
+        "port": {
+          "type": "integer"
+        },
+        "auto_update": {
+          "type": "boolean"
+        },
+        "auto_update_interval": {
+          "type": "number"
+        },
+        "config_dir": {
+          "type": "string"
+        },
+        "config_file": {
+          "type": "string"
+        },
+        "log_file": {
+          "type": "string"
+        },
+        "plex_claim": {
+          "type": "string"
+        },
+        "command": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "env": {
+          "type": "object"
+        }
+      },
+      "required": [
+        "enabled",
+        "process_name",
+        "suppress_logging",
+        "log_level",
+        "port",
+        "auto_update",
+        "auto_update_interval",
+        "config_dir",
+        "config_file",
+        "log_file",
+        "plex_claim",
+        "command",
+        "env"
+      ]
+    },
+    "plex_debrid": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "process_name": {
+          "type": "string"
+        },
+        "repo_owner": {
+          "type": "string"
+        },
+        "repo_name": {
+          "type": "string"
+        },
+        "branch_enabled": {
+          "type": "boolean"
+        },
+        "branch": {
+          "type": "string"
+        },
+        "suppress_logging": {
+          "type": "boolean"
+        },
+        "log_level": {
+          "type": "string"
+        },
+        "auto_update": {
+          "type": "boolean"
+        },
+        "auto_update_interval": {
+          "type": "number"
+        },
+        "clear_on_update": {
+          "type": "boolean"
+        },
+        "exclude_dirs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "platforms": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "command": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "config_dir": {
+          "type": "string"
+        },
+        "config_file": {
+          "type": "string"
+        },
+        "log_file": {
+          "type": "string"
+        },
+        "env": {
+          "type": "object"
+        }
+      },
+      "required": [
+        "enabled",
+        "process_name",
+        "repo_owner",
+        "repo_name",
+        "branch_enabled",
+        "branch",
+        "suppress_logging",
+        "log_level",
+        "auto_update",
+        "auto_update_interval",
+        "clear_on_update",
+        "exclude_dirs",
+        "platforms",
+        "command",
+        "config_dir",
+        "config_file",
+        "log_file",
+        "env"
+      ]
+    },
+    "postgres": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "process_name": {
+          "type": "string"
+        },
+        "suppress_logging": {
+          "type": "boolean"
+        },
+        "log_level": {
+          "type": "string"
+        },
+        "host": {
+          "type": "string"
+        },
+        "port": {
+          "type": "integer"
+        },
+        "databases": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "enabled": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "name",
+              "enabled"
+            ]
+          }
+        },
+        "config_dir": {
+          "type": "string"
+        },
+        "config_file": {
+          "type": "string"
+        },
+        "initdb_args": {
+          "type": "string"
+        },
+        "user": {
+          "type": "string"
+        },
+        "password": {
+          "type": "string"
+        },
+        "shared_buffers": {
+          "type": "string"
+        },
+        "max_connections": {
+          "type": "integer"
+        },
+        "run_directory": {
+          "type": "string"
+        },
+        "command": {
+          "type": "string"
+        },
+        "env": {
+          "type": "object"
+        }
+      },
+      "required": [
+        "enabled",
+        "process_name",
+        "suppress_logging",
+        "log_level",
+        "host",
+        "port",
+        "databases",
+        "config_dir",
+        "config_file",
+        "initdb_args",
+        "user",
+        "password",
+        "shared_buffers",
+        "max_connections",
+        "run_directory",
+        "command",
+        "env"
+      ]
+    },
+    "pgadmin": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "process_name": {
+          "type": "string"
+        },
+        "config_dir": {
+          "type": "string"
+        },
+        "config_file": {
+          "type": "string"
+        },
+        "log_file": {
+          "type": "string"
+        },
+        "port": {
+          "type": "integer"
+        },
+        "default_server": {
+          "type": "string"
+        },
+        "setup_email": {
+          "type": "string"
+        },
+        "setup_password": {
+          "type": "string"
+        },
+        "command": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "enabled",
+        "process_name",
+        "config_dir",
+        "config_file",
+        "log_file",
+        "port",
+        "default_server",
+        "setup_email",
+        "setup_password",
+        "command"
+      ]
+    },
+    "rclone": {
+      "type": "object",
+      "properties": {
+        "instances": {
+          "type": "object",
+          "patternProperties": {
+            ".*": {
+              "type": "object",
+              "properties": {
+                "enabled": {
+                  "type": "boolean"
+                },
+                "core_service": {
+                  "type": "string"
+                },
+                "process_name": {
+                  "type": "string"
+                },
+                "suppress_logging": {
+                  "type": "boolean"
+                },
+                "log_level": {
+                  "type": "string"
+                },
+                "key_type": {
+                  "type": "string"
+                },
+                "zurg_enabled": {
+                  "type": "boolean"
+                },
+                "decypharr_enabled": {
+                  "type": "boolean"
+                },
+                "mount_dir": {
+                  "type": "string"
+                },
+                "mount_name": {
+                  "type": "string"
+                },
+                "cache_dir": {
+                  "type": "string"
+                },
+                "config_dir": {
+                  "type": "string"
+                },
+                "config_file": {
+                  "type": "string"
+                },
+                "log_file": {
+                  "type": "string"
+                },
+                "zurg_config_file": {
+                  "type": "string"
+                },
+                "command": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "api_key": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "enabled",
+                "core_service",
+                "process_name",
+                "suppress_logging",
+                "log_level",
+                "key_type",
+                "zurg_enabled",
+                "decypharr_enabled",
+                "mount_dir",
+                "mount_name",
+                "cache_dir",
+                "config_dir",
+                "config_file",
+                "log_file",
+                "zurg_config_file",
+                "command",
+                "api_key"
+              ]
+            }
+          }
+        }
+      },
+      "required": [
+        "instances"
+      ]
+    },
+    "riven_backend": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "process_name": {
+          "type": "string"
+        },
+        "repo_owner": {
+          "type": "string"
+        },
+        "repo_name": {
+          "type": "string"
+        },
+        "release_version_enabled": {
+          "type": "boolean"
+        },
+        "release_version": {
+          "type": "string"
+        },
+        "branch_enabled": {
+          "type": "boolean"
+        },
+        "branch": {
+          "type": "string"
+        },
+        "suppress_logging": {
+          "type": "boolean"
+        },
+        "log_level": {
+          "type": "string"
+        },
+        "host": {
+          "type": "string"
+        },
+        "port": {
+          "type": "integer"
+        },
+        "auto_update": {
+          "type": "boolean"
+        },
+        "auto_update_interval": {
+          "type": "number"
+        },
+        "symlink_library_path": {
+          "type": "string"
+        },
+        "clear_on_update": {
+          "type": "boolean"
+        },
+        "exclude_dirs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "env_copy": {
+          "type": "object",
+          "properties": {
+            "source": {
+              "type": "string"
+            },
+            "destination": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "source",
+            "destination"
+          ]
+        },
+        "platforms": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "command": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "config_dir": {
+          "type": "string"
+        },
+        "config_file": {
+          "type": "string"
+        },
+        "env": {
+          "type": "object"
+        },
+        "wait_for_dir": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "enabled",
+        "process_name",
+        "repo_owner",
+        "repo_name",
+        "release_version_enabled",
+        "release_version",
+        "branch_enabled",
+        "branch",
+        "suppress_logging",
+        "log_level",
+        "host",
+        "port",
+        "auto_update",
+        "auto_update_interval",
+        "symlink_library_path",
+        "clear_on_update",
+        "exclude_dirs",
+        "env_copy",
+        "platforms",
+        "command",
+        "config_dir",
+        "config_file",
+        "env",
+        "wait_for_dir"
+      ]
+    },
+    "riven_frontend": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "process_name": {
+          "type": "string"
+        },
+        "repo_owner": {
+          "type": "string"
+        },
+        "repo_name": {
+          "type": "string"
+        },
+        "release_version_enabled": {
+          "type": "boolean"
+        },
+        "release_version": {
+          "type": "string"
+        },
+        "branch_enabled": {
+          "type": "boolean"
+        },
+        "branch": {
+          "type": "string"
+        },
+        "suppress_logging": {
+          "type": "boolean"
+        },
+        "log_level": {
+          "type": "string"
+        },
+        "host": {
+          "type": "string"
+        },
+        "port": {
+          "type": "integer"
+        },
+        "auto_update": {
+          "type": "boolean"
+        },
+        "auto_update_interval": {
+          "type": "number"
+        },
+        "clear_on_update": {
+          "type": "boolean"
+        },
+        "exclude_dirs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "platforms": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "command": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "config_dir": {
+          "type": "string"
+        },
+        "env": {
+          "type": "object"
+        }
+      },
+      "required": [
+        "enabled",
+        "process_name",
+        "repo_owner",
+        "repo_name",
+        "release_version_enabled",
+        "release_version",
+        "branch_enabled",
+        "branch",
+        "suppress_logging",
+        "log_level",
+        "host",
+        "port",
+        "auto_update",
+        "auto_update_interval",
+        "clear_on_update",
+        "exclude_dirs",
+        "platforms",
+        "command",
+        "config_dir",
+        "env"
+      ]
+    },
+    "zilean": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "process_name": {
+          "type": "string"
+        },
+        "repo_owner": {
+          "type": "string"
+        },
+        "repo_name": {
+          "type": "string"
+        },
+        "release_version_enabled": {
+          "type": "boolean"
+        },
+        "release_version": {
+          "type": "string"
+        },
+        "branch_enabled": {
+          "type": "boolean"
+        },
+        "branch": {
+          "type": "string"
+        },
+        "suppress_logging": {
+          "type": "boolean"
+        },
+        "log_level": {
+          "type": "string"
+        },
+        "host": {
+          "type": "string"
+        },
+        "port": {
+          "type": "integer"
+        },
+        "auto_update": {
+          "type": "boolean"
+        },
+        "auto_update_interval": {
+          "type": "number"
+        },
+        "clear_on_update": {
+          "type": "boolean"
+        },
+        "exclude_dirs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "env_copy": {
+          "type": "object",
+          "properties": {
+            "source": {
+              "type": "string"
+            },
+            "destination": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "source",
+            "destination"
+          ]
+        },
+        "platforms": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "command": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "config_dir": {
+          "type": "string"
+        },
+        "config_file": {
+          "type": "string"
+        },
+        "env": {
+          "type": "object",
+          "properties": {
+            "DOTNET_RUNNING_IN_CONTAINER": {
+              "type": "string"
+            },
+            "DOTNET_gcServer": {
+              "type": "string"
+            },
+            "DOTNET_GCDynamicAdaptationMode": {
+              "type": "string"
+            },
+            "DOTNET_SYSTEM_GLOBALIZATION_INVARIANT": {
+              "type": "string"
+            },
+            "PYTHONUNBUFFERED": {
+              "type": "string"
+            },
+            "ASPNETCORE_URLS": {
+              "type": "string"
+            },
+            "PYTHONPATH": {
+              "type": "string"
+            },
+            "PATH": {
+              "type": "string"
+            },
+            "ZILEAN_PYTHON_PYLIB": {
+              "type": "string"
+            },
+            "Zilean__Database__ConnectionString": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "DOTNET_RUNNING_IN_CONTAINER",
+            "DOTNET_gcServer",
+            "DOTNET_GCDynamicAdaptationMode",
+            "DOTNET_SYSTEM_GLOBALIZATION_INVARIANT",
+            "PYTHONUNBUFFERED",
+            "ASPNETCORE_URLS",
+            "PYTHONPATH",
+            "PATH",
+            "ZILEAN_PYTHON_PYLIB",
+            "Zilean__Database__ConnectionString"
+          ]
+        }
+      },
+      "required": [
+        "enabled",
+        "process_name",
+        "repo_owner",
+        "repo_name",
+        "release_version_enabled",
+        "release_version",
+        "branch_enabled",
+        "branch",
+        "suppress_logging",
+        "log_level",
+        "host",
+        "port",
+        "auto_update",
+        "auto_update_interval",
+        "clear_on_update",
+        "exclude_dirs",
+        "env_copy",
+        "platforms",
+        "command",
+        "config_dir",
+        "config_file",
+        "env"
+      ]
+    },
+    "zurg": {
+      "type": "object",
+      "properties": {
+        "instances": {
+          "type": "object",
+          "patternProperties": {
+            ".*": {
+              "type": "object",
+              "properties": {
+                "enabled": {
+                  "type": "boolean"
+                },
+                "core_service": {
+                  "type": "string"
+                },
+                "process_name": {
+                  "type": "string"
+                },
+                "repo_owner": {
+                  "type": "string"
+                },
+                "repo_name": {
+                  "type": "string"
+                },
+                "release_version_enabled": {
+                  "type": "boolean"
+                },
+                "release_version": {
+                  "type": "string"
+                },
+                "suppress_logging": {
+                  "type": "boolean"
+                },
+                "log_level": {
+                  "type": "string"
+                },
+                "auto_update": {
+                  "type": "boolean"
+                },
+                "auto_update_interval": {
+                  "type": "number"
+                },
+                "clear_on_update": {
+                  "type": "boolean"
+                },
+                "exclude_dirs": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "key_type": {
+                  "type": "string"
+                },
+                "config_dir": {
+                  "type": "string"
+                },
+                "config_file": {
+                  "type": "string"
+                },
+                "command": {
+                  "type": "string"
+                },
+                "port": {
+                  "type": "integer"
+                },
+                "user": {
+                  "type": "string"
+                },
+                "password": {
+                  "type": "string"
+                },
+                "api_key": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "enabled",
+                "core_service",
+                "process_name",
+                "repo_owner",
+                "repo_name",
+                "release_version_enabled",
+                "release_version",
+                "suppress_logging",
+                "log_level",
+                "auto_update",
+                "auto_update_interval",
+                "clear_on_update",
+                "exclude_dirs",
+                "key_type",
+                "config_dir",
+                "config_file",
+                "command",
+                "port",
+                "user",
+                "password",
+                "api_key"
+              ]
+            }
+          }
+        }
+      },
+      "required": [
+        "instances"
+      ]
+    }
+  },
+  "required": [
+    "puid",
+    "pgid",
+    "tz",
+    "dumb",
+    "cli_debrid",
+    "cli_battery",
+    "decypharr",
+    "phalanx_db",
+    "plex_debrid",
+    "postgres",
+    "pgadmin",
+    "rclone",
+    "riven_backend",
+    "riven_frontend",
+    "zilean",
+    "zurg"
+  ]
+}
