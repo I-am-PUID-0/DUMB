@@ -19,22 +19,22 @@ def main():
 
     ascii_art = f"""
                                                                        
-DDDDDDDDDDDDD        MMMMMMMM               MMMMMMMMBBBBBBBBBBBBBBBBB   
-D::::::::::::DDD     M:::::::M             M:::::::MB::::::::::::::::B  
-D:::::::::::::::DD   M::::::::M           M::::::::MB::::::BBBBBB:::::B 
-DDD:::::DDDDD:::::D  M:::::::::M         M:::::::::MBB:::::B     B:::::B
-  D:::::D    D:::::D M::::::::::M       M::::::::::M  B::::B     B:::::B
-  D:::::D     D:::::DM:::::::::::M     M:::::::::::M  B::::B     B:::::B
-  D:::::D     D:::::DM:::::::M::::M   M::::M:::::::M  B::::BBBBBB:::::B 
-  D:::::D     D:::::DM::::::M M::::M M::::M M::::::M  B:::::::::::::BB  
-  D:::::D     D:::::DM::::::M  M::::M::::M  M::::::M  B::::BBBBBB:::::B 
-  D:::::D     D:::::DM::::::M   M:::::::M   M::::::M  B::::B     B:::::B
-  D:::::D     D:::::DM::::::M    M:::::M    M::::::M  B::::B     B:::::B
-  D:::::D    D:::::D M::::::M     MMMMM     M::::::M  B::::B     B:::::B
-DDD:::::DDDDD:::::D  M::::::M               M::::::MBB:::::BBBBBB::::::B
-D:::::::::::::::DD   M::::::M               M::::::MB:::::::::::::::::B 
-D::::::::::::DDD     M::::::M               M::::::MB::::::::::::::::B  
-DDDDDDDDDDDDD        MMMMMMMM               MMMMMMMMBBBBBBBBBBBBBBBBB   
+DDDDDDDDDDDDD       UUUUUUUU     UUUUUUUUMMMMMMMM               MMMMMMMMBBBBBBBBBBBBBBBBB   
+D::::::::::::DDD    U::::::U     U::::::UM:::::::M             M:::::::MB::::::::::::::::B  
+D:::::::::::::::DD  U::::::U     U::::::UM::::::::M           M::::::::MB::::::BBBBBB:::::B 
+DDD:::::DDDDD:::::D UU:::::U     U:::::UUM:::::::::M         M:::::::::MBB:::::B     B:::::B
+  D:::::D    D:::::D U:::::U     U:::::U M::::::::::M       M::::::::::M  B::::B     B:::::B
+  D:::::D     D:::::DU:::::D     D:::::U M:::::::::::M     M:::::::::::M  B::::B     B:::::B
+  D:::::D     D:::::DU:::::D     D:::::U M:::::::M::::M   M::::M:::::::M  B::::BBBBBB:::::B 
+  D:::::D     D:::::DU:::::D     D:::::U M::::::M M::::M M::::M M::::::M  B:::::::::::::BB  
+  D:::::D     D:::::DU:::::D     D:::::U M::::::M  M::::M::::M  M::::::M  B::::BBBBBB:::::B 
+  D:::::D     D:::::DU:::::D     D:::::U M::::::M   M:::::::M   M::::::M  B::::B     B:::::B
+  D:::::D     D:::::DU:::::D     D:::::U M::::::M    M:::::M    M::::::M  B::::B     B:::::B
+  D:::::D    D:::::D U::::::U   U::::::U M::::::M     MMMMM     M::::::M  B::::B     B:::::B
+DDD:::::DDDDD:::::D  U:::::::UUU:::::::U M::::::M               M::::::MBB:::::BBBBBB::::::B
+D:::::::::::::::DD    UU:::::::::::::UU  M::::::M               M::::::MB:::::::::::::::::B 
+D::::::::::::DDD        UU:::::::::UU    M::::::M               M::::::MB::::::::::::::::B  
+DDDDDDDDDDDDD             UUUUUUUUU      MMMMMMMM               MMMMMMMMBBBBBBBBBBBBBBBBB   
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        
                              Version: {version}                                    
 """
