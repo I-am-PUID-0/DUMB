@@ -359,7 +359,7 @@ def find_schema(schema, path_parts):
     return schema_section
 
 
-@config_router.post("/update-dumb-config")
+@config_router.post("/update-dmb-config")
 async def update_dumb_config(
     request: UpdateServiceConfigRequest, logger=Depends(get_logger)
 ):

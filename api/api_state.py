@@ -32,7 +32,7 @@ class APIState:
             return name.replace(" ", "").replace("/ ", "/").strip().lower()
 
         normalized_input = normalize(process_name)
-        if normalized_input == "dumbapi":
+        if normalized_input == "dumbapi" or normalized_input == "dmbapi":
             return "running"
         for stored_name in running_processes:
             normalized_stored_name = normalize(stored_name)

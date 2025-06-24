@@ -10,7 +10,7 @@ logs_router = APIRouter()
 def find_log_file(process_name: str, logger):
     logger.debug(f"Looking up process: {process_name}")
 
-    if "dumb" in process_name.lower():
+    if "dumb" or "dmb" in process_name.lower():
         log_dir = resolve_path("/log")
         if log_dir.exists():
             log_files = sorted(
@@ -89,7 +89,7 @@ def _read_log_for_process(process_name: str, logger):
         return ""
 
     try:
-        if "dumb" in process_name.lower():
+        if "dumb" or "dmb" in process_name.lower():
             return filter_dumb_log(log_path, logger)
         else:
             with open(log_path, "r") as log_file:

@@ -12,7 +12,7 @@
 
 * **deps:** bump python-dotenv from 1.1.0 to 1.1.1 ([#7](https://github.com/I-am-PUID-0/DUMB/issues/7)) ([5945b54](https://github.com/I-am-PUID-0/DUMB/commit/5945b5403829ac1f0c2fe84f0d5a1104d65c773a))
 
-## 1.0.0 (2025-06-20)
+## [1.0.0](https://github.com/I-am-PUID-0/DUMB/commit/91ecaccf3d58b647b2ee1278b47f2767758582a6) (2025-06-20)
 
 
 ### ⚠ BREAKING CHANGES
@@ -23,4 +23,3 @@
 
 * **DUMB:** initial DUMB push ([e212248](https://github.com/I-am-PUID-0/DUMB/commit/e2122487a50af15714929ffc5d0e3bd9d73fb160))
 
-## Changelog
