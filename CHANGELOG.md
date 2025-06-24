@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.1](https://github.com/I-am-PUID-0/DUMB/compare/1.1.0...1.1.1) (2025-06-24)
+
+
+### 🐛 Bug Fixes
+
+* **logs:** correct logical condition for process name checks ([5f86762](https://github.com/I-am-PUID-0/DUMB/commit/5f86762b57ca3b89f4fe7912faaa6fd8a2133ba4))
+
 ## [1.1.0](https://github.com/I-am-PUID-0/DUMB/compare/1.0.2...1.1.0) (2025-06-24)
 
 
