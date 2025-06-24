@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.1.0](https://github.com/I-am-PUID-0/DUMB/compare/1.0.2...1.1.0) (2025-06-24)
+
+
+### ✨ Features
+
+* **plex:** add Plex server FriendlyName configuration ([666e2a1](https://github.com/I-am-PUID-0/DUMB/commit/666e2a17284675f7c92d37a6dc92882dc173879e))
+
+
+### 🐛 Bug Fixes
+
+* **api:** Add static plex url for frontend settings page ([666e2a1](https://github.com/I-am-PUID-0/DUMB/commit/666e2a17284675f7c92d37a6dc92882dc173879e))
+* **plex:** claiming functionality ([666e2a1](https://github.com/I-am-PUID-0/DUMB/commit/666e2a17284675f7c92d37a6dc92882dc173879e))
+
 ## [1.0.2](https://github.com/I-am-PUID-0/DUMB/compare/1.0.1...1.0.2) (2025-06-24)
 
 
