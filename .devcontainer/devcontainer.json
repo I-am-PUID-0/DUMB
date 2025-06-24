@@ -23,7 +23,8 @@
     3000,
     9090,
     5050,
-    8182
+    8182,
+    32400
   ],
   "mounts": [
     "source=${localWorkspaceFolder},target=/workspace,type=bind",
