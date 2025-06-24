@@ -565,15 +565,37 @@ def setup_plex():
         "LD_LIBRARY_PATH": "/usr/lib/plexmediaserver",
         "TMPDIR": "/tmp",
     }
-    plex_claim = config.get("plex_claim", "")
-    if plex_claim:
-        env_vars["PLEX_CLAIM"] = plex_claim
-
     config["env"] = env_vars
+    plex_claim = config.get("plex_claim", "")
+    preferences_path = config.get("config_file")
+    if plex_claim and not os.path.exists(preferences_path):
+        from utils.plex import perform_plex_claim
 
+        success, error = perform_plex_claim(plex_claim, preferences_path, logger)
+        if not success:
+            return False, f"Failed to claim Plex server: {error}"
+        chown_recursive(
+            config["config_dir"], CONFIG_MANAGER.get("puid"), CONFIG_MANAGER.get("pgid")
+        )
+    elif plex_claim and os.path.exists(preferences_path):
+        with open(preferences_path) as f:
+            if "plexOnlineToken" in f.read():
+                logger.info(f"Plex server already claimed. Skipping PLEX_CLAIM.")
+            else:
+                from utils.plex import perform_plex_claim
+
+                success, error = perform_plex_claim(
+                    plex_claim, preferences_path, logger
+                )
+                if not success:
+                    return False, f"Failed to claim Plex server: {error}"
+                chown_recursive(
+                    config["config_dir"],
+                    CONFIG_MANAGER.get("puid"),
+                    CONFIG_MANAGER.get("pgid"),
+                )
     command = ["/usr/lib/plexmediaserver/Plex Media Server"]
     config["command"] = command
-
     return True, None
 
 

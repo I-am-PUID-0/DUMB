@@ -38,6 +38,7 @@ STATIC_URLS_BY_KEY = {
     "postgres": "https://www.postgresql.org/",
     "dumb_api_service": "https://github.com/I-am-PUID-0/DUMB",
     "cli_battery": "https://github.com/godver3/cli_debrid/tree/main/cli_battery",
+    "plex": "https://www.plex.tv/",
 }
 
 CORE_SERVICE_DEPENDENCIES = {
@@ -168,7 +169,7 @@ async def start_service(
 
     env = service_config.get("env")
     if env is not None:
-        logger.debug(f"Checking for variables in service config. {env}")
+        # logger.debug(f"Checking for variables in service config. {env}")
         if any("{" in c for c in env):
             success, error = setup_project(process_handler, process_name)
             if not success:

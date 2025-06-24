@@ -89,3 +89,69 @@ class PlexInstaller:
         except Exception as e:
             self.logger.error(f"Error installing Plex Media Server: {e}")
             return False, str(e)
+
+
+def perform_plex_claim(claim_token, preferences_path, logger):
+    import os, uuid, hashlib, xml.etree.ElementTree as ET, requests
+
+    if not os.path.exists(preferences_path):
+        os.makedirs(os.path.dirname(preferences_path), exist_ok=True)
+        with open(preferences_path, "w") as f:
+            f.write('<?xml version="1.0" encoding="utf-8"?><Preferences/>')
+
+    tree = ET.parse(preferences_path)
+    root = tree.getroot()
+
+    def get_attr(attr):
+        return root.attrib.get(attr)
+
+    def set_attr(attr, value):
+        root.set(attr, value)
+
+    if get_attr("PlexOnlineToken"):
+        logger.info("Plex server already claimed.")
+        return True, None
+
+    machine_id = get_attr("MachineIdentifier") or str(uuid.uuid4())
+    set_attr("MachineIdentifier", machine_id)
+
+    processed_id = (
+        get_attr("ProcessedMachineIdentifier")
+        or hashlib.sha1(f"{machine_id}- Plex Media Server".encode()).hexdigest()
+    )
+    set_attr("ProcessedMachineIdentifier", processed_id)
+
+    headers = {
+        "X-Plex-Client-Identifier": processed_id,
+        "X-Plex-Product": "Plex Media Server",
+        "X-Plex-Version": "1.1",
+        "X-Plex-Provides": "server",
+        "X-Plex-Platform": "Linux",
+        "X-Plex-Platform-Version": "1.0",
+        "X-Plex-Device-Name": "PlexMediaServer",
+        "X-Plex-Device": "Linux",
+    }
+
+    try:
+        logger.info("Attempting to claim Plex server using token...")
+        response = requests.post(
+            f"https://plex.tv/api/claim/exchange?token={claim_token}",
+            headers=headers,
+            timeout=10,
+        )
+        if response.status_code != 200:
+            logger.error(f"Claim failed: HTTP {response.status_code} - {response.text}")
+            return False, f"Claim failed: HTTP {response.status_code}"
+
+        auth_token = ET.fromstring(response.text).findtext("authentication-token")
+        if auth_token:
+            set_attr("PlexOnlineToken", auth_token)
+            tree.write(preferences_path)
+            logger.info("Plex server claimed successfully.")
+            return True, None
+        else:
+            logger.warning("No authentication token found in response.")
+            return False, "No authentication token found in response."
+    except Exception as e:
+        logger.error(f"Claim request failed: {e}")
+        return False, str(e)

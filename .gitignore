@@ -377,3 +377,4 @@ FodyWeavers.xsd
 *.vs*
 *.pnpm-store*
 settings.json
+/plex

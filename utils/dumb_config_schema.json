@@ -571,6 +571,9 @@
         "plex_claim": {
           "type": "string"
         },
+        "friendly_name": {
+          "type": "string"
+        },
         "command": {
           "type": "array",
           "items": {
@@ -593,6 +596,7 @@
         "config_file",
         "log_file",
         "plex_claim",
+        "friendly_name",
         "command",
         "env"
       ]

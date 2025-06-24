@@ -48,20 +48,19 @@ class Versions:
                 is_file = False
             elif key == "plex":
                 try:
-                    import requests
-
-                    response = requests.get("http://localhost:32400", timeout=2)
-                    if response.status_code == 200:
-                        matches = re.findall(r'version="([^"]+)"', response.text)
-                        if matches and len(matches) > 1:
-                            return matches[1], None
-                        elif matches:
-                            return matches[0], None
-                        else:
-                            return None, "No version string found in Plex response"
-                    return None, f"Plex server returned status: {response.status_code}"
+                    result = subprocess.run(
+                        ["/usr/lib/plexmediaserver/Plex Media Server", "--version"],
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.PIPE,
+                        text=True,
+                        timeout=5,
+                    )
+                    if result.returncode == 0:
+                        version = result.stdout.strip()
+                        return version, None
+                    return None, f"Failed to get version: {result.stderr.strip()}"
                 except Exception as e:
-                    return None, f"Error connecting to Plex: {e}"
+                    return None, f"Error running Plex binary: {e}"
             elif key == "postgres":
                 try:
                     result = subprocess.run(
