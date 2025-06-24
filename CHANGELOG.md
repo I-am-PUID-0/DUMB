@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.2](https://github.com/I-am-PUID-0/DUMB/compare/1.0.1...1.0.2) (2025-06-24)
+
+
+### 🐛 Bug Fixes
+
+* **api:** add temp patches for dmbdb frontend ([6b76806](https://github.com/I-am-PUID-0/DUMB/commit/6b76806ea4f88b73d51743b7c41025db3bb032a6))
+
 ## [1.0.1](https://github.com/I-am-PUID-0/DUMB/compare/1.0.0...1.0.1) (2025-06-24)
 
 
@@ -22,4 +29,3 @@
 ### ✨ Features
 
 * **DUMB:** initial DUMB push ([e212248](https://github.com/I-am-PUID-0/DUMB/commit/e2122487a50af15714929ffc5d0e3bd9d73fb160))
-
