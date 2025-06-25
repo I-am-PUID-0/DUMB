@@ -151,6 +151,17 @@ DDDDDDDDDDDDD             UUUUUUUUU      MMMMMMMM               MMMMMMMMBBBBBBBB
         riven_frontend_config = config.get("riven_frontend", {})
         zilean_config = config.get("zilean", {})
 
+        if plex_config.get("enabled"):
+            try:
+                process_name = plex_config.get("process_name")
+                if plex_config.get("auto_update", False):
+                    updater.auto_update(process_name, True)
+                else:
+                    updater.auto_update(process_name, False)
+            except Exception as e:
+                logger.error(e)
+                process_handler.shutdown(exit_code=1)
+
         if postgres_config.get("enabled"):
             try:
                 process_name = postgres_config.get("process_name")
@@ -247,17 +258,6 @@ DDDDDDDDDDDDD             UUUUUUUUU      MMMMMMMM               MMMMMMMMBBBBBBBB
             try:
                 process_name = decypharr_config.get("process_name")
                 if decypharr_config.get("auto_update", False):
-                    updater.auto_update(process_name, True)
-                else:
-                    updater.auto_update(process_name, False)
-            except Exception as e:
-                logger.error(e)
-                process_handler.shutdown(exit_code=1)
-
-        if plex_config.get("enabled"):
-            try:
-                process_name = plex_config.get("process_name")
-                if plex_config.get("auto_update", False):
                     updater.auto_update(process_name, True)
                 else:
                     updater.auto_update(process_name, False)

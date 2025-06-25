@@ -3,6 +3,7 @@ from utils.config_loader import CONFIG_MANAGER
 import psycopg2, time, os, subprocess, json, glob
 from psycopg2 import sql
 from time import sleep
+import shutil, tempfile
 
 
 config = CONFIG_MANAGER
@@ -404,7 +405,7 @@ def postgres_role_exists(
         role_exists = cur.fetchone() is not None
         cur.close()
         conn.close()
-        return role_exists
+        return role_exists, None
     except Exception as e:
         return False, f"Error checking if role '{postgres_user}' exists: {e}"
 
@@ -660,6 +661,269 @@ def pgadmin_setup(process_handler):
         return False, f"Unhandled exception during pgAdmin setup: {e}"
 
 
+def migrate_legacy_role_dmb_to_dumb(
+    postgres_host: str,
+    postgres_port: int,
+    postgres_password: str,
+    process_handler,
+    postgres_process_name: str,
+    postgres_config_dir: str,
+    postgres_command: str,
+):
+    try:
+        role_exists, error = postgres_role_exists(
+            "DUMB", postgres_password, "postgres", postgres_host, postgres_port
+        )
+        if role_exists:
+            logger.info("Role 'DUMB' already exists. No migration required.")
+            return True, None
+        elif error:
+            logger.info("Ignore the CRITICAL message; proceeding with migration.")
+
+        try:
+            conn = psycopg2.connect(
+                dbname="postgres",
+                user="DMB",
+                password=postgres_password,
+                host=postgres_host,
+                port=postgres_port,
+            )
+            conn.close()
+        except psycopg2.OperationalError:
+            logger.info(
+                "Role 'DMB' does not exist or cannot connect. No migration needed."
+            )
+            return True, None
+
+        logger.info(
+            "Connected as legacy role 'DMB'. Starting pg_dumpall migration to 'DUMB'..."
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            roles_path = os.path.join(tmpdir, "roles.sql")
+            dbnames = []
+            with psycopg2.connect(
+                dbname="postgres",
+                user="DMB",
+                password=postgres_password,
+                host=postgres_host,
+                port=postgres_port,
+            ) as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        "SELECT datname FROM pg_database WHERE datdba = (SELECT oid FROM pg_roles WHERE rolname = 'DMB') AND datistemplate = false;"
+                    )
+                    dbnames = [row[0] for row in cur.fetchall()]
+                    dbnames = [db for db in dbnames if db != "postgres"]
+
+            logger.info(f"Found {len(dbnames)} databases owned by 'DMB': {dbnames}")
+            logger.info(
+                "Checking database sizes before migration. This may take a moment..."
+            )
+
+            success, error = list_database_sizes(
+                postgres_host, postgres_port, "DMB", postgres_password
+            )
+            if not success:
+                logger.warning(error)
+
+            db_paths = {}
+            logger.info("Dumping roles using pg_dumpall...")
+            dump_roles_cmd = [
+                "pg_dumpall",
+                f"-h{postgres_host}",
+                f"-p{postgres_port}",
+                "-U",
+                "DMB",
+                "--roles-only",
+                "-f",
+                roles_path,
+            ]
+            env = os.environ.copy()
+            env["PGPASSWORD"] = postgres_password
+
+            result = subprocess.run(
+                dump_roles_cmd, env=env, capture_output=True, text=True
+            )
+            if result.returncode != 0:
+                logger.error(f"pg_dumpall (roles-only) failed: {result.stderr}")
+                return False, result.stderr
+
+            for dbname in dbnames:
+                db_path = os.path.join(tmpdir, f"{dbname}.sql")
+                db_paths[dbname] = db_path
+                logger.info(f"Dumping database '{dbname}'...")
+                dump_db_cmd = [
+                    "pg_dump",
+                    "-C",
+                    f"-h{postgres_host}",
+                    f"-p{postgres_port}",
+                    "-U",
+                    "DMB",
+                    "-d",
+                    dbname,
+                    "-f",
+                    db_path,
+                ]
+                result = subprocess.run(
+                    dump_db_cmd, env=env, capture_output=True, text=True
+                )
+                if result.returncode != 0:
+                    logger.error(f"pg_dump for '{dbname}' failed: {result.stderr}")
+                    return False, result.stderr
+
+            logger.info(
+                "PostgreSQL dump complete. Proceeding with cluster reinitialization..."
+            )
+
+            process_handler.stop_process(postgres_process_name)
+            process_handler.wait(postgres_process_name)
+
+            backup_dir = f"{postgres_config_dir}_backup"
+            os.makedirs(backup_dir, exist_ok=True)
+            for item in os.listdir(postgres_config_dir):
+                shutil.move(
+                    os.path.join(postgres_config_dir, item),
+                    os.path.join(backup_dir, item),
+                )
+
+            success, error = initialize_postgres_config_dir_directory(
+                process_handler=process_handler,
+                postgres_config_dir=postgres_config_dir,
+                postgres_user="DUMB",
+                postgres_password=postgres_password,
+            )
+            if not success:
+                return (
+                    False,
+                    f"Failed to initialize new PostgreSQL config directory: {error}",
+                )
+
+            logger.info("New PostgreSQL config directory initialized.")
+
+            process = process_handler.start_process(
+                postgres_process_name, postgres_config_dir, postgres_command
+            )
+            if not process:
+                return (
+                    False,
+                    "Failed to restart PostgreSQL process with new configuration.",
+                )
+
+            logger.info("Waiting for PostgreSQL to become ready...")
+            success, error = check_postgresql_started(
+                postgres_host,
+                postgres_port,
+                postgres_user="postgres",
+                postgres_databases=[{"name": "postgres", "enabled": True}],
+            )
+            if not success:
+                return False, f"PostgreSQL did not become ready: {error}"
+
+            sleep(5)
+
+            logger.info("Restoring roles using psql as 'DUMB'...")
+            roles_restore_cmd = [
+                "psql",
+                f"-h{postgres_host}",
+                f"-p{postgres_port}",
+                "-U",
+                "DUMB",
+                "-d",
+                "postgres",
+                "-f",
+                roles_path,
+            ]
+            result = subprocess.run(
+                roles_restore_cmd, env=env, capture_output=True, text=True
+            )
+            if result.returncode != 0:
+                logger.error(f"Roles restore failed: {result.stderr}")
+                return False, result.stderr
+
+            for dbname, path in db_paths.items():
+                logger.info(f"Restoring database '{dbname}' using psql as 'DUMB'...")
+                db_restore_cmd = [
+                    "psql",
+                    f"-h{postgres_host}",
+                    f"-p{postgres_port}",
+                    "-U",
+                    "DUMB",
+                    "-d",
+                    "postgres",
+                    "-f",
+                    path,
+                ]
+                result = subprocess.run(
+                    db_restore_cmd, env=env, capture_output=True, text=True
+                )
+                if result.returncode != 0:
+                    logger.error(f"Restore of {dbname} failed: {result.stderr}")
+                    return False, result.stderr
+
+            for dbname in db_paths.keys():
+                logger.info(
+                    f"Reassigning objects in '{dbname}' from 'DMB' to 'DUMB'..."
+                )
+                conn = psycopg2.connect(
+                    dbname=dbname,
+                    user="DUMB",
+                    password=postgres_password,
+                    host=postgres_host,
+                    port=postgres_port,
+                )
+                conn.autocommit = True
+                cur = conn.cursor()
+                cur.execute('REASSIGN OWNED BY "DMB" TO "DUMB";')
+                cur.execute('DROP OWNED BY "DMB";')
+                cur.close()
+                conn.close()
+
+            conn = psycopg2.connect(
+                dbname="postgres",
+                user="DUMB",
+                password=postgres_password,
+                host=postgres_host,
+                port=postgres_port,
+            )
+            conn.autocommit = True
+            cur = conn.cursor()
+            cur.execute('DROP ROLE IF EXISTS "DMB";')
+            cur.close()
+            conn.close()
+            logger.info("Successfully dropped role 'DMB'.")
+
+        for dbname in db_paths.keys():
+            logger.info(f"Ensuring useful extensions exist in database '{dbname}'...")
+            try:
+                conn = psycopg2.connect(
+                    dbname=dbname,
+                    user="DUMB",
+                    password=postgres_password,
+                    host=postgres_host,
+                    port=postgres_port,
+                )
+                conn.autocommit = True
+                cur = conn.cursor()
+
+                extensions = ["pgagent", "system_stats"]
+                for ext in extensions:
+                    cur.execute(f"CREATE EXTENSION IF NOT EXISTS {ext};")
+                    logger.info(f"Extension '{ext}' ensured in '{dbname}'.")
+
+                cur.close()
+                conn.close()
+            except Exception as e:
+                logger.warning(f"Failed to create extensions in '{dbname}': {e}")
+
+        logger.info("Migration from DMB to DUMB complete.")
+        return True, None
+
+    except Exception as e:
+        logger.warning(f"Migration logic failed: {e}")
+        return False, str(e)
+
+
 def postgres_setup(process_handler=None):
     postgres_config = config.get("postgres")
     postgres_config_dir = postgres_config.get("config_dir")
@@ -751,6 +1015,18 @@ def postgres_setup(process_handler=None):
             return False, error
 
         sleep(10)
+
+        success, error = migrate_legacy_role_dmb_to_dumb(
+            postgres_host=postgres_host,
+            postgres_port=postgres_port,
+            postgres_password=postgres_password,
+            process_handler=process_handler,
+            postgres_process_name=postgres_process_name,
+            postgres_config_dir=postgres_config_dir,
+            postgres_command=postgres_command,
+        )
+        if not success:
+            logger.warning(error)
 
         success, error = initialize_postgres_databases(
             postgres_host,
