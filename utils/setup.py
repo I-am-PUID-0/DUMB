@@ -6,7 +6,7 @@ from utils.download import Downloader
 from utils.versions import Versions
 from utils.plex import PlexInstaller
 from utils.user_management import chown_recursive
-import yaml, os, shutil, random, subprocess, re
+import yaml, os, shutil, random, subprocess, re, glob
 
 user_id = CONFIG_MANAGER.get("puid")
 group_id = CONFIG_MANAGER.get("pgid")
@@ -455,10 +455,10 @@ def dumb_frontend_setup():
     api_port = str(api_config.get("port", 8000))
     api_url = f"http://{api_host}:{api_port}"
     env_vars = {
+        **config.get("env", {}),
         "HOST": frontend_host,
         "PORT": frontend_port,
         "DUMB_API_URL": api_url,
-        **config.get("env", {}),
     }
     config["env"] = env_vars
     return True, None
@@ -474,20 +474,40 @@ def phalanx_setup(process_handler):
     try:
         phalanx_config_dir = config.get("config_dir")
         phalanx_data_dir = os.path.join(phalanx_config_dir, "data")
-        original_js_file = os.path.join(phalanx_config_dir, "phalanx_db_rest.js")
+        original_package_file = os.path.join(phalanx_config_dir, "package.json")
+        platforms = config.get("platforms", [])
 
-        if not os.path.isfile(original_js_file):
-            logger.warning(f"Phalanx project not found at {original_js_file}")
-            success, error = setup_release_version(
-                process_handler,
-                config,
+        if not os.path.isfile(original_package_file):
+            logger.warning(
+                f"Phalanx project not found at {phalanx_config_dir}. Downloading..."
+            )
+            release, error = downloader.get_latest_release(
+                repo_owner=config.get("repo_owner"),
+                repo_name=config.get("repo_name"),
+            )
+            if not release:
+                return False, f"Failed to get latest release: {error}"
+            logger.info(
+                f"Downloading Phalanx release {release} from {config.get('repo_owner')}/{config.get('repo_name')}"
+            )
+            success, error = downloader.download_release_version(
                 process_name=config.get("process_name"),
                 key="phalanx_db",
+                repo_owner=config.get("repo_owner"),
+                repo_name=config.get("repo_name"),
+                release_version=release,
+                target_dir=phalanx_config_dir,
             )
             if not success:
-                return False, f"Failed to download Phalanx: {error}"
+                return False, f"Failed to download Phalanx DB: {error}"
+            if platforms:
+                success, error = setup_environment(
+                    process_handler, "phalanx_db", platforms, phalanx_config_dir
+                )
+                if not success:
+                    return False, f"Failed to set up environment: {error}"
 
-        for subdir in ["db_data", "p2p-db-storage", "logs"]:
+        for subdir in ["db_data", "p2p-db-storage", "logs", "autobase_storage_v4"]:
             target_path = os.path.join(phalanx_data_dir, subdir)
             symlink_path = os.path.join(phalanx_config_dir, subdir)
 
@@ -510,6 +530,15 @@ def phalanx_setup(process_handler):
         logs_dir = os.path.join(phalanx_data_dir, "logs")
         os.makedirs(logs_dir, exist_ok=True)
 
+        autobase_storage_dir = os.path.join(
+            phalanx_config_dir, "autobase_storage_v4", "db"
+        )
+        if not os.path.exists(autobase_storage_dir):
+            logger.debug(
+                f"Creating autobase storage directory at {autobase_storage_dir}"
+            )
+            os.makedirs(autobase_storage_dir, exist_ok=True)
+
         chown_recursive(
             phalanx_data_dir, CONFIG_MANAGER.get("puid"), CONFIG_MANAGER.get("pgid")
         )
@@ -519,11 +548,27 @@ def phalanx_setup(process_handler):
             "true" if config.get("log_level", "debug").lower() == "debug" else "false"
         )
         env_vars = {
+            **config.get("env", {}),
             "PORT": port,
             "DEBUG": debug,
-            **config.get("env", {}),
         }
         config["env"] = env_vars
+
+        js_files = glob.glob(os.path.join(phalanx_config_dir, "phalanx_db_rest_v*.js"))
+
+        def extract_version(path):
+            match = re.search(r"v(\d+)", os.path.basename(path))
+            return int(match.group(1)) if match else -1
+
+        if js_files:
+            js_files.sort(key=extract_version, reverse=True)
+            latest_file = os.path.basename(js_files[0])
+            config["command"] = ["node", latest_file]
+            logger.debug(f"Resolved Phalanx command to: {config['command']}")
+        else:
+            logger.warning(
+                "No versioned phalanx_db_rest_v*.js found. Leaving command as-is."
+            )
 
         logger.info("Phalanx setup complete.")
         return True, None
@@ -1472,7 +1517,10 @@ def setup_pnpm_environment(process_handler, config_dir):
             process_handler.wait("pnpm_install")
             if process_handler.returncode == 0:
                 break
-            if "eagain" not in (process_handler.stdout or "").lower():
+            combined_output = (process_handler.stdout or "") + (
+                process_handler.stderr or ""
+            )
+            if "eagain" not in combined_output.lower():
                 return False, f"Error during pnpm install: {process_handler.stderr}"
             logger.warning("pnpm install hit EAGAIN. Retrying...")
         else:

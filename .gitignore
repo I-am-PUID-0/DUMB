@@ -378,3 +378,4 @@ FodyWeavers.xsd
 *.pnpm-store*
 settings.json
 /plex
+/decypharr
