@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.2.1](https://github.com/I-am-PUID-0/DUMB/compare/1.2.0...1.2.1) (2025-06-26)
+
+
+### 🐛 Bug Fixes
+
+* **phalanx:** Updates Phalanx DB setup to support v0.55 ([353e21f](https://github.com/I-am-PUID-0/DUMB/commit/353e21f393ee0cc177673711ec8197caf7f635b4))
+* **setup_pnpm_environment:** Addresses potential EAGAIN errors during pnpm install by checking both stdout and stderr. ([353e21f](https://github.com/I-am-PUID-0/DUMB/commit/353e21f393ee0cc177673711ec8197caf7f635b4))
+
+
+### 🤡 Other Changes
+
+* **gitignore:** Adds decypharr to gitignore. ([353e21f](https://github.com/I-am-PUID-0/DUMB/commit/353e21f393ee0cc177673711ec8197caf7f635b4))
+
 ## [1.2.0](https://github.com/I-am-PUID-0/DUMB/compare/1.1.1...1.2.0) (2025-06-25)
 
 
