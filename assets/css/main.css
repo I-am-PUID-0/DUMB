@@ -1,8 +1,11 @@
 @keyframes beat-fade {
-    0%, 100% {
+
+    0%,
+    100% {
         opacity: 1;
         transform: scale(1);
     }
+
     50% {
         opacity: 0.6;
         transform: scale(1.1);
@@ -11,25 +14,46 @@
 
 @keyframes slide-in {
     from {
-      opacity: 0;
-      transform: translateX(10px);
+        opacity: 0;
+        transform: translateX(10px);
     }
+
     to {
-      opacity: 1;
-      transform: translateX(0);
+        opacity: 1;
+        transform: translateX(0);
     }
-  }
+}
 
 img.hero {
-  width: 100%;
-  max-width: 900px;
-  height: auto;
-  border-radius: 10px;
-  margin: 0 auto;
-  display: block;
+    width: 100%;
+    max-width: 900px;
+    height: auto;
+    border-radius: 10px;
+    margin: 0 auto;
+    display: block;
+}
+
+.banner {
+    display: flex;
+    height: 30px;
+    position: sticky;
+    top: 0;
+    left: 0;
+    width: 100%;
+    z-index: 999;
+    padding: 0 12px;
+    box-sizing: border-box;
+    text-align: center;
+    justify-content: center;
+    align-items: center;
+    background-color: #b00020;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    font-size: 1.125em;
+    animation: beat-fade 2s 2;
 }
 
 .md-header {
+    top: 30px;
     background-image: linear-gradient(to right, #283085, #050c53) !important;
     backdrop-filter: blur(10px);
 }
@@ -47,7 +71,7 @@ img.hero {
     .md-header__title {
         font-size: 1.2rem;
     }
-    
+
     .md-header__button.md-logo {
         display: none;
     }
@@ -62,19 +86,24 @@ a {
 
 
 /* Add a box shadow to cards */
-.grid.cards > div {
+.grid.cards>div {
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
     transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
-.grid.cards > div:hover {
+.grid.cards>div:hover {
     transform: translateY(-5px);
     box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
 }
 
 
 /* Add a subtle animation to headers */
-h1, h2, h3, h4, h5, h6 {
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
     animation: fadeIn 1.3s ease-in-out;
 }
 
@@ -112,7 +141,7 @@ h1, h2, h3, h4, h5, h6 {
     max-width: 500px;
     padding: 20px;
     border-radius: 10px;
-    transition: background-color 0.3s ease, color 0.3s ease;    
+    transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 /* 🔆 Light Theme */
@@ -137,12 +166,14 @@ body[data-md-color-scheme="slate"] .column {
     color: #ffffff;
 }
 
-.project-list li, .features li {
+.project-list li,
+.features li {
     list-style: none;
     padding: 5px 0;
 }
 
-.project-list li a, .features li strong {
+.project-list li a,
+.features li strong {
     color: #42A5F5;
 }
 
@@ -164,69 +195,83 @@ img[data-zoomable] {
 }
 
 .lightbox {
-  position: fixed !important;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 9999 !important;
-  background: rgba(0, 0, 0, 0.9);
-  display: flex;
-  justify-content: center;
-  align-items: center;
+    position: fixed !important;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 9999 !important;
+    background: rgba(0, 0, 0, 0.9);
+    display: flex;
+    justify-content: center;
+    align-items: center;
 }
 
 .lightbox--open {
-  display: flex !important;
+    display: flex !important;
 }
 
 .lightbox__image {
-  max-width: 90%;
-  max-height: 90%;
-  transition: transform 0.3s ease-in-out;
+    max-width: 90%;
+    max-height: 90%;
+    transition: transform 0.3s ease-in-out;
 }
 
 /* Remove the default border around all admonitions */
 .md-typeset .admonition.important,
 .md-typeset details.important {
-    border: none; /* Removes all borders */
-    box-shadow: none; /* Removes any shadow effects */
+    border: none;
+    /* Removes all borders */
+    box-shadow: none;
+    /* Removes any shadow effects */
 }
 
 /* Customize important admonition */
 .md-typeset .admonition.important,
 .md-typeset details.important {
-    border: 5px solid #ff5722; /* Orange-red border */
-    background-color: #2b1a0f; /* Dark background */
-    color: #ffccbc; /* Light orange text */
+    border: 5px solid #ff5722;
+    /* Orange-red border */
+    background-color: #2b1a0f;
+    /* Dark background */
+    color: #ffccbc;
+    /* Light orange text */
 }
 
 /* Change the title bar color */
-.md-typeset .important > .admonition-title {
-    background-color: #ff5722; /* Orange-red title bar */
-    color: #ffffff; /* White text */
+.md-typeset .important>.admonition-title {
+    background-color: #ff5722;
+    /* Orange-red title bar */
+    color: #ffffff;
+    /* White text */
     font-weight: bold;
 }
 
 /* Remove the default border around admonitions */
 .md-typeset .admonition.caution,
 .md-typeset details.caution {
-    border: none; /* Removes all borders */
-    box-shadow: none; /* Removes any shadow effects */
+    border: none;
+    /* Removes all borders */
+    box-shadow: none;
+    /* Removes any shadow effects */
 }
 
 /* Improve caution admonition */
 .md-typeset .admonition.caution,
 .md-typeset details.caution {
-    border: 5px solid #ffeb3b; /* Bright yellow border */
-    background-color: #554c1a; /* Warmer, lighter yellow-brown */
-    color: #fff9c4; /* Softer yellow text for readability */
+    border: 5px solid #ffeb3b;
+    /* Bright yellow border */
+    background-color: #554c1a;
+    /* Warmer, lighter yellow-brown */
+    color: #fff9c4;
+    /* Softer yellow text for readability */
 }
 
 /* Brighten the title bar for better contrast */
-.md-typeset .caution > .admonition-title {
-    background-color: #ffeb3b; /* Bright yellow title bar */
-    color: #000000; /* Black text for high contrast */
+.md-typeset .caution>.admonition-title {
+    background-color: #ffeb3b;
+    /* Bright yellow title bar */
+    color: #000000;
+    /* Black text for high contrast */
     font-weight: bold;
 }
 
@@ -238,9 +283,9 @@ img[data-zoomable] {
         opacity: 0;
         transform: translateY(-10px);
     }
+
     to {
         opacity: 1;
         transform: translateY(0);
     }
 }
-
