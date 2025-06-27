@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.3.0](https://github.com/I-am-PUID-0/DUMB/compare/1.2.1...1.3.0) (2025-06-27)
+
+
+### ✨ Features
+
+* **core:** Improve core service startup ([8226f42](https://github.com/I-am-PUID-0/DUMB/commit/8226f42c0ebee34a828309a06e4f4be57bf45ea9))
+* **decypharr:** Adds patching to Decypharr config for default configuration ([8226f42](https://github.com/I-am-PUID-0/DUMB/commit/8226f42c0ebee34a828309a06e4f4be57bf45ea9))
+
 ## [1.2.1](https://github.com/I-am-PUID-0/DUMB/compare/1.2.0...1.2.1) (2025-06-26)
 
 
