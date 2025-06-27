@@ -918,6 +918,29 @@
   
   
     <li class="md-nav__item">
+      <a href="../services/plex-media-server/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Plex Media Server
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../services/plex-debrid/" class="md-nav__link">
         
   
@@ -2163,15 +2186,17 @@
 <h2 id="-mission">🎯 Mission<a class="headerlink" href="#-mission" title="Permanent link">#</a></h2>
 <p>DUMB was created with a single goal:</p>
 <p><strong>Bridge the gap between cloud-based debrid services and traditional media server ecosystems like Plex, Jellyfin, and Emby — with maximum automation and minimal configuration.</strong></p>
+<p>By directly integrating the <strong>media server itself</strong> (e.g. Plex) within the DUMB container, the platform overcomes long-standing issues like broken bind mount propagation, sync delays, and external scan conflicts common in multi-container setups.</p>
 <hr />
 <h2 id="-what-makes-dumb-unique">🧩 What Makes DUMB Unique?<a class="headerlink" href="#-what-makes-dumb-unique" title="Permanent link">#</a></h2>
 <p>Unlike other solutions that focus on one piece of the puzzle, <strong>DUMB integrates every step</strong> of the media pipeline:</p>
 <ul>
-<li>🔌 <em>Service Coordination</em> — via the internal DUMB API and real-time config management  </li>
-<li>📥 <em>Automated Acquisition</em> — with Riven for discovery and Zurg for debrid content fetching  </li>
-<li>☁️ <em>Cloud Storage Mounting</em> — through rclone mounts (e.g., Real-Debrid WebDAV)  </li>
-<li>🔁 <em>Library Management</em> — using symlinks, metadata enrichment, and optional server updates  </li>
-<li>📊 <em>Metadata Caching</em> — with Zilean to reduce latency and boost scraping efficiency  </li>
+<li>🖥️ <em>Embedded Media Servers</em> — Plex (and in future: Jellyfin, Emby) run inside the same container, ensuring seamless access to mounted content and full internal control</li>
+<li>🔌 <em>Service Coordination</em> — via the internal DUMB API and real-time config management</li>
+<li>📥 <em>Automated Acquisition</em> — with core services for discovery and Zurg and/or rclone for debrid content fetching</li>
+<li>☁️ <em>Cloud Storage Mounting</em> — through rclone mounts direct to debrid (e.g., Real-Debrid WebDAV) or utilizing Zurg's WebDAV</li>
+<li>🔁 <em>Library Management</em> — using symlinks, metadata enrichment, and optional server updates</li>
+<li>📊 <em>Metadata Caching</em> — with Zilean to reduce latency and boost scraping efficiency</li>
 <li>🧠 <em>Visual Control</em> — via the DUMB Frontend for live logs, settings, and monitoring</li>
 </ul>
 <p>All services are configured through a centralized file (<code>dumb_config.json</code>) and can be dynamically updated at runtime via the DUMB Frontend.</p>
@@ -2193,6 +2218,10 @@
 <tr>
 <td><strong>DUMB Frontend</strong></td>
 <td>Graphical interface for managing services, configs, and logs</td>
+</tr>
+<tr>
+<td><strong>Plex Media Server</strong></td>
+<td>First-class embedded media server for direct playback of collected content</td>
 </tr>
 <tr>
 <td><strong>Riven</strong></td>

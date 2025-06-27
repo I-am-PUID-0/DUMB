@@ -685,6 +685,15 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#-plex-media-server" class="md-nav__link">
+    <span class="md-ellipsis">
+      🖥️ Plex Media Server
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#-postgresql--pgadmin-4" class="md-nav__link">
     <span class="md-ellipsis">
       🗃️ PostgreSQL &amp; pgAdmin 4
@@ -1068,6 +1077,29 @@
   
   <span class="md-ellipsis">
     Phalanx DB
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../services/plex-media-server/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Plex Media Server
     
   </span>
   
@@ -2244,6 +2276,15 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#-plex-media-server" class="md-nav__link">
+    <span class="md-ellipsis">
+      🖥️ Plex Media Server
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#-postgresql--pgadmin-4" class="md-nav__link">
     <span class="md-ellipsis">
       🗃️ PostgreSQL &amp; pgAdmin 4
@@ -2300,6 +2341,7 @@
 <h3 id="-key-features">🔑 Key Features<a class="headerlink" href="#-key-features" title="Permanent link">#</a></h3>
 <ul>
 <li><strong>Unified Deployment</strong> – Combines multiple tools into a single, easy-to-deploy system.</li>
+<li><strong>Built-In Media Server Integration</strong> – Includes <strong>Plex Media Server</strong> (with future support for Jellyfin/Emby), fully embedded in the container to eliminate mount propagation issues.</li>
 <li><strong>Automated Content Management</strong> – Uses <strong>Debrid Services</strong>, <strong>Plex Discover Watchlists</strong>, <strong>Trakt lists</strong>, and <strong>Overseerr</strong> to automate media retrieval.</li>
 <li><strong>Integrated Web UI</strong> – Control and manage services through a simple <strong>web-based interface</strong>.</li>
 <li><strong>Modular Design</strong> – Each service (Riven, Zurg, Zilean, etc.) is independently configurable and upgradable.</li>
@@ -2308,7 +2350,7 @@
 <h2 id="-core-components">🛠️ Core Components<a class="headerlink" href="#-core-components" title="Permanent link">#</a></h2>
 <p>DUMB integrates the following projects to create a seamless media experience:</p>
 <h3 id="-riven">🎞️ <strong>Riven</strong><a class="headerlink" href="#-riven" title="Permanent link">#</a></h3>
-<p><a href="https://github.com/rivenmedia/riven">Riven</a> is responsible for content management, handling <strong>search queries, downloading, and organizing media</strong> for streaming.</p>
+<p><a href="https://github.com/rivenmedia/riven">Riven</a> is one of multiple options responsible for content management, handling <strong>search queries, downloading, and organizing media</strong> for streaming.</p>
 <h3 id="-cli-debrid">🎞️ <strong>CLI Debrid</strong><a class="headerlink" href="#-cli-debrid" title="Permanent link">#</a></h3>
 <p><a href="https://github.com/godver3/cli_debrid">CLI Debrid</a> is one of multiple options responsible for content management, handling <strong>search queries, downloading, and organizing media</strong> for streaming.</p>
 <h3 id="-decypharr">🎞️ <strong>Decypharr</strong><a class="headerlink" href="#-decypharr" title="Permanent link">#</a></h3>
@@ -2319,6 +2361,8 @@
 <p><a href="https://github.com/iPromKnight/zilean">Zilean</a> enhances content discovery and caching, optimizing the efficiency of media lookups.</p>
 <h3 id="-rclone">☁️ <strong>rclone</strong><a class="headerlink" href="#-rclone" title="Permanent link">#</a></h3>
 <p><a href="https://github.com/rclone/rclone">rclone</a> manages cloud storage connections and allows <strong>mounting remote debrid storage</strong> as if it were a local drive.</p>
+<h3 id="-plex-media-server">🖥️ <strong>Plex Media Server</strong><a class="headerlink" href="#-plex-media-server" title="Permanent link">#</a></h3>
+<p><a href="https://www.plex.tv/">Plex</a> is bundled directly inside DUMB, providing internal access to rclone-mounted content without needing to expose paths via external bind mounts.</p>
 <h3 id="-postgresql--pgadmin-4">🗃️ <strong>PostgreSQL</strong> &amp; <strong>pgAdmin 4</strong><a class="headerlink" href="#-postgresql--pgadmin-4" title="Permanent link">#</a></h3>
 <ul>
 <li><strong>PostgreSQL</strong> serves as the <strong>primary database</strong> for storing metadata, configurations, and user preferences.</li>
@@ -2331,7 +2375,7 @@
 <li><strong>Fetching Media from Debrid Services</strong> (Real-Debrid, AllDebrid, etc.).</li>
 <li><strong>Downloading &amp; Organizing Content</strong> using Zurg &amp; Riven.</li>
 <li><strong>Providing a Web Interface</strong> for monitoring &amp; controlling downloads.</li>
-<li><strong>Allowing Streaming via Plex &amp; Other Clients</strong> by mounting content with rclone.</li>
+<li><strong>Allowing Streaming via Plex</strong> using internal access to rclone-mounted media.</li>
 </ol>
 <h2 id="-next-steps">📌 Next Steps<a class="headerlink" href="#-next-steps" title="Permanent link">#</a></h2>
 <p>Explore the <a href="configuration/">Configuration</a> section to understand how to set up and customize DUMB according to your needs.</p>

@@ -1049,6 +1049,29 @@
   
   
     <li class="md-nav__item">
+      <a href="../../services/plex-media-server/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Plex Media Server
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../services/plex-debrid/" class="md-nav__link">
         
   
@@ -2227,21 +2250,12 @@
 <p>DUMB automatically starts the services defined in <code>dumb_config.json</code> in the proper order. Each service can also be managed independently using the <a href="../../services/dumb-frontend/">DUMB Frontend</a> or by directly modifying the configuration.</p>
 <div class="admonition important">
 <p class="admonition-title">Important: Configure API Key Before Startup</p>
-<p>DUMB is preset to start all services on the first startup.<br />
-As such, please ensure <code>ZURG_INSTANCES_REALDEBRID_API_KEY</code> is configured with your RealDebrid API Key in the compose <strong>before starting the container</strong>.</p>
+<p>DUMB is preset to disable all services, other than the API and Frontend on the first startup. 
+An Onboarding process is currently in development for the Frontend. 
+As an interim solution, please see the <a href="../../api/process/#post-processstart-core-service">API: Start Core Service</a> for info on using the API to preconfigure and start services. </p>
 </div>
 <h3 id="-automatic-service-start">🔄 Automatic Service Start<a class="headerlink" href="#-automatic-service-start" title="Permanent link">#</a></h3>
-<p>All services with <code>"enabled": true</code> in the config will be started on container launch. These typically include:</p>
-<ul>
-<li>DUMB API</li>
-<li>DUMB Frontend</li>
-<li>PostgreSQL</li>
-<li>pgAdmin 4</li>
-<li>rclone</li>
-<li>Riven Backend &amp; Frontend</li>
-<li>Zilean</li>
-<li>Zurg</li>
-</ul>
+<p>All services with <code>"enabled": true</code> in the config will be started on container launch.</p>
 <p>If a service fails to start, check its log file in the <code>/log</code> directory (or wherever <code>log_dir</code> is set).</p>
 <hr />
 <h2 id="-managing-updates">🔃 Managing Updates<a class="headerlink" href="#-managing-updates" title="Permanent link">#</a></h2>
@@ -2265,8 +2279,11 @@ As such, please ensure <code>ZURG_INSTANCES_REALDEBRID_API_KEY</code> is configu
 <p>Services supporting auto-updates:</p>
 <ul>
 <li>DUMB Frontend</li>
-<li>Riven Backend</li>
-<li>Riven Frontend</li>
+<li>Plex Media Server (Future release)</li>
+<li>Riven Backend and Frontend</li>
+<li>Decypharr</li>
+<li>CLI Debrid</li>
+<li>Plex Debrid</li>
 <li>Zilean</li>
 <li>Zurg</li>
 </ul>

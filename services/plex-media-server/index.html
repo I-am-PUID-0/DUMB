@@ -12,13 +12,13 @@
         <meta name="author" content="DUMB Team">
       
       
-        <link rel="canonical" href="https://I-am-PUID-0.github.io/DUMB/faq/postgres/">
+        <link rel="canonical" href="https://I-am-PUID-0.github.io/DUMB/services/plex-media-server/">
       
       
-        <link rel="prev" href="../pgadmin/">
+        <link rel="prev" href="../phalanx-db/">
       
       
-        <link rel="next" href="../rclone/">
+        <link rel="next" href="../plex-debrid/">
       
       
       <link rel="icon" href="../../assets/images/favicon.ico">
@@ -26,7 +26,7 @@
     
     
       
-        <title>PostgreSQL FAQ - DUMB</title>
+        <title>Plex Media Server - DUMB</title>
       
     
     
@@ -80,7 +80,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#postgresql-faq" class="md-skip">
+        <a href="#plex-media-server-configuration" class="md-skip">
           Skip to content
         </a>
       
@@ -121,7 +121,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              PostgreSQL FAQ
+              Plex Media Server
             
           </span>
         </div>
@@ -291,11 +291,13 @@
   
   
   
+    
+  
   
     
     
-      <li class="md-tabs__item">
-        <a href="../../services/" class="md-tabs__link">
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../" class="md-tabs__link">
           
   
   
@@ -351,13 +353,11 @@
   
   
   
-    
-  
   
     
     
-      <li class="md-tabs__item md-tabs__item--active">
-        <a href="../general/" class="md-tabs__link">
+      <li class="md-tabs__item">
+        <a href="../../faq/general/" class="md-tabs__link">
           
   
   
@@ -711,26 +711,31 @@
       
   
   
+    
   
   
+  
     
     
     
     
+      
+        
+        
       
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
         
           
-          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
             
   
   
@@ -743,7 +748,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_4">
             <span class="md-nav__icon md-icon"></span>
             Services
@@ -757,7 +762,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/" class="md-nav__link">
+      <a href="../" class="md-nav__link">
         
   
   
@@ -780,7 +785,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/api/" class="md-nav__link">
+      <a href="../api/" class="md-nav__link">
         
   
   
@@ -803,7 +808,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/dumb-frontend/" class="md-nav__link">
+      <a href="../dumb-frontend/" class="md-nav__link">
         
   
   
@@ -826,7 +831,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/decypharr/" class="md-nav__link">
+      <a href="../decypharr/" class="md-nav__link">
         
   
   
@@ -849,7 +854,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/cli-debrid/" class="md-nav__link">
+      <a href="../cli-debrid/" class="md-nav__link">
         
   
   
@@ -872,7 +877,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/cli-battery/" class="md-nav__link">
+      <a href="../cli-battery/" class="md-nav__link">
         
   
   
@@ -895,7 +900,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/phalanx-db/" class="md-nav__link">
+      <a href="../phalanx-db/" class="md-nav__link">
         
   
   
@@ -915,10 +920,32 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../../services/plex-media-server/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    Plex Media Server
+    
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -929,6 +956,128 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#-configuration-in-dumb_configjson" class="md-nav__link">
+    <span class="md-ellipsis">
+      📦 Configuration in dumb_config.json
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="📦 Configuration in dumb_config.json">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#-key-configuration-fields" class="md-nav__link">
+    <span class="md-ellipsis">
+      🔍 Key Configuration Fields
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#-setup--behavior" class="md-nav__link">
+    <span class="md-ellipsis">
+      ⚙️ Setup &amp; Behavior
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="⚙️ Setup &amp; Behavior">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#-requirements" class="md-nav__link">
+    <span class="md-ellipsis">
+      🧰 Requirements
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#-how-to-start" class="md-nav__link">
+    <span class="md-ellipsis">
+      🛠️ How to Start
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#-integration-with-other-services" class="md-nav__link">
+    <span class="md-ellipsis">
+      🧩 Integration with Other Services
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#-access" class="md-nav__link">
+    <span class="md-ellipsis">
+      🌐 Access
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#-mount-and-path-planning" class="md-nav__link">
+    <span class="md-ellipsis">
+      📁 Mount and Path Planning
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#-tips-and-troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      🧪 Tips and Troubleshooting
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#-resources" class="md-nav__link">
+    <span class="md-ellipsis">
+      🔗 Resources
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -941,7 +1090,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/plex-debrid/" class="md-nav__link">
+      <a href="../plex-debrid/" class="md-nav__link">
         
   
   
@@ -964,7 +1113,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/pgadmin/" class="md-nav__link">
+      <a href="../pgadmin/" class="md-nav__link">
         
   
   
@@ -987,7 +1136,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/postgres/" class="md-nav__link">
+      <a href="../postgres/" class="md-nav__link">
         
   
   
@@ -1010,7 +1159,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/rclone/" class="md-nav__link">
+      <a href="../rclone/" class="md-nav__link">
         
   
   
@@ -1033,7 +1182,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/riven-backend/" class="md-nav__link">
+      <a href="../riven-backend/" class="md-nav__link">
         
   
   
@@ -1056,7 +1205,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/riven-frontend/" class="md-nav__link">
+      <a href="../riven-frontend/" class="md-nav__link">
         
   
   
@@ -1079,7 +1228,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/zilean/" class="md-nav__link">
+      <a href="../zilean/" class="md-nav__link">
         
   
   
@@ -1102,7 +1251,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/zurg/" class="md-nav__link">
+      <a href="../zurg/" class="md-nav__link">
         
   
   
@@ -1597,31 +1746,26 @@
       
   
   
-    
   
   
-  
     
     
     
     
-      
-        
-        
       
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
         
           
-          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="">
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
             
   
   
@@ -1634,7 +1778,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_7">
             <span class="md-nav__icon md-icon"></span>
             FAQ
@@ -1648,7 +1792,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../general/" class="md-nav__link">
+      <a href="../../faq/general/" class="md-nav__link">
         
   
   
@@ -1671,7 +1815,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../dumb/" class="md-nav__link">
+      <a href="../../faq/dumb/" class="md-nav__link">
         
   
   
@@ -1694,7 +1838,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../decypharr/" class="md-nav__link">
+      <a href="../../faq/decypharr/" class="md-nav__link">
         
   
   
@@ -1717,7 +1861,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../cli-debrid/" class="md-nav__link">
+      <a href="../../faq/cli-debrid/" class="md-nav__link">
         
   
   
@@ -1740,7 +1884,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../plex/" class="md-nav__link">
+      <a href="../../faq/plex/" class="md-nav__link">
         
   
   
@@ -1763,7 +1907,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../plex-debrid/" class="md-nav__link">
+      <a href="../../faq/plex-debrid/" class="md-nav__link">
         
   
   
@@ -1786,7 +1930,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../pgadmin/" class="md-nav__link">
+      <a href="../../faq/pgadmin/" class="md-nav__link">
         
   
   
@@ -1806,32 +1950,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    PostgreSQL
-    
-  </span>
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../../faq/postgres/" class="md-nav__link">
         
   
   
@@ -1842,89 +1964,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#-how-postgresql-is-used-in-dumb" class="md-nav__link">
-    <span class="md-ellipsis">
-      🗃️ How PostgreSQL is used in DUMB
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#-what-happens-if-i-delete-the-database" class="md-nav__link">
-    <span class="md-ellipsis">
-      ❗ What happens if I delete the database?
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#-can-i-reset-the-database-intentionally" class="md-nav__link">
-    <span class="md-ellipsis">
-      🔁 Can I reset the database intentionally?
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#-what-are-the-default-credentials" class="md-nav__link">
-    <span class="md-ellipsis">
-      🔐 What are the default credentials?
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#-can-i-connect-to-postgresql-externally" class="md-nav__link">
-    <span class="md-ellipsis">
-      💻 Can I connect to PostgreSQL externally?
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#-is-it-safe-to-run-queries-against-the-databases" class="md-nav__link">
-    <span class="md-ellipsis">
-      🧪 Is it safe to run queries against the databases?
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#-related-pages" class="md-nav__link">
-    <span class="md-ellipsis">
-      📎 Related Pages
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -1937,7 +1976,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../rclone/" class="md-nav__link">
+      <a href="../../faq/rclone/" class="md-nav__link">
         
   
   
@@ -1960,7 +1999,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../riven/" class="md-nav__link">
+      <a href="../../faq/riven/" class="md-nav__link">
         
   
   
@@ -1983,7 +2022,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../zilean/" class="md-nav__link">
+      <a href="../../faq/zilean/" class="md-nav__link">
         
   
   
@@ -2006,7 +2045,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../zurg/" class="md-nav__link">
+      <a href="../../faq/zurg/" class="md-nav__link">
         
   
   
@@ -2122,63 +2161,102 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#-how-postgresql-is-used-in-dumb" class="md-nav__link">
+  <a href="#-configuration-in-dumb_configjson" class="md-nav__link">
     <span class="md-ellipsis">
-      🗃️ How PostgreSQL is used in DUMB
+      📦 Configuration in dumb_config.json
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="📦 Configuration in dumb_config.json">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#-key-configuration-fields" class="md-nav__link">
+    <span class="md-ellipsis">
+      🔍 Key Configuration Fields
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#-setup--behavior" class="md-nav__link">
+    <span class="md-ellipsis">
+      ⚙️ Setup &amp; Behavior
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="⚙️ Setup &amp; Behavior">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#-requirements" class="md-nav__link">
+    <span class="md-ellipsis">
+      🧰 Requirements
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#-how-to-start" class="md-nav__link">
+    <span class="md-ellipsis">
+      🛠️ How to Start
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#-integration-with-other-services" class="md-nav__link">
+    <span class="md-ellipsis">
+      🧩 Integration with Other Services
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#-what-happens-if-i-delete-the-database" class="md-nav__link">
+  <a href="#-access" class="md-nav__link">
     <span class="md-ellipsis">
-      ❗ What happens if I delete the database?
+      🌐 Access
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#-can-i-reset-the-database-intentionally" class="md-nav__link">
+  <a href="#-mount-and-path-planning" class="md-nav__link">
     <span class="md-ellipsis">
-      🔁 Can I reset the database intentionally?
+      📁 Mount and Path Planning
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#-what-are-the-default-credentials" class="md-nav__link">
+  <a href="#-tips-and-troubleshooting" class="md-nav__link">
     <span class="md-ellipsis">
-      🔐 What are the default credentials?
+      🧪 Tips and Troubleshooting
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#-can-i-connect-to-postgresql-externally" class="md-nav__link">
+  <a href="#-resources" class="md-nav__link">
     <span class="md-ellipsis">
-      💻 Can I connect to PostgreSQL externally?
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#-is-it-safe-to-run-queries-against-the-databases" class="md-nav__link">
-    <span class="md-ellipsis">
-      🧪 Is it safe to run queries against the databases?
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#-related-pages" class="md-nav__link">
-    <span class="md-ellipsis">
-      📎 Related Pages
+      🔗 Resources
     </span>
   </a>
   
@@ -2203,89 +2281,95 @@
   
 
 
-<h1 id="postgresql-faq">PostgreSQL FAQ<a class="headerlink" href="#postgresql-faq" title="Permanent link">#</a></h1>
-<p>Below are common questions and explanations related to <strong>PostgreSQL</strong>, which is the primary database engine used by DUMB.</p>
+<h1 id="plex-media-server-configuration">Plex Media Server Configuration<a class="headerlink" href="#plex-media-server-configuration" title="Permanent link">#</a></h1>
+<p><strong>Plex Media Server</strong> integrates seamlessly into the DUMB ecosystem to serve and manage your personal media library. It can be configured to either work independently or in tandem with other core services such as Riven, CLI Debrid, Plex Debrid, and Decypharr.</p>
 <hr />
-<h2 id="-how-postgresql-is-used-in-dumb">🗃️ How PostgreSQL is used in DUMB<a class="headerlink" href="#-how-postgresql-is-used-in-dumb" title="Permanent link">#</a></h2>
-<p>PostgreSQL is used to <strong>store persistent data</strong> for the following services:</p>
+<h2 id="-configuration-in-dumb_configjson">📦 Configuration in <code>dumb_config.json</code><a class="headerlink" href="#-configuration-in-dumb_configjson" title="Permanent link">#</a></h2>
+<div class="highlight"><pre><span></span><code><span class="nt">&quot;plex&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;process_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Plex Media Server&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;suppress_logging&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;log_level&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;INFO&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;port&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">32400</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;auto_update&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;auto_update_interval&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">24</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;config_dir&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/plex&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;config_file&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/plex/Plex Media Server/Preferences.xml&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;log_file&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/plex/Plex Media Server/Logs/Plex Media Server.log&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;plex_claim&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;friendly_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;DUMB&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;command&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[],</span>
+<span class="w">  </span><span class="nt">&quot;env&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{}</span>
+<span class="p">}</span>
+</code></pre></div>
+<h3 id="-key-configuration-fields">🔍 Key Configuration Fields<a class="headerlink" href="#-key-configuration-fields" title="Permanent link">#</a></h3>
 <ul>
-<li><strong>Riven Backend</strong> – stores indexed content, metadata, scraped results, job states, and user settings.</li>
-<li><strong>Zilean</strong> – stores hash lookups, metadata cache, and processing history.</li>
-</ul>
-<p>Each service has its <strong>own database</strong>, created automatically when DUMB starts:</p>
-<table>
-<thead>
-<tr>
-<th>Service</th>
-<th>Database Name</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Riven</td>
-<td><code>riven</code></td>
-</tr>
-<tr>
-<td>Zilean</td>
-<td><code>zilean</code></td>
-</tr>
-<tr>
-<td>pgAdmin (optional)</td>
-<td><code>pgadmin</code></td>
-</tr>
-</tbody>
-</table>
-<p>The database storage path is configured using the <code>postgres_data</code> path in <code>dumb_config.json</code>, defaulting to <code>/postgres_data</code>.</p>
-<hr />
-<h2 id="-what-happens-if-i-delete-the-database">❗ What happens if I delete the database?<a class="headerlink" href="#-what-happens-if-i-delete-the-database" title="Permanent link">#</a></h2>
-<p>If the PostgreSQL volume or <code>/postgres_data</code> directory is deleted, <strong>all data for Riven and Zilean will be lost</strong>.</p>
-<p>This includes:</p>
-<ul>
-<li>Indexed or scraped content in Riven</li>
-<li>Cached metadata and hashes in Zilean</li>
-<li>Any custom settings stored in the database</li>
-</ul>
-<p>Both services will start fresh and <strong>reinitialize their databases</strong> upon next launch.</p>
-<div class="admonition warning">
-<p class="admonition-title">Accidental deletion of <code>postgres_data</code> is not recoverable</p>
-<p>Make sure to regularly back up your <code>postgres_data</code> directory if long-term retention is important.</p>
-<p>See the <a href="../pgadmin/#-example-scheduled-backups-with-pgagent">pgAdmin service</a> for details on scheduling backups of the PostgreSQL databases. </p>
-</div>
-<hr />
-<h2 id="-can-i-reset-the-database-intentionally">🔁 Can I reset the database intentionally?<a class="headerlink" href="#-can-i-reset-the-database-intentionally" title="Permanent link">#</a></h2>
-<p>Yes — stopping the stack, deleting the <code>postgres_data</code> directory, and starting again will reset everything.</p>
-<p>Alternatively, use <strong>pgAdmin 4</strong> (if enabled) to drop individual databases manually.</p>
-<blockquote>
-<p>See the <a href="../../services/postgres/#-useful-commands">PostgreSQL Useful Commands</a> section.</p>
-<p>Alternatively, See the <a href="../pgadmin/#-drop-a-database-or-create-a-manual-backup-in-pgadmin">pgAdmin FAQ</a> section.</p>
-</blockquote>
-<hr />
-<h2 id="-what-are-the-default-credentials">🔐 What are the default credentials?<a class="headerlink" href="#-what-are-the-default-credentials" title="Permanent link">#</a></h2>
-<ul>
-<li><strong>Username</strong>: <code>DUMB</code></li>
-<li><strong>Password</strong>: <code>postgres</code></li>
-<li><strong>Port</strong>: <code>5432</code></li>
-<li>These values can be customized in the <code>postgres</code> section of <code>dumb_config.json</code>.</li>
+<li><code>enabled</code>: Toggle Plex Media Server on or off.</li>
+<li><code>plex_claim</code>: Plex claim token for initial server registration.</li>
+<li><code>friendly_name</code>: The name that appears in the Plex Web App and on local clients.</li>
+<li><code>config_dir</code>: Directory containing Plex server data (including preferences).</li>
+<li><code>port</code>: Default access port (32400).</li>
 </ul>
 <hr />
-<h2 id="-can-i-connect-to-postgresql-externally">💻 Can I connect to PostgreSQL externally?<a class="headerlink" href="#-can-i-connect-to-postgresql-externally" title="Permanent link">#</a></h2>
-<p>Yes — by default, PostgreSQL binds to <code>127.0.0.1</code>. If you want to connect from an external app (like DBeaver or pgAdmin on your host machine), you'll need to:</p>
+<h2 id="-setup--behavior">⚙️ Setup &amp; Behavior<a class="headerlink" href="#-setup--behavior" title="Permanent link">#</a></h2>
+<h3 id="-requirements">🧰 Requirements<a class="headerlink" href="#-requirements" title="Permanent link">#</a></h3>
+<ul>
+<li>
+<p>Plex must have access to:</p>
+</li>
+<li>
+<p>Media directories (local or rclone-mounted).</p>
+</li>
+<li>Transcoding cache (if transcoding is enabled).</li>
+<li>Valid claim token for first-time setup (if not already configured).</li>
+</ul>
+<h3 id="-how-to-start">🛠️ How to Start<a class="headerlink" href="#-how-to-start" title="Permanent link">#</a></h3>
 <ol>
-<li>Change <code>host</code> in the <code>postgres</code> section of <code>dumb_config.json</code> to <code>0.0.0.0</code></li>
-<li>Add a port binding (e.g., <code>5432:5432</code>) to your container</li>
-<li>Optionally secure with a firewall or password change</li>
+<li>Ensure the <code>plex</code> block is properly configured in <code>dumb_config.json</code>.</li>
+<li>Provide a <code>plex_claim</code> token if starting fresh.</li>
+<li>Start the container with DUMB orchestration, or manually start the Plex service.</li>
+<li>Access via: <code>http://&lt;host&gt;:32400/web</code></li>
 </ol>
 <hr />
-<h2 id="-is-it-safe-to-run-queries-against-the-databases">🧪 Is it safe to run queries against the databases?<a class="headerlink" href="#-is-it-safe-to-run-queries-against-the-databases" title="Permanent link">#</a></h2>
-<p>Yes — but with caution. Direct queries using tools like pgAdmin or psql can be useful for debugging or data inspection, but changes may break app logic unless you know what you're doing.</p>
-<p>When in doubt, make a backup first!</p>
-<hr />
-<h2 id="-related-pages">📎 Related Pages<a class="headerlink" href="#-related-pages" title="Permanent link">#</a></h2>
+<h2 id="-integration-with-other-services">🧩 Integration with Other Services<a class="headerlink" href="#-integration-with-other-services" title="Permanent link">#</a></h2>
+<p>Plex is designed to serve content collected and maintained by core DUMB services including <strong>Riven</strong>, <strong>CLI Debrid</strong>, <strong>Plex Debrid</strong>, and <strong>Decypharr</strong>. These services fetch, organize, and optionally symlink media content into the mounted directory used by Plex.</p>
+<div class="admonition note">
+<p class="admonition-title">By default, media content is made available inside the container at <code>/mnt/debrid</code> through rclone mounts.</p>
+</div>
 <ul>
-<li><a href="../../services/pgadmin/">pgAdmin Service Guide</a></li>
-<li><a href="../../services/riven-backend/">Riven Backend</a></li>
-<li><a href="../../services/zilean/">Zilean</a></li>
-<li><a href="../../features/configuration/">DUMB Configuration</a></li>
+<li><strong>Core services</strong> populate <code>/mnt/debrid</code> with downloaded or upgraded content.</li>
+<li>Plex scans this location to index and serve the media.</li>
+</ul>
+<div class="admonition info">
+<p class="admonition-title">If you want to serve media from the host system, bind mount your local media directory into the container and add it as a library path in Plex.</p>
+</div>
+<hr />
+<h2 id="-access">🌐 Access<a class="headerlink" href="#-access" title="Permanent link">#</a></h2>
+<ul>
+<li>URL: <code>http://&lt;host&gt;:32400/web</code></li>
+<li>Credentials: Managed through Plex.tv account</li>
+</ul>
+<hr />
+<h2 id="-mount-and-path-planning">📁 Mount and Path Planning<a class="headerlink" href="#-mount-and-path-planning" title="Permanent link">#</a></h2>
+<p>Ensure your media storage is accessible to Plex via the correct container path.</p>
+<ul>
+<li><strong>Default internal mount</strong>: <code>/mnt/debrid</code></li>
+<li><strong>Add bind mounts</strong>: for local media stored on the host machine not managed by DUMB.</li>
+</ul>
+<hr />
+<h2 id="-tips-and-troubleshooting">🧪 Tips and Troubleshooting<a class="headerlink" href="#-tips-and-troubleshooting" title="Permanent link">#</a></h2>
+<ul>
+<li>If the container fails to start due to permissions, ensure Plex has proper access to its <code>config_dir</code> and media directories.</li>
+<li>Use <code>PUID</code> and <code>PGID</code> to match host user permissions.</li>
+<li>Logs can be viewed directly from the <strong>DUMB Frontend</strong>.</li>
+<li>You can also start, stop, restart Plex, and modify the <code>dumb_config.json</code> or Plex <code>Preferences.xml</code> from the <strong>DUMB Frontend</strong> interface.</li>
+</ul>
+<hr />
+<h2 id="-resources">🔗 Resources<a class="headerlink" href="#-resources" title="Permanent link">#</a></h2>
+<ul>
+<li><a href="https://www.plex.tv/">Plex Official Site</a></li>
+<li><a href="https://www.plex.tv/claim">Plex Claim Token Page</a></li>
+<li><a href="https://support.plex.tv/">Plex Support</a></li>
 </ul>
 
 
