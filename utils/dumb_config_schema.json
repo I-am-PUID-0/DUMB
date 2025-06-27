@@ -418,6 +418,12 @@
         },
         "env": {
           "type": "object"
+        },
+        "debrid_service": {
+          "type": "string"
+        },
+        "api_key": {
+          "type": "string"
         }
       },
       "required": [
@@ -440,7 +446,9 @@
         "config_dir",
         "config_file",
         "log_file",
-        "env"
+        "env",
+        "debrid_service",
+        "api_key"
       ]
     },
     "phalanx_db": {

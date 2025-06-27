@@ -135,7 +135,9 @@
         "config_dir": "/decypharr",
         "config_file": "/decypharr/config.json",
         "log_file": "/decypharr/logs/decypharr.log",
-        "env": {}
+        "env": {},
+        "debrid_service": "",
+        "api_key": ""
     },
     "phalanx_db": {
         "enabled": false,
