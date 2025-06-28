@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.3.1](https://github.com/I-am-PUID-0/DUMB/compare/1.3.0...1.3.1) (2025-06-28)
+
+
+### 🤡 Other Changes
+
+* **deps:** bump fastapi from 0.115.12 to 0.115.14 ([#19](https://github.com/I-am-PUID-0/DUMB/issues/19)) ([4fa13c8](https://github.com/I-am-PUID-0/DUMB/commit/4fa13c88c507df9d88893a48d56a8487eb8a0f79))
+* update docker-compose.yml ([e67185e](https://github.com/I-am-PUID-0/DUMB/commit/e67185e0b8045dab2f870186ef8eddc6f1ab37a8))
+
+
+### 📖 Documentation
+
+* **readme:** Minor readme tweak ([#21](https://github.com/I-am-PUID-0/DUMB/issues/21)) ([e1283bc](https://github.com/I-am-PUID-0/DUMB/commit/e1283bcc25695cc2a1a072a1b6014949b1d15f6e))
+* **readme:** update compose to include /mnt/debrid ([1d29a0f](https://github.com/I-am-PUID-0/DUMB/commit/1d29a0fe7ddace329e1c29f855d950b1905b8fe9))
+
 ## [1.3.0](https://github.com/I-am-PUID-0/DUMB/compare/1.2.1...1.3.0) (2025-06-27)
 
 
