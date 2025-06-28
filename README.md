@@ -117,7 +117,8 @@ services:
       - /home/username/docker/DUMB/cli_debrid:/cli_debrid/data        ## Location for cli_debrid data
       - /home/username/docker/DUMB/phalanx_db:/phalanx_db/data        ## Location for phalanx_db data 
       - /home/username/docker/DUMB/decypharr:/decypharr               ## Location for decypharr data      
-      - /home/username/docker/DUMB/plex:/plex                         ## Location for plex data 
+      - /home/username/docker/DUMB/plex:/plex                         ## Location for plex data
+      - /home/username/docker/DUMB/mnt/debrid:/mnt/debrid             ## Location for all symlinks and rclone mounts - change to /mnt/debrid:rshared if using decypharr 
     environment:
       - TZ=
       - PUID=
