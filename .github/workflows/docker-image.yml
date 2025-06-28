@@ -82,6 +82,7 @@ jobs:
         uses: actions/checkout@v4
       
       - name: Set up QEMU
+        if: env.SKIP_QEMU_SETUP != 'true'
         uses: docker/setup-qemu-action@v3
         with:
           platforms: 'linux/amd64,linux/arm64,linux/arm/v7'
