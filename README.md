@@ -51,9 +51,11 @@
 
 ## 📜 Description
 
-**Debrid Unlimited Media Bridge (DUMB)** is an All-In-One (AIO) docker image for the unified deployment of the following projects/tools.  
-You are free to use and control which ever components you wish to use.  
-Not all a required and serveral do the same thing - albiet in a different way
+**Debrid Unlimited Media Bridge (DUMB)** is an All-In-One (AIO) docker image for the unified deployment of the following projects/tools.
+
+> [!Note]
+> You are free to use and control which ever components you wish to use.  
+> Not all a required and serveral do the same thing - albiet in a different way
 
 | Project                                                             | Author                                                                   |
 | ------------------------------------------------------------------- | ------------------------------------------------------------------------ |
