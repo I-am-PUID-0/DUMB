@@ -73,6 +73,8 @@ jobs:
   build-and-push:   
     needs: fetch-latest-tags
     runs-on: self-hosted
+    env:
+      SKIP_QEMU_SETUP: 'true'    
     outputs:
       version: ${{ env.VERSION }}
       repo_owner_lower: ${{ env.REPO_OWNER_LOWER }}
