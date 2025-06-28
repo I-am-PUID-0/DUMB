@@ -379,3 +379,11 @@ FodyWeavers.xsd
 settings.json
 /plex
 /decypharr
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Code editor specific files
+.vscode/
+.idea/

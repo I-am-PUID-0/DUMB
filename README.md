@@ -51,13 +51,33 @@
 
 ## 📜 Description
 
-**Debrid Unlimited Media Bridge (DUMB)** is an All-In-One (AIO) docker image for the unified deployment of **[Riven Media's](https://github.com/rivenmedia)**, **[itsToggle's](https://github.com/itsToggle)**, **[godver3's](https://github.com/godver3)**, **[yowmamasita's](https://github.com/yowmamasita)**, **[iPromKnight's](https://github.com/iPromKnight/zilean)**, **[Mukhtar Akere's](https://github.com/sirrobot01)**, **[Nick Craig-Wood's](https://github.com/ncw)**, **[Michael Stonebraker's](https://en.wikipedia.org/wiki/Michael_Stonebraker)**, and **[Dave Page's](https://github.com/dpage)** projects -- **[Riven](https://github.com/rivenmedia/riven)**, **[plex_debrid](https://github.com/itsToggle/plex_debrid)**, **[cli_debrid](https://github.com/godver3/cli_debrid)**, **[Zurg](https://github.com/debridmediamanager/zurg-testing)**, **[Zilean](https://github.com/iPromKnight/zilean)**, **[Decypharr](https://github.com/sirrobot01/decypharr)**,**[rclone](https://github.com/rclone/rclone)**, **[PostgreSQL](https://www.postgresql.org/)**, and **[pgAdmin 4](https://www.pgadmin.org/)**.
+**Debrid Unlimited Media Bridge (DUMB)** is an All-In-One (AIO) docker image for the unified deployment of the following projects/tools.
 
-> ⚠️ **IMPORTANT**: Docker Desktop **CANNOT** be used to run DUMB. Docker Desktop does not support the [mount propagation](https://docs.docker.com/storage/bind-mounts/#configure-bind-propagation) required for rclone mounts.
+> [!Note]
+> You are free to use and control which ever components you wish to use.  
+> Not all a required and serveral do the same thing - albiet in a different way
+
+| Project                                                             | Author                                                                   |
+| ------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| [cli_debrid](https://github.com/godver3/cli_debrid)                 | [godver3](https://github.com/godver3)                                    |
+| [Decypharr](https://github.com/sirrobot01/decypharr)                | [Mukhtar Akere](https://github.com/sirrobot01)                           |
+| [Plex Media Server - Docker](https://github.com/plexinc/pms-docker) | [plexinc](https://github.com/plexinc)                                    |
+| [plex_debrid](https://github.com/itsToggle/plex_debrid)             | [itsToggle](https://github.com/itsToggle)                                |
+| [PostgreSQL](https://www.postgresql.org/)                           | [Michael Stonebraker](https://en.wikipedia.org/wiki/Michael_Stonebraker) |
+| [rclone](https://github.com/rclone/rclone)                          | [Nick Craig-Wood](https://github.com/ncw)                                |
+| [Riven](https://github.com/rivenmedia/riven)                        | [Riven Media](https://github.com/rivenmedia)                             |
+| [Zurg](https://github.com/debridmediamanager/zurg-testing)          | [yowmamasita](https://github.com/yowmamasita)                            |
+| [Zilean](https://github.com/iPromKnight/zilean)                     | [iPromKnight](https://github.com/iPromKnight)                            |
+|                                                                     |                                                                          |
+
+
+> [!CAUTION]
+> Docker Desktop **CANNOT** be used to run DUMB!
+> Docker Desktop does not support the [mount propagation](https://docs.docker.com/storage/bind-mounts/#configure-bind-propagation) required for rclone mounts.
 >
 > ![image](https://github.com/I-am-PUID-0/DUMB/assets/36779668/aff06342-1099-4554-a5a4-72a7c82cb16e)
 >
-> See the DUMB Docs for [alternative deployment options](https://i-am-puid-0.github.io/DUMB/deployment/wsl) to run DUMB on Windows through WSL2.
+> See the DUMB Docs for [alternative deployment options](https://i-am-puid-0.github.io/DUMB/deployment/wsl) to run DUMB on Windows through `WSL2`.
 
 ## 🌟 Features
 
@@ -165,15 +185,15 @@ format: `<HOST_DIR>:<CONTAINER_DIR>[:PERMISSIONS]`.
 | --------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `/config`             | rw          | This is where the application stores the rclone.conf, and any files needing persistence. CAUTION: rclone.conf is overwritten upon start/restart of the container. Do NOT use an existing rclone.conf file if you have other rclone services |
 | `/log`                | rw          | This is where the application stores its log files                                                                                                                                                                                          |
-| `/zurg/RD`            | rw          | This is where Zurg will store the active configuration and data for RealDebrid.                                                                                                    |
-| `/riven/data`         | rw          | This is where Riven will store its data.                                                                                                                                                               |
-| `/postgres_data`      | rw          | This is where PostgreSQL will store its data.                                                                                                                                                          |
-| `/pgadmin/data`       | rw          | This is where pgAdmin 4 will store its data.                                                                                                                                                          |
-| `/plex_debrid/config` | rw          | This is where plex_debrid will store its data.                                                                                                                                                   |
-| `/cli_debrid/data` | rw             | This is where cli_debrid will store its data.                                                                                                                                                    |       
-| `/phalanx_db/data` | rw             | This is where phalanx_db will store its data.                                                                                                                                                    |  
-| `/decypharr`       | rw             | This is where decypharr will store its data.                                                                                                                                                     |  
-| `/plex`            | rw             | This is where Plex Media Server will store its data.                                                                                                                                                    |    
+| `/zurg/RD`            | rw          | This is where Zurg will store the active configuration and data for RealDebrid.                                                                                                                                                             |
+| `/riven/data`         | rw          | This is where Riven will store its data.                                                                                                                                                                                                    |
+| `/postgres_data`      | rw          | This is where PostgreSQL will store its data.                                                                                                                                                                                               |
+| `/pgadmin/data`       | rw          | This is where pgAdmin 4 will store its data.                                                                                                                                                                                                |
+| `/plex_debrid/config` | rw          | This is where plex_debrid will store its data.                                                                                                                                                                                              |
+| `/cli_debrid/data`    | rw          | This is where cli_debrid will store its data.                                                                                                                                                                                               |
+| `/phalanx_db/data`    | rw          | This is where phalanx_db will store its data.                                                                                                                                                                                               |
+| `/decypharr`          | rw          | This is where decypharr will store its data.                                                                                                                                                                                                |
+| `/plex`               | rw          | This is where Plex Media Server will store its data.                                                                                                                                                                                        |
 
 ## 📝 TODO
 
