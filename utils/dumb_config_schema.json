@@ -1422,6 +1422,7 @@
     "cli_battery",
     "decypharr",
     "phalanx_db",
+    "plex",
     "plex_debrid",
     "postgres",
     "pgadmin",
