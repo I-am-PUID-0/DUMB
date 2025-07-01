@@ -85,10 +85,6 @@ jobs:
       - name: Check file system IO
         run: |
           dd if=/dev/zero of=/tmp/testfile bs=1M count=100 oflag=dsync      
-      - name: Mount tmpfs for build
-        run: |
-          mkdir -p /mnt/ramdisk
-          mount -t tmpfs -o size=2G tmpfs /mnt/ramdisk
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
       - name: Build zilean‑builder stage (multi‑arch)
@@ -117,11 +113,7 @@ jobs:
           platforms: linux/amd64,linux/arm64
       - name: Check file system IO
         run: |
-          dd if=/dev/zero of=/tmp/testfile bs=1M count=100 oflag=dsync      
-      - name: Mount tmpfs for build
-        run: |
-          mkdir -p /mnt/ramdisk
-          mount -t tmpfs -o size=2G tmpfs /mnt/ramdisk          
+          dd if=/dev/zero of=/tmp/testfile bs=1M count=100 oflag=dsync
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
       - name: Build pgadmin‑builder stage
@@ -149,11 +141,7 @@ jobs:
           platforms: linux/amd64,linux/arm64
       - name: Check file system IO
         run: |
-          dd if=/dev/zero of=/tmp/testfile bs=1M count=100 oflag=dsync      
-      - name: Mount tmpfs for build
-        run: |
-          mkdir -p /mnt/ramdisk
-          mount -t tmpfs -o size=2G tmpfs /mnt/ramdisk          
+          dd if=/dev/zero of=/tmp/testfile bs=1M count=100 oflag=dsync
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
       - name: Build systemstats‑builder stage
@@ -182,11 +170,7 @@ jobs:
           platforms: linux/amd64,linux/arm64
       - name: Check file system IO
         run: |
-          dd if=/dev/zero of=/tmp/testfile bs=1M count=100 oflag=dsync      
-      - name: Mount tmpfs for build
-        run: |
-          mkdir -p /mnt/ramdisk
-          mount -t tmpfs -o size=2G tmpfs /mnt/ramdisk          
+          dd if=/dev/zero of=/tmp/testfile bs=1M count=100 oflag=dsync
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
       - name: Build riven‑frontend‑builder stage
@@ -215,11 +199,7 @@ jobs:
           platforms: linux/amd64,linux/arm64
       - name: Check file system IO
         run: |
-          dd if=/dev/zero of=/tmp/testfile bs=1M count=100 oflag=dsync      
-      - name: Mount tmpfs for build
-        run: |
-          mkdir -p /mnt/ramdisk
-          mount -t tmpfs -o size=2G tmpfs /mnt/ramdisk          
+          dd if=/dev/zero of=/tmp/testfile bs=1M count=100 oflag=dsync
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
       - name: Build riven‑backend‑builder stage
@@ -248,11 +228,7 @@ jobs:
           platforms: linux/amd64,linux/arm64
       - name: Check file system IO
         run: |
-          dd if=/dev/zero of=/tmp/testfile bs=1M count=100 oflag=dsync      
-      - name: Mount tmpfs for build
-        run: |
-          mkdir -p /mnt/ramdisk
-          mount -t tmpfs -o size=2G tmpfs /mnt/ramdisk          
+          dd if=/dev/zero of=/tmp/testfile bs=1M count=100 oflag=dsync        
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
       - name: Build dumb‑frontend‑builder stage
@@ -281,11 +257,7 @@ jobs:
           platforms: linux/amd64,linux/arm64
       - name: Check file system IO
         run: |
-          dd if=/dev/zero of=/tmp/testfile bs=1M count=100 oflag=dsync      
-      - name: Mount tmpfs for build
-        run: |
-          mkdir -p /mnt/ramdisk
-          mount -t tmpfs -o size=2G tmpfs /mnt/ramdisk          
+          dd if=/dev/zero of=/tmp/testfile bs=1M count=100 oflag=dsync          
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
       - name: Build plex_debrid‑builder stage
@@ -314,11 +286,7 @@ jobs:
           platforms: linux/amd64,linux/arm64
       - name: Check file system IO
         run: |
-          dd if=/dev/zero of=/tmp/testfile bs=1M count=100 oflag=dsync      
-      - name: Mount tmpfs for build
-        run: |
-          mkdir -p /mnt/ramdisk
-          mount -t tmpfs -o size=2G tmpfs /mnt/ramdisk          
+          dd if=/dev/zero of=/tmp/testfile bs=1M count=100 oflag=dsync   
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
       - name: Build cli_debrid‑builder stage
@@ -347,11 +315,7 @@ jobs:
           platforms: linux/amd64,linux/arm64
       - name: Check file system IO
         run: |
-          dd if=/dev/zero of=/tmp/testfile bs=1M count=100 oflag=dsync      
-      - name: Mount tmpfs for build
-        run: |
-          mkdir -p /mnt/ramdisk
-          mount -t tmpfs -o size=2G tmpfs /mnt/ramdisk          
+          dd if=/dev/zero of=/tmp/testfile bs=1M count=100 oflag=dsync       
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
       - name: Build requirements‑builder stage

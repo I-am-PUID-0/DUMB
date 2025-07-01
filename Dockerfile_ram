@@ -3,7 +3,7 @@
 ####################################################################################################################################################
 FROM ubuntu:24.04 AS pgadmin-builder
 ENV DEBIAN_FRONTEND=noninteractive
-ENV TMP_BUILD_DIR=/mnt/ramdisk/pgadmin
+ENV TMP_BUILD_DIR=/dev/shm/pgadmin
 RUN apt-get update && apt-get install -y software-properties-common && \
     add-apt-repository ppa:deadsnakes/ppa -y && apt-get update && \
     apt-get install -y \
@@ -24,7 +24,7 @@ FROM ubuntu:24.04 AS systemstats-builder
 ARG SYS_STATS_TAG
 ENV DEBIAN_FRONTEND=noninteractive
 ENV PATH="/usr/lib/postgresql16/bin:$PATH"
-ENV TMP_BUILD_DIR=/mnt/ramdisk/systemstats
+ENV TMP_BUILD_DIR=/dev/shm/systemstats
 RUN apt-get update && apt-get install -y software-properties-common wget gnupg2 lsb-release && \
     wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add - && \
     echo "deb http://apt.postgresql.org/pub/repos/apt/ $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list && \
@@ -49,7 +49,7 @@ FROM ubuntu:24.04 AS zilean-builder
 ARG TARGETARCH
 ARG ZILEAN_TAG
 ENV DEBIAN_FRONTEND=noninteractive
-ENV TMP_BUILD_DIR=/mnt/ramdisk/zilean
+ENV TMP_BUILD_DIR=/dev/shm/zilean
 RUN apt-get update && apt-get install -y software-properties-common wget gnupg2 lsb-release && \
     add-apt-repository ppa:deadsnakes/ppa -y && add-apt-repository ppa:dotnet/backports -y && apt-get update && \
     apt-get install -y python3.11 python3.11-venv python3.11-dev curl jq unzip dotnet-sdk-9.0 && \
@@ -77,7 +77,7 @@ RUN mkdir -p $TMP_BUILD_DIR && \
 FROM ubuntu:24.04 AS riven-frontend-builder
 ARG RIVEN_FRONTEND_TAG
 ENV DEBIAN_FRONTEND=noninteractive
-ENV TMP_BUILD_DIR=/mnt/ramdisk/rivenfrontend
+ENV TMP_BUILD_DIR=/dev/shm/rivenfrontend
 RUN apt-get update && apt-get install -y curl unzip gnupg2 lsb-release && \
     curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
     apt-get install -y nodejs && \
@@ -105,7 +105,7 @@ RUN echo "store-dir=./.pnpm-store\nchild-concurrency=1\nfetch-retries=10\nfetch-
 FROM ubuntu:24.04 AS riven-backend-builder
 ARG RIVEN_TAG
 ENV DEBIAN_FRONTEND=noninteractive
-ENV TMP_BUILD_DIR=/mnt/ramdisk/rivenbackend
+ENV TMP_BUILD_DIR=/dev/shm/rivenbackend
 RUN apt-get update && apt-get install -y software-properties-common wget gnupg2 lsb-release unzip && \
     add-apt-repository ppa:deadsnakes/ppa -y && apt-get update && \
     apt-get install -y python3.11 python3.11-venv python3.11-dev \
@@ -130,7 +130,7 @@ RUN python3.11 -m venv /riven/backend/venv && \
 FROM ubuntu:24.04 AS dumb-frontend-builder
 ARG DUMB_FRONTEND_TAG
 ENV DEBIAN_FRONTEND=noninteractive
-ENV TMP_BUILD_DIR=/mnt/ramdisk/dumbfrontend
+ENV TMP_BUILD_DIR=/dev/shm/dumbfrontend
 RUN apt-get update && apt-get install -y curl unzip build-essential gnupg2 lsb-release && \
     curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
     apt-get install -y nodejs && \
@@ -153,7 +153,7 @@ RUN echo "store-dir=./.pnpm-store\nchild-concurrency=1\nfetch-retries=10\nfetch-
 FROM ubuntu:24.04 AS plex_debrid-builder
 ARG PLEX_DEBRID_TAG
 ENV DEBIAN_FRONTEND=noninteractive
-ENV TMP_BUILD_DIR=/mnt/ramdisk/plexdebrid
+ENV TMP_BUILD_DIR=/dev/shm/plexdebrid
 RUN apt-get update && apt-get install -y software-properties-common curl unzip && \
     add-apt-repository ppa:deadsnakes/ppa -y && apt-get update && \
     apt-get install -y \
@@ -178,7 +178,7 @@ RUN python3.11 -m venv $TMP_BUILD_DIR/venv && \
 FROM ubuntu:24.04 AS cli_debrid-builder
 ARG CLI_DEBRID_TAG
 ENV DEBIAN_FRONTEND=noninteractive
-ENV TMP_BUILD_DIR=/mnt/ramdisk/clidebrid
+ENV TMP_BUILD_DIR=/dev/shm/clidebrid
 RUN apt-get update && apt-get install -y software-properties-common curl unzip && \
     add-apt-repository ppa:deadsnakes/ppa -y && apt-get update && \
     apt-get install -y \
@@ -201,7 +201,7 @@ RUN python3.11 -m venv $TMP_BUILD_DIR/venv && \
 ####################################################################################################################################################
 FROM ubuntu:24.04 AS requirements-builder
 ENV DEBIAN_FRONTEND=noninteractive
-ENV TMP_BUILD_DIR=/mnt/ramdisk/requirements
+ENV TMP_BUILD_DIR=/dev/shm/requirements
 COPY pyproject.toml poetry.lock ./
 RUN apt-get update && apt-get install -y software-properties-common wget gnupg2 lsb-release && \
     add-apt-repository ppa:deadsnakes/ppa -y && apt-get update && \
