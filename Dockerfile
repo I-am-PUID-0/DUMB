@@ -88,7 +88,7 @@ WORKDIR /riven/frontend
 RUN sed -i '/export default defineConfig({/a\    build: {\n        minify: false\n    },' vite.config.ts && \
     sed -i "s#/riven/version.txt#/riven/frontend/version.txt#g" src/routes/settings/about/+page.server.ts && \
     sed -i "s/export const prerender = true;/export const prerender = false;/g" src/routes/settings/about/+page.server.ts   
-RUN echo "store-dir=./.pnpm-store\nchild-concurrency=4\nfetch-retries=5\nfetch-retry-factor=2\nfetch-retry-mintimeout=10000" > /riven/frontend/.npmrc && \   
+    RUN echo "store-dir=./.pnpm-store\nchild-concurrency=1\nfetch-retries=10\nfetch-retry-factor=3\nfetch-retry-mintimeout=15000" > /riven/frontend/.npmrc && \   
     pnpm install && \
     pnpm run build && \
     pnpm prune --prod
@@ -133,7 +133,7 @@ RUN curl -L https://github.com/nicocapalbo/dmbdb/archive/refs/tags/${DUMB_FRONTE
     mkdir -p dumb/frontend && \
     mv dmbdb*/* /dumb/frontend && rm dumb-frontend.zip
 WORKDIR /dumb/frontend
-RUN echo "store-dir=./.pnpm-store\nchild-concurrency=4\nfetch-retries=5\nfetch-retry-factor=2\nfetch-retry-mintimeout=10000" > /dumb/frontend/.npmrc && \
+RUN echo "store-dir=./.pnpm-store\nchild-concurrency=1\nfetch-retries=10\nfetch-retry-factor=3\nfetch-retry-mintimeout=15000" > /dumb/frontend/.npmrc && \
     pnpm install --reporter=verbose && \
     pnpm run build --log-level verbose
 
