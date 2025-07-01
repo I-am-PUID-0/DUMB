@@ -133,9 +133,9 @@ RUN curl -L https://github.com/nicocapalbo/dmbdb/archive/refs/tags/${DUMB_FRONTE
     mkdir -p dumb/frontend && \
     mv dmbdb*/* /dumb/frontend && rm dumb-frontend.zip
 WORKDIR /dumb/frontend
-RUN echo "store-dir=./.pnpm-store\nchild-concurrency=1\nfetch-retries=10\nfetch-retry-factor=3\nfetch-retry-mintimeout=15000" > /dumb/frontend/.npmrc && \
-    pnpm install --reporter=verbose && \
-    pnpm run build --log-level verbose
+RUN echo "store-dir=./.pnpm-store\nchild-concurrency=1\nfetch-retries=10\nfetch-retry-factor=3\nfetch-retry-mintimeout=15000" > /dumb/frontend/.npmrc
+RUN pnpm install --reporter=verbose
+RUN pnpm run build --log-level verbose
 
 ####################################################################################################################################################
 # Stage 7: plex_debrid-builder (Ubuntu 24.04 with Python 3.11)
