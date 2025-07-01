@@ -83,12 +83,12 @@ RUN apt-get update && apt-get install -y curl unzip gnupg2 lsb-release && \
 RUN curl -L https://github.com/rivenmedia/riven-frontend/archive/refs/tags/${RIVEN_FRONTEND_TAG}.zip -o riven-frontend.zip && \
     unzip riven-frontend.zip && \
     mkdir -p /riven/frontend && \
-    mv riven-frontend-*/* /riven/frontend && rm riven-frontend.zip && \
-    cd /riven/frontend && \
-    sed -i '/export default defineConfig({/a\    build: {\n        minify: false\n    },' vite.config.ts && \
+    mv riven-frontend-*/* /riven/frontend && rm riven-frontend.zip
+WORKDIR /riven/frontend    
+RUN sed -i '/export default defineConfig({/a\    build: {\n        minify: false\n    },' vite.config.ts && \
     sed -i "s#/riven/version.txt#/riven/frontend/version.txt#g" src/routes/settings/about/+page.server.ts && \
-    sed -i "s/export const prerender = true;/export const prerender = false;/g" src/routes/settings/about/+page.server.ts && \
-    echo "store-dir=./.pnpm-store" > /riven/frontend/.npmrc && \
+    sed -i "s/export const prerender = true;/export const prerender = false;/g" src/routes/settings/about/+page.server.ts   
+RUN echo "store-dir=./.pnpm-store\nchild-concurrency=4\nfetch-retries=5\nfetch-retry-factor=2\nfetch-retry-mintimeout=10000" > /riven/frontend/.npmrc && \   
     pnpm install && \
     pnpm run build && \
     pnpm prune --prod
@@ -131,9 +131,9 @@ RUN apt-get update && apt-get install -y curl unzip build-essential gnupg2 lsb-r
 RUN curl -L https://github.com/nicocapalbo/dmbdb/archive/refs/tags/${DUMB_FRONTEND_TAG}.zip -o dumb-frontend.zip && \
     unzip dumb-frontend.zip && \
     mkdir -p dumb/frontend && \
-    mv dmbdb*/* /dumb/frontend && rm dumb-frontend.zip && \
-    cd dumb/frontend && \
-    echo "store-dir=./.pnpm-store" > /dumb/frontend/.npmrc && \
+    mv dmbdb*/* /dumb/frontend && rm dumb-frontend.zip
+WORKDIR /dumb/frontend
+RUN echo "store-dir=./.pnpm-store\nchild-concurrency=4\nfetch-retries=5\nfetch-retry-factor=2\nfetch-retry-mintimeout=10000" > /dumb/frontend/.npmrc && \
     pnpm install --reporter=verbose && \
     pnpm run build --log-level verbose
 
