@@ -70,8 +70,250 @@ jobs:
           CLI_DEBRID_TAG=$(curl -s https://api.github.com/repos/godver3/cli_debrid/releases/latest | jq -r .tag_name)
           echo "CLI_DEBRID_TAG=$CLI_DEBRID_TAG" >> $GITHUB_ENV 
 
-  build-and-push:   
+  build-zilean:
     needs: fetch-latest-tags
+    runs-on: self-hosted
+    env:
+      SKIP_QEMU_SETUP: 'true'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up QEMU
+        if: env.SKIP_QEMU_SETUP != 'true'
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: linux/amd64,linux/arm64
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Build zilean‑builder stage (multi‑arch)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          target: zilean-builder
+          platforms: linux/amd64,linux/arm64
+          build-args: ZILEAN_TAG=${{ needs.fetch-latest-tags.outputs.ZILEAN_TAG }}
+          cache-from: type=local,src=/home/docker/buildx-cache/${{ github.repository }}/zilean
+          cache-to: type=local,dest=/home/docker/buildx-cache/${{ github.repository }}/zilean,mode=max
+          push: false
+
+  build-pgadmin:
+    needs: fetch-latest-tags
+    runs-on: self-hosted
+    env:
+      SKIP_QEMU_SETUP: 'true'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up QEMU
+        if: env.SKIP_QEMU_SETUP != 'true'
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: linux/amd64,linux/arm64
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Build pgadmin‑builder stage
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          target: pgadmin-builder
+          platforms: linux/amd64,linux/arm64
+          cache-from: type=local,src=/home/docker/buildx-cache/${{ github.repository }}/pgadmin
+          cache-to: type=local,dest=/home/docker/buildx-cache/${{ github.repository }}/pgadmin,mode=max
+          push: false
+
+  build-systemstats:
+    needs: fetch-latest-tags
+    runs-on: self-hosted
+    env:
+      SKIP_QEMU_SETUP: 'true'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up QEMU
+        if: env.SKIP_QEMU_SETUP != 'true'
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: linux/amd64,linux/arm64
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Build systemstats‑builder stage
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          target: systemstats-builder
+          platforms: linux/amd64,linux/arm64
+          build-args: SYS_STATS_TAG=${{ needs.fetch-latest-tags.outputs.SYS_STATS_TAG }}
+          cache-from: type=local,src=/home/docker/buildx-cache/${{ github.repository }}/systemstats
+          cache-to: type=local,dest=/home/docker/buildx-cache/${{ github.repository }}/systemstats,mode=max
+          push: false
+
+  build-riven-frontend:
+    needs: fetch-latest-tags
+    runs-on: self-hosted
+    env:
+      SKIP_QEMU_SETUP: 'true'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up QEMU
+        if: env.SKIP_QEMU_SETUP != 'true'
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: linux/amd64,linux/arm64
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Build riven‑frontend‑builder stage
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          target: riven-frontend-builder
+          platforms: linux/amd64,linux/arm64
+          build-args: RIVEN_FRONTEND_TAG=${{ needs.fetch-latest-tags.outputs.RIVEN_FRONTEND_TAG }}
+          cache-from: type=local,src=/home/docker/buildx-cache/${{ github.repository }}/riven-frontend
+          cache-to: type=local,dest=/home/docker/buildx-cache/${{ github.repository }}/riven-frontend,mode=max
+          push: false
+
+  build-riven-backend:
+    needs: fetch-latest-tags
+    runs-on: self-hosted
+    env:
+      SKIP_QEMU_SETUP: 'true'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up QEMU
+        if: env.SKIP_QEMU_SETUP != 'true'
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: linux/amd64,linux/arm64
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Build riven‑backend‑builder stage
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          target: riven-backend-builder
+          platforms: linux/amd64,linux/arm64
+          build-args: RIVEN_TAG=${{ needs.fetch-latest-tags.outputs.RIVEN_TAG }}
+          cache-from: type=local,src=/home/docker/buildx-cache/${{ github.repository }}/riven-backend
+          cache-to: type=local,dest=/home/docker/buildx-cache/${{ github.repository }}/riven-backend,mode=max
+          push: false
+
+  build-dumb-frontend:
+    needs: fetch-latest-tags
+    runs-on: self-hosted
+    env:
+      SKIP_QEMU_SETUP: 'true'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up QEMU
+        if: env.SKIP_QEMU_SETUP != 'true'
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: linux/amd64,linux/arm64
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Build dumb‑frontend‑builder stage
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          target: dumb-frontend-builder
+          platforms: linux/amd64,linux/arm64
+          build-args: DUMB_FRONTEND_TAG=${{ needs.fetch-latest-tags.outputs.DUMB_FRONTEND_TAG }}
+          cache-from: type=local,src=/home/docker/buildx-cache/${{ github.repository }}/dumb-frontend
+          cache-to: type=local,dest=/home/docker/buildx-cache/${{ github.repository }}/dumb-frontend,mode=max
+          push: false
+
+  build-plex-debrid:
+    needs: fetch-latest-tags
+    runs-on: self-hosted
+    env:
+      SKIP_QEMU_SETUP: 'true'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up QEMU
+        if: env.SKIP_QEMU_SETUP != 'true'
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: linux/amd64,linux/arm64
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Build plex_debrid‑builder stage
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          target: plex_debrid-builder
+          platforms: linux/amd64,linux/arm64
+          build-args: PLEX_DEBRID_TAG=${{ needs.fetch-latest-tags.outputs.PLEX_DEBRID_TAG }}
+          cache-from: type=local,src=/home/docker/buildx-cache/${{ github.repository }}/plex-debrid
+          cache-to: type=local,dest=/home/docker/buildx-cache/${{ github.repository }}/plex-debrid,mode=max
+          push: false
+
+  build-cli-debrid:
+    needs: fetch-latest-tags
+    runs-on: self-hosted
+    env:
+      SKIP_QEMU_SETUP: 'true'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up QEMU
+        if: env.SKIP_QEMU_SETUP != 'true'
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: linux/amd64,linux/arm64
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Build cli_debrid‑builder stage
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          target: cli_debrid-builder
+          platforms: linux/amd64,linux/arm64
+          build-args: CLI_DEBRID_TAG=${{ needs.fetch-latest-tags.outputs.CLI_DEBRID_TAG }}
+          cache-from: type=local,src=/home/docker/buildx-cache/${{ github.repository }}/cli-debrid
+          cache-to: type=local,dest=/home/docker/buildx-cache/${{ github.repository }}/cli-debrid,mode=max
+          push: false
+
+  build-requirements:
+    needs: fetch-latest-tags
+    runs-on: self-hosted
+    env:
+      SKIP_QEMU_SETUP: 'true'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up QEMU
+        if: env.SKIP_QEMU_SETUP != 'true'
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: linux/amd64,linux/arm64
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Build requirements‑builder stage
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          target: requirements-builder
+          platforms: linux/amd64,linux/arm64
+          cache-from: type=local,src=/home/docker/buildx-cache/${{ github.repository }}/requirements
+          cache-to: type=local,dest=/home/docker/buildx-cache/${{ github.repository }}/requirements,mode=max
+          push: false
+
+  build-and-push:   
+    needs: 
+      - fetch-latest-tags
+      - build-zilean
+      - build-pgadmin
+      - build-systemstats
+      - build-riven-frontend
+      - build-riven-backend
+      - build-dumb-frontend
+      - build-plex-debrid
+      - build-cli-debrid
+      - build-requirements    
     runs-on: self-hosted
     env:
       SKIP_QEMU_SETUP: 'true'    
@@ -143,9 +385,20 @@ jobs:
         with:
           context: .
           file: ./Dockerfile
-          platforms: linux/amd64,linux/arm64 #,linux/arm/v7
-          cache-from: type=local,src=/home/docker/buildx-cache/${{ github.repository }}
-          cache-to: type=local,dest=/home/docker/buildx-cache/${{ github.repository }},mode=max
+          target: final-stage
+          platforms: linux/amd64,linux/arm64
+          cache-from: |
+            type=local,src=/home/docker/buildx-cache/${{ github.repository }}/final
+            type=local,src=/home/docker/buildx-cache/${{ github.repository }}/zilean
+            type=local,src=/home/docker/buildx-cache/${{ github.repository }}/pgadmin
+            type=local,src=/home/docker/buildx-cache/${{ github.repository }}/systemstats
+            type=local,src=/home/docker/buildx-cache/${{ github.repository }}/riven-frontend
+            type=local,src=/home/docker/buildx-cache/${{ github.repository }}/riven-backend
+            type=local,src=/home/docker/buildx-cache/${{ github.repository }}/dumb-frontend
+            type=local,src=/home/docker/buildx-cache/${{ github.repository }}/plex-debrid
+            type=local,src=/home/docker/buildx-cache/${{ github.repository }}/cli-debrid
+            type=local,src=/home/docker/buildx-cache/${{ github.repository }}/requirements
+          cache-to: type=local,dest=/home/docker/buildx-cache/${{ github.repository }}/final,mode=max
           tags: ${{ env.DOCKER_TAGS }}
           build-args: |
             PGAGENT_TAG=${{ needs.fetch-latest-tags.outputs.PGAGENT_TAG }}
@@ -169,7 +422,7 @@ jobs:
           context: .
           file: ./Dockerfile
           platforms: linux/amd64
-          cache-from: type=local,src=/home/docker/buildx-cache/${{ github.repository }}
+          cache-from: type=local,src=/home/docker/buildx-cache/${{ github.repository }}/final
           tags: temp-local-image
           build-args: |
             PGAGENT_TAG=${{ needs.fetch-latest-tags.outputs.PGAGENT_TAG }}
