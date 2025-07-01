@@ -1,0 +1,644 @@
+name: Docker Image CI RAM
+
+on:
+  workflow_dispatch:
+#  pull_request:
+#    types:
+#      - closed
+#    paths-ignore:
+#      - '**/README.md'
+#      - '.github/**'
+#      - '.gitattributes'
+#      - '.gitignore'
+
+jobs:
+  fetch-latest-tags:
+#    if: >
+#      github.event_name == 'workflow_dispatch' ||
+#      (github.event.pull_request.merged == true &&
+#      startsWith(github.event.pull_request.title, 'chore(master): release '))
+    runs-on: ubuntu-latest
+    outputs:
+      PGAGENT_TAG: ${{ env.PGAGENT_TAG }}
+      SYS_STATS_TAG: ${{ env.SYS_STATS_TAG }}
+      ZILEAN_TAG: ${{ env.ZILEAN_TAG }}
+      RIVEN_TAG: ${{ env.RIVEN_TAG }}
+      RIVEN_FRONTEND_TAG: ${{ env.RIVEN_FRONTEND_TAG }}
+      DUMB_FRONTEND_TAG: ${{ env.DUMB_FRONTEND_TAG }}
+      PLEX_DEBRID_TAG: ${{ env.PLEX_DEBRID_TAG }}
+      CLI_DEBRID_TAG: ${{ env.CLI_DEBRID_TAG }}      
+    steps:
+      - name: Fetch latest pgAgent release tag
+        run: |
+          PGAGENT_TAG=$(curl -s https://api.github.com/repos/pgadmin-org/pgagent/releases/latest | jq -r .tag_name)
+          echo "PGAGENT_TAG=$PGAGENT_TAG" >> $GITHUB_ENV
+
+      - name: Fetch latest system_stats release tag
+        run: |
+          SYS_STATS_TAG=$(curl -s https://api.github.com/repos/EnterpriseDB/system_stats/releases/latest | jq -r .tag_name)
+          echo "SYS_STATS_TAG=$SYS_STATS_TAG" >> $GITHUB_ENV
+
+      - name: Fetch latest zilean release tag
+        run: |
+          ZILEAN_TAG=$(curl -s https://api.github.com/repos/iPromKnight/zilean/releases/latest | jq -r .tag_name)
+          echo "ZILEAN_TAG=$ZILEAN_TAG" >> $GITHUB_ENV
+
+      - name: Fetch latest riven release tag
+        run: |
+          RIVEN_TAG=$(curl -s https://api.github.com/repos/rivenmedia/riven/releases/latest | jq -r .tag_name)
+          echo "RIVEN_TAG=$RIVEN_TAG" >> $GITHUB_ENV
+
+      - name: Fetch latest riven-frontend release tag
+        run: |
+          RIVEN_FRONTEND_TAG=$(curl -s https://api.github.com/repos/rivenmedia/riven-frontend/releases/latest | jq -r .tag_name)
+          echo "RIVEN_FRONTEND_TAG=$RIVEN_FRONTEND_TAG" >> $GITHUB_ENV
+
+      - name: Fetch latest dmbdb release tag
+        run: |
+          DUMB_FRONTEND_TAG=$(curl -s https://api.github.com/repos/nicocapalbo/dmbdb/releases/latest | jq -r .tag_name)
+          echo "DUMB_FRONTEND_TAG=$DUMB_FRONTEND_TAG" >> $GITHUB_ENV 
+
+      - name: Fetch latest plex_debrid version from source
+        run: |
+          PLEX_DEBRID_TAG=$(curl -s https://raw.githubusercontent.com/elfhosted/plex_debrid/main/ui/ui_settings.py | \
+            grep '^version\s*=' | \
+            sed -E "s/.*=\s*\[\s*'([^']+)'.*/\1/")
+          echo "PLEX_DEBRID_TAG=$PLEX_DEBRID_TAG" >> $GITHUB_ENV
+
+      - name: Fetch latest cli_debrid release tag
+        run: |
+          CLI_DEBRID_TAG=$(curl -s https://api.github.com/repos/godver3/cli_debrid/releases/latest | jq -r .tag_name)
+          echo "CLI_DEBRID_TAG=$CLI_DEBRID_TAG" >> $GITHUB_ENV 
+
+  build-zilean:
+    needs: fetch-latest-tags
+    runs-on: self-hosted
+    env:
+      SKIP_QEMU_SETUP: 'true'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up QEMU
+        if: env.SKIP_QEMU_SETUP != 'true'
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: linux/amd64,linux/arm64
+      - name: Check file system IO
+        run: |
+          dd if=/dev/zero of=/tmp/testfile bs=1M count=100 oflag=dsync      
+      - name: Mount tmpfs for build
+        run: |
+          mkdir -p /mnt/ramdisk
+          mount -t tmpfs -o size=2G tmpfs /mnt/ramdisk
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Build zilean‑builder stage (multi‑arch)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile_ram
+          target: zilean-builder
+          platforms: linux/amd64,linux/arm64
+          build-args: ZILEAN_TAG=${{ needs.fetch-latest-tags.outputs.ZILEAN_TAG }}
+          cache-from: type=local,src=/home/docker/buildx-cache/${{ github.repository }}/zilean
+          cache-to: type=local,dest=/home/docker/buildx-cache/${{ github.repository }}/zilean,mode=max
+          push: false
+
+  build-pgadmin:
+    needs: fetch-latest-tags
+    runs-on: self-hosted
+    env:
+      SKIP_QEMU_SETUP: 'true'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up QEMU
+        if: env.SKIP_QEMU_SETUP != 'true'
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: linux/amd64,linux/arm64
+      - name: Check file system IO
+        run: |
+          dd if=/dev/zero of=/tmp/testfile bs=1M count=100 oflag=dsync      
+      - name: Mount tmpfs for build
+        run: |
+          mkdir -p /mnt/ramdisk
+          mount -t tmpfs -o size=2G tmpfs /mnt/ramdisk          
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Build pgadmin‑builder stage
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile_ram
+          target: pgadmin-builder
+          platforms: linux/amd64,linux/arm64
+          cache-from: type=local,src=/home/docker/buildx-cache/${{ github.repository }}/pgadmin
+          cache-to: type=local,dest=/home/docker/buildx-cache/${{ github.repository }}/pgadmin,mode=max
+          push: false
+
+  build-systemstats:
+    needs: fetch-latest-tags
+    runs-on: self-hosted
+    env:
+      SKIP_QEMU_SETUP: 'true'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up QEMU
+        if: env.SKIP_QEMU_SETUP != 'true'
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: linux/amd64,linux/arm64
+      - name: Check file system IO
+        run: |
+          dd if=/dev/zero of=/tmp/testfile bs=1M count=100 oflag=dsync      
+      - name: Mount tmpfs for build
+        run: |
+          mkdir -p /mnt/ramdisk
+          mount -t tmpfs -o size=2G tmpfs /mnt/ramdisk          
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Build systemstats‑builder stage
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile_ram
+          target: systemstats-builder
+          platforms: linux/amd64,linux/arm64
+          build-args: SYS_STATS_TAG=${{ needs.fetch-latest-tags.outputs.SYS_STATS_TAG }}
+          cache-from: type=local,src=/home/docker/buildx-cache/${{ github.repository }}/systemstats
+          cache-to: type=local,dest=/home/docker/buildx-cache/${{ github.repository }}/systemstats,mode=max
+          push: false
+
+  build-riven-frontend:
+    needs: fetch-latest-tags
+    runs-on: self-hosted
+    env:
+      SKIP_QEMU_SETUP: 'true'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up QEMU
+        if: env.SKIP_QEMU_SETUP != 'true'
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: linux/amd64,linux/arm64
+      - name: Check file system IO
+        run: |
+          dd if=/dev/zero of=/tmp/testfile bs=1M count=100 oflag=dsync      
+      - name: Mount tmpfs for build
+        run: |
+          mkdir -p /mnt/ramdisk
+          mount -t tmpfs -o size=2G tmpfs /mnt/ramdisk          
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Build riven‑frontend‑builder stage
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile_ram
+          target: riven-frontend-builder
+          platforms: linux/amd64,linux/arm64
+          build-args: RIVEN_FRONTEND_TAG=${{ needs.fetch-latest-tags.outputs.RIVEN_FRONTEND_TAG }}
+          cache-from: type=local,src=/home/docker/buildx-cache/${{ github.repository }}/riven-frontend
+          cache-to: type=local,dest=/home/docker/buildx-cache/${{ github.repository }}/riven-frontend,mode=max
+          push: false
+
+  build-riven-backend:
+    needs: fetch-latest-tags
+    runs-on: self-hosted
+    env:
+      SKIP_QEMU_SETUP: 'true'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up QEMU
+        if: env.SKIP_QEMU_SETUP != 'true'
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: linux/amd64,linux/arm64
+      - name: Check file system IO
+        run: |
+          dd if=/dev/zero of=/tmp/testfile bs=1M count=100 oflag=dsync      
+      - name: Mount tmpfs for build
+        run: |
+          mkdir -p /mnt/ramdisk
+          mount -t tmpfs -o size=2G tmpfs /mnt/ramdisk          
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Build riven‑backend‑builder stage
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile_ram
+          target: riven-backend-builder
+          platforms: linux/amd64,linux/arm64
+          build-args: RIVEN_TAG=${{ needs.fetch-latest-tags.outputs.RIVEN_TAG }}
+          cache-from: type=local,src=/home/docker/buildx-cache/${{ github.repository }}/riven-backend
+          cache-to: type=local,dest=/home/docker/buildx-cache/${{ github.repository }}/riven-backend,mode=max
+          push: false
+
+  build-dumb-frontend:
+    needs: fetch-latest-tags
+    runs-on: self-hosted
+    env:
+      SKIP_QEMU_SETUP: 'true'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up QEMU
+        if: env.SKIP_QEMU_SETUP != 'true'
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: linux/amd64,linux/arm64
+      - name: Check file system IO
+        run: |
+          dd if=/dev/zero of=/tmp/testfile bs=1M count=100 oflag=dsync      
+      - name: Mount tmpfs for build
+        run: |
+          mkdir -p /mnt/ramdisk
+          mount -t tmpfs -o size=2G tmpfs /mnt/ramdisk          
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Build dumb‑frontend‑builder stage
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile_ram
+          target: dumb-frontend-builder
+          platforms: linux/amd64,linux/arm64
+          build-args: DUMB_FRONTEND_TAG=${{ needs.fetch-latest-tags.outputs.DUMB_FRONTEND_TAG }}
+          cache-from: type=local,src=/home/docker/buildx-cache/${{ github.repository }}/dumb-frontend
+          cache-to: type=local,dest=/home/docker/buildx-cache/${{ github.repository }}/dumb-frontend,mode=max
+          push: false
+
+  build-plex-debrid:
+    needs: fetch-latest-tags
+    runs-on: self-hosted
+    env:
+      SKIP_QEMU_SETUP: 'true'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up QEMU
+        if: env.SKIP_QEMU_SETUP != 'true'
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: linux/amd64,linux/arm64
+      - name: Check file system IO
+        run: |
+          dd if=/dev/zero of=/tmp/testfile bs=1M count=100 oflag=dsync      
+      - name: Mount tmpfs for build
+        run: |
+          mkdir -p /mnt/ramdisk
+          mount -t tmpfs -o size=2G tmpfs /mnt/ramdisk          
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Build plex_debrid‑builder stage
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile_ram
+          target: plex_debrid-builder
+          platforms: linux/amd64,linux/arm64
+          build-args: PLEX_DEBRID_TAG=${{ needs.fetch-latest-tags.outputs.PLEX_DEBRID_TAG }}
+          cache-from: type=local,src=/home/docker/buildx-cache/${{ github.repository }}/plex-debrid
+          cache-to: type=local,dest=/home/docker/buildx-cache/${{ github.repository }}/plex-debrid,mode=max
+          push: false
+
+  build-cli-debrid:
+    needs: fetch-latest-tags
+    runs-on: self-hosted
+    env:
+      SKIP_QEMU_SETUP: 'true'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up QEMU
+        if: env.SKIP_QEMU_SETUP != 'true'
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: linux/amd64,linux/arm64
+      - name: Check file system IO
+        run: |
+          dd if=/dev/zero of=/tmp/testfile bs=1M count=100 oflag=dsync      
+      - name: Mount tmpfs for build
+        run: |
+          mkdir -p /mnt/ramdisk
+          mount -t tmpfs -o size=2G tmpfs /mnt/ramdisk          
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Build cli_debrid‑builder stage
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile_ram
+          target: cli_debrid-builder
+          platforms: linux/amd64,linux/arm64
+          build-args: CLI_DEBRID_TAG=${{ needs.fetch-latest-tags.outputs.CLI_DEBRID_TAG }}
+          cache-from: type=local,src=/home/docker/buildx-cache/${{ github.repository }}/cli-debrid
+          cache-to: type=local,dest=/home/docker/buildx-cache/${{ github.repository }}/cli-debrid,mode=max
+          push: false
+
+  build-requirements:
+    needs: fetch-latest-tags
+    runs-on: self-hosted
+    env:
+      SKIP_QEMU_SETUP: 'true'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up QEMU
+        if: env.SKIP_QEMU_SETUP != 'true'
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: linux/amd64,linux/arm64
+      - name: Check file system IO
+        run: |
+          dd if=/dev/zero of=/tmp/testfile bs=1M count=100 oflag=dsync      
+      - name: Mount tmpfs for build
+        run: |
+          mkdir -p /mnt/ramdisk
+          mount -t tmpfs -o size=2G tmpfs /mnt/ramdisk          
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Build requirements‑builder stage
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile_ram
+          target: requirements-builder
+          platforms: linux/amd64,linux/arm64
+          cache-from: type=local,src=/home/docker/buildx-cache/${{ github.repository }}/requirements
+          cache-to: type=local,dest=/home/docker/buildx-cache/${{ github.repository }}/requirements,mode=max
+          push: false
+
+  build-and-push:   
+    needs: 
+      - fetch-latest-tags
+      - build-zilean
+      - build-pgadmin
+      - build-systemstats
+      - build-riven-frontend
+      - build-riven-backend
+      - build-dumb-frontend
+      - build-plex-debrid
+      - build-cli-debrid
+      - build-requirements    
+    runs-on: self-hosted
+    env:
+      SKIP_QEMU_SETUP: 'true'    
+    outputs:
+      version: ${{ env.VERSION }}
+      repo_owner_lower: ${{ env.REPO_OWNER_LOWER }}
+      repo_name: ${{ env.REPO_NAME }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Set up QEMU
+        if: env.SKIP_QEMU_SETUP != 'true'
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: 'linux/amd64,linux/arm64,linux/arm/v7'
+          cache-image: false
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      
+      - name: Clean up unused Docker images and containers
+        run: docker system prune --all --force --volumes
+
+      - name: Pre-Build Disk Space
+        run: |
+          echo "Disk space before build:"
+          df -h
+
+      - name: Extract version and set environment variables
+        id: setup_env_vars
+        run: |
+          VERSION=$(grep -E '^version *= *' pyproject.toml | head -n 1 | cut -d '"' -f2)
+          REPO_OWNER_LOWER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          REPO_NAME=$(basename "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+          BRANCH_NAME=$(echo "${{ github.ref_name }}" | tr '/' '-')
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "REPO_OWNER_LOWER=$REPO_OWNER_LOWER" >> $GITHUB_ENV
+          echo "REPO_NAME=$REPO_NAME" >> $GITHUB_ENV
+          echo "BRANCH_NAME=$BRANCH_NAME" >> $GITHUB_ENV
+
+      - name: Determine Docker tags
+        id: determine_tags
+        run: |
+          if [ "${{ github.ref_name }}" == "master" ]; then
+            echo "DOCKER_TAGS=${{ secrets.DOCKER_USERNAME }}/${{ env.REPO_NAME }}:${{ env.VERSION }},${{ secrets.DOCKER_USERNAME }}/${{ env.REPO_NAME }}:latest,ghcr.io/${{ env.REPO_OWNER_LOWER }}/${{ env.REPO_NAME }}:${{ env.VERSION }},ghcr.io/${{ env.REPO_OWNER_LOWER }}/${{ env.REPO_NAME }}:latest" >> $GITHUB_ENV
+          else
+            echo "DOCKER_TAGS=${{ secrets.DOCKER_USERNAME }}/${{ env.REPO_NAME }}:${{ env.BRANCH_NAME }},ghcr.io/${{ env.REPO_OWNER_LOWER }}/${{ env.REPO_NAME }}:${{ env.BRANCH_NAME }}" >> $GITHUB_ENV
+          fi
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and Push Docker image
+        id: build_push
+        uses: docker/build-push-action@v6
+        env:
+          DOCKER_BUILD_RECORD_UPLOAD: false        
+        with:
+          context: .
+          file: ./Dockerfile_ram
+          target: final-stage
+          platforms: linux/amd64,linux/arm64
+          cache-from: |
+            type=local,src=/home/docker/buildx-cache/${{ github.repository }}/final
+            type=local,src=/home/docker/buildx-cache/${{ github.repository }}/zilean
+            type=local,src=/home/docker/buildx-cache/${{ github.repository }}/pgadmin
+            type=local,src=/home/docker/buildx-cache/${{ github.repository }}/systemstats
+            type=local,src=/home/docker/buildx-cache/${{ github.repository }}/riven-frontend
+            type=local,src=/home/docker/buildx-cache/${{ github.repository }}/riven-backend
+            type=local,src=/home/docker/buildx-cache/${{ github.repository }}/dumb-frontend
+            type=local,src=/home/docker/buildx-cache/${{ github.repository }}/plex-debrid
+            type=local,src=/home/docker/buildx-cache/${{ github.repository }}/cli-debrid
+            type=local,src=/home/docker/buildx-cache/${{ github.repository }}/requirements
+          cache-to: type=local,dest=/home/docker/buildx-cache/${{ github.repository }}/final,mode=max
+          tags: ${{ env.DOCKER_TAGS }}
+          build-args: |
+            PGAGENT_TAG=${{ needs.fetch-latest-tags.outputs.PGAGENT_TAG }}
+            SYS_STATS_TAG=${{ needs.fetch-latest-tags.outputs.SYS_STATS_TAG }}
+            ZILEAN_TAG=${{ needs.fetch-latest-tags.outputs.ZILEAN_TAG }}
+            RIVEN_TAG=${{ needs.fetch-latest-tags.outputs.RIVEN_TAG }}
+            RIVEN_FRONTEND_TAG=${{ needs.fetch-latest-tags.outputs.RIVEN_FRONTEND_TAG }}
+            DUMB_FRONTEND_TAG=${{ needs.fetch-latest-tags.outputs.DUMB_FRONTEND_TAG }}
+            PLEX_DEBRID_TAG=${{ needs.fetch-latest-tags.outputs.PLEX_DEBRID_TAG }}
+            CLI_DEBRID_TAG=${{ needs.fetch-latest-tags.outputs.CLI_DEBRID_TAG }}
+          provenance: true
+          sbom: true
+          push: true
+          
+      - name: Build and Load Single-Platform Image for Version Extraction
+        id: build_load_single
+        uses: docker/build-push-action@v6
+        env:
+          DOCKER_BUILD_RECORD_UPLOAD: false        
+        with:
+          context: .
+          file: ./Dockerfile_ram
+          platforms: linux/amd64
+          cache-from: type=local,src=/home/docker/buildx-cache/${{ github.repository }}/final
+          tags: temp-local-image
+          build-args: |
+            PGAGENT_TAG=${{ needs.fetch-latest-tags.outputs.PGAGENT_TAG }}
+            SYS_STATS_TAG=${{ needs.fetch-latest-tags.outputs.SYS_STATS_TAG }}
+            ZILEAN_TAG=${{ needs.fetch-latest-tags.outputs.ZILEAN_TAG }}
+            RIVEN_TAG=${{ needs.fetch-latest-tags.outputs.RIVEN_TAG }}
+            RIVEN_FRONTEND_TAG=${{ needs.fetch-latest-tags.outputs.RIVEN_FRONTEND_TAG }}
+            DUMB_FRONTEND_TAG=${{ needs.fetch-latest-tags.outputs.DUMB_FRONTEND_TAG }}
+            PLEX_DEBRID_TAG=${{ needs.fetch-latest-tags.outputs.PLEX_DEBRID_TAG }}
+            CLI_DEBRID_TAG=${{ needs.fetch-latest-tags.outputs.CLI_DEBRID_TAG }}
+          load: true 
+
+      - name: Extract Versions from Built Image
+        run: |
+          IMAGE_TAG="temp-local-image"
+          echo "Using IMAGE_TAG: $IMAGE_TAG"
+          CONTAINER_ID=$(docker run -d --rm --entrypoint /bin/sh $IMAGE_TAG -c "sleep 60")
+          PSQL_VERSION=$(docker exec $CONTAINER_ID psql --version | awk '{print $3}')
+          PGADMIN_VERSION=$(docker exec $CONTAINER_ID /pgadmin/venv/bin/python -c "import importlib.metadata; print(importlib.metadata.version('pgadmin4'))" 2>/dev/null || echo "Not Installed")
+          NODE_VERSION=$(docker exec $CONTAINER_ID node -v 2>/dev/null || echo "Not Installed")
+          PNPM_VERSION=$(docker exec $CONTAINER_ID pnpm -v 2>/dev/null || echo "Not Installed")
+          RCLONE_VERSION=$(docker exec $CONTAINER_ID rclone version | head -n 1 | grep -oP 'v[0-9]+\.[0-9]+\.[0-9]+' 2>/dev/null || echo "Not Installed")
+          echo "PSQL_VERSION=$PSQL_VERSION" >> $GITHUB_ENV
+          echo "PGADMIN_VERSION=$PGADMIN_VERSION" >> $GITHUB_ENV
+          echo "NODE_VERSION=$NODE_VERSION" >> $GITHUB_ENV
+          echo "PNPM_VERSION=$PNPM_VERSION" >> $GITHUB_ENV
+          echo "RCLONE_VERSION=$RCLONE_VERSION" >> $GITHUB_ENV
+          docker stop $CONTAINER_ID
+          docker rmi -f temp-local-image
+          docker image prune -f
+
+      - name: Post-Build Disk Space
+        run: |
+          echo "Disk space after build:"
+          df -h
+
+      - name: Add Job Summary for Build
+        run: |
+          echo "## Build Summary" >> $GITHUB_STEP_SUMMARY
+          echo "**Build Version:** \`${{ env.VERSION }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Git Branch:** \`${{ github.ref_name }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Docker Tags:**" >> $GITHUB_STEP_SUMMARY
+          echo "\`${{ env.DOCKER_TAGS }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Dependency Versions:**" >> $GITHUB_STEP_SUMMARY
+          echo "- DUMB Frontend: \`${{ needs.fetch-latest-tags.outputs.DUMB_FRONTEND_TAG }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Riven: \`${{ needs.fetch-latest-tags.outputs.RIVEN_TAG }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Riven Frontend: \`${{ needs.fetch-latest-tags.outputs.RIVEN_FRONTEND_TAG }}\`" >> $GITHUB_STEP_SUMMARY 
+          echo "- Zilean: \`${{ needs.fetch-latest-tags.outputs.ZILEAN_TAG }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Plex Debrid: \`${{ needs.fetch-latest-tags.outputs.PLEX_DEBRID_TAG }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- CLI Debrid: \`${{ needs.fetch-latest-tags.outputs.CLI_DEBRID_TAG }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- PostgreSQL: \`${{ env.PSQL_VERSION }}\`" >> $GITHUB_STEP_SUMMARY                   
+          echo "- pgAgent: \`${{ needs.fetch-latest-tags.outputs.PGAGENT_TAG }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- pgAdmin4: \`${{ env.PGADMIN_VERSION }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- System Stats: \`${{ needs.fetch-latest-tags.outputs.SYS_STATS_TAG }}\`" >> $GITHUB_STEP_SUMMARY          
+          echo "- Node.js: \`${{ env.NODE_VERSION }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- PNPM: \`${{ env.PNPM_VERSION }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- rclone: \`${{ env.RCLONE_VERSION }}\`" >> $GITHUB_STEP_SUMMARY          
+          echo "**Build and Push Status:** ✅ Successful" >> $GITHUB_STEP_SUMMARY
+
+  release:
+    needs: build-and-push
+    if: github.ref_name == 'master'
+    runs-on: ubuntu-latest
+    outputs:
+      release_exists: ${{ steps.check_release.outputs.release_exists }}
+    env:
+      VERSION: ${{ needs.build-and-push.outputs.version }}
+      REPO_OWNER_LOWER: ${{ needs.build-and-push.outputs.repo_owner_lower }}
+      REPO_NAME: ${{ needs.build-and-push.outputs.repo_name }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check if Release Exists
+        id: check_release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ env.VERSION }}
+        run: |
+            if gh release view "${{ env.VERSION }}" --repo ${{ github.repository }}; then
+              echo "Release already exists for version ${{ needs.build-and-push.outputs.version }}"
+              echo "release_exists=true" >> $GITHUB_ENV
+              echo "release_exists=true" >> $GITHUB_OUTPUT
+            else
+              echo "Release does not exist for version ${{ needs.build-and-push.outputs.version }}"
+              echo "release_exists=false" >> $GITHUB_ENV
+              echo "release_exists=false" >> $GITHUB_OUTPUT
+            fi
+      - name: Create Release with CHANGELOG Notes
+        if: env.release_exists == 'false'
+        id: create_release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+            RELEASE_NOTES=$(sed -n '/^## \[[0-9]\+\.[0-9]\+\.[0-9]\+\](/,$p' CHANGELOG.md | sed -n '1!{/^## \[/q;p}')
+            gh release create ${{ env.VERSION }} \
+              --repo ${{ github.repository }} \
+              --title "Release ${{ env.VERSION }}" \
+              --notes "$RELEASE_NOTES" \
+              --draft=false \
+              --prerelease=false
+
+      - name: Add Job Summary for Release
+        run: |
+          echo "## Release Summary" >> $GITHUB_STEP_SUMMARY
+          echo "**Release Version:** \`${{ env.VERSION }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Release Status:** ${{ env.release_exists == 'false' && '✅ Created' || '⚠️ Skipped (Already Exists)' }}" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ env.release_exists }}" == "false" ]; then
+            echo "**Release Notes:**" >> $GITHUB_STEP_SUMMARY
+            sed -n '/^## \[[0-9]\+\.[0-9]\+\.[0-9]\+\](/,$p' CHANGELOG.md | sed -n '1!{/^## \[/q;p}' >> $GITHUB_STEP_SUMMARY
+          fi
+
+  announce:
+    needs: [release, build-and-push]
+    if: needs.release.outputs.release_exists == 'false' && github.ref_name == 'master'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Post announcement to Discord
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          VERSION: ${{ needs.build-and-push.outputs.version }}
+        run: |
+          RELEASE_NOTES=$(sed -n '/^## \[[0-9]\+\.[0-9]\+\.[0-9]\+\](/,$p' CHANGELOG.md | sed -n '1!{/^## \[/q;p}')
+          ANNOUNCEMENT_BODY="<@&1360241608649605240> 🚀 **New Release: Version [${{ env.VERSION }}]**${RELEASE_NOTES}"
+          ESCAPED_BODY=$(echo "$ANNOUNCEMENT_BODY" | jq -Rsa .)
+          curl -H "Content-Type: application/json" \
+               -d "{\"content\": $ESCAPED_BODY, \"flags\": 4}" \
+               $DISCORD_WEBHOOK_URL
+          
+  update-pr-label:
+    needs: release
+    if: needs.release.outputs.release_exists == 'false' && github.ref_name == 'master'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: "Remove 'autorelease: pending' label from all merged PRs"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PR_NUMBERS=$(gh pr list --state merged --base master --json number,labels --jq '[.[] | select(.labels[].name == "autorelease: pending") | .number] | @sh')
+          
+          if [[ -n "$PR_NUMBERS" ]]; then
+            for PR_NUMBER in $PR_NUMBERS; do
+              PR_NUMBER=$(echo $PR_NUMBER | tr -d "'") # Remove quotes from jq output
+              echo "Updating PR #$PR_NUMBER..."
+              gh pr edit $PR_NUMBER --remove-label "autorelease: pending"
+              gh pr edit $PR_NUMBER --add-label "autorelease: tagged"
+              echo "Updated PR #$PR_NUMBER with 'autorelease: tagged'"
+            done
+          else
+            echo "No merged PRs found with 'autorelease: pending' label."
+          fi

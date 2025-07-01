@@ -1,0 +1,285 @@
+####################################################################################################################################################
+# Stage 1: pgadmin-builder (Ubuntu 24.04)
+####################################################################################################################################################
+FROM ubuntu:24.04 AS pgadmin-builder
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TMP_BUILD_DIR=/mnt/ramdisk/pgadmin
+RUN apt-get update && apt-get install -y software-properties-common && \
+    add-apt-repository ppa:deadsnakes/ppa -y && apt-get update && \
+    apt-get install -y \
+    python3.11 \
+    python3.11-venv \
+    python3-pip && \
+    rm -rf /var/lib/apt/lists/*
+RUN mkdir -p $TMP_BUILD_DIR && \
+    python3.11 -m venv $TMP_BUILD_DIR/venv && \
+    $TMP_BUILD_DIR/venv/bin/python -m pip install --upgrade pip && \
+    $TMP_BUILD_DIR/venv/bin/python -m pip install pgadmin4 && \
+    mkdir -p /pgadmin && cp -a $TMP_BUILD_DIR/* /pgadmin/ && rm -rf $TMP_BUILD_DIR
+
+####################################################################################################################################################
+# Stage 2: systemstats-builder (Ubuntu 24.04)
+####################################################################################################################################################
+FROM ubuntu:24.04 AS systemstats-builder
+ARG SYS_STATS_TAG
+ENV DEBIAN_FRONTEND=noninteractive
+ENV PATH="/usr/lib/postgresql16/bin:$PATH"
+ENV TMP_BUILD_DIR=/mnt/ramdisk/systemstats
+RUN apt-get update && apt-get install -y software-properties-common wget gnupg2 lsb-release && \
+    wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add - && \
+    echo "deb http://apt.postgresql.org/pub/repos/apt/ $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list && \
+    apt-get update && \
+    apt-get install -y build-essential postgresql-server-dev-16 curl unzip jq && \
+    rm -rf /var/lib/apt/lists/*
+RUN mkdir -p $TMP_BUILD_DIR && \
+    curl -L https://github.com/EnterpriseDB/system_stats/archive/refs/tags/${SYS_STATS_TAG}.zip -o $TMP_BUILD_DIR/system_stats-latest.zip && \
+    unzip $TMP_BUILD_DIR/system_stats-latest.zip -d $TMP_BUILD_DIR && \
+    mv $TMP_BUILD_DIR/system_stats-*/ $TMP_BUILD_DIR/system_stats && \
+    cd $TMP_BUILD_DIR/systemstats && export PATH="/usr/bin:$PATH" && \
+    make USE_PGXS=1 && make install USE_PGXS=1 && \
+    mkdir -p /usr/share/postgresql16/extension && \
+    cp system_stats.control /usr/share/postgresql16/extension/ && \
+    cp system_stats--*.sql /usr/share/postgresql16/extension/ && \
+    cd .. && rm -rf $TMP_BUILD_DIR
+
+####################################################################################################################################################
+# Stage 3: zilean-builder (Ubuntu 24.04 .NET SDK)
+####################################################################################################################################################
+FROM ubuntu:24.04 AS zilean-builder
+ARG TARGETARCH
+ARG ZILEAN_TAG
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TMP_BUILD_DIR=/mnt/ramdisk/zilean
+RUN apt-get update && apt-get install -y software-properties-common wget gnupg2 lsb-release && \
+    add-apt-repository ppa:deadsnakes/ppa -y && add-apt-repository ppa:dotnet/backports -y && apt-get update && \
+    apt-get install -y python3.11 python3.11-venv python3.11-dev curl jq unzip dotnet-sdk-9.0 && \
+    rm -rf /var/lib/apt/lists/*
+RUN mkdir -p $TMP_BUILD_DIR && \
+    curl -L https://github.com/iPromKnight/zilean/archive/refs/tags/${ZILEAN_TAG}.zip -o $TMP_BUILD_DIR/zilean-latest.zip && \
+    unzip $TMP_BUILD_DIR/zilean-latest.zip -d $TMP_BUILD_DIR && \
+    mv $TMP_BUILD_DIR/zilean-*/ $TMP_BUILD_DIR/zilean && \
+    echo $ZILEAN_TAG > $TMP_BUILD_DIR/zilean/version.txt && \
+    cd $TMP_BUILD_DIR/zilean && \
+    dotnet restore -a $TARGETARCH && \
+    cd $TMP_BUILD_DIR/zilean/src/Zilean.ApiService && \
+    dotnet publish -c Release --no-restore -a $TARGETARCH -o $TMP_BUILD_DIR/zilean/app/ && \
+    cd $TMP_BUILD_DIR/zilean/src/Zilean.Scraper && \
+    dotnet publish -c Release --no-restore -a $TARGETARCH -o $TMP_BUILD_DIR/zilean/app/ && \
+    cd $TMP_BUILD_DIR/zilean && \
+    python3.11 -m venv $TMP_BUILD_DIR/zilean/venv && \
+    . $TMP_BUILD_DIR/zilean/venv/bin/activate && \
+    pip install -r $TMP_BUILD_DIR/zilean/requirements.txt && \
+    mkdir -p /zilean && cp -a $TMP_BUILD_DIR/zilean/* /zilean/ && rm -rf $TMP_BUILD_DIR
+
+####################################################################################################################################################
+# Stage 4: riven-frontend-builder (Ubuntu 24.04 with Node.js)
+####################################################################################################################################################
+FROM ubuntu:24.04 AS riven-frontend-builder
+ARG RIVEN_FRONTEND_TAG
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TMP_BUILD_DIR=/mnt/ramdisk/rivenfrontend
+RUN apt-get update && apt-get install -y curl unzip gnupg2 lsb-release && \
+    curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
+    apt-get install -y nodejs && \
+    node -v && npm install -g npm@10 && npm -v && \
+    npm install -g pnpm@latest-10 && pnpm -v && \
+    rm -rf /var/lib/apt/lists/*
+RUN mkdir -p $TMP_BUILD_DIR && \
+    curl -L https://github.com/rivenmedia/riven-frontend/archive/refs/tags/${RIVEN_FRONTEND_TAG}.zip -o /tmp/rf.zip && \
+    unzip /tmp/rf.zip -d /tmp && \
+    mv /tmp/riven-frontend-*/* $TMP_BUILD_DIR && \
+    rm /tmp/rf.zip
+WORKDIR $TMP_BUILD_DIR
+RUN sed -i '/export default defineConfig({/a\    build: {\n        minify: false\n    },' vite.config.ts && \
+    sed -i "s#/riven/version.txt#/riven/frontend/version.txt#g" src/routes/settings/about/+page.server.ts && \
+    sed -i "s/export const prerender = true;/export const prerender = false;/g" src/routes/settings/about/+page.server.ts
+RUN echo "store-dir=./.pnpm-store\nchild-concurrency=1\nfetch-retries=10\nfetch-retry-factor=3\nfetch-retry-mintimeout=15000" > .npmrc && \
+    pnpm install && \
+    pnpm run build && \
+    pnpm prune --prod && \
+    mkdir -p /riven/frontend && cp -a . /riven/frontend/ && rm -rf $TMP_BUILD_DIR
+	
+####################################################################################################################################################
+# Stage 5: riven-backend-builder (Ubuntu 24.04 with Python 3.11)
+####################################################################################################################################################
+FROM ubuntu:24.04 AS riven-backend-builder
+ARG RIVEN_TAG
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TMP_BUILD_DIR=/mnt/ramdisk/rivenbackend
+RUN apt-get update && apt-get install -y software-properties-common wget gnupg2 lsb-release unzip && \
+    add-apt-repository ppa:deadsnakes/ppa -y && apt-get update && \
+    apt-get install -y python3.11 python3.11-venv python3.11-dev \
+    curl gcc build-essential libxml2-utils linux-headers-generic && \
+    rm -rf /var/lib/apt/lists/*
+RUN mkdir -p $TMP_BUILD_DIR && \
+    curl -L https://github.com/rivenmedia/riven/archive/refs/tags/${RIVEN_TAG}.zip -o /tmp/riven.zip && \
+    unzip /tmp/riven.zip -d /tmp && \
+    mv /tmp/riven-*/* $TMP_BUILD_DIR && rm /tmp/riven.zip
+WORKDIR $TMP_BUILD_DIR
+RUN python3.11 -m venv /riven/backend/venv && \
+    . /riven/backend/venv/bin/activate && \
+    pip install --upgrade pip && \
+    pip install poetry && \
+    poetry config virtualenvs.create false && \
+    poetry install --no-root --without dev && \
+    mkdir -p /riven/backend && cp -a . /riven/backend/ && rm -rf $TMP_BUILD_DIR	
+	
+####################################################################################################################################################
+# Stage 6: dumb-frontend-builder (Ubuntu 24.04 with Node.js)
+####################################################################################################################################################
+FROM ubuntu:24.04 AS dumb-frontend-builder
+ARG DUMB_FRONTEND_TAG
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TMP_BUILD_DIR=/mnt/ramdisk/dumbfrontend
+RUN apt-get update && apt-get install -y curl unzip build-essential gnupg2 lsb-release && \
+    curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
+    apt-get install -y nodejs && \
+    node -v && npm install -g npm@10 && npm -v && \
+    npm install -g pnpm@latest-10 && pnpm -v && \
+    rm -rf /var/lib/apt/lists/*
+RUN mkdir -p $TMP_BUILD_DIR && \
+    curl -L https://github.com/nicocapalbo/dmbdb/archive/refs/tags/${DUMB_FRONTEND_TAG}.zip -o /tmp/dumb-frontend.zip && \
+    unzip /tmp/dumb-frontend.zip -d /tmp && \
+    mv /tmp/dmbdb*/* $TMP_BUILD_DIR && rm /tmp/dumb-frontend.zip
+WORKDIR $TMP_BUILD_DIR
+RUN echo "store-dir=./.pnpm-store\nchild-concurrency=1\nfetch-retries=10\nfetch-retry-factor=3\nfetch-retry-mintimeout=15000" > .npmrc && \
+    pnpm install --reporter=verbose && \
+    pnpm run build --log-level verbose && \
+    mkdir -p /dumb/frontend && cp -a . /dumb/frontend/ && rm -rf $TMP_BUILD_DIR	
+
+####################################################################################################################################################
+# Stage 7: plex_debrid-builder (Ubuntu 24.04 with Python 3.11)
+####################################################################################################################################################
+FROM ubuntu:24.04 AS plex_debrid-builder
+ARG PLEX_DEBRID_TAG
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TMP_BUILD_DIR=/mnt/ramdisk/plexdebrid
+RUN apt-get update && apt-get install -y software-properties-common curl unzip && \
+    add-apt-repository ppa:deadsnakes/ppa -y && apt-get update && \
+    apt-get install -y \
+    python3.11 \
+    python3.11-venv \
+    python3-pip && \
+    rm -rf /var/lib/apt/lists/*
+RUN mkdir -p $TMP_BUILD_DIR && \
+    curl -L https://github.com/elfhosted/plex_debrid/archive/refs/heads/main.zip -o /tmp/plex_debrid.zip && \
+    unzip /tmp/plex_debrid.zip -d /tmp && \
+    mv /tmp/plex_debrid-main/* $TMP_BUILD_DIR && \
+    rm -rf /tmp/plex_debrid.zip /tmp/plex_debrid-main
+ADD https://raw.githubusercontent.com/I-am-PUID-0/pd_zurg/master/plex_debrid_/settings-default.json $TMP_BUILD_DIR/settings-default.json
+RUN python3.11 -m venv $TMP_BUILD_DIR/venv && \
+    $TMP_BUILD_DIR/venv/bin/python -m pip install --upgrade pip && \
+    $TMP_BUILD_DIR/venv/bin/python -m pip install -r $TMP_BUILD_DIR/requirements.txt && \
+    mkdir -p /plex_debrid && cp -a $TMP_BUILD_DIR/. /plex_debrid/ && rm -rf $TMP_BUILD_DIR	
+	
+####################################################################################################################################################
+# Stage 8: cli_debrid-builder (Ubuntu 24.04 with Python 3.11)
+####################################################################################################################################################
+FROM ubuntu:24.04 AS cli_debrid-builder
+ARG CLI_DEBRID_TAG
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TMP_BUILD_DIR=/mnt/ramdisk/clidebrid
+RUN apt-get update && apt-get install -y software-properties-common curl unzip && \
+    add-apt-repository ppa:deadsnakes/ppa -y && apt-get update && \
+    apt-get install -y \
+    python3.11 \
+    python3.11-venv \
+    python3-pip && \
+    rm -rf /var/lib/apt/lists/*
+RUN mkdir -p $TMP_BUILD_DIR && \
+    curl -L https://github.com/godver3/cli_debrid/archive/refs/tags/${CLI_DEBRID_TAG}.zip -o /tmp/cli_debrid.zip && \
+    unzip /tmp/cli_debrid.zip -d /tmp && \
+    mv /tmp/cli_debrid-*/* $TMP_BUILD_DIR && \
+    rm -rf /tmp/cli_debrid.zip /tmp/cli_debrid-*
+RUN python3.11 -m venv $TMP_BUILD_DIR/venv && \
+    $TMP_BUILD_DIR/venv/bin/python -m pip install --upgrade pip && \
+    $TMP_BUILD_DIR/venv/bin/python -m pip install -r $TMP_BUILD_DIR/requirements-linux.txt && \
+    mkdir -p /cli_debrid && cp -a $TMP_BUILD_DIR/. /cli_debrid/ && rm -rf $TMP_BUILD_DIR	
+	
+####################################################################################################################################################
+# Stage 9: requirements-builder (Ubuntu 24.04 with Python 3.11)
+####################################################################################################################################################
+FROM ubuntu:24.04 AS requirements-builder
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TMP_BUILD_DIR=/mnt/ramdisk/requirements
+COPY pyproject.toml poetry.lock ./
+RUN apt-get update && apt-get install -y software-properties-common wget gnupg2 lsb-release && \
+    add-apt-repository ppa:deadsnakes/ppa -y && apt-get update && \
+    apt-get install -y python3.11 python3.11-venv python3.11-dev curl gcc build-essential libxml2-utils linux-headers-generic libpq-dev pkg-config && \
+    rm -rf /var/lib/apt/lists/*
+RUN mkdir -p $TMP_BUILD_DIR && \
+    python3.11 -m venv $TMP_BUILD_DIR/venv && \
+    . $TMP_BUILD_DIR/venv/bin/activate && \
+    pip install --upgrade pip && \
+    pip install poetry && \
+    poetry config virtualenvs.create false && \
+    poetry install --no-root && \
+    mkdir -p /venv && cp -a $TMP_BUILD_DIR/venv/. /venv/ && rm -rf $TMP_BUILD_DIR	
+
+####################################################################################################################################################
+# Stage 10: final-stage (Ubuntu 24.04 with Python 3.11, .NET SDK, PostgreSQL, pgAdmin4, Node.js, Rclone, Zilean, SystemStats, Riven, Plex Debrid, & DUMB)
+####################################################################################################################################################
+FROM ubuntu:24.04 AS final-stage
+ARG TARGETARCH
+ENV DEBIAN_FRONTEND=noninteractive
+ENV PATH="/usr/lib/postgresql/16/bin:$PATH"
+LABEL name="DUMB" \
+      description="Debrid Unlimited Media Bridge" \
+      url="https://github.com/I-am-PUID-0/DUMB" \
+      maintainer="I-am-PUID-0"
+      
+RUN apt-get update && \
+    apt-get install -y software-properties-common && \
+    add-apt-repository ppa:dotnet/backports -y && \
+    add-apt-repository ppa:deadsnakes/ppa -y && \
+    apt-get update && \
+    apt-get install -y \
+      curl tzdata nano ca-certificates wget fuse3 \
+      build-essential linux-headers-generic libpython3.11 python3.11 python3.11-venv python3-pip python3-dev \
+      libxml2-utils git htop pkg-config libffi-dev libboost-filesystem-dev libboost-thread-dev \
+      ffmpeg jq openssl bash unzip gnupg2 lsb-release dotnet-sdk-9.0 locales && \ 
+    locale-gen en_US.UTF-8 && \
+    update-alternatives --install /usr/bin/python python /usr/bin/python3.11 1 && \
+    update-alternatives --install /usr/bin/pip pip /usr/bin/pip3 1 && \
+    ln -sf /usr/lib/$(uname -m)-linux-gnu/libpython3.11.so.1 /usr/local/lib/libpython3.11.so.1 && \
+    ln -sf /usr/lib/$(uname -m)-linux-gnu/libpython3.11.so.1.0 /usr/local/lib/libpython3.11.so.1.0 && \
+    wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add - && \
+    echo "deb http://apt.postgresql.org/pub/repos/apt/ $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list && \
+    apt-get update && \
+    apt-get install -y \
+      postgresql-client-16 postgresql-16 postgresql-contrib-16 pgagent && \
+    rm -rf /var/lib/apt/lists/* && \
+    curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
+    apt-get install -y nodejs && \
+    node -v && npm install -g npm@10 && npm -v && \
+    npm install -g pnpm@latest-10 && pnpm -v
+
+WORKDIR /
+
+RUN echo "export PATH=/usr/lib/postgresql/16/bin:$PATH" >> /etc/profile.d/postgresql.sh
+RUN echo "export PATH=/usr/lib/postgresql/16/bin:$PATH" >> /root/.bashrc
+
+COPY --from=requirements-builder /venv /venv
+COPY --from=pgadmin-builder /pgadmin/venv /pgadmin/venv
+COPY --from=systemstats-builder /usr/share/postgresql/16/extension/system_stats* /usr/share/postgresql/16/extension/
+COPY --from=systemstats-builder /usr/lib/postgresql/16/lib/system_stats.so /usr/lib/postgresql/16/lib/
+COPY --from=zilean-builder /zilean /zilean
+COPY --from=riven-frontend-builder /riven/frontend /riven/frontend
+COPY --from=riven-backend-builder /riven/backend /riven/backend
+COPY --from=dumb-frontend-builder /dumb/frontend /dumb/frontend
+COPY --from=plex_debrid-builder /plex_debrid /plex_debrid
+COPY --from=cli_debrid-builder /cli_debrid /cli_debrid
+COPY --from=rclone/rclone:latest /usr/local/bin/rclone /usr/local/bin/rclone
+ADD https://raw.githubusercontent.com/debridmediamanager/zurg-testing/main/config.yml /zurg/
+ADD https://raw.githubusercontent.com/debridmediamanager/zurg-testing/main/scripts/plex_update.sh /zurg/
+RUN sed -i 's/^on_library_update: sh plex_update.sh.*$/# &/' /zurg/config.yml
+
+COPY . /./
+
+ENV XDG_CONFIG_HOME=/config \
+    TERM=xterm
+
+HEALTHCHECK --interval=60s --timeout=10s \
+  CMD ["/bin/bash", "-c", ". /venv/bin/activate && python /healthcheck.py"]
+
+ENTRYPOINT ["/bin/bash", "-c", ". /venv/bin/activate && python /main.py"]
