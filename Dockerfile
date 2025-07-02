@@ -122,7 +122,7 @@ RUN curl -L https://github.com/rivenmedia/riven/archive/refs/tags/${RIVEN_TAG}.z
 FROM ubuntu:24.04 AS dumb-frontend-builder
 ARG DUMB_FRONTEND_TAG
 ENV DEBIAN_FRONTEND=noninteractive
-RUN apt-get update && apt-get install -y curl unzip build-essential gnupg2 lsb-release && \
+RUN apt-get update && apt-get install -y curl unzip build-essential gnupg2 lsb-release python3 make g++ git ca-certificates && \
     curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
     apt-get install -y nodejs && \
     node -v && npm install -g npm@10 && npm -v && \
