@@ -2,52 +2,64 @@
   <h1>🎬 Debrid Unlimited Media Bridge 🎬</h1>
   <a href="https://github.com/I-am-PUID-0/DUMB">
     <picture>
-      <source media="(prefers-color-scheme: dark)" srcset="https://i-am-puid-0.github.io/DUMB/assets/images/DUMB.png">
-      <img alt="DUMB" src="https://i-am-puid-0.github.io/DUMB/assets/images/DUMB.png" style="max-width: 100%; height: auto;">
+      <source srcset="https://i-am-puid-0.github.io/DUMB/assets/images/DUMB.png">
+      <img
+        alt="DUMB"
+        src="https://i-am-puid-0.github.io/DUMB/assets/images/DUMB.png"
+        style="max-width: 100%; height: auto;"
+      />
     </picture>
   </a>
 </div>
-<div
-  align="center"
-  style="display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-top: 1em;"
->
+<div align="center" style="margin-top: 1em;">
   <a href="https://github.com/I-am-PUID-0/DUMB/stargazers">
     <img
       alt="GitHub Repo stars"
       src="https://img.shields.io/github/stars/I-am-PUID-0/DUMB?style=for-the-badge"
-    />
-  </a>
+    /></a>
   <a href="https://github.com/I-am-PUID-0/DUMB/issues">
     <img
       alt="Issues"
       src="https://img.shields.io/github/issues/I-am-PUID-0/DUMB?style=for-the-badge"
-    />
-  </a>
+    /></a>
   <a href="https://github.com/I-am-PUID-0/DUMB/blob/master/COPYING">
     <img
       alt="License"
       src="https://img.shields.io/github/license/I-am-PUID-0/DUMB?style=for-the-badge"
-    />
-  </a>
+    /></a>
   <a href="https://github.com/I-am-PUID-0/DUMB/graphs/contributors">
     <img
       alt="Contributors"
       src="https://img.shields.io/github/contributors/I-am-PUID-0/DUMB?style=for-the-badge"
-    />
-  </a>
+    /></a>
   <a href="https://hub.docker.com/r/iampuid0/dumb">
     <img
       alt="Docker Pulls"
       src="https://img.shields.io/docker/pulls/iampuid0/dumb?style=for-the-badge&logo=docker&logoColor=white"
-    />
-  </a>
+    /></a>
+    <a href="https://github.com/I-am-PUID-0/DUMB/actions?query=workflow%3A%22Docker+Image+CI%22">
+    <img
+      alt="GitHub Workflow Status"
+      src="https://img.shields.io/github/actions/workflow/status/I-am-PUID-0/DUMB/docker-image.yml?style=for-the-badge&label=Docker%20build"
+    /></a>
   <a href="https://discord.gg/T6uZGy5XYb">
     <img
       alt="Join Discord"
       src="https://img.shields.io/badge/Join%20us%20on%20Discord-5865F2?style=for-the-badge&logo=discord&logoColor=white"
-    />
-  </a>
+    /></a>
 </div>
+
+> [!CAUTION]
+> Docker Desktop **CANNOT** be used to run DMB. Docker Desktop does not support the [mount propagation](https://docs.docker.com/storage/bind-mounts/#configure-bind-propagation) required for rclone mounts.
+>
+> ![image](https://github.com/I-am-PUID-0/DMB/assets/36779668/aff06342-1099-4554-a5a4-72a7c82cb16e)
+>
+> You might have some success provided the `:rshared` flag is omitted from the `/mnt/debird` bind mount. 
+> Which is means you can not use Decypharr.
+>
+
+> [!CAUTION]
+> See the DMB Docs for [alternative deployment options](https://i-am-puid-0.github.io/DMB/deployment/wsl) to run DMB on Windows through WSL2.
 
 ## 📜 Description
 
@@ -58,20 +70,20 @@
 
 > You are free to use whichever components you like. Not all are required, and some may provide overlapping functionality in different ways.
 
-| Project                                                            | Author                                                               | Community / Docs / Support                                                                                                                     | 🍻 Support Dev                                                                                      |
-|--------------------------------------------------------------------|----------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------|
-| [cli_debrid](https://github.com/godver3/cli_debrid)               | [godver3](https://github.com/godver3)                                | [Discord](https://discord.gg/ynqnXGJ4hU)                                                                                                         | [Sponsor](https://github.com/sponsors/godver3)                                                    |
-| [dmbdb](https://github.com/nicocapalbo/dmbdb)                     | [nicocapalbo](https://github.com/nicocapalbo)                        | [Issues](https://github.com/nicocapalbo/dmbdb/issues)                                                     | —                                                                                                   |
-| [Decypharr](https://github.com/sirrobot01/decypharr)              | [Mukhtar Akere](https://github.com/sirrobot01)                       | [Docs](https://sirrobot01.github.io/decypharr/) • [Issues](https://github.com/sirrobot01/decypharr/issues)                                     | [Sponsor](https://github.com/sponsors/sirrobot01)                                                 |
-| [pgAdmin 4](https://www.pgadmin.org/)                             | [pgAdmin Team](https://www.pgadmin.org/development/)                 | [Docs](https://www.pgadmin.org/docs/) • [Support](https://www.pgadmin.org/support/)                                                            | [Donate](https://www.pgadmin.org/donate/)                                                         |
-| [phalanx_db](https://github.com/godver3/phalanx_db_hyperswarm)   | [godver3](https://github.com/godver3)                                | [Discord](https://discord.gg/jAmqZJCZJ4)                                                                                                         | [Sponsor](https://github.com/sponsors/godver3)                                                    |
-| [plex_debrid](https://github.com/itsToggle/plex_debrid)          | [itsToggle](https://github.com/itsToggle)                            | [Discord](https://discord.gg/u3vTDGjeKE) • [Issues](https://github.com/itsToggle/plex_debrid/issues)                                            | [Affiliate](http://real-debrid.com/?id=5708990) • [PayPal](https://www.paypal.com/paypalme/oidulibbe) |
-| [Plex Media Server](https://www.plex.tv/media-server-downloads/) | [plexinc](https://www.plex.tv/)                                     | [Support](https://support.plex.tv/)                                                                                                              | [Donate](https://www.plex.tv/plex-pass/) (via Plex Pass)                                           |
-| [PostgreSQL](https://www.postgresql.org/)                         | [Michael Stonebraker](https://en.wikipedia.org/wiki/Michael_Stonebraker) | [Docs](https://www.postgresql.org/docs/)                                                                                                         | [Donate](https://www.postgresql.org/about/donate/)                                                |
-| [rclone](https://github.com/rclone/rclone)                        | [Nick Craig-Wood](https://github.com/ncw)                            | [Docs](https://rclone.org/)                                                                                                                      | [Sponsor](https://rclone.org/sponsor/)                                                            |
-| [Riven](https://github.com/rivenmedia/riven)                      | [Riven Media](https://github.com/rivenmedia)                         | [Discord](https://discord.gg/VtYd42mxgb) • [Discussions](https://github.com/orgs/rivenmedia/discussions)                                       | [Sponsor](https://github.com/sponsors/dreulavelle/)                                               |
-| [Zilean](https://github.com/iPromKnight/zilean)                   | [iPromKnight](https://github.com/iPromKnight)                        | [Docs](https://ipromknight.github.io/zilean/) • [Issues](https://github.com/iPromKnight/zilean/issues)                                         | —                                                                                                   |
-| [Zurg](https://github.com/debridmediamanager/zurg-testing)        | [yowmamasita](https://github.com/yowmamasita)                        | [Wiki](https://github.com/debridmediamanager/zurg-testing/wiki)                                                                                 | [Sponsor](https://github.com/sponsors/debridmediamanager)                                         |
+| Project                                                          | Author                                                                   | Community / Docs / Support                                                                                 | 🍻 Support Dev                                                                                       |
+| ---------------------------------------------------------------- | ------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| [cli_debrid](https://github.com/godver3/cli_debrid)              | [godver3](https://github.com/godver3)                                    | [Discord](https://discord.gg/ynqnXGJ4hU)                                                                   | [Sponsor](https://github.com/sponsors/godver3)                                                        |
+| [dmbdb](https://github.com/nicocapalbo/dmbdb)                    | [nicocapalbo](https://github.com/nicocapalbo)                            | [Issues](https://github.com/nicocapalbo/dmbdb/issues)                                                      | —                                                                                                     |
+| [Decypharr](https://github.com/sirrobot01/decypharr)             | [Mukhtar Akere](https://github.com/sirrobot01)                           | [Docs](https://sirrobot01.github.io/decypharr/) • [Issues](https://github.com/sirrobot01/decypharr/issues) | [Sponsor](https://github.com/sponsors/sirrobot01)                                                     |
+| [pgAdmin 4](https://www.pgadmin.org/)                            | [pgAdmin Team](https://www.pgadmin.org/development/)                     | [Docs](https://www.pgadmin.org/docs/) • [Support](https://www.pgadmin.org/support/)                        | [Donate](https://www.pgadmin.org/donate/)                                                             |
+| [phalanx_db](https://github.com/godver3/phalanx_db_hyperswarm)   | [godver3](https://github.com/godver3)                                    | [Discord](https://discord.gg/jAmqZJCZJ4)                                                                   | [Sponsor](https://github.com/sponsors/godver3)                                                        |
+| [plex_debrid](https://github.com/itsToggle/plex_debrid)          | [itsToggle](https://github.com/itsToggle)                                | [Discord](https://discord.gg/u3vTDGjeKE) • [Issues](https://github.com/itsToggle/plex_debrid/issues)       | [Affiliate](http://real-debrid.com/?id=5708990) • [PayPal](https://www.paypal.com/paypalme/oidulibbe) |
+| [Plex Media Server](https://www.plex.tv/media-server-downloads/) | [plexinc](https://www.plex.tv/)                                          | [Support](https://support.plex.tv/)                                                                        | [Donate](https://www.plex.tv/plex-pass/) (via Plex Pass)                                              |
+| [PostgreSQL](https://www.postgresql.org/)                        | [Michael Stonebraker](https://en.wikipedia.org/wiki/Michael_Stonebraker) | [Docs](https://www.postgresql.org/docs/)                                                                   | [Donate](https://www.postgresql.org/about/donate/)                                                    |
+| [rclone](https://github.com/rclone/rclone)                       | [Nick Craig-Wood](https://github.com/ncw)                                | [Docs](https://rclone.org/)                                                                                | [Sponsor](https://rclone.org/sponsor/)                                                                |
+| [Riven](https://github.com/rivenmedia/riven)                     | [Riven Media](https://github.com/rivenmedia)                             | [Discord](https://discord.gg/VtYd42mxgb) • [Discussions](https://github.com/orgs/rivenmedia/discussions)   | [Sponsor](https://github.com/sponsors/dreulavelle/)                                                   |
+| [Zilean](https://github.com/iPromKnight/zilean)                  | [iPromKnight](https://github.com/iPromKnight)                            | [Docs](https://ipromknight.github.io/zilean/) • [Issues](https://github.com/iPromKnight/zilean/issues)     | —                                                                                                     |
+| [Zurg](https://github.com/debridmediamanager/zurg-testing)       | [yowmamasita](https://github.com/yowmamasita)                            | [Wiki](https://github.com/debridmediamanager/zurg-testing/wiki)                                            | [Sponsor](https://github.com/sponsors/debridmediamanager)                                             |
 
 
 ## 🌟 Features
@@ -205,6 +217,12 @@ For additional details on deployment, see the [DUMB Docs](https://i-am-puid-0.gi
 - or create a new [issue](https://github.com/I-am-PUID-0/DUMB/issues) if you find a bug or have an idea for an improvement.
 - or join the DUMB [discord server](https://discord.gg/T6uZGy5XYb)
 
-## ✅ GitHub Workflow Status
 
-![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/I-am-PUID-0/DUMB/docker-image.yml)
+## 🛠️ Developmnent
+
+### Development support:
+
+- The repo contains a devcontainer for use with vscode.
+- Bind mounts will need to be populated with content from this repo
+- 
+
