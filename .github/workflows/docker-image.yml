@@ -12,6 +12,10 @@ on:
       - '.github/**'
       - '.gitattributes'
       - '.gitignore'
+      
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   setup:
@@ -540,6 +544,48 @@ jobs:
           echo "- PNPM: \`${{ env.PNPM_VERSION }}\`" >> $GITHUB_STEP_SUMMARY
           echo "- rclone: \`${{ env.RCLONE_VERSION }}\`" >> $GITHUB_STEP_SUMMARY          
           echo "**Build and Push Status:** ✅ Successful" >> $GITHUB_STEP_SUMMARY
+
+  cleanup-cache:
+    needs: [ setup, build-and-push]
+    runs-on: self-hosted
+    if: always()
+    env:
+      BRANCH_NAME: ${{ needs.setup.outputs.BRANCH_NAME }}
+    steps:
+      - name: Prune every stage cache (keep latest only)
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          ROOT="/home/docker/buildx-cache/${{ github.repository }}/${BRANCH_NAME}"
+          LOCK="/var/lock/buildx-cache.lock"
+
+          flock -x "$LOCK" bash -s <<'CLEAN'
+            ROOT='"$ROOT"'
+
+            # walk every stage directory under …/<branch>/
+            for STAGE_DIR in "$ROOT"/*/ ; do
+              [[ -f "${STAGE_DIR}index.json" ]] || continue
+              echo "::group::⏳  Pruning ${STAGE_DIR##*/}"
+
+              # 1) current manifest digest
+              MANIFEST=$(jq -r '.manifests[0].digest' "${STAGE_DIR}index.json" | sed 's/^sha256://')
+              KEEP=$(mktemp)
+              echo "$MANIFEST" > "$KEEP"
+
+              # 2) config + layer digests referenced by that manifest
+              jq -r '..|.digest?|select(.)' "${STAGE_DIR}blobs/sha256/$MANIFEST" \
+                | sed 's/^sha256://' >> "$KEEP"
+              sort -u "$KEEP" -o "$KEEP"
+
+              # 3) delete every blob not in keep-list
+              find "${STAGE_DIR}blobs/sha256" -type f -printf '%f\n' \
+                | grep -v -F -f "$KEEP" \
+                | xargs -r -I{} rm -f "${STAGE_DIR}blobs/sha256/{}"
+
+              rm "$KEEP"
+              echo "::endgroup::"
+            done
+          CLEAN
 
   release:
     needs: [setup, build-and-push]
