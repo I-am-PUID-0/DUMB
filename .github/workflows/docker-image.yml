@@ -556,7 +556,6 @@ jobs:
           LOCK="/var/lock/buildx-cache.lock"
           export ROOT 
           flock -x "$LOCK" bash -s <<'CLEAN'
-            ROOT='"$ROOT"'
 
             # walk every stage directory under …/<branch>/
             for STAGE_DIR in "$ROOT"/*/ ; do
