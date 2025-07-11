@@ -12,7 +12,7 @@ on:
       - '.github/**'
       - '.gitattributes'
       - '.gitignore'
-      
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: false
@@ -556,9 +556,9 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          ROOT="/home/docker/buildx-cache/${{ github.repository }}/${BRANCH_NAME}"
+          ROOT="/home/docker/buildx-cache/${{ github.repository }}/${{ env.BRANCH_NAME }}"
           LOCK="/var/lock/buildx-cache.lock"
-
+          export ROOT 
           flock -x "$LOCK" bash -s <<'CLEAN'
             ROOT='"$ROOT"'
 
