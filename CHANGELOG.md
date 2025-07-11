@@ -1,5 +1,35 @@
 # Changelog
 
+## [1.3.2](https://github.com/I-am-PUID-0/DUMB/compare/1.3.1...1.3.2) (2025-07-11)
+
+
+### 🐛 Bug Fixes
+
+* **docker:** correct environment variable reference for buildx cache root path ([5ded5fe](https://github.com/I-am-PUID-0/DUMB/commit/5ded5fea1b6e30f86ed2082c9b078d32d62793a4))
+* **docker:** remove unnecessary variable assignment in cleanup-cache job ([08ddd0e](https://github.com/I-am-PUID-0/DUMB/commit/08ddd0ea1482afd6fa2695203ff06eb9dc3f8051))
+
+
+### 🚀 CI/CD Pipeline
+
+* **workflows:** parallel docker build ([bd3f4bc](https://github.com/I-am-PUID-0/DUMB/commit/bd3f4bcd99df6352e6d769b7a3cf3a1b50af6a1e))
+
+
+### 🛠️ Build System
+
+* **docker:** add checkout action to setup job for version and repository variables ([af043f5](https://github.com/I-am-PUID-0/DUMB/commit/af043f55ede69bcdbc125ff1d1fcb4fd6b18ca1a))
+* **docker:** add cleanup-cache job to prune buildx cache after builds ([1474db1](https://github.com/I-am-PUID-0/DUMB/commit/1474db1078c25cdd91614b4a0015126112b89883))
+* **docker:** add image tag selection and pull step for version extraction ([4804ca5](https://github.com/I-am-PUID-0/DUMB/commit/4804ca5e9f970a4678eb093d156acd0a59840779))
+* **docker:** add python3 make g++ git ca-certificates to dumb frontend build ([f4cfc3f](https://github.com/I-am-PUID-0/DUMB/commit/f4cfc3f69bf0be2edbe38c3f717a5655d6ff7b25))
+* **docker:** change to use /dev/shm ([9b5ac34](https://github.com/I-am-PUID-0/DUMB/commit/9b5ac3428c4d3da9da7df8d029e98528a791f381))
+* **docker:** enhance CI workflow by adding setup job for version and repository variables ([56afd5d](https://github.com/I-am-PUID-0/DUMB/commit/56afd5dc80969d4d99905c9121527f55eff98e92))
+* **docker:** fix cleanup command in cli_debrid-builder to remove all extracted files ([7e8f92d](https://github.com/I-am-PUID-0/DUMB/commit/7e8f92d1e56f6ac20e8754febc6fb14cc0295c85))
+* **docker:** optimize pnpm configuration for frontend builds ([7021918](https://github.com/I-am-PUID-0/DUMB/commit/70219182f16377410e1f32ada8991fd85e9d6091))
+* **docker:** refactor Dockerfile to consolidate base image and streamline build stages ([44e646e](https://github.com/I-am-PUID-0/DUMB/commit/44e646e5d3147129dbb6f722d8d9e9c4dde84bb0))
+* **docker:** refactor frontend build steps and improve npm configuration ([ee09571](https://github.com/I-am-PUID-0/DUMB/commit/ee095715758d44dcc3811577f802e00eff1dfeaa))
+* **docker:** split pnpm build ([92c85cf](https://github.com/I-am-PUID-0/DUMB/commit/92c85cf20c3db9bcba0bfdf936c92b5d17570bc4))
+* **docker:** test ramdisk for builds ([051d6b0](https://github.com/I-am-PUID-0/DUMB/commit/051d6b09375f61049b9330e388b8bd2feb24e39f))
+* **docker:** update environment variable handling to use GITHUB_OUTPUT instead of GITHUB_ENV ([76494d6](https://github.com/I-am-PUID-0/DUMB/commit/76494d6abc80d24bb8a2c900be0f7395874cf187))
+
 ## [1.3.1](https://github.com/I-am-PUID-0/DUMB/compare/1.3.0...1.3.1) (2025-06-30)
 
 
