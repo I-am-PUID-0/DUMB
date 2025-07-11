@@ -1,5 +1,7 @@
 ﻿name: Docker Image CI
-
+env:
+  SKIP_QEMU_SETUP: 'true'
+  DOCKER_BUILD_RECORD_UPLOAD: false 
 on:
   workflow_dispatch:
   pull_request:
@@ -53,42 +55,36 @@ jobs:
         id: fetch_pgagent_tag
         run: |
           PGAGENT_TAG=$(curl -s https://api.github.com/repos/pgadmin-org/pgagent/releases/latest | jq -r .tag_name)
-          echo "PGAGENT_TAG=$PGAGENT_TAG" >> $GITHUB_ENV
           echo "PGAGENT_TAG=$PGAGENT_TAG" >> $GITHUB_OUTPUT
 
       - name: Fetch latest system_stats release tag
         id: fetch_sys_stats_tag
         run: |
           SYS_STATS_TAG=$(curl -s https://api.github.com/repos/EnterpriseDB/system_stats/releases/latest | jq -r .tag_name)
-          echo "SYS_STATS_TAG=$SYS_STATS_TAG" >> $GITHUB_ENV
           echo "SYS_STATS_TAG=$SYS_STATS_TAG" >> $GITHUB_OUTPUT
 
       - name: Fetch latest zilean release tag
         id: fetch_zilean_tag
         run: |
           ZILEAN_TAG=$(curl -s https://api.github.com/repos/iPromKnight/zilean/releases/latest | jq -r .tag_name)
-          echo "ZILEAN_TAG=$ZILEAN_TAG" >> $GITHUB_ENV
           echo "ZILEAN_TAG=$ZILEAN_TAG" >> $GITHUB_OUTPUT
 
       - name: Fetch latest riven release tag
         id: fetch_riven_tag
         run: |
           RIVEN_TAG=$(curl -s https://api.github.com/repos/rivenmedia/riven/releases/latest | jq -r .tag_name)
-          echo "RIVEN_TAG=$RIVEN_TAG" >> $GITHUB_ENV
           echo "RIVEN_TAG=$RIVEN_TAG" >> $GITHUB_OUTPUT
 
       - name: Fetch latest riven-frontend release tag
         id: fetch_riven_frontend_tag
         run: |
           RIVEN_FRONTEND_TAG=$(curl -s https://api.github.com/repos/rivenmedia/riven-frontend/releases/latest | jq -r .tag_name)
-          echo "RIVEN_FRONTEND_TAG=$RIVEN_FRONTEND_TAG" >> $GITHUB_ENV
           echo "RIVEN_FRONTEND_TAG=$RIVEN_FRONTEND_TAG" >> $GITHUB_OUTPUT
 
       - name: Fetch latest dmbdb release tag
         id: fetch_dumb_frontend_tag
         run: |
           DUMB_FRONTEND_TAG=$(curl -s https://api.github.com/repos/nicocapalbo/dmbdb/releases/latest | jq -r .tag_name)
-          echo "DUMB_FRONTEND_TAG=$DUMB_FRONTEND_TAG" >> $GITHUB_ENV 
           echo "DUMB_FRONTEND_TAG=$DUMB_FRONTEND_TAG" >> $GITHUB_OUTPUT
 
       - name: Fetch latest plex_debrid version from source
@@ -97,21 +93,43 @@ jobs:
           PLEX_DEBRID_TAG=$(curl -s https://raw.githubusercontent.com/elfhosted/plex_debrid/main/ui/ui_settings.py | \
             grep '^version\s*=' | \
             sed -E "s/.*=\s*\[\s*'([^']+)'.*/\1/")
-          echo "PLEX_DEBRID_TAG=$PLEX_DEBRID_TAG" >> $GITHUB_ENV
           echo "PLEX_DEBRID_TAG=$PLEX_DEBRID_TAG" >> $GITHUB_OUTPUT
 
       - name: Fetch latest cli_debrid release tag
         id: fetch_cli_debrid_tag
         run: |
           CLI_DEBRID_TAG=$(curl -s https://api.github.com/repos/godver3/cli_debrid/releases/latest | jq -r .tag_name)
-          echo "CLI_DEBRID_TAG=$CLI_DEBRID_TAG" >> $GITHUB_ENV 
           echo "CLI_DEBRID_TAG=$CLI_DEBRID_TAG" >> $GITHUB_OUTPUT
 
-  build-zilean:
-    needs: [setup, fetch-latest-tags]
+  build-base:
+    needs: setup
     runs-on: self-hosted
     env:
-      SKIP_QEMU_SETUP: 'true'
+      BRANCH_NAME: ${{ needs.setup.outputs.BRANCH_NAME }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up QEMU
+        if: env.SKIP_QEMU_SETUP != 'true'
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: linux/amd64,linux/arm64
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Build base stage (multi‑arch)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          target: base
+          platforms: linux/amd64,linux/arm64
+          cache-from: type=local,src=/home/docker/buildx-cache/${{ github.repository }}/${{ env.BRANCH_NAME }}/base
+          cache-to:   type=local,dest=/home/docker/buildx-cache/${{ github.repository }}/${{ env.BRANCH_NAME }}/base,mode=max
+          push: false
+
+  build-zilean:
+    needs: [setup, fetch-latest-tags, build-base]
+    runs-on: self-hosted
+    env:
       BRANCH_NAME: ${{ needs.setup.outputs.BRANCH_NAME }} 
     steps:
       - uses: actions/checkout@v4
@@ -130,15 +148,16 @@ jobs:
           target: zilean-builder
           platforms: linux/amd64,linux/arm64
           build-args: ZILEAN_TAG=${{ needs.fetch-latest-tags.outputs.ZILEAN_TAG }}
-          cache-from: type=local,src=/home/docker/buildx-cache/${{ github.repository }}/${{ env.BRANCH_NAME }}/zilean
+          cache-from: |
+            type=local,src=/home/docker/buildx-cache/${{ github.repository }}/${{ env.BRANCH_NAME }}/base
+            type=local,src=/home/docker/buildx-cache/${{ github.repository }}/${{ env.BRANCH_NAME }}/zilean
           cache-to: type=local,dest=/home/docker/buildx-cache/${{ github.repository }}/${{ env.BRANCH_NAME }}/zilean,mode=max
           push: false
 
   build-pgadmin:
-    needs: [setup, fetch-latest-tags]
+    needs: [setup, fetch-latest-tags, build-base]
     runs-on: self-hosted
     env:
-      SKIP_QEMU_SETUP: 'true'
       BRANCH_NAME: ${{ needs.setup.outputs.BRANCH_NAME }}
     steps:
       - uses: actions/checkout@v4
@@ -156,15 +175,16 @@ jobs:
           file: ./Dockerfile
           target: pgadmin-builder
           platforms: linux/amd64,linux/arm64
-          cache-from: type=local,src=/home/docker/buildx-cache/${{ github.repository }}/${{ env.BRANCH_NAME }}/pgadmin
+          cache-from: |
+            type=local,src=/home/docker/buildx-cache/${{ github.repository }}/${{ env.BRANCH_NAME }}/base
+            type=local,src=/home/docker/buildx-cache/${{ github.repository }}/${{ env.BRANCH_NAME }}/pgadmin
           cache-to: type=local,dest=/home/docker/buildx-cache/${{ github.repository }}/${{ env.BRANCH_NAME }}/pgadmin,mode=max
           push: false
 
   build-systemstats:
-    needs: [setup, fetch-latest-tags]
+    needs: [setup, fetch-latest-tags, build-base]
     runs-on: self-hosted
     env:
-      SKIP_QEMU_SETUP: 'true'
       BRANCH_NAME: ${{ needs.setup.outputs.BRANCH_NAME }}
     steps:
       - uses: actions/checkout@v4
@@ -183,15 +203,16 @@ jobs:
           target: systemstats-builder
           platforms: linux/amd64,linux/arm64
           build-args: SYS_STATS_TAG=${{ needs.fetch-latest-tags.outputs.SYS_STATS_TAG }}
-          cache-from: type=local,src=/home/docker/buildx-cache/${{ github.repository }}/${{ env.BRANCH_NAME }}/systemstats
+          cache-from: |
+            type=local,src=/home/docker/buildx-cache/${{ github.repository }}/${{ env.BRANCH_NAME }}/base
+            type=local,src=/home/docker/buildx-cache/${{ github.repository }}/${{ env.BRANCH_NAME }}/systemstats
           cache-to: type=local,dest=/home/docker/buildx-cache/${{ github.repository }}/${{ env.BRANCH_NAME }}/systemstats,mode=max
           push: false
 
   build-riven-frontend:
-    needs: [setup, fetch-latest-tags]
+    needs: [setup, fetch-latest-tags, build-base]
     runs-on: self-hosted
     env:
-      SKIP_QEMU_SETUP: 'true'
       BRANCH_NAME: ${{ needs.setup.outputs.BRANCH_NAME }}
     steps:
       - uses: actions/checkout@v4
@@ -210,15 +231,16 @@ jobs:
           target: riven-frontend-builder
           platforms: linux/amd64,linux/arm64
           build-args: RIVEN_FRONTEND_TAG=${{ needs.fetch-latest-tags.outputs.RIVEN_FRONTEND_TAG }}
-          cache-from: type=local,src=/home/docker/buildx-cache/${{ github.repository }}/${{ env.BRANCH_NAME }}/riven-frontend
+          cache-from: |
+            type=local,src=/home/docker/buildx-cache/${{ github.repository }}/${{ env.BRANCH_NAME }}/base
+            type=local,src=/home/docker/buildx-cache/${{ github.repository }}/${{ env.BRANCH_NAME }}/riven-frontend
           cache-to: type=local,dest=/home/docker/buildx-cache/${{ github.repository }}/${{ env.BRANCH_NAME }}/riven-frontend,mode=max
           push: false
 
   build-riven-backend:
-    needs: [setup, fetch-latest-tags]
+    needs: [setup, fetch-latest-tags, build-base]
     runs-on: self-hosted
     env:
-      SKIP_QEMU_SETUP: 'true'
       BRANCH_NAME: ${{ needs.setup.outputs.BRANCH_NAME }}
     steps:
       - uses: actions/checkout@v4
@@ -237,15 +259,16 @@ jobs:
           target: riven-backend-builder
           platforms: linux/amd64,linux/arm64
           build-args: RIVEN_TAG=${{ needs.fetch-latest-tags.outputs.RIVEN_TAG }}
-          cache-from: type=local,src=/home/docker/buildx-cache/${{ github.repository }}/${{ env.BRANCH_NAME }}/riven-backend
+          cache-from: |
+            type=local,src=/home/docker/buildx-cache/${{ github.repository }}/${{ env.BRANCH_NAME }}/base
+            type=local,src=/home/docker/buildx-cache/${{ github.repository }}/${{ env.BRANCH_NAME }}/riven-backend
           cache-to: type=local,dest=/home/docker/buildx-cache/${{ github.repository }}/${{ env.BRANCH_NAME }}/riven-backend,mode=max
           push: false
 
   build-dumb-frontend:
-    needs: [setup, fetch-latest-tags]
+    needs: [setup, fetch-latest-tags, build-base]
     runs-on: self-hosted
     env:
-      SKIP_QEMU_SETUP: 'true'
       BRANCH_NAME: ${{ needs.setup.outputs.BRANCH_NAME }}
     steps:
       - uses: actions/checkout@v4
@@ -264,15 +287,16 @@ jobs:
           target: dumb-frontend-builder
           platforms: linux/amd64,linux/arm64
           build-args: DUMB_FRONTEND_TAG=${{ needs.fetch-latest-tags.outputs.DUMB_FRONTEND_TAG }}
-          cache-from: type=local,src=/home/docker/buildx-cache/${{ github.repository }}/${{ env.BRANCH_NAME }}/dumb-frontend
+          cache-from: |
+            type=local,src=/home/docker/buildx-cache/${{ github.repository }}/${{ env.BRANCH_NAME }}/base
+            type=local,src=/home/docker/buildx-cache/${{ github.repository }}/${{ env.BRANCH_NAME }}/dumb-frontend
           cache-to: type=local,dest=/home/docker/buildx-cache/${{ github.repository }}/${{ env.BRANCH_NAME }}/dumb-frontend,mode=max
           push: false
 
   build-plex-debrid:
-    needs: [setup, fetch-latest-tags]
+    needs: [setup, fetch-latest-tags, build-base]
     runs-on: self-hosted
     env:
-      SKIP_QEMU_SETUP: 'true'
       BRANCH_NAME: ${{ needs.setup.outputs.BRANCH_NAME }}
     steps:
       - uses: actions/checkout@v4
@@ -291,15 +315,16 @@ jobs:
           target: plex_debrid-builder
           platforms: linux/amd64,linux/arm64
           build-args: PLEX_DEBRID_TAG=${{ needs.fetch-latest-tags.outputs.PLEX_DEBRID_TAG }}
-          cache-from: type=local,src=/home/docker/buildx-cache/${{ github.repository }}/${{ env.BRANCH_NAME }}/plex-debrid
+          cache-from: |
+            type=local,src=/home/docker/buildx-cache/${{ github.repository }}/${{ env.BRANCH_NAME }}/base
+            type=local,src=/home/docker/buildx-cache/${{ github.repository }}/${{ env.BRANCH_NAME }}/plex-debrid
           cache-to: type=local,dest=/home/docker/buildx-cache/${{ github.repository }}/${{ env.BRANCH_NAME }}/plex-debrid,mode=max
           push: false
 
   build-cli-debrid:
-    needs: [setup, fetch-latest-tags]
+    needs: [setup, fetch-latest-tags, build-base]
     runs-on: self-hosted
     env:
-      SKIP_QEMU_SETUP: 'true'
       BRANCH_NAME: ${{ needs.setup.outputs.BRANCH_NAME }}
     steps:
       - uses: actions/checkout@v4
@@ -318,15 +343,16 @@ jobs:
           target: cli_debrid-builder
           platforms: linux/amd64,linux/arm64
           build-args: CLI_DEBRID_TAG=${{ needs.fetch-latest-tags.outputs.CLI_DEBRID_TAG }}
-          cache-from: type=local,src=/home/docker/buildx-cache/${{ github.repository }}/${{ env.BRANCH_NAME }}/cli-debrid
+          cache-from: |
+            type=local,src=/home/docker/buildx-cache/${{ github.repository }}/${{ env.BRANCH_NAME }}/base
+            type=local,src=/home/docker/buildx-cache/${{ github.repository }}/${{ env.BRANCH_NAME }}/cli-debrid
           cache-to: type=local,dest=/home/docker/buildx-cache/${{ github.repository }}/${{ env.BRANCH_NAME }}/cli-debrid,mode=max
           push: false
 
   build-requirements:
-    needs: [setup, fetch-latest-tags]
+    needs: [setup, fetch-latest-tags, build-base]
     runs-on: self-hosted
     env:
-      SKIP_QEMU_SETUP: 'true'
       BRANCH_NAME: ${{ needs.setup.outputs.BRANCH_NAME }}
     steps:
       - uses: actions/checkout@v4
@@ -344,15 +370,20 @@ jobs:
           file: ./Dockerfile
           target: requirements-builder
           platforms: linux/amd64,linux/arm64
-          cache-from: type=local,src=/home/docker/buildx-cache/${{ github.repository }}/${{ env.BRANCH_NAME }}/requirements
+          cache-from: |
+            type=local,src=/home/docker/buildx-cache/${{ github.repository }}/${{ env.BRANCH_NAME }}/base
+            type=local,src=/home/docker/buildx-cache/${{ github.repository }}/${{ env.BRANCH_NAME }}/requirements
           cache-to: type=local,dest=/home/docker/buildx-cache/${{ github.repository }}/${{ env.BRANCH_NAME }}/requirements,mode=max
           push: false
 
   build-and-push:   
-    needs: [setup, fetch-latest-tags, build-zilean, build-pgadmin, build-systemstats, build-riven-frontend, build-riven-backend, build-dumb-frontend, build-plex-debrid, build-cli-debrid, build-requirements]
+    needs: [setup, fetch-latest-tags, build-base, build-zilean, build-pgadmin, build-systemstats, build-riven-frontend, build-riven-backend, build-dumb-frontend, build-plex-debrid, build-cli-debrid, build-requirements]
     runs-on: self-hosted
     env:
-      SKIP_QEMU_SETUP: 'true'    
+      REPO_NAME: ${{ needs.setup.outputs.REPO_NAME }}
+      REPO_OWNER_LOWER: ${{ needs.setup.outputs.REPO_OWNER_LOWER }}
+      VERSION: ${{ needs.setup.outputs.VERSION }}
+      BRANCH_NAME: ${{ needs.setup.outputs.BRANCH_NAME }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -377,11 +408,6 @@ jobs:
 
       - name: Determine Docker tags
         id: determine_tags
-        env:
-          REPO_NAME: ${{ needs.setup.outputs.REPO_NAME }}
-          REPO_OWNER_LOWER: ${{ needs.setup.outputs.REPO_OWNER_LOWER }}
-          VERSION: ${{ needs.setup.outputs.VERSION }}
-          BRANCH_NAME: ${{ needs.setup.outputs.BRANCH_NAME }}
         run: |
           if [ "${{ github.ref_name }}" == "master" ]; then
             echo "DOCKER_TAGS=${{ secrets.DOCKER_USERNAME }}/${{ env.REPO_NAME }}:${{ env.VERSION }},${{ secrets.DOCKER_USERNAME }}/${{ env.REPO_NAME }}:latest,ghcr.io/${{ env.REPO_OWNER_LOWER }}/${{ env.REPO_NAME }}:${{ env.VERSION }},ghcr.io/${{ env.REPO_OWNER_LOWER }}/${{ env.REPO_NAME }}:latest" >> $GITHUB_ENV
@@ -406,15 +432,14 @@ jobs:
         id: build_push
         uses: docker/build-push-action@v6
         env:
-          DOCKER_BUILD_RECORD_UPLOAD: false 
           DOCKER_TAGS: ${{ env.DOCKER_TAGS }}
-          BRANCH_NAME: ${{ needs.setup.outputs.BRANCH_NAME }}       
         with:
           context: .
           file: ./Dockerfile
           target: final-stage
           platforms: linux/amd64,linux/arm64
           cache-from: |
+            type=local,src=/home/docker/buildx-cache/${{ github.repository }}/${{ env.BRANCH_NAME }}/base
             type=local,src=/home/docker/buildx-cache/${{ github.repository }}/${{ env.BRANCH_NAME }}/final
             type=local,src=/home/docker/buildx-cache/${{ github.repository }}/${{ env.BRANCH_NAME }}/zilean
             type=local,src=/home/docker/buildx-cache/${{ github.repository }}/${{ env.BRANCH_NAME }}/pgadmin
@@ -443,9 +468,6 @@ jobs:
       - name: Build and Load Single-Platform Image for Version Extraction
         id: build_load_single
         uses: docker/build-push-action@v6
-        env:
-          DOCKER_BUILD_RECORD_UPLOAD: false
-          BRANCH_NAME: ${{ needs.setup.outputs.BRANCH_NAME }}
         with:
           context: .
           file: ./Dockerfile
