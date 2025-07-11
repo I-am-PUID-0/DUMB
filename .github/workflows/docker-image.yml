@@ -419,6 +419,15 @@ jobs:
             echo "DOCKER_TAGS=${{ secrets.DOCKER_USERNAME }}/${{ env.REPO_NAME }}:${{ env.BRANCH_NAME }},ghcr.io/${{ env.REPO_OWNER_LOWER }}/${{ env.REPO_NAME }}:${{ env.BRANCH_NAME }}" >> $GITHUB_ENV
           fi
 
+      - name: Select tag for IMAGE_TAG
+        id: select_image_tag
+        shell: bash
+        run: |
+          # ${VAR%%,*}  ==> everything before the first comma
+          IMAGE_TAG="${DOCKER_TAGS%%,*}"
+          echo "Using IMAGE_TAG=$IMAGE_TAG"
+          echo "IMAGE_TAG=$IMAGE_TAG" >> "$GITHUB_ENV"
+
       - name: Login to Docker Hub
         uses: docker/login-action@v3
         with:
@@ -469,27 +478,14 @@ jobs:
           sbom: true
           push: true
           
-      - name: Build and Load Single-Platform Image for Version Extraction
-        id: build_load_single
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: ./Dockerfile
-          platforms: linux/amd64
-          cache-from: type=local,src=/home/docker/buildx-cache/${{ github.repository }}/${{ env.BRANCH_NAME }}/final
-          tags: temp-local-image
-          build-args: |
-            PGAGENT_TAG=${{ needs.fetch-latest-tags.outputs.PGAGENT_TAG }}
-            SYS_STATS_TAG=${{ needs.fetch-latest-tags.outputs.SYS_STATS_TAG }}
-            ZILEAN_TAG=${{ needs.fetch-latest-tags.outputs.ZILEAN_TAG }}
-            RIVEN_TAG=${{ needs.fetch-latest-tags.outputs.RIVEN_TAG }}
-            RIVEN_FRONTEND_TAG=${{ needs.fetch-latest-tags.outputs.RIVEN_FRONTEND_TAG }}
-            DUMB_FRONTEND_TAG=${{ needs.fetch-latest-tags.outputs.DUMB_FRONTEND_TAG }}
-            PLEX_DEBRID_TAG=${{ needs.fetch-latest-tags.outputs.PLEX_DEBRID_TAG }}
-            CLI_DEBRID_TAG=${{ needs.fetch-latest-tags.outputs.CLI_DEBRID_TAG }}
-          load: true 
+      - name: Pull image for version extraction
+        id: pull_image
+        run: |
+          docker pull --platform=linux/amd64 "$IMAGE_TAG"
+          docker tag "$IMAGE_TAG" temp-local-image
 
-      - name: Extract Versions from Built Image
+      - name: Extract Versions from Image
+        id: extract_versions
         run: |
           IMAGE_TAG="temp-local-image"
           echo "Using IMAGE_TAG: $IMAGE_TAG"
