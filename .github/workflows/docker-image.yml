@@ -20,6 +20,7 @@ jobs:
       REPO_NAME: ${{ steps.setup_env_vars.outputs.REPO_NAME }}
       BRANCH_NAME: ${{ steps.setup_env_vars.outputs.BRANCH_NAME }}
     steps:
+      - uses: actions/checkout@v4
       - name: Extract version and set environment variables
         id: setup_env_vars        
         run: |
