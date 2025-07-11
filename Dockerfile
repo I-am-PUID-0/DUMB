@@ -135,7 +135,7 @@ RUN python3.11 -m venv /plex_debrid/venv && \
 FROM base AS cli_debrid-builder
 ARG CLI_DEBRID_TAG
 RUN curl -L https://github.com/godver3/cli_debrid/archive/refs/tags/${CLI_DEBRID_TAG}.zip -o cli_debrid.zip && \
-    unzip cli_debrid.zip && mkdir -p /cli_debrid && mv cli_debrid-*/* /cli_debrid && rm -rf cli_debrid.zip cli_debrid*
+    unzip cli_debrid.zip && mkdir -p /cli_debrid && mv cli_debrid-*/* /cli_debrid && rm -rf cli_debrid.zip cli_debrid-*/*
 RUN python3.11 -m venv /cli_debrid/venv && \
     /cli_debrid/venv/bin/python -m pip install --upgrade pip && \
     /cli_debrid/venv/bin/python -m pip install -r /cli_debrid/requirements-linux.txt
