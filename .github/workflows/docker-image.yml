@@ -560,7 +560,7 @@ jobs:
             # walk every stage directory under …/<branch>/
             for STAGE_DIR in "$ROOT"/*/ ; do
               [[ -f "${STAGE_DIR}index.json" ]] || continue
-              echo "::group::⏳  Pruning ${STAGE_DIR##*/}"
+              echo "::group::⏳  Pruning $(basename "$STAGE_DIR")"
 
               # 1) current manifest digest
               MANIFEST=$(jq -r '.manifests[0].digest' "${STAGE_DIR}index.json" | sed 's/^sha256://')
