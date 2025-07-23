@@ -115,7 +115,6 @@ services:
       - TZ=
       - PUID=
       - PGID=
-      - DUMB_LOG_LEVEL=INFO
     # network_mode: container:gluetun                                ## Example to attach to gluetun vpn container if realdebrid blocks IP address
     ports:
       - "3005:3005"                                                  ## DUMB Frontend
@@ -179,7 +178,7 @@ format: `<HOST_DIR>:<CONTAINER_DIR>[:PERMISSIONS]`.
 | `/config`             | rw          | This is where the application stores the rclone.conf, and any files needing persistence. CAUTION: rclone.conf is overwritten upon start/restart of the container. Do NOT use an existing rclone.conf file if you have other rclone services |
 | `/log`                | rw          | This is where the application stores its log files                                                                                                                                                                                          |
 | `/zurg/RD`            | rw          | This is where Zurg will store the active configuration and data for RealDebrid.                                                                                                                                                             |
-| `/riven/data`         | rw          | This is where Riven will store its data.                                                                                                                                                                                                    |
+| `/riven/backend/data` | rw          | This is where Riven will store its data.                                                                                                                                                                                                    |
 | `/postgres_data`      | rw          | This is where PostgreSQL will store its data.                                                                                                                                                                                               |
 | `/pgadmin/data`       | rw          | This is where pgAdmin 4 will store its data.                                                                                                                                                                                                |
 | `/plex_debrid/config` | rw          | This is where plex_debrid will store its data.                                                                                                                                                                                              |
@@ -187,7 +186,7 @@ format: `<HOST_DIR>:<CONTAINER_DIR>[:PERMISSIONS]`.
 | `/phalanx_db/data`    | rw          | This is where phalanx_db will store its data.                                                                                                                                                                                               |
 | `/decypharr`          | rw          | This is where decypharr will store its data.                                                                                                                                                                                                |
 | `/plex`               | rw          | This is where Plex Media Server will store its data.                                                                                                                                                                                        |
-| `/mnt/debrid`         | rw          | This is where the symlinks and rclone mounts will be stored                                                                                                                                                                                       |
+| `/mnt/debrid`         | rw          | This is where the symlinks and rclone mounts will be stored                                                                                                                                                                                 |
 
 ## 📝 TODO
 

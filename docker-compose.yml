@@ -24,7 +24,6 @@ services:
       - TZ=
       - PUID=
       - PGID=
-      - DUMB_LOG_LEVEL=INFO
     # network_mode: container:gluetun                                ## Example to attach to gluetun vpn container if realdebrid blocks IP address
     ports:
       - "3005:3005"                                                  ## DUMB Frontend

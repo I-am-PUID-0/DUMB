@@ -1,5 +1,5 @@
-from fastapi import APIRouter, HTTPException, Depends
-from typing import Union
+from fastapi import APIRouter, HTTPException, Depends, Query
+from typing import Union, Optional, Dict, Any
 from pydantic import BaseModel
 from utils.dependencies import get_logger, resolve_path
 from utils.config_loader import CONFIG_MANAGER, find_service_config
@@ -9,9 +9,9 @@ from pathlib import Path
 import os, json, configparser, xmltodict
 
 
-class UpdateServiceConfigRequest(BaseModel):
-    process_name: str
-    updates: dict
+class ConfigUpdateRequest(BaseModel):
+    process_name: Optional[str] = None
+    updates: Dict[str, Any]
     persist: bool = False
 
 
@@ -359,86 +359,110 @@ def find_schema(schema, path_parts):
     return schema_section
 
 
-@config_router.post("/update-dmb-config")
-async def update_dumb_config(
-    request: UpdateServiceConfigRequest, logger=Depends(get_logger)
+@config_router.get("/")
+async def get_config(
+    process_name: Optional[str] = Query(
+        None, description="If set, return only that service’s config"
+    ),
+    logger=Depends(get_logger),
 ):
-    process_name = request.process_name
-    updates = request.updates
-    persist = request.persist
+    if process_name:
+        service_cfg, _ = find_service_config(CONFIG_MANAGER.config, process_name)
+        if not service_cfg:
+            logger.error(f"Service not found: {process_name}")
+            raise HTTPException(status_code=404, detail="Service not found")
+        return service_cfg
 
-    logger.info(f"Received update request for {process_name} with persist={persist}")
+    return CONFIG_MANAGER.config
 
-    service_config, service_path = find_service_config(
-        CONFIG_MANAGER.config, process_name
-    )
 
-    if not service_config:
-        logger.error(f"Service not found: {process_name}")
-        raise HTTPException(status_code=404, detail="Service not found.")
+@config_router.post("/")
+async def update_config(
+    request: ConfigUpdateRequest,
+    logger=Depends(get_logger),
+):
+    if request.process_name:
+        process_name = request.process_name
+        updates = request.updates
+        persist = request.persist
 
-    path_parts = service_path.split(".")
-    logger.debug(f"Looking up schema for path for {process_name}: {service_path}")
-
-    instance_schema = find_schema(
-        CONFIG_MANAGER.schema.get("properties", {}), path_parts
-    )
-
-    if not instance_schema:
-        logger.error(f"Schema not found for process: {process_name}")
-        raise HTTPException(
-            status_code=400,
-            detail=f"Schema not found for process: {process_name}",
+        logger.info(
+            f"Received update request for service '{process_name}' (persist={persist})"
         )
 
-    logger.debug(f"Schema found for {process_name}")
+        service_config, service_path = find_service_config(
+            CONFIG_MANAGER.config, process_name
+        )
+        if not service_config:
+            logger.error(f"Service not found: {process_name}")
+            raise HTTPException(status_code=404, detail="Service not found.")
 
-    try:
-        validate(instance=updates, schema=instance_schema)
-        logger.debug("Validation of updates successful.")
-    except ValidationError as e:
-        error_path = (
-            " -> ".join(map(str, e.absolute_path)) if e.absolute_path else "root"
+        path_parts = service_path.split(".")
+        instance_schema = find_schema(
+            CONFIG_MANAGER.schema.get("properties", {}), path_parts
         )
-        raise HTTPException(
-            status_code=400,
-            detail=f"Validation error in updates at '{error_path}': {e.message}",
-        )
+        if not instance_schema:
+            logger.error(f"Schema not found for service: {process_name}")
+            raise HTTPException(
+                status_code=400,
+                detail=f"Schema not found for service: {process_name}",
+            )
+        try:
+            validate(instance=updates, schema=instance_schema)
+        except ValidationError as e:
+            loc = " -> ".join(map(str, e.absolute_path)) or "root"
+            raise HTTPException(
+                status_code=400,
+                detail=f"Validation error in updates at '{loc}': {e.message}",
+            )
 
-    try:
-        temp_config = {**service_config, **updates}
-        validate(instance=temp_config, schema=instance_schema)
-        logger.debug("Validation of merged configuration successful.")
-    except ValidationError as e:
-        error_path = (
-            " -> ".join(map(str, e.absolute_path)) if e.absolute_path else "root"
-        )
-        raise HTTPException(
-            status_code=400,
-            detail=f"Validation error in merged configuration at '{error_path}': {e.message}",
-        )
+        try:
+            merged = {**service_config, **updates}
+            validate(instance=merged, schema=instance_schema)
+        except ValidationError as e:
+            loc = " -> ".join(map(str, e.absolute_path)) or "root"
+            raise HTTPException(
+                status_code=400,
+                detail=f"Validation error in merged config at '{loc}': {e.message}",
+            )
 
-    try:
         for key, value in updates.items():
             if key in service_config:
                 service_config[key] = value
             else:
-                logger.error(f"Invalid key {key} in updates.")
+                logger.error(f"Invalid configuration key for {process_name}: {key}")
                 raise HTTPException(
                     status_code=400, detail=f"Invalid configuration key: {key}"
                 )
 
         if persist:
-            logger.info(f"Saving configuration for {process_name}")
+            logger.info(f"Persisting updated config for service '{process_name}'")
             CONFIG_MANAGER.save_config(process_name=process_name)
 
-        return {"status": "Config updated successfully", "persisted": persist}
+        return {
+            "status": "service config updated",
+            "process_name": process_name,
+            "persisted": persist,
+        }
 
-    except Exception as e:
-        logger.error(f"Failed to update configuration: {e}")
+    updates = request.updates
+    if not updates:
         raise HTTPException(
-            status_code=500, detail=f"Failed to update configuration: {str(e)}"
+            status_code=400, detail="No updates provided for global config."
         )
+
+    logger.info("Performing global config update (deep merge)")
+
+    for key, value in updates.items():
+        existing = CONFIG_MANAGER.config.get(key)
+        if isinstance(value, dict) and isinstance(existing, dict):
+            existing.update(value)
+        else:
+            CONFIG_MANAGER.config[key] = value
+
+    CONFIG_MANAGER.save_config()
+
+    return {"status": "global config updated", "keys": list(updates.keys())}
 
 
 @config_router.post("/service-config")
@@ -541,3 +565,22 @@ async def get_service_ui_links(logger=Depends(get_logger)):
     except Exception as e:
         logger.error(f"Failed to fetch services: {e}")
         raise HTTPException(status_code=500, detail="Failed to fetch services")
+
+
+@config_router.get("/onboarding-status")
+async def onboarding_status():
+    cfg = CONFIG_MANAGER.config
+    return {
+        "needs_onboarding": not cfg.get("dumb", {}).get("onboarding_completed", False)
+    }
+
+
+@config_router.post("/onboarding-completed")
+async def onboarding_completed(logger=Depends(get_logger)):
+    cfg = CONFIG_MANAGER.config
+    if "dumb" not in cfg:
+        cfg["dumb"] = {}
+    cfg["dumb"]["onboarding_completed"] = True
+    logger.info("Onboarding completed successfully.")
+    CONFIG_MANAGER.save_config()
+    return {"status": "Onboarding completed successfully"}

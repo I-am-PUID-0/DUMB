@@ -337,6 +337,7 @@
         "port": 3000,
         "auto_update": false,
         "auto_update_interval": 24,
+        "origin": "",
         "clear_on_update": true,
         "exclude_dirs": [],
         "platforms": [
@@ -347,11 +348,7 @@
             "build"
         ],
         "config_dir": "/riven/frontend",
-        "env": {
-            "ORIGIN": "http://0.0.0.0:{port}",
-            "PORT": "{port}",
-            "HOST": "{host}"
-        }
+        "env": {}
     },
     "zilean": {
         "enabled": false,

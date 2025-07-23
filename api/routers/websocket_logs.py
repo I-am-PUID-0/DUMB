@@ -11,6 +11,8 @@ async def websocket_logs(
     await websocket_manager.connect(websocket)
     try:
         while True:
-            await websocket.receive_text()
+            data = await websocket.receive_text()
+            if data == '{"type":"ping"}':
+                await websocket.send_text("pong")
     except WebSocketDisconnect:
         await websocket_manager.disconnect(websocket)

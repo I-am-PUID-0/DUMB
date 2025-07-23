@@ -20,6 +20,8 @@ class APIState:
             self.logger.debug(
                 f"Status file {self.status_file_path} not found. Initializing empty status."
             )
+            with open(self.status_file_path, "w") as f:
+                f.write("{}")
             return {}
         except Exception as e:
             self.logger.error(f"Error loading status file: {e}")

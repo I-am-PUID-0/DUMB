@@ -56,5 +56,5 @@
     "--shm-size=128m",
     "--pull=always"
   ],
-  "postCreateCommand": "apt update && apt install -y gcc python3.11-dev libpq-dev && curl -sSL https://install.python-poetry.org | python - && export PATH=\"$HOME/.local/bin:$PATH\" && poetry config virtualenvs.create false && poetry install --no-root --with dev && git config --global --add safe.directory /workspace"
+  "postCreateCommand": "apt update && apt install -y gcc python3.11-dev libpq-dev && apt remove -y python3-yaml && curl -sSL https://install.python-poetry.org | python - && export PATH=\"$HOME/.local/bin:$PATH\" && poetry config virtualenvs.create false && poetry install --no-root --with dev && git config --global --add safe.directory /workspace"
 }

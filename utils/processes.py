@@ -180,6 +180,13 @@ class ProcessHandler:
             #    return False, error
 
             self.logger.info(f"{process_name} process started with PID: {process.pid}")
+
+            if any("plexmediaserver" in part for part in command):
+                self.logger.info(
+                    "If you see 'Critical: libusb_init failed' in the logs, "
+                    "it is a known issue with Plex and can be ignored."
+                )
+
             self.processes[process.pid] = {
                 "name": process_name,
                 "description": process_description,

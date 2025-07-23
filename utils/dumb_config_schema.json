@@ -1094,6 +1094,9 @@
         "auto_update_interval": {
           "type": "number"
         },
+        "origin": {
+          "type": "string"
+        },
         "clear_on_update": {
           "type": "boolean"
         },
@@ -1137,6 +1140,7 @@
         "port",
         "auto_update",
         "auto_update_interval",
+        "origin",
         "clear_on_update",
         "exclude_dirs",
         "platforms",

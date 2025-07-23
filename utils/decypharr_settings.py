@@ -11,7 +11,7 @@ def patch_decypharr_config():
 
     if not os.path.exists(config_path):
         logger.warning(f"Decypharr config file not found at {config_path}")
-        return
+        return True, "Config file not found, skipping patching."
 
     try:
         with open(config_path, "r") as file:
