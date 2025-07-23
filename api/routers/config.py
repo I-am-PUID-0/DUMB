@@ -578,9 +578,16 @@ async def onboarding_status():
 @config_router.post("/onboarding-completed")
 async def onboarding_completed(logger=Depends(get_logger)):
     cfg = CONFIG_MANAGER.config
-    if "dumb" not in cfg:
-        cfg["dumb"] = {}
     cfg["dumb"]["onboarding_completed"] = True
     logger.info("Onboarding completed successfully.")
     CONFIG_MANAGER.save_config()
     return {"status": "Onboarding completed successfully"}
+
+
+@config_router.post("/reset-onboarding")
+async def reset_onboarding(logger=Depends(get_logger)):
+    cfg = CONFIG_MANAGER.config
+    cfg["dumb"]["onboarding_completed"] = False
+    logger.info("Onboarding status reset to false.")
+    CONFIG_MANAGER.save_config()
+    return {"status": "Onboarding status reset to false"}
