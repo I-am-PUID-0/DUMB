@@ -1,5 +1,32 @@
 # Changelog
 
+## [1.4.0](https://github.com/I-am-PUID-0/DUMB/compare/1.3.2...1.4.0) (2025-07-23)
+
+
+### ✨ Features
+
+* **api:** expand API functionality ([f081132](https://github.com/I-am-PUID-0/DUMB/commit/f081132a134d47fe5f689c882d2d8bd9988028d6))
+* **config:** add origin field to config ([f081132](https://github.com/I-am-PUID-0/DUMB/commit/f081132a134d47fe5f689c882d2d8bd9988028d6))
+* **config:** enhance service management ([f081132](https://github.com/I-am-PUID-0/DUMB/commit/f081132a134d47fe5f689c882d2d8bd9988028d6))
+
+
+### 🐛 Bug Fixes
+
+* **decypharr:** handle missing config file gracefully ([f081132](https://github.com/I-am-PUID-0/DUMB/commit/f081132a134d47fe5f689c882d2d8bd9988028d6))
+* **rclone:** prevent overwriting config with multiple instances ([f081132](https://github.com/I-am-PUID-0/DUMB/commit/f081132a134d47fe5f689c882d2d8bd9988028d6))
+* **workflows:** correct echo command in cache cleanup ([a5124c6](https://github.com/I-am-PUID-0/DUMB/commit/a5124c686f55f056963efc293a264a75f8b0a34c))
+* **zurg:** add version comparison during setup ([f081132](https://github.com/I-am-PUID-0/DUMB/commit/f081132a134d47fe5f689c882d2d8bd9988028d6))
+
+
+### 🤡 Other Changes
+
+* **deps:** update backend dependencies ([f081132](https://github.com/I-am-PUID-0/DUMB/commit/f081132a134d47fe5f689c882d2d8bd9988028d6))
+
+
+### 🛠️ Refactors
+
+* **rclone:** streamline setup logic and reduce redundancy ([f081132](https://github.com/I-am-PUID-0/DUMB/commit/f081132a134d47fe5f689c882d2d8bd9988028d6))
+
 ## [1.3.2](https://github.com/I-am-PUID-0/DUMB/compare/1.3.1...1.3.2) (2025-07-11)
 
 
