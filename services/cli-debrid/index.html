@@ -2363,37 +2363,39 @@
 <hr />
 <h2 id="-configuration-in-dumb_configjson">📦 Configuration in <code>dumb_config.json</code><a class="headerlink" href="#-configuration-in-dumb_configjson" title="Permanent link">#</a></h2>
 <div class="highlight"><pre><span></span><code><span class="nt">&quot;cli_debrid&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<span class="w">  </span><span class="nt">&quot;enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;process_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;CLI Debrid&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;repo_owner&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;godver3&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;repo_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;cli_debrid&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;release_version_enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;release_version&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;v0.6.07&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;branch_enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;branch&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;main&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;suppress_logging&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;log_level&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;INFO&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;port&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">5000</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;auto_update&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;auto_update_interval&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">24</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;clear_on_update&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;exclude_dirs&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
-<span class="w">    </span><span class="s2">&quot;/cli_debrid/data&quot;</span>
-<span class="w">  </span><span class="p">],</span>
-<span class="w">  </span><span class="nt">&quot;platforms&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;python&quot;</span><span class="p">],</span>
-<span class="w">  </span><span class="nt">&quot;command&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
-<span class="w">    </span><span class="s2">&quot;/cli_debrid/venv/bin/python&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="s2">&quot;main.py&quot;</span>
-<span class="w">  </span><span class="p">],</span>
-<span class="w">  </span><span class="nt">&quot;config_dir&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/cli_debrid&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;config_file&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/cli_debrid/data/config/config.json&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;log_file&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/cli_debrid/data/logs/debug.log&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;env&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<span class="w">    </span><span class="nt">&quot;USER_CONFIG&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/cli_debrid/data/config/&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;USER_LOGS&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/cli_debrid/data/logs/&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;USER_DB_CONTENT&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/cli_debrid/data/db_content/&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;CLI_DEBRID_PORT&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;{port}&quot;</span>
-<span class="w">  </span><span class="p">}</span>
+<span class="w">    </span><span class="nt">&quot;enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;process_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;CLI Debrid&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;repo_owner&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;godver3&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;repo_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;cli_debrid&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;release_version_enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;release_version&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;v0.6.07&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;branch_enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;branch&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;main&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;suppress_logging&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;log_level&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;INFO&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;port&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">5000</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;auto_update&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;auto_update_interval&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">24</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;clear_on_update&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;exclude_dirs&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">        </span><span class="s2">&quot;/cli_debrid/data&quot;</span>
+<span class="w">    </span><span class="p">],</span>
+<span class="w">    </span><span class="nt">&quot;platforms&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">        </span><span class="s2">&quot;python&quot;</span>
+<span class="w">    </span><span class="p">],</span>
+<span class="w">    </span><span class="nt">&quot;command&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">        </span><span class="s2">&quot;/cli_debrid/venv/bin/python&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="s2">&quot;main.py&quot;</span>
+<span class="w">    </span><span class="p">],</span>
+<span class="w">    </span><span class="nt">&quot;config_dir&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/cli_debrid&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;config_file&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/cli_debrid/data/config/config.json&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;log_file&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/cli_debrid/data/logs/debug.log&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;env&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nt">&quot;USER_CONFIG&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/cli_debrid/data/config/&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;USER_LOGS&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/cli_debrid/data/logs/&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;USER_DB_CONTENT&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/cli_debrid/data/db_content/&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;CLI_DEBRID_PORT&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;{port}&quot;</span>
+<span class="w">    </span><span class="p">}</span>
 <span class="p">},</span>
 </code></pre></div>
 <h3 id="-key-configuration-fields">🔍 Key Configuration Fields<a class="headerlink" href="#-key-configuration-fields" title="Permanent link">#</a></h3>
@@ -2431,52 +2433,60 @@
 <p class="admonition-title">CLI Battery must be running for CLI Debrid to function.</p>
 </div>
 <div class="highlight"><pre><span></span><code><span class="nt">&quot;cli_battery&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<span class="w">  </span><span class="nt">&quot;enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;process_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;CLI Battery&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;suppress_logging&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;log_level&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;INFO&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;port&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">5001</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;platforms&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;python&quot;</span><span class="p">],</span>
-<span class="w">  </span><span class="nt">&quot;command&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
-<span class="w">    </span><span class="s2">&quot;/cli_debrid/venv/bin/python&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="s2">&quot;cli_battery/main.py&quot;</span>
-<span class="w">  </span><span class="p">],</span>
-<span class="w">  </span><span class="nt">&quot;config_dir&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/cli_debrid&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;config_file&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/cli_debrid/data/config/settings.json&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;log_file&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/cli_debrid/data/logs/battery_debug.log&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;env&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<span class="w">    </span><span class="nt">&quot;USER_CONFIG&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/cli_debrid/data/config/&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;USER_LOGS&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/cli_debrid/data/logs/&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;USER_DB_CONTENT&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/cli_debrid/data/db_content/&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;CLI_DEBRID_BATTERY_PORT&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;{port}&quot;</span>
-<span class="w">  </span><span class="p">}</span>
+<span class="w">    </span><span class="nt">&quot;enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;process_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;CLI Battery&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;suppress_logging&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;log_level&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;INFO&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;port&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">5001</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;platforms&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">        </span><span class="s2">&quot;python&quot;</span>
+<span class="w">    </span><span class="p">],</span>
+<span class="w">    </span><span class="nt">&quot;command&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">        </span><span class="s2">&quot;/cli_debrid/venv/bin/python&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="s2">&quot;cli_battery/main.py&quot;</span>
+<span class="w">    </span><span class="p">],</span>
+<span class="w">    </span><span class="nt">&quot;config_dir&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/cli_debrid&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;config_file&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/cli_debrid/data/config/settings.json&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;log_file&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/cli_debrid/data/logs/battery_debug.log&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;env&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nt">&quot;PYTHONPATH&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/cli_debrid&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;USER_CONFIG&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/cli_debrid/data/config/&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;USER_LOGS&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/cli_debrid/data/logs/&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;USER_DB_CONTENT&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/cli_debrid/data/db_content/&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;CLI_DEBRID_BATTERY_PORT&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;{port}&quot;</span>
+<span class="w">    </span><span class="p">}</span>
 <span class="p">},</span>
 </code></pre></div>
 <p>CLI Battery provides local metadata storage and Trakt integration, acting as the "memory" of CLI Debrid.</p>
 <hr />
 <h2 id="-optional-utility-phalanx-db">🧰 Optional Utility: Phalanx DB<a class="headerlink" href="#-optional-utility-phalanx-db" title="Permanent link">#</a></h2>
 <div class="highlight"><pre><span></span><code><span class="nt">&quot;phalanx_db&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<span class="w">  </span><span class="nt">&quot;enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;process_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Phalanx DB&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;repo_owner&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;godver3&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;repo_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;phalanx_db_hyperswarm&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;release_version_enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;release_version&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;v0.50&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;branch_enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;branch&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;main&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;suppress_logging&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;log_level&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;INFO&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;port&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">8888</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;auto_update&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;auto_update_interval&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">24</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;clear_on_update&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;exclude_dirs&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
-<span class="w">    </span><span class="s2">&quot;/phalanx_db/data&quot;</span>
-<span class="w">  </span><span class="p">],</span>
-<span class="w">  </span><span class="nt">&quot;platforms&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;pnpm&quot;</span><span class="p">],</span>
-<span class="w">  </span><span class="nt">&quot;command&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;node&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;phalanx_db_rest.js&quot;</span><span class="p">],</span>
-<span class="w">  </span><span class="nt">&quot;config_dir&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/phalanx_db&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;env&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{}</span>
+<span class="w">    </span><span class="nt">&quot;enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;process_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Phalanx DB&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;repo_owner&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;godver3&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;repo_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;phalanx_db_hyperswarm&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;release_version_enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;release_version&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;v0.50&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;branch_enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;branch&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;main&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;suppress_logging&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;log_level&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;INFO&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;port&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">8888</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;auto_update&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;auto_update_interval&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">24</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;clear_on_update&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;exclude_dirs&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">        </span><span class="s2">&quot;/phalanx_db/data&quot;</span>
+<span class="w">    </span><span class="p">],</span>
+<span class="w">    </span><span class="nt">&quot;platforms&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">        </span><span class="s2">&quot;pnpm&quot;</span>
+<span class="w">    </span><span class="p">],</span>
+<span class="w">    </span><span class="nt">&quot;command&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">        </span><span class="s2">&quot;node&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="s2">&quot;phalanx_db_rest.js&quot;</span>
+<span class="w">    </span><span class="p">],</span>
+<span class="w">    </span><span class="nt">&quot;config_dir&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/phalanx_db&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;env&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{}</span>
 <span class="p">},</span>
 </code></pre></div>
 <p>Phalanx DB provides distributed metadata storage via Hyperswarm. It is optional but can enhance metadata resilience and syncing.</p>
