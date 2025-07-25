@@ -258,34 +258,33 @@ async def start_service(
     updater=Depends(get_updater),
     logger=Depends(get_logger),
 ):
-    process_name = request.process_name
-    service_config = find_service_config(CONFIG_MANAGER.config, process_name)
+    def start():
+        process_name = request.process_name
+        service_config = find_service_config(CONFIG_MANAGER.config, process_name)
 
-    if not service_config:
-        raise HTTPException(status_code=404, detail="Service not enabled or found")
+        if not service_config:
+            raise HTTPException(status_code=404, detail="Service not enabled or found")
 
-    if process_name in process_handler.setup_tracker:
-        process_handler.setup_tracker.remove(process_name)
-        success, error = setup_project(process_handler, process_name)
-        if not success:
-            raise HTTPException(
-                status_code=500, detail=f"Failed to setup project: {error}"
-            )
+        if process_name in process_handler.setup_tracker:
+            process_handler.setup_tracker.remove(process_name)
+            success, error = setup_project(process_handler, process_name)
+            if not success:
+                raise HTTPException(
+                    status_code=500, detail=f"Failed to setup project: {error}"
+                )
 
-    service_config["enabled"] = True
-    command = service_config.get("command")
-    if any("{" in c for c in command):
-        success, error = setup_project(process_handler, process_name)
-        if not success:
-            raise HTTPException(
-                status_code=500, detail=f"Failed to setup project: {error}"
-            )
+        service_config["enabled"] = True
         command = service_config.get("command")
+        if any("{" in c for c in command):
+            success, error = setup_project(process_handler, process_name)
+            if not success:
+                raise HTTPException(
+                    status_code=500, detail=f"Failed to setup project: {error}"
+                )
+            command = service_config.get("command")
 
-    env = service_config.get("env")
-    if env is not None:
-        # logger.debug(f"Checking for variables in service config. {env}")
-        if any("{" in c for c in env):
+        env = service_config.get("env")
+        if env is not None and any("{" in c for c in env):
             success, error = setup_project(process_handler, process_name)
             if not success:
                 raise HTTPException(
@@ -293,28 +292,29 @@ async def start_service(
                 )
             env = service_config.get("env")
 
-    logger.info(f"Starting {process_name} with command: {command}")
+        logger.info(f"Starting {process_name} with command: {command}")
 
-    try:
-        auto_update_enabled = service_config.get("auto_update", False)
-        process, error = updater.auto_update(
-            process_name, enable_update=auto_update_enabled
-        )
-        if not process:
-            raise Exception(f"Error starting {process_name}: {error}")
-        elif process:
+        try:
+            auto_update_enabled = service_config.get("auto_update", False)
+            process, error = updater.auto_update(
+                process_name, enable_update=auto_update_enabled
+            )
+            if not process:
+                raise Exception(f"Error starting {process_name}: {error}")
             logger.info(f"{process_name} started successfully.")
             return {
                 "status": "Service started successfully",
                 "process_name": process_name,
             }
-    except Exception as e:
-        detailed_error = f"Service '{process_name}' could not be started due to an internal error: {str(e)}"
-        logger.error(detailed_error)
-        raise HTTPException(
-            status_code=500,
-            detail=f"Unable to start the service '{process_name}'. Please check the logs for more details.",
-        )
+        except Exception as e:
+            detailed_error = f"Service '{process_name}' could not be started due to an internal error: {str(e)}"
+            logger.error(detailed_error)
+            raise HTTPException(
+                status_code=500,
+                detail=f"Unable to start the service '{process_name}'. Please check the logs for more details.",
+            )
+
+    return await run_in_threadpool(start)
 
 
 @process_router.post("/stop-service")
@@ -324,37 +324,34 @@ async def stop_service(
     logger=Depends(get_logger),
     api_state=Depends(get_api_state),
 ):
-    process_name = request.process_name
-    logger.info(f"Received request to stop {process_name}")
+    def stop():
+        process_name = request.process_name
+        logger.info(f"Received request to stop {process_name}")
 
-    # Check if the service exists and is enabled
-    # service_config = CONFIG_MANAGER.config.get(process_name)
-    # logger.debug(f"Service config: {service_config}")
-    # if not service_config or not service_config.get("enabled", False):
-    #    raise HTTPException(status_code=404, detail="Service not enabled or found")
+        if process_name in api_state.shutdown_in_progress:
+            return {
+                "status": "Shutdown already in progress",
+                "process_name": process_name,
+            }
 
-    if process_name in api_state.shutdown_in_progress:
-        return {
-            "status": "Shutdown already in progress",
-            "process_name": process_name,
-        }
+        try:
+            api_state.shutdown_in_progress.add(process_name)
+            logger.debug(f"Shutdown in progress: {api_state.shutdown_in_progress}")
+            process_handler.stop_process(process_name)
+            logger.info(f"{process_name} stopped successfully.")
+            return {
+                "status": "Service stopped successfully",
+                "process_name": process_name,
+            }
+        except Exception as e:
+            logger.error(f"Failed to stop {process_name}: {e}")
+            raise HTTPException(
+                status_code=500, detail=f"Failed to stop {process_name}: {str(e)}"
+            )
+        finally:
+            api_state.shutdown_in_progress.remove(process_name)
 
-    try:
-        api_state.shutdown_in_progress.add(process_name)
-        logger.debug(f"Shutdown in progress: {api_state.shutdown_in_progress}")
-        process_handler.stop_process(process_name)
-        logger.info(f"{process_name} stopped successfully.")
-        return {
-            "status": "Service stopped successfully",
-            "process_name": process_name,
-        }
-    except Exception as e:
-        logger.error(f"Failed to stop {process_name}: {e}")
-        raise HTTPException(
-            status_code=500, detail=f"Failed to stop {process_name}: {str(e)}"
-        )
-    finally:
-        api_state.shutdown_in_progress.remove(process_name)
+    return await run_in_threadpool(stop)
 
 
 @process_router.post("/restart-service")
@@ -365,52 +362,57 @@ async def restart_service(
     logger=Depends(get_logger),
     api_state=Depends(get_api_state),
 ):
-    process_name = request.process_name
-    logger.info(f"Received request to restart {process_name}")
+    def restart():
+        process_name = request.process_name
+        logger.info(f"Received request to restart {process_name}")
 
-    try:
-        process_handler.stop_process(process_name)
-        logger.info(f"{process_name} stopped successfully.")
+        try:
+            process_handler.stop_process(process_name)
+            logger.info(f"{process_name} stopped successfully.")
 
-        service_config = find_service_config(CONFIG_MANAGER.config, process_name)
-        if not service_config:
-            raise HTTPException(
-                status_code=404, detail="Service configuration not found."
-            )
-
-        if process_name in process_handler.setup_tracker:
-            process_handler.setup_tracker.remove(process_name)
-            success, error = setup_project(process_handler, process_name)
-            if not success:
+            service_config = find_service_config(CONFIG_MANAGER.config, process_name)
+            if not service_config:
                 raise HTTPException(
-                    status_code=500, detail=f"Failed to setup project: {error}"
+                    status_code=404, detail="Service configuration not found."
                 )
 
-        auto_update_enabled = service_config.get("auto_update", False)
-        process, error = updater.auto_update(
-            process_name, enable_update=auto_update_enabled
-        )
-        if not process:
-            raise HTTPException(status_code=500, detail=f"Failed to restart: {error}")
+            if process_name in process_handler.setup_tracker:
+                process_handler.setup_tracker.remove(process_name)
+                success, error = setup_project(process_handler, process_name)
+                if not success:
+                    raise HTTPException(
+                        status_code=500, detail=f"Failed to setup project: {error}"
+                    )
 
-        logger.info(f"{process_name} started successfully.")
+            auto_update_enabled = service_config.get("auto_update", False)
+            process, error = updater.auto_update(
+                process_name, enable_update=auto_update_enabled
+            )
+            if not process:
+                raise HTTPException(
+                    status_code=500, detail=f"Failed to restart: {error}"
+                )
 
-        status = api_state.get_status(process_name)
-        if status != "running":
+            logger.info(f"{process_name} started successfully.")
+
+            status = api_state.get_status(process_name)
+            if status != "running":
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"Service did not restart successfully. Current status: {status}",
+                )
+
+            return {
+                "status": "Service restarted successfully",
+                "process_name": process_name,
+            }
+        except Exception as e:
+            logger.error(f"Failed to restart {process_name}: {e}")
             raise HTTPException(
-                status_code=500,
-                detail=f"Service did not restart successfully. Current status: {status}",
+                status_code=500, detail=f"Failed to restart {process_name}: {str(e)}"
             )
 
-        return {
-            "status": "Service restarted successfully",
-            "process_name": process_name,
-        }
-    except Exception as e:
-        logger.error(f"Failed to restart {process_name}: {e}")
-        raise HTTPException(
-            status_code=500, detail=f"Failed to restart {process_name}: {str(e)}"
-        )
+    return await run_in_threadpool(restart)
 
 
 @process_router.get("/service-status")
