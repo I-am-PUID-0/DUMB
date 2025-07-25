@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.2](https://github.com/I-am-PUID-0/DUMB/compare/1.4.1...1.4.2) (2025-07-25)
+
+
+### 🐛 Bug Fixes
+
+* **config:** fixes null strings in config ([86fb9bc](https://github.com/I-am-PUID-0/DUMB/commit/86fb9bc6883c29f1e1a38c5a658454e09b78177e)), closes [#40](https://github.com/I-am-PUID-0/DUMB/issues/40)
+
 ## [1.4.1](https://github.com/I-am-PUID-0/DUMB/compare/1.4.0...1.4.1) (2025-07-23)
 
 
