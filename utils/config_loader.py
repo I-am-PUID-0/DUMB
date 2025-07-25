@@ -210,6 +210,23 @@ class ConfigManager:
         except ValueError:
             return default
 
+    def fix_null_strings(data: dict, schema: dict):
+        if not isinstance(data, dict) or not isinstance(schema, dict):
+            return
+
+        props = schema.get("properties", {})
+        for key, val in list(data.items()):
+            if key in props:
+                sch = props[key]
+                if sch.get("type") == "string" and val is None:
+                    data[key] = ""
+                elif isinstance(val, dict):
+                    ConfigManager.fix_null_strings(val, sch)
+                elif key == "instances" and isinstance(val, dict):
+                    template_schema = next(iter(sch["properties"].values()))
+                    for inst in val.values():
+                        ConfigManager.fix_null_strings(inst, template_schema)
+
     def save_config(self, process_name=None):
         if process_name:
             section_config = find_service_config(self.config, process_name)
@@ -226,6 +243,7 @@ class ConfigManager:
                             isinstance(value, dict)
                             and value.get("process_name") == target_name
                         ):
+                            ConfigManager.fix_null_strings(updated_config, self.schema)
                             data[key] = updated_config
                             return True
                         if update_nested_config(value, target_name, updated_config):
@@ -238,6 +256,7 @@ class ConfigManager:
             with open(self.file_path, "w") as config_file:
                 dump(full_config, config_file, indent=4)
         else:
+            ConfigManager.fix_null_strings(self.config, self.schema)
             with open(self.file_path, "w") as config_file:
                 dump(self.config, config_file, indent=4)
 
