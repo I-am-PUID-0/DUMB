@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.3](https://github.com/I-am-PUID-0/DUMB/compare/1.4.2...1.4.3) (2025-07-25)
+
+
+### 🛠️ Refactors
+
+* **process:** refactor service start/stop/restart ([22c267d](https://github.com/I-am-PUID-0/DUMB/commit/22c267ddbcbd182194ddf6301cc961f3cd5cd7ce))
+
 ## [1.4.2](https://github.com/I-am-PUID-0/DUMB/compare/1.4.1...1.4.2) (2025-07-25)
 
 
