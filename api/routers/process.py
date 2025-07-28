@@ -64,7 +64,7 @@ Riven Backend Service
 - Automates media collection, symlink creation, and metadata updates.
 - Integrates with Overseerr, Plex, Trakt, and various scraper plugins (e.g. Torrentio, Jackett).
 
-Documentation: https://i-am-puid-0.github.io/DUMB/services/riven-backend""",
+Documentation: https://i-am-puid-0.github.io/DUMB/services/core/riven-backend""",
     "cli_debrid": """\
 CLI Debrid Service
 - Lightweight, Python‑based downloader and streaming‑link creator.
@@ -72,13 +72,13 @@ CLI Debrid Service
 - Automates media collection, quality upgrades, and webhook‑driven triggers.
 - Requires CLI Battery for metadata and optionally Phalanx DB for decentralized metadata.
 
-Documentation: https://i-am-puid-0.github.io/DUMB/services/cli-debrid""",
+Documentation: https://i-am-puid-0.github.io/DUMB/services/core/cli-debrid""",
     "plex_debrid": """\
 Plex Debrid Service
 - Not fully implemented yet, but intended for users with an existing Plex Debrid setup.
 - Users will need to copy an existing Plex Debrid settings.json file to `.../plex_debrid` mount directory.
 
-Documentation: https://i-am-puid-0.github.io/DUMB/services/plex-debrid""",
+Documentation: https://i-am-puid-0.github.io/DUMB/services/core/plex-debrid""",
     "decypharr": """\
 Decypharr Service
 - Implementation of QbitTorrent with Multiple Debrid service support.
@@ -86,7 +86,7 @@ Decypharr Service
 - Provides a WebDAV connection for easy access to media files.
 - Integrates with Rclone for mounting of WebDAV content.
 
-Documentation: https://i-am-puid-0.github.io/DUMB/services/decypharr""",
+Documentation: https://i-am-puid-0.github.io/DUMB/services/core/decypharr""",
     "plex": """\
 Plex Media Server
 - Official Plex server for organizing, streaming, and sharing your media library.
@@ -96,7 +96,7 @@ Plex Media Server
 Note: Automatic update is not supported for Plex Media Server at this time.
 Recommended to run onboarding for Plex Media Server separately due to claim token timeout of 5 minutes.
 
-Documentation: https://i-am-puid-0.github.io/DUMB/services/plex-media-server""",
+Documentation: https://i-am-puid-0.github.io/DUMB/services/core/plex-media-server""",
 }
 
 OPTIONAL_POST_CORE = ["riven_frontend"]
@@ -116,28 +116,28 @@ Zilean
 - Can scrape from running Zurg instances or other Zilean peers.
 - Configurable as an indexer in clients like Sonarr/Radarr.
 
-Documentation: https://i-am-puid-0.github.io/DUMB/services/zilean""",
+Documentation: https://i-am-puid-0.github.io/DUMB/services/optional/zilean""",
     "pgadmin": """\
 pgAdmin 4
 - Web‑based administration tool for PostgreSQL databases.
 - Pre‑installed and auto‑configured in DUMB for easy inspection, queries, and backups.
 - Supports extensions like system_stats and pgAgent for advanced maintenance.
 
-Documentation: https://i-am-puid-0.github.io/DUMB/services/pgadmin""",
+Documentation: https://i-am-puid-0.github.io/DUMB/services/optional/pgadmin""",
     "postgres": """\
 PostgreSQL
 - Core database system for storing metadata and internal configuration.
 - Pre‑installed and initialized on container startup (default port 5432).
 - Manages databases for pgAdmin, Zilean, and Riven by default.
 
-Documentation: https://i-am-puid-0.github.io/DUMB/services/postgres""",
+Documentation: https://i-am-puid-0.github.io/DUMB/services/dependent/postgres""",
     "riven_frontend": """\
 Riven Frontend
 - Web UI for Riven Backend, providing a user‑friendly interface to manage and monitor services.
 - Displays real‑time status of connected services, media libraries, and debrid providers.
 - Allows users to trigger actions like metadata updates, link creation, and more.
 
-Documentation: https://i-am-puid-0.github.io/DUMB/services/riven-frontend""",
+Documentation: https://i-am-puid-0.github.io/DUMB/services/optional/riven-frontend""",
 }
 
 ### create a list of debrid providers that are supported by each core service, and if any core service uses zurg as a dependency, then it is limited to RealDebrid.
