@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.4.3](https://github.com/I-am-PUID-0/DUMB/compare/1.4.2...1.4.3) (2025-07-28)
+
+
+### 🐛 Bug Fixes
+
+* **docs:** update service documentation URLs to reflect new structure ([3ef7915](https://github.com/I-am-PUID-0/DUMB/commit/3ef791525b070346620966195cb65655365f04b5))
+
+
+### 🛠️ Refactors
+
+* **process:** refactor service start/stop/restart ([22c267d](https://github.com/I-am-PUID-0/DUMB/commit/22c267ddbcbd182194ddf6301cc961f3cd5cd7ce))
+
 ## [1.4.2](https://github.com/I-am-PUID-0/DUMB/compare/1.4.1...1.4.2) (2025-07-25)
 
 
