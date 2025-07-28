@@ -80,7 +80,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#rclone" class="md-skip">
+        <a href="#-configuration-settings-in-dumb_configjson" class="md-skip">
           Skip to content
         </a>
       
@@ -1246,8 +1246,6 @@
       <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
       
       
-        
-      
       
         <label class="md-nav__link md-nav__link--active" for="__toc">
           
@@ -1279,8 +1277,6 @@
 <nav class="md-nav md-nav--secondary" aria-label="Table of contents">
   
   
-  
-    
   
   
     <label class="md-nav__title" for="__toc">
@@ -1405,6 +1401,150 @@
   <a href="#-buffer-size-tips" class="md-nav__link">
     <span class="md-ellipsis">
       ⚡ Buffer Size Tips
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#-default-mount-structure" class="md-nav__link">
+    <span class="md-ellipsis">
+      📂 Default Mount Structure
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="📂 Default Mount Structure">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#-root-mount-directory" class="md-nav__link">
+    <span class="md-ellipsis">
+      📁 Root Mount Directory
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#-rclone-mount-targets" class="md-nav__link">
+    <span class="md-ellipsis">
+      🛆 rclone Mount Targets
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#-symlink-directories" class="md-nav__link">
+    <span class="md-ellipsis">
+      🔗 Symlink Directories
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#-mount-propagation" class="md-nav__link">
+    <span class="md-ellipsis">
+      ⚙️ Mount Propagation
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="⚙️ Mount Propagation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#-required-propagation-flags" class="md-nav__link">
+    <span class="md-ellipsis">
+      🔗 Required Propagation Flags
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="🔗 Required Propagation Flags">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#-recommended-flag-rshared" class="md-nav__link">
+    <span class="md-ellipsis">
+      ✅ Recommended Flag: :rshared
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#alternative-rslave" class="md-nav__link">
+    <span class="md-ellipsis">
+      Alternative: :rslave
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#-common-issues-without-propagation" class="md-nav__link">
+    <span class="md-ellipsis">
+      ⚠️ Common Issues Without Propagation
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#-host-system-requirements" class="md-nav__link">
+    <span class="md-ellipsis">
+      🔧 Host System Requirements
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#-how-to-check" class="md-nav__link">
+    <span class="md-ellipsis">
+      ✅ How to Check
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#-how-to-enable" class="md-nav__link">
+    <span class="md-ellipsis">
+      🛠️ How to Enable
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#-best-practices" class="md-nav__link">
+    <span class="md-ellipsis">
+      📅 Best Practices
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#-summary-table-for-mount-propagation-use-cases" class="md-nav__link">
+    <span class="md-ellipsis">
+      📊 Summary Table for Mount Propagation Use Cases
     </span>
   </a>
   
@@ -2512,8 +2652,6 @@
   
   
   
-    
-  
   
     <label class="md-nav__title" for="__toc">
       <span class="md-nav__icon md-icon"></span>
@@ -2648,6 +2786,150 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#-default-mount-structure" class="md-nav__link">
+    <span class="md-ellipsis">
+      📂 Default Mount Structure
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="📂 Default Mount Structure">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#-root-mount-directory" class="md-nav__link">
+    <span class="md-ellipsis">
+      📁 Root Mount Directory
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#-rclone-mount-targets" class="md-nav__link">
+    <span class="md-ellipsis">
+      🛆 rclone Mount Targets
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#-symlink-directories" class="md-nav__link">
+    <span class="md-ellipsis">
+      🔗 Symlink Directories
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#-mount-propagation" class="md-nav__link">
+    <span class="md-ellipsis">
+      ⚙️ Mount Propagation
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="⚙️ Mount Propagation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#-required-propagation-flags" class="md-nav__link">
+    <span class="md-ellipsis">
+      🔗 Required Propagation Flags
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="🔗 Required Propagation Flags">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#-recommended-flag-rshared" class="md-nav__link">
+    <span class="md-ellipsis">
+      ✅ Recommended Flag: :rshared
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#alternative-rslave" class="md-nav__link">
+    <span class="md-ellipsis">
+      Alternative: :rslave
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#-common-issues-without-propagation" class="md-nav__link">
+    <span class="md-ellipsis">
+      ⚠️ Common Issues Without Propagation
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#-host-system-requirements" class="md-nav__link">
+    <span class="md-ellipsis">
+      🔧 Host System Requirements
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#-how-to-check" class="md-nav__link">
+    <span class="md-ellipsis">
+      ✅ How to Check
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#-how-to-enable" class="md-nav__link">
+    <span class="md-ellipsis">
+      🛠️ How to Enable
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#-best-practices" class="md-nav__link">
+    <span class="md-ellipsis">
+      📅 Best Practices
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#-summary-table-for-mount-propagation-use-cases" class="md-nav__link">
+    <span class="md-ellipsis">
+      📊 Summary Table for Mount Propagation Use Cases
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#-accessing-rclone-inside-the-container" class="md-nav__link">
     <span class="md-ellipsis">
       💻 Accessing rclone Inside the Container
@@ -2693,40 +2975,46 @@
   
 
 
-<h1 id="rclone">rclone<a class="headerlink" href="#rclone" title="Permanent link">#</a></h1>
+  <h1>rclone</h1>
+
 <p>rclone is a command-line tool used in DUMB to mount cloud storage—specifically Debrid services like Real-Debrid—into the container as a local file system. It works in tandem with Zurg and is configured automatically during container startup.</p>
 <hr />
 <h2 id="-configuration-settings-in-dumb_configjson">⚙️ Configuration Settings in <code>dumb_config.json</code><a class="headerlink" href="#-configuration-settings-in-dumb_configjson" title="Permanent link">#</a></h2>
 <p>Each <code>rclone</code> instance is defined under the <code>rclone.instances</code> section in <code>dumb_config.json</code>. Example:
 <div class="highlight"><pre><span></span><code><span class="nt">&quot;rclone&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<span class="w">  </span><span class="nt">&quot;instances&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<span class="w">    </span><span class="nt">&quot;RealDebrid&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<span class="w">      </span><span class="nt">&quot;enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;process_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;rclone w/ RealDebrid&quot;</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;suppress_logging&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;log_level&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;INFO&quot;</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;key_type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;RealDebrid&quot;</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;zurg_enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;mount_dir&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/data&quot;</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;mount_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;rclone_RD&quot;</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;cache_dir&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/cache&quot;</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;config_dir&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/config&quot;</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;config_file&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/config/rclone.config&quot;</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;zurg_config_file&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/zurg/RD/config.yml&quot;</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;command&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[],</span>
-<span class="w">      </span><span class="nt">&quot;api_key&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&quot;</span>
+<span class="w">    </span><span class="nt">&quot;instances&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nt">&quot;RealDebrid&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="nt">&quot;enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">            </span><span class="nt">&quot;core_service&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&quot;</span><span class="p">,</span>
+<span class="w">            </span><span class="nt">&quot;process_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;rclone w/ RealDebrid&quot;</span><span class="p">,</span>
+<span class="w">            </span><span class="nt">&quot;suppress_logging&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">            </span><span class="nt">&quot;log_level&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;INFO&quot;</span><span class="p">,</span>
+<span class="w">            </span><span class="nt">&quot;key_type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;RealDebrid&quot;</span><span class="p">,</span>
+<span class="w">            </span><span class="nt">&quot;zurg_enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">            </span><span class="nt">&quot;decypharr_enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">            </span><span class="nt">&quot;mount_dir&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/mnt/debrid&quot;</span><span class="p">,</span>
+<span class="w">            </span><span class="nt">&quot;mount_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;rclone_RD&quot;</span><span class="p">,</span>
+<span class="w">            </span><span class="nt">&quot;cache_dir&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/cache&quot;</span><span class="p">,</span>
+<span class="w">            </span><span class="nt">&quot;config_dir&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/config&quot;</span><span class="p">,</span>
+<span class="w">            </span><span class="nt">&quot;config_file&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/config/rclone.config&quot;</span><span class="p">,</span>
+<span class="w">            </span><span class="nt">&quot;log_file&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/log/rclone_w_realdebrid.log&quot;</span><span class="p">,</span>
+<span class="w">            </span><span class="nt">&quot;zurg_config_file&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/zurg/RD/config.yml&quot;</span><span class="p">,</span>
+<span class="w">            </span><span class="nt">&quot;command&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[],</span>
+<span class="w">            </span><span class="nt">&quot;api_key&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&quot;</span>
+<span class="w">        </span><span class="p">}</span>
 <span class="w">    </span><span class="p">}</span>
-<span class="w">  </span><span class="p">}</span>
 <span class="p">},</span>
 </code></pre></div></p>
 <h3 id="-configuration-key-descriptions">🔍 Configuration Key Descriptions<a class="headerlink" href="#-configuration-key-descriptions" title="Permanent link">#</a></h3>
 <ul>
 <li><strong><code>enabled</code></strong>: Whether this rclone instance should be started.</li>
+<li><strong><code>core_service</code></strong>: Flag to indicate the associated core service during onboarding.</li>
 <li><strong><code>process_name</code></strong>: The label used in logs and process tracking.</li>
 <li><strong><code>suppress_logging</code></strong>: If <code>true</code>, disables log output for this service.</li>
 <li><strong><code>log_level</code></strong>: Logging verbosity level (e.g., <code>DEBUG</code>, <code>INFO</code>).</li>
 <li><strong><code>key_type</code></strong>: The debrid service to use (<code>RealDebrid</code>, <code>AllDebrid</code>, etc.).</li>
 <li><strong><code>zurg_enabled</code></strong>: Whether Zurg is linked to this rclone mount.</li>
+<li><strong><code>decypharr_enabled</code></strong>: Whether Decypharr is linked to this rclone mount.</li>
 <li><strong><code>mount_dir</code></strong>: The container path where the remote drive is to be mounted.</li>
 <li><strong><code>mount_name</code></strong>: The rclone remote name.</li>
 <li><strong><code>cache_dir</code></strong>: Directory used by rclone for VFS caching, when enabled.</li>
@@ -2739,7 +3027,8 @@
 <h3 id="-api-key-behavior">🔁 API Key Behavior<a class="headerlink" href="#-api-key-behavior" title="Permanent link">#</a></h3>
 <ul>
 <li>If <code>zurg_enabled</code> &amp; <code>zurg_config_file</code> are <strong>set</strong>: DUMB will configure rclone to use <strong>Zurg's WebDAV</strong> endpoint. The API key should be defined in the <strong>Zurg instance</strong>, not the rclone one.</li>
-<li>If <code>zurg_enabled</code> &amp; <code>zurg_config_file</code> are <strong>unset or blank</strong>: <strong>(Future release)</strong> DUMB will configure rclone to <strong>directly connect to the debrid service</strong>, and the API key must be set in the rclone instance.</li>
+<li>If <code>decypharr_enabled</code> is <strong>set</strong>: DUMB will configure rclone to use <strong>Decypharr's WebDAV</strong> endpoint. The API key should be defined in the <strong>Decypharr</strong> config.</li>
+<li>If <code>decypharr_enabled</code>, <code>zurg_enabled</code> &amp; <code>zurg_config_file</code> are <strong>unset or blank</strong>: DUMB will configure rclone to <strong>directly connect to the debrid service</strong>, and the API key must be set in the rclone instance.</li>
 </ul>
 <h3 id="-adding-more-instances">➕ Adding More Instances<a class="headerlink" href="#-adding-more-instances" title="Permanent link">#</a></h3>
 <p>Users can define additional rclone instances by duplicating the structure and ensuring:</p>
@@ -2748,17 +3037,22 @@
 <li>Each <code>process_name</code> is <strong>unique</strong></li>
 <li>The <code>key_type</code> must match the type of Debrid service used (e.g., <code>RealDebrid</code>, <code>AllDebrid</code>, <code>TorBox</code>, <code>Premiumize</code>)</li>
 </ul>
+<div class="admonition note">
+<p class="admonition-title">The below example creates a zurg attached rclone mount and a direct debrid connection rclone mount</p>
+</div>
 <p>Example:
 <div class="highlight"><pre><span></span><code><span class="nt">&quot;rclone&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;instances&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">    </span><span class="nt">&quot;RealDebrid&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">      </span><span class="nt">&quot;enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;core_service&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&quot;</span><span class="p">,</span><span class="w">      </span>
 <span class="w">      </span><span class="nt">&quot;process_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;rclone w/ RealDebrid&quot;</span><span class="p">,</span>
 <span class="w">      </span><span class="nt">&quot;suppress_logging&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
 <span class="w">      </span><span class="nt">&quot;log_level&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;INFO&quot;</span><span class="p">,</span>
 <span class="w">      </span><span class="nt">&quot;key_type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;RealDebrid&quot;</span><span class="p">,</span>
 <span class="w">      </span><span class="nt">&quot;zurg_enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;mount_dir&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/data&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;decypharr_enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span><span class="w">      </span>
+<span class="w">      </span><span class="nt">&quot;mount_dir&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/mnt/debrid&quot;</span><span class="p">,</span>
 <span class="w">      </span><span class="nt">&quot;mount_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;rclone_RD&quot;</span><span class="p">,</span>
 <span class="w">      </span><span class="nt">&quot;cache_dir&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/cache&quot;</span><span class="p">,</span>
 <span class="w">      </span><span class="nt">&quot;config_dir&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/config&quot;</span><span class="p">,</span>
@@ -2769,19 +3063,21 @@
 <span class="w">    </span><span class="p">},</span><span class="w">    </span>
 <span class="w">    </span><span class="nt">&quot;AllDebrid&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">      </span><span class="nt">&quot;enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;core_service&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&quot;</span><span class="p">,</span><span class="w">      </span>
 <span class="w">      </span><span class="nt">&quot;process_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;rclone w/ AllDebrid&quot;</span><span class="p">,</span>
 <span class="w">      </span><span class="nt">&quot;suppress_logging&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
 <span class="w">      </span><span class="nt">&quot;log_level&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;INFO&quot;</span><span class="p">,</span>
 <span class="w">      </span><span class="nt">&quot;key_type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;AllDebrid&quot;</span><span class="p">,</span>
 <span class="w">      </span><span class="nt">&quot;zurg_enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;mount_dir&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/data&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;decypharr_enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span><span class="w">      </span>
+<span class="w">      </span><span class="nt">&quot;mount_dir&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/mnt/debrid&quot;</span><span class="p">,</span>
 <span class="w">      </span><span class="nt">&quot;mount_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;rclone_AD&quot;</span><span class="p">,</span>
 <span class="w">      </span><span class="nt">&quot;cache_dir&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/cache&quot;</span><span class="p">,</span>
 <span class="w">      </span><span class="nt">&quot;config_dir&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/config&quot;</span><span class="p">,</span>
 <span class="w">      </span><span class="nt">&quot;config_file&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/config/rclone.config&quot;</span><span class="p">,</span>
 <span class="w">      </span><span class="nt">&quot;zurg_config_file&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&quot;</span><span class="p">,</span>
 <span class="w">      </span><span class="nt">&quot;command&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[],</span>
-<span class="w">      </span><span class="nt">&quot;api_key&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&quot;</span>
+<span class="w">      </span><span class="nt">&quot;api_key&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;YOUR DEBRID API KEY&quot;</span>
 <span class="w">    </span><span class="p">}</span>
 <span class="w">  </span><span class="p">}</span>
 <span class="p">}</span>
@@ -2798,7 +3094,7 @@
 </code></pre></div>
 This eliminates the need for any manual setup.</p>
 <h3 id="-debrid-api-integration">🔒 Debrid API Integration<a class="headerlink" href="#-debrid-api-integration" title="Permanent link">#</a></h3>
-<p>DUMB supports multiple Debrid configurations <strong>(Future release)</strong> using a combination of <code>rclone</code> and <code>zurg</code> instances.</p>
+<p>DUMB supports multiple Debrid configurations using a combination of <code>rclone</code> and <code>zurg</code> instances.</p>
 <h3 id="-works-with-zurg">🧲 Works With Zurg<a class="headerlink" href="#-works-with-zurg" title="Permanent link">#</a></h3>
 <p>Zurg exposes a WebDAV server which rclone mounts using the configuration above.</p>
 <h3 id="-rclone-flags-via-environment-variables">🔧 rclone Flags via Environment Variables<a class="headerlink" href="#-rclone-flags-via-environment-variables" title="Permanent link">#</a></h3>
@@ -2853,7 +3149,7 @@ RCLONE_TPSLIMIT_BURST=10
 <span class="w">  </span><span class="s2">&quot;rclone&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="s2">&quot;mount&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="s2">&quot;rclone_RD:&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="s2">&quot;/data/rclone_RD&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="s2">&quot;/mnt/debrid/rclone_RD&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="s2">&quot;--config&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;/config/rclone.config&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="s2">&quot;--uid=1000&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="s2">&quot;--gid=1000&quot;</span><span class="p">,</span>
@@ -2868,7 +3164,7 @@ RCLONE_TPSLIMIT_BURST=10
 <span class="w">  </span><span class="s2">&quot;rclone&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="s2">&quot;mount&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="s2">&quot;rclone_RD:&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="s2">&quot;/data/rclone_RD&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="s2">&quot;/mnt/debrid/rclone_RD&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="s2">&quot;--config&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;/config/rclone.config&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="s2">&quot;--uid=1000&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="s2">&quot;--gid=1000&quot;</span><span class="p">,</span>
@@ -3013,6 +3309,159 @@ RCLONE_TPSLIMIT_BURST=10
 </tbody>
 </table>
 <hr />
+<h2 id="-default-mount-structure">📂 Default Mount Structure<a class="headerlink" href="#-default-mount-structure" title="Permanent link">#</a></h2>
+<p>DUMB uses a predictable internal mount layout within the container to organize mounted debrid services and their symlinks when configured by the onboarding process.</p>
+<div class="admonition note">
+<p class="admonition-title">The below convention is automatically followed when using the onboarding system to configure core services.</p>
+</div>
+<h3 id="-root-mount-directory">📁 Root Mount Directory<a class="headerlink" href="#-root-mount-directory" title="Permanent link">#</a></h3>
+<ul>
+<li><code>/mnt/debrid</code> is the root mount location inside the container.</li>
+</ul>
+<h3 id="-rclone-mount-targets">🛆 rclone Mount Targets<a class="headerlink" href="#-rclone-mount-targets" title="Permanent link">#</a></h3>
+<ul>
+<li>
+<p>Each rclone mount uses the core service name as its subdirectory.</p>
+</li>
+<li>
+<p>For example:</p>
+<ul>
+<li>Core service <code>riven</code> → <code>/mnt/debrid/riven</code></li>
+<li>Core service <code>decypharr</code> → <code>/mnt/debrid/decypharr</code></li>
+</ul>
+</li>
+</ul>
+<h3 id="-symlink-directories">🔗 Symlink Directories<a class="headerlink" href="#-symlink-directories" title="Permanent link">#</a></h3>
+<ul>
+<li>
+<p>Core services that generate symlinks (e.g., Riven, Decypharr) will place them in subdirectories named with the pattern: <code>&lt;core_service&gt;_symlinks</code></p>
+</li>
+<li>
+<p>For example:</p>
+<ul>
+<li><code>/mnt/debrid/riven_symlinks</code></li>
+<li><code>/mnt/debrid/decypharr_symlinks</code></li>
+</ul>
+</li>
+</ul>
+<p>This naming convention makes it easy to identify and separate raw debrid mounts from symbolic links created for media server compatibility.</p>
+<hr />
+<h2 id="-mount-propagation">⚙️ Mount Propagation<a class="headerlink" href="#-mount-propagation" title="Permanent link">#</a></h2>
+<div class="admonition note">
+<p class="admonition-title">/mnt/debrid:rshared</p>
+<p>The <code>:rshared</code> must be included in order to support <a href="https://docs.docker.com/storage/bind-mounts/#configure-bind-propagation">mount propagation</a> for rclone to the host when exposing the raw debrid files/links to an external container; e.g., the arrs or a media server.</p>
+<p><code>:rshared</code> is not required when using the default configuration leveraging the internal media server or when not utilizing <a href="../services/core/decypharr.md">Decypharr</a></p>
+</div>
+<p>Mount propagation controls how mount events (like new mounts created inside the container) are shared between the host and the container.</p>
+<p>In the context of DUMB, mount propagation is critical for ensuring that media servers (e.g., Plex, Jellyfin) running <strong>OUTSIDE</strong> the container can see and access the dynamically-mounted cloud content that rclone brings in <strong>inside</strong> the container.</p>
+<h3 id="-required-propagation-flags">🔗 Required Propagation Flags<a class="headerlink" href="#-required-propagation-flags" title="Permanent link">#</a></h3>
+<p>When mounting a path like <code>/mnt/debrid</code> from the host into the DUMB container, the bind mount must include <strong><a href="https://docs.docker.com/storage/bind-mounts/#configure-bind-propagation">mount propagation</a></strong> flags to allow sub-mounts (e.g., <code>/mnt/debrid/riven</code>, <code>/mnt/debrid/decypharr</code>, etc.) to be visible <strong>OUTSIDE</strong> the container.</p>
+<h4 id="-recommended-flag-rshared">✅ Recommended Flag: <code>:rshared</code><a class="headerlink" href="#-recommended-flag-rshared" title="Permanent link">#</a></h4>
+<p>Example:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">docker-compose.yml</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">volumes</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/home/username/docker/DUMB/mnt/debrid:/mnt/debrid:rshared</span>
+</code></pre></div>
+<p>Explanation:</p>
+<ul>
+<li><code>:rshared</code> ensures two-way mount propagation.</li>
+<li>Any mount created inside <code>/mnt/debrid</code> in the <strong>container</strong> will also appear in the <strong>host</strong>, and vice versa.</li>
+</ul>
+<h4 id="alternative-rslave">Alternative: <code>:rslave</code><a class="headerlink" href="#alternative-rslave" title="Permanent link">#</a></h4>
+<ul>
+<li>This is a safer but one-way variant.</li>
+<li>Host will see container mounts, but not the other way around.</li>
+</ul>
+<p>Use <code>:rslave</code> <strong>only if</strong> you do not need to propagate mounts <strong>from the host into the container</strong>.</p>
+<hr />
+<h3 id="-common-issues-without-propagation">⚠️ Common Issues Without Propagation<a class="headerlink" href="#-common-issues-without-propagation" title="Permanent link">#</a></h3>
+<ul>
+<li>You may not see rclone mounts or Zurg's WebDAV mount in <code>/mnt/debrid</code> on the host.</li>
+<li>Media servers running on the host or in other containers may report missing files or empty directories.</li>
+<li>Decypharr and similar tools relying on externally (from the container) mounted paths may fail to operate correctly.</li>
+</ul>
+<hr />
+<h3 id="-host-system-requirements">🔧 Host System Requirements<a class="headerlink" href="#-host-system-requirements" title="Permanent link">#</a></h3>
+<div class="admonition note">
+<p class="admonition-title">mount --make-rshared /</p>
+<p>Most Linux distributions support mount propagation. However, the base path must be a shared or slave mount, or mount propagation will not function correctly.</p>
+<p>See the <a href="../../../faq/rclone/#error-response-from-daemon-path-yourhostpathmnt-is-mounted-on--but-it-is-not-a-shared-mount">rclone FAQ</a> for related troubleshooting.</p>
+</div>
+<p>To use mount propagation:</p>
+<ul>
+<li>The host filesystem <strong>must support it</strong> (most Linux distributions do).</li>
+<li>The base mount point (e.g., <code>/mnt/debrid</code>) must itself be a <strong>shared</strong> or <strong>slave</strong> mount.</li>
+</ul>
+<h3 id="-how-to-check">✅ How to Check<a class="headerlink" href="#-how-to-check" title="Permanent link">#</a></h3>
+<p>You can verify the current propagation mode using the <code>mount</code> or <code>findmnt</code> command:</p>
+<div class="highlight"><pre><span></span><code>findmnt<span class="w"> </span>-o<span class="w"> </span>TARGET,PROPAGATION<span class="w"> </span>/mnt/debrid
+</code></pre></div>
+<p>or:</p>
+<div class="highlight"><pre><span></span><code>mount<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>/mnt/debrid
+</code></pre></div>
+<p>Look for one of these at the end of the line:</p>
+<ul>
+<li><code>shared:</code> → shared mount</li>
+<li><code>slave:</code> → slave mount</li>
+<li><code>private:</code> → not propagating (default)</li>
+</ul>
+<h3 id="-how-to-enable">🛠️ How to Enable<a class="headerlink" href="#-how-to-enable" title="Permanent link">#</a></h3>
+<p>To ensure the base directory allows propagation:</p>
+<div class="highlight"><pre><span></span><code>mount<span class="w"> </span>--make-shared<span class="w"> </span>/mnt/debrid
+</code></pre></div>
+<p>Or to make <strong>all</strong> mounts shared (advanced users only):</p>
+<div class="highlight"><pre><span></span><code>mount<span class="w"> </span>--make-rshared<span class="w"> </span>/
+</code></pre></div>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>These commands modify mount flags at runtime and will not persist across reboots. To persist them, you may need to update your systemd unit files or <code>/etc/fstab</code> with the appropriate <code>shared</code> propagation settings.</p>
+<p>See the <a href="../../../faq/rclone/#error-response-from-daemon-path-yourhostpathmnt-is-mounted-on--but-it-is-not-a-shared-mount">rclone FAQ</a> for additional details</p>
+</div>
+<h3 id="-best-practices">📅 Best Practices<a class="headerlink" href="#-best-practices" title="Permanent link">#</a></h3>
+<ul>
+<li>Always prefer <code>:rshared</code> for <code>/mnt/debrid</code> in <strong>DUMB</strong> container mounts when external access to the mounts is needed.</li>
+<li>Use <code>:rslave</code> in <strong>consumer containers</strong> (e.g., Plex, Sonarr, Radarr) for safer downstream propagation.</li>
+<li>Avoid <code>:rw</code> without a propagation flag—it won't propagate sub-mounts at all.</li>
+<li>Verify mounts with <code>findmnt</code> or <code>mount</code> on host and inside containers.</li>
+</ul>
+<hr />
+<h3 id="-summary-table-for-mount-propagation-use-cases">📊 Summary Table for Mount Propagation Use Cases<a class="headerlink" href="#-summary-table-for-mount-propagation-use-cases" title="Permanent link">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>Propagation Mode</th>
+<th>Container → Host</th>
+<th>Host → Container</th>
+<th>Used For</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>rshared</code></td>
+<td>Yes</td>
+<td>Yes</td>
+<td><code>/mnt/debrid</code> in DUMB (for external consumers)</td>
+<td>Required when external services (e.g., arrs, external Plex) access mounts</td>
+</tr>
+<tr>
+<td><code>rslave</code></td>
+<td>Yes</td>
+<td>No</td>
+<td>Containers like Plex, Sonarr, Radarr</td>
+<td>Safer for downstream-only visibility of mounts</td>
+</tr>
+<tr>
+<td><code>private</code> (default)</td>
+<td>No</td>
+<td>No</td>
+<td>Internal-only setups using DUMB's media server</td>
+<td>Suitable when no external container needs access to rclone mounts</td>
+</tr>
+</tbody>
+</table>
+<p>The <code>rshared</code> flag should be reserved for DUMB's own mount directory so other services can inherit its mounts, while <code>rslave</code> is appropriate for media servers that only need read access to what DUMB exposes. <code>private</code> can be used safely if no external mount visibility is needed (e.g., with built-in media server only).</p>
+<hr />
 <h2 id="-accessing-rclone-inside-the-container">💻 Accessing rclone Inside the Container<a class="headerlink" href="#-accessing-rclone-inside-the-container" title="Permanent link">#</a></h2>
 <p>To run rclone commands manually:
 <div class="highlight"><pre><span></span><code>docker<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>-it<span class="w"> </span>DUMB<span class="w"> </span>/bin/bash
@@ -3023,7 +3472,7 @@ rclone<span class="w"> </span>mount<span class="w"> </span>rclone_RD:<span class
 <h2 id="-tips">🧠 Tips<a class="headerlink" href="#-tips" title="Permanent link">#</a></h2>
 <ul>
 <li>Mounts are bind-mounted into the container by default.</li>
-<li>If you mount <code>/data</code> to the host, you will see all Zurg-fetched content.</li>
+<li>If you mount <code>/mnt/debrid/</code> to the host with the <code>:rshared</code> flag you will see all Zurg-fetched content.</li>
 <li>Use the <code>RCLONE_LOG_LEVEL</code> env var to control verbosity.</li>
 </ul>
 <hr />
@@ -3039,6 +3488,9 @@ rclone<span class="w"> </span>mount<span class="w"> </span>rclone_RD:<span class
 
 
 
+
+  
+  
 
 
 
