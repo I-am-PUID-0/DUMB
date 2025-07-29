@@ -1122,6 +1122,15 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#-plex-media-server-built-in" class="md-nav__link">
+    <span class="md-ellipsis">
+      🚀 Plex Media Server Built-in!
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#-zilean-built-in" class="md-nav__link">
     <span class="md-ellipsis">
       🚀 Zilean Built-in!
@@ -2609,6 +2618,15 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#-plex-media-server-built-in" class="md-nav__link">
+    <span class="md-ellipsis">
+      🚀 Plex Media Server Built-in!
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#-zilean-built-in" class="md-nav__link">
     <span class="md-ellipsis">
       🚀 Zilean Built-in!
@@ -2850,7 +2868,7 @@
 <p>In both cases, ensure the appropriate path for the rclone or zurg mount is used when adding the <code>Original Files Path</code>.</p>
 <div class="admonition note">
 <p class="admonition-title">The <code>Original Files Path</code> is relative to the paths inside the container</p>
-<p>Example: If the rclone <code>mount_dir</code> is set to <code>/data</code>, the rclone <code>mount_name</code> is set to <code>rclone_RD</code>, and you're using <code>zurg_enabled: true</code> for rclone, then you would enter:  </p>
+<p>Example: As default when configured with the onboarding process, the rclone <code>mount_dir</code> is set to <code>/mnt/debrid</code>, the rclone <code>mount_name</code> is set to <code>clid</code>, and it is using <code>zurg_enabled: true</code> for rclone, then the path should be:  </p>
 <p><img alt="Original Files Path" src="../../../assets/images/cli_debrid/clid_original_files_path.png" /></p>
 </div>
 <p>As mentioned, CLI Debrid also monitors either the created symlinks or the Plex libraries for completed items.</p>
@@ -2860,6 +2878,19 @@
 <p><img alt="File Collection Management" src="../../../assets/images/cli_debrid/clid_file_collection_management.png" />
 <img alt="Symlinked Files Path" src="../../../assets/images/cli_debrid/clid_symlinked_files_path.png" /></p>
 </div>
+<hr />
+<h2 id="-plex-media-server-built-in">🚀 Plex Media Server Built-in!<a class="headerlink" href="#-plex-media-server-built-in" title="Permanent link">#</a></h2>
+<p>With <a href="../plex-media-server/">Plex Media Server</a> enabled in DUMB, you can also leverage it with CLI Debrid</p>
+<p>As shown below, if you select to "Sign in to Plex" during the CLI Debrid onboarding, it will allow you to select the local instance of <a href="../plex-media-server/">Plex Media Server</a></p>
+<div class="admonition note">
+<p class="admonition-title"><a href="../plex-media-server/">Plex Media Server</a> must be configured and running in DUMB before it will appear in the list of available servers</p>
+</div>
+<p><img alt="Sign in to Plex" src="../../../assets/images/cli_debrid/plex_sign_in.PNG" /></p>
+<p>Signing into Plex and selecting the DUMB <a href="../plex-media-server/">Plex Media Server</a> will pre-populate the "Plex URL" and "Plex Token" within the CLI Debrid onboarding. </p>
+<p>However, note that it sets the "Plex URL" as the DUMB docker container's IP Address:</p>
+<p><img alt="Plex URL Signed In" src="../../../assets/images/cli_debrid/plex_server_url_signed_in.PNG" /></p>
+<p>This may cause issues if the address changes for the container, so it is suggested to change the "Plex URL" as shown below:</p>
+<p><img alt="Plex URL" src="../../../assets/images/cli_debrid/plex_server_url.PNG" /></p>
 <hr />
 <h2 id="-zilean-built-in">🚀 Zilean Built-in!<a class="headerlink" href="#-zilean-built-in" title="Permanent link">#</a></h2>
 <p>With <a href="../../optional/zilean/">Zilean</a> enabled in DUMB, you can also leverage it with CLI Debrid</p>
