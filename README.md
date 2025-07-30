@@ -98,18 +98,9 @@ services:
     stdin_open: true                                                  ## docker run -i
     tty: true                                                         ## docker run -t
     volumes:
-      - /home/username/docker/DUMB/config:/config                     ## Location of configuration files. If a Zurg config.yml and/or Zurg app is placed here, it will be used to override the default configuration and/or app used at startup.
+      - /home/username/docker/DUMB/config:/config                     ## Location of configuration files.
       - /home/username/docker/DUMB/log:/log                           ## Location for logs
-      - /home/username/docker/DUMB/Zurg/RD:/zurg/RD                   ## Location for Zurg RealDebrid active configuration
-      - /home/username/docker/DUMB/Riven/data:/riven/backend/data     ## Location for Riven backend data
-      - /home/username/docker/DUMB/PostgreSQL/data:/postgres_data     ## Location for PostgreSQL database
-      - /home/username/docker/DUMB/pgAdmin4/data:/pgadmin/data        ## Location for pgAdmin 4 data
-      - /home/username/docker/DUMB/Zilean/data:/zilean/app/data       ## Location for Zilean data
-      - /home/username/docker/DUMB/plex_debrid:/plex_debrid/config    ## Location for plex_debrid data
-      - /home/username/docker/DUMB/cli_debrid:/cli_debrid/data        ## Location for cli_debrid data
-      - /home/username/docker/DUMB/phalanx_db:/phalanx_db/data        ## Location for phalanx_db data 
-      - /home/username/docker/DUMB/decypharr:/decypharr               ## Location for decypharr data      
-      - /home/username/docker/DUMB/plex:/plex                         ## Location for plex data
+      - /home/username/docker/DUMB/data:/data                         ## Location for all service data
       - /home/username/docker/DUMB/mnt/debrid:/mnt/debrid             ## Location for all symlinks and rclone mounts - change to /mnt/debrid:rshared if using decypharr 
     environment:
       - TZ=
@@ -173,20 +164,12 @@ The following table describes the data volumes used by the container. The mappin
 are set via the `-v` parameter or via the docker-compose file within the `volumes:` section. Each mapping is specified with the following
 format: `<HOST_DIR>:<CONTAINER_DIR>[:PERMISSIONS]`.
 
-| Container path        | Permissions | Description                                                                                                                                                                                                                                 |
-| --------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `/config`             | rw          | This is where the application stores the rclone.conf, and any files needing persistence. CAUTION: rclone.conf is overwritten upon start/restart of the container. Do NOT use an existing rclone.conf file if you have other rclone services |
-| `/log`                | rw          | This is where the application stores its log files                                                                                                                                                                                          |
-| `/zurg/RD`            | rw          | This is where Zurg will store the active configuration and data for RealDebrid.                                                                                                                                                             |
-| `/riven/backend/data` | rw          | This is where Riven will store its data.                                                                                                                                                                                                    |
-| `/postgres_data`      | rw          | This is where PostgreSQL will store its data.                                                                                                                                                                                               |
-| `/pgadmin/data`       | rw          | This is where pgAdmin 4 will store its data.                                                                                                                                                                                                |
-| `/plex_debrid/config` | rw          | This is where plex_debrid will store its data.                                                                                                                                                                                              |
-| `/cli_debrid/data`    | rw          | This is where cli_debrid will store its data.                                                                                                                                                                                               |
-| `/phalanx_db/data`    | rw          | This is where phalanx_db will store its data.                                                                                                                                                                                               |
-| `/decypharr`          | rw          | This is where decypharr will store its data.                                                                                                                                                                                                |
-| `/plex`               | rw          | This is where Plex Media Server will store its data.                                                                                                                                                                                        |
-| `/mnt/debrid`         | rw          | This is where the symlinks and rclone mounts will be stored                                                                                                                                                                                 |
+| Container path        | Permissions | Description                                                                          |
+| --------------------- | ----------- | -------------------------------------------------------------------------------------|
+| `/config`             | rw          | This is where the application stores the dumb_config.json and rclone.config          |
+| `/log`                | rw          | This is where the application stores its log files                                   |
+| `/data`               | rw          | This is where all services will store their data                                     |
+| `/mnt/debrid`         | rw          | This is where the symlinks and rclone mounts will be stored                          |
 
 ## 📝 TODO
 
