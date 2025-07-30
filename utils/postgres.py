@@ -326,6 +326,10 @@ def create_pgadmin_config(
             config_file.write("    'ppas-16': '/usr/bin',\n")
             config_file.write("    'ppas-17': '/usr/bin'\n")
             config_file.write("}\n")
+
+        subprocess.run(
+            ["chown", f"{user_id}:{group_id}", pgadmin_config_file], check=True
+        )
         logger.info(f"Created pgAdmin configuration file at {pgadmin_config_file}.")
     except OSError as e:
         return False, f"Error creating pgAdmin configuration file: {e}"

@@ -8,8 +8,6 @@ from utils.dependencies import initialize_dependencies
 import subprocess, threading, time, tomllib
 from time import sleep
 
-from utils.setup import phalanx_setup
-
 
 def main():
 
@@ -50,14 +48,14 @@ DDDDDDDDDDDDD             UUUUUUUUU      MMMMMMMM               MMMMMMMMBBBBBBBB
         logger=logger,
     )
 
-    if config.get("dumb", {}).get("api_service", {}).get("enabled"):
-        start_fastapi_process()
-
     try:
         user_management.create_system_user()
     except Exception as e:
         logger.error(f"An error occurred while creating system user: {e}")
         process_handler.shutdown(exit_code=1)
+
+    if config.get("dumb", {}).get("api_service", {}).get("enabled"):
+        start_fastapi_process()
 
     try:
         dumb_config = config.get("dumb", {})

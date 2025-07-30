@@ -29,20 +29,11 @@
   "mounts": [
     "source=${localWorkspaceFolder},target=/workspace,type=bind",
     "source=${localWorkspaceFolder}/main.py,target=/main.py,type=bind",
-    "source=${localWorkspaceFolder}/config,target=/config,type=bind",
     "source=${localWorkspaceFolder}/utils,target=/utils,type=bind",
-    "source=${localWorkspaceFolder}/zurg/RD,target=/zurg/RD,type=bind",
-    "source=${localWorkspaceFolder}/riven/backend/data,target=/riven/backend/data,type=bind",
-    "source=${localWorkspaceFolder}/zilean/app/data,target=/zilean/app/data,type=bind",
+    "source=${localWorkspaceFolder}/data,target=/data,type=bind",
     "source=${localWorkspaceFolder}/log,target=/log,type=bind",
-    "source=${localWorkspaceFolder}/mnt/debrid,target=/mnt/debrid,type=bind,bind-propagation=rshared",
-    "source=${localWorkspaceFolder}/postgres_data,target=/postgres_data,type=bind",
-    "source=${localWorkspaceFolder}/pgadmin/data,target=/pgadmin/data,type=bind",
-    "source=${localWorkspaceFolder}/plex_debrid/config,target=/plex_debrid/config,type=bind",
-    "source=${localWorkspaceFolder}/cli_debrid/data,target=/cli_debrid/data,type=bind",
-    "source=${localWorkspaceFolder}/decypharr,target=/decypharr,type=bind",
-    "source=${localWorkspaceFolder}/plex,target=/plex,type=bind",
-    "source=${localWorkspaceFolder}/phalanx_db/data,target=/phalanx_db/data,type=bind"
+    "source=${localWorkspaceFolder}/config,target=/config,type=bind",
+    "source=${localWorkspaceFolder}/mnt/debrid,target=/mnt/debrid,type=bind,bind-propagation=rshared"
   ],
   "runArgs": [
     "--name=dumb_dev",
