@@ -1,8 +1,7 @@
 from utils.config_loader import CONFIG_MANAGER as config
 from utils.global_logger import logger
 from concurrent.futures import ThreadPoolExecutor
-import multiprocessing, os, time, grp, pwd, subprocess
-
+import multiprocessing, os, time, grp, pwd, subprocess, shutil
 
 user_id = config.get("puid")
 group_id = config.get("pgid")
@@ -58,6 +57,92 @@ def chown_recursive(directory, user_id, group_id):
         return False, f"Error changing ownership of '{directory}': {e}"
 
 
+def is_mount(path):
+    return os.path.ismount(path)
+
+
+def migrate_and_symlink(original_path, data_path):
+    try:
+        if not os.path.exists(data_path):
+            os.makedirs(data_path, exist_ok=True)
+            logger.debug(f"Created data path: {data_path}")
+            chown_recursive(data_path, user_id, group_id)
+
+        def empty_dir(path):
+            return not os.path.exists(path) or (
+                os.path.isdir(path) and not os.listdir(path)
+            )
+
+        if (
+            os.path.exists(original_path)
+            and not os.path.islink(original_path)
+            and not empty_dir(original_path)
+        ):
+            if not os.listdir(data_path):
+                logger.info(f"Migrating data from {original_path} → {data_path}")
+                shutil.copytree(original_path, data_path, dirs_exist_ok=True)
+                chown_recursive(data_path, user_id, group_id)
+            else:
+                logger.debug(f"{data_path} already has content, skipping copy")
+
+        if is_mount(original_path):
+            logger.info(
+                f"Cannot symlink {original_path} → {data_path} because it is a mount. Remove the mount in Docker Compose to complete migration."
+            )
+            return
+
+        if os.path.exists(original_path) and not os.path.islink(original_path):
+            shutil.rmtree(original_path)
+            logger.debug(f"Removed original path: {original_path}")
+
+        if not os.path.exists(original_path):
+            os.makedirs(os.path.dirname(original_path), exist_ok=True)
+            os.symlink(data_path, original_path)
+            logger.debug(f"Created symlink: {original_path} → {data_path}")
+
+    except Exception as e:
+        logger.error(f"Migration failed for {original_path} to {data_path}: {e}")
+
+
+def cleanup_broken_symlinks(directory):
+    if not os.path.exists(directory):
+        return
+    for item in os.listdir(directory):
+        path = os.path.join(directory, item)
+        if os.path.islink(path) and not os.path.exists(os.readlink(path)):
+            try:
+                os.unlink(path)
+                logger.debug(f"Removed broken symlink: {path}")
+            except Exception as e:
+                logger.warning(f"Failed to remove broken symlink: {path}: {e}")
+
+
+def migrate_symlinks():
+    data_root = "/data"
+    if is_mount(data_root):
+        cleanup_broken_symlinks(data_root)
+
+        symlink_map = [
+            ("/zurg/RD", os.path.join(data_root, "zurg_RD")),
+            ("/riven/backend/data", os.path.join(data_root, "riven")),
+            ("/postgres_data", os.path.join(data_root, "postgres")),
+            ("/pgadmin/data", os.path.join(data_root, "pgadmin")),
+            ("/zilean/app/data", os.path.join(data_root, "zilean")),
+            ("/plex_debrid/config", os.path.join(data_root, "plex_debrid")),
+            ("/cli_debrid/data", os.path.join(data_root, "cli_debrid")),
+            ("/phalanx_db/data", os.path.join(data_root, "phalanx_db")),
+            ("/decypharr", os.path.join(data_root, "decypharr")),
+            ("/plex", os.path.join(data_root, "plex")),
+        ]
+
+        for original_path, data_path in symlink_map:
+            migrate_and_symlink(original_path, data_path)
+    else:
+        logger.warning(
+            f"Data root {data_root} is not a mount. Skipping symlink migration."
+        )
+
+
 def create_system_user(username="DUMB"):
     try:
         start_time = time.time()
@@ -78,6 +163,7 @@ def create_system_user(username="DUMB"):
         try:
             pwd.getpwnam(username)
             logger.debug(f"User '{username}' with UID {user_id} already exists.")
+            migrate_symlinks()
             return
         except KeyError:
             logger.info(f"User '{username}' does not exist. Creating user...")
@@ -114,7 +200,6 @@ def create_system_user(username="DUMB"):
         logger.info(f"Password set for user '{username}'. Stored securely in memory.")
 
         zurg_dir = "/zurg"
-        # mnt_dir = config.get("riven_backend").get("symlink_library_path")
         log_dir = config.get("dumb").get("log_dir")
         config_dir = "/config"
         riven_dir = "/riven/backend/data"
@@ -125,8 +210,6 @@ def create_system_user(username="DUMB"):
         rclone_instances = config.get("rclone", {}).get("instances", {})
 
         chown_start = time.time()
-        # chown_recursive(zurg_dir, user_id, group_id)
-        # os.chown(mnt_dir, user_id, group_id)
         os.chown(zurg_dir, user_id, group_id)
         chown_recursive(log_dir, user_id, group_id)
         chown_recursive(config_dir, user_id, group_id)
@@ -160,6 +243,14 @@ def create_system_user(username="DUMB"):
 
         chown_end = time.time()
         logger.debug(f"Chown operations took {chown_end - chown_start:.2f} seconds")
+
+        migration_start = time.time()
+        migrate_symlinks()
+        migration_end = time.time()
+        logger.debug(
+            f"Migration of symlinks took {migration_end - migration_start:.2f} seconds"
+        )
+
         end_time = time.time()
         logger.info(
             f"Total time to create system user '{username}' was {end_time - start_time:.2f} seconds"
