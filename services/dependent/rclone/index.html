@@ -3350,7 +3350,7 @@ RCLONE_TPSLIMIT_BURST=10
 <div class="admonition note">
 <p class="admonition-title">/mnt/debrid:rshared</p>
 <p>The <code>:rshared</code> must be included in order to support <a href="https://docs.docker.com/storage/bind-mounts/#configure-bind-propagation">mount propagation</a> for rclone to the host when exposing the raw debrid files/links to an external container; e.g., the arrs or a media server.</p>
-<p><code>:rshared</code> is not required when using the default configuration leveraging the internal media server or when not utilizing <a href="../services/core/decypharr.md">Decypharr</a></p>
+<p><code>:rshared</code> is not required when using the default configuration leveraging the internal media server or when not utilizing <a href="../../core/decypharr/">Decypharr</a></p>
 </div>
 <p>Mount propagation controls how mount events (like new mounts created inside the container) are shared between the host and the container.</p>
 <p>In the context of DUMB, mount propagation is critical for ensuring that media servers (e.g., Plex, Jellyfin) running <strong>OUTSIDE</strong> the container can see and access the dynamically-mounted cloud content that rclone brings in <strong>inside</strong> the container.</p>
