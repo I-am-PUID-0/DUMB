@@ -80,7 +80,9 @@ def migrate_and_symlink(original_path, data_path):
         ):
             if not os.listdir(data_path):
                 logger.info(f"Migrating data from {original_path} → {data_path}")
-                shutil.copytree(original_path, data_path, dirs_exist_ok=True)
+                shutil.copytree(
+                    original_path, data_path, dirs_exist_ok=True, symlinks=True
+                )
                 chown_recursive(data_path, user_id, group_id)
             else:
                 logger.debug(f"{data_path} already has content, skipping copy")
