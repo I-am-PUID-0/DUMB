@@ -2,6 +2,7 @@
     "puid": 1000,
     "pgid": 1000,
     "tz": "",
+    "data_root": "/data",
     "dumb": {
         "log_level": "INFO",
         "log_name": "DUMB",

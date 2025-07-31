@@ -10,6 +10,9 @@
     "tz": {
       "type": "string"
     },
+    "data_root": {
+      "type": "string"
+    },
     "dumb": {
       "type": "object",
       "properties": {
@@ -1421,6 +1424,7 @@
     "puid",
     "pgid",
     "tz",
+    "data_root",
     "dumb",
     "cli_debrid",
     "cli_battery",

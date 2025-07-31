@@ -80,10 +80,33 @@ def migrate_and_symlink(original_path, data_path):
         ):
             if not os.listdir(data_path):
                 logger.info(f"Migrating data from {original_path} → {data_path}")
-                shutil.copytree(
-                    original_path, data_path, dirs_exist_ok=True, symlinks=True
-                )
-                chown_recursive(data_path, user_id, group_id)
+                try:
+                    shutil.copytree(
+                        original_path, data_path, dirs_exist_ok=True, symlinks=True
+                    )
+                    chown_recursive(data_path, user_id, group_id)
+                    original_size = sum(
+                        os.path.getsize(os.path.join(root, file))
+                        for root, _, files in os.walk(original_path)
+                        for file in files
+                    )
+                    data_size = sum(
+                        os.path.getsize(os.path.join(root, file))
+                        for root, _, files in os.walk(data_path)
+                        for file in files
+                    )
+                    if original_size != data_size:
+                        raise Exception(
+                            f"Data size mismatch: {original_size} bytes in original, {data_size} bytes in data path"
+                        )
+                    logger.debug(
+                        f"Data migration successful: {original_path} (bytes: {original_size}) → {data_path} (bytes: {data_size})"
+                    )
+                except Exception as e:
+                    logger.error(
+                        f"Error copying data from {original_path} to {data_path}: {e}"
+                    )
+                    raise
             else:
                 logger.debug(f"{data_path} already has content, skipping copy")
 
@@ -100,10 +123,20 @@ def migrate_and_symlink(original_path, data_path):
         if not os.path.exists(original_path):
             os.makedirs(os.path.dirname(original_path), exist_ok=True)
             os.symlink(data_path, original_path)
-            logger.debug(f"Created symlink: {original_path} → {data_path}")
+            if (
+                os.path.islink(original_path)
+                and os.readlink(original_path) == data_path
+            ):
+                logger.debug(f"Created symlink: {original_path} → {data_path}")
+            else:
+                raise Exception(
+                    f"Failed to create symlink: {original_path} → {data_path}"
+                )
 
     except Exception as e:
-        logger.error(f"Migration failed for {original_path} to {data_path}: {e}")
+        raise RuntimeError(
+            f"Migration failed for {original_path} to {data_path}: {e}"
+        ) from e
 
 
 def cleanup_broken_symlinks(directory):
@@ -120,29 +153,34 @@ def cleanup_broken_symlinks(directory):
 
 
 def migrate_symlinks():
-    data_root = "/data"
-    if is_mount(data_root):
-        cleanup_broken_symlinks(data_root)
+    data_root = str(config.get("data_root")) or "/data"
+    logger.debug(f"Data root for symlink migration: {data_root}")
+    try:
+        if is_mount(data_root):
+            cleanup_broken_symlinks(data_root)
 
-        symlink_map = [
-            ("/zurg/RD", os.path.join(data_root, "zurg_RD")),
-            ("/riven/backend/data", os.path.join(data_root, "riven")),
-            ("/postgres_data", os.path.join(data_root, "postgres")),
-            ("/pgadmin/data", os.path.join(data_root, "pgadmin")),
-            ("/zilean/app/data", os.path.join(data_root, "zilean")),
-            ("/plex_debrid/config", os.path.join(data_root, "plex_debrid")),
-            ("/cli_debrid/data", os.path.join(data_root, "cli_debrid")),
-            ("/phalanx_db/data", os.path.join(data_root, "phalanx_db")),
-            ("/decypharr", os.path.join(data_root, "decypharr")),
-            ("/plex", os.path.join(data_root, "plex")),
-        ]
+            symlink_map = [
+                ("/zurg/RD", os.path.join(data_root, "zurg_RD")),
+                ("/riven/backend/data", os.path.join(data_root, "riven")),
+                ("/postgres_data", os.path.join(data_root, "postgres")),
+                ("/pgadmin/data", os.path.join(data_root, "pgadmin")),
+                ("/zilean/app/data", os.path.join(data_root, "zilean")),
+                ("/plex_debrid/config", os.path.join(data_root, "plex_debrid")),
+                ("/cli_debrid/data", os.path.join(data_root, "cli_debrid")),
+                ("/phalanx_db/data", os.path.join(data_root, "phalanx_db")),
+                ("/decypharr", os.path.join(data_root, "decypharr")),
+                ("/plex", os.path.join(data_root, "plex")),
+            ]
 
-        for original_path, data_path in symlink_map:
-            migrate_and_symlink(original_path, data_path)
-    else:
-        logger.warning(
-            f"Data root {data_root} is not a mount. Skipping symlink migration."
-        )
+            for original_path, data_path in symlink_map:
+                migrate_and_symlink(original_path, data_path)
+        else:
+            logger.warning(
+                f"Data root {data_root} is not a mount. Skipping symlink migration."
+            )
+    except Exception as e:
+        logger.error(f"Error during symlink migration: {e}")
+        raise
 
 
 def create_system_user(username="DUMB"):
