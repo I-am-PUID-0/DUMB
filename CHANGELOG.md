@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.6.0](https://github.com/I-am-PUID-0/DUMB/compare/1.5.0...1.6.0) (2025-07-31)
+
+
+### ✨ Features
+
+* **config:** add data_root to dumb_config and schema; enhance symlink migration logic ([33dbadb](https://github.com/I-am-PUID-0/DUMB/commit/33dbadb5a37769df9bc580cb2078db40ee47b09e))
+
 ## [1.5.0](https://github.com/I-am-PUID-0/DUMB/compare/1.4.3...1.5.0) (2025-07-31)
 
 
