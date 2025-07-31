@@ -2108,6 +2108,39 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#host-based-media-server-mount-path-consistency" class="md-nav__link">
+    <span class="md-ellipsis">
+      Host-Based Media Server: Mount Path Consistency
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Host-Based Media Server: Mount Path Consistency">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#example-using-rivens-symlink-media-directory" class="md-nav__link">
+    <span class="md-ellipsis">
+      Example: Using Riven's Symlink Media Directory
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#simplified-approach-using-standard-paths" class="md-nav__link">
+    <span class="md-ellipsis">
+      Simplified Approach Using Standard Paths
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -2598,6 +2631,39 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#host-based-media-server-mount-path-consistency" class="md-nav__link">
+    <span class="md-ellipsis">
+      Host-Based Media Server: Mount Path Consistency
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Host-Based Media Server: Mount Path Consistency">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#example-using-rivens-symlink-media-directory" class="md-nav__link">
+    <span class="md-ellipsis">
+      Example: Using Riven's Symlink Media Directory
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#simplified-approach-using-standard-paths" class="md-nav__link">
+    <span class="md-ellipsis">
+      Simplified Approach Using Standard Paths
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -2711,6 +2777,41 @@ Otherwise, you’ll unintentionally download and archive the entire contents of 
 <li>If Riven's database is lost or reset, all content must be scraped and added again</li>
 <li>Symlinks add complexity by requiring your media server to share the same exact container paths as defined in DUMB's <code>dumb_config.json</code> — e.g., <code>/mnt/debrid</code> must exist <strong>exactly</strong> the same inside your media server container or on the host when the media server is not containerized  </li>
 </ul>
+<hr />
+<h3 id="host-based-media-server-mount-path-consistency">Host-Based Media Server: Mount Path Consistency<a class="headerlink" href="#host-based-media-server-mount-path-consistency" title="Permanent link">#</a></h3>
+<p>If your media server (such as Plex) runs <strong>directly on the host</strong> (not in Docker), it will access media files using the host's file system. In this setup, any symlinks created inside the DUMB container must resolve correctly <strong>on the host</strong>. This means the media paths inside the container must exactly match the paths used by the host.</p>
+<p>Symlink resolution is based on absolute paths. If those paths don't exist or don't match outside the container, the symlinks will be broken or unusable by the media server.</p>
+<h4 id="example-using-rivens-symlink-media-directory">Example: Using Riven's Symlink Media Directory<a class="headerlink" href="#example-using-rivens-symlink-media-directory" title="Permanent link">#</a></h4>
+<p>Suppose your media is mounted on the host at:</p>
+<div class="highlight"><pre><span></span><code>/docker/DUMB/mnt/debrid
+</code></pre></div>
+<p>Since Plex (or another media server) and the DUMB container need to both access this path and resolve symlinks, your Docker bind mount must look like:</p>
+<div class="highlight"><pre><span></span><code><span class="l l-Scalar l-Scalar-Plain">/docker/DUMB/mnt/debrid:/docker/DUMB/mnt/debrid</span>
+</code></pre></div>
+<div class="admonition note">
+<p class="admonition-title">This differs from the the default <code>/docker/DUMB/mnt/debrid:/mnt/debrid</code> internal path for the container by prepending <code>/docker/DUMB</code> or whatever the host side absolute path is for the <code>/mnt/debrid</code> directory</p>
+</div>
+<p>Then, inside the <code>dumb_config.json</code>, you would also need to make sure you define the updated internal path for symlinks:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">&quot;riven_backend&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;symlink_library_path&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/docker/DUMB/mnt/debrid/riven_symlinks&quot;</span><span class="p">,</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>This ensures that any symlinks Riven creates will remain valid on the host.</p>
+<h4 id="simplified-approach-using-standard-paths">Simplified Approach Using Standard Paths<a class="headerlink" href="#simplified-approach-using-standard-paths" title="Permanent link">#</a></h4>
+<p>To simplify configuration and reduce the need to hardcode deep paths, you can instead use standard directory mounts like <code>/mnt</code>.</p>
+<p>Docker Compose example:</p>
+<div class="highlight"><pre><span></span><code><span class="l l-Scalar l-Scalar-Plain">/mnt/debrid:/mnt/debrid</span>
+</code></pre></div>
+<p>And then update the configuration:</p>
+<div class="admonition note">
+<p class="admonition-title">The below is the default path used in the container when configured through the onboarding process</p>
+</div>
+<div class="highlight"><pre><span></span><code><span class="nt">&quot;riven_backend&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;symlink_library_path&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/mnt/debrid/riven_symlinks&quot;</span><span class="p">,</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>Using standardized top-level paths makes your setup more portable and ensures symlinks will resolve correctly regardless of the underlying directory structure.</p>
+<p>!!! tip "also review the <a href="../../services/dependent/rclone/#-default-mount-structure">Default Mount Structure</a> and <a href="../../services/dependent/rclone/#-mount-propagation">Mount Propagation</a> sections for additional details!</p>
 <hr />
 <h2 id="-related-pages">📎 Related Pages<a class="headerlink" href="#-related-pages" title="Permanent link">#</a></h2>
 <ul>
