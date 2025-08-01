@@ -154,7 +154,7 @@ def cleanup_broken_symlinks(directory):
 
 def migrate_symlinks():
     data_root = str(config.get("data_root")) or "/data"
-    logger.debug(f"Data root for symlink migration: {data_root}")
+    logger.debug(f"Data root for symlinks: {data_root}")
     try:
         if is_mount(data_root):
             cleanup_broken_symlinks(data_root)
