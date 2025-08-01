@@ -1,4 +1,3 @@
-from click import command
 from utils import postgres
 from utils.config_loader import CONFIG_MANAGER
 from utils.global_logger import logger
@@ -146,6 +145,12 @@ def additional_setup(process_handler, process_name, config, key):
         )
         if not success:
             return False, error
+
+    if key == "decypharr" and config.get("branch_enabled"):
+        success, error = build_decypharr_dev(process_handler, config)
+        if not success:
+            return False, f"Failed to build Decypharr development environment: {error}"
+
     #    if user_id and group_id and not config["config_dir"].startswith("/zurg"):
     #        success, error = chown_recursive(config["config_dir"], user_id, group_id)
     #        if not success:
@@ -379,30 +384,31 @@ def setup_decypharr():
             logger.warning(
                 f"Decypharr project not found at {decypharr_config_dir}. Downloading..."
             )
-            release, error = downloader.get_latest_release(
-                repo_owner=config.get("repo_owner"),
-                repo_name=config.get("repo_name"),
-            )
-            if not release:
-                return False, f"Failed to get latest release: {error}"
+            if not config.get("branch_enabled"):
+                release, error = downloader.get_latest_release(
+                    repo_owner=config.get("repo_owner"),
+                    repo_name=config.get("repo_name"),
+                )
+                if not release:
+                    return False, f"Failed to get latest release: {error}"
 
-            success, error = downloader.download_release_version(
-                process_name=config.get("process_name"),
-                key="decypharr",
-                repo_owner=config.get("repo_owner"),
-                repo_name=config.get("repo_name"),
-                release_version=release,
-                target_dir=decypharr_config_dir,
-            )
-            if not success:
-                return False, f"Failed to download Decypharr: {error}"
+                success, error = downloader.download_release_version(
+                    process_name=config.get("process_name"),
+                    key="decypharr",
+                    repo_owner=config.get("repo_owner"),
+                    repo_name=config.get("repo_name"),
+                    release_version=release,
+                    target_dir=decypharr_config_dir,
+                )
+                if not success:
+                    return False, f"Failed to download Decypharr: {error}"
 
-            versions.version_write(
-                process_name=config.get("process_name"),
-                key="decypharr",
-                version_path=os.path.join(decypharr_config_dir, "version.txt"),
-                version=release,
-            )
+                versions.version_write(
+                    process_name=config.get("process_name"),
+                    key="decypharr",
+                    version_path=os.path.join(decypharr_config_dir, "version.txt"),
+                    version=release,
+                )
         if os.path.isfile(binary_path):
             os.chmod(binary_path, 0o755)
             logger.debug(f"Marked {binary_path} as executable")
@@ -418,6 +424,45 @@ def setup_decypharr():
         return True, None
     except Exception as e:
         return False, f"Error during Decypharr setup: {e}"
+
+
+def build_decypharr_dev(process_handler, config):
+    if not config:
+        return False, "Configuration for Decypharr not found."
+    config_dir = config.get("config_dir", "/decypharr")
+    logger.info("Building Decypharr development environment...")
+    try:
+        success, error = setup_pnpm_environment(process_handler, config_dir)
+        if not success:
+            return False, f"Failed to set up pnpm environment: {error}"
+        branch = config.get("branch")
+        version = "3.0.0"  # Default version until it can be determined dynamically
+        command = [
+            "go",
+            "build",
+            "-ldflags",
+            f"-X github.com/sirrobot01/decypharr/pkg/version.Version={version} -X github.com/sirrobot01/decypharr/pkg/version.Channel={branch}",
+            "-o",
+            "decypharr",
+            ".",
+        ]
+        for attempt in range(3):
+            process_handler.start_process("go_build", config_dir, command)
+            process_handler.wait("go_build")
+            if process_handler.returncode == 0:
+                break
+            logger.warning(f"Decypharr build failed (attempt {attempt + 1}/3)")
+            ## after 3 attempts, if it fails, return the error message
+        if attempt == 2:
+            return (
+                False,
+                f"Decypharr build failed after 3 attempts: {process_handler.stderr}",
+            )
+
+        logger.info("Decypharr development environment built successfully.")
+        return True, None
+    except Exception as e:
+        return False, f"Error during Decypharr development environment setup: {e}"
 
 
 def plex_debrid_setup():
@@ -1077,8 +1122,10 @@ def rclone_setup():
                     url = f"http://localhost:{decypharr_config.get('port', 8282)}/webdav/debridlink"
                 elif key_type == "torbox":
                     url = f"http://localhost:{decypharr_config.get('port', 8282)}/webdav/torbox"
+                elif key_type == "usenet":
+                    url = f"http://localhost:{decypharr_config.get('port', 8282)}/webdav/usenet"
                 else:
-                    url = ""
+                    url = key_type
 
                 config_data[mount_name] = [
                     "type = webdav",
@@ -1179,8 +1226,30 @@ def rclone_setup():
                     "--log-level": log_level,
                 }
                 if instance.get("decypharr_enabled"):
+                    used_ports = set()
+                    all_instances = CONFIG_MANAGER.get("rclone", {}).get(
+                        "instances", {}
+                    )
+
+                    for other_name, other in all_instances.items():
+                        if other is instance or not other.get("decypharr_enabled"):
+                            continue
+                        other_cmd = other.get("command", [])
+                        for i, token in enumerate(other_cmd):
+                            if token == "--rc-addr" and i + 1 < len(other_cmd):
+                                port = other_cmd[i + 1]
+                                if port.startswith(":") and port[1:].isdigit():
+                                    used_ports.add(int(port[1:]))
+                    rc_port = 5572
+                    while rc_port in used_ports:
+                        rc_port += 1
+
                     required_flags.update(
-                        {"--rc": None, "--rc-addr": ":5572", "--rc-no-auth": None}
+                        {
+                            "--rc": None,
+                            "--rc-addr": f":{rc_port}",
+                            "--rc-no-auth": None,
+                        }
                     )
 
                 existing = instance.get("command", [])
