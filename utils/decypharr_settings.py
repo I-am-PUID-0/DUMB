@@ -25,6 +25,28 @@ def patch_decypharr_config():
         api_key = decypharr_config.get("api_key", "")
         user_id = CONFIG_MANAGER.get("puid")
         group_id = CONFIG_MANAGER.get("pgid")
+        rclone_instances = CONFIG_MANAGER.get("rclone", {}).get("instances", {})
+        non_usenet_instance = next(
+            (
+                inst
+                for inst in rclone_instances.values()
+                if inst.get("key_type", "").lower() != "usenet"
+            ),
+            None,
+        )
+        non_usenet_rc_url = (
+            extract_rc_url(non_usenet_instance) or "http://127.0.0.1:5572"
+        )
+
+        usenet_instance = next(
+            (
+                inst
+                for inst in rclone_instances.values()
+                if inst.get("key_type", "").lower() == "usenet"
+            ),
+            None,
+        )
+        usenet_rc_url = extract_rc_url(usenet_instance) or "http://127.0.0.1:5573"
 
         if config_data.get("log_level") != desired_log_level.lower():
             config_data["log_level"] = desired_log_level.lower()
@@ -36,8 +58,7 @@ def patch_decypharr_config():
             logger.info(f"Decypharr port set to {desired_port}")
             updated = True
 
-        qb = config_data.get("qbittorrent", {})
-        if qb.get("download_folder") == "/decypharr/downloads":
+        if "debrids" not in config_data or "usenet" not in config_data:
             logger.info(
                 "Default Decypharr config detected. Patching extended settings..."
             )
@@ -55,20 +76,41 @@ def patch_decypharr_config():
                     "workers": 50,
                     "auto_expire_links_after": "3d",
                     "folder_naming": "original_no_ext",
-                    "rc_url": "http://127.0.0.1:5572",
+                    "rc_url": non_usenet_rc_url,
                 }
             ]
 
-            config_data["qbittorrent"][
-                "download_folder"
-            ] = "/mnt/debrid/decypharr_downloads"
+            config_data["qbittorrent"] = {
+                "download_folder": "/mnt/debrid/decypharr_downloads"
+            }
+
+            config_data["sabnzbd"] = {
+                "download_folder": "/mnt/debrid/decypharr_downloads"
+            }
+
+            config_data["usenet"] = {
+                "mount_folder": "/mnt/debrid/decypharr_usenet/__all__",
+                "chunks": 15,
+                "rc_url": usenet_rc_url,
+            }
 
             final_config = OrderedDict()
             final_config["url_base"] = config_data.get("url_base", "/")
             final_config["port"] = config_data.get("port", "8282")
             final_config["log_level"] = config_data.get("log_level", "INFO")
-            final_config["debrids"] = config_data.get("debrids", [])
-            final_config["qbittorrent"] = config_data.get("qbittorrent", {})
+            if any(
+                instance.get("key_type").lower() != "usenet"
+                for instance in rclone_instances.values()
+            ):
+                final_config["debrids"] = config_data.get("debrids", [])
+                final_config["qbittorrent"] = config_data.get("qbittorrent", {})
+
+            if any(
+                instance.get("key_type").lower() == "usenet"
+                for instance in rclone_instances.values()
+            ):
+                final_config["sabnzbd"] = config_data.get("sabnzbd", {})
+                final_config["usenet"] = config_data.get("usenet", {})
 
             if "arrs" in config_data:
                 final_config["arrs"] = config_data["arrs"]
@@ -103,9 +145,12 @@ def patch_decypharr_config():
                     )
             logger.info("Required default directories for Decypharr created")
             updated = True
-
+        else:
+            if updated:
+                with open(config_path, "w") as file:
+                    json.dump(config_data, file, indent=4)
+                logger.info("Decypharr config.json updated with modified values")
         if updated:
-            logger.info("Decypharr config.json patched with new settings")
             return True, None
         else:
             logger.info("No changes needed for Decypharr config.json")
@@ -113,3 +158,22 @@ def patch_decypharr_config():
     except Exception as e:
         logger.error(f"Error patching Decypharr config: {e}")
         return False, str(e)
+
+
+def extract_rc_url(instance):
+    if not instance:
+        return None
+
+    command = instance.get("command")
+    if not isinstance(command, list):
+        return None
+
+    try:
+        rc_index = command.index("--rc-addr")
+        port_part = command[rc_index + 1]
+        if port_part.startswith(":"):
+            return f"http://127.0.0.1{port_part}"
+    except (ValueError, IndexError):
+        pass
+
+    return None
