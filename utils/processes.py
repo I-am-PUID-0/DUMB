@@ -146,6 +146,7 @@ class ProcessHandler:
                 "setup_env_and_install",
                 "dotnet_env_restore",
                 "dotnet_publish",
+                "go_build",
             ]
 
             if enabled_rclone_processes:
