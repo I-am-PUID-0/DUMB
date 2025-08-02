@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.6.1](https://github.com/I-am-PUID-0/DUMB/compare/1.6.0...1.6.1) (2025-08-02)
+
+
+### 📖 Documentation
+
+* update docker-compose.yml ([d47e632](https://github.com/I-am-PUID-0/DUMB/commit/d47e6326512a189c2d7bdefe826dc91bd4bcdd6c))
+
+
+### 🛠️ Refactors
+
+* **main:** simplify service configuration ([204b7f7](https://github.com/I-am-PUID-0/DUMB/commit/204b7f7e57c50b8005bcab920bc375e5c178841c))
+
 ## [1.6.0](https://github.com/I-am-PUID-0/DUMB/compare/1.5.0...1.6.0) (2025-07-31)
 
 
