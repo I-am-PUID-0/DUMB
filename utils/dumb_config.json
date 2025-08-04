@@ -140,6 +140,18 @@
         "debrid_service": "",
         "api_key": ""
     },
+    "jellyfin": {
+        "enabled": false,
+        "process_name": "Jellyfin Media Server",
+        "suppress_logging": false,
+        "auto_update": false,
+        "auto_update_interval": 24,
+        "config_dir": "/jellyfin",
+        "config_file": "/jellyfin/config/system.xml",
+        "log_file": "/jellyfin/log/jellyfin.log",
+        "command": [],
+        "env": {}
+    },
     "phalanx_db": {
         "enabled": false,
         "process_name": "Phalanx DB",
