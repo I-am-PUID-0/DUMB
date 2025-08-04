@@ -110,6 +110,7 @@ def main():
     try:
         grouped_keys = [
             "plex",
+            "jellyfin",
             "postgres",
             "pgadmin",
             "zilean",

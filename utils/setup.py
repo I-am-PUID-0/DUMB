@@ -332,6 +332,11 @@ def setup_project(process_handler, process_name):
             if not success:
                 return False, error
 
+        if key == "jellyfin":
+            success, error = setup_jellyfin()
+            if not success:
+                return False, error
+
         if key == "pgadmin":
             success, error = postgres.pgadmin_setup(process_handler)
             if not success:
@@ -698,6 +703,55 @@ def setup_plex():
                 )
     command = ["/usr/lib/plexmediaserver/Plex Media Server"]
     config["command"] = command
+    return True, None
+
+
+def setup_jellyfin():
+    config = CONFIG_MANAGER.get("jellyfin")
+
+    if not config or not config.get("enabled"):
+        logger.info("Jellyfin is disabled. Skipping setup.")
+        return True, None
+
+    jellyfin_service_path = "/usr/lib/jellyfin/bin/jellyfin"
+    if not os.path.exists(jellyfin_service_path):
+        logger.warning("Jellyfin service not found. Installing Jellyfin...")
+        from utils.jellyfin import JellyfinInstaller
+
+        installer = JellyfinInstaller()
+        success, error = installer.install_jellyfin_server()
+        if not success:
+            return False, error
+
+    os.makedirs(config["config_dir"], exist_ok=True)
+    chown_recursive(
+        config["config_dir"], CONFIG_MANAGER.get("puid"), CONFIG_MANAGER.get("pgid")
+    )
+    sub_directories = [
+        "data",
+        "config",
+        "cache",
+        "log",
+    ]
+    for sub_dir in sub_directories:
+        dir_path = os.path.join(config["config_dir"], sub_dir)
+        if not os.path.exists(dir_path):
+            os.makedirs(dir_path, exist_ok=True)
+            chown_recursive(
+                dir_path, CONFIG_MANAGER.get("puid"), CONFIG_MANAGER.get("pgid")
+            )
+    logger.info("Setting up Jellyfin Media Server environment...")
+    config["command"] = [
+        "/usr/lib/jellyfin/bin/jellyfin",
+        "--datadir",
+        os.path.join(config["config_dir"], "data"),
+        "--configdir",
+        os.path.join(config["config_dir"], "config"),
+        "--cachedir",
+        os.path.join(config["config_dir"], "cache"),
+        "--logdir",
+        os.path.join(config["config_dir"], "log"),
+    ]
     return True, None
 
 

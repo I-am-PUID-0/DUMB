@@ -1,7 +1,7 @@
 from utils.global_logger import logger
 from utils.download import Downloader
 from utils.config_loader import CONFIG_MANAGER
-import subprocess, json, re
+import subprocess, json, re, requests
 
 
 class Versions:
@@ -46,6 +46,23 @@ class Versions:
                     raise ValueError(f"Configuration for {process_name} not found.")
                 version_path = config.get("config_dir") + "/zurg"
                 is_file = False
+            elif key == "jellyfin":
+                try:
+                    config = CONFIG_MANAGER.get_instance(instance_name, key)
+                    if not config:
+                        raise ValueError(f"Configuration for {process_name} not found.")
+                    port = config.get("port", 8096)
+                    if not port:
+                        raise ValueError("Jellyfin port not configured.")
+                    url = f"http://localhost:{port}/System/Info/Public"
+                    response = requests.get(url, timeout=3)
+                    version = response.json().get("Version", None)
+                    if version:
+                        return version, None
+                    else:
+                        return None, "Jellyfin version not found in response"
+                except Exception as e:
+                    return None, f"Error fetching Jellyfin version: {e}"
             elif key == "plex":
                 try:
                     result = subprocess.run(

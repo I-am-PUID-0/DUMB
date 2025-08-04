@@ -40,6 +40,7 @@ STATIC_URLS_BY_KEY = {
     "dumb_api_service": "https://github.com/I-am-PUID-0/DUMB",
     "cli_battery": "https://github.com/godver3/cli_debrid/tree/main/cli_battery",
     "plex": "https://www.plex.tv/",
+    "jellyfin": "https://jellyfin.org/",
 }
 
 CORE_SERVICE_DEPENDENCIES = {
@@ -48,6 +49,7 @@ CORE_SERVICE_DEPENDENCIES = {
     "plex_debrid": ["zurg", "rclone"],
     "decypharr": ["rclone"],
     "plex": [],
+    "jellyfin": [],
 }
 
 CORE_SERVICE_NAMES = {
@@ -56,6 +58,7 @@ CORE_SERVICE_NAMES = {
     "plex_debrid": "Plex Debrid",
     "decypharr": "Decypharr",
     "plex": "Plex Media Server",
+    "jellyfin": "Jellyfin Media Server",
 }
 
 CORE_SERVICE_DESCRIPTIONS = {
@@ -97,6 +100,14 @@ Note: Automatic update is not supported for Plex Media Server at this time.
 Recommended to run onboarding for Plex Media Server separately due to claim token timeout of 5 minutes.
 
 Documentation: https://i-am-puid-0.github.io/DUMB/services/core/plex-media-server""",
+    "jellyfin": """\
+Jellyfin Media Server
+- Open‑source media server software for organizing and streaming your media library.
+- Provides a web interface for managing and accessing your media.
+- Supports a wide range of media formats and devices.
+- Can be used as an alternative to Plex for users who prefer open‑source solutions.
+
+Documentation: https://i-am-puid-0.github.io/DUMB/services/core/jellyfin""",
 }
 
 OPTIONAL_POST_CORE = ["riven_frontend"]
@@ -145,7 +156,7 @@ CORE_SERVICE_DEBRID_PROVIDERS = {
     "riven_backend": ["RealDebrid"],
     "cli_debrid": ["RealDebrid"],
     "plex_debrid": ["RealDebrid"],
-    "decypharr": ["RealDebrid"],
+    "decypharr": ["RealDebrid", "AllDebrid", "Debrid Link", "TorBox"],
 }
 
 SERVICE_OPTION_DESCRIPTIONS = {
