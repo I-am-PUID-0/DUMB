@@ -635,6 +635,7 @@ def _run_startup(request: UnifiedStartRequest, updater, api_state, logger):
                                 "enabled": True,
                                 "core_service": config_key,
                                 "process_name": f"Rclone w/ {display}",
+                                "key_type": debrid_service or "realdebrid",
                                 "mount_name": display.lower(),
                                 "log_file": f"/log/rclone_w_{display.lower()}.log",
                             }
