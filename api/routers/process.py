@@ -20,8 +20,8 @@ class ServiceRequest(BaseModel):
 
 class CoreServiceConfig(BaseModel):
     name: str
-    debrid_service: Optional[str] = None
-    debrid_key: Optional[str] = None
+    debrid_service: Optional[Union[str, List[str]]] = None
+    debrid_key: Optional[Union[str, List[str]]] = None
     service_options: Optional[Dict[str, Any]] = {}
 
 
@@ -510,8 +510,20 @@ def _run_startup(request: UnifiedStartRequest, updater, api_state, logger):
                 raise HTTPException(404, f"Process '{supplied}' not found")
 
             process_name = core_service.name
-            debrid_service = (core_service.debrid_service or "").lower()
-            debrid_key = core_service.debrid_key
+            debrid_services = (
+                [core_service.debrid_service]
+                if isinstance(core_service.debrid_service, str)
+                else core_service.debrid_service or []
+            )
+            debrid_keys = (
+                [core_service.debrid_key]
+                if isinstance(core_service.debrid_key, str)
+                else core_service.debrid_key or []
+            )
+
+            # Pad keys list if shorter
+            if len(debrid_keys) < len(debrid_services):
+                debrid_keys.extend([None] * (len(debrid_services) - len(debrid_keys)))
 
             logger.info(f"Starting core service: {process_name}")
             logger.debug(f"→ config_key='{config_key}', instance='{instance_name}'")
@@ -558,150 +570,152 @@ def _run_startup(request: UnifiedStartRequest, updater, api_state, logger):
                         wait_for_process_running(api_state, proc)
 
             #
-            # 3) Handle zurg/rclone dependencies for this core service
+            # 3) Handle zurg/rclone dependencies for this core service (multi-instance support)
             #
-            for dep in dependencies:
-                if dep in ("zurg", "rclone"):
-                    instances = config[dep]["instances"]
-                    # find existing instance for this core service
-                    inst = next(
-                        (
-                            name
-                            for name, c in instances.items()
-                            if c.get("core_service") == config_key
-                        ),
-                        None,
-                    )
+            num_instances = max(len(debrid_services), 1)
+            for i in range(num_instances):
+                for dep in dependencies:
+                    if dep in ("zurg", "rclone"):
+                        service_type = (
+                            debrid_services[i]
+                            if i < len(debrid_services)
+                            else "realdebrid"
+                        ).lower()
+                        service_key = debrid_keys[i] if i < len(debrid_keys) else None
 
-                    if inst:
-                        # enable + override
-                        inst_cfg = instances[inst]
-                        if not inst_cfg.get("enabled"):
-                            inst_cfg["enabled"] = True
-                            CONFIG_MANAGER.save_config()
-                        apply_service_options(
-                            inst_cfg,
-                            core_service.service_options.get(inst, {}),
-                            logger,
-                        )
-                        # special real-debrid API key injection
-                        if (
-                            dep == "zurg"
-                            and debrid_service == "realdebrid"
-                            and debrid_key
-                        ):
-                            inst_cfg["api_key"] = debrid_key
-                            CONFIG_MANAGER.save_config()
+                        display = f"{CORE_SERVICE_NAMES.get(config_key, config_key).title()} {service_type.title()}"
+                        instance_key = display.strip()
 
-                    else:
-                        # no instance exists → clone from template, enable and override
-                        base = template_config[dep]["instances"]["RealDebrid"]
-                        display = CORE_SERVICE_NAMES.get(
-                            config_key, config_key.replace("_", " ").title()
-                        )
-                        # clean up any disabled “RealDebrid” placeholder
-                        if "RealDebrid" in instances and not instances[
-                            "RealDebrid"
-                        ].get("enabled"):
-                            del instances["RealDebrid"]
-                            CONFIG_MANAGER.save_config()
+                        instances = config[dep]["instances"]
 
-                        # build the new instance config
-                        new_cfg = copy.deepcopy(base)
-                        if dep == "zurg":
-                            # allocate a free port
-                            used = {
-                                c["port"] for c in instances.values() if "port" in c
-                            }
-                            port = 9090
-                            while port in used:
-                                port += 1
-                            new_cfg.update(
-                                {
+                        # Check if instance already exists
+                        inst = instance_key if instance_key in instances else None
+
+                        if inst:
+                            inst_cfg = instances[inst]
+                            if not inst_cfg.get("enabled"):
+                                inst_cfg["enabled"] = True
+                                CONFIG_MANAGER.save_config()
+                            apply_service_options(
+                                inst_cfg,
+                                core_service.service_options.get(inst, {}),
+                                logger,
+                            )
+                            if (
+                                dep == "zurg"
+                                and service_type == "realdebrid"
+                                and service_key
+                            ):
+                                inst_cfg["api_key"] = service_key
+                                CONFIG_MANAGER.save_config()
+                        else:
+                            # no instance exists → clone from template, enable and override
+                            base = template_config[dep]["instances"]["RealDebrid"]
+                            new_cfg = copy.deepcopy(base)
+
+                            # clean up any disabled “RealDebrid” placeholder
+                            if "RealDebrid" in instances and not instances[
+                                "RealDebrid"
+                            ].get("enabled"):
+                                del instances["RealDebrid"]
+                                CONFIG_MANAGER.save_config()
+
+                            if dep == "zurg":
+                                # allocate a free port
+                                used_ports = {
+                                    c["port"] for c in instances.values() if "port" in c
+                                }
+                                port = 9090
+                                while port in used_ports:
+                                    port += 1
+                                new_cfg.update(
+                                    {
+                                        "enabled": True,
+                                        "core_service": config_key,
+                                        "process_name": f"Zurg w/ {display}",
+                                        "port": port,
+                                        "config_dir": f"/zurg/{service_type}/{display}",
+                                        "config_file": f"/zurg/{service_type}/{display}/config.yml",
+                                        "command": f"/zurg/{service_type}/{display}/zurg",
+                                    }
+                                )
+                                if service_type == "realdebrid" and service_key:
+                                    new_cfg["api_key"] = service_key
+
+                            else:  # rclone
+                                rclone_cfg = {
                                     "enabled": True,
                                     "core_service": config_key,
-                                    "process_name": f"Zurg w/ {display}",
-                                    "port": port,
-                                    "config_dir": f"/zurg/RD/{display}",
-                                    "config_file": f"/zurg/RD/{display}/config.yml",
-                                    "command": f"/zurg/RD/{display}/zurg",
+                                    "process_name": f"Rclone w/ {display}",
+                                    "key_type": service_type,
+                                    "mount_name": display.lower().replace(" ", "_"),
+                                    "log_file": f"/log/rclone_w_{display.lower().replace(' ', '_')}.log",
                                 }
+                                if "zurg" in dependencies:
+                                    rclone_cfg.update(
+                                        {
+                                            "zurg_enabled": True,
+                                            "decypharr_enabled": False,
+                                            "zurg_config_file": f"/zurg/{service_type}/{display}/config.yml",
+                                        }
+                                    )
+                                elif config_key == "decypharr":
+                                    rclone_cfg.update(
+                                        {
+                                            "zurg_enabled": False,
+                                            "decypharr_enabled": True,
+                                            "zurg_config_file": "",
+                                            "api_key": service_key or "",
+                                        }
+                                    )
+                                new_cfg.update(rclone_cfg)
+
+                            instances[instance_key] = new_cfg
+                            CONFIG_MANAGER.save_config()
+                            apply_service_options(
+                                instances[instance_key],
+                                core_service.service_options.get(dep, {}),
+                                logger,
                             )
-                            if debrid_service == "realdebrid" and debrid_key:
-                                new_cfg["api_key"] = debrid_key
 
-                        else:  # rclone
-                            rclone_cfg = {
-                                "enabled": True,
-                                "core_service": config_key,
-                                "process_name": f"Rclone w/ {display}",
-                                "key_type": debrid_service or "realdebrid",
-                                "mount_name": display.lower(),
-                                "log_file": f"/log/rclone_w_{display.lower()}.log",
-                            }
-                            # wire up zurg or decypharr flags
-                            if "zurg" in dependencies:
-                                rclone_cfg.update(
-                                    {
-                                        "zurg_enabled": True,
-                                        "decypharr_enabled": False,
-                                        "zurg_config_file": f"/zurg/RD/{display}/config.yml",
-                                    }
-                                )
-                            elif config_key == "decypharr":
-                                rclone_cfg.update(
-                                    {
-                                        "zurg_enabled": False,
-                                        "decypharr_enabled": True,
-                                        "zurg_config_file": "",
-                                    }
-                                )
-                            new_cfg.update(rclone_cfg)
-
-                        instances[display] = new_cfg
-                        CONFIG_MANAGER.save_config()
+                        # start/update this instance
+                        proc = config[dep]["instances"][instance_key]["process_name"]
+                        ok = config[dep]["instances"][instance_key].get(
+                            "auto_update", False
+                        )
+                        proc_obj, err = updater.auto_update(proc, enable_update=ok)
+                        if proc_obj and wait_for_process_running(api_state, proc):
+                            logger.info(f"{proc} is running.")
+                        else:
+                            raise HTTPException(
+                                500, detail=f"{proc} failed to start. {err or ''}"
+                            )
+                    else:
+                        # start any other dependencies that are not zurg/rclone
+                        dep_cfg = config.get(dep, {})
+                        if not dep_cfg.get("enabled"):
+                            dep_cfg["enabled"] = True
+                            CONFIG_MANAGER.save_config()
                         apply_service_options(
-                            instances[display],
+                            dep_cfg,
                             core_service.service_options.get(dep, {}),
                             logger,
                         )
-
-                    # start/update this instance
-                    inst_name = inst or display
-                    proc = config[dep]["instances"][inst_name]["process_name"]
-                    ok = config[dep]["instances"][inst_name].get("auto_update", False)
-                    proc_obj, err = updater.auto_update(proc, enable_update=ok)
-                    if proc_obj and wait_for_process_running(api_state, proc):
-                        logger.info(f"{proc} is running.")
-                    else:
-                        raise HTTPException(
-                            500, detail=f"{proc} failed to start. {err or ''}"
-                        )
-                else:
-                    # start any other dependencies that are not zurg/rclone and not in optional services or started already
-                    dep_cfg = config.get(dep, {})
-                    if not dep_cfg.get("enabled"):
-                        dep_cfg["enabled"] = True
-                        CONFIG_MANAGER.save_config()
-                    apply_service_options(
-                        dep_cfg,
-                        core_service.service_options.get(dep, {}),
-                        logger,
-                    )
-                    dep_proc = dep_cfg.get("process_name")
-                    if not dep_proc:
-                        raise HTTPException(
-                            500, detail=f"Process name not defined for {dep}."
-                        )
-                    if not wait_for_process_running(api_state, dep_proc):
-                        updater.auto_update(
-                            dep_proc, enable_update=dep_cfg.get("auto_update", False)
-                        )
-                        if not wait_for_process_running(api_state, dep_proc):
+                        dep_proc = dep_cfg.get("process_name")
+                        if not dep_proc:
                             raise HTTPException(
-                                500,
-                                detail=f"{dep_proc} failed to start. Please check the logs.",
+                                500, detail=f"Process name not defined for {dep}."
                             )
+                        if not wait_for_process_running(api_state, dep_proc):
+                            updater.auto_update(
+                                dep_proc,
+                                enable_update=dep_cfg.get("auto_update", False),
+                            )
+                            if not wait_for_process_running(api_state, dep_proc):
+                                raise HTTPException(
+                                    500,
+                                    detail=f"{dep_proc} failed to start. Please check the logs.",
+                                )
                 logger.debug(f"All dependencies for '{config_key}' are running.")
             #
             # 4) Finally, start the core service itself
@@ -709,11 +723,6 @@ def _run_startup(request: UnifiedStartRequest, updater, api_state, logger):
             core_cfg = config[config_key]
             if not core_cfg.get("enabled"):
                 core_cfg["enabled"] = True
-                CONFIG_MANAGER.save_config()
-
-            if config_key == "decypharr" and debrid_service and debrid_key:
-                core_cfg["debrid_service"] = debrid_service
-                core_cfg["api_key"] = debrid_key
                 CONFIG_MANAGER.save_config()
 
             apply_service_options(

@@ -21,23 +21,14 @@ def patch_decypharr_config():
         decypharr_config = CONFIG_MANAGER.get("decypharr", {})
         desired_log_level = decypharr_config.get("log_level", "INFO")
         desired_port = str(decypharr_config.get("port", 8282))
-        debrid_service = decypharr_config.get("debrid_service", "realdebrid")
-        api_key = decypharr_config.get("api_key", "")
         user_id = CONFIG_MANAGER.get("puid")
         group_id = CONFIG_MANAGER.get("pgid")
         rclone_instances = CONFIG_MANAGER.get("rclone", {}).get("instances", {})
-        non_usenet_instance = next(
-            (
-                inst
-                for inst in rclone_instances.values()
-                if inst.get("key_type", "").lower() != "usenet"
-            ),
-            None,
-        )
-        non_usenet_rc_url = (
-            extract_rc_url(non_usenet_instance) or "http://127.0.0.1:5572"
-        )
-
+        debrid_instances = [
+            inst
+            for inst in rclone_instances.values()
+            if inst.get("enabled") and inst.get("core_service") == "decypharr"
+        ]
         usenet_instance = next(
             (
                 inst
@@ -63,22 +54,39 @@ def patch_decypharr_config():
                 "Default Decypharr config detected. Patching extended settings..."
             )
 
-            config_data["debrids"] = [
-                {
-                    "name": debrid_service,
-                    "api_key": api_key,
-                    "download_api_keys": [api_key],
-                    "folder": "/mnt/debrid/decypharr/__all__",
-                    "rate_limit": "250/minute",
-                    "use_webdav": True,
-                    "torrents_refresh_interval": "15s",
-                    "download_links_refresh_interval": "40m",
-                    "workers": 50,
-                    "auto_expire_links_after": "3d",
-                    "folder_naming": "original_no_ext",
-                    "rc_url": non_usenet_rc_url,
-                }
-            ]
+            config_data["debrids"] = []
+            for inst in debrid_instances:
+                name = inst.get("key_type", "unknown").lower()
+                api_key = inst.get("api_key", "")
+                rc_url = extract_rc_url(inst) or "http://127.0.0.1:5572"
+
+                if name == "realdebrid":
+                    folder = "/mnt/debrid/decypharr_realdebrid/__all__"
+                elif name == "torbox":
+                    folder = "/mnt/debrid/decypharr_torbox/torrents"
+                elif name == "alldebrid":
+                    folder = "/mnt/debrid/decypharr_alldebrid/torrents/"
+                elif name == "debridlink":
+                    folder = "/mnt/debrid/decypharr_debridlink/torrents/"
+                else:
+                    folder = "/mnt/debrid/decypharr_other"
+
+                config_data["debrids"].append(
+                    {
+                        "name": name,
+                        "api_key": api_key,
+                        "download_api_keys": [api_key],
+                        "folder": folder,
+                        "rate_limit": "250/minute",
+                        "use_webdav": True,
+                        "torrents_refresh_interval": "15s",
+                        "download_links_refresh_interval": "40m",
+                        "workers": 50,
+                        "auto_expire_links_after": "3d",
+                        "folder_naming": "original_no_ext",
+                        "rc_url": rc_url,
+                    }
+                )
 
             config_data["qbittorrent"] = {
                 "download_folder": "/mnt/debrid/decypharr_downloads"
