@@ -42,6 +42,35 @@ class ConfigManager:
                 f"JSON syntax error in {self.file_path}: {e.msg} at line {e.lineno}, column {e.colno}"
             )
 
+    def _prune_extraneous_keys(self, config, reference):
+        if not isinstance(config, dict) or not isinstance(reference, dict):
+            return config
+
+        pruned = OrderedDict()
+
+        for key, ref_val in reference.items():
+            if key == "instances" and isinstance(ref_val, dict):
+                default_template = next(iter(ref_val.values()))
+                instances = config.get("instances", {})
+                pruned_instances = OrderedDict()
+
+                for inst_name, inst_cfg in instances.items():
+                    pruned_instances[inst_name] = self._prune_extraneous_keys(
+                        inst_cfg, default_template
+                    )
+
+                pruned["instances"] = pruned_instances
+                continue
+
+            if key in config:
+                cfg_val = config[key]
+                if isinstance(cfg_val, dict) and isinstance(ref_val, dict):
+                    pruned[key] = self._prune_extraneous_keys(cfg_val, ref_val)
+                else:
+                    pruned[key] = cfg_val
+
+        return pruned
+
     def update_config_with_top_level_defaults(self):
         try:
             with open("/utils/dumb_config.json", "r") as default_file:
@@ -79,11 +108,15 @@ class ConfigManager:
                 copy.deepcopy(existing_config), default_config
             )
 
-            if merged_config != existing_config:
+            pruned_config = self._prune_extraneous_keys(merged_config, default_config)
+
+            if pruned_config != existing_config:
                 backup_path = self.file_path + ".bak"
                 shutil.copyfile(self.file_path, backup_path)
                 with open(self.file_path, "w") as config_file:
-                    dump(merged_config, config_file, indent=4)
+                    dump(pruned_config, config_file, indent=4)
+
+            self.config = pruned_config
         except Exception as e:
             raise ValueError(f"Error during update_config_with_defaults: {e}")
 
