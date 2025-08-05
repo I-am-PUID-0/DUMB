@@ -479,11 +479,19 @@ async def start_core_services(
 
 
 def _run_startup(request: UnifiedStartRequest, updater, api_state, logger):
-    core_services = (
+    priority_services = []
+    remaining_services = []
+    for svc in (
         [request.core_services]
         if isinstance(request.core_services, CoreServiceConfig)
         else request.core_services
-    )
+    ):
+        ident = normalize_identifier(svc.name)
+        if ident in ("plex", "jellyfin"):
+            priority_services.append(svc)
+        else:
+            remaining_services.append(svc)
+    core_services = remaining_services
     raw_optionals = request.optional_services or []
     optional_services = [normalize_identifier(svc).lower() for svc in raw_optionals]
 
@@ -497,6 +505,75 @@ def _run_startup(request: UnifiedStartRequest, updater, api_state, logger):
     with open("/utils/dumb_config.json") as f:
         template_config = json.load(f)
 
+    #
+    # 1) Start any “priority” core services (Plex/Jellyfin)
+    #
+    for service in priority_services:
+        try:
+            ident = normalize_identifier(service.name)
+            cfg = config[ident]
+            if not cfg.get("enabled"):
+                cfg["enabled"] = True
+                CONFIG_MANAGER.save_config()
+            apply_service_options(
+                cfg,
+                service.service_options.get(ident, {}),
+                logger,
+            )
+            proc_name = cfg["process_name"]
+            logger.info(f"Starting core service setup: {proc_name}")
+            auto_up = cfg.get("auto_update", False)
+            if not wait_for_process_running(api_state, proc_name):
+                p, err = updater.auto_update(proc_name, enable_update=auto_up)
+                if not p or not wait_for_process_running(api_state, proc_name):
+                    raise HTTPException(
+                        500, detail=f"{proc_name} failed to start. {err or ''}"
+                    )
+            results.append({"service": service.name, "status": "started"})
+        except Exception as e:
+            errors.append({"service": service.name, "error": str(e)})
+    #
+    # 2) Pre-start “must-have” services (e.g. Postgres)
+    #
+    if any(s in ["zilean", "pgadmin"] for s in optional_services):
+        pg = config["postgres"]
+        if not pg.get("enabled"):
+            pg["enabled"] = True
+            CONFIG_MANAGER.save_config()
+        pg_name = pg["process_name"]
+        logger.info(f"Ensuring '{pg_name}' is running for optional service(s)...")
+        if not wait_for_process_running(api_state, pg_name):
+            updater.auto_update(pg_name, enable_update=False)
+            wait_for_process_running(api_state, pg_name)
+
+    #
+    # 3) Start any “optional pre-core” services (those NOT in OPTIONAL_POST_CORE)
+    #
+    for opt in optional_services:
+        if opt in config and opt not in OPTIONAL_POST_CORE:
+            opt_cfg = config[opt]
+            if not opt_cfg.get("enabled"):
+                opt_cfg["enabled"] = True
+                CONFIG_MANAGER.save_config()
+
+            # Merge all service_options across services (priority + normal)
+            merged_options = {}
+            for svc in priority_services + core_services:
+                if svc.service_options and opt in svc.service_options:
+                    merged_options.update(svc.service_options[opt])
+
+            apply_service_options(opt_cfg, merged_options, logger)
+
+            proc = opt_cfg["process_name"]
+            logger.info(f"Starting optional service: {proc}")
+            if not wait_for_process_running(api_state, proc):
+                updater.auto_update(
+                    proc, enable_update=opt_cfg.get("auto_update", False)
+                )
+                wait_for_process_running(api_state, proc)
+    #
+    # 4) Now start each core service in turn, handling dependencies as needed
+    #
     for core_service in core_services:
         try:
             # Resolve config_key
@@ -525,7 +602,7 @@ def _run_startup(request: UnifiedStartRequest, updater, api_state, logger):
             if len(debrid_keys) < len(debrid_services):
                 debrid_keys.extend([None] * (len(debrid_services) - len(debrid_keys)))
 
-            logger.info(f"Starting core service: {process_name}")
+            logger.info(f"Starting core service setup: {process_name}")
             logger.debug(f"→ config_key='{config_key}', instance='{instance_name}'")
 
             # Validate core service
@@ -535,42 +612,7 @@ def _run_startup(request: UnifiedStartRequest, updater, api_state, logger):
             logger.debug(f"Dependencies for '{config_key}': {dependencies}")
 
             #
-            # 1) Pre-start “must-have” services (e.g. Postgres)
-            #
-            if any(s in ["zilean", "pgadmin"] for s in optional_services):
-                pg = config["postgres"]
-                if not pg.get("enabled"):
-                    pg["enabled"] = True
-                    CONFIG_MANAGER.save_config()
-                pg_name = pg["process_name"]
-                if not wait_for_process_running(api_state, pg_name):
-                    logger.info(f"Starting Postgres '{pg_name}'…")
-                    updater.auto_update(pg_name, enable_update=False)
-                    wait_for_process_running(api_state, pg_name)
-
-            #
-            # 2) Start any “optional pre-core” services (those NOT in OPTIONAL_POST_CORE)
-            #
-            for opt in optional_services:
-                if opt in config and opt not in OPTIONAL_POST_CORE:
-                    opt_cfg = config[opt]
-                    if not opt_cfg.get("enabled"):
-                        opt_cfg["enabled"] = True
-                        CONFIG_MANAGER.save_config()
-                    apply_service_options(
-                        opt_cfg,
-                        core_service.service_options.get(opt, {}),
-                        logger,
-                    )
-                    proc = opt_cfg["process_name"]
-                    if not wait_for_process_running(api_state, proc):
-                        updater.auto_update(
-                            proc, enable_update=opt_cfg.get("auto_update", False)
-                        )
-                        wait_for_process_running(api_state, proc)
-
-            #
-            # 3) Handle zurg/rclone dependencies for this core service (multi-instance support)
+            # 4.1) Handle zurg/rclone dependencies for this core service (multi-instance support)
             #
             num_instances = max(len(debrid_services), 1)
             for i in range(num_instances):
@@ -583,7 +625,17 @@ def _run_startup(request: UnifiedStartRequest, updater, api_state, logger):
                         ).lower()
                         service_key = debrid_keys[i] if i < len(debrid_keys) else None
 
-                        display = f"{CORE_SERVICE_NAMES.get(config_key, config_key).title()} {service_type.title()}"
+                        display = CORE_SERVICE_NAMES.get(
+                            config_key, config_key.replace("_", " ").title()
+                        )
+                        if config_key == "decypharr":
+                            display += f" ({service_type.title()})"
+                        clean_display = (
+                            display.lower()
+                            .replace("(", "")
+                            .replace(")", "")
+                            .replace(" ", "_")
+                        )
                         instance_key = display.strip()
 
                         instances = config[dep]["instances"]
@@ -634,29 +686,30 @@ def _run_startup(request: UnifiedStartRequest, updater, api_state, logger):
                                         "core_service": config_key,
                                         "process_name": f"Zurg w/ {display}",
                                         "port": port,
-                                        "config_dir": f"/zurg/{service_type}/{display}",
-                                        "config_file": f"/zurg/{service_type}/{display}/config.yml",
-                                        "command": f"/zurg/{service_type}/{display}/zurg",
+                                        "config_dir": f"/zurg/RD/{display}",
+                                        "config_file": f"/zurg/RD/{display}/config.yml",
+                                        "command": f"/zurg/RD/{display}/zurg",
                                     }
                                 )
                                 if service_type == "realdebrid" and service_key:
                                     new_cfg["api_key"] = service_key
 
                             else:  # rclone
+
                                 rclone_cfg = {
                                     "enabled": True,
                                     "core_service": config_key,
                                     "process_name": f"Rclone w/ {display}",
                                     "key_type": service_type,
-                                    "mount_name": display.lower().replace(" ", "_"),
-                                    "log_file": f"/log/rclone_w_{display.lower().replace(' ', '_')}.log",
+                                    "mount_name": clean_display,
+                                    "log_file": f"/log/rclone_w_{clean_display}.log",
                                 }
                                 if "zurg" in dependencies:
                                     rclone_cfg.update(
                                         {
                                             "zurg_enabled": True,
                                             "decypharr_enabled": False,
-                                            "zurg_config_file": f"/zurg/{service_type}/{display}/config.yml",
+                                            "zurg_config_file": f"/zurg/RD/{display}/config.yml",
                                         }
                                     )
                                 elif config_key == "decypharr":
@@ -718,7 +771,7 @@ def _run_startup(request: UnifiedStartRequest, updater, api_state, logger):
                                 )
                 logger.debug(f"All dependencies for '{config_key}' are running.")
             #
-            # 4) Finally, start the core service itself
+            # 4.2) Finally, start the core service itself
             #
             core_cfg = config[config_key]
             if not core_cfg.get("enabled"):
@@ -739,9 +792,8 @@ def _run_startup(request: UnifiedStartRequest, updater, api_state, logger):
                     raise HTTPException(
                         500, detail=f"{proc_name} failed to start. {err or ''}"
                     )
-
             #
-            # 5) Start any “optional post-core” services
+            # 4.3) Start any “optional post-core” services
             #
             for opt in optional_services:
                 if opt in config and opt in OPTIONAL_POST_CORE:
