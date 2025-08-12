@@ -12,7 +12,7 @@ jobs:
       update_found: ${{ steps.compare_tags.outputs.update_found }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Restore previous tags from cache
         id: cache-latest-tags
