@@ -45,7 +45,8 @@ class ConfigManager:
     def _prune_extraneous_keys(self, config, reference):
         if not isinstance(config, dict) or not isinstance(reference, dict):
             return config
-
+        if reference == {}:
+            return config
         pruned = OrderedDict()
 
         for key, ref_val in reference.items():

@@ -6,7 +6,7 @@ from utils.config_loader import CONFIG_MANAGER, find_service_config
 from jsonschema import validate, ValidationError
 from ruamel.yaml import YAML
 from pathlib import Path
-import os, json, configparser, xmltodict
+import os, json, configparser, xmltodict, ast
 
 
 class ConfigUpdateRequest(BaseModel):
@@ -308,19 +308,7 @@ def write_python_config(file_path, config_data):
     validate_file_path(file_path)
 
     if isinstance(config_data, str):
-        exec_env = {}
-        exec(config_data, {}, exec_env)
-        config_data = {k: v for k, v in exec_env.items() if not k.startswith("__")}
-
-    with open(file_path, "w") as file:
-        for key, value in config_data.items():
-            if isinstance(value, str):
-                file.write(f'{key} = "{value}"\n')
-            elif isinstance(value, dict):
-                file.write(f"{key} = {value}\n")
-            else:
-                file.write(f"{key} = {value}\n")
-    validate_file_path(file_path)
+        config_data = ast.literal_eval(config_data)
 
     with open(file_path, "w") as file:
         for key, value in config_data.items():

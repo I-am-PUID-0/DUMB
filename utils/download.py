@@ -127,6 +127,17 @@ class Downloader:
                     return False, error
                 return True, None
 
+            elif key == "emby":
+                m = platform.machine().lower()
+                if m in ("x86_64", "amd64"):
+                    architecture = "amd64"
+                elif m in ("aarch64", "arm64"):
+                    architecture = "arm64"
+                elif m in ("armv7l", "armhf"):
+                    architecture = "armhf"
+                else:
+                    architecture = None
+
             else:
                 architecture = None
 
@@ -391,16 +402,60 @@ class Downloader:
             headers = headers or self.get_headers()
             response = self.fetch_with_retries(url, headers)
 
-            if response and response.status_code == 200:
-                self.logger.debug(
-                    f"{zip_folder_name} download successful. Content size: {len(response.content)} bytes"
+            if not response or response.status_code != 200:
+                return False, "Failed to download."
+
+            content = response.content
+            size = len(content)
+            self.logger.debug(
+                f"{zip_folder_name} download successful. Content size: {size} bytes"
+            )
+
+            cd = response.headers.get("Content-Disposition", "")
+            m = re.search(r'filename="?([^"]+)"?', cd)
+            if m:
+                filename = m.group(1)
+            else:
+                filename = (
+                    url.split("?")[0].rstrip("/").split("/")[-1] or "download.bin"
                 )
 
-                archive_data = io.BytesIO(response.content)
+            lower_name = filename.lower()
+            ext = lower_name.rsplit(".", 1)[-1] if "." in lower_name else ""
+            ctype = (response.headers.get("Content-Type") or "").lower()
 
+            def looks_like_zip():
+                if ext in {"zip"}:
+                    return True
+                return any(
+                    t in ctype
+                    for t in ("application/zip", "application/x-zip-compressed")
+                )
+
+            def looks_like_tar():
+                if ext in {"tar", "tgz", "gz", "bz2", "xz", "txz", "tbz2"}:
+                    return True
+                return any(
+                    t in ctype
+                    for t in (
+                        "application/x-tar",
+                        "application/x-gtar",
+                        "application/x-7z-compressed",
+                        "application/gzip",
+                        "application/x-gzip",
+                        "application/x-bzip2",
+                        "application/x-xz",
+                    )
+                )
+
+            archive_data = io.BytesIO(content)
+
+            if looks_like_zip():
                 try:
-                    z = zipfile.ZipFile(io.BytesIO(response.content))
-                    self.logger.debug(f"Extracting {zip_folder_name} to {target_dir}")
+                    z = zipfile.ZipFile(io.BytesIO(content))
+                    self.logger.debug(
+                        f"Extracting {zip_folder_name or filename} to {target_dir}"
+                    )
                     for file_info in z.infolist():
                         if file_info.is_dir():
                             continue
@@ -418,28 +473,26 @@ class Downloader:
                         else:
                             fpath = os.path.join(target_dir, file_info.filename)
                         if exclude_dirs and any(
-                            exclude_dir in file_info.filename
-                            for exclude_dir in exclude_dirs
+                            excl in file_info.filename for excl in exclude_dirs
                         ):
                             continue
                         try:
                             os.makedirs(os.path.dirname(fpath), exist_ok=True)
-                            with (
-                                open(fpath, "wb") as dst,
-                                z.open(file_info, "r") as src,
-                            ):
+                            with open(fpath, "wb") as dst, z.open(
+                                file_info, "r"
+                            ) as src:
                                 shutil.copyfileobj(src, dst)
                         except Exception as e:
                             self.logger.error(
                                 f"Error while extracting {file_info.filename}: {e}"
                             )
-                    self.logger.debug(
-                        f"Successfully downloaded {zip_folder_name} and extracted to {target_dir}"
-                    )
+
+                    self.logger.debug(f"Successfully extracted ZIP to {target_dir}")
                     return True, None
                 except zipfile.BadZipFile:
                     archive_data.seek(0)
 
+            if looks_like_tar():
                 try:
                     self.logger.debug("Attempting TAR extraction...")
                     self._extract_tarfile(
@@ -447,11 +500,19 @@ class Downloader:
                     )
                     self.logger.debug(f"Successfully extracted TAR to {target_dir}")
                     return True, None
+                except tarfile.ReadError:
+                    archive_data.seek(0)
                 except Exception as e:
-                    return False, str(e)
+                    self.logger.warning(f"Skipping TAR extraction due to error: {e}")
+                    archive_data.seek(0)
 
-            else:
-                return False, "Failed to download."
+            os.makedirs(target_dir, exist_ok=True)
+            out_path = os.path.join(target_dir, filename)
+            with open(out_path, "wb") as f:
+                f.write(content)
+            self.logger.debug(f"Saved non-archive asset to {out_path}")
+            return True, None
+
         except Exception as e:
             self.logger.error(f"Error in download and extraction: {e}")
             return False, str(e)

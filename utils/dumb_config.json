@@ -136,6 +136,26 @@
         "config_dir": "/decypharr",
         "config_file": "/decypharr/config.json",
         "log_file": "/decypharr/logs/decypharr.log",
+        "env": {},
+        "use_embedded_rclone": true,
+        "api_keys": {}
+    },
+    "emby": {
+        "enabled": false,
+        "process_name": "Emby Media Server",
+        "repo_owner": "MediaBrowser",
+        "repo_name": "Emby.Releases",
+        "release_version_enabled": false,
+        "release_version": "4.8.11.0",
+        "suppress_logging": false,
+        "log_level": "INFO",
+        "port": 8096,
+        "auto_update": false,
+        "auto_update_interval": 24,
+        "config_dir": "/emby",
+        "config_file": "/emby/config/system.xml",
+        "log_file": "/emby/log/embyserver.txt",
+        "command": [],
         "env": {}
     },
     "jellyfin": {
@@ -149,6 +169,23 @@
         "log_file": "/jellyfin/log/jellyfin.log",
         "command": [],
         "env": {}
+    },
+    "lidarr": {
+        "instances": {
+            "Default": {
+                "enabled": false,
+                "process_name": "Lidarr",
+                "suppress_logging": false,
+                "auto_update": false,
+                "auto_update_interval": 24,
+                "port": 8686,
+                "config_dir": "/lidarr/default",
+                "config_file": "/lidarr/default/config.xml",
+                "log_file": "/lidarr/default/logs/lidarr.txt",
+                "command": [],
+                "env": {}
+            }
+        }
     },
     "phalanx_db": {
         "enabled": false,
@@ -272,6 +309,23 @@
         "setup_password": "postgres",
         "command": ""
     },
+    "prowlarr": {
+        "instances": {
+            "Default": {
+                "enabled": false,
+                "process_name": "Prowlarr",
+                "suppress_logging": false,
+                "auto_update": false,
+                "auto_update_interval": 24,
+                "port": 9696,
+                "config_dir": "/prowlarr/default",
+                "config_file": "/prowlarr/default/config.xml",
+                "log_file": "/prowlarr/default/logs/prowlarr.txt",
+                "command": [],
+                "env": {}
+            }
+        }
+    },
     "rclone": {
         "instances": {
             "RealDebrid": {
@@ -360,6 +414,57 @@
         ],
         "config_dir": "/riven/frontend",
         "env": {}
+    },
+    "radarr": {
+        "instances": {
+            "Default": {
+                "enabled": false,
+                "process_name": "Radarr",
+                "suppress_logging": false,
+                "auto_update": false,
+                "auto_update_interval": 24,
+                "port": 7878,
+                "config_dir": "/radarr/default",
+                "config_file": "/radarr/default/config.xml",
+                "log_file": "/radarr/default/logs/radarr.txt",
+                "command": [],
+                "env": {}
+            }
+        }
+    },
+    "sonarr": {
+        "instances": {
+            "Default": {
+                "enabled": false,
+                "process_name": "Sonarr",
+                "suppress_logging": false,
+                "auto_update": false,
+                "auto_update_interval": 24,
+                "port": 8989,
+                "config_dir": "/sonarr/default",
+                "config_file": "/sonarr/default/config.xml",
+                "log_file": "/sonarr/default/logs/sonarr.txt",
+                "command": [],
+                "env": {}
+            }
+        }
+    },
+    "whisparr": {
+        "instances": {
+            "Default": {
+                "enabled": false,
+                "process_name": "Whisparr",
+                "suppress_logging": false,
+                "auto_update": false,
+                "auto_update_interval": 24,
+                "port": 6969,
+                "config_dir": "/whisparr/default",
+                "config_file": "/whisparr/default/config.xml",
+                "log_file": "/whisparr/default/logs/whisparr.txt",
+                "command": [],
+                "env": {}
+            }
+        }
     },
     "zilean": {
         "enabled": false,
