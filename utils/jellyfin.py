@@ -1,5 +1,5 @@
 from utils.global_logger import logger
-import subprocess, os, platform
+import subprocess, os
 
 
 class JellyfinInstaller:

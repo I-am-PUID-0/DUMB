@@ -58,7 +58,19 @@ class Update:
         if not config:
             return None, f"Configuration for {process_name} not found."
 
-        if key in ["jellyfin", "plex"]:
+        if key in [
+            "jellyfin",
+            "plex",
+            "emby",
+            "sonarr",
+            "radarr",
+            "lidarr",
+            "bazarr",
+            "prowlarr",
+            "readarr",
+            "whisparr",
+            "whisparr-v3",
+        ]:
             enable_update = False
             self.logger.info(
                 f"Automatic updates are not yet supported for {process_name} ({key})."
