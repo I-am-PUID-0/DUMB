@@ -63,6 +63,49 @@ class Versions:
                         return None, "Jellyfin version not found in response"
                 except Exception as e:
                     return None, f"Error fetching Jellyfin version: {e}"
+            elif key == "emby":
+                config = CONFIG_MANAGER.get_instance(instance_name, key)
+                if not config:
+                    raise ValueError(f"Configuration for {process_name} not found.")
+                version_path = config.get("version_path", "/emby/version.txt")
+                is_file = True
+            ### update this once bazarr is implemented
+            elif key == "bazarr":
+                return None, "Bazarr version check not implemented"
+
+            elif key in (
+                "sonarr",
+                "radarr",
+                "prowlarr",
+                "lidarr",
+                "readarr",
+                "whisparr",
+                "whisparr-v3",
+            ):
+                try:
+                    dll_path = (
+                        f"/opt/{key}/{key.capitalize()}/{key.capitalize()}.Core.dll"
+                    )
+                    grep_string = f"{key.capitalize()}.Common, Version="
+                    result = subprocess.run(
+                        ["strings", dll_path], capture_output=True, text=True
+                    )
+                    if result.returncode != 0:
+                        return None, f"Failed to run strings on {dll_path}"
+                    matches = [
+                        line
+                        for line in result.stdout.splitlines()
+                        if grep_string in line
+                    ]
+                    if matches:
+                        match = re.search(r"Version=([\d\.]+)", matches[0])
+                        if match:
+                            return match.group(1), None
+                    return None, f"{key.capitalize()} version not found in Core.dll"
+                except FileNotFoundError:
+                    return None, f"{key.capitalize()}.Core.dll not found"
+                except Exception as e:
+                    return None, f"Error reading {key} version: {e}"
             elif key == "plex":
                 try:
                     result = subprocess.run(
@@ -164,7 +207,7 @@ class Versions:
                                     break
                             else:
                                 version = None
-                        elif key == "zilean" or key == "decypharr":
+                        elif key == "zilean" or key == "decypharr" or key == "emby":
                             version = f.read().strip()
                         if version:
                             return version, None
@@ -199,6 +242,10 @@ class Versions:
                     f.write(version)
             elif key == "decypharr":
                 version_path = "/decypharr/version.txt"
+                with open(version_path, "w") as f:
+                    f.write(version)
+            elif key == "emby":
+                version_path = version_path or "/emby/version.txt"
                 with open(version_path, "w") as f:
                     f.write(version)
             return True, None

@@ -421,6 +421,12 @@
         },
         "env": {
           "type": "object"
+        },
+        "use_embedded_rclone": {
+          "type": "boolean"
+        },
+        "api_keys": {
+          "type": "object"
         }
       },
       "required": [
@@ -443,6 +449,82 @@
         "config_dir",
         "config_file",
         "log_file",
+        "env",
+        "use_embedded_rclone",
+        "api_keys"
+      ]
+    },
+    "emby": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "process_name": {
+          "type": "string"
+        },
+        "repo_owner": {
+          "type": "string"
+        },
+        "repo_name": {
+          "type": "string"
+        },
+        "release_version_enabled": {
+          "type": "boolean"
+        },
+        "release_version": {
+          "type": "string"
+        },
+        "suppress_logging": {
+          "type": "boolean"
+        },
+        "log_level": {
+          "type": "string"
+        },
+        "port": {
+          "type": "integer"
+        },
+        "auto_update": {
+          "type": "boolean"
+        },
+        "auto_update_interval": {
+          "type": "number"
+        },
+        "config_dir": {
+          "type": "string"
+        },
+        "config_file": {
+          "type": "string"
+        },
+        "log_file": {
+          "type": "string"
+        },
+        "command": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "env": {
+          "type": "object"
+        }
+      },
+      "required": [
+        "enabled",
+        "process_name",
+        "repo_owner",
+        "repo_name",
+        "release_version_enabled",
+        "release_version",
+        "suppress_logging",
+        "log_level",
+        "port",
+        "auto_update",
+        "auto_update_interval",
+        "config_dir",
+        "config_file",
+        "log_file",
+        "command",
         "env"
       ]
     },
@@ -494,6 +576,69 @@
         "log_file",
         "command",
         "env"
+      ]
+    },
+    "lidarr": {
+      "type": "object",
+      "properties": {
+        "instances": {
+          "type": "object",
+          "patternProperties": {
+            ".*": {
+              "type": "object",
+              "properties": {
+                "enabled": {
+                  "type": "boolean"
+                },
+                "process_name": {
+                  "type": "string"
+                },
+                "suppress_logging": {
+                  "type": "boolean"
+                },
+                "auto_update": {
+                  "type": "boolean"
+                },
+                "auto_update_interval": {
+                  "type": "number"
+                },
+                "port": {
+                  "type": "integer"
+                },
+                "config_dir": {
+                  "type": "string"
+                },
+                "config_file": {
+                  "type": "string"
+                },
+                "command": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "env": {
+                  "type": "object"
+                }
+              },
+              "required": [
+                "enabled",
+                "process_name",
+                "suppress_logging",
+                "auto_update",
+                "auto_update_interval",
+                "port",
+                "config_dir",
+                "config_file",
+                "command",
+                "env"
+              ]
+            }
+          }
+        }
+      },
+      "required": [
+        "instances"
       ]
     },
     "phalanx_db": {
@@ -879,6 +1024,132 @@
         "command"
       ]
     },
+    "prowlarr": {
+      "type": "object",
+      "properties": {
+        "instances": {
+          "type": "object",
+          "patternProperties": {
+            ".*": {
+              "type": "object",
+              "properties": {
+                "enabled": {
+                  "type": "boolean"
+                },
+                "process_name": {
+                  "type": "string"
+                },
+                "suppress_logging": {
+                  "type": "boolean"
+                },
+                "auto_update": {
+                  "type": "boolean"
+                },
+                "auto_update_interval": {
+                  "type": "number"
+                },
+                "port": {
+                  "type": "integer"
+                },
+                "config_dir": {
+                  "type": "string"
+                },
+                "config_file": {
+                  "type": "string"
+                },
+                "command": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "env": {
+                  "type": "object"
+                }
+              },
+              "required": [
+                "enabled",
+                "process_name",
+                "suppress_logging",
+                "auto_update",
+                "auto_update_interval",
+                "port",
+                "config_dir",
+                "config_file",
+                "command",
+                "env"
+              ]
+            }
+          }
+        }
+      },
+      "required": [
+        "instances"
+      ]
+    },
+    "radarr": {
+      "type": "object",
+      "properties": {
+        "instances": {
+          "type": "object",
+          "patternProperties": {
+            ".*": {
+              "type": "object",
+              "properties": {
+                "enabled": {
+                  "type": "boolean"
+                },
+                "process_name": {
+                  "type": "string"
+                },
+                "suppress_logging": {
+                  "type": "boolean"
+                },
+                "auto_update": {
+                  "type": "boolean"
+                },
+                "auto_update_interval": {
+                  "type": "number"
+                },
+                "port": {
+                  "type": "integer"
+                },
+                "config_dir": {
+                  "type": "string"
+                },
+                "config_file": {
+                  "type": "string"
+                },
+                "command": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "env": {
+                  "type": "object"
+                }
+              },
+              "required": [
+                "enabled",
+                "process_name",
+                "suppress_logging",
+                "auto_update",
+                "auto_update_interval",
+                "port",
+                "config_dir",
+                "config_file",
+                "command",
+                "env"
+              ]
+            }
+          }
+        }
+      },
+      "required": [
+        "instances"
+      ]
+    },
     "rclone": {
       "type": "object",
       "properties": {
@@ -1194,6 +1465,132 @@
         "env"
       ]
     },
+    "sonarr": {
+      "type": "object",
+      "properties": {
+        "instances": {
+          "type": "object",
+          "patternProperties": {
+            ".*": {
+              "type": "object",
+              "properties": {
+                "enabled": {
+                  "type": "boolean"
+                },
+                "process_name": {
+                  "type": "string"
+                },
+                "suppress_logging": {
+                  "type": "boolean"
+                },
+                "auto_update": {
+                  "type": "boolean"
+                },
+                "auto_update_interval": {
+                  "type": "number"
+                },
+                "port": {
+                  "type": "integer"
+                },
+                "config_dir": {
+                  "type": "string"
+                },
+                "config_file": {
+                  "type": "string"
+                },
+                "command": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "env": {
+                  "type": "object"
+                }
+              },
+              "required": [
+                "enabled",
+                "process_name",
+                "suppress_logging",
+                "auto_update",
+                "auto_update_interval",
+                "port",
+                "config_dir",
+                "config_file",
+                "command",
+                "env"
+              ]
+            }
+          }
+        }
+      },
+      "required": [
+        "instances"
+      ]
+    },
+    "whisparr": {
+      "type": "object",
+      "properties": {
+        "instances": {
+          "type": "object",
+          "patternProperties": {
+            ".*": {
+              "type": "object",
+              "properties": {
+                "enabled": {
+                  "type": "boolean"
+                },
+                "process_name": {
+                  "type": "string"
+                },
+                "suppress_logging": {
+                  "type": "boolean"
+                },
+                "auto_update": {
+                  "type": "boolean"
+                },
+                "auto_update_interval": {
+                  "type": "number"
+                },
+                "port": {
+                  "type": "integer"
+                },
+                "config_dir": {
+                  "type": "string"
+                },
+                "config_file": {
+                  "type": "string"
+                },
+                "command": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "env": {
+                  "type": "object"
+                }
+              },
+              "required": [
+                "enabled",
+                "process_name",
+                "suppress_logging",
+                "auto_update",
+                "auto_update_interval",
+                "port",
+                "config_dir",
+                "config_file",
+                "command",
+                "env"
+              ]
+            }
+          }
+        }
+      },
+      "required": [
+        "instances"
+      ]
+    },
     "zilean": {
       "type": "object",
       "properties": {
@@ -1471,15 +1868,20 @@
     "cli_debrid",
     "cli_battery",
     "decypharr",
+    "emby",
     "jellyfin",
     "phalanx_db",
     "plex",
     "plex_debrid",
     "postgres",
     "pgadmin",
+    "prowlarr",
+    "radarr",
     "rclone",
     "riven_backend",
     "riven_frontend",
+    "sonarr",
+    "whisparr",
     "zilean",
     "zurg"
   ]
