@@ -137,7 +137,7 @@
         "config_file": "/decypharr/config.json",
         "log_file": "/decypharr/logs/decypharr.log",
         "env": {},
-        "use_embedded_rclone": true,
+        "use_embedded_rclone": false,
         "api_keys": {}
     },
     "emby": {
