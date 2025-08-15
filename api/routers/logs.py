@@ -82,34 +82,87 @@ def filter_dumb_log(log_path, logger):
         return ""
 
 
-def _read_log_for_process(process_name: str, logger):
-    log_path = find_log_file(process_name, logger)
-    logger.debug(f"Resolved log path: {log_path}")
-    if not log_path or not log_path.exists():
-        return ""
-
-    try:
-        if "dumb" in process_name.lower() or "dmb" in process_name.lower():
-            return filter_dumb_log(log_path, logger)
-        else:
-            with open(log_path, "r") as log_file:
-                return log_file.read()
-    except Exception as e:
-        logger.error(f"Error reading log file for {process_name}: {e}")
-        return ""
+def _read_chunk(path: Path, start: int) -> bytes:
+    with open(path, "rb") as f:
+        f.seek(max(0, start))
+        return f.read()
 
 
 @logs_router.get("")
 async def get_log_file(
     process_name: str = Query(..., description="The process name"),
+    cursor: int | None = Query(
+        None, description="Last byte offset the client has read"
+    ),
+    tail_bytes: int = Query(
+        131072,
+        ge=1024,
+        le=8_388_608,
+        description="Initial bytes from end when no cursor",
+    ),
     logger=Depends(get_logger),
 ):
     loop = asyncio.get_running_loop()
-    log_content = await loop.run_in_executor(
-        None, lambda: _read_log_for_process(process_name, logger)
-    )
 
-    return {
-        "process_name": process_name,
-        "log": log_content,
-    }
+    def work():
+        log_path = find_log_file(process_name, logger)
+        if not log_path or not log_path.exists():
+            return {
+                "process_name": process_name,
+                "cursor": 0,
+                "chunk": "",
+                "reset": True,
+            }
+
+        size = log_path.stat().st_size
+
+        # Initial load (no cursor): for DUMB/DMB return from the last startup banner once,
+        # otherwise a tail slice. Mark as reset so the client replaces its buffer.
+        if cursor is None:
+            if "dumb" in process_name.lower() or "dmb" in process_name.lower():
+                text = filter_dumb_log(log_path, logger)
+                # After initial snapshot, cursor should point to EOF
+                return {
+                    "process_name": process_name,
+                    "cursor": size,
+                    "chunk": text,
+                    "reset": True,
+                }
+            start = max(0, size - int(tail_bytes))
+            data = _read_chunk(log_path, start)
+            return {
+                "process_name": process_name,
+                "cursor": size,
+                "chunk": data.decode("utf-8", "replace"),
+                "reset": True,
+            }
+
+        # Incremental load: handle truncation/rotation
+        if cursor > size:
+            # file rotated/truncated; tail fresh bytes
+            start = max(0, size - int(tail_bytes))
+            data = _read_chunk(log_path, start)
+            return {
+                "process_name": process_name,
+                "cursor": size,
+                "chunk": data.decode("utf-8", "replace"),
+                "reset": True,
+            }
+
+        # Normal delta
+        data = _read_chunk(log_path, cursor)
+        new_cursor = cursor + len(data)
+        return {
+            "process_name": process_name,
+            "cursor": new_cursor,
+            "chunk": data.decode("utf-8", "replace"),
+            "reset": False,
+        }
+
+    result = await loop.run_in_executor(None, work)
+
+    # Back-compat for any callers expecting {log: "..."} on first fetch
+    if result.get("reset"):
+        result["log"] = result.get("chunk", "")
+
+    return result
