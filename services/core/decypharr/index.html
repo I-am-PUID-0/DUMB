@@ -2773,7 +2773,7 @@
 <h3 id="1-bind-mount-setup">1. Bind Mount Setup<a class="headerlink" href="#1-bind-mount-setup" title="Permanent link">#</a></h3>
 <p>In both your <code>DUMB</code> and <code>arrs</code> docker-compose files, include the following bind mounts (replace <code>...</code> with the full host path to your DUMB bind mount):</p>
 <p><strong>DUMB Compose</strong>:</p>
-<div class="highlight"><pre><span></span><code><span class="nt">tmpfs</span><span class="p">:</span>
+<div class="highlight"><pre><span></span><code><span class="nt">volumes</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">.../DUMB/mnt/debrid:/mnt/debrid:rshared</span>
 </code></pre></div>
 <p><strong>Arrs Compose (Sonarr/Radarr)</strong>:</p>
