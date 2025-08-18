@@ -137,7 +137,6 @@ services:
       - SYS_ADMIN
     security_opt:
       - apparmor:unconfined
-      - no-new-privileges
 ```
 
 ## 🌐 Environment Variables

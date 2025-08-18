@@ -584,6 +584,7 @@ def setup_decypharr():
         decypharr_config_file = config.get("config_file")
         decypharr_binary_file = "decypharr"
         binary_path = os.path.join(decypharr_config_dir, decypharr_binary_file)
+        decypharr_embedded_rclone = config.get("use_embedded_rclone", False)
         if not os.path.exists(decypharr_config_dir):
             logger.debug(
                 f"Creating Decypharr config directory at {decypharr_config_dir}"
@@ -623,10 +624,10 @@ def setup_decypharr():
         if os.path.isfile(binary_path):
             os.chmod(binary_path, 0o755)
             logger.debug(f"Marked {binary_path} as executable")
-        existing_env = config.get("env", {}).copy()
-        existing_env = {}
-        config["env"] = existing_env
-
+        if decypharr_embedded_rclone:
+            success, error = fuse_config()
+            if not success:
+                return False, error
         if os.path.exists(decypharr_config_file):
             from utils.decypharr_settings import patch_decypharr_config
 
@@ -1351,10 +1352,7 @@ def ensure_directory(mount_dir, mount_name):
     return full_path, None
 
 
-def rclone_setup():
-    config = CONFIG_MANAGER.get("rclone")
-    if not config:
-        return False, "Configuration for Rclone not found."
+def fuse_config():
     fuse_conf_path = "/etc/fuse.conf"
     user_allow_other_line = "user_allow_other"
     logger.info("Starting Rclone setup...")
@@ -1385,13 +1383,24 @@ def rclone_setup():
 
         with open(fuse_conf_path, "w") as f:
             f.writelines(updated_content)
-
+            return True, None
     except FileNotFoundError:
         with open(fuse_conf_path, "w") as f:
             f.write(f"{user_allow_other_line}\n")
         logger.debug(f"Created {fuse_conf_path} and added '{user_allow_other_line}'")
+        return True, None
     except PermissionError:
         return False, "Permission denied while accessing /etc/fuse.conf."
+
+
+def rclone_setup():
+    config = CONFIG_MANAGER.get("rclone")
+    if not config:
+        return False, "Configuration for Rclone not found."
+
+    success, error = fuse_config()
+    if not success:
+        return False, error
 
     def load_existing_config(config_file):
         config_data = {}
