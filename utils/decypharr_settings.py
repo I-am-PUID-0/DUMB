@@ -1,7 +1,15 @@
 from utils.global_logger import logger
 from utils.config_loader import CONFIG_MANAGER
 from collections import OrderedDict
-import os, json
+import os, json, time
+import xml.etree.ElementTree as ET
+import urllib.request
+import urllib.error
+from typing import Optional, Tuple
+
+# ---------------------------------------------------------------------------
+# Helpers: provider -> folder mapping
+# ---------------------------------------------------------------------------
 
 
 def _provider_folder(name_lc: str, mount_root: str) -> str:
@@ -19,6 +27,293 @@ def _provider_folder(name_lc: str, mount_root: str) -> str:
         return os.path.join(mount_root, name_lc, "torrents")
     else:
         return os.path.join(mount_root, name_lc, "other")
+
+
+# ---------------------------------------------------------------------------
+# Helpers: Arr discovery & API
+# ---------------------------------------------------------------------------
+
+
+def _parse_arr_api_key(config_xml_path: str) -> str:
+    """Best-effort extraction of <ApiKey> from a Sonarr/Radarr config.xml."""
+    try:
+        if not (config_xml_path and os.path.exists(config_xml_path)):
+            return ""
+        tree = ET.parse(config_xml_path)
+        root = tree.getroot()
+        node = root.find(".//ApiKey")
+        if node is not None and (node.text or "").strip():
+            return node.text.strip()
+    except Exception as e:
+        logger.warning(f"Failed reading ApiKey from {config_xml_path}: {e}")
+    return ""
+
+
+def _collect_arr_entries(decypharr_cfg: dict) -> list:
+    """
+    Build the arrs[] list from CONFIG_MANAGER instances of sonarr/radarr
+    whose `core_service` == "decypharr". Host is always 127.0.0.1 and the
+    port is taken from the instance config; token from the instance's config.xml.
+    Includes per-instance labeling using instance_name.
+    """
+    entries = []
+    for svc_name in ("sonarr", "radarr"):
+        svc_cfg = CONFIG_MANAGER.get(svc_name) or {}
+        instances = (svc_cfg.get("instances") or {}) or {}
+        for inst_key, inst in instances.items():
+            if not inst.get("enabled"):
+                continue
+            if (inst.get("core_service") or "").lower() != "decypharr":
+                continue
+
+            # Port precedence: instance.port or instance.host_port
+            port = inst.get("port") or inst.get("host_port")
+            try:
+                port = str(int(port)) if port is not None else None
+            except Exception:
+                port = None
+
+            host = f"http://127.0.0.1:{port}" if port else ""
+
+            cfg_path = (inst.get("config_file") or "").strip()
+            token = _parse_arr_api_key(cfg_path)
+
+            inst_name = (
+                inst.get("instance_name") or inst.get("name") or inst_key or ""
+            ).strip()
+            label = f"{svc_name}:{inst_name}" if inst_name else svc_name
+
+            entries.append(
+                {
+                    "name": label,
+                    "host": host,
+                    "token": token,
+                    "download_uncached": bool(
+                        decypharr_cfg.get("arrs_download_uncached", False)
+                    ),
+                    "source": "auto",
+                }
+            )
+    return entries
+
+
+# --- HTTP helpers for Arr ----------------------------------------------------
+
+
+def _join(host: str, path: str) -> str:
+    return f"{host.rstrip('/')}/{path.lstrip('/')}"
+
+
+def _arr_req(
+    url: str,
+    key: str,
+    method: str = "GET",
+    data: Optional[dict] = None,
+    timeout: int = 10,
+):
+    headers = {"X-Api-Key": key, "Accept": "application/json"}
+    body = None
+    if data is not None:
+        headers["Content-Type"] = "application/json"
+        body = json.dumps(data).encode("utf-8")
+    req = urllib.request.Request(url, data=body, headers=headers, method=method)
+    with urllib.request.urlopen(req, timeout=timeout) as resp:
+        raw = resp.read()
+        if not raw:
+            return None
+        try:
+            return json.loads(raw.decode("utf-8"))
+        except Exception:
+            return raw.decode("utf-8")
+
+
+def _normalize_path(p: str) -> str:
+    return os.path.normpath((p or "").rstrip("/"))
+
+
+def _ensure_arr_rootfolder(host: str, token: str, path: str) -> bool:
+    """Ensure a root folder exists on a Sonarr/Radarr instance.
+    Returns True if created, False if already present or on error."""
+    if not (host and token and path):
+        return False
+    try:
+        url = _join(host, "/api/v3/rootfolder")
+        existing = _arr_req(url, token, "GET") or []
+        if any(
+            _normalize_path(x.get("path", "")) == _normalize_path(path)
+            for x in (existing or [])
+        ):
+            return False
+        _arr_req(url, token, "POST", {"path": path})
+        logger.info(f"Created root folder '{path}' on {host}")
+        return True
+    except urllib.error.HTTPError as e:
+        logger.warning(f"HTTP error ensuring rootfolder {path} on {host}: {e}")
+    except Exception as e:
+        logger.warning(f"Failed to ensure rootfolder {path} on {host}: {e}")
+    return False
+
+
+# --- Download client (qBittorrent) upsert -----------------------------------
+
+
+def _get_qbt_schema(host: str, key: str):
+    schemas = _arr_req(_join(host, "/api/v3/downloadclient/schema"), key, "GET") or []
+    for item in schemas:
+        impl = (item.get("implementation") or "").lower()
+        name = (item.get("implementationName") or "").lower()
+        if "qbit" in impl or "qbit" in name:
+            return item
+    return schemas[0] if schemas else None
+
+
+def _build_fields_from_schema(schema: dict, overrides: dict) -> list:
+    fields = {}
+    for f in schema.get("fields") or []:
+        n = f.get("name")
+        if not n:
+            continue
+        fields[n] = f.get("value")
+    for k, v in (overrides or {}).items():
+        fields[k] = v
+    return [{"name": k, "value": v} for k, v in fields.items()]
+
+
+def ensure_decypharr_download_client(
+    arr_host: str,
+    arr_api_key: str,
+    decypharr_port: int,
+    service: str,
+    name: str = "decypharr",
+    category_map: Optional[dict] = None,
+    test_before_save: bool = False,
+) -> Tuple[bool, Optional[int]]:
+    """Create or update a qBittorrent client named `decypharr` that points to Decypharr.
+
+    Username = Arr host (e.g. http://127.0.0.1:7878)
+    Password = Arr ApiKey
+    Host = 127.0.0.1
+    Port = decypharr_port
+    Category = category_map.get(service) or service
+
+    Returns (changed, client_id).
+    """
+    service = (service or "").lower()
+    category = (category_map or {}).get(service, service)
+
+    schema = _get_qbt_schema(arr_host, arr_api_key)
+    if not schema:
+        raise RuntimeError("Could not fetch download client schema from Arr")
+
+    impl = schema.get("implementation")
+    impl_name = schema.get("implementationName")
+    contract = schema.get("configContract")
+    info_link = schema.get("infoLink")
+
+    overrides = {
+        "host": "127.0.0.1",
+        "port": int(decypharr_port),
+        "useSsl": False,
+        "urlBase": "",
+        "username": arr_host,
+        "password": arr_api_key,
+    }
+    if any((f.get("name") == "category") for f in (schema.get("fields") or [])):
+        overrides["category"] = category
+
+    fields = _build_fields_from_schema(schema, overrides)
+
+    desired = {
+        "name": name,
+        "enable": True,
+        "protocol": "torrent",
+        "priority": 1,
+        "removeCompletedDownloads": True,
+        "removeFailedDownloads": True,
+        "implementation": impl,
+        "implementationName": impl_name,
+        "configContract": contract,
+        "infoLink": info_link,
+        "tags": [],
+        "fields": fields,
+    }
+
+    if test_before_save:
+        _arr_req(
+            _join(arr_host, "/api/v3/downloadclient/test"), arr_api_key, "POST", desired
+        )
+
+    existing = (
+        _arr_req(_join(arr_host, "/api/v3/downloadclient"), arr_api_key, "GET") or []
+    )
+    match = next(
+        (c for c in existing if (c.get("name") or "").lower() == name.lower()), None
+    )
+
+    if match:
+        client_id = match.get("id")
+        put_body = desired.copy()
+        put_body["id"] = client_id
+        _arr_req(
+            _join(arr_host, f"/api/v3/downloadclient/{client_id}"),
+            arr_api_key,
+            "PUT",
+            put_body,
+        )
+        return True, client_id
+    else:
+        created = _arr_req(
+            _join(arr_host, "/api/v3/downloadclient"), arr_api_key, "POST", desired
+        )
+        return True, (created or {}).get("id")
+
+
+# ---------------------------------------------------------------------------
+# Resilience helpers (wait + retries)
+# ---------------------------------------------------------------------------
+
+
+def _wait_for_arr(
+    host: str, token: str, timeout_s: int = 60, interval_s: float = 2.0
+) -> bool:
+    """Poll /api/v3/system/status until the Arr instance is responding or timeout."""
+    deadline = time.time() + max(1, timeout_s)
+    url = _join(host, "/api/v3/system/status")
+    while time.time() < deadline:
+        try:
+            _arr_req(url, token, "GET", timeout=5)
+            return True
+        except Exception:
+            time.sleep(interval_s)
+    return False
+
+
+def _with_retries(
+    fn,
+    *args,
+    attempts: int = 3,
+    base_delay_s: float = 2.0,
+    backoff: float = 1.6,
+    **kwargs,
+):
+    """Run fn with retries. Returns fn result or raises last error."""
+    last_err = None
+    delay = max(0.1, base_delay_s)
+    for i in range(max(1, attempts)):
+        try:
+            return fn(*args, **kwargs)
+        except Exception as e:
+            last_err = e
+            if i == attempts - 1:
+                break
+            time.sleep(delay)
+            delay *= backoff
+    raise last_err if last_err else RuntimeError("retry failed")
+
+
+# ---------------------------------------------------------------------------
+# Main patch entrypoint
+# ---------------------------------------------------------------------------
 
 
 def patch_decypharr_config():
@@ -59,8 +354,8 @@ def patch_decypharr_config():
             "vfs_read_chunk_size": "128M",
             "vfs_read_chunk_size_limit": "off",
             "vfs_read_ahead": "128k",
-            "uid": 3001,
-            "gid": 3000,
+            "uid": user_id,
+            "gid": group_id,
             "attr_timeout": "1s",
             "dir_cache_time": "5m",
         }
@@ -267,6 +562,78 @@ def patch_decypharr_config():
                 logger.info("Adjusted debrid folders for embedded rclone mount layout")
                 updated = True
 
+        # ---- Build/Sync arrs from CONFIG_MANAGER (sonarr/radarr) ----
+        try:
+            desired_arrs = _collect_arr_entries(decypharr_config)
+            if desired_arrs:
+                if config_data.get("arrs") != desired_arrs:
+                    config_data["arrs"] = desired_arrs
+                    logger.info("Synchronized arrs (sonarr/radarr) from instances")
+                    updated = True
+        except Exception as e:
+            logger.warning(f"Failed to synchronize arrs: {e}")
+
+        # ---- Ensure Arr root folders (movies/shows symlinks) ----
+        try:
+            arrs = config_data.get("arrs") or []
+            movies_root = "/mnt/debrid/decypharr_symlinks/movies"
+            shows_root = "/mnt/debrid/decypharr_symlinks/shows"
+            for entry in arrs:
+                svc = (entry.get("name") or "").split(":", 1)[0].lower()
+                host = entry.get("host")
+                token = entry.get("token")
+                if not _wait_for_arr(host, token, timeout_s=60, interval_s=2.0):
+                    logger.warning(
+                        f"Arr not up yet, skipping rootfolder ensure for {host}"
+                    )
+                    continue
+                try:
+                    if svc == "radarr":
+                        _with_retries(
+                            _ensure_arr_rootfolder, host, token, movies_root, attempts=3
+                        )
+                    elif svc == "sonarr":
+                        _with_retries(
+                            _ensure_arr_rootfolder, host, token, shows_root, attempts=3
+                        )
+                except Exception as e:
+                    logger.warning(
+                        f"Rootfolder ensure failed after retries for {host}: {e}"
+                    )
+        except Exception as e:
+            logger.warning(f"Failed to ensure Arr root folders: {e}")
+
+        # ---- Ensure download client 'decypharr' on each Arr ----
+        try:
+            arrs = config_data.get("arrs") or []
+            for entry in arrs:
+                svc = (entry.get("name") or "").split(":", 1)[0].lower()
+                host = entry.get("host")
+                token = entry.get("token")
+                if not _wait_for_arr(host, token, timeout_s=60, interval_s=2.0):
+                    logger.warning(
+                        f"Arr not up yet, skipping download client ensure for {host}"
+                    )
+                    continue
+                try:
+                    _with_retries(
+                        ensure_decypharr_download_client,
+                        arr_host=host,
+                        arr_api_key=token,
+                        decypharr_port=int(decypharr_config.get("port", 8282)),
+                        service=svc,
+                        name="decypharr",
+                        category_map={"radarr": "radarr", "sonarr": "sonarr"},
+                        test_before_save=False,
+                        attempts=3,
+                    )
+                except Exception as e:
+                    logger.warning(
+                        f"Download client ensure failed after retries for {host}: {e}"
+                    )
+        except Exception as e:
+            logger.warning(f"Failed to ensure Decypharr download client on Arr: {e}")
+
         # ----- Build final_config (ordered) -----
         final_config = OrderedDict()
         final_config["url_base"] = config_data.get("url_base", "/")
@@ -293,7 +660,7 @@ def patch_decypharr_config():
             final_config["usenet"] = config_data.get("usenet", {})
 
         # Pass-throughs
-        if "arrs" in config_data:
+        if config_data.get("arrs"):
             final_config["arrs"] = config_data["arrs"]
         final_config["repair"] = config_data.get("repair", {})
         final_config["webdav"] = config_data.get("webdav", {})
@@ -342,6 +709,11 @@ def patch_decypharr_config():
     except Exception as e:
         logger.error(f"Error patching Decypharr config: {e}")
         return False, str(e)
+
+
+# ---------------------------------------------------------------------------
+# Utilities
+# ---------------------------------------------------------------------------
 
 
 def extract_rc_url(instance):
