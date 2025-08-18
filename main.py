@@ -93,7 +93,6 @@ def main():
         grouped_keys = [
             "zurg",
             "rclone",
-            "decypharr",
             "plex",
             "jellyfin",
             "emby",
@@ -111,6 +110,7 @@ def main():
             "lidarr",
             "prowlarr",
             "whisparr",
+            "decypharr",
         ]
         for key in grouped_keys:
             cfg = config.get(key, {})

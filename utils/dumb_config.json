@@ -419,6 +419,7 @@
         "instances": {
             "Default": {
                 "enabled": false,
+                "core_service": "decypharr",
                 "process_name": "Radarr",
                 "suppress_logging": false,
                 "auto_update": false,
@@ -436,6 +437,7 @@
         "instances": {
             "Default": {
                 "enabled": false,
+                "core_service": "decypharr",
                 "process_name": "Sonarr",
                 "suppress_logging": false,
                 "auto_update": false,

@@ -1099,6 +1099,9 @@
                 "enabled": {
                   "type": "boolean"
                 },
+                "core_service": {
+                  "type": "string"
+                },
                 "process_name": {
                   "type": "string"
                 },
@@ -1132,6 +1135,7 @@
               },
               "required": [
                 "enabled",
+                "core_service",
                 "process_name",
                 "suppress_logging",
                 "auto_update",
@@ -1477,6 +1481,9 @@
                 "enabled": {
                   "type": "boolean"
                 },
+                "core_service": {
+                  "type": "string"
+                },
                 "process_name": {
                   "type": "string"
                 },
@@ -1510,6 +1517,7 @@
               },
               "required": [
                 "enabled",
+                "core_service",
                 "process_name",
                 "suppress_logging",
                 "auto_update",
