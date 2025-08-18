@@ -4,6 +4,23 @@ from collections import OrderedDict
 import os, json
 
 
+def _provider_folder(name_lc: str, mount_root: str) -> str:
+    """
+    Map provider -> expected terminal directory, mirroring NON-embedded layout.
+    - realdebrid  -> __all__
+    - torbox      -> torrents
+    - alldebrid   -> torrents
+    - debridlink  -> torrents
+    - default     -> other
+    """
+    if name_lc == "realdebrid":
+        return os.path.join(mount_root, name_lc, "__all__")
+    elif name_lc in ("torbox", "alldebrid", "debridlink"):
+        return os.path.join(mount_root, name_lc, "torrents")
+    else:
+        return os.path.join(mount_root, name_lc, "other")
+
+
 def patch_decypharr_config():
     config_path = CONFIG_MANAGER.get("decypharr", {}).get(
         "config_file", "/decypharr/config.json"
@@ -112,7 +129,7 @@ def patch_decypharr_config():
                     "mount_path", default_embedded_rclone["mount_path"]
                 )
                 for name_lc, api_key in api_keys_map.items():
-                    folder = os.path.join(mount_root, name_lc, "torrents") + "/"
+                    folder = _provider_folder(name_lc, mount_root) + "/"
                     config_data["debrids"].append(
                         {
                             "name": name_lc,
@@ -195,7 +212,7 @@ def patch_decypharr_config():
 
             changed = False
             for name_lc, api_key in api_keys_map.items():
-                desired_folder = os.path.join(mount_root, name_lc, "torrents") + "/"
+                desired_folder = _provider_folder(name_lc, mount_root) + "/"
                 d = existing.get(name_lc)
                 if not d:
                     d = {
@@ -242,7 +259,7 @@ def patch_decypharr_config():
             changed = False
             for d in config_data["debrids"]:
                 name_lc = (d.get("name") or "unknown").lower()
-                desired_folder = os.path.join(mount_root, name_lc, "torrents") + "/"
+                desired_folder = _provider_folder(name_lc, mount_root) + "/"
                 if d.get("folder") != desired_folder:
                     d["folder"] = desired_folder
                     changed = True
