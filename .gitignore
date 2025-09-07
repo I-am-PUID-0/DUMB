@@ -387,3 +387,6 @@ Thumbs.db
 # Code editor specific files
 .vscode/
 .idea/
+
+
+**/mnt/

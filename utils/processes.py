@@ -1,5 +1,6 @@
 from utils.logger import SubprocessLogger
 from utils.config_loader import CONFIG_MANAGER
+from utils.cli_debrid_permissions import start_permission_monitor
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import shlex, os, time, signal, threading, subprocess, sys, uvicorn
 from json import dump
@@ -193,6 +194,10 @@ class ProcessHandler:
                 "process_obj": process,
             }
             self.process_names[process_name] = process
+
+            if process_name == "CLI Debrid":
+                threading.Thread(target=start_permission_monitor, daemon=True).start()
+                self.logger.info("Started CLI Debrid permission fix monitor")
 
             if process:
                 self._update_running_processes_file()

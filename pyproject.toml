@@ -6,7 +6,7 @@ authors = ["I-am-PUID-0 <36779668+I-am-PUID-0@users.noreply.github.com>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = ">=3.11"
+python = ">=3.11,<4.0"
 python-dotenv = ">=1.1.0,<2.0.0"
 regex = ">=2024.11.6,<2025.0.0"
 schedule = ">=1.2.2,<2.0.0"
@@ -25,6 +25,8 @@ scalar-fastapi = ">=1.0.3,<2.0.0"
 psycopg2 = "==2.9.10"
 pyyaml = ">=6.0.2,<7.0.0"
 xmltodict = "^0.14.2"
+subliminal = "^2.1.0"
+babelfish = "^0.6.1"
 
 [tool.poetry.group.dev.dependencies]
 black = ">=25.1.0,<26.0.0"
