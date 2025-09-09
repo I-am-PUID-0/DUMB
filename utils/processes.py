@@ -195,7 +195,7 @@ class ProcessHandler:
             }
             self.process_names[process_name] = process
 
-            if process_name == "CLI Debrid":
+            if key == "cli_debrid":
                 thread = threading.Thread(
                     target=start_permission_monitor,
                     args=(user_id, group_id),
