@@ -196,7 +196,13 @@ class ProcessHandler:
             self.process_names[process_name] = process
 
             if process_name == "CLI Debrid":
-                threading.Thread(target=start_permission_monitor, daemon=True).start()
+                thread = threading.Thread(
+                    target=start_permission_monitor,
+                    args=(user_id, group_id),
+                    daemon=True,
+                    name="cli-debrid-permissions",
+                )
+                thread.start()
                 self.logger.info("Started CLI Debrid permission fix monitor")
 
             if process:

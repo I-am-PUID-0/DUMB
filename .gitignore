@@ -388,5 +388,5 @@ Thumbs.db
 .vscode/
 .idea/
 
-
+# Ignore RClone and symlink directories
 **/mnt/
