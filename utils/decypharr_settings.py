@@ -78,7 +78,7 @@ def patch_decypharr_config():
             final_config["allowed_file_types"] = config_data.get(
                 "allowed_file_types", []
             )
-            final_config["use_auth"] = config_data.get("use_auth", True)
+            final_config["use_auth"] = config_data.get("use_auth", False)
 
             with open(config_path, "w") as file:
                 json.dump(final_config, file, indent=4)
