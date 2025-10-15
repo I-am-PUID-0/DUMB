@@ -575,7 +575,7 @@ jobs:
 
   cleanup-cache:
     name: Prune local buildx cache
-    needs: [ setup, build-arm64-digest, build-arm64-digest ]
+    needs: [ setup, build-amd64-digest, build-arm64-digest ]
     if: always()
     strategy:
       matrix:
@@ -591,14 +591,18 @@ jobs:
           BRANCH_NAME: ${{ needs.setup.outputs.BRANCH_NAME }}
         run: |
           set -Eeuo pipefail
-  
-          # Allow per-host override via runner env VAR if paths differ
+          shopt -s nullglob
+          set -x
+          trap 'echo "❌ Failed at line $LINENO: $BASH_COMMAND"; [[ -n "${STAGE_DIR:-}" ]] && ls -la "${STAGE_DIR}" || true' ERR
           ROOT_BASE="${RUNNER_CACHE_ROOT:-/home/docker/buildx-cache}"
           ROOT="${ROOT_BASE}/${GITHUB_REPOSITORY}/${BRANCH_NAME}"
-          LOCK="${ROOT_BASE}/.prune.lock"
+          LOCK_DIR="${ROOT_BASE}"
+          LOCK="${LOCK_DIR}/.prune.lock"
   
           echo "🖥️ Host: $(hostname) | Label: ${{ matrix.arch }}"
           echo "📁 Cache root: $ROOT"
+          mkdir -p "${LOCK_DIR}"
+  
           if [[ ! -d "$ROOT" ]]; then
             echo "No cache dir for this branch — nothing to prune."
             exit 0
@@ -606,23 +610,40 @@ jobs:
   
           echo "📊 Cache *before* prune:"
           du -x -h --max-depth=1 "$ROOT" | sort -hr | head -n 20 || true
-  
-          # Serialize prunes to prevent concurrent edits
           exec 9>"$LOCK"
           flock -x 9
   
           for STAGE_DIR in "$ROOT"/*/ ; do
             [[ -f "${STAGE_DIR}index.json" ]] || continue
             echo "::group::⏳  Pruning $(basename "$STAGE_DIR")"
-            MANIFEST="$(jq -r '.manifests[0].digest' "${STAGE_DIR}index.json" | sed 's/^sha256://')"
+            MANIFEST="$(jq -r '.manifests[0].digest // empty' "${STAGE_DIR}index.json" | sed 's/^sha256://')"
+            if [[ -z "$MANIFEST" ]]; then
+              echo "⚠️  No manifest digest in index.json — skipping stage."
+              echo "::endgroup::"
+              continue
+            fi
+  
+            MANIFEST_BLOB="${STAGE_DIR}blobs/sha256/${MANIFEST}"
+            if [[ ! -f "$MANIFEST_BLOB" ]]; then
+              echo "⚠️  Manifest blob missing: $MANIFEST_BLOB — skipping stage."
+              echo "     Available blobs:"
+              ls -1 "${STAGE_DIR}blobs/sha256" || true
+              echo "::endgroup::"
+              continue
+            fi
+  
             KEEP="$(mktemp)"
-            echo "$MANIFEST" > "$KEEP"
-            jq -r '..|.digest?|select(.)' "${STAGE_DIR}blobs/sha256/$MANIFEST" \
-              | sed 's/^sha256://' >> "$KEEP"
-            sort -u "$KEEP" -o "$KEEP"
-            find "${STAGE_DIR}blobs/sha256" -type f -printf '%f\n' \
-              | grep -v -F -f "$KEEP" \
-              | xargs -r -I{} rm -f "${STAGE_DIR}blobs/sha256/{}"
+            {
+              echo "$MANIFEST"
+              jq -r '..|.digest?|select(.)' "$MANIFEST_BLOB" | sed 's/^sha256://'
+            } | sort -u > "$KEEP"
+  
+            if compgen -G "${STAGE_DIR}blobs/sha256/*" > /dev/null; then
+              find "${STAGE_DIR}blobs/sha256" -type f -printf '%f\n' \
+                | grep -v -F -f "$KEEP" \
+                | xargs -r -I{} rm -f "${STAGE_DIR}blobs/sha256/{}"
+            fi
+  
             rm -f "$KEEP"
             echo "::endgroup::"
           done
