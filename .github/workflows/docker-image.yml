@@ -580,11 +580,16 @@ jobs:
     strategy:
       matrix:
         arch: [ X64, ARM64 ]
-    runs-on:
-      - self-hosted
-      - Linux
-      - ${{ matrix.arch }}
+    runs-on: [ "self-hosted", "Linux", "${{ matrix.arch }}" ]
     steps:
+      - name: Ensure tools are present
+        shell: bash
+        run: |
+          if ! command -v jq >/dev/null 2>&1; then
+            sudo apt-get update -y
+            sudo apt-get install -y jq
+          fi
+
       - name: Show cache size → prune → show again
         shell: bash
         env:
@@ -593,63 +598,76 @@ jobs:
           set -Eeuo pipefail
           shopt -s nullglob
           set -x
-          trap 'echo "❌ Failed at line $LINENO: $BASH_COMMAND"; [[ -n "${STAGE_DIR:-}" ]] && ls -la "${STAGE_DIR}" || true' ERR
+          trap 'echo "❌ Failed at line $LINENO: $BASH_COMMAND"; [[ -n "${STAGE_DIR:-}" ]] && { echo "📂 Dump of $STAGE_DIR"; ls -la "${STAGE_DIR}" || true; }' ERR
+
           ROOT_BASE="${RUNNER_CACHE_ROOT:-/home/docker/buildx-cache}"
           ROOT="${ROOT_BASE}/${GITHUB_REPOSITORY}/${BRANCH_NAME}"
           LOCK_DIR="${ROOT_BASE}"
           LOCK="${LOCK_DIR}/.prune.lock"
-  
+
           echo "🖥️ Host: $(hostname) | Label: ${{ matrix.arch }}"
           echo "📁 Cache root: $ROOT"
           mkdir -p "${LOCK_DIR}"
-  
-          if [[ ! -d "$ROOT" ]]; then
-            echo "No cache dir for this branch — nothing to prune."
-            exit 0
-          fi
-  
+
+          [[ -d "$ROOT" ]] || { echo "No cache dir for this branch — nothing to prune."; exit 0; }
+
           echo "📊 Cache *before* prune:"
           du -x -h --max-depth=1 "$ROOT" | sort -hr | head -n 20 || true
+
           exec 9>"$LOCK"
           flock -x 9
-  
+
           for STAGE_DIR in "$ROOT"/*/ ; do
             [[ -f "${STAGE_DIR}index.json" ]] || continue
             echo "::group::⏳  Pruning $(basename "$STAGE_DIR")"
-            MANIFEST="$(jq -r '.manifests[0].digest // empty' "${STAGE_DIR}index.json" | sed 's/^sha256://')"
-            if [[ -z "$MANIFEST" ]]; then
+
+            MANIFEST="$(jq -r '(.manifests[0].digest // "") | sub("^sha256:";"")' "${STAGE_DIR}index.json" || echo "")"
+            if [[ -z "${MANIFEST}" ]]; then
               echo "⚠️  No manifest digest in index.json — skipping stage."
               echo "::endgroup::"
               continue
             fi
-  
+
             MANIFEST_BLOB="${STAGE_DIR}blobs/sha256/${MANIFEST}"
             if [[ ! -f "$MANIFEST_BLOB" ]]; then
-              echo "⚠️  Manifest blob missing: $MANIFEST_BLOB — skipping stage."
-              echo "     Available blobs:"
-              ls -1 "${STAGE_DIR}blobs/sha256" || true
+              echo "⚠️  Manifest blob missing: $MANIFEST_BLOB — skipping stage (likely partial/old cache)."
               echo "::endgroup::"
               continue
             fi
-  
+
+            BLOBS_DIR="${STAGE_DIR}blobs/sha256"
+            if [[ ! -d "$BLOBS_DIR" ]]; then
+              echo "ℹ️  No blobs dir at ${BLOBS_DIR} — nothing to delete."
+              echo "::endgroup::"
+              continue
+            fi
+
             KEEP="$(mktemp)"
             {
               echo "$MANIFEST"
-              jq -r '..|.digest?|select(.)' "$MANIFEST_BLOB" | sed 's/^sha256://'
+              jq -r '.. | .digest? | select(type=="string") | sub("^sha256:";"")' "$MANIFEST_BLOB" || true
             } | sort -u > "$KEEP"
-  
-            if compgen -G "${STAGE_DIR}blobs/sha256/*" > /dev/null; then
-              find "${STAGE_DIR}blobs/sha256" -type f -printf '%f\n' \
-                | grep -v -F -f "$KEEP" \
-                | xargs -r -I{} rm -f "${STAGE_DIR}blobs/sha256/{}"
+
+            if [[ ! -s "$KEEP" ]]; then
+              echo "⚠️  Computed KEEP set is empty — skipping destructive prune for safety."
+              rm -f "$KEEP"
+              echo "::endgroup::"
+              continue
             fi
-  
+
+            if compgen -G "${BLOBS_DIR}/*" > /dev/null; then
+              find "$BLOBS_DIR" -type f -printf '%f\n' \
+              | grep -v -F -f "$KEEP" || true \
+              | xargs -r -I{} bash -c 'rm -f "'"$BLOBS_DIR"'/{}" 2>/dev/null || true'
+            fi
+
             rm -f "$KEEP"
             echo "::endgroup::"
           done
-  
+
           echo "📊 Cache *after* prune:"
           du -x -h --max-depth=1 "$ROOT" | sort -hr | head -n 20 || true
+          flock -u 9 || true
 
   release:
     needs: [setup, build-and-push]
