@@ -648,7 +648,7 @@ jobs:
               if [[ ! -f "$M_BLOB" ]]; then
                 echo "⚠️  Missing manifest blob: $M_BLOB — skipping this manifest."
                 continue
-              }
+              fi
               jq -r '.. | .digest? | select(type=="string")' "$M_BLOB" \
                 | sed 's/^sha256://'
             done | sort -u >> "$KEEP"
