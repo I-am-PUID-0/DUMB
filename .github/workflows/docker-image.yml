@@ -599,7 +599,13 @@ jobs:
           set -Eeuo pipefail
           shopt -s nullglob
           set -x
-          trap 'echo "❌ Failed at line $LINENO: $BASH_COMMAND"; [[ -n "${STAGE_DIR:-}" ]] && { echo "📂 Dump of $STAGE_DIR"; ls -la "${STAGE_DIR}" || true; }' ERR
+          trap '{
+            >&2 echo "❌ Failed at line $LINENO: $BASH_COMMAND";
+            if [[ -n "${STAGE_DIR:-}" ]]; then
+              >&2 echo "📂 Dump of $STAGE_DIR"
+              ls -la "${STAGE_DIR}" || true
+            fi
+          }' ERR
 
           ROOT_BASE="${RUNNER_CACHE_ROOT:-/home/docker/buildx-cache}"
           ROOT="${ROOT_BASE}/${GITHUB_REPOSITORY}/${BRANCH_NAME}"
@@ -629,13 +635,15 @@ jobs:
               continue
             fi
 
-            mapfile -t MANIFESTS < <(jq -r \
-              --argjson n "${KEEP_MANIFESTS:-2}" \
-              '.manifests | (length as $L | if $L==0 then [] else .[(($L-$n)|max(0)):$L][] end) | .digest' \
-              "${STAGE_DIR}index.json" 2>/dev/null | sed 's/^sha256://')
+            mapfile -t MANIFESTS < <(jq -r --argjson n "${KEEP_MANIFESTS:-2}" '
+              ( .manifests // [] ) as $m
+              | ($m|length) as $L
+              | (if $L==0 then [] else $m[(($L-$n)|max(0)):$L] end)
+              | .[]? | (.digest // empty) | sub("^sha256:";"")
+            ' "${STAGE_DIR}index.json")
 
             if (( ${#MANIFESTS[@]} == 0 )); then
-              echo "⚠️  No manifests in index.json — skipping stage."
+              echo "⚠️  No manifests found — skipping stage."
               echo "::endgroup::"
               continue
             fi
@@ -649,8 +657,7 @@ jobs:
                 echo "⚠️  Missing manifest blob: $M_BLOB — skipping this manifest."
                 continue
               fi
-              jq -r '.. | .digest? | select(type=="string")' "$M_BLOB" \
-                | sed 's/^sha256://'
+              jq -r '.. | .digest? | select(type=="string") | sub("^sha256:";"")' "$M_BLOB"
             done | sort -u >> "$KEEP"
 
             if [[ ! -s "$KEEP" ]]; then
@@ -663,8 +670,8 @@ jobs:
             TOTAL_BEFORE=$(du -sBK "$STAGE_DIR" | awk '{print $1}')
             if compgen -G "${BLOBS_DIR}/*" > /dev/null; then
               find "$BLOBS_DIR" -type f -printf '%f\n' \
-                | grep -v -F -f "$KEEP" || true \
-                | xargs -r -I{} bash -c 'rm -f "'"$BLOBS_DIR"'/{}" 2>/dev/null || true'
+              | { grep -v -F -f "$KEEP" || true; } \
+              | xargs -r -I{} bash -c 'rm -f "'"$BLOBS_DIR"'/{}" 2>/dev/null || true'
             fi
 
             rm -f "$KEEP"
