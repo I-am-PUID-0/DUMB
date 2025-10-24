@@ -594,7 +594,9 @@ jobs:
         shell: bash
         env:
           BRANCH_NAME: ${{ needs.setup.outputs.BRANCH_NAME }}
-          KEEP_MANIFESTS: 1
+          KEEP_MANIFESTS: "1"
+          MAX_DELETE_RATIO: "0.60"
+          DRY_RUN: "false"
         run: |
           set -Eeuo pipefail
           shopt -s nullglob
@@ -609,12 +611,10 @@ jobs:
 
           ROOT_BASE="${RUNNER_CACHE_ROOT:-/home/docker/buildx-cache}"
           ROOT="${ROOT_BASE}/${GITHUB_REPOSITORY}/${BRANCH_NAME}"
-          LOCK_DIR="${ROOT_BASE}"
-          LOCK="${LOCK_DIR}/.prune.lock"
+          LOCK="${ROOT_BASE}/.prune.lock"
 
           echo "🖥️ Host: $(hostname) | Label: ${{ matrix.arch }}"
           echo "📁 Cache root: $ROOT"
-          mkdir -p "${LOCK_DIR}"
 
           [[ -d "$ROOT" ]] || { echo "No cache dir for this branch — nothing to prune."; exit 0; }
 
@@ -624,57 +624,96 @@ jobs:
           exec 9>"$LOCK"
           flock -x 9
 
+          JQ_SLICE='def clamp0(x): if x < 0 then 0 else x end;
+            ( .manifests // [] ) as $m
+            | ($m|length) as $L
+            | (if $L==0 then [] else $m[(clamp0($L-($n))):$L] end)
+            | .[]? | (.digest // empty) | sub("^sha256:";"")'
+
           for STAGE_DIR in "$ROOT"/*/ ; do
             [[ -f "${STAGE_DIR}index.json" ]] || continue
             echo "::group::⏳  Pruning $(basename "$STAGE_DIR")"
 
             BLOBS_DIR="${STAGE_DIR}blobs/sha256"
             if [[ ! -d "$BLOBS_DIR" ]]; then
-              echo "ℹ️  No blobs dir at ${BLOBS_DIR} — nothing to delete."
+              echo "ℹ️  No blobs dir — skip."
               echo "::endgroup::"
               continue
             fi
 
-            mapfile -t MANIFESTS < <(jq -r --argjson n "${KEEP_MANIFESTS:-2}" '
-              ( .manifests // [] ) as $m
-              | ($m|length) as $L
-              | (if $L==0 then [] else $m[(($L-$n)|max(0)):$L] end)
-              | .[]? | (.digest // empty) | sub("^sha256:";"")
-            ' "${STAGE_DIR}index.json")
+            KEEP="$(mktemp)"; REACH="$(mktemp)"
 
+            if ! mapfile -t MANIFESTS < <(jq -r --argjson n "${KEEP_MANIFESTS}" "$JQ_SLICE" "${STAGE_DIR}index.json"); then
+              echo "⚠️  jq failed parsing index.json — skip stage."
+              rm -f "$KEEP" "$REACH"
+              echo "::endgroup::"
+              continue
+            fi
             if (( ${#MANIFESTS[@]} == 0 )); then
-              echo "⚠️  No manifests found — skipping stage."
+              echo "⚠️  No manifests found — skip stage."
+              rm -f "$KEEP" "$REACH"
               echo "::endgroup::"
               continue
             fi
 
-            KEEP="$(mktemp)"
             printf "%s\n" "${MANIFESTS[@]}" > "$KEEP"
 
             for M in "${MANIFESTS[@]}"; do
               M_BLOB="${BLOBS_DIR}/${M}"
               if [[ ! -f "$M_BLOB" ]]; then
-                echo "⚠️  Missing manifest blob: $M_BLOB — skipping this manifest."
+                echo "⚠️  Missing manifest blob: $M_BLOB"
                 continue
               fi
               jq -r '.. | .digest? | select(type=="string") | sub("^sha256:";"")' "$M_BLOB"
-            done | sort -u >> "$KEEP"
+            done | sort -u > "$REACH"
+
+            cat "$REACH" >> "$KEEP"
+            sort -u -o "$KEEP" "$KEEP"
+            grep -E '^[0-9a-f]{64}$' -x "$KEEP" > "${KEEP}.hex" || true
+            mv -f "${KEEP}.hex" "$KEEP"
 
             if [[ ! -s "$KEEP" ]]; then
-              echo "⚠️  Computed KEEP set is empty — skipping destructive prune for safety."
-              rm -f "$KEEP"
+              echo "⚠️  Empty KEEP set — skip stage."
+              rm -f "$KEEP" "$REACH"
               echo "::endgroup::"
               continue
             fi
 
-            TOTAL_BEFORE=$(du -sBK "$STAGE_DIR" | awk '{print $1}')
-            if compgen -G "${BLOBS_DIR}/*" > /dev/null; then
-              find "$BLOBS_DIR" -type f -printf '%f\n' \
-              | { grep -v -F -f "$KEEP" || true; } \
-              | xargs -r -I{} bash -c 'rm -f "'"$BLOBS_DIR"'/{}" 2>/dev/null || true'
+            ALL_LIST="$(mktemp)"
+            find "$BLOBS_DIR" -type f -printf '%f\n' | sort -u > "$ALL_LIST"
+
+            if [[ ! -s "$ALL_LIST" ]]; then
+              echo "ℹ️  No blobs present."
+              rm -f "$KEEP" "$REACH" "$ALL_LIST"
+              echo "::endgroup::"
+              continue
             fi
 
-            rm -f "$KEEP"
+            DEL_LIST="$(mktemp)"
+            comm -23 "$ALL_LIST" "$KEEP" > "$DEL_LIST" || true
+            TOTAL=$(wc -l < "$ALL_LIST" || echo 0)
+            TO_DEL=$(wc -l < "$DEL_LIST" || echo 0)
+            MAX_DELETE_RATIO="${MAX_DELETE_RATIO}"
+            RATIO=$(awk -v a="$TO_DEL" -v b="$TOTAL" 'BEGIN{ if(b==0) print 0; else printf "%.2f", a/b }')
+            awk -v r="$RATIO" -v m="$MAX_DELETE_RATIO" 'BEGIN{ exit !(r>m) }' && {
+              echo "⚠️  Delete ratio $RATIO exceeds max $MAX_DELETE_RATIO — skipping to avoid wipe."
+              rm -f "$KEEP" "$REACH" "$ALL_LIST" "$DEL_LIST"
+              echo "::endgroup::"
+              continue
+            }
+
+            TOTAL_BEFORE=$(du -sBK "$STAGE_DIR" | awk '{print $1}')
+
+            if [[ "${DRY_RUN}" == "true" ]]; then
+              echo "🔎 DRY-RUN: would delete $TO_DEL / $TOTAL blobs (ratio $RATIO)."
+            else
+              while IFS= read -r f; do
+                [[ -n "$f" ]] || continue
+                rm -f -- "$BLOBS_DIR/$f" 2>/dev/null || true
+              done < "$DEL_LIST"
+            fi
+
+            rm -f "$KEEP" "$REACH" "$ALL_LIST" "$DEL_LIST"
             TOTAL_AFTER=$(du -sBK "$STAGE_DIR" | awk '{print $1}')
             echo "🧹 $(basename "$STAGE_DIR"): ${TOTAL_BEFORE} → ${TOTAL_AFTER}"
             echo "::endgroup::"
