@@ -594,6 +594,7 @@ jobs:
         shell: bash
         env:
           BRANCH_NAME: ${{ needs.setup.outputs.BRANCH_NAME }}
+          KEEP_MANIFESTS: 1
         run: |
           set -Eeuo pipefail
           shopt -s nullglob
@@ -621,20 +622,6 @@ jobs:
             [[ -f "${STAGE_DIR}index.json" ]] || continue
             echo "::group::⏳  Pruning $(basename "$STAGE_DIR")"
 
-            MANIFEST="$(jq -r '(.manifests[0].digest // "") | sub("^sha256:";"")' "${STAGE_DIR}index.json" || echo "")"
-            if [[ -z "${MANIFEST}" ]]; then
-              echo "⚠️  No manifest digest in index.json — skipping stage."
-              echo "::endgroup::"
-              continue
-            fi
-
-            MANIFEST_BLOB="${STAGE_DIR}blobs/sha256/${MANIFEST}"
-            if [[ ! -f "$MANIFEST_BLOB" ]]; then
-              echo "⚠️  Manifest blob missing: $MANIFEST_BLOB — skipping stage (likely partial/old cache)."
-              echo "::endgroup::"
-              continue
-            fi
-
             BLOBS_DIR="${STAGE_DIR}blobs/sha256"
             if [[ ! -d "$BLOBS_DIR" ]]; then
               echo "ℹ️  No blobs dir at ${BLOBS_DIR} — nothing to delete."
@@ -642,11 +629,29 @@ jobs:
               continue
             fi
 
+            mapfile -t MANIFESTS < <(jq -r \
+              --argjson n "${KEEP_MANIFESTS:-2}" \
+              '.manifests | (length as $L | if $L==0 then [] else .[(($L-$n)|max(0)):$L][] end) | .digest' \
+              "${STAGE_DIR}index.json" 2>/dev/null | sed 's/^sha256://')
+
+            if (( ${#MANIFESTS[@]} == 0 )); then
+              echo "⚠️  No manifests in index.json — skipping stage."
+              echo "::endgroup::"
+              continue
+            fi
+
             KEEP="$(mktemp)"
-            {
-              echo "$MANIFEST"
-              jq -r '.. | .digest? | select(type=="string") | sub("^sha256:";"")' "$MANIFEST_BLOB" || true
-            } | sort -u > "$KEEP"
+            printf "%s\n" "${MANIFESTS[@]}" > "$KEEP"
+
+            for M in "${MANIFESTS[@]}"; do
+              M_BLOB="${BLOBS_DIR}/${M}"
+              if [[ ! -f "$M_BLOB" ]]; then
+                echo "⚠️  Missing manifest blob: $M_BLOB — skipping this manifest."
+                continue
+              }
+              jq -r '.. | .digest? | select(type=="string")' "$M_BLOB" \
+                | sed 's/^sha256://'
+            done | sort -u >> "$KEEP"
 
             if [[ ! -s "$KEEP" ]]; then
               echo "⚠️  Computed KEEP set is empty — skipping destructive prune for safety."
@@ -655,13 +660,16 @@ jobs:
               continue
             fi
 
+            TOTAL_BEFORE=$(du -sBK "$STAGE_DIR" | awk '{print $1}')
             if compgen -G "${BLOBS_DIR}/*" > /dev/null; then
               find "$BLOBS_DIR" -type f -printf '%f\n' \
-              | grep -v -F -f "$KEEP" || true \
-              | xargs -r -I{} bash -c 'rm -f "'"$BLOBS_DIR"'/{}" 2>/dev/null || true'
+                | grep -v -F -f "$KEEP" || true \
+                | xargs -r -I{} bash -c 'rm -f "'"$BLOBS_DIR"'/{}" 2>/dev/null || true'
             fi
 
             rm -f "$KEEP"
+            TOTAL_AFTER=$(du -sBK "$STAGE_DIR" | awk '{print $1}')
+            echo "🧹 $(basename "$STAGE_DIR"): ${TOTAL_BEFORE} → ${TOTAL_AFTER}"
             echo "::endgroup::"
           done
 
