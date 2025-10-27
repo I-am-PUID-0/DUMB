@@ -382,7 +382,7 @@ jobs:
           target: final-stage
           platforms: linux/amd64
           push: true
-          outputs: type=registry,name=docker.io/${{ env.DOCKER_USER }}/${{ env.REPO_NAME }},push-by-digest=true
+          outputs: type=registry,name=docker.io/${{ env.DOCKER_USER }}/${{ env.REPO_NAME }},push-by-digest=true,oci-mediatypes=true,compression=zstd,force-compression=true
           provenance: true
           sbom: true
           cache-from: |
@@ -440,7 +440,7 @@ jobs:
           target: final-stage
           platforms: linux/arm64
           push: true
-          outputs: type=registry,name=docker.io/${{ env.DOCKER_USER }}/${{ env.REPO_NAME }},push-by-digest=true
+          outputs: type=registry,name=docker.io/${{ env.DOCKER_USER }}/${{ env.REPO_NAME }},push-by-digest=true,oci-mediatypes=true,compression=zstd,force-compression=true
           provenance: true
           sbom: true
           cache-from: |
