@@ -312,7 +312,7 @@ SERVICE_OPTION_DESCRIPTIONS = {
     "setup_email": "Email address pgAdmin4 login.",
     "setup_password": "Password for pgAdmin4 login.",
     "origin": "CORS origin for the service",
-    "use_embedded_rclone": "If true, uses the embedded rclone for Decypharr. (Recomeneded)",
+    "use_embedded_rclone": "If true, uses the embedded rclone for Decypharr. (Recommended)",
 }
 
 BASIC_FIELDS = set(SERVICE_OPTION_DESCRIPTIONS.keys())
