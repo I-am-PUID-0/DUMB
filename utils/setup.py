@@ -415,6 +415,7 @@ def ensure_arr_config(
 <Config>
   <Port>{port}</Port>
   <LogLevel>{loglevel}</LogLevel>
+  <InstanceName>{app_name}</InstanceName>
 </Config>
 """
         with open(config_file, "w") as f:
@@ -428,6 +429,7 @@ def ensure_arr_config(
         root = tree.getroot()
         port_elem = root.find("Port")
         loglevel_elem = root.find("LogLevel")
+        Instance_elem = root.find("InstanceName")
 
         if port_elem is not None and int(port_elem.text) != port:
             logger.info(
@@ -447,6 +449,12 @@ def ensure_arr_config(
             logger.debug(
                 f"[{app_name}] Log level already set to {loglevel} in config.xml"
             )
+        if Instance_elem is not None and Instance_elem.text != app_name:
+            logger.info(
+                f"[{app_name}] Updating InstanceName in config.xml from {Instance_elem.text} to {app_name}"
+            )
+            Instance_elem.text = app_name
+            tree.write(config_file)
     except Exception as e:
         logger.error(f"[{app_name}] Failed to update existing config.xml: {e}")
 
