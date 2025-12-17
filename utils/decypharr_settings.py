@@ -186,6 +186,7 @@ def ensure_decypharr_download_client(
     service: str,
     name: str = "decypharr",
     category_map: Optional[dict] = None,
+    category: Optional[str] = None,
     test_before_save: bool = False,
 ) -> Tuple[bool, Optional[int]]:
     """Create or update a qBittorrent client named `decypharr` that points to Decypharr.
@@ -198,12 +199,35 @@ def ensure_decypharr_download_client(
 
     Returns (changed, client_id).
     """
+
+    def _set_field(fields_list, field_name: str, value) -> bool:
+        # Set a schema-built field value by case-insensitive name match.
+        for f in fields_list or []:
+            if (f.get("name") or "").lower() == field_name.lower():
+                f["value"] = value
+                return True
+        return False
+
     service = (service or "").lower()
-    category = (category_map or {}).get(service, service)
+
+    # Fall back to category_map[service] or service if needed.
+    effective_category = (category or "").strip() or (category_map or {}).get(
+        service, service
+    )
+    logger.info(
+        "Categorizing Decypharr download client for %s as '%s'",
+        service,
+        effective_category,
+    )
 
     schema = _get_qbt_schema(arr_host, arr_api_key)
     if not schema:
         raise RuntimeError("Could not fetch download client schema from Arr")
+
+    # Log schema field names to remove ambiguity about what Arr expects
+    fields_schema = schema.get("fields") or []
+    field_names_raw = [f.get("name") for f in fields_schema]
+    logger.debug("Download client schema fields for %s: %s", arr_host, field_names_raw)
 
     impl = schema.get("implementation")
     impl_name = schema.get("implementationName")
@@ -218,10 +242,40 @@ def ensure_decypharr_download_client(
         "username": arr_host,
         "password": arr_api_key,
     }
-    if any((f.get("name") == "category") for f in (schema.get("fields") or [])):
-        overrides["category"] = category
 
+    # Attempt to inject category via schema name(s) if present.
+    schema_names = {str(f.get("name") or "").lower() for f in fields_schema}
+
+    category_aliases = [
+        "category",
+        "torrentcategory",
+        "moviecategory",
+        "tvcategory",
+    ]
+
+    # Prefer setting the canonical field name that actually exists in the schema
+    for key in category_aliases:
+        if key in schema_names:
+            overrides[key] = effective_category
+
+    # Some implementations gate category/tags behind a toggle
+    for toggle in ["usecategory", "usetags"]:
+        if toggle in schema_names:
+            overrides[toggle] = True
+
+    # Build fields using the schema + overrides
     fields = _build_fields_from_schema(schema, overrides)
+
+    # Final guarantee: force-set category/toggles by walking the built fields
+    # (covers schema case differences like 'Category' vs 'category').
+    _set_field(fields, "useCategory", True)
+    _set_field(fields, "useTags", True)
+
+    # Try common category field names
+    if not _set_field(fields, "category", effective_category):
+        _set_field(fields, "torrentCategory", effective_category)
+        _set_field(fields, "movieCategory", effective_category)
+        _set_field(fields, "tvCategory", effective_category)
 
     desired = {
         "name": name,
@@ -243,6 +297,30 @@ def ensure_decypharr_download_client(
             _join(arr_host, "/api/v3/downloadclient/test"), arr_api_key, "POST", desired
         )
 
+    def _verify_saved(client_id: Optional[int]) -> None:
+        # Best-effort readback to confirm what Arr persisted.
+        if not client_id:
+            return
+        try:
+            saved = (
+                _arr_req(
+                    _join(arr_host, f"/api/v3/downloadclient/{client_id}"),
+                    arr_api_key,
+                    "GET",
+                )
+                or {}
+            )
+            saved_fields = {
+                f.get("name"): f.get("value") for f in (saved.get("fields") or [])
+            }
+            logger.debug(
+                "Saved download client fields for %s: %s", arr_host, saved_fields
+            )
+        except Exception as e:
+            logger.warning(
+                "Could not re-read saved download client for verification: %s", e
+            )
+
     existing = (
         _arr_req(_join(arr_host, "/api/v3/downloadclient"), arr_api_key, "GET") or []
     )
@@ -260,12 +338,18 @@ def ensure_decypharr_download_client(
             "PUT",
             put_body,
         )
+        _verify_saved(client_id)
         return True, client_id
-    else:
-        created = _arr_req(
+
+    created = (
+        _arr_req(
             _join(arr_host, "/api/v3/downloadclient"), arr_api_key, "POST", desired
         )
-        return True, (created or {}).get("id")
+        or {}
+    )
+    client_id = created.get("id")
+    _verify_saved(client_id)
+    return True, client_id
 
 
 # ---------------------------------------------------------------------------
@@ -410,7 +494,7 @@ def patch_decypharr_config():
                 updated = True
 
         # Bootstrap defaults if config is minimal
-        if "debrids" not in config_data or "usenet" not in config_data:
+        if "debrids" not in config_data and "usenet" not in config_data:
             logger.info(
                 "Default Decypharr config detected. Patching extended settings..."
             )
@@ -623,6 +707,7 @@ def patch_decypharr_config():
                         decypharr_port=int(decypharr_config.get("port", 8282)),
                         service=svc,
                         name="decypharr",
+                        category=entry.get("name"),
                         category_map={"radarr": "radarr", "sonarr": "sonarr"},
                         test_before_save=False,
                         attempts=3,
@@ -667,7 +752,13 @@ def patch_decypharr_config():
         if "rclone" in config_data:
             final_config["rclone"] = config_data["rclone"]
         final_config["allowed_file_types"] = config_data.get("allowed_file_types", [])
-        final_config["use_auth"] = config_data.get("use_auth", True)
+        # final_config["use_auth"] = config_data.get("use_auth", True)
+
+        # ----- Preserve any extra keys Decypharr/user added -----
+        known_keys = set(final_config.keys())
+        for k, v in config_data.items():
+            if k not in known_keys:
+                final_config[k] = v
 
         # Persist if changed
         if updated or final_config != config_data:
