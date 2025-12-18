@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Depends, Query
 from fastapi.concurrency import run_in_threadpool
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Optional, List, Dict, Any, Union
 from utils.dependencies import (
     get_process_handler,
@@ -11,7 +11,7 @@ from utils.dependencies import (
 from utils.config_loader import CONFIG_MANAGER, find_service_config
 from utils.setup import setup_project
 from utils.versions import Versions
-import json, copy, time, glob
+import json, copy, time, glob, re
 
 
 class ServiceRequest(BaseModel):
@@ -20,14 +20,17 @@ class ServiceRequest(BaseModel):
 
 class CoreServiceConfig(BaseModel):
     name: str
-    debrid_service: Optional[str] = None
-    debrid_key: Optional[str] = None
+    instance_name: Optional[str] = None
+    debrid_service: Optional[Union[str, List[str]]] = None
+    debrid_key: Optional[Union[str, List[str]]] = None
     service_options: Optional[Dict[str, Any]] = {}
+    model_config = ConfigDict(extra="forbid")
 
 
 class UnifiedStartRequest(BaseModel):
     core_services: Union[List[CoreServiceConfig], CoreServiceConfig]
     optional_services: Optional[List[str]] = []
+    model_config = ConfigDict(extra="forbid")
 
 
 process_router = APIRouter()
@@ -35,11 +38,64 @@ versions = Versions()
 
 STATIC_URLS_BY_KEY = {
     "rclone": "https://rclone.org",
-    "pgadmin": "https://www.pgadmin.org/",
-    "postgres": "https://www.postgresql.org/",
+    "pgadmin": "https://www.pgadmin.org",
+    "postgres": "https://www.postgresql.org",
     "dumb_api_service": "https://github.com/I-am-PUID-0/DUMB",
     "cli_battery": "https://github.com/godver3/cli_debrid/tree/main/cli_battery",
     "plex": "https://www.plex.tv/",
+    "jellyfin": "https://jellyfin.org",
+    "emby": "https://emby.media",
+    "sonarr": "https://sonarr.tv/",
+    "radarr": "https://radarr.video",
+    "lidarr": "https://lidarr.audio",
+    "bazarr": "https://www.bazarr.media",
+    "prowlarr": "https://prowlarr.com",
+    "readarr": "https://readarr.com",
+    "whisparr": "https://whisparr.com",
+    "whisparr-v3": "https://whisparr.com",
+}
+
+SPONSORSHIP_URLS_BY_KEY = {
+    "rclone": "https://rclone.org/sponsor/",
+    "pgadmin": "https://www.pgadmin.org/donate/",
+    "postgres": "https://www.postgresql.org/about/donate/",
+    "dumb_api_service": "https://github.com/sponsors/I-am-PUID-0",
+    "cli_debrid": "https://github.com/sponsors/godver3",
+    "cli_battery": "https://github.com/sponsors/godver3",
+    "phalanx_db": "https://github.com/sponsors/godver3",
+    "decypharr": "https://github.com/sponsors/sirrobot01",
+    "plex": "https://www.plex.tv/plex-pass/",
+    "jellyfin": "https://opencollective.com/jellyfin",
+    "emby": "https://emby.media/premiere.html",
+    "sonarr": "https://opencollective.com/sonarr",
+    "radarr": "https://github.com/sponsors/Radarr",
+    "riven_backend": "https://github.com/sponsors/dreulavelle/",
+    "riven_frontend": "https://github.com/sponsors/dreulavelle/",
+    "lidarr": "https://github.com/sponsors/Lidarr",
+    "bazarr": "https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=XHHRWXT9YB7WE&source=url",
+    "prowlarr": "https://github.com/sponsors/Prowlarr",
+    "readarr": "https://readarr.com/donate",
+    "whisparr": "https://opencollective.com/whisparr",
+    "whisparr-v3": "https://opencollective.com/whisparr",
+    "zurg": "https://github.com/sponsors/debridmediamanager",
+}
+
+DEFAULT_SERVICE_PORTS = {
+    "radarr": 7878,
+    "sonarr": 8989,
+    "prowlarr": 9696,
+    "lidarr": 8686,
+    "whisparr": 6969,
+    "bazarr": 6767,
+    "jellyfin": 8096,
+    "plex": 32400,
+    "emby": 8096,
+}
+## Future support for restricting service port ranges
+SERVICE_PORT_RANGES = {
+    # "radarr": (7800, 7999),
+    # "sonarr": (8900, 9099),
+    # ...
 }
 
 CORE_SERVICE_DEPENDENCIES = {
@@ -48,14 +104,28 @@ CORE_SERVICE_DEPENDENCIES = {
     "plex_debrid": ["zurg", "rclone"],
     "decypharr": ["rclone"],
     "plex": [],
+    "jellyfin": [],
+    "emby": [],
+    "sonarr": [],
+    "radarr": [],
+    "lidarr": [],
+    "bazarr": [],
+    "prowlarr": [],
+    "whisparr": [],
 }
 
 CORE_SERVICE_NAMES = {
-    "riven_backend": "Riven",
-    "cli_debrid": "CLID",
-    "plex_debrid": "Plex Debrid",
-    "decypharr": "Decypharr",
     "plex": "Plex Media Server",
+    "jellyfin": "Jellyfin Media Server",
+    "emby": "Emby Media Server",
+    "cli_debrid": "CLID",
+    "decypharr": "Decypharr",
+    "riven_backend": "Riven",
+    "radarr": "Radarr",
+    "sonarr": "Sonarr",
+    "lidarr": "Lidarr",
+    "prowlarr": "Prowlarr",
+    "whisparr": "Whisparr",
 }
 
 CORE_SERVICE_DESCRIPTIONS = {
@@ -92,11 +162,88 @@ Plex Media Server
 - Official Plex server for organizing, streaming, and sharing your media library.
 - Exposes a full‑featured web UI on port 32400 (by default).
 - Works seamlessly with the other DUMB services via shared mount paths.
+- By enabling Plex, you confirm that you have read and agree to the Plex Terms of Service: https://www.plex.tv/about/privacy-legal/plex-terms-of-service/
 
 Note: Automatic update is not supported for Plex Media Server at this time.
 Recommended to run onboarding for Plex Media Server separately due to claim token timeout of 5 minutes.
 
 Documentation: https://i-am-puid-0.github.io/DUMB/services/core/plex-media-server""",
+    "jellyfin": """\
+Jellyfin Media Server
+- Open‑source media server software for organizing and streaming your media library.
+- Provides a web interface for managing and accessing your media.
+- Supports a wide range of media formats and devices.
+- Can be used as an alternative to Plex for users who prefer open‑source solutions.
+
+Documentation: https://i-am-puid-0.github.io/DUMB/services/core/jellyfin""",
+    "emby": """\
+Emby Media Server
+- Media server software for organizing and streaming your media library.
+- Provides a web interface for managing and accessing your media.
+- Supports a wide range of media formats and devices.
+- Can be used as an alternative to Plex and Jellyfin for users who prefer Emby.
+- By enabling Emby, you confirm that you have read and agree to the Emby Terms of Service: https://emby.media/terms.html
+
+Documentation: https://i-am-puid-0.github.io/DUMB/services/core/emby""",
+    "sonarr": """\
+Sonarr
+- TV series management and automation tool.
+- Monitors RSS feeds for new episodes and automatically downloads them.
+- Integrates with various download clients and indexers.
+- Organizes and renames downloaded episodes for easy access.
+- Works seamlessly with Radarr, Lidarr, and other media management tools.
+- Supports multiple instances for different user profiles or libraries.
+
+Documentation: https://i-am-puid-0.github.io/DUMB/services/core/sonarr""",
+    "radarr": """\
+Radarr
+- Movie management and automation tool.
+- Monitors RSS feeds for new movie releases and automatically downloads them.
+- Integrates with various download clients and indexers.
+- Organizes and renames downloaded movies for easy access.
+- Works seamlessly with Sonarr, Lidarr, and other media management tools.
+- Supports multiple instances for different user profiles or libraries.
+
+Documentation: https://i-am-puid-0.github.io/DUMB/services/core/radarr""",
+    "lidarr": """\
+Lidarr
+- Music management and automation tool.
+- Monitors RSS feeds for new album releases and automatically downloads them.
+- Integrates with various download clients and indexers.
+- Organizes and renames downloaded music for easy access.
+- Works seamlessly with Sonarr, Radarr, and other media management tools.
+- Supports multiple instances for different user profiles or libraries.
+
+Documentation: https://i-am-puid-0.github.io/DUMB/services/core/lidarr""",
+    "bazarr": """\
+Bazarr
+- Subtitle management and automation tool.
+- Monitors your media library and automatically downloads subtitles.
+- Integrates with Sonarr, Radarr, and Lidarr for seamless subtitle management.
+- Supports multiple subtitle providers and languages.
+
+Documentation: https://i-am-puid-0.github.io/DUMB/services/core/bazarr""",
+    "prowlarr": """\
+Prowlarr
+- Indexer manager and proxy for Sonarr, Radarr, Lidarr, and other media management tools.
+- Centralizes the management of indexers for easier configuration and maintenance.
+- Supports both torrent and usenet indexers.
+- Provides a unified interface for searching and managing indexers.
+- Works seamlessly with Sonarr, Radarr, Lidarr, and other media management tools.
+- Supports multiple instances for different user profiles or libraries.
+- Can scrape from Zilean.
+
+Documentation: https://i-am-puid-0.github.io/DUMB/services/core/prowlarr""",
+    "whisparr": """\
+Whisparr
+- Adult content management and automation tool.
+- Monitors RSS feeds for new adult content releases and automatically downloads them.
+- Integrates with various download clients and indexers.
+- Organizes and renames downloaded adult content for easy access.
+- Works seamlessly with Sonarr, Radarr, Lidarr, and other media management tools.
+- Supports multiple instances for different user profiles or libraries.
+
+Documentation: https://i-am-puid-0.github.io/DUMB/services/core/whisparr""",
 }
 
 OPTIONAL_POST_CORE = ["riven_frontend"]
@@ -145,7 +292,7 @@ CORE_SERVICE_DEBRID_PROVIDERS = {
     "riven_backend": ["RealDebrid"],
     "cli_debrid": ["RealDebrid"],
     "plex_debrid": ["RealDebrid"],
-    "decypharr": ["RealDebrid"],
+    "decypharr": ["RealDebrid", "AllDebrid", "Debrid Link", "TorBox"],
 }
 
 SERVICE_OPTION_DESCRIPTIONS = {
@@ -165,6 +312,7 @@ SERVICE_OPTION_DESCRIPTIONS = {
     "setup_email": "Email address pgAdmin4 login.",
     "setup_password": "Password for pgAdmin4 login.",
     "origin": "CORS origin for the service",
+    "use_embedded_rclone": "If true, uses the embedded rclone for Decypharr. (Recommended)",
 }
 
 BASIC_FIELDS = set(SERVICE_OPTION_DESCRIPTIONS.keys())
@@ -229,6 +377,7 @@ async def fetch_processes():
                             repo_url = f"https://github.com/{repo_owner}/{repo_name}"
                         else:
                             repo_url = STATIC_URLS_BY_KEY.get(config_key)
+                        sponsorship_url = SPONSORSHIP_URLS_BY_KEY.get(config_key)
                         processes.append(
                             {
                                 "name": display_name,
@@ -239,6 +388,7 @@ async def fetch_processes():
                                 "key": key,
                                 "config_key": config_key,
                                 "repo_url": repo_url,
+                                "sponsorship_url": sponsorship_url,
                             }
                         )
                     elif isinstance(value, dict):
@@ -456,6 +606,171 @@ def normalize_identifier(identifier: str) -> str:
     return ALIAS_TO_KEY.get(ident, ident)
 
 
+def normalize_instance_name(instance_name: str) -> tuple[str, str]:
+    """
+    Returns (cleaned_display, cleaned_path)
+    - display: letters/numbers/space/_/- only; trimmed
+    - path: lowercase, spaces->underscores, no special chars
+    """
+    cleaned_display = re.sub(r"[^A-Za-z0-9 _-]", "", instance_name or "").strip()
+    cleaned_path = cleaned_display.lower().replace(" ", "_")
+    return cleaned_display, cleaned_path
+
+
+def _purge_template_placeholders(
+    instances: dict, tmpl_instances: dict, keep: str | None = None
+) -> bool:
+    """
+    Remove any template/default instance names present in current config.
+    If `keep` matches one of them, that one is spared; all others are removed.
+    Returns True if mutated the instances.
+    """
+    if not isinstance(instances, dict) or not isinstance(tmpl_instances, dict):
+        return False
+    changed = False
+    template_names = set(tmpl_instances.keys())
+    for name in list(instances.keys()):
+        if name in template_names and name != keep:
+            del instances[name]
+            changed = True
+    if changed:
+        CONFIG_MANAGER.save_config()
+    return changed
+
+
+def _rewrite_paths_for_instance(cfg: dict, service_key: str, path_segment: str) -> None:
+    """
+    Rewrites common path fields to use '/{service_key}/{path_segment}' instead of '/{service_key}/default'.
+    Also replaces '/default/' occurrences inside values for safety.
+    """
+    if not isinstance(cfg, dict):
+        return
+
+    def _rewrite(value: str) -> str:
+        if not isinstance(value, str):
+            return value
+        base = f"/{service_key}/default"
+        tgt = f"/{service_key}/{path_segment}"
+        v = value.replace(base, tgt)
+        v = v.replace("/default/", f"/{path_segment}/")
+        return v
+
+    for k in ("config_dir", "config_file", "log_file"):
+        if k in cfg:
+            cfg[k] = _rewrite(cfg[k])
+
+
+def _clone_from_template(
+    tmpl_instances: dict,
+    target_name: str | None,
+    service_key: str,
+    service_display_name: str,
+) -> tuple[str, dict]:
+    """
+    Clone from the first template instance. Apply:
+      - instance name normalization
+      - process_name: '<ServiceDisplay> <CleanedDisplay>'
+      - path rewrites: '/<service_key>/default' -> '/<service_key>/<cleaned_path>'
+    Returns (instance_name_display, new_cfg)
+    """
+    if not tmpl_instances:
+        raise HTTPException(500, detail="No template instances available.")
+
+    base_name, base_cfg = next(iter(tmpl_instances.items()))
+    new_cfg = copy.deepcopy(base_cfg)
+    new_cfg["enabled"] = True
+    requested = target_name if target_name else base_name
+    cleaned_display, cleaned_path = normalize_instance_name(requested)
+    inst_name = cleaned_display or "Instance"
+    new_cfg["process_name"] = f"{service_display_name} {inst_name}"
+
+    _rewrite_paths_for_instance(new_cfg, service_key, cleaned_path)
+
+    return inst_name, new_cfg
+
+
+def _template_default_port(template_cfg: dict, service_key: str) -> int | None:
+    """
+    Get the default port for a service from its template configuration.
+    """
+    svc = template_cfg.get(service_key)
+    if not isinstance(svc, dict):
+        return None
+    if "instances" in svc and isinstance(svc["instances"], dict):
+        first = next(iter(svc["instances"].values()), {})
+        if isinstance(first, dict) and isinstance(first.get("port"), int):
+            return first["port"]
+    if isinstance(svc.get("port"), int):
+        return svc["port"]
+    return None
+
+
+def _gather_used_ports(instances: dict, exclude_inst: str | None = None) -> set[int]:
+    """
+    Gather all ports used by the given instances, excluding `exclude_inst` if provided.
+    """
+    used = set()
+    if not isinstance(instances, dict):
+        return used
+    for name, cfg in instances.items():
+        if exclude_inst is not None and name == exclude_inst:
+            continue
+        if isinstance(cfg, dict):
+            p = cfg.get("port")
+            if isinstance(p, int):
+                used.add(p)
+    return used
+
+
+def _find_free_port(start_port: int, used_ports: set[int], service_key: str) -> int:
+    """
+    Find a free port starting from `start_port`, avoiding `used_ports`.
+    """
+    low, high = None, None
+    if service_key in SERVICE_PORT_RANGES:
+        low, high = SERVICE_PORT_RANGES[service_key]
+    port = max(start_port, low) if low is not None else start_port
+    while True:
+        if port not in used_ports and (high is None or port <= high):
+            return port
+        if high is not None and port > high:
+            high = None
+        port += 1
+
+
+def _ensure_unique_instance_port(
+    service_key: str,
+    inst_name: str,
+    inst_cfg: dict,
+    instances: dict,
+    template_config: dict,
+    logger,
+) -> None:
+    """
+    Ensure inst_cfg['port'] is unique among this core's instances.
+    Excludes `inst_name` itself when calculating collisions.
+    """
+    used = _gather_used_ports(instances, exclude_inst=inst_name)
+    desired = inst_cfg.get("port")
+    if not isinstance(desired, int) or desired <= 0:
+        tmpl_default = _template_default_port(template_config, service_key)
+        desired = tmpl_default or DEFAULT_SERVICE_PORTS.get(service_key, 7000)
+
+    if desired in used:
+        new_port = _find_free_port(desired + 1, used, service_key)
+        logger.info(
+            f"[{service_key}] Port {desired} already in use; assigning {new_port} "
+            f"for instance '{inst_name}'."
+        )
+        inst_cfg["port"] = new_port
+        CONFIG_MANAGER.save_config()
+    else:
+        inst_cfg["port"] = desired
+        logger.debug(
+            f"[{service_key}] Using port {desired} for instance '{inst_name}'."
+        )
+
+
 @process_router.post("/start-core-service")
 async def start_core_services(
     request: UnifiedStartRequest,
@@ -468,11 +783,19 @@ async def start_core_services(
 
 
 def _run_startup(request: UnifiedStartRequest, updater, api_state, logger):
-    core_services = (
+    priority_services = []
+    remaining_services = []
+    for svc in (
         [request.core_services]
         if isinstance(request.core_services, CoreServiceConfig)
         else request.core_services
-    )
+    ):
+        ident = normalize_identifier(svc.name)
+        if ident in ("plex", "jellyfin", "emby"):
+            priority_services.append(svc)
+        else:
+            remaining_services.append(svc)
+    core_services = remaining_services
     raw_optionals = request.optional_services or []
     optional_services = [normalize_identifier(svc).lower() for svc in raw_optionals]
 
@@ -486,6 +809,75 @@ def _run_startup(request: UnifiedStartRequest, updater, api_state, logger):
     with open("/utils/dumb_config.json") as f:
         template_config = json.load(f)
 
+    #
+    # 1) Start any “priority” core services (Plex/Jellyfin)
+    #
+    for service in priority_services:
+        try:
+            ident = normalize_identifier(service.name)
+            cfg = config[ident]
+            if not cfg.get("enabled"):
+                cfg["enabled"] = True
+                CONFIG_MANAGER.save_config()
+            apply_service_options(
+                cfg,
+                service.service_options.get(ident, {}),
+                logger,
+            )
+            proc_name = cfg["process_name"]
+            logger.info(f"Starting core service setup: {proc_name}")
+            auto_up = cfg.get("auto_update", False)
+            if not wait_for_process_running(api_state, proc_name):
+                p, err = updater.auto_update(proc_name, enable_update=auto_up)
+                if not p or not wait_for_process_running(api_state, proc_name):
+                    raise HTTPException(
+                        500, detail=f"{proc_name} failed to start. {err or ''}"
+                    )
+            results.append({"service": service.name, "status": "started"})
+        except Exception as e:
+            errors.append({"service": service.name, "error": str(e)})
+    #
+    # 2) Pre-start “must-have” services (e.g. Postgres)
+    #
+    if any(s in ["zilean", "pgadmin"] for s in optional_services):
+        pg = config["postgres"]
+        if not pg.get("enabled"):
+            pg["enabled"] = True
+            CONFIG_MANAGER.save_config()
+        pg_name = pg["process_name"]
+        logger.info(f"Ensuring '{pg_name}' is running for optional service(s)...")
+        if not wait_for_process_running(api_state, pg_name):
+            updater.auto_update(pg_name, enable_update=False)
+            wait_for_process_running(api_state, pg_name)
+
+    #
+    # 3) Start any “optional pre-core” services (those NOT in OPTIONAL_POST_CORE)
+    #
+    for opt in optional_services:
+        if opt in config and opt not in OPTIONAL_POST_CORE:
+            opt_cfg = config[opt]
+            if not opt_cfg.get("enabled"):
+                opt_cfg["enabled"] = True
+                CONFIG_MANAGER.save_config()
+
+            # Merge all service_options across services (priority + normal)
+            merged_options = {}
+            for svc in priority_services + core_services:
+                if svc.service_options and opt in svc.service_options:
+                    merged_options.update(svc.service_options[opt])
+
+            apply_service_options(opt_cfg, merged_options, logger)
+
+            proc = opt_cfg["process_name"]
+            logger.info(f"Starting optional service: {proc}")
+            if not wait_for_process_running(api_state, proc):
+                updater.auto_update(
+                    proc, enable_update=opt_cfg.get("auto_update", False)
+                )
+                wait_for_process_running(api_state, proc)
+    #
+    # 4) Now start each core service in turn, handling dependencies as needed
+    #
     for core_service in core_services:
         try:
             # Resolve config_key
@@ -499,228 +891,422 @@ def _run_startup(request: UnifiedStartRequest, updater, api_state, logger):
                 raise HTTPException(404, f"Process '{supplied}' not found")
 
             process_name = core_service.name
-            debrid_service = (core_service.debrid_service or "").lower()
-            debrid_key = core_service.debrid_key
+            debrid_services = (
+                [core_service.debrid_service]
+                if isinstance(core_service.debrid_service, str)
+                else core_service.debrid_service or []
+            )
+            debrid_keys = (
+                [core_service.debrid_key]
+                if isinstance(core_service.debrid_key, str)
+                else core_service.debrid_key or []
+            )
 
-            logger.info(f"Starting core service: {process_name}")
+            # Pad keys list if shorter
+            if len(debrid_keys) < len(debrid_services):
+                debrid_keys.extend([None] * (len(debrid_services) - len(debrid_keys)))
+
+            logger.info(f"Starting core service setup: {process_name}")
             logger.debug(f"→ config_key='{config_key}', instance='{instance_name}'")
 
             # Validate core service
             if config_key not in CORE_SERVICE_DEPENDENCIES:
                 raise HTTPException(400, detail=f"{process_name} is not a core service")
             dependencies = CORE_SERVICE_DEPENDENCIES[config_key]
+
+            # ---- Determine effective options for this core service BEFORE deps ----
+            # don't mutate config here; just compute the effective value by peeking
+            # at the request's service_options and falling back to current config.
+            effective_opts = {}
+
+            so = core_service.service_options or {}
+
+            # Accept options under the service key (e.g., "decypharr": {...})
+            if isinstance(so.get(config_key), dict):
+                effective_opts.update(so[config_key])
+
+            # Also accept options under the instance name key if one was resolved
+            # (applies when you start specific instances of core services)
+            if instance_name and isinstance(so.get(instance_name), dict):
+                # instance-specific options should override service-level ones
+                effective_opts.update(so[instance_name])
+
+            # Fall back to persisted config if the flag isn't in service_options
+            use_embedded = bool(
+                effective_opts.get(
+                    "use_embedded_rclone",
+                    (config.get(config_key, {}) or {}).get(
+                        "use_embedded_rclone", False
+                    ),
+                )
+            )
+
+            # If decypharr uses embedded rclone, drop rclone from deps *now*
+            if config_key == "decypharr" and use_embedded:
+                logger.debug(
+                    "Decypharr is using embedded rclone; removing 'rclone' from dependencies."
+                )
+                dependencies = [d for d in dependencies if d != "rclone"]
+                # Ensure api_keys map exists in decypharr config
+                api_keys_map = config[config_key].setdefault("api_keys", {})
+
+                # Merge/update for each debrid service passed to _run_startup
+                for svc_name, svc_key in zip(debrid_services, debrid_keys):
+                    if svc_name and svc_key:
+                        svc_name_lc = svc_name.strip().lower()
+                        if (
+                            not api_keys_map.get(svc_name_lc)
+                            or api_keys_map[svc_name_lc] != svc_key
+                        ):
+                            api_keys_map[svc_name_lc] = svc_key
+                            logger.debug(
+                                f"Set Decypharr embedded rclone API key for {svc_name_lc}: {svc_key[:4]}..."
+                            )
+                            CONFIG_MANAGER.save_config()
+
             logger.debug(f"Dependencies for '{config_key}': {dependencies}")
 
             #
-            # 1) Pre-start “must-have” services (e.g. Postgres)
+            # 4.1) Handle zurg/rclone dependencies for this core service (multi-instance support)
             #
-            if any(s in ["zilean", "pgadmin"] for s in optional_services):
-                pg = config["postgres"]
-                if not pg.get("enabled"):
-                    pg["enabled"] = True
-                    CONFIG_MANAGER.save_config()
-                pg_name = pg["process_name"]
-                if not wait_for_process_running(api_state, pg_name):
-                    logger.info(f"Starting Postgres '{pg_name}'…")
-                    updater.auto_update(pg_name, enable_update=False)
-                    wait_for_process_running(api_state, pg_name)
+            num_instances = max(len(debrid_services), 1)
+            for i in range(num_instances):
+                for dep in dependencies:
+                    if dep in ("zurg", "rclone"):
+                        service_type = (
+                            debrid_services[i]
+                            if i < len(debrid_services)
+                            else "realdebrid"
+                        ).lower()
+                        service_key = debrid_keys[i] if i < len(debrid_keys) else None
 
-            #
-            # 2) Start any “optional pre-core” services (those NOT in OPTIONAL_POST_CORE)
-            #
-            for opt in optional_services:
-                if opt in config and opt not in OPTIONAL_POST_CORE:
-                    opt_cfg = config[opt]
-                    if not opt_cfg.get("enabled"):
-                        opt_cfg["enabled"] = True
-                        CONFIG_MANAGER.save_config()
-                    apply_service_options(
-                        opt_cfg,
-                        core_service.service_options.get(opt, {}),
-                        logger,
-                    )
-                    proc = opt_cfg["process_name"]
-                    if not wait_for_process_running(api_state, proc):
-                        updater.auto_update(
-                            proc, enable_update=opt_cfg.get("auto_update", False)
-                        )
-                        wait_for_process_running(api_state, proc)
-
-            #
-            # 3) Handle zurg/rclone dependencies for this core service
-            #
-            for dep in dependencies:
-                if dep in ("zurg", "rclone"):
-                    instances = config[dep]["instances"]
-                    # find existing instance for this core service
-                    inst = next(
-                        (
-                            name
-                            for name, c in instances.items()
-                            if c.get("core_service") == config_key
-                        ),
-                        None,
-                    )
-
-                    if inst:
-                        # enable + override
-                        inst_cfg = instances[inst]
-                        if not inst_cfg.get("enabled"):
-                            inst_cfg["enabled"] = True
-                            CONFIG_MANAGER.save_config()
-                        apply_service_options(
-                            inst_cfg,
-                            core_service.service_options.get(inst, {}),
-                            logger,
-                        )
-                        # special real-debrid API key injection
-                        if (
-                            dep == "zurg"
-                            and debrid_service == "realdebrid"
-                            and debrid_key
-                        ):
-                            inst_cfg["api_key"] = debrid_key
-                            CONFIG_MANAGER.save_config()
-
-                    else:
-                        # no instance exists → clone from template, enable and override
-                        base = template_config[dep]["instances"]["RealDebrid"]
                         display = CORE_SERVICE_NAMES.get(
                             config_key, config_key.replace("_", " ").title()
                         )
-                        # clean up any disabled “RealDebrid” placeholder
-                        if "RealDebrid" in instances and not instances[
-                            "RealDebrid"
-                        ].get("enabled"):
-                            del instances["RealDebrid"]
-                            CONFIG_MANAGER.save_config()
+                        if config_key == "decypharr":
+                            display += f" ({service_type.title()})"
+                        clean_display = (
+                            display.lower()
+                            .replace("(", "")
+                            .replace(")", "")
+                            .replace(" ", "_")
+                        )
+                        instance_key = display.strip()
 
-                        # build the new instance config
-                        new_cfg = copy.deepcopy(base)
-                        if dep == "zurg":
-                            # allocate a free port
-                            used = {
-                                c["port"] for c in instances.values() if "port" in c
-                            }
-                            port = 9090
-                            while port in used:
-                                port += 1
-                            new_cfg.update(
-                                {
+                        instances = config[dep]["instances"]
+
+                        # Check if instance already exists
+                        inst = instance_key if instance_key in instances else None
+
+                        if inst:
+                            inst_cfg = instances[inst]
+                            if not inst_cfg.get("enabled"):
+                                inst_cfg["enabled"] = True
+                                CONFIG_MANAGER.save_config()
+                            apply_service_options(
+                                inst_cfg,
+                                core_service.service_options.get(inst, {}),
+                                logger,
+                            )
+                            if (
+                                dep == "zurg"
+                                and service_type == "realdebrid"
+                                and service_key
+                            ):
+                                inst_cfg["api_key"] = service_key
+                                CONFIG_MANAGER.save_config()
+                        else:
+                            # no instance exists → clone from template, enable and override
+                            base = template_config[dep]["instances"]["RealDebrid"]
+                            new_cfg = copy.deepcopy(base)
+
+                            # clean up any disabled “RealDebrid” placeholder
+                            if "RealDebrid" in instances and not instances[
+                                "RealDebrid"
+                            ].get("enabled"):
+                                del instances["RealDebrid"]
+                                CONFIG_MANAGER.save_config()
+
+                            if dep == "zurg":
+                                # allocate a free port
+                                used_ports = {
+                                    c["port"] for c in instances.values() if "port" in c
+                                }
+                                port = 9090
+                                while port in used_ports:
+                                    port += 1
+                                new_cfg.update(
+                                    {
+                                        "enabled": True,
+                                        "core_service": config_key,
+                                        "process_name": f"Zurg w/ {display}",
+                                        "port": port,
+                                        "config_dir": f"/zurg/RD/{display}",
+                                        "config_file": f"/zurg/RD/{display}/config.yml",
+                                        "command": f"/zurg/RD/{display}/zurg",
+                                    }
+                                )
+                                if service_type == "realdebrid" and service_key:
+                                    new_cfg["api_key"] = service_key
+
+                            else:  # rclone
+
+                                rclone_cfg = {
                                     "enabled": True,
                                     "core_service": config_key,
-                                    "process_name": f"Zurg w/ {display}",
-                                    "port": port,
-                                    "config_dir": f"/zurg/RD/{display}",
-                                    "config_file": f"/zurg/RD/{display}/config.yml",
-                                    "command": f"/zurg/RD/{display}/zurg",
+                                    "process_name": f"Rclone w/ {display}",
+                                    "key_type": service_type,
+                                    "mount_name": clean_display,
+                                    "log_file": f"/log/rclone_w_{clean_display}.log",
                                 }
+                                if "zurg" in dependencies:
+                                    rclone_cfg.update(
+                                        {
+                                            "zurg_enabled": True,
+                                            "decypharr_enabled": False,
+                                            "zurg_config_file": f"/zurg/RD/{display}/config.yml",
+                                        }
+                                    )
+                                elif config_key == "decypharr":
+                                    rclone_cfg.update(
+                                        {
+                                            "zurg_enabled": False,
+                                            "decypharr_enabled": True,
+                                            "zurg_config_file": "",
+                                            "api_key": service_key or "",
+                                        }
+                                    )
+                                new_cfg.update(rclone_cfg)
+
+                            instances[instance_key] = new_cfg
+                            CONFIG_MANAGER.save_config()
+                            apply_service_options(
+                                instances[instance_key],
+                                core_service.service_options.get(dep, {}),
+                                logger,
                             )
-                            if debrid_service == "realdebrid" and debrid_key:
-                                new_cfg["api_key"] = debrid_key
 
-                        else:  # rclone
-                            rclone_cfg = {
-                                "enabled": True,
-                                "core_service": config_key,
-                                "process_name": f"Rclone w/ {display}",
-                                "mount_name": display.lower(),
-                                "log_file": f"/log/rclone_w_{display.lower()}.log",
-                            }
-                            # wire up zurg or decypharr flags
-                            if "zurg" in dependencies:
-                                rclone_cfg.update(
-                                    {
-                                        "zurg_enabled": True,
-                                        "decypharr_enabled": False,
-                                        "zurg_config_file": f"/zurg/RD/{display}/config.yml",
-                                    }
-                                )
-                            elif config_key == "decypharr":
-                                rclone_cfg.update(
-                                    {
-                                        "zurg_enabled": False,
-                                        "decypharr_enabled": True,
-                                        "zurg_config_file": "",
-                                    }
-                                )
-                            new_cfg.update(rclone_cfg)
-
-                        instances[display] = new_cfg
-                        CONFIG_MANAGER.save_config()
+                        # start/update this instance
+                        proc = config[dep]["instances"][instance_key]["process_name"]
+                        ok = config[dep]["instances"][instance_key].get(
+                            "auto_update", False
+                        )
+                        proc_obj, err = updater.auto_update(proc, enable_update=ok)
+                        if proc_obj and wait_for_process_running(api_state, proc):
+                            logger.info(f"{proc} is running.")
+                        else:
+                            raise HTTPException(
+                                500, detail=f"{proc} failed to start. {err or ''}"
+                            )
+                    else:
+                        # start any other dependencies that are not zurg/rclone
+                        dep_cfg = config.get(dep, {})
+                        if not dep_cfg.get("enabled"):
+                            dep_cfg["enabled"] = True
+                            CONFIG_MANAGER.save_config()
                         apply_service_options(
-                            instances[display],
+                            dep_cfg,
                             core_service.service_options.get(dep, {}),
                             logger,
                         )
-
-                    # start/update this instance
-                    inst_name = inst or display
-                    proc = config[dep]["instances"][inst_name]["process_name"]
-                    ok = config[dep]["instances"][inst_name].get("auto_update", False)
-                    proc_obj, err = updater.auto_update(proc, enable_update=ok)
-                    if proc_obj and wait_for_process_running(api_state, proc):
-                        logger.info(f"{proc} is running.")
-                    else:
-                        raise HTTPException(
-                            500, detail=f"{proc} failed to start. {err or ''}"
-                        )
-                else:
-                    # start any other dependencies that are not zurg/rclone and not in optional services or started already
-                    dep_cfg = config.get(dep, {})
-                    if not dep_cfg.get("enabled"):
-                        dep_cfg["enabled"] = True
-                        CONFIG_MANAGER.save_config()
-                    apply_service_options(
-                        dep_cfg,
-                        core_service.service_options.get(dep, {}),
-                        logger,
-                    )
-                    dep_proc = dep_cfg.get("process_name")
-                    if not dep_proc:
-                        raise HTTPException(
-                            500, detail=f"Process name not defined for {dep}."
-                        )
-                    if not wait_for_process_running(api_state, dep_proc):
-                        updater.auto_update(
-                            dep_proc, enable_update=dep_cfg.get("auto_update", False)
-                        )
-                        if not wait_for_process_running(api_state, dep_proc):
+                        dep_proc = dep_cfg.get("process_name")
+                        if not dep_proc:
                             raise HTTPException(
-                                500,
-                                detail=f"{dep_proc} failed to start. Please check the logs.",
+                                500, detail=f"Process name not defined for {dep}."
                             )
+                        if not wait_for_process_running(api_state, dep_proc):
+                            updater.auto_update(
+                                dep_proc,
+                                enable_update=dep_cfg.get("auto_update", False),
+                            )
+                            if not wait_for_process_running(api_state, dep_proc):
+                                raise HTTPException(
+                                    500,
+                                    detail=f"{dep_proc} failed to start. Please check the logs.",
+                                )
                 logger.debug(f"All dependencies for '{config_key}' are running.")
             #
-            # 4) Finally, start the core service itself
+            # 4.2) Finally, start the core service itself
             #
             core_cfg = config[config_key]
-            if not core_cfg.get("enabled"):
-                core_cfg["enabled"] = True
-                CONFIG_MANAGER.save_config()
+            is_instance_core = isinstance(core_cfg, dict) and "instances" in core_cfg
+            if not is_instance_core:
+                if not core_cfg.get("enabled"):
+                    core_cfg["enabled"] = True
+                    CONFIG_MANAGER.save_config()
 
-            if config_key == "decypharr" and debrid_service and debrid_key:
-                core_cfg["debrid_service"] = debrid_service
-                core_cfg["api_key"] = debrid_key
-                CONFIG_MANAGER.save_config()
+            if isinstance(core_cfg, dict) and "instances" in core_cfg:
+                instances = core_cfg.setdefault("instances", {})
 
-            apply_service_options(
-                core_cfg,
-                core_service.service_options.get(config_key, {}),
-                logger,
-            )
+                # Prefer explicit request value
+                requested_inst = (
+                    getattr(core_service, "instance_name", None) or instance_name
+                )
+                service_display = CORE_SERVICE_NAMES.get(
+                    config_key, config_key.replace("_", " ").title()
+                ).strip()
 
-            proc_name = core_cfg["process_name"]
-            auto_up = core_cfg.get("auto_update", False)
-            if not wait_for_process_running(api_state, proc_name):
-                p, err = updater.auto_update(proc_name, enable_update=auto_up)
-                if not p or not wait_for_process_running(api_state, proc_name):
-                    raise HTTPException(
-                        500, detail=f"{proc_name} failed to start. {err or ''}"
+                tmpl_instances = template_config.get(config_key, {}).get(
+                    "instances", {}
+                )
+
+                logger.debug(
+                    f"[{config_key}] requested_inst resolved to: {requested_inst!r}"
+                )
+
+                targets = []
+
+                if requested_inst:
+                    # Normalize and always purge template placeholders (even if enabled)
+                    display_name, _ = normalize_instance_name(requested_inst)
+                    _purge_template_placeholders(instances, tmpl_instances, keep=None)
+
+                    if display_name in instances:
+                        targets = [display_name]
+                    else:
+                        if not tmpl_instances:
+                            raise HTTPException(
+                                500,
+                                detail=f"No template instances defined for core service '{config_key}'.",
+                            )
+                        inst_name, new_cfg = _clone_from_template(
+                            tmpl_instances,
+                            display_name,
+                            service_key=config_key,
+                            service_display_name=service_display,
+                        )
+                        if inst_name in instances:
+                            n = 2
+                            base = inst_name
+                            while f"{base} {n}" in instances:
+                                n += 1
+                            inst_name = f"{base} {n}"
+                            new_cfg["process_name"] = f"{service_display} {inst_name}"
+
+                        instances[inst_name] = new_cfg
+                        CONFIG_MANAGER.save_config()
+                        targets = [inst_name]
+                else:
+                    # No explicit target:
+                    # 1) Ignore template placeholders when auto-selecting
+                    template_names = set(tmpl_instances.keys())
+                    enabled_non_templates = [
+                        k
+                        for k, v in instances.items()
+                        if isinstance(v, dict)
+                        and v.get("enabled")
+                        and k not in template_names
+                    ]
+
+                    if enabled_non_templates:
+                        targets = enabled_non_templates
+                    else:
+                        # If only templates exist and are disabled → create one real instance
+                        only_templates_exist = instances and all(
+                            k in template_names for k in instances.keys()
+                        )
+                        if not instances or only_templates_exist:
+                            if not tmpl_instances:
+                                raise HTTPException(
+                                    500,
+                                    detail=f"No template instances defined for core service '{config_key}'.",
+                                )
+                            inst_name, new_cfg = _clone_from_template(
+                                tmpl_instances,
+                                None,
+                                service_key=config_key,
+                                service_display_name=service_display,
+                            )
+                            if inst_name in instances:
+                                n = 2
+                                base = inst_name
+                                while f"{base} {n}" in instances:
+                                    n += 1
+                                final_name = f"{base} {n}"
+                                new_cfg["process_name"] = (
+                                    f"{service_display} {final_name}"
+                                )
+                                inst_name = final_name
+                            # Wipe templates to avoid confusion
+                            _purge_template_placeholders(
+                                instances, tmpl_instances, keep=None
+                            )
+                            instances[inst_name] = new_cfg
+                            CONFIG_MANAGER.save_config()
+                            targets = [inst_name]
+                        else:
+                            # There are instances but none enabled (or all are templates) — do nothing silently.
+                            logger.info(
+                                f"[{config_key}] No explicit instance requested and no non-template enabled instances; skipping."
+                            )
+                            targets = []
+
+                # Start targets
+                for inst_name in targets:
+                    inst_cfg = instances.get(inst_name)
+                    if not isinstance(inst_cfg, dict):
+                        raise HTTPException(
+                            500,
+                            detail=f"Invalid instance config for '{config_key}:{inst_name}'",
+                        )
+
+                    if not inst_cfg.get("enabled"):
+                        inst_cfg["enabled"] = True
+                        CONFIG_MANAGER.save_config()
+
+                    inst_opts = {}
+                    if core_service.service_options:
+                        if inst_name in core_service.service_options:
+                            inst_opts.update(
+                                core_service.service_options.get(inst_name, {})
+                            )
+                        if config_key in core_service.service_options:
+                            for k, v in core_service.service_options[
+                                config_key
+                            ].items():
+                                inst_opts.setdefault(k, v)
+
+                    apply_service_options(inst_cfg, inst_opts, logger)
+
+                    _ensure_unique_instance_port(
+                        service_key=config_key,
+                        inst_name=inst_name,
+                        inst_cfg=inst_cfg,
+                        instances=instances,
+                        template_config=template_config,
+                        logger=logger,
                     )
 
+                    proc_name = inst_cfg.get("process_name")
+                    if not proc_name:
+                        raise HTTPException(
+                            500,
+                            detail=f"Process name not defined for '{config_key}:{inst_name}'",
+                        )
+
+                    auto_up = inst_cfg.get("auto_update", False)
+                    if not wait_for_process_running(api_state, proc_name):
+                        p, err = updater.auto_update(proc_name, enable_update=auto_up)
+                        if not p or not wait_for_process_running(api_state, proc_name):
+                            raise HTTPException(
+                                500, detail=f"{proc_name} failed to start. {err or ''}"
+                            )
+
+            else:
+                # singleton case
+                apply_service_options(
+                    core_cfg, core_service.service_options.get(config_key, {}), logger
+                )
+                proc_name = core_cfg["process_name"]
+                auto_up = core_cfg.get("auto_update", False)
+                if not wait_for_process_running(api_state, proc_name):
+                    p, err = updater.auto_update(proc_name, enable_update=auto_up)
+                    if not p or not wait_for_process_running(api_state, proc_name):
+                        raise HTTPException(
+                            500, detail=f"{proc_name} failed to start. {err or ''}"
+                        )
             #
-            # 5) Start any “optional post-core” services
+            # 4.3) Start any “optional post-core” services
             #
             for opt in optional_services:
                 if opt in config and opt in OPTIONAL_POST_CORE:
@@ -775,9 +1361,34 @@ async def get_core_services(logger=Depends(get_logger)):
             desc += "\n\nSupported debrid providers: " + ", ".join(providers)
 
         svc_opts: Dict[str, Dict[str, Any]] = {}
-        core_block = default_conf.get(key, {})
-        svc_opts[key] = {k: v for k, v in core_block.items() if k in BASIC_FIELDS}
+        instance_options: Dict[str, Dict[str, Any]] = {}
 
+        core_block = default_conf.get(key, {}) or {}
+        inst_tmpls = (
+            core_block.get("instances") if isinstance(core_block, dict) else None
+        )
+        supports_instances = isinstance(inst_tmpls, dict) and len(inst_tmpls) > 0
+
+        if supports_instances:
+            # Use the first instance as the representative defaults for the core service block
+            first_inst_name, first_inst_cfg = next(iter(inst_tmpls.items()))
+            svc_opts[key] = {
+                k: v for k, v in first_inst_cfg.items() if k in BASIC_FIELDS
+            }
+            # Also surface per-instance defaults so UI can present a selector
+            for iname, icfg in inst_tmpls.items():
+                instance_options[iname] = {
+                    k: v for k, v in icfg.items() if k in BASIC_FIELDS
+                }
+        else:
+            # Singleton template
+            svc_opts[key] = {
+                k: v
+                for k, v in core_block.items()
+                if isinstance(core_block, dict) and k in BASIC_FIELDS
+            }
+
+        # Dependencies (keep your current behavior)
         for dep in CORE_SERVICE_DEPENDENCIES.get(key, []):
             if dep in ("zurg", "rclone"):
                 instances = default_conf.get(dep, {}).get("instances", {})
@@ -789,23 +1400,29 @@ async def get_core_services(logger=Depends(get_logger)):
                     ),
                     None,
                 ) or next(iter(instances.values()), None)
-
                 if inst_cfg:
                     svc_opts[dep] = {
                         k: v for k, v in inst_cfg.items() if k in BASIC_FIELDS
                     }
-
             else:
                 dep_block = default_conf.get(dep, {})
                 svc_opts[dep] = {
                     k: v for k, v in dep_block.items() if k in BASIC_FIELDS
                 }
 
+        # Field descriptions
         svc_opt_desc: Dict[str, Dict[str, str]] = {}
         for svc_key, opts in svc_opts.items():
             svc_opt_desc[svc_key] = {
                 field: SERVICE_OPTION_DESCRIPTIONS[field] for field in opts.keys()
             }
+        # Instance option descriptions mirror BASIC_FIELDS
+        instance_opt_desc: Dict[str, Dict[str, str]] = {}
+        if supports_instances:
+            for iname, opts in instance_options.items():
+                instance_opt_desc[iname] = {
+                    field: SERVICE_OPTION_DESCRIPTIONS[field] for field in opts.keys()
+                }
 
         core_services.append(
             {
@@ -816,6 +1433,9 @@ async def get_core_services(logger=Depends(get_logger)):
                 "debrid_providers": providers,
                 "service_options": svc_opts,
                 "service_option_descriptions": svc_opt_desc,
+                "supports_instances": supports_instances,
+                "instance_options": instance_options,  # only populated if supports_instances
+                "instance_option_descriptions": instance_opt_desc,  # only populated if supports_instances
             }
         )
 

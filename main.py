@@ -1,12 +1,11 @@
 from utils.config_loader import CONFIG_MANAGER as config
 from utils.global_logger import logger, websocket_manager
-from utils import duplicate_cleanup, user_management
+from utils import user_management
 from api.api_service import start_fastapi_process
 from utils.processes import ProcessHandler
 from utils.auto_update import Update
 from utils.dependencies import initialize_dependencies
 import subprocess, threading, time, tomllib
-from time import sleep
 
 
 def log_ascii_art():
@@ -38,15 +37,24 @@ DDDDDDDDDDDDD             UUUUUUUUU      MMMMMMMM               MMMMMMMMBBBBBBBB
     logger.info(ascii_art + "\n")
 
 
-def process_service(config_obj, updater, key_name, exit_on_error=True):
+def start_configured_process(config_obj, updater, key_name, exit_on_error=True):
     try:
-        if config_obj.get("enabled"):
-            process_name = config_obj.get("process_name")
+        if "instances" in config_obj:
+            any_enabled = False
+            for name, instance in config_obj["instances"].items():
+                if instance.get("enabled"):
+                    process_name = instance.get("process_name", name)
+                    auto = instance.get("auto_update", False)
+                    updater.auto_update(process_name, auto)
+                    any_enabled = True
+            if not any_enabled:
+                logger.debug(f"No enabled instances found in {key_name}. Skipping.")
+        elif config_obj.get("enabled"):
+            process_name = config_obj.get("process_name", key_name)
             auto = config_obj.get("auto_update", False)
             updater.auto_update(process_name, auto)
         else:
-            process_name = config_obj.get("process_name", key_name)
-            logger.debug(f"{process_name} is disabled. Skipping process start.")
+            logger.debug(f"{key_name} is disabled. Skipping process start.")
     except Exception as e:
         logger.error(f"An error occurred in setup for {key_name}: {e}")
         if exit_on_error:
@@ -77,56 +85,37 @@ def main():
 
     try:
         dumb_config = config.get("dumb", {})
-        process_service(dumb_config.get("frontend", {}), updater, "frontend")
+        start_configured_process(dumb_config.get("frontend", {}), updater, "frontend")
     except Exception:
-        process_handler.shutdown(exit_code=1)
-
-    try:
-        zurg_instances = config.get("zurg", {}).get("instances", {})
-        for name, instance in zurg_instances.items():
-            if instance.get("enabled"):
-                process_service(instance, updater, name)
-        if not any(i.get("enabled") for i in zurg_instances.values()):
-            logger.debug("No Zurg instances are enabled. Skipping Zurg setup.")
-    except Exception:
-        process_handler.shutdown(exit_code=1)
-
-    try:
-        rclone_instances = config.get("rclone", {}).get("instances", {})
-        for name, instance in rclone_instances.items():
-            if instance.get("enabled"):
-                if not instance.get("mount_name"):
-                    raise ValueError(f"No mount name found for rclone instance: {name}")
-                logger.info(
-                    f"Configuring rclone: {name} with mount: {instance['mount_name']}"
-                )
-                process_service(instance, updater, name)
-        if not any(i.get("enabled") for i in rclone_instances.values()):
-            logger.debug("No rclone instances are enabled. Skipping rclone setup.")
-    except Exception as e:
-        logger.error(e)
         process_handler.shutdown(exit_code=1)
 
     try:
         grouped_keys = [
+            "zurg",
+            "rclone",
             "plex",
+            "jellyfin",
+            "emby",
             "postgres",
             "pgadmin",
             "zilean",
             "plex_debrid",
             "phalanx_db",
-            "cli_battery",
             "cli_debrid",
+            "cli_battery",
+            "riven_backend",
+            "riven_frontend",
+            "radarr",
+            "sonarr",
+            "lidarr",
+            "prowlarr",
+            "whisparr",
+            "decypharr",
         ]
         for key in grouped_keys:
             cfg = config.get(key, {})
-            process_service(cfg, updater, key)
+            start_configured_process(cfg, updater, key)
 
-        sleep(10)
-
-        for key in ["riven_backend", "riven_frontend", "decypharr"]:
-            cfg = config.get(key, {})
-            process_service(cfg, updater, key)
     except Exception as e:
         logger.error(e)
         process_handler.shutdown(exit_code=1)

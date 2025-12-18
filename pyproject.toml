@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "DUMB"
-version = "1.6.0"
+version = "1.7.0"
 description = "Debrid Unlimited Media Bridge (DUMB) is an all-in-one, containerized platform for managing and automating media workflows using premium debrid services like Real-Debrid."
 authors = ["I-am-PUID-0 <36779668+I-am-PUID-0@users.noreply.github.com>"]
 readme = "README.md"
@@ -17,7 +17,7 @@ packaging = ">=24.2,<26.0"
 ruamel-yaml = ">=0.18.10,<0.19.0"
 colorlog = ">=6.9.0,<7.0.0"
 pydantic = ">=2.11.2,<3.0.0"
-fastapi = ">=0.115.12,<0.117.0"
+fastapi = "^0.124.4"
 uvicorn = ">=0.34.0,<0.36.0"
 websockets = ">=15.0.1,<16.0.0"
 jsonschema = ">=4.23.0,<5.0.0"
@@ -27,6 +27,7 @@ pyyaml = ">=6.0.2,<7.0.0"
 xmltodict = "^0.14.2"
 subliminal = "^2.1.0"
 babelfish = "^0.6.1"
+starlette = ">=0.49.1,<0.51.0"
 
 [tool.poetry.group.dev.dependencies]
 black = ">=25.1.0,<26.0.0"

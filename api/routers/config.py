@@ -1,12 +1,12 @@
 from fastapi import APIRouter, HTTPException, Depends, Query
-from typing import Union, Optional, Dict, Any
+from typing import Union, Optional, Dict, Any, List
 from pydantic import BaseModel
 from utils.dependencies import get_logger, resolve_path
 from utils.config_loader import CONFIG_MANAGER, find_service_config
 from jsonschema import validate, ValidationError
 from ruamel.yaml import YAML
 from pathlib import Path
-import os, json, configparser, xmltodict
+import os, json, configparser, xmltodict, ast
 
 
 class ConfigUpdateRequest(BaseModel):
@@ -18,6 +18,10 @@ class ConfigUpdateRequest(BaseModel):
 class ServiceConfigRequest(BaseModel):
     service_name: str
     updates: Union[dict, str, list] = None
+
+
+class ProcessSchemaRequest(BaseModel):
+    process_name: str
 
 
 config_router = APIRouter()
@@ -308,19 +312,7 @@ def write_python_config(file_path, config_data):
     validate_file_path(file_path)
 
     if isinstance(config_data, str):
-        exec_env = {}
-        exec(config_data, {}, exec_env)
-        config_data = {k: v for k, v in exec_env.items() if not k.startswith("__")}
-
-    with open(file_path, "w") as file:
-        for key, value in config_data.items():
-            if isinstance(value, str):
-                file.write(f'{key} = "{value}"\n')
-            elif isinstance(value, dict):
-                file.write(f"{key} = {value}\n")
-            else:
-                file.write(f"{key} = {value}\n")
-    validate_file_path(file_path)
+        config_data = ast.literal_eval(config_data)
 
     with open(file_path, "w") as file:
         for key, value in config_data.items():
@@ -463,6 +455,34 @@ async def update_config(
     CONFIG_MANAGER.save_config()
 
     return {"status": "global config updated", "keys": list(updates.keys())}
+
+
+@config_router.get("/schema")
+def get_config_schema():
+    return CONFIG_MANAGER.schema
+
+
+@config_router.post("/process-config/schema")
+def get_service_config_schema(req: ProcessSchemaRequest) -> Dict[str, Any]:
+    if not (CONFIG_MANAGER and CONFIG_MANAGER.schema and CONFIG_MANAGER.config):
+        raise HTTPException(status_code=503, detail="Config/schema not loaded")
+
+    node, path = find_service_config(CONFIG_MANAGER.config, req.process_name)
+    if not node or not path:
+        raise HTTPException(
+            status_code=404, detail=f"process_name '{req.process_name}' not found"
+        )
+
+    path_parts: List[str] = [p for p in path.split(".") if p]
+    root_props = (CONFIG_MANAGER.schema or {}).get("properties", {}) or {}
+    schema_subtree: Optional[Dict[str, Any]] = find_schema(root_props, path_parts)
+    if not schema_subtree:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Schema not found for config path '{path}' derived from '{req.process_name}'",
+        )
+
+    return schema_subtree
 
 
 @config_router.post("/service-config")

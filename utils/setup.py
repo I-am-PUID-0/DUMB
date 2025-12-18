@@ -1,4 +1,4 @@
-from click import command
+from tomlkit import key
 from utils import postgres
 from utils.config_loader import CONFIG_MANAGER
 from utils.global_logger import logger
@@ -20,28 +20,40 @@ def setup_release_version(process_handler, config, process_name, key):
 
     logger.info(f"Using release version {config['release_version']} for {process_name}")
 
+    if key in [
+        "bazarr",
+        "sonarr",
+        "radarr",
+        "lidarr",
+        "prowlarr",
+        "readarr",
+    ]:
+        target_dir = os.path.join(f"/opt/{key.lower()}")
+    else:
+        target_dir = config["config_dir"]
+
     if config.get("clear_on_update"):
         exclude_dirs = config.get("exclude_dirs", [])
-        success, error = clear_directory(config["config_dir"], exclude_dirs)
+        success, error = clear_directory(target_dir, exclude_dirs)
         if not success:
             return False, f"Failed to clear directory: {error}"
     else:
         exclude_dirs = None
 
-    if key == "zurg":
-        success, error = downloader.download_release_version(
-            process_name=process_name,
-            key=key,
-            repo_owner=config["repo_owner"],
-            repo_name=config["repo_name"],
-            release_version=config["release_version"],
-            target_dir=config["config_dir"],
-            zip_folder_name=None,
-            exclude_dirs=exclude_dirs,
-        )
-        if not success:
-            return False, f"Failed to download release: {error}"
+    success, error = downloader.download_release_version(
+        process_name=process_name,
+        key=key,
+        repo_owner=config["repo_owner"],
+        repo_name=config["repo_name"],
+        release_version=config["release_version"],
+        target_dir=target_dir,
+        zip_folder_name=None,
+        exclude_dirs=exclude_dirs,
+    )
+    if not success:
+        return False, f"Failed to download release: {error}"
 
+    if key == "zurg":
         downloader.set_permissions(config["command"], 0o755)
         if not os.path.exists(os.path.join(config["config_dir"], "logs")):
             os.makedirs(os.path.join(config["config_dir"], "logs"), exist_ok=True)
@@ -50,22 +62,6 @@ def setup_release_version(process_handler, config, process_name, key):
                 CONFIG_MANAGER.get("puid"),
                 CONFIG_MANAGER.get("pgid"),
             )
-
-        # chown_recursive(config["config_dir"], user_id, group_id)
-
-    else:
-        success, error = downloader.download_release_version(
-            process_name=process_name,
-            key=key,
-            repo_owner=config["repo_owner"],
-            repo_name=config["repo_name"],
-            release_version=config["release_version"],
-            target_dir=config["config_dir"],
-            zip_folder_name=None,
-            exclude_dirs=exclude_dirs,
-        )
-        if not success:
-            return False, f"Failed to download release: {error}"
 
     if key == "zilean":
         versions.version_write(
@@ -91,6 +87,17 @@ def setup_release_version(process_handler, config, process_name, key):
 
 
 def setup_branch_version(process_handler, config, process_name, key):
+    if key in [
+        "bazarr",
+        "sonarr",
+        "radarr",
+        "lidarr",
+        "prowlarr",
+        "readarr",
+    ]:
+        target_dir = os.path.join(f"/opt/{key.lower()}")
+    else:
+        target_dir = config["config_dir"]
     if key == "zurg":
         return False, "Branch version not supported for Zurg."
     else:
@@ -104,13 +111,13 @@ def setup_branch_version(process_handler, config, process_name, key):
         exclude_dirs = None
         if config.get("clear_on_update"):
             exclude_dirs = config.get("exclude_dirs", [])
-            success, error = clear_directory(config["config_dir"], exclude_dirs)
+            success, error = clear_directory(target_dir, exclude_dirs)
             if not success:
                 return False, f"Failed to clear directory: {error}"
 
         success, error = downloader.download_and_extract(
             branch_url,
-            config["config_dir"],
+            target_dir,
             zip_folder_name=zip_folder_name,
             exclude_dirs=exclude_dirs,
         )
@@ -146,10 +153,11 @@ def additional_setup(process_handler, process_name, config, key):
         )
         if not success:
             return False, error
-    #    if user_id and group_id and not config["config_dir"].startswith("/zurg"):
-    #        success, error = chown_recursive(config["config_dir"], user_id, group_id)
-    #        if not success:
-    #            return False, error
+
+    if key == "decypharr" and config.get("branch_enabled"):
+        success, error = build_decypharr_dev(process_handler, config)
+        if not success:
+            return False, f"Failed to build Decypharr development environment: {error}"
 
     return True, None
 
@@ -327,6 +335,16 @@ def setup_project(process_handler, process_name):
             if not success:
                 return False, error
 
+        if key == "jellyfin":
+            success, error = setup_jellyfin()
+            if not success:
+                return False, error
+
+        if key == "emby":
+            success, error = setup_emby()
+            if not success:
+                return False, error
+
         if key == "pgadmin":
             success, error = postgres.pgadmin_setup(process_handler)
             if not success:
@@ -347,6 +365,35 @@ def setup_project(process_handler, process_name):
             if not success:
                 return False, error
 
+        if key == "bazarr":
+            success, error = setup_bazarr(process_handler)
+            if not success:
+                return False, error
+
+        if key in [
+            "sonarr",
+            "radarr",
+            "lidarr",
+            "prowlarr",
+            "readarr",
+            "whisparr",
+            "whisparr-v3",
+        ]:
+            for instance_name, instance in (
+                CONFIG_MANAGER.get(key, {}).get("instances", {}).items()
+            ):
+                if not instance.get("enabled"):
+                    continue
+                process_name = instance["process_name"]
+                logger.debug(
+                    f"Setting up {process_name} with instance name {instance_name} for instance {instance}..."
+                )
+                success, error = setup_arr_instance(
+                    key, instance_name, instance, process_name
+                )
+                if not success:
+                    return False, error
+
         process_handler.setup_tracker.add(process_name)
         logger.debug(f"Post Setup tracker: {process_handler.setup_tracker}")
         logger.info(f"{process_name} setup complete")
@@ -354,6 +401,183 @@ def setup_project(process_handler, process_name):
 
     except Exception as e:
         return False, f"Error during setup of {process_name}: {e}"
+
+
+def ensure_arr_config(
+    app_name: str, config_file: str, port: int, loglevel: str
+) -> None:
+    import xml.etree.ElementTree as ET
+
+    if not os.path.exists(config_file):
+        os.makedirs(os.path.dirname(config_file), exist_ok=True)
+
+        config_content = f"""<?xml version="1.0" encoding="utf-8"?>
+<Config>
+  <Port>{port}</Port>
+  <LogLevel>{loglevel}</LogLevel>
+  <InstanceName>{app_name}</InstanceName>
+</Config>
+"""
+        with open(config_file, "w") as f:
+            f.write(config_content)
+        chown_recursive(os.path.dirname(config_file), user_id, group_id)
+        logger.info(f"[{app_name}] Created new config.xml at {config_file}")
+        return
+
+    try:
+        tree = ET.parse(config_file)
+        root = tree.getroot()
+        port_elem = root.find("Port")
+        loglevel_elem = root.find("LogLevel")
+        Instance_elem = root.find("InstanceName")
+
+        if port_elem is not None and int(port_elem.text) != port:
+            logger.info(
+                f"[{app_name}] Updating port in config.xml from {port_elem.text} to {port}"
+            )
+            port_elem.text = str(port)
+            tree.write(config_file)
+        else:
+            logger.debug(f"[{app_name}] Port already set to {port} in config.xml")
+        if loglevel_elem is not None and loglevel_elem.text != loglevel:
+            logger.info(
+                f"[{app_name}] Updating log level in config.xml from {loglevel_elem.text} to {loglevel}"
+            )
+            loglevel_elem.text = loglevel
+            tree.write(config_file)
+        else:
+            logger.debug(
+                f"[{app_name}] Log level already set to {loglevel} in config.xml"
+            )
+        if Instance_elem is not None and Instance_elem.text != app_name:
+            logger.info(
+                f"[{app_name}] Updating InstanceName in config.xml from {Instance_elem.text} to {app_name}"
+            )
+            Instance_elem.text = app_name
+            tree.write(config_file)
+    except Exception as e:
+        logger.error(f"[{app_name}] Failed to update existing config.xml: {e}")
+
+
+def setup_arr_instance(key, instance_name, instance, process_name):
+    binary_path = f"/opt/{key}/{key.capitalize()}/{key.capitalize()}"
+    if not os.path.exists(binary_path):
+        logger.warning(f"{key.capitalize()} binary not found. Installing...")
+        from utils.arr import ArrInstaller
+
+        installer = ArrInstaller(key)
+        success, error = installer.install()
+        if not success:
+            return False, error
+    if not os.access(binary_path, os.X_OK):
+        logger.warning(f"{binary_path} not executable. Fixing permissions...")
+        os.chmod(binary_path, 0o755)
+    config_dir = instance["config_dir"]
+    os.makedirs(config_dir, exist_ok=True)
+    chown_recursive(config_dir, CONFIG_MANAGER.get("puid"), CONFIG_MANAGER.get("pgid"))
+
+    logger.info(f"Setting up {process_name} environment...")
+    config_file = instance["config_file"]
+    port = instance.get("port", 8989)
+    loglevel = instance.get("log_level", "INFO").upper()
+    ensure_arr_config(process_name, config_file, port, loglevel)
+    instance["command"] = [
+        binary_path,
+        "--nobrowser",
+        f"--data={config_dir}",
+    ]
+
+    return True, None
+
+
+def setup_bazarr(process_handler=None):
+    config = CONFIG_MANAGER.get("bazarr", {})
+    if not config:
+        return False, "Bazarr configuration not found."
+    try:
+
+        def setup_bazarr_instance(instance_name, instance):
+            if not instance.get("enabled", False):
+                logger.debug(f"Skipping disabled Bazarr instance: {instance_name}")
+                return True, None
+            instance_config_dir = instance.get("config_dir") or (
+                f"/bazarr/{instance_name.lower()}/config"
+            )
+            instance_config_file = instance.get("config_file") or (
+                os.path.join(instance_config_dir, "config.yaml")
+            )
+            install_path = f"/opt/bazarr/{instance_name.lower()}"
+            if not os.path.exists(instance_config_dir):
+                logger.debug(
+                    f"Creating Bazarr instance {instance_name} config directory: {instance_config_dir}"
+                )
+                os.makedirs(instance_config_dir, exist_ok=True)
+                chown_recursive(instance_config_dir, user_id, group_id)
+            ### check if the bazarr.py file exists in the install_path
+            bazarr_py_path = os.path.join(install_path, "bazarr.py")
+            if not os.path.exists(bazarr_py_path):
+                logger.warning(
+                    f"Bazarr instance {instance_name} not found at {install_path}. Downloading..."
+                )
+                os.makedirs(install_path, exist_ok=True)
+                chown_recursive(install_path, user_id, group_id)
+                if not instance.get("branch_enabled"):
+                    release, error = downloader.get_latest_release(
+                        repo_owner=instance.get("repo_owner"),
+                        repo_name=instance.get("repo_name"),
+                    )
+                    if not release:
+                        return False, f"Failed to get latest release: {error}"
+
+                    success, error = downloader.download_release_version(
+                        process_name=instance.get("process_name"),
+                        key="bazarr",
+                        repo_owner=instance.get("repo_owner"),
+                        repo_name=instance.get("repo_name"),
+                        release_version=release,
+                        target_dir=install_path,
+                    )
+                    if not success:
+                        return False, f"Failed to download Bazarr: {error}"
+                    platforms = instance.get("platforms", [])
+                    success, error = setup_environment(
+                        process_handler, "bazarr", platforms, install_path
+                    )
+                    if not success:
+                        return (
+                            False,
+                            f"Failed to set up environment for Bazarr instance {instance_name}: {error}",
+                        )
+                    success, error = setup_pnpm_environment(
+                        process_handler, f"{install_path}/frontend"
+                    )
+                    if not success:
+                        return (
+                            False,
+                            f"Failed to set up pnpm environment for Bazarr instance {instance_name}: {error}",
+                        )
+                    chown_recursive(install_path, user_id, group_id)
+
+            instance["command"] = [
+                f"{install_path}/venv/bin/python",
+                f"{bazarr_py_path}",
+                f"-c {instance_config_dir}",
+                f"-p {instance.get('port')}",
+            ]
+            instance["env"] = {"NO_UPDATE": "true"}
+            logger.info(f"Bazarr instance '{instance_name}' setup complete.")
+            return True, None
+
+        for instance_name, instance in config.get("instances", {}).items():
+            if instance.get("enabled"):
+                logger.info(f"Setting up enabled Bazarr instance: {instance_name}")
+                success, error = setup_bazarr_instance(instance_name, instance)
+                if not success:
+                    return False, error
+        logger.info("All Bazarr instances set up successfully.")
+        return True, None
+    except Exception as e:
+        return False, f"Error during Bazarr setup: {e}"
 
 
 def setup_decypharr():
@@ -368,6 +592,7 @@ def setup_decypharr():
         decypharr_config_file = config.get("config_file")
         decypharr_binary_file = "decypharr"
         binary_path = os.path.join(decypharr_config_dir, decypharr_binary_file)
+        decypharr_embedded_rclone = config.get("use_embedded_rclone", False)
         if not os.path.exists(decypharr_config_dir):
             logger.debug(
                 f"Creating Decypharr config directory at {decypharr_config_dir}"
@@ -379,37 +604,38 @@ def setup_decypharr():
             logger.warning(
                 f"Decypharr project not found at {decypharr_config_dir}. Downloading..."
             )
-            release, error = downloader.get_latest_release(
-                repo_owner=config.get("repo_owner"),
-                repo_name=config.get("repo_name"),
-            )
-            if not release:
-                return False, f"Failed to get latest release: {error}"
+            if not config.get("branch_enabled"):
+                release, error = downloader.get_latest_release(
+                    repo_owner=config.get("repo_owner"),
+                    repo_name=config.get("repo_name"),
+                )
+                if not release:
+                    return False, f"Failed to get latest release: {error}"
 
-            success, error = downloader.download_release_version(
-                process_name=config.get("process_name"),
-                key="decypharr",
-                repo_owner=config.get("repo_owner"),
-                repo_name=config.get("repo_name"),
-                release_version=release,
-                target_dir=decypharr_config_dir,
-            )
-            if not success:
-                return False, f"Failed to download Decypharr: {error}"
+                success, error = downloader.download_release_version(
+                    process_name=config.get("process_name"),
+                    key="decypharr",
+                    repo_owner=config.get("repo_owner"),
+                    repo_name=config.get("repo_name"),
+                    release_version=release,
+                    target_dir=decypharr_config_dir,
+                )
+                if not success:
+                    return False, f"Failed to download Decypharr: {error}"
 
-            versions.version_write(
-                process_name=config.get("process_name"),
-                key="decypharr",
-                version_path=os.path.join(decypharr_config_dir, "version.txt"),
-                version=release,
-            )
+                versions.version_write(
+                    process_name=config.get("process_name"),
+                    key="decypharr",
+                    version_path=os.path.join(decypharr_config_dir, "version.txt"),
+                    version=release,
+                )
         if os.path.isfile(binary_path):
             os.chmod(binary_path, 0o755)
             logger.debug(f"Marked {binary_path} as executable")
-        existing_env = config.get("env", {}).copy()
-        existing_env = {}
-        config["env"] = existing_env
-
+        if decypharr_embedded_rclone:
+            success, error = fuse_config()
+            if not success:
+                return False, error
         if os.path.exists(decypharr_config_file):
             from utils.decypharr_settings import patch_decypharr_config
 
@@ -418,6 +644,39 @@ def setup_decypharr():
         return True, None
     except Exception as e:
         return False, f"Error during Decypharr setup: {e}"
+
+
+def build_decypharr_dev(process_handler, config):
+    if not config:
+        return False, "Configuration for Decypharr not found."
+    config_dir = config.get("config_dir", "/decypharr")
+    logger.info("Building Decypharr development environment...")
+    try:
+        success, error = setup_pnpm_environment(process_handler, config_dir)
+        if not success:
+            return False, f"Failed to set up pnpm environment: {error}"
+        branch = config.get("branch")
+        version = "3.0.0"  # Default version until it can be determined dynamically
+        command = [
+            "go",
+            "build",
+            "-ldflags",
+            f"-X github.com/sirrobot01/decypharr/pkg/version.Version={version} -X github.com/sirrobot01/decypharr/pkg/version.Channel={branch}",
+            "-o",
+            "decypharr",
+            ".",
+        ]
+        for attempt in range(3):
+            process_handler.start_process("go_build", config_dir, command)
+            process_handler.wait("go_build")
+            if process_handler.returncode == 0:
+                break
+            logger.warning(f"Decypharr build failed (attempt {attempt + 1}/3)")
+
+        logger.info("Decypharr development environment built successfully.")
+        return True, None
+    except Exception as e:
+        return False, f"Error during Decypharr development environment setup: {e}"
 
 
 def plex_debrid_setup():
@@ -654,6 +913,166 @@ def setup_plex():
     command = ["/usr/lib/plexmediaserver/Plex Media Server"]
     config["command"] = command
     return True, None
+
+
+def setup_jellyfin():
+    config = CONFIG_MANAGER.get("jellyfin")
+
+    if not config or not config.get("enabled"):
+        logger.info("Jellyfin is disabled. Skipping setup.")
+        return True, None
+
+    jellyfin_service_path = "/usr/lib/jellyfin/bin/jellyfin"
+    if not os.path.exists(jellyfin_service_path):
+        logger.warning("Jellyfin service not found. Installing Jellyfin...")
+        from utils.jellyfin import JellyfinInstaller
+
+        installer = JellyfinInstaller()
+        success, error = installer.install_jellyfin_server()
+        if not success:
+            return False, error
+
+    os.makedirs(config["config_dir"], exist_ok=True)
+    chown_recursive(
+        config["config_dir"], CONFIG_MANAGER.get("puid"), CONFIG_MANAGER.get("pgid")
+    )
+    sub_directories = [
+        "data",
+        "config",
+        "cache",
+        "log",
+    ]
+    for sub_dir in sub_directories:
+        dir_path = os.path.join(config["config_dir"], sub_dir)
+        if not os.path.exists(dir_path):
+            os.makedirs(dir_path, exist_ok=True)
+            chown_recursive(
+                dir_path, CONFIG_MANAGER.get("puid"), CONFIG_MANAGER.get("pgid")
+            )
+    logger.info("Setting up Jellyfin Media Server environment...")
+    config["command"] = [
+        "/usr/lib/jellyfin/bin/jellyfin",
+        "--datadir",
+        os.path.join(config["config_dir"], "data"),
+        "--configdir",
+        os.path.join(config["config_dir"], "config"),
+        "--cachedir",
+        os.path.join(config["config_dir"], "cache"),
+        "--logdir",
+        os.path.join(config["config_dir"], "log"),
+    ]
+    return True, None
+
+
+def setup_emby():
+    config = CONFIG_MANAGER.get("emby")
+    if not config:
+        return False, "Configuration for Emby not found."
+
+    try:
+        emby_config_dir = config.get("config_dir") or "/emby"
+        emby_config_file = config.get("config_file")
+
+        if not os.path.exists(emby_config_dir):
+            logger.debug(f"Creating Emby config directory at {emby_config_dir}")
+            os.makedirs(emby_config_dir, exist_ok=True)
+        chown_single(emby_config_dir, user_id, group_id)
+
+        candidate_bins = [
+            "/opt/emby-server/system/EmbyServer",
+            "/opt/emby-server/system/EmbyServer.dll",
+            "/usr/lib/emby-server/bin/EmbyServer",
+            "/opt/emby-server/bin/EmbyServer",
+        ]
+        emby_bin = next((p for p in candidate_bins if os.path.exists(p)), None)
+
+        if not emby_bin:
+            logger.warning(f"Emby service not found. Installing Emby…")
+            release = None
+            if config.get("release_version_enabled") and config.get("release_version"):
+                release = config["release_version"]
+            else:
+                release, error = downloader.get_latest_release(
+                    repo_owner=config.get("repo_owner"),
+                    repo_name=config.get("repo_name"),
+                )
+                if not release:
+                    return False, f"Failed to get latest release: {error}"
+            target_dir = "/tmp/emby_download"
+            success, error = downloader.download_release_version(
+                process_name=config.get("process_name"),
+                key="emby",
+                repo_owner=config.get("repo_owner"),
+                repo_name=config.get("repo_name"),
+                release_version=release,
+                target_dir=target_dir,
+                zip_folder_name=None,
+            )
+            if not success:
+                return False, f"Failed to download Emby: {error}"
+
+            deb_path = None
+            for name in os.listdir(target_dir):
+                if name.startswith("emby-server-deb_") and name.endswith(".deb"):
+                    deb_path = os.path.join(target_dir, name)
+                    break
+            if not deb_path:
+                return (
+                    False,
+                    "Downloaded release does not contain an Emby .deb asset.",
+                )
+
+            logger.info(f"Extracting Emby from {deb_path}")
+            subprocess.run(["dpkg-deb", "-x", deb_path, "/"], check=True)
+            for unit in (
+                "/usr/lib/systemd/system/emby-server.service",
+                "/lib/systemd/system/emby-server.service",
+            ):
+                if os.path.exists(unit):
+                    try:
+                        os.remove(unit)
+                    except Exception:
+                        pass
+            emby_bin = next((p for p in candidate_bins if os.path.exists(p)), None)
+            if not emby_bin:
+                return (
+                    False,
+                    "Emby installed but binary not found in expected locations.",
+                )
+
+            try:
+                version_path = os.path.join(emby_config_dir, "version.txt")
+                versions.version_write(
+                    config.get("process_name", "Emby Media Server"),
+                    "emby",
+                    version_path=version_path,
+                    version=release,
+                )
+                logger.debug(f"Emby version {release} written to {version_path}")
+            except Exception:
+                pass
+        if emby_bin.endswith(".dll"):
+            cmd = ["dotnet", emby_bin]
+        else:
+            cmd = [emby_bin]
+        logger.info("Setting up Emby Server runtime...")
+        config["command"] = cmd + [
+            "-programdata",
+            emby_config_dir,
+            "-ffdetect",
+            "/opt/emby-server/bin/emby-ffdetect",
+            "-ffmpeg",
+            "/opt/emby-server/bin/emby-ffmpeg",
+            "-ffprobe",
+            "/opt/emby-server/bin/ffprobe",
+        ]
+        logger.debug(f"Emby command set to: {config['command']}")
+        config["env"] = config.get("env") or {}
+
+        return True, None
+
+    except Exception as e:
+        return False, f"Error during Emby setup: {e}"
 
 
 def zurg_setup():
@@ -941,10 +1360,7 @@ def ensure_directory(mount_dir, mount_name):
     return full_path, None
 
 
-def rclone_setup():
-    config = CONFIG_MANAGER.get("rclone")
-    if not config:
-        return False, "Configuration for Rclone not found."
+def fuse_config():
     fuse_conf_path = "/etc/fuse.conf"
     user_allow_other_line = "user_allow_other"
     logger.info("Starting Rclone setup...")
@@ -975,13 +1391,24 @@ def rclone_setup():
 
         with open(fuse_conf_path, "w") as f:
             f.writelines(updated_content)
-
+            return True, None
     except FileNotFoundError:
         with open(fuse_conf_path, "w") as f:
             f.write(f"{user_allow_other_line}\n")
         logger.debug(f"Created {fuse_conf_path} and added '{user_allow_other_line}'")
+        return True, None
     except PermissionError:
         return False, "Permission denied while accessing /etc/fuse.conf."
+
+
+def rclone_setup():
+    config = CONFIG_MANAGER.get("rclone")
+    if not config:
+        return False, "Configuration for Rclone not found."
+
+    success, error = fuse_config()
+    if not success:
+        return False, error
 
     def load_existing_config(config_file):
         config_data = {}
@@ -1077,8 +1504,10 @@ def rclone_setup():
                     url = f"http://localhost:{decypharr_config.get('port', 8282)}/webdav/debridlink"
                 elif key_type == "torbox":
                     url = f"http://localhost:{decypharr_config.get('port', 8282)}/webdav/torbox"
+                elif key_type == "usenet":
+                    url = f"http://localhost:{decypharr_config.get('port', 8282)}/webdav/usenet"
                 else:
-                    url = ""
+                    url = key_type
 
                 config_data[mount_name] = [
                     "type = webdav",
@@ -1179,8 +1608,30 @@ def rclone_setup():
                     "--log-level": log_level,
                 }
                 if instance.get("decypharr_enabled"):
+                    used_ports = set()
+                    all_instances = CONFIG_MANAGER.get("rclone", {}).get(
+                        "instances", {}
+                    )
+
+                    for other_name, other in all_instances.items():
+                        if other is instance or not other.get("decypharr_enabled"):
+                            continue
+                        other_cmd = other.get("command", [])
+                        for i, token in enumerate(other_cmd):
+                            if token == "--rc-addr" and i + 1 < len(other_cmd):
+                                port = other_cmd[i + 1]
+                                if port.startswith(":") and port[1:].isdigit():
+                                    used_ports.add(int(port[1:]))
+                    rc_port = 5572
+                    while rc_port in used_ports:
+                        rc_port += 1
+
                     required_flags.update(
-                        {"--rc": None, "--rc-addr": ":5572", "--rc-no-auth": None}
+                        {
+                            "--rc": None,
+                            "--rc-addr": f":{rc_port}",
+                            "--rc-no-auth": None,
+                        }
                     )
 
                 existing = instance.get("command", [])

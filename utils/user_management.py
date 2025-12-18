@@ -170,6 +170,14 @@ def migrate_symlinks():
                 ("/phalanx_db/data", os.path.join(data_root, "phalanx_db")),
                 ("/decypharr", os.path.join(data_root, "decypharr")),
                 ("/plex", os.path.join(data_root, "plex")),
+                ("/jellyfin", os.path.join(data_root, "jellyfin")),
+                ("/emby", os.path.join(data_root, "emby")),
+                ("/sonarr", os.path.join(data_root, "sonarr")),
+                ("/radarr", os.path.join(data_root, "radarr")),
+                ("/lidarr", os.path.join(data_root, "lidarr")),
+                ("/prowlarr", os.path.join(data_root, "prowlarr")),
+                ("/readarr", os.path.join(data_root, "readarr")),
+                ("/whisparr", os.path.join(data_root, "whisparr")),
             ]
 
             for original_path, data_path in symlink_map:

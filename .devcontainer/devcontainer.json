@@ -24,6 +24,7 @@
     9090,
     5050,
     8182,
+    8282,
     32400
   ],
   "mounts": [
@@ -43,7 +44,6 @@
     "--device=/dev/fuse:/dev/fuse:rwm",
     "--cap-add=SYS_ADMIN",
     "--security-opt=apparmor:unconfined",
-    "--security-opt=no-new-privileges",
     "--shm-size=128m",
     "--pull=always"
   ],

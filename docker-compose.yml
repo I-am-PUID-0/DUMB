@@ -1,33 +1,26 @@
 services:
   DUMB:
     container_name: DUMB
-    image: iampuid0/dumb:latest                                       ## Optionally, specify a specific version of DUMB w/ image: iampuid0/dumb:2.0.0
-    stop_grace_period: 30s                                            ## Adjust as need to allow for graceful shutdown of the container
-    shm_size: 128mb                                                   ## Increased for PostgreSQL
-    stdin_open: true                                                  ## docker run -i
-    tty: true                                                         ## docker run -t
+    image: iampuid0/dumb:latest
+    stop_grace_period: 30s
+    shm_size: 128mb
+    stdin_open: true
+    tty: true
     volumes:
-      - /home/username/docker/DUMB/config:/config                     ## Location of configuration files.
-      - /home/username/docker/DUMB/log:/log                           ## Location for logs
-      - /home/username/docker/DUMB/data:/data                         ## Location for all service data
-      - /home/username/docker/DUMB/mnt/debrid:/mnt/debrid             ## Location for all symlinks and rclone mounts - change to /mnt/debrid:rshared if using decypharr 
+      - /home/username/docker/DUMB/config:/config
+      - /home/username/docker/DUMB/log:/log
+      - /home/username/docker/DUMB/data:/data
+      - /home/username/docker/DUMB/mnt/debrid:/mnt/debrid
     environment:
       - TZ=
       - PUID=
       - PGID=
-    # network_mode: container:gluetun                                ## Example to attach to gluetun vpn container if realdebrid blocks IP address
     ports:
-      - "3005:3005"                                                  ## DUMB Frontend
-      - "3000:3000"                                                  ## Riven Frontend
-      - "5050:5050"                                                  ## pgAdmin 4 Frontend
-      - "5000:5000"                                                  ## CLI Debrid Frontend      
-      - "8282:8282"                                                  ## Decypharr Frontend         
-      - "32400:32400"                                                ## Plex Media Server      
+      - "3005:3005"
     devices:
       - /dev/fuse:/dev/fuse:rwm
-      - /dev/dri:/dev/dri       
+      - /dev/dri:/dev/dri
     cap_add:
       - SYS_ADMIN
     security_opt:
       - apparmor:unconfined
-      - no-new-privileges

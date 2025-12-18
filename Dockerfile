@@ -21,8 +21,8 @@ RUN apt-get update && \
     # core build/runtime packages shared by almost every stage
     apt-get install -y --no-install-recommends \
       build-essential linux-headers-generic libxml2-utils git jq tzdata nano locales python3-dev python3 \
-      python3.11 python3.11-venv python3.11-dev python3-pip libffi-dev libpython3.11 libpq-dev \
-      fuse3 ffmpeg openssl unzip pkg-config libboost-filesystem-dev libboost-thread-dev \
+      python3.11 python3.11-venv python3.11-dev python3-pip libffi-dev libpython3.11 libpq-dev golang \
+      fuse3 ffmpeg openssl unzip pkg-config libboost-filesystem-dev libboost-thread-dev libsqlite3-dev \
       postgresql-client-16 postgresql-16 postgresql-contrib-16 postgresql-server-dev-16 pgagent libpq-dev \
       dotnet-sdk-9.0 htop bash make g++ git && \
     # Python convenience + locale

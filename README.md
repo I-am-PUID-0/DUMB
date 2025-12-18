@@ -35,12 +35,24 @@
       src="https://img.shields.io/github/contributors/I-am-PUID-0/DUMB?style=for-the-badge"
     />
   </a>
+  <a href="https://github.com/sponsors/I-am-PUID-0">
+    <img
+      alt="Sponsors"
+      src="https://img.shields.io/github/sponsors/I-am-PUID-0?style=for-the-badge&color=%23FF1493"
+    />
+  </a>  
   <a href="https://hub.docker.com/r/iampuid0/dumb">
     <img
       alt="Docker Pulls"
       src="https://img.shields.io/docker/pulls/iampuid0/dumb?style=for-the-badge&logo=docker&logoColor=white"
     />
   </a>
+  <a href="https://github.com/I-am-PUID-0/DUMB/actions/workflows/docker-image.yml">
+    <img
+      alt="Build Status"
+      src="https://img.shields.io/github/actions/workflow/status/I-am-PUID-0/DUMB/docker-image.yml?style=for-the-badge"
+    />
+  </a>  
   <a href="https://discord.gg/T6uZGy5XYb">
     <img
       alt="Join Discord"
@@ -61,15 +73,22 @@
 | Project                                                            | Author                                                               | Community / Docs / Support                                                                                                                     | 🍻 Support Dev                                                                                      |
 |--------------------------------------------------------------------|----------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------|
 | [cli_debrid](https://github.com/godver3/cli_debrid)               | [godver3](https://github.com/godver3)                                | [Discord](https://discord.gg/ynqnXGJ4hU)                                                                                                         | [Sponsor](https://github.com/sponsors/godver3)                                                    |
-| [dmbdb](https://github.com/nicocapalbo/dmbdb)                     | [nicocapalbo](https://github.com/nicocapalbo)                        | [Issues](https://github.com/nicocapalbo/dmbdb/issues)                                                     | —                                                                                                   |
+| [dmbdb](https://github.com/nicocapalbo/dmbdb)                     | [nicocapalbo](https://github.com/nicocapalbo)                        | [Issues](https://github.com/nicocapalbo/dmbdb/issues)                                                                                           | —                                                                                                   |
 | [Decypharr](https://github.com/sirrobot01/decypharr)              | [Mukhtar Akere](https://github.com/sirrobot01)                       | [Docs](https://sirrobot01.github.io/decypharr/) • [Issues](https://github.com/sirrobot01/decypharr/issues)                                     | [Sponsor](https://github.com/sponsors/sirrobot01)                                                 |
+| [Emby Media Server](https://emby.media) | [Emby, LLC](https://emby.media)                                     | [Support](https://emby.media/support/)                                                                                                              | [Donate](https://emby.media/premiere.html) (via Emby Premiere)                                           |
+| [Jellyfin Media Server](https://jellyfin.org/)                    | [Jellyfin Team](https://github.com/jellyfin)                         | [Docs](https://jellyfin.org/docs/) • [Support](https://jellyfin.org/contact/)                                                                   | [Donate](https://opencollective.com/jellyfin)                                                     |
+| [Lidarr](https://lidarr.audio/)                                   | [Lidarr Team](https://github.com/Lidarr/Lidarr)                      | [Docs](https://wiki.servarr.com/) • [Discord](https://lidarr.audio/discord)                                                                       | [Sponsor](https://github.com/sponsors/Lidarr)                                                     |
 | [pgAdmin 4](https://www.pgadmin.org/)                             | [pgAdmin Team](https://www.pgadmin.org/development/)                 | [Docs](https://www.pgadmin.org/docs/) • [Support](https://www.pgadmin.org/support/)                                                            | [Donate](https://www.pgadmin.org/donate/)                                                         |
 | [phalanx_db](https://github.com/godver3/phalanx_db_hyperswarm)   | [godver3](https://github.com/godver3)                                | [Discord](https://discord.gg/jAmqZJCZJ4)                                                                                                         | [Sponsor](https://github.com/sponsors/godver3)                                                    |
 | [plex_debrid](https://github.com/itsToggle/plex_debrid)          | [itsToggle](https://github.com/itsToggle)                            | [Discord](https://discord.gg/u3vTDGjeKE) • [Issues](https://github.com/itsToggle/plex_debrid/issues)                                            | [Affiliate](http://real-debrid.com/?id=5708990) • [PayPal](https://www.paypal.com/paypalme/oidulibbe) |
 | [Plex Media Server](https://www.plex.tv/media-server-downloads/) | [plexinc](https://www.plex.tv/)                                     | [Support](https://support.plex.tv/)                                                                                                              | [Donate](https://www.plex.tv/plex-pass/) (via Plex Pass)                                           |
 | [PostgreSQL](https://www.postgresql.org/)                         | [Michael Stonebraker](https://en.wikipedia.org/wiki/Michael_Stonebraker) | [Docs](https://www.postgresql.org/docs/)                                                                                                         | [Donate](https://www.postgresql.org/about/donate/)                                                |
+| [Prowlarr](https://prowlarr.com/)                                 | [Prowlarr Team](https://github.com/Prowlarr/Prowlarr)                | [Docs](https://wiki.servarr.com/) • [Discord](https://prowlarr.com/discord)                                                                       | [Sponsor](https://github.com/sponsors/Prowlarr)                                                   |
+| [Radarr](https://radarr.video/)                                   | [Radarr Team](https://github.com/Radarr/Radarr)                      | [Docs](https://wiki.servarr.com/) • [Discord](https://radarr.video/discord)                                                                       | [Sponsor](https://github.com/sponsors/Radarr)                                                     |
 | [rclone](https://github.com/rclone/rclone)                        | [Nick Craig-Wood](https://github.com/ncw)                            | [Docs](https://rclone.org/)                                                                                                                      | [Sponsor](https://rclone.org/sponsor/)                                                            |
-| [Riven](https://github.com/rivenmedia/riven)                      | [Riven Media](https://github.com/rivenmedia)                         | [Discord](https://discord.gg/VtYd42mxgb) • [Discussions](https://github.com/orgs/rivenmedia/discussions)                                       | [Sponsor](https://github.com/sponsors/dreulavelle/)                                               |
+| [Riven](https://github.com/rivenmedia/riven)                      | [Riven Media](https://github.com/rivenmedia)                         | [Discord](https://discord.gg/rivenmedia) • [Discussions](https://github.com/orgs/rivenmedia/discussions)                                       | [Sponsor](https://github.com/sponsors/dreulavelle/)                                               |
+| [Sonarr](https://sonarr.tv/)                                      | [Sonarr Team](https://github.com/Sonarr/Sonarr)                      | [Docs](https://wiki.servarr.com/) • [Discord](https://discord.gg/M6BvZn5)                                                                       | [Sponsor](https://opencollective.com/sonarr)                                                     |
+| [Whisparr](https://github.com/Whisparr/Whisparr)                  | [Whisparr Team](https://github.com/Whisparr)                         | [Docs](https://wiki.servarr.com/) • [Discord](https://whisparr.com/discord)                                                                       | [Sponsor](https://opencollective.com/whisparr)                                                   |
 | [Zilean](https://github.com/iPromKnight/zilean)                   | [iPromKnight](https://github.com/iPromKnight)                        | [Docs](https://ipromknight.github.io/zilean/) • [Issues](https://github.com/iPromKnight/zilean/issues)                                         | —                                                                                                   |
 | [Zurg](https://github.com/debridmediamanager/zurg-testing)        | [yowmamasita](https://github.com/yowmamasita)                        | [Wiki](https://github.com/debridmediamanager/zurg-testing/wiki)                                                                                 | [Sponsor](https://github.com/sponsors/debridmediamanager)                                         |
 
@@ -87,41 +106,37 @@ A prebuilt image is hosted on [Docker Hub](https://hub.docker.com/r/iampuid0/dum
 A prebuilt image is hosted on [GitHub Container Registry](https://github.com/I-am-PUID-0/DUMB/pkgs/container/DUMB).
 
 ## 🐳 Docker-compose
+> [!NOTE]
+> The below "ports" section of the compose should be updated based on the service ports used when needing to be exposed.
+> See the below [Default Ports Used](https://github.com/I-am-PUID-0/DUMB?tab=readme-ov-file#-defualt-ports-used) section for more details
 
 ```YAML
 services:
   DUMB:
     container_name: DUMB
-    image: iampuid0/dumb:latest                                       ## Optionally, specify a specific version of DUMB w/ image: iampuid0/dumb:2.0.0
-    stop_grace_period: 30s                                            ## Adjust as need to allow for graceful shutdown of the container
-    shm_size: 128mb                                                   ## Increased for PostgreSQL
-    stdin_open: true                                                  ## docker run -i
-    tty: true                                                         ## docker run -t
+    image: iampuid0/dumb:latest
+    stop_grace_period: 30s
+    shm_size: 128mb
+    stdin_open: true
+    tty: true
     volumes:
-      - /home/username/docker/DUMB/config:/config                     ## Location of configuration files.
-      - /home/username/docker/DUMB/log:/log                           ## Location for logs
-      - /home/username/docker/DUMB/data:/data                         ## Location for all service data
-      - /home/username/docker/DUMB/mnt/debrid:/mnt/debrid             ## Location for all symlinks and rclone mounts - change to /mnt/debrid:rshared if using decypharr 
+      - /home/username/docker/DUMB/config:/config
+      - /home/username/docker/DUMB/log:/log
+      - /home/username/docker/DUMB/data:/data
+      - /home/username/docker/DUMB/mnt/debrid:/mnt/debrid
     environment:
       - TZ=
       - PUID=
       - PGID=
-    # network_mode: container:gluetun                                ## Example to attach to gluetun vpn container if realdebrid blocks IP address
     ports:
-      - "3005:3005"                                                  ## DUMB Frontend
-      - "3000:3000"                                                  ## Riven Frontend
-      - "5050:5050"                                                  ## pgAdmin 4 Frontend
-      - "5000:5000"                                                  ## CLI Debrid Frontend      
-      - "8282:8282"                                                  ## Decypharr Frontend         
-      - "32400:32400"                                                ## Plex Media Server      
+      - "3005:3005"
     devices:
       - /dev/fuse:/dev/fuse:rwm
-      - /dev/dri:/dev/dri       
+      - /dev/dri:/dev/dri
     cap_add:
       - SYS_ADMIN
     security_opt:
       - apparmor:unconfined
-      - no-new-privileges
 ```
 
 ## 🌐 Environment Variables
@@ -137,7 +152,7 @@ Variables required by DUMB:
 
 See the [.env.example](https://github.com/I-am-PUID-0/DUMB/blob/master/.env.example)
 
-## 🌐 Ports Used
+## 🌐 Default Ports Used
 
 > [!NOTE]
 > The below examples are default and may be configurable with the use of additional environment variables.
@@ -146,17 +161,25 @@ The following table describes the ports used by the container. The mappings are 
 
 | Container port | Protocol | Description                                                                          |
 | -------------- | -------- | ------------------------------------------------------------------------------------ |
-| `3005`         | TCP      | DUMB frontend - a web UI is accessible at the assigned port                           |
-| `3000`         | TCP      | Riven frontend - A web UI is accessible at the assigned port                         |
-| `8080`         | TCP      | Riven backend - The API is accessible at the assigned port                           |
-| `5432`         | TCP      | PostgreSQL - The SQL server is accessible at the assigned port                       |
-| `5050`         | TCP      | pgAdmin 4 - A web UI is accessible at the assigned port                              |
-| `8182`         | TCP      | Zilean - The API and Web Ui (/swagger/index.html) is accessible at the assigned port |
-| `9090`         | TCP      | Zurg - A web UI is accessible at the assigned port                                   |
-| `5000`         | TCP      | CLI Debrid - A web UI is accessible at the assigned port                             |
+| `5000`         | TCP      | CLI Debrid -  Web UI accessible at the assigned port                                 |
+| `8000`         | TCP      | DUMB API - The API is accessible at the assigned port                                |
+| `3005`         | TCP      | DUMB frontend -  Web UI accessible at the assigned port                              |
+| `8282`         | TCP      | Decypharr -  Web UI accessible at the assigned port                                  |
+| `8096`         | TCP      | Emby Media Server - Web UI accessible at the assigned port (default HTTP)            |
+| `8096`         | TCP      | Jellyfin Media Server - Web UI accessible at the assigned port (default HTTP)        |
+| `8686`         | TCP      | Lidarr - Web UI accessible at the assigned port                                      |
+| `5050`         | TCP      | pgAdmin 4 -  Web UI accessible at the assigned port                                  |
 | `8888`         | TCP      | Phalanx DB - The API is accessible at the assigned port                              |
-| `8282`         | TCP      | Decypharr - A web UI is accessible at the assigned port                              |
-| `32400`        | TCP      | Plex Media Server - PMS is accessible at the assigned port                           |
+| `32400`        | TCP      | Plex Media Server -  Web UI accessible at the assigned port                          |
+| `5432`         | TCP      | PostgreSQL - The SQL server is accessible at the assigned port                       |
+| `9696`         | TCP      | Prowlarr - Web UI accessible at the assigned port                                    |
+| `7878`         | TCP      | Radarr - Web UI accessible at the assigned port                                      |
+| `3000`         | TCP      | Riven frontend -  Web UI accessible at the assigned port                             |
+| `8080`         | TCP      | Riven backend - The API is accessible at the assigned port                           |
+| `8989`         | TCP      | Sonarr - Web UI accessible at the assigned port                                      |
+| `6969`         | TCP      | Whisparr - Web UI accessible at the assigned port                                    |
+| `8182`         | TCP      | Zilean - The API and Web UI (/swagger/index.html) is accessible at the assigned port |
+| `9090`         | TCP      | Zurg -  Web UI accessible at the assigned port                                       |
 
 ## 📂 Data Volumes
 
@@ -186,7 +209,3 @@ For additional details on deployment, see the [DUMB Docs](https://i-am-puid-0.gi
 - For questions related to DUMB, see the GitHub [discussions](https://github.com/I-am-PUID-0/DUMB/discussions)
 - or create a new [issue](https://github.com/I-am-PUID-0/DUMB/issues) if you find a bug or have an idea for an improvement.
 - or join the DUMB [discord server](https://discord.gg/T6uZGy5XYb)
-
-## ✅ GitHub Workflow Status
-
-![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/I-am-PUID-0/DUMB/docker-image.yml)
