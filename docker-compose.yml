@@ -7,10 +7,10 @@ services:
     stdin_open: true
     tty: true
     volumes:
-      - /home/username/docker/DUMB/config:/config
-      - /home/username/docker/DUMB/log:/log
-      - /home/username/docker/DUMB/data:/data
-      - /home/username/docker/DUMB/mnt/debrid:/mnt/debrid
+      - /home/username/docker/DUMB/config:/config                     ## Location of configuration files.
+      - /home/username/docker/DUMB/log:/log                           ## Location for logs
+      - /home/username/docker/DUMB/data:/data                         ## Location for all service data
+      - /home/username/docker/DUMB/mnt/debrid:/mnt/debrid             ## Location for all symlinks and rclone mounts - change to /mnt/debrid:rshared if using decypharr 
     environment:
       - TZ=
       - PUID=
