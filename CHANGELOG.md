@@ -1,5 +1,70 @@
 # Changelog
 
+## [1.7.0](https://github.com/I-am-PUID-0/DUMB/compare/1.6.0...1.7.0) (2025-12-18)
+
+
+### ✨ Features
+
+* **api:** add config schema endpoints ([30065fb](https://github.com/I-am-PUID-0/DUMB/commit/30065fb89299e674d308e5f524ffdae5111b799d))
+* **api:** add sponsorship urls for processes ([99373fc](https://github.com/I-am-PUID-0/DUMB/commit/99373fc847311f487b6c346085f2510bfe534bf2))
+* **api:** adds cursor-based pagination for logs endpoint ([3339e66](https://github.com/I-am-PUID-0/DUMB/commit/3339e66d111ebb795af35be829ad22e8b0da0874))
+* **api:** enhances the start-core-service endpoint to support instance based core services ([99373fc](https://github.com/I-am-PUID-0/DUMB/commit/99373fc847311f487b6c346085f2510bfe534bf2))
+* **config:** add logic to prune extraneous keys from config files during updates ([fdc063d](https://github.com/I-am-PUID-0/DUMB/commit/fdc063dfbef746e85df45e706fc637cc5d58865c))
+* **core:** Add Jellyfin media server support ([e055a10](https://github.com/I-am-PUID-0/DUMB/commit/e055a10b23a78f8efcef214c447b2671d32f5b53)), closes [#13](https://github.com/I-am-PUID-0/DUMB/issues/13)
+* **core:** add support for multi-instance debrid ([fdc063d](https://github.com/I-am-PUID-0/DUMB/commit/fdc063dfbef746e85df45e706fc637cc5d58865c))
+* **core:** adds Emby, Sonarr, Radarr, Lidarr, Prowlarr, and Whisparr support ([99373fc](https://github.com/I-am-PUID-0/DUMB/commit/99373fc847311f487b6c346085f2510bfe534bf2))
+* **decipher:** Improve Decypharr config ([8211f7f](https://github.com/I-am-PUID-0/DUMB/commit/8211f7f49d644f1bc3f7e38382997a7295df0461))
+* **decypharr:** adds support for decypharr rclone mounts ([99373fc](https://github.com/I-am-PUID-0/DUMB/commit/99373fc847311f487b6c346085f2510bfe534bf2))
+* **decypharr:** enhance Decypharr configuration ([f404d33](https://github.com/I-am-PUID-0/DUMB/commit/f404d335ae57acdbffb6d30aa2833ab5c8fb3dc4))
+* **decypharr:** enhance Decypharr setup ([bb074fb](https://github.com/I-am-PUID-0/DUMB/commit/bb074fbbc163524f740e0f5d2edd6e4a3331b78b))
+* **download:** add support for deb packages ([99373fc](https://github.com/I-am-PUID-0/DUMB/commit/99373fc847311f487b6c346085f2510bfe534bf2))
+
+
+### 🐛 Bug Fixes
+
+* **arrs:** Updates InstanceName in arr config ([f427cfd](https://github.com/I-am-PUID-0/DUMB/commit/f427cfd1bd9da559a422050edff5b56e0f6b74de))
+* **ci:** add jq installation step and improve cache pruning logic ([e13a2cf](https://github.com/I-am-PUID-0/DUMB/commit/e13a2cf5a49e0186ef9eaf4d54924d12331138d7))
+* **ci:** correct syntax error in cleanup-cache job ([4bfa6c2](https://github.com/I-am-PUID-0/DUMB/commit/4bfa6c2d9ccd8855e271f3b250a9140a42aa0a36))
+* **ci:** enhance cache pruning logic to manage manifest retention ([3ac894b](https://github.com/I-am-PUID-0/DUMB/commit/3ac894b798ce9ea040a9441974c8592962ed0fdc))
+* **ci:** enhance cleanup-cache job with new parameters and improved pruning logic ([9b51c7b](https://github.com/I-am-PUID-0/DUMB/commit/9b51c7bc3557b28f0f8cc5528173fc6eb44cc96b))
+* **ci:** enhance outputs in build jobs with OCI media types and compression options ([53f9351](https://github.com/I-am-PUID-0/DUMB/commit/53f93515db8245b8d7a9ea4e0d805e7ddf8de22e))
+* **ci:** improve error handling and manifest processing in cleanup-cache job ([7c2da17](https://github.com/I-am-PUID-0/DUMB/commit/7c2da1761eb276342af4cf786135fb250b06e27f))
+* **config:** eliminate unsafe exec() from python config handling ([99373fc](https://github.com/I-am-PUID-0/DUMB/commit/99373fc847311f487b6c346085f2510bfe534bf2))
+* **core:** add ToS for Plex Media Server and Emby ([99373fc](https://github.com/I-am-PUID-0/DUMB/commit/99373fc847311f487b6c346085f2510bfe534bf2))
+* **dumb_config:** set use_embedded_rclone false as default ([20465f6](https://github.com/I-am-PUID-0/DUMB/commit/20465f6e10b9107101db298dc2a863ef904396d5))
+* **dumb_config:** set use_embedded_rclone true as default ([8f3b610](https://github.com/I-am-PUID-0/DUMB/commit/8f3b6105d1be40ca2ea118f8c9ae3eac3a484765))
+* **rclone:** sets the key_type for the rclone config ([ca2893f](https://github.com/I-am-PUID-0/DUMB/commit/ca2893fb465cf2862fde521b3b63bf39dc79fa8f))
+
+
+### 🤡 Other Changes
+
+* Fixes typo in description ([7720489](https://github.com/I-am-PUID-0/DUMB/commit/7720489a331c14856961886487dbe9c605b52001))
+
+
+### 📖 Documentation
+
+* **api:** Updates rclone description ([6665952](https://github.com/I-am-PUID-0/DUMB/commit/666595294c1b33d53aff267291b12dbf1636974c))
+* update docker-compose.yml ([d47e632](https://github.com/I-am-PUID-0/DUMB/commit/d47e6326512a189c2d7bdefe826dc91bd4bcdd6c))
+
+
+### 🚀 CI/CD Pipeline
+
+* **docker:** Refactor Docker build workflow ([d2aafc2](https://github.com/I-am-PUID-0/DUMB/commit/d2aafc2b3065f078c2545297f6e97d00c477fc7f))
+* **workflow:** fix cleanup-cache job in docker-image.yml ([4294668](https://github.com/I-am-PUID-0/DUMB/commit/42946681dff53312f3e843478be0b2fa86585e72))
+
+
+### 🛠️ Refactors
+
+* **core:** enhance service startup logic ([18f24a6](https://github.com/I-am-PUID-0/DUMB/commit/18f24a66f79b1b285e5e6f14ee964467f21d43b9))
+* **decypharr:** Improve provider folder mapping and fix embedded rclone mounts ([188a86e](https://github.com/I-am-PUID-0/DUMB/commit/188a86e9112059a6f380ca2284492b12ca75a6e4))
+* **main:** simplify service configuration ([204b7f7](https://github.com/I-am-PUID-0/DUMB/commit/204b7f7e57c50b8005bcab920bc375e5c178841c))
+
+
+### 🛠️ Build System
+
+* **deps:** Update dependencies ([0f4fab0](https://github.com/I-am-PUID-0/DUMB/commit/0f4fab0f81c549d7a5a0eda2a42118830191d79a))
+* **deps:** update dependencies in poetry.lock ([5b8af2c](https://github.com/I-am-PUID-0/DUMB/commit/5b8af2ce718e9931a931c46a896c9ffcac794cdd))
+
 ## [1.6.0](https://github.com/I-am-PUID-0/DUMB/compare/1.5.0...1.6.0) (2025-07-31)
 
 
