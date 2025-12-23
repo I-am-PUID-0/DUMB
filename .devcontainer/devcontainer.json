@@ -9,7 +9,7 @@
         "ms-python.black-formatter"
       ],
       "settings": {
-        "terminal.integrated.defaultProfile.linux": "sh",
+        "terminal.integrated.defaultProfile.linux": "bash",
         "python.formatting.provider": "black",
         "editor.formatOnSave": true,
         "python.defaultInterpreterPath": "/venv/bin/python",
@@ -47,5 +47,5 @@
     "--shm-size=128m",
     "--pull=always"
   ],
-  "postCreateCommand": "apt update && apt install -y gcc python3.11-dev libpq-dev && apt remove -y python3-yaml && curl -sSL https://install.python-poetry.org | python - && export PATH=\"$HOME/.local/bin:$PATH\" && poetry config virtualenvs.create false && poetry install --no-root --with dev && git config --global --add safe.directory /workspace"
+  "postCreateCommand": "apt update && apt install -y gcc python3.11-dev libpq-dev && apt remove -y python3-yaml && curl -sSL https://install.python-poetry.org | python - && install -d /usr/local/bin && printf '#!/bin/sh\\nexec /root/.local/bin/poetry \"$@\"\\n' > /usr/local/bin/poetry && chmod +x /usr/local/bin/poetry && poetry config virtualenvs.create false && poetry install --no-root --with dev && git config --global --add safe.directory /workspace"
 }
