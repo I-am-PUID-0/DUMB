@@ -867,9 +867,10 @@ def setup_plex():
             logger.error(f"Plex install failed: {error}")
 
     os.makedirs(config["config_dir"], exist_ok=True)
-    chown_recursive(
-        config["config_dir"], CONFIG_MANAGER.get("puid"), CONFIG_MANAGER.get("pgid")
-    )
+    if os.stat(config["config_dir"]).st_uid != CONFIG_MANAGER.get("puid"):
+        chown_recursive(
+            config["config_dir"], CONFIG_MANAGER.get("puid"), CONFIG_MANAGER.get("pgid")
+        )
     logger.info("Setting up Plex Media Server environment...")
     env_vars = {
         "PLEX_MEDIA_SERVER_APPLICATION_SUPPORT_DIR": config["config_dir"],

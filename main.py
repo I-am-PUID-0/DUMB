@@ -93,9 +93,6 @@ def main():
         grouped_keys = [
             "zurg",
             "rclone",
-            "plex",
-            "jellyfin",
-            "emby",
             "postgres",
             "pgadmin",
             "zilean",
@@ -111,6 +108,9 @@ def main():
             "prowlarr",
             "whisparr",
             "decypharr",
+            "plex",
+            "jellyfin",
+            "emby",
         ]
         for key in grouped_keys:
             cfg = config.get(key, {})
