@@ -228,6 +228,7 @@
         "log_file": "/plex/Plex Media Server/Logs/Plex Media Server.log",
         "plex_claim": "",
         "friendly_name": "DUMB",
+        "pinned_version": "",
         "command": [],
         "env": {}
     },

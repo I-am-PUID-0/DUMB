@@ -772,6 +772,9 @@
         "friendly_name": {
           "type": "string"
         },
+        "pinned_version": {
+          "type": "string"
+        },
         "command": {
           "type": "array",
           "items": {
@@ -795,6 +798,7 @@
         "log_file",
         "plex_claim",
         "friendly_name",
+        "pinned_version",
         "command",
         "env"
       ]

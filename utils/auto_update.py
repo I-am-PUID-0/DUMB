@@ -2,6 +2,7 @@ from utils.global_logger import logger
 from utils.logger import format_time
 from utils.versions import Versions
 from utils.setup import setup_project, setup_release_version
+from utils.plex import PlexInstaller
 from utils.config_loader import CONFIG_MANAGER
 import threading, time, os, schedule, requests
 
@@ -60,7 +61,6 @@ class Update:
 
         if key in [
             "jellyfin",
-            "plex",
             "emby",
             "sonarr",
             "radarr",
@@ -123,6 +123,9 @@ class Update:
                     raise RuntimeError(error)
 
     def update_check(self, process_name, config, key, instance_name):
+        if key == "plex":
+            return self.update_check_plex(process_name, config, key, instance_name)
+
         if "nightly" in config["release_version"].lower():
             nightly = True
             prerelease = False
@@ -185,6 +188,49 @@ class Update:
 
         except Exception as e:
             return False, f"Update check failed for {process_name}: {e}"
+
+    def update_check_plex(self, process_name, config, key, instance_name):
+        installer = PlexInstaller()
+        update_needed, update_info = installer.check_for_update(
+            process_name, instance_name
+        )
+        if not update_needed:
+            return False, f"{update_info} for {process_name}."
+
+        pinned_version = config.get("pinned_version")
+        if pinned_version:
+            if update_info.get("current_version") == pinned_version:
+                return False, f"Plex pinned to {pinned_version} for {process_name}."
+            if update_info.get("latest_version") != pinned_version:
+                return (
+                    False,
+                    f"Plex pinned to {pinned_version}; latest is {update_info.get('latest_version')} for {process_name}.",
+                )
+
+        self.logger.info(
+            f"Updating {process_name} from {update_info.get('current_version')} to {update_info.get('latest_version')}."
+        )
+        if process_name in self.process_handler.process_names:
+            self.stop_process(process_name)
+        if process_name in self.process_handler.setup_tracker:
+            self.process_handler.setup_tracker.remove(process_name)
+
+        success, error = installer.install_plex_media_server()
+        if not success:
+            return (
+                False,
+                f"Failed to update {process_name} to {update_info.get('latest_version')}: {error}",
+            )
+
+        success, error = setup_project(self.process_handler, process_name)
+        if not success:
+            return (
+                False,
+                f"Failed to update {process_name} to {update_info.get('latest_version')}: {error}",
+            )
+
+        self.start_process(process_name, config, key, instance_name)
+        return True, f"Updated {process_name} to {update_info.get('latest_version')}."
 
     def stop_process(self, process_name):
         self.process_handler.stop_process(process_name)

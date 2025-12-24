@@ -1,5 +1,6 @@
 from utils.global_logger import logger
 from utils.config_loader import CONFIG_MANAGER
+from utils.versions import Versions
 import os, platform, subprocess, tempfile, requests
 import xml.etree.ElementTree as ET
 
@@ -7,6 +8,12 @@ import xml.etree.ElementTree as ET
 class PlexInstaller:
     def __init__(self):
         self.logger = logger
+        self.versions = Versions()
+
+    def normalize_version(self, version):
+        if version is None:
+            return None
+        return version[1:] if version.startswith("v") else version
 
     def get_architecture(self):
         system_arch = platform.machine().lower()
@@ -19,6 +26,22 @@ class PlexInstaller:
         else:
             self.logger.error(f"Unsupported architecture: {system_arch} / {system_os}")
             return None
+
+    def get_download_info_for_version(self, version, distro="debian"):
+        build = self.get_architecture()
+        if not build:
+            raise Exception("Unsupported architecture")
+
+        package_suffix = {"linux-x86_64": "amd64", "linux-aarch64": "arm64"}.get(build)
+        if not package_suffix:
+            raise Exception(f"Unsupported build for Plex package: {build}")
+
+        file_url = (
+            "https://downloads.plex.tv/plex-media-server-new/"
+            f"{version}/debian/plexmediaserver_{version}_{package_suffix}.deb"
+        )
+        self.logger.debug(f"Using pinned Plex version URL: {file_url}")
+        return version, file_url
 
     def get_download_info(self, build, distro="debian", channel=16, token=None):
         url = f"https://plex.tv/downloads/details/5?build={build}&channel={channel}&distro={distro}"
@@ -54,13 +77,16 @@ class PlexInstaller:
         except ET.ParseError as e:
             raise Exception(f"Failed to parse XML: {e}")
 
-    def install_plex_media_server(self):
+    def install_plex_media_server(self, version=None):
         build = self.get_architecture()
         if not build:
             return False, "Unsupported architecture"
 
         try:
-            version, download_url = self.get_download_info(build)
+            if version:
+                version, download_url = self.get_download_info_for_version(version)
+            else:
+                version, download_url = self.get_download_info(build)
             self.logger.info(
                 f"Installing Plex Media Server v{version} from: {download_url}"
             )
@@ -89,6 +115,33 @@ class PlexInstaller:
         except Exception as e:
             self.logger.error(f"Error installing Plex Media Server: {e}")
             return False, str(e)
+
+    def check_for_update(self, process_name, instance_name=None):
+        current_version, error = self.versions.version_check(
+            process_name, instance_name, "plex"
+        )
+        if not current_version:
+            return False, f"Failed to get current Plex version: {error}"
+        current_version = self.normalize_version(current_version)
+
+        build = self.get_architecture()
+        if not build:
+            return False, "Unsupported architecture"
+
+        try:
+            latest_version, download_url = self.get_download_info(build)
+        except Exception as e:
+            return False, f"Failed to fetch latest Plex version: {e}"
+        latest_version = self.normalize_version(latest_version)
+
+        if current_version == latest_version:
+            return False, "No updates available"
+
+        return True, {
+            "current_version": current_version,
+            "latest_version": latest_version,
+            "download_url": download_url,
+        }
 
 
 def perform_plex_claim(claim_token, preferences_path, logger):

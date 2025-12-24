@@ -854,17 +854,44 @@ def setup_plex():
         logger.info("Plex is disabled. Skipping setup.")
         return True, None
 
+    def normalize_version(version):
+        if not version:
+            return version
+        return version[1:] if version.startswith("v") else version
+
     plex_media_server_dir = config.get(
         "plex_media_server_dir", "/usr/lib/plexmediaserver"
     )
+    pinned_version = config.get("pinned_version")
+    installer = PlexInstaller()
     if not os.path.exists(plex_media_server_dir):
         logger.warning(
             f"Plex Media Server directory {plex_media_server_dir} does not exist. Installing Plex Media Server..."
         )
-        installer = PlexInstaller()
-        success, error = installer.install_plex_media_server()
+        success, error = installer.install_plex_media_server(
+            version=normalize_version(pinned_version) if pinned_version else None
+        )
         if not success:
             logger.error(f"Plex install failed: {error}")
+            return False, error
+    elif pinned_version:
+        current_version, error = versions.version_check(
+            config.get("process_name", "Plex Media Server"), None, "plex"
+        )
+        current_version = normalize_version(current_version)
+        target_version = normalize_version(pinned_version)
+        if not current_version:
+            logger.warning(
+                f"Failed to read current Plex version for pin check: {error}"
+            )
+        elif current_version != target_version:
+            logger.info(
+                f"Plex pinned to {target_version}; installing over {current_version}."
+            )
+            success, error = installer.install_plex_media_server(version=target_version)
+            if not success:
+                logger.error(f"Plex pinned install failed: {error}")
+                return False, error
 
     os.makedirs(config["config_dir"], exist_ok=True)
     if os.stat(config["config_dir"]).st_uid != CONFIG_MANAGER.get("puid"):
@@ -900,16 +927,18 @@ def setup_plex():
             else:
                 from utils.plex import perform_plex_claim
 
+                logger.debug("Claiming Plex server with provided PLEX_CLAIM token...")
                 success, error = perform_plex_claim(
                     plex_claim, preferences_path, logger
                 )
                 if not success:
                     return False, f"Failed to claim Plex server: {error}"
-                chown_recursive(
-                    config["config_dir"],
-                    CONFIG_MANAGER.get("puid"),
-                    CONFIG_MANAGER.get("pgid"),
-                )
+                if os.stat(config["config_dir"]).st_uid != CONFIG_MANAGER.get("puid"):
+                    chown_recursive(
+                        config["config_dir"],
+                        CONFIG_MANAGER.get("puid"),
+                        CONFIG_MANAGER.get("pgid"),
+                    )
     command = ["/usr/lib/plexmediaserver/Plex Media Server"]
     config["command"] = command
     return True, None
