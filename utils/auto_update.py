@@ -191,6 +191,32 @@ class Update:
 
     def update_check_plex(self, process_name, config, key, instance_name):
         installer = PlexInstaller()
+        plex_media_server_dir = config.get(
+            "plex_media_server_dir", "/usr/lib/plexmediaserver"
+        )
+        if not os.path.exists(plex_media_server_dir):
+            pinned_version = installer.normalize_version(config.get("pinned_version"))
+            install_label = pinned_version or "latest"
+            self.logger.info(
+                f"Plex Media Server not found; installing {install_label} for {process_name}."
+            )
+            success, error = installer.install_plex_media_server(version=pinned_version)
+            if not success:
+                return (
+                    False,
+                    f"Failed to install {process_name} ({install_label}): {error}",
+                )
+
+            success, error = setup_project(self.process_handler, process_name)
+            if not success:
+                return (
+                    False,
+                    f"Failed to install {process_name} ({install_label}): {error}",
+                )
+
+            self.start_process(process_name, config, key, instance_name)
+            return True, f"Installed {process_name} ({install_label})."
+
         update_needed, update_info = installer.check_for_update(
             process_name, instance_name
         )
