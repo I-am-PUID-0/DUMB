@@ -647,6 +647,7 @@ def patch_decypharr_config():
                 updated = True
 
         # ---- Build/Sync arrs from CONFIG_MANAGER (sonarr/radarr) ----
+        desired_arrs = []
         try:
             desired_arrs = _collect_arr_entries(decypharr_config)
             if desired_arrs:
@@ -659,7 +660,7 @@ def patch_decypharr_config():
 
         # ---- Ensure Arr root folders (movies/shows symlinks) ----
         try:
-            arrs = config_data.get("arrs") or []
+            arrs = desired_arrs or []
             movies_root = "/mnt/debrid/decypharr_symlinks/movies"
             shows_root = "/mnt/debrid/decypharr_symlinks/shows"
             for entry in arrs:
@@ -689,7 +690,7 @@ def patch_decypharr_config():
 
         # ---- Ensure download client 'decypharr' on each Arr ----
         try:
-            arrs = config_data.get("arrs") or []
+            arrs = desired_arrs or []
             for entry in arrs:
                 svc = (entry.get("name") or "").split(":", 1)[0].lower()
                 host = entry.get("host")
