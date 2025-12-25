@@ -22,9 +22,14 @@ class JellyfinInstaller:
                 returncode=1, cmd="curl | gpg --dearmor"
             )
 
-    def install_jellyfin_server(self):
+    def install_jellyfin_server(self, version=None):
         try:
-            self.logger.info("Installing Jellyfin media server...")
+            if version:
+                self.logger.info(
+                    f"Installing Jellyfin media server version {version}..."
+                )
+            else:
+                self.logger.info("Installing Jellyfin media server...")
 
             # Step 1: Ensure required tools
             subprocess.run(["apt", "update"], check=True)
@@ -70,7 +75,12 @@ class JellyfinInstaller:
             subprocess.run(["apt", "update"], check=True)
 
             # Step 6: Install jellyfin metapackage
-            subprocess.run(["apt", "install", "-y", "jellyfin"], check=True)
+            if version:
+                subprocess.run(
+                    ["apt", "install", "-y", f"jellyfin={version}"], check=True
+                )
+            else:
+                subprocess.run(["apt", "install", "-y", "jellyfin"], check=True)
 
             # Step 7: Ensure web client is available
             expected_web_path = "/usr/lib/jellyfin/bin/jellyfin-web"

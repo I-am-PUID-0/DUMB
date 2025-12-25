@@ -3,8 +3,10 @@ from utils.logger import format_time
 from utils.versions import Versions
 from utils.setup import setup_project, setup_release_version
 from utils.plex import PlexInstaller
+from utils.arr import ArrInstaller
+from utils.jellyfin import JellyfinInstaller
 from utils.config_loader import CONFIG_MANAGER
-import threading, time, os, schedule, requests
+import threading, time, os, schedule, requests, subprocess
 
 
 class Update:
@@ -59,18 +61,7 @@ class Update:
         if not config:
             return None, f"Configuration for {process_name} not found."
 
-        if key in [
-            "jellyfin",
-            "emby",
-            "sonarr",
-            "radarr",
-            "lidarr",
-            "bazarr",
-            "prowlarr",
-            "readarr",
-            "whisparr",
-            "whisparr-v3",
-        ]:
+        if key in ["bazarr"]:
             enable_update = False
             self.logger.info(
                 f"Automatic updates are not yet supported for {process_name} ({key})."
@@ -125,6 +116,51 @@ class Update:
     def update_check(self, process_name, config, key, instance_name):
         if key == "plex":
             return self.update_check_plex(process_name, config, key, instance_name)
+        if key == "jellyfin":
+            pinned_version = config.get("pinned_version")
+            if pinned_version:
+                return self.update_check_pinned_version(
+                    process_name,
+                    config,
+                    key,
+                    instance_name,
+                    pinned_version,
+                )
+            return self.update_check_jellyfin_latest(
+                process_name, config, key, instance_name
+            )
+        if key == "emby":
+            target_release = None
+            if config.get("release_version_enabled"):
+                target_release = config.get("release_version")
+            if target_release:
+                return self.update_check_pinned_version(
+                    process_name, config, key, instance_name, target_release
+                )
+            return self.update_check_emby_latest(
+                process_name, config, key, instance_name
+            )
+        if key in [
+            "sonarr",
+            "radarr",
+            "lidarr",
+            "prowlarr",
+            "readarr",
+            "whisparr",
+            "whisparr-v3",
+        ]:
+            pinned_version = config.get("pinned_version")
+            if pinned_version:
+                return self.update_check_pinned_version(
+                    process_name,
+                    config,
+                    key,
+                    instance_name,
+                    pinned_version,
+                )
+            return self.update_check_arr_latest(
+                process_name, config, key, instance_name
+            )
 
         if "nightly" in config["release_version"].lower():
             nightly = True
@@ -188,6 +224,205 @@ class Update:
 
         except Exception as e:
             return False, f"Update check failed for {process_name}: {e}"
+
+    def update_check_pinned_version(
+        self, process_name, config, key, instance_name, target_version
+    ):
+        if not target_version:
+            return False, f"No updates available for {process_name}."
+
+        versions = Versions()
+        current_version, error = versions.version_check(
+            process_name, instance_name, key
+        )
+        self.logger.info(
+            f"{process_name} pinned version: {target_version} (current: {current_version or 'unknown'})."
+        )
+        if current_version == target_version:
+            return False, f"No updates available for {process_name}."
+        if not current_version:
+            self.logger.warning(
+                f"Failed to read current version for {process_name}: {error}"
+            )
+
+        self.logger.info(
+            f"Updating {process_name} from {current_version or 'unknown'} to {target_version}."
+        )
+        if process_name in self.process_handler.process_names:
+            self.stop_process(process_name)
+        if process_name in self.process_handler.setup_tracker:
+            self.process_handler.setup_tracker.remove(process_name)
+
+        success, error = setup_project(self.process_handler, process_name)
+        if not success:
+            return (
+                False,
+                f"Failed to update {process_name} to {target_version}: {error}",
+            )
+
+        self.start_process(process_name, config, key, instance_name)
+        return True, f"Updated {process_name} to {target_version}."
+
+    def update_check_jellyfin_latest(self, process_name, config, key, instance_name):
+        jellyfin_service_path = "/usr/lib/jellyfin/bin/jellyfin"
+        if not os.path.exists(jellyfin_service_path):
+            self.logger.info(
+                f"{process_name} not installed yet; deferring install to setup."
+            )
+            return False, f"No updates available for {process_name}."
+
+        versions = Versions()
+        current_version, error = versions.version_check(
+            process_name, instance_name, key
+        )
+        latest_version, latest_error = self.get_jellyfin_latest_version()
+        if not latest_version:
+            return False, f"Failed to get latest Jellyfin version: {latest_error}"
+        self.logger.info(
+            f"Jellyfin latest version: {latest_version} (current: {current_version or 'unknown'})."
+        )
+        if current_version == latest_version:
+            return False, f"No updates available for {process_name}."
+
+        self.logger.info(
+            f"Updating {process_name} from {current_version or 'unknown'} to {latest_version}."
+        )
+        if process_name in self.process_handler.process_names:
+            self.stop_process(process_name)
+        if process_name in self.process_handler.setup_tracker:
+            self.process_handler.setup_tracker.remove(process_name)
+
+        installer = JellyfinInstaller()
+        success, error = installer.install_jellyfin_server()
+        if not success:
+            return (
+                False,
+                f"Failed to update {process_name} to {latest_version}: {error}",
+            )
+
+        success, error = setup_project(self.process_handler, process_name)
+        if not success:
+            return (
+                False,
+                f"Failed to update {process_name} to {latest_version}: {error}",
+            )
+
+        self.start_process(process_name, config, key, instance_name)
+        return True, f"Updated {process_name} to {latest_version}."
+
+    def update_check_emby_latest(self, process_name, config, key, instance_name):
+        versions = Versions()
+        current_version, error = versions.version_check(
+            process_name, instance_name, key
+        )
+        latest_version, latest_error = self.get_emby_latest_version(config)
+        if not latest_version:
+            return False, f"Failed to get latest Emby version: {latest_error}"
+        self.logger.info(
+            f"Emby latest version: {latest_version} (current: {current_version or 'unknown'})."
+        )
+        if current_version == latest_version:
+            return False, f"No updates available for {process_name}."
+
+        self.logger.info(
+            f"Updating {process_name} from {current_version or 'unknown'} to {latest_version}."
+        )
+        if process_name in self.process_handler.process_names:
+            self.stop_process(process_name)
+        if process_name in self.process_handler.setup_tracker:
+            self.process_handler.setup_tracker.remove(process_name)
+
+        original_release_enabled = config.get("release_version_enabled")
+        original_release_version = config.get("release_version")
+        config["release_version_enabled"] = True
+        config["release_version"] = latest_version
+        try:
+            success, error = setup_project(self.process_handler, process_name)
+            if not success:
+                return (
+                    False,
+                    f"Failed to update {process_name} to {latest_version}: {error}",
+                )
+        finally:
+            config["release_version_enabled"] = original_release_enabled
+            config["release_version"] = original_release_version
+
+        self.start_process(process_name, config, key, instance_name)
+        return True, f"Updated {process_name} to {latest_version}."
+
+    def update_check_arr_latest(self, process_name, config, key, instance_name):
+        versions = Versions()
+        current_version, error = versions.version_check(
+            process_name, instance_name, key
+        )
+        installer = ArrInstaller(key)
+        latest_version, latest_error = installer.get_latest_version()
+        if not latest_version:
+            return False, f"Failed to get latest {key} version: {latest_error}"
+        self.logger.info(
+            f"{key.capitalize()} latest version: {latest_version} (current: {current_version or 'unknown'})."
+        )
+        if current_version == latest_version:
+            return False, f"No updates available for {process_name}."
+
+        self.logger.info(
+            f"Updating {process_name} from {current_version or 'unknown'} to {latest_version}."
+        )
+        if process_name in self.process_handler.process_names:
+            self.stop_process(process_name)
+        if process_name in self.process_handler.setup_tracker:
+            self.process_handler.setup_tracker.remove(process_name)
+
+        success, error = installer.install()
+        if not success:
+            return (
+                False,
+                f"Failed to update {process_name} to {latest_version}: {error}",
+            )
+
+        success, error = setup_project(self.process_handler, process_name)
+        if not success:
+            return (
+                False,
+                f"Failed to update {process_name} to {latest_version}: {error}",
+            )
+
+        self.start_process(process_name, config, key, instance_name)
+        return True, f"Updated {process_name} to {latest_version}."
+
+    def get_jellyfin_latest_version(self):
+        try:
+            result = subprocess.run(
+                ["apt-cache", "policy", "jellyfin"],
+                capture_output=True,
+                text=True,
+            )
+            if result.returncode == 0:
+                for line in result.stdout.splitlines():
+                    line = line.strip()
+                    if line.startswith("Candidate:"):
+                        candidate = line.split(":", 1)[1].strip()
+                        if candidate and candidate != "(none)":
+                            return candidate, None
+        except Exception as e:
+            return None, str(e)
+        return None, "Candidate version not found"
+
+    def get_emby_latest_version(self, config):
+        try:
+            repo_owner = config.get("repo_owner")
+            repo_name = config.get("repo_name")
+            if not repo_owner or not repo_name:
+                return None, "Emby repo owner/name not configured"
+            downloader = Versions().downloader
+            latest_release_version, error = downloader.get_latest_release(
+                repo_owner, repo_name, nightly=False
+            )
+            if not latest_release_version:
+                return None, error
+            return latest_release_version, None
+        except Exception as e:
+            return None, str(e)
 
     def update_check_plex(self, process_name, config, key, instance_name):
         installer = PlexInstaller()

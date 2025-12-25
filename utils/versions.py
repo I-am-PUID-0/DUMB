@@ -51,6 +51,13 @@ class Versions:
                     config = CONFIG_MANAGER.get_instance(instance_name, key)
                     if not config:
                         raise ValueError(f"Configuration for {process_name} not found.")
+                    result = subprocess.run(
+                        ["dpkg-query", "-W", "-f=${Version}", "jellyfin"],
+                        capture_output=True,
+                        text=True,
+                    )
+                    if result.returncode == 0 and result.stdout.strip():
+                        return result.stdout.strip(), None
                     port = config.get("port", 8096)
                     if not port:
                         raise ValueError("Jellyfin port not configured.")

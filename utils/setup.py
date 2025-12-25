@@ -460,14 +460,33 @@ def ensure_arr_config(
 
 def setup_arr_instance(key, instance_name, instance, process_name):
     binary_path = f"/opt/{key}/{key.capitalize()}/{key.capitalize()}"
+    pinned_version = instance.get("pinned_version")
     if not os.path.exists(binary_path):
         logger.warning(f"{key.capitalize()} binary not found. Installing...")
         from utils.arr import ArrInstaller
 
-        installer = ArrInstaller(key)
+        installer = ArrInstaller(key, version=pinned_version or "4")
         success, error = installer.install()
         if not success:
             return False, error
+    elif pinned_version:
+        current_version, error = versions.version_check(
+            process_name, instance_name, key
+        )
+        if not current_version:
+            logger.warning(
+                f"Failed to read {key.capitalize()} version for pin check: {error}"
+            )
+        elif current_version != pinned_version:
+            logger.info(
+                f"{key.capitalize()} pinned to {pinned_version}; installing over {current_version}."
+            )
+            from utils.arr import ArrInstaller
+
+            installer = ArrInstaller(key, version=pinned_version or "4")
+            success, error = installer.install()
+            if not success:
+                return False, error
     if not os.access(binary_path, os.X_OK):
         logger.warning(f"{binary_path} not executable. Fixing permissions...")
         os.chmod(binary_path, 0o755)
@@ -951,15 +970,45 @@ def setup_jellyfin():
         logger.info("Jellyfin is disabled. Skipping setup.")
         return True, None
 
+    def get_jellyfin_package_version():
+        try:
+            result = subprocess.run(
+                ["dpkg-query", "-W", "-f=${Version}", "jellyfin"],
+                capture_output=True,
+                text=True,
+            )
+            if result.returncode == 0:
+                return result.stdout.strip()
+            return None
+        except Exception:
+            return None
+
     jellyfin_service_path = "/usr/lib/jellyfin/bin/jellyfin"
+    pinned_version = config.get("pinned_version")
     if not os.path.exists(jellyfin_service_path):
         logger.warning("Jellyfin service not found. Installing Jellyfin...")
         from utils.jellyfin import JellyfinInstaller
 
         installer = JellyfinInstaller()
-        success, error = installer.install_jellyfin_server()
+        success, error = installer.install_jellyfin_server(version=pinned_version)
         if not success:
             return False, error
+    elif pinned_version:
+        current_version = get_jellyfin_package_version()
+        if not current_version:
+            logger.warning(
+                "Failed to read Jellyfin package version for pin check."
+            )
+        elif current_version != pinned_version:
+            logger.info(
+                f"Jellyfin pinned to {pinned_version}; installing over {current_version}."
+            )
+            from utils.jellyfin import JellyfinInstaller
+
+            installer = JellyfinInstaller()
+            success, error = installer.install_jellyfin_server(version=pinned_version)
+            if not success:
+                return False, error
 
     os.makedirs(config["config_dir"], exist_ok=True)
     chown_recursive(
@@ -1014,19 +1063,13 @@ def setup_emby():
             "/opt/emby-server/bin/EmbyServer",
         ]
         emby_bin = next((p for p in candidate_bins if os.path.exists(p)), None)
+        target_release = (
+            config.get("release_version")
+            if config.get("release_version_enabled") and config.get("release_version")
+            else None
+        )
 
-        if not emby_bin:
-            logger.warning(f"Emby service not found. Installing Emby…")
-            release = None
-            if config.get("release_version_enabled") and config.get("release_version"):
-                release = config["release_version"]
-            else:
-                release, error = downloader.get_latest_release(
-                    repo_owner=config.get("repo_owner"),
-                    repo_name=config.get("repo_name"),
-                )
-                if not release:
-                    return False, f"Failed to get latest release: {error}"
+        def install_emby(release):
             target_dir = "/tmp/emby_download"
             success, error = downloader.download_release_version(
                 process_name=config.get("process_name"),
@@ -1038,18 +1081,37 @@ def setup_emby():
                 zip_folder_name=None,
             )
             if not success:
-                return False, f"Failed to download Emby: {error}"
+                return False, f"Failed to download Emby: {error}", None
 
             deb_path = None
-            for name in os.listdir(target_dir):
-                if name.startswith("emby-server-deb_") and name.endswith(".deb"):
-                    deb_path = os.path.join(target_dir, name)
-                    break
+            deb_candidates = [
+                name
+                for name in os.listdir(target_dir)
+                if name.startswith("emby-server-deb_") and name.endswith(".deb")
+            ]
+            if release:
+                release_prefix = f"emby-server-deb_{release}_"
+                release_matches = [
+                    name for name in deb_candidates if name.startswith(release_prefix)
+                ]
+                if release_matches:
+                    deb_path = os.path.join(target_dir, sorted(release_matches)[0])
+            if not deb_path and deb_candidates:
+                deb_path = os.path.join(target_dir, sorted(deb_candidates)[0])
             if not deb_path:
                 return (
                     False,
                     "Downloaded release does not contain an Emby .deb asset.",
+                    None,
                 )
+
+            try:
+                for name in deb_candidates:
+                    candidate_path = os.path.join(target_dir, name)
+                    if candidate_path != deb_path:
+                        os.remove(candidate_path)
+            except Exception:
+                pass
 
             logger.info(f"Extracting Emby from {deb_path}")
             subprocess.run(["dpkg-deb", "-x", deb_path, "/"], check=True)
@@ -1067,6 +1129,7 @@ def setup_emby():
                 return (
                     False,
                     "Emby installed but binary not found in expected locations.",
+                    None,
                 )
 
             try:
@@ -1080,6 +1143,33 @@ def setup_emby():
                 logger.debug(f"Emby version {release} written to {version_path}")
             except Exception:
                 pass
+            return True, None, emby_bin
+
+        if not emby_bin:
+            logger.warning("Emby service not found. Installing Emby…")
+            if target_release:
+                release = target_release
+            else:
+                release, error = downloader.get_latest_release(
+                    repo_owner=config.get("repo_owner"),
+                    repo_name=config.get("repo_name"),
+                )
+                if not release:
+                    return False, f"Failed to get latest release: {error}"
+            success, error, emby_bin = install_emby(release)
+            if not success:
+                return False, error
+        elif target_release:
+            current_version, error = versions.version_check(
+                config.get("process_name", "Emby Media Server"), None, "emby"
+            )
+            if not current_version or current_version != target_release:
+                logger.info(
+                    f"Emby pinned to {target_release}; installing over {current_version or 'unknown'}."
+                )
+                success, error, emby_bin = install_emby(target_release)
+                if not success:
+                    return False, error
         if emby_bin.endswith(".dll"):
             cmd = ["dotnet", emby_bin]
         else:
