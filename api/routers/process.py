@@ -103,6 +103,7 @@ CORE_SERVICE_DEPENDENCIES = {
     "cli_debrid": ["zurg", "rclone", "cli_battery", "phalanx_db"],
     "plex_debrid": ["zurg", "rclone"],
     "decypharr": ["rclone"],
+    "nzbdav": ["rclone"],
     "plex": [],
     "jellyfin": [],
     "emby": [],
@@ -120,6 +121,7 @@ CORE_SERVICE_NAMES = {
     "emby": "Emby Media Server",
     "cli_debrid": "CLID",
     "decypharr": "Decypharr",
+    "nzbdav": "NzbDAV",
     "riven_backend": "Riven",
     "radarr": "Radarr",
     "sonarr": "Sonarr",
@@ -157,6 +159,13 @@ Decypharr Service
 - Integrates with Rclone for mounting of WebDAV content.
 
 Documentation: https://i-am-puid-0.github.io/DUMB/services/core/decypharr""",
+    "nzbdav": """\
+NzbDAV Service
+- Combined backend and frontend WebDAV service for NZB access.
+- Provides a single endpoint for browsing and serving content.
+- Designed to be built and run as a single service in DUMB.
+
+Documentation: https://github.com/nzbdav-dev/nzbdav""",
     "plex": """\
 Plex Media Server
 - Official Plex server for organizing, streaming, and sharing your media library.
@@ -305,6 +314,8 @@ SERVICE_OPTION_DESCRIPTIONS = {
     "suppress_logging": "If true, silences all service log output.",
     "log_level": "Verbosity level for logs (e.g. DEBUG, INFO, WARN).",
     "port": "TCP port the service will listen on.",
+    "frontend_port": "TCP port the NzbDAV frontend will listen on.",
+    "backend_port": "TCP port the NzbDAV backend will listen on.",
     "auto_update": "Automatically check for new versions",
     "auto_update_interval": "Hours between automatic update checks.",
     "plex_claim": "Token used to claim the Plex Media Server. https://www.plex.tv/claim",
@@ -313,6 +324,8 @@ SERVICE_OPTION_DESCRIPTIONS = {
     "setup_password": "Password for pgAdmin4 login.",
     "origin": "CORS origin for the service",
     "use_embedded_rclone": "If true, uses the embedded rclone for Decypharr. (Recommended)",
+    "core_service": "Specifies which core service this service applies to; e.g., decypharr, nzbdav, or none (blank).",
+    "webdav_password": "Password for accessing the NzbDAV WebDAV service. (Default: '1P@55w0rd')",
 }
 
 BASIC_FIELDS = set(SERVICE_OPTION_DESCRIPTIONS.keys())
@@ -452,6 +465,25 @@ async def start_service(
             if not process:
                 raise Exception(f"Error starting {process_name}: {error}")
             logger.info(f"{process_name} started successfully.")
+
+            key, _ = CONFIG_MANAGER.find_key_for_process(process_name)
+            if key in [
+                "prowlarr",
+                "sonarr",
+                "radarr",
+                "lidarr",
+                "readarr",
+                "whisparr",
+                "whisparr-v3",
+            ]:
+                try:
+                    from utils.prowlarr_settings import patch_prowlarr_apps
+
+                    ok, err = patch_prowlarr_apps()
+                    if not ok and err:
+                        logger.warning("Prowlarr app sync failed: %s", err)
+                except Exception as e:
+                    logger.warning("Prowlarr app sync skipped: %s", e)
             return {
                 "status": "Service started successfully",
                 "process_name": process_name,
@@ -544,6 +576,25 @@ async def restart_service(
                 )
 
             logger.info(f"{process_name} started successfully.")
+
+            key, _ = CONFIG_MANAGER.find_key_for_process(process_name)
+            if key in [
+                "prowlarr",
+                "sonarr",
+                "radarr",
+                "lidarr",
+                "readarr",
+                "whisparr",
+                "whisparr-v3",
+            ]:
+                try:
+                    from utils.prowlarr_settings import patch_prowlarr_apps
+
+                    ok, err = patch_prowlarr_apps()
+                    if not ok and err:
+                        logger.warning("Prowlarr app sync failed: %s", err)
+                except Exception as e:
+                    logger.warning("Prowlarr app sync skipped: %s", e)
 
             status = api_state.get_status(process_name)
             if status != "running":
@@ -965,6 +1016,8 @@ def _run_startup(request: UnifiedStartRequest, updater, api_state, logger):
                             CONFIG_MANAGER.save_config()
 
             logger.debug(f"Dependencies for '{config_key}': {dependencies}")
+            post_core_rclone = config_key == "nzbdav"
+            post_core_rclone_processes = []
 
             #
             # 4.1) Handle zurg/rclone dependencies for this core service (multi-instance support)
@@ -1055,10 +1108,22 @@ def _run_startup(request: UnifiedStartRequest, updater, api_state, logger):
                                     "enabled": True,
                                     "core_service": config_key,
                                     "process_name": f"Rclone w/ {display}",
-                                    "key_type": service_type,
+                                    "key_type": (
+                                        "nzbdav"
+                                        if config_key == "nzbdav"
+                                        else service_type
+                                    ),
                                     "mount_name": clean_display,
                                     "log_file": f"/log/rclone_w_{clean_display}.log",
                                 }
+                                if config_key == "nzbdav":
+                                    rclone_cfg.update(
+                                        {
+                                            "zurg_enabled": False,
+                                            "decypharr_enabled": False,
+                                            "zurg_config_file": "",
+                                        }
+                                    )
                                 if "zurg" in dependencies:
                                     rclone_cfg.update(
                                         {
@@ -1091,13 +1156,17 @@ def _run_startup(request: UnifiedStartRequest, updater, api_state, logger):
                         ok = config[dep]["instances"][instance_key].get(
                             "auto_update", False
                         )
-                        proc_obj, err = updater.auto_update(proc, enable_update=ok)
-                        if proc_obj and wait_for_process_running(api_state, proc):
-                            logger.info(f"{proc} is running.")
+                        if post_core_rclone and dep == "rclone":
+                            post_core_rclone_processes.append((proc, ok))
                         else:
-                            raise HTTPException(
-                                500, detail=f"{proc} failed to start. {err or ''}"
-                            )
+                            proc_obj, err = updater.auto_update(proc, enable_update=ok)
+                            if proc_obj and wait_for_process_running(api_state, proc):
+                                logger.info(f"{proc} is running.")
+                            else:
+                                raise HTTPException(
+                                    500,
+                                    detail=f"{proc} failed to start. {err or ''}",
+                                )
                     else:
                         # start any other dependencies that are not zurg/rclone
                         dep_cfg = config.get(dep, {})
@@ -1304,6 +1373,17 @@ def _run_startup(request: UnifiedStartRequest, updater, api_state, logger):
                     if not p or not wait_for_process_running(api_state, proc_name):
                         raise HTTPException(
                             500, detail=f"{proc_name} failed to start. {err or ''}"
+                        )
+
+            if post_core_rclone_processes:
+                for proc_name, ok in post_core_rclone_processes:
+                    if wait_for_process_running(api_state, proc_name):
+                        continue
+                    p, err = updater.auto_update(proc_name, enable_update=ok)
+                    if not p or not wait_for_process_running(api_state, proc_name):
+                        raise HTTPException(
+                            500,
+                            detail=f"{proc_name} failed to start. {err or ''}",
                         )
             #
             # 4.3) Start any “optional post-core” services

@@ -497,6 +497,14 @@ class Update:
         self.process_handler.stop_process(process_name)
 
     def start_process(self, process_name, config, key, instance_name):
+        refreshed_key, refreshed_instance = CONFIG_MANAGER.find_key_for_process(
+            process_name
+        )
+        if refreshed_key:
+            config = CONFIG_MANAGER.get_instance(refreshed_instance, refreshed_key) or config
+            key = refreshed_key
+            instance_name = refreshed_instance
+
         if config.get("wait_for_dir", False):
             while not os.path.exists(wait_dir := config["wait_for_dir"]):
                 self.logger.info(
@@ -595,6 +603,43 @@ class Update:
                     suppress_logging=suppress_logging,
                     env=env,
                 )
+            elif error:
+                self.logger.warning("Decypharr config patch failed: %s", error)
+
+        if key == "nzbdav":
+            from utils.nzbdav_settings import patch_nzbdav_config
+
+            time.sleep(10)
+            patched, error = patch_nzbdav_config()
+            if patched:
+                self.logger.info("Restarting NzbDAV to apply new config")
+                self.process_handler.stop_process(process_name)
+                self.process_handler.start_process(
+                    process_name,
+                    config_dir,
+                    command,
+                    instance_name,
+                    suppress_logging=suppress_logging,
+                    env=env,
+                )
+            elif error:
+                self.logger.warning("NzbDAV config patch failed: %s", error)
+
+        if key in [
+            "prowlarr",
+            "sonarr",
+            "radarr",
+            "lidarr",
+            "readarr",
+            "whisparr",
+            "whisparr-v3",
+        ]:
+            from utils.prowlarr_settings import patch_prowlarr_apps
+
+            time.sleep(10)
+            ok, err = patch_prowlarr_apps()
+            if not ok and err:
+                self.logger.warning("Prowlarr app sync failed: %s", err)
 
         if key == "plex":
             from utils.plex_settings import patch_plex_config

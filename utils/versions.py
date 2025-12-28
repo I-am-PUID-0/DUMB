@@ -22,6 +22,9 @@ class Versions:
             elif key == "decypharr":
                 version_path = "/decypharr/version.txt"
                 is_file = True
+            elif key == "nzbdav":
+                version_path = "/nzbdav/version.txt"
+                is_file = True
             elif key == "riven_frontend":
                 version_path = "/riven/frontend/version.txt"
                 is_file = True
@@ -214,7 +217,12 @@ class Versions:
                                     break
                             else:
                                 version = None
-                        elif key == "zilean" or key == "decypharr" or key == "emby":
+                        elif (
+                            key == "zilean"
+                            or key == "decypharr"
+                            or key == "nzbdav"
+                            or key == "emby"
+                        ):
                             version = f.read().strip()
                         if version:
                             return version, None
@@ -249,6 +257,10 @@ class Versions:
                     f.write(version)
             elif key == "decypharr":
                 version_path = "/decypharr/version.txt"
+                with open(version_path, "w") as f:
+                    f.write(version)
+            elif key == "nzbdav":
+                version_path = "/nzbdav/version.txt"
                 with open(version_path, "w") as f:
                     f.write(version)
             elif key == "emby":

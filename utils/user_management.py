@@ -169,6 +169,7 @@ def migrate_symlinks():
                 ("/cli_debrid/data", os.path.join(data_root, "cli_debrid")),
                 ("/phalanx_db/data", os.path.join(data_root, "phalanx_db")),
                 ("/decypharr", os.path.join(data_root, "decypharr")),
+                ("/nzbdav", os.path.join(data_root, "nzbdav")),
                 ("/plex", os.path.join(data_root, "plex")),
                 ("/jellyfin", os.path.join(data_root, "jellyfin")),
                 ("/emby", os.path.join(data_root, "emby")),

@@ -5,7 +5,8 @@ from utils.download import Downloader
 from utils.versions import Versions
 from utils.plex import PlexInstaller
 from utils.user_management import chown_recursive, chown_single
-import yaml, os, shutil, random, subprocess, re, glob
+import base64
+import yaml, os, shutil, random, subprocess, re, glob, secrets, shlex, time
 
 user_id = CONFIG_MANAGER.get("puid")
 group_id = CONFIG_MANAGER.get("pgid")
@@ -77,6 +78,13 @@ def setup_release_version(process_handler, config, process_name, key):
             version_path=os.path.join(config["config_dir"], "version.txt"),
             version=config["release_version"],
         )
+    elif key == "nzbdav":
+        versions.version_write(
+            process_name,
+            key,
+            version_path=os.path.join(config["config_dir"], "version.txt"),
+            version=config["release_version"],
+        )
 
     success, error = additional_setup(process_handler, process_name, config, key)
     if not success:
@@ -136,7 +144,12 @@ def additional_setup(process_handler, process_name, config, key):
         if not success:
             return False, f"Failed to make vite modifications: {error}"
 
-    if config.get("platforms"):
+    if key == "nzbdav":
+        success, error = setup_nzbdav_build(process_handler, config)
+        if not success:
+            return False, error
+
+    if config.get("platforms") and key != "nzbdav":
         success, error = setup_environment(
             process_handler, key, config["platforms"], config["config_dir"]
         )
@@ -162,12 +175,6 @@ def additional_setup(process_handler, process_name, config, key):
 
 
 def setup_project(process_handler, process_name):
-    if process_name in process_handler.setup_tracker:
-        process_handler.logger.info(
-            f"{process_name} is already set up. Skipping setup."
-        )
-        return True, None
-
     key, instance_name = CONFIG_MANAGER.find_key_for_process(process_name)
     if not key:
         raise ValueError(f"Key for {process_name} not found in the configuration.")
@@ -175,6 +182,12 @@ def setup_project(process_handler, process_name):
     config = CONFIG_MANAGER.get_instance(instance_name, key)
     if not config:
         raise ValueError(f"Configuration for {process_name} not found.")
+
+    if process_name in process_handler.setup_tracker and not key == "nzbdav":
+        process_handler.logger.info(
+            f"{process_name} is already set up. Skipping setup."
+        )
+        return True, None
 
     logger.info(f"Setting up {process_name}...")
     try:
@@ -219,6 +232,35 @@ def setup_project(process_handler, process_name):
             if os.path.exists(src):
                 shutil.copy(src, dest)
                 logger.info(f"Copied .env from {src} to {dest}")
+
+        if key == "nzbdav":
+            backend_port = str(config.get("backend_port", 8080))
+            default_env = {
+                "LOG_LEVEL": config.get("log_level", "INFO").upper(),
+                "WEBDAV_PASSWORD": config.get("webdav_password", "1P@55w0rd"),
+                "ASPNETCORE_URLS": f"http://+:{backend_port}",
+                "CONFIG_PATH": config.get("config_dir") or "/nzbdav",
+                "PORT": str(config.get("frontend_port", 3000)),
+                "NODE_ENV": "production",
+                "BACKEND_URL": f"http://127.0.0.1:{backend_port}",
+                "FRONTEND_BACKEND_API_KEY": secrets.token_hex(32),
+            }
+            env = default_env.copy()
+            for env_key, value in (config.get("env") or {}).items():
+                if env_key not in default_env:
+                    env[env_key] = value
+            version_path = os.path.join(
+                config.get("config_dir", "/nzbdav"), "version.txt"
+            )
+            if os.path.exists(version_path):
+                try:
+                    with open(version_path, "r") as f:
+                        env.setdefault("NZBDAV_VERSION", f.read().strip())
+                except OSError:
+                    logger.warning(
+                        "Failed to read NzbDAV version file at %s", version_path
+                    )
+            config["env"] = env
 
         if config.get("env"):
             for env_key, value in config["env"].items():
@@ -361,6 +403,11 @@ def setup_project(process_handler, process_name):
 
         if key == "decypharr":
             success, error = setup_decypharr()
+            if not success:
+                return False, error
+
+        if key == "nzbdav":
+            success, error = setup_nzbdav(process_handler)
             if not success:
                 return False, error
 
@@ -662,6 +709,504 @@ def setup_decypharr():
         return True, None
     except Exception as e:
         return False, f"Error during Decypharr setup: {e}"
+
+
+def setup_nzbdav(process_handler):
+    config = CONFIG_MANAGER.get("nzbdav")
+    if not config:
+        return False, "Configuration for NzbDAV not found."
+
+    logger.info("Starting NzbDAV setup...")
+
+    try:
+        nzbdav_config_dir = config.get("config_dir", "/nzbdav")
+        nzbdav_config_file = config.get("config_file")
+        backend_output_dir = config.get("backend_output_dir") or os.path.join(
+            nzbdav_config_dir, "app"
+        )
+        backend_wwwroot = config.get("backend_wwwroot") or os.path.join(
+            backend_output_dir, "wwwroot"
+        )
+        config_path = config.get("env", {}).get("CONFIG_PATH") or nzbdav_config_dir
+        if not os.path.exists(nzbdav_config_dir):
+            logger.debug(f"Creating NzbDAV config directory at {nzbdav_config_dir}")
+            os.makedirs(nzbdav_config_dir, exist_ok=True)
+        chown_single(nzbdav_config_dir, user_id, group_id)
+        os.makedirs(config_path, exist_ok=True)
+        chown_recursive(config_path, user_id, group_id)
+
+        backend_project_path, _ = _find_nzbdav_backend_project(
+            nzbdav_config_dir, config
+        )
+        if not backend_project_path or not os.path.exists(backend_project_path):
+            logger.warning(
+                f"NzbDAV project not found at {nzbdav_config_dir}. Downloading..."
+            )
+            if not config.get("branch_enabled"):
+                release = (
+                    config.get("release_version")
+                    if config.get("release_version_enabled")
+                    else "latest"
+                )
+                version_to_write = release
+                if release == "latest":
+                    latest, error = downloader.get_latest_release(
+                        repo_owner=config.get("repo_owner"),
+                        repo_name=config.get("repo_name"),
+                    )
+                    if not latest:
+                        return False, f"Failed to get latest release: {error}"
+                    version_to_write = latest
+
+                if config.get("clear_on_update"):
+                    exclude_dirs = config.get("exclude_dirs", [])
+                    success, error = clear_directory(nzbdav_config_dir, exclude_dirs)
+                    if not success:
+                        return False, f"Failed to clear directory: {error}"
+
+                success, error = downloader.download_release_version(
+                    process_name=config.get("process_name"),
+                    key="nzbdav",
+                    repo_owner=config.get("repo_owner"),
+                    repo_name=config.get("repo_name"),
+                    release_version=release,
+                    target_dir=nzbdav_config_dir,
+                )
+                if not success:
+                    return False, f"Failed to download NzbDAV: {error}"
+
+                versions.version_write(
+                    process_name=config.get("process_name"),
+                    key="nzbdav",
+                    version_path=os.path.join(nzbdav_config_dir, "version.txt"),
+                    version=version_to_write,
+                )
+
+            backend_project_path, error = _find_nzbdav_backend_project(
+                nzbdav_config_dir, config
+            )
+            if not backend_project_path or not os.path.exists(backend_project_path):
+                return (
+                    False,
+                    error or "NzbDAV backend project not found after download.",
+                )
+
+        needs_patch = _nzbdav_resource_patch_needed(backend_project_path)
+        build_needed = needs_patch
+        backend_command, _ = _nzbdav_build_command(backend_output_dir)
+        if not backend_command or not os.path.isdir(backend_output_dir):
+            build_needed = True
+        else:
+            frontend_dir = _find_nzbdav_frontend_dir(nzbdav_config_dir, config)
+            if frontend_dir and not os.path.isdir(backend_wwwroot):
+                build_needed = True
+
+        if build_needed:
+            success, error = setup_nzbdav_build(process_handler, config)
+            if not success:
+                return False, error
+
+        backend_command, error = _nzbdav_build_command(backend_output_dir)
+        if not backend_command:
+            return False, error
+        frontend_dir = _find_nzbdav_frontend_dir(nzbdav_config_dir, config)
+        script_path = _write_nzbdav_start_script(
+            nzbdav_config_dir,
+            backend_command,
+            frontend_dir,
+            int(config.get("backend_port", 8080)),
+        )
+        config["command"] = ["/bin/sh", script_path]
+
+        if nzbdav_config_file and os.path.exists(nzbdav_config_file):
+            chown_single(nzbdav_config_file, user_id, group_id)
+
+        try:
+            from utils.nzbdav_settings import patch_nzbdav_config
+
+            patched, err = patch_nzbdav_config()
+            if not patched and err:
+                logger.warning("NzbDAV post-setup config patch failed: %s", err)
+        except Exception as e:
+            logger.warning("NzbDAV post-setup config patch skipped: %s", e)
+
+        return True, None
+    except Exception as e:
+        return False, f"Error during NzbDAV setup: {e}"
+
+
+def setup_nzbdav_build(process_handler, config):
+    nzbdav_config_dir = config.get("config_dir", "/nzbdav")
+    backend_output_dir = config.get("backend_output_dir") or os.path.join(
+        nzbdav_config_dir, "app"
+    )
+    backend_wwwroot = config.get("backend_wwwroot") or os.path.join(
+        backend_output_dir, "wwwroot"
+    )
+
+    backend_project_path, error = _find_nzbdav_backend_project(
+        nzbdav_config_dir, config
+    )
+    if not backend_project_path:
+        return False, error
+
+    frontend_dir = _find_nzbdav_frontend_dir(nzbdav_config_dir, config)
+    backend_project_dir = os.path.dirname(backend_project_path)
+    chown_recursive(backend_project_dir, user_id, group_id)
+    patched, patch_error = _patch_nzbdav_embedded_resource_util(backend_project_path)
+    if not patched and patch_error:
+        logger.warning("NzbDAV resource patch skipped: %s", patch_error)
+
+    platforms = ["dotnet"]
+    if frontend_dir:
+        platforms.insert(0, "pnpm")
+
+    logger.info("Setting up NzbDAV build environment...")
+    dotnet_home = os.path.join(nzbdav_config_dir, ".dotnet")
+    nuget_dir = os.path.join(nzbdav_config_dir, ".nuget", "packages")
+    os.makedirs(dotnet_home, exist_ok=True)
+    os.makedirs(os.path.dirname(nuget_dir), exist_ok=True)
+    chown_recursive(dotnet_home, user_id, group_id)
+    chown_recursive(os.path.dirname(nuget_dir), user_id, group_id)
+    dotnet_env = {
+        "HOME": nzbdav_config_dir,
+        "DOTNET_CLI_HOME": dotnet_home,
+        "NUGET_PACKAGES": nuget_dir,
+    }
+    success, error = setup_environment(
+        process_handler,
+        "nzbdav",
+        platforms,
+        nzbdav_config_dir,
+        dotnet_options={
+            "project_paths": [backend_project_path],
+            "output_dir": backend_output_dir,
+            "restore_project_path": backend_project_path,
+            "env": dotnet_env,
+        },
+    )
+    if not success:
+        return False, error
+
+    static_files_src = os.path.join(backend_project_dir, "WebDav", "StaticFiles")
+    static_files_dst = os.path.join(backend_output_dir, "WebDav", "StaticFiles")
+    if os.path.isdir(static_files_src):
+        if os.path.exists(static_files_dst):
+            shutil.rmtree(static_files_dst)
+        os.makedirs(os.path.dirname(static_files_dst), exist_ok=True)
+        shutil.copytree(static_files_src, static_files_dst)
+        logger.info("Copied NzbDAV WebDav static files into publish output.")
+
+    config_template_path = os.path.join(
+        backend_project_dir,
+        "Api",
+        "SabControllers",
+        "GetConfig",
+        "config_template.json",
+    )
+    if os.path.isfile(config_template_path):
+        shutil.copy2(
+            config_template_path,
+            os.path.join(backend_output_dir, "config_template.json"),
+        )
+        chown_single(
+            os.path.join(backend_output_dir, "config_template.json"), user_id, group_id
+        )
+
+    if frontend_dir:
+        success, error = _run_pnpm_script(
+            process_handler, frontend_dir, "build:server", "pnpm_build_server"
+        )
+        if not success:
+            return False, error
+
+    if frontend_dir:
+        frontend_build_dir = _find_nzbdav_frontend_build_dir(frontend_dir, config)
+        if frontend_build_dir:
+            if os.path.exists(backend_wwwroot):
+                shutil.rmtree(backend_wwwroot)
+            shutil.copytree(frontend_build_dir, backend_wwwroot)
+            logger.info("Copied NzbDAV frontend build into backend wwwroot.")
+        else:
+            logger.warning("Frontend build output not found. Skipping wwwroot copy.")
+
+    return True, None
+
+
+def _run_pnpm_script(process_handler, config_dir, script_name, process_name):
+    package_json_path = os.path.join(config_dir, "package.json")
+    if not os.path.isfile(package_json_path):
+        return True, None
+
+    try:
+        import json
+
+        with open(package_json_path, "r") as f:
+            package_data = json.load(f)
+        scripts = package_data.get("scripts", {})
+        if script_name not in scripts:
+            return True, None
+    except Exception as e:
+        return False, f"Failed to read package.json: {e}"
+
+    if script_name == "build:server":
+        dist_node = os.path.join(config_dir, "dist-node")
+        os.makedirs(dist_node, exist_ok=True)
+        chown_recursive(dist_node, user_id, group_id)
+
+    env = os.environ.copy()
+    env["HOME"] = config_dir
+    env["npm_config_userconfig"] = os.path.join(config_dir, ".npmrc")
+
+    process_handler.start_process(
+        process_name, config_dir, ["pnpm", "run", script_name], env=env
+    )
+    process_handler.wait(process_name)
+    if process_handler.returncode != 0:
+        return False, f"Error running pnpm {script_name}: {process_handler.stderr}"
+    return True, None
+
+
+def _patch_nzbdav_embedded_resource_util(backend_project_path):
+    util_path = os.path.join(
+        os.path.dirname(backend_project_path), "Utils", "EmbeddedResourceUtil.cs"
+    )
+    if not os.path.isfile(util_path):
+        return False, f"EmbeddedResourceUtil.cs not found at {util_path}"
+
+    try:
+        with open(util_path, "r") as f:
+            contents = f.read()
+    except OSError as e:
+        return False, f"Failed to read {util_path}: {e}"
+
+    if "AppContext.BaseDirectory" in contents and "GetExecutingAssembly" in contents:
+        return True, None
+
+    if "using System.IO;" not in contents:
+        if "using System.Diagnostics;" in contents:
+            contents = contents.replace(
+                "using System.Diagnostics;",
+                "using System.Diagnostics;\nusing System.IO;",
+            )
+        else:
+            contents = "using System.IO;\n" + contents
+
+    old = (
+        "    public static Stream GetStream(string resourcePath)\n"
+        "    {\n"
+        "        var assembly = Assembly.GetCallingAssembly();\n"
+        "        var fullResourcePath = GetFullResourcePath(resourcePath);\n"
+        "        return assembly.GetManifestResourceStream(fullResourcePath)!;\n"
+        "    }\n"
+    )
+    new = (
+        "    public static Stream GetStream(string resourcePath)\n"
+        "    {\n"
+        "        var fullResourcePath = GetFullResourcePath(resourcePath);\n"
+        "        var assembly = Assembly.GetExecutingAssembly();\n"
+        "        var stream = assembly.GetManifestResourceStream(fullResourcePath);\n"
+        "        if (stream != null)\n"
+        "            return stream;\n"
+        "\n"
+        "        assembly = Assembly.GetCallingAssembly();\n"
+        "        stream = assembly.GetManifestResourceStream(fullResourcePath);\n"
+        "        if (stream != null)\n"
+        "            return stream;\n"
+        "\n"
+        "        var fallbackPath = Path.Combine(AppContext.BaseDirectory, resourcePath);\n"
+        "        if (File.Exists(fallbackPath))\n"
+        "            return File.OpenRead(fallbackPath);\n"
+        "\n"
+        "        var lastDot = resourcePath.LastIndexOf('.');\n"
+        "        if (lastDot > 0)\n"
+        "        {\n"
+        "            var pathPart = resourcePath.Substring(0, lastDot).Replace('.', Path.DirectorySeparatorChar);\n"
+        "            var extPart = resourcePath.Substring(lastDot + 1);\n"
+        '            var dottedPath = $"{pathPart}.{extPart}";\n'
+        "            var dottedFallback = Path.Combine(AppContext.BaseDirectory, dottedPath);\n"
+        "            if (File.Exists(dottedFallback))\n"
+        "                return File.OpenRead(dottedFallback);\n"
+        "\n"
+        '            var webDavFallback = Path.Combine(AppContext.BaseDirectory, "WebDav", dottedPath);\n'
+        "            if (File.Exists(webDavFallback))\n"
+        "                return File.OpenRead(webDavFallback);\n"
+        "        }\n"
+        "\n"
+        '        throw new FileNotFoundException($"Embedded resource not found: {fullResourcePath}");\n'
+        "    }\n"
+    )
+
+    if old not in contents:
+        return (
+            False,
+            "EmbeddedResourceUtil.cs signature did not match expected template.",
+        )
+
+    contents = contents.replace(old, new)
+    try:
+        with open(util_path, "w") as f:
+            f.write(contents)
+    except OSError as e:
+        return False, f"Failed to write {util_path}: {e}"
+
+    return True, None
+
+
+def _nzbdav_resource_patch_needed(backend_project_path):
+    util_path = os.path.join(
+        os.path.dirname(backend_project_path), "Utils", "EmbeddedResourceUtil.cs"
+    )
+    if not os.path.isfile(util_path):
+        return False
+
+    try:
+        with open(util_path, "r") as f:
+            contents = f.read()
+    except OSError:
+        return False
+
+    return (
+        "AppContext.BaseDirectory" not in contents
+        or "GetExecutingAssembly" not in contents
+    )
+
+
+def _write_nzbdav_start_script(config_dir, backend_command, frontend_dir, backend_port):
+    script_path = os.path.join(config_dir, "nzbdav_start.sh")
+    backend_cmd = " ".join(shlex.quote(part) for part in backend_command)
+    script_lines = [
+        "#!/bin/sh",
+        "set -e",
+        f'BACKEND_PORT="${{BACKEND_PORT:-{backend_port}}}"',
+        'BACKEND_URL="${BACKEND_URL:-http://127.0.0.1:$BACKEND_PORT}"',
+        "export BACKEND_URL",
+        f"{backend_cmd} --db-migration",
+        f"{backend_cmd} &",
+        "BACKEND_PID=$!",
+    ]
+    if frontend_dir:
+        script_lines.extend(
+            [
+                f"cd {shlex.quote(frontend_dir)}",
+                "node dist-node/server.js &",
+                "FRONTEND_PID=$!",
+            ]
+        )
+    script_lines.extend(
+        [
+            "terminate() {",
+            '  if [ -n "$BACKEND_PID" ]; then kill "$BACKEND_PID" 2>/dev/null || true; fi',
+            '  if [ -n "$FRONTEND_PID" ]; then kill "$FRONTEND_PID" 2>/dev/null || true; fi',
+            "  wait",
+            "}",
+            "trap terminate TERM INT",
+        ]
+    )
+    if frontend_dir:
+        script_lines.extend(
+            [
+                "wait $BACKEND_PID",
+                "EXIT_CODE=$?",
+                "kill $FRONTEND_PID 2>/dev/null || true",
+                "wait $FRONTEND_PID 2>/dev/null || true",
+                "exit $EXIT_CODE",
+            ]
+        )
+    else:
+        script_lines.append("wait $BACKEND_PID")
+
+    with open(script_path, "w") as f:
+        f.write("\n".join(script_lines) + "\n")
+    os.chmod(script_path, 0o755)
+    chown_single(script_path, user_id, group_id)
+    return script_path
+
+
+def _find_nzbdav_backend_project(config_dir, config):
+    candidates = []
+    for root, dirs, files in os.walk(config_dir):
+        dirs[:] = [
+            d
+            for d in dirs
+            if d not in ("node_modules", "bin", "obj", ".git", ".pnpm-store", ".venv")
+        ]
+        for file in files:
+            if file.endswith(".csproj"):
+                candidates.append(os.path.join(root, file))
+
+    if not candidates:
+        return None, "No .csproj files found for NzbDAV backend."
+
+    scored = []
+    for path in candidates:
+        lower = path.lower()
+        score = 0
+        if any(token in lower for token in ("api", "server", "backend", "web")):
+            score += 2
+        if "nzbdav" in lower:
+            score += 1
+        scored.append((score, len(path), path))
+
+    scored.sort(key=lambda item: (-item[0], item[1]))
+    return scored[0][2], None
+
+
+def _find_nzbdav_frontend_dir(config_dir, config):
+    candidates = []
+    for root, dirs, files in os.walk(config_dir):
+        dirs[:] = [
+            d
+            for d in dirs
+            if d not in ("node_modules", "bin", "obj", ".git", ".pnpm-store", ".venv")
+        ]
+        if "package.json" in files:
+            candidates.append(root)
+
+    if not candidates:
+        return None
+
+    scored = []
+    for path in candidates:
+        lower = path.lower()
+        score = 0
+        if any(token in lower for token in ("frontend", "client", "web", "ui")):
+            score += 2
+        scored.append((score, len(path), path))
+
+    scored.sort(key=lambda item: (-item[0], item[1]))
+    return scored[0][2]
+
+
+def _find_nzbdav_frontend_build_dir(frontend_dir, config):
+    for candidate in ("build/client", "dist", "build", "wwwroot"):
+        path = os.path.join(frontend_dir, *candidate.split("/"))
+        if os.path.exists(path):
+            return path
+    return None
+
+
+def _nzbdav_build_command(backend_output_dir):
+    if not os.path.isdir(backend_output_dir):
+        return None, f"NzbDAV output directory not found: {backend_output_dir}"
+
+    binaries = []
+    dlls = []
+    for entry in os.listdir(backend_output_dir):
+        path = os.path.join(backend_output_dir, entry)
+        if not os.path.isfile(path):
+            continue
+        if entry.endswith(".dll"):
+            dlls.append(path)
+        elif os.access(path, os.X_OK) and "." not in entry:
+            binaries.append(path)
+
+    if binaries:
+        return [binaries[0]], None
+    if dlls:
+        return ["dotnet", dlls[0]], None
+
+    return None, "NzbDAV publish output did not include an executable or DLL."
 
 
 def build_decypharr_dev(process_handler, config):
@@ -996,9 +1541,7 @@ def setup_jellyfin():
     elif pinned_version:
         current_version = get_jellyfin_package_version()
         if not current_version:
-            logger.warning(
-                "Failed to read Jellyfin package version for pin check."
-            )
+            logger.warning("Failed to read Jellyfin package version for pin check.")
         elif current_version != pinned_version:
             logger.info(
                 f"Jellyfin pinned to {pinned_version}; installing over {current_version}."
@@ -1450,6 +1993,18 @@ def obscure_password(password):
         return None
 
 
+def looks_like_dotnet_password_hash(value: str) -> bool:
+    if value.startswith("$2"):
+        return True
+    if value.startswith("AQAAAA"):
+        return True
+    try:
+        decoded = base64.b64decode(value, validate=True)
+    except Exception:
+        return False
+    return bool(decoded) and decoded[0] == 0x01
+
+
 def is_mount_point(path):
     with open("/proc/mounts", "r") as mounts:
         for line in mounts:
@@ -1460,7 +2015,17 @@ def is_mount_point(path):
 
 def ensure_directory(mount_dir, mount_name):
     full_path = os.path.join(mount_dir, mount_name)
-    logger.debug(f"Ensuring directory {full_path} exists...")
+    logger.debug(
+        "Ensuring directory %s exists (mount_dir=%r mount_name=%r)",
+        full_path,
+        mount_dir,
+        mount_name,
+    )
+
+    try:
+        os.makedirs(mount_dir, exist_ok=True)
+    except OSError as e:
+        return False, f"Failed to create mount base directory {mount_dir}: {e}"
 
     if is_mount_point(full_path):
         logger.info(f"{full_path} is a mount point. Attempting to unmount...")
@@ -1474,7 +2039,16 @@ def ensure_directory(mount_dir, mount_name):
     if os.path.exists(full_path) and not os.path.isdir(full_path):
         return False, f"{full_path} exists but is not a directory."
 
-    os.makedirs(full_path, exist_ok=True)
+    try:
+        os.makedirs(full_path, exist_ok=True)
+    except OSError as e:
+        parent = os.path.dirname(full_path)
+        return (
+            False,
+            "Failed to create mount directory {}: {} (parent_exists={}, parent_isdir={})".format(
+                full_path, e, os.path.exists(parent), os.path.isdir(parent)
+            ),
+        )
     logger.info(f"Directory {full_path} is ready.")
     return full_path, None
 
@@ -1682,6 +2256,61 @@ def rclone_setup():
                         f"user = {instance['username']}",
                         f"pass = {obscured_password}",
                     ]
+                elif key_type == "nzbdav":
+                    from utils import nzbdav_db
+
+                    nzbdav_cfg = CONFIG_MANAGER.get("nzbdav", {})
+                    nzbdav_env = (
+                        nzbdav_cfg.get("env", {})
+                        if isinstance(nzbdav_cfg, dict)
+                        else {}
+                    )
+                    frontend_port = nzbdav_cfg.get("frontend_port", 3000)
+                    url = f"http://127.0.0.1:{frontend_port}/"
+                    instance["zurg_enabled"] = False
+                    instance["decypharr_enabled"] = False
+                    instance["zurg_config_file"] = ""
+                    webdav_user = "admin"
+                    webdav_pass = ""
+                    env_webdav_user = nzbdav_env.get("WEBDAV_USER") or os.getenv(
+                        "WEBDAV_USER"
+                    )
+                    env_webdav_pass = nzbdav_env.get("WEBDAV_PASSWORD") or os.getenv(
+                        "WEBDAV_PASSWORD"
+                    )
+                    try:
+                        value = nzbdav_db.get_config_value("webdav.user")
+                        if value:
+                            webdav_user = value
+                        value = nzbdav_db.get_config_value("webdav.pass")
+                        if value:
+                            webdav_pass = value
+                    except FileNotFoundError as e:
+                        logger.warning("NzbDAV db not found for rclone setup: %s", e)
+
+                    if env_webdav_user:
+                        webdav_user = env_webdav_user
+
+                    config_data[mount_name] = [
+                        "type = webdav",
+                        f"url = {url}",
+                        "vendor = other",
+                        "pacer_min_sleep = 0",
+                        f"user = {webdav_user}",
+                    ]
+                    if env_webdav_pass:
+                        webdav_pass = env_webdav_pass
+                    if webdav_pass:
+                        if looks_like_dotnet_password_hash(webdav_pass):
+                            logger.warning(
+                                "NzbDAV webdav.pass is a hashed value; set WEBDAV_PASSWORD to configure rclone."
+                            )
+                        else:
+                            obscured_password = obscure_password(webdav_pass)
+                            if obscured_password:
+                                config_data[mount_name].append(
+                                    f"pass = {obscured_password}"
+                                )
 
             write_config(config_file, config_data)
 
@@ -1726,6 +2355,18 @@ def rclone_setup():
                     "--log-file": log_file,
                     "--log-level": log_level,
                 }
+                if instance.get("key_type", "").lower() == "nzbdav":
+                    required_flags.update(
+                        {
+                            "--vfs-cache-mode": "full",
+                            "--buffer-size": "1024M",
+                            "--dir-cache-time": "1s",
+                            "--vfs-cache-max-size": "5G",
+                            "--vfs-cache-max-age": "180m",
+                            "--links": None,
+                            "--use-cookies": None,
+                        }
+                    )
                 if instance.get("decypharr_enabled"):
                     used_ports = set()
                     all_instances = CONFIG_MANAGER.get("rclone", {}).get(
@@ -1790,48 +2431,96 @@ def rclone_setup():
             update_or_generate_command(instance)
             from utils.riven_settings import parse_config_keys
 
-            parse_config_keys(CONFIG_MANAGER.config)
+            try:
+                parse_config_keys(CONFIG_MANAGER.config)
+            except Exception as e:
+                logger.warning(
+                    "Failed to update riven config keys during rclone setup: %s", e
+                )
             logger.info(f"Rclone instance '{instance_name}' has been set up.")
             return True, None
 
         for instance_name, instance in config.get("instances", {}).items():
             success, error = setup_rclone_instance(instance_name, instance)
             if not success:
+                logger.error("Rclone setup failed for %s: %s", instance_name, error)
                 return False, error
 
         logger.info("All Rclone instances have been set up.")
         return True, None
 
     except Exception as e:
+        logger.exception("Error during Rclone setup")
         return False, f"Error during Rclone setup: {e}"
 
 
-def setup_environment(process_handler, key, platforms, config_dir):
+def setup_environment(
+    process_handler,
+    key,
+    platforms,
+    config_dir,
+    platform_dirs=None,
+    dotnet_options=None,
+):
     try:
-        logger.info(
-            f"Setting up environment for {key} in {config_dir} with {platforms}"
-        )
+        platform_dirs = platform_dirs or {}
+        dotnet_options = dotnet_options or {}
+        use_list_dirs = isinstance(config_dir, (list, tuple, set))
 
-        if "python" in platforms:
-            success, error = setup_python_environment(process_handler, key, config_dir)
-            if not success:
-                return False, error
+        def resolve_platform_dirs(platform):
+            if platform in platform_dirs:
+                dirs = platform_dirs.get(platform)
+                return list(dirs) if isinstance(dirs, (list, tuple, set)) else [dirs]
+            if use_list_dirs:
+                return list(config_dir)
+            if isinstance(config_dir, str):
+                frontend = os.path.join(config_dir, "frontend")
+                backend = os.path.join(config_dir, "backend")
+                if "pnpm" in platforms and "dotnet" in platforms:
+                    if platform == "pnpm" and os.path.isdir(frontend):
+                        return [frontend]
+                    if platform == "dotnet" and os.path.isdir(backend):
+                        return [backend]
+                if platform == "pnpm" and os.path.isdir(frontend):
+                    return [frontend]
+                if platform == "dotnet" and os.path.isdir(backend):
+                    return [backend]
+            return [config_dir]
 
-        if "pnpm" in platforms:
-            success, error = setup_pnpm_environment(process_handler, config_dir)
-            if not success:
-                return False, error
+        for platform in platforms:
+            config_dirs = resolve_platform_dirs(platform)
 
-        if "dotnet" in platforms:
-            success, error = setup_dotnet_environment(
-                process_handler,
-                key,
-                config_dir,
-            )
-            if not success:
-                return False, error
+            for env_dir in config_dirs:
+                logger.info(
+                    f"Setting up environment for {key} in {env_dir} with {platforms}"
+                )
 
-        logger.info(f"Environment setup complete")
+                if platform == "python":
+                    success, error = setup_python_environment(
+                        process_handler, key, env_dir
+                    )
+                    if not success:
+                        return False, error
+
+                if platform == "pnpm":
+                    success, error = setup_pnpm_environment(process_handler, env_dir)
+                    if not success:
+                        return False, error
+
+                if platform == "dotnet":
+                    success, error = setup_dotnet_environment(
+                        process_handler,
+                        key,
+                        env_dir,
+                        project_paths=dotnet_options.get("project_paths"),
+                        output_dir=dotnet_options.get("output_dir"),
+                        restore_project_path=dotnet_options.get("restore_project_path"),
+                        env=dotnet_options.get("env"),
+                    )
+                    if not success:
+                        return False, error
+
+        logger.info("Environment setup complete")
         return True, None
     except Exception as e:
         return False, f"Environment setup failed: {e}"
@@ -1994,25 +2683,38 @@ def setup_python_environment(process_handler, key, config_dir):
         return False, f"Error during Python environment setup: {e}"
 
 
-def setup_dotnet_environment(process_handler, key, config_dir):
+def setup_dotnet_environment(
+    process_handler,
+    key,
+    config_dir,
+    project_paths=None,
+    output_dir=None,
+    restore_project_path=None,
+    env=None,
+):
     try:
         logger.info(f"Setting up .NET environment in {config_dir}")
+        restore_target = restore_project_path or config_dir
         process_handler.start_process(
-            "dotnet_env_restore", config_dir, ["dotnet", "restore", "/nodeReuse:false"]
+            "dotnet_env_restore",
+            config_dir,
+            ["dotnet", "restore", restore_target, "/nodeReuse:false"],
+            env=env,
         )
         process_handler.wait("dotnet_env_restore")
         if process_handler.returncode != 0:
             return False, f"Error running dotnet restore: {process_handler.stderr}"
-        project_paths = []
-        if key == "zilean":
-            project_paths = [
-                os.path.join(config_dir, "src/Zilean.ApiService"),
-                os.path.join(config_dir, "src/Zilean.Scraper"),
-            ]
+        if project_paths is None:
+            project_paths = []
+            if key == "zilean":
+                project_paths = [
+                    os.path.join(config_dir, "src/Zilean.ApiService"),
+                    os.path.join(config_dir, "src/Zilean.Scraper"),
+                ]
         for project_path in project_paths:
             if os.path.exists(project_path):
                 logger.info(f"Publishing .NET project {project_path}")
-                output_path = os.path.join(config_dir, "app")
+                output_path = output_dir or os.path.join(config_dir, "app")
                 process_handler.start_process(
                     "dotnet_publish",
                     config_dir,
@@ -2028,6 +2730,7 @@ def setup_dotnet_environment(process_handler, key, config_dir):
                         "/nodeReuse:false",
                         "/p:UseSharedCompilation=false",
                     ],
+                    env=env,
                 )
                 process_handler.wait("dotnet_publish")
                 if process_handler.returncode != 0:
@@ -2081,13 +2784,37 @@ def vite_modifications(config_dir):
 
 def setup_pnpm_environment(process_handler, config_dir):
     try:
+        chown_recursive(config_dir, user_id, group_id)
         with open(os.path.join(config_dir, ".npmrc"), "w") as file:
             file.write("store-dir=./.pnpm-store\n")
 
         logger.info(f"Setting up pnpm environment in {config_dir}")
-        for attempt in range(3):
+        env = os.environ.copy()
+        env["HOME"] = config_dir
+        env["npm_config_userconfig"] = os.path.join(config_dir, ".npmrc")
+        env.setdefault("PNPM_NETWORK_CONCURRENCY", "4")
+        env.setdefault("PNPM_CHILD_CONCURRENCY", "2")
+        env.setdefault("PNPM_FETCH_RETRIES", "5")
+
+        def cleanup_pnpm_tmp():
+            pnpm_root = os.path.join(config_dir, "node_modules", ".pnpm")
+            if not os.path.isdir(pnpm_root):
+                return
+            for entry in os.listdir(pnpm_root):
+                if "_tmp_" not in entry and entry != "_tmp":
+                    continue
+                path = os.path.join(pnpm_root, entry)
+                try:
+                    if os.path.isdir(path):
+                        shutil.rmtree(path)
+                    else:
+                        os.remove(path)
+                except OSError as e:
+                    logger.debug("Failed to remove pnpm tmp path %s: %s", path, e)
+
+        for attempt in range(5):
             process_handler.start_process(
-                "pnpm_install", config_dir, ["pnpm", "install"]
+                "pnpm_install", config_dir, ["pnpm", "install"], env=env
             )
             process_handler.wait("pnpm_install")
             if process_handler.returncode == 0:
@@ -2097,7 +2824,11 @@ def setup_pnpm_environment(process_handler, config_dir):
             )
             if "eagain" not in combined_output.lower():
                 return False, f"Error during pnpm install: {process_handler.stderr}"
-            logger.warning("pnpm install hit EAGAIN. Retrying...")
+            logger.warning(
+                "pnpm install hit EAGAIN. Cleaning temp files and retrying..."
+            )
+            cleanup_pnpm_tmp()
+            time.sleep(2**attempt)
         else:
             return False, f"Error during pnpm install: {process_handler.stderr}"
 
@@ -2114,7 +2845,7 @@ def setup_pnpm_environment(process_handler, config_dir):
         if build_script_exists:
             logger.info(f"Build script found. Running pnpm build...")
             process_handler.start_process(
-                "pnpm_build", config_dir, ["pnpm", "run", "build"]
+                "pnpm_build", config_dir, ["pnpm", "run", "build"], env=env
             )
             process_handler.wait("pnpm_build")
             if process_handler.returncode != 0:

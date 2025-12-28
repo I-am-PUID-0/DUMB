@@ -140,6 +140,32 @@
         "use_embedded_rclone": true,
         "api_keys": {}
     },
+    "nzbdav": {
+        "enabled": false,
+        "process_name": "NzbDAV",
+        "repo_owner": "nzbdav-dev",
+        "repo_name": "nzbdav",
+        "release_version_enabled": false,
+        "release_version": "latest",
+        "branch_enabled": false,
+        "branch": "main",
+        "suppress_logging": false,
+        "log_level": "INFO",
+        "frontend_port": 3000,
+        "backend_port": 8080,
+        "auto_update": false,
+        "auto_update_interval": 24,
+        "clear_on_update": false,
+        "exclude_dirs": [],
+        "platforms": [
+            "pnpm",
+            "dotnet"
+        ],
+        "command": [],
+        "config_dir": "/nzbdav",
+        "webdav_password": "1P@55w0rd",
+        "env": {}
+    },
     "emby": {
         "enabled": false,
         "process_name": "Emby Media Server",
@@ -175,6 +201,7 @@
         "instances": {
             "Default": {
                 "enabled": false,
+                "core_service": "",
                 "process_name": "Lidarr",
                 "suppress_logging": false,
                 "auto_update": false,
@@ -423,7 +450,7 @@
         "instances": {
             "Default": {
                 "enabled": false,
-                "core_service": "decypharr",
+                "core_service": "",
                 "process_name": "Radarr",
                 "suppress_logging": false,
                 "auto_update": false,
@@ -442,7 +469,7 @@
         "instances": {
             "Default": {
                 "enabled": false,
-                "core_service": "decypharr",
+                "core_service": "",
                 "process_name": "Sonarr",
                 "suppress_logging": false,
                 "auto_update": false,
@@ -461,6 +488,7 @@
         "instances": {
             "Default": {
                 "enabled": false,
+                "core_service": "",
                 "process_name": "Whisparr",
                 "suppress_logging": false,
                 "auto_update": false,
