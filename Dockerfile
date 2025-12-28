@@ -96,15 +96,15 @@ RUN sed -i '/export default defineConfig({/a\    build: {\n        minify: false
 ####################################################################################################################################################
 # Stage 5: riven-backend-builder
 ####################################################################################################################################################
-FROM base AS riven-backend-builder
-ARG RIVEN_TAG
-RUN curl -L https://github.com/rivenmedia/riven/archive/refs/tags/${RIVEN_TAG}.zip -o riven.zip && \
-    unzip riven.zip && mkdir -p /riven/backend && mv riven-*/* /riven/backend && rm riven.zip
-WORKDIR /riven/backend
-RUN python3.11 -m venv /riven/backend/venv && \
-    . /riven/backend/venv/bin/activate && \
-    pip install --upgrade pip && pip install poetry && \
-    poetry config virtualenvs.create false && poetry install --no-root --without dev
+#FROM base AS riven-backend-builder
+#ARG RIVEN_TAG
+#RUN curl -L https://github.com/rivenmedia/riven/archive/refs/tags/${RIVEN_TAG}.zip -o riven.zip && \
+#    unzip riven.zip && mkdir -p /riven/backend && mv riven-*/* /riven/backend && rm riven.zip
+#WORKDIR /riven/backend
+#RUN python3.11 -m venv /riven/backend/venv && \
+#    . /riven/backend/venv/bin/activate && \
+#    pip install --upgrade pip && pip install poetry && \
+#    poetry config virtualenvs.create false && poetry install --no-root --without dev
 
 ####################################################################################################################################################
 # Stage 6: dumb-frontend-builder
