@@ -226,30 +226,30 @@ jobs:
           cache-to:   type=local,dest=/home/docker/buildx-cache/${{ github.repository }}/${{ env.BRANCH_NAME }}/riven-frontend,mode=max
           push: false
 
-  build-riven-backend-arch:
-    needs: [setup, fetch-latest-tags, build-base-arch]
-    strategy:
-      matrix: { arch: [ X64, ARM64 ] }
-    runs-on: [ "self-hosted", "Linux", "${{ matrix.arch }}" ]
-    env:
-      BRANCH_NAME: ${{ needs.setup.outputs.BRANCH_NAME }}
-      PLATFORM: ${{ matrix.arch == 'X64' && 'linux/amd64' || 'linux/arm64' }}
-    steps:
-      - uses: actions/checkout@v4
-      - uses: docker/setup-buildx-action@v3
-      - name: Build riven-backend-builder (native ${{ env.PLATFORM }})
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: ./Dockerfile
-          target: riven-backend-builder
-          platforms: ${{ env.PLATFORM }}
-          build-args: RIVEN_TAG=${{ needs.fetch-latest-tags.outputs.RIVEN_TAG }}
-          cache-from: |
-            type=local,src=/home/docker/buildx-cache/${{ github.repository }}/${{ env.BRANCH_NAME }}/base
-            type=local,src=/home/docker/buildx-cache/${{ github.repository }}/${{ env.BRANCH_NAME }}/riven-backend
-          cache-to:   type=local,dest=/home/docker/buildx-cache/${{ github.repository }}/${{ env.BRANCH_NAME }}/riven-backend,mode=max
-          push: false
+#  build-riven-backend-arch:
+#    needs: [setup, fetch-latest-tags, build-base-arch]
+#    strategy:
+#      matrix: { arch: [ X64, ARM64 ] }
+#    runs-on: [ "self-hosted", "Linux", "${{ matrix.arch }}" ]
+#    env:
+#      BRANCH_NAME: ${{ needs.setup.outputs.BRANCH_NAME }}
+#      PLATFORM: ${{ matrix.arch == 'X64' && 'linux/amd64' || 'linux/arm64' }}
+#    steps:
+#      - uses: actions/checkout@v4
+#      - uses: docker/setup-buildx-action@v3
+#      - name: Build riven-backend-builder (native ${{ env.PLATFORM }})
+#        uses: docker/build-push-action@v6
+#        with:
+#          context: .
+#          file: ./Dockerfile
+#          target: riven-backend-builder
+#          platforms: ${{ env.PLATFORM }}
+#          build-args: RIVEN_TAG=${{ needs.fetch-latest-tags.outputs.RIVEN_TAG }}
+#          cache-from: |
+#            type=local,src=/home/docker/buildx-cache/${{ github.repository }}/${{ env.BRANCH_NAME }}/base
+#            type=local,src=/home/docker/buildx-cache/${{ github.repository }}/${{ env.BRANCH_NAME }}/riven-backend
+#          cache-to:   type=local,dest=/home/docker/buildx-cache/${{ github.repository }}/${{ env.BRANCH_NAME }}/riven-backend,mode=max
+#          push: false
 
   build-dumb-frontend-arch:
     needs: [setup, fetch-latest-tags, build-base-arch]
@@ -352,7 +352,7 @@ jobs:
 
   build-amd64-digest:
     name: Build linux/amd64 → Docker Hub (by digest)
-    needs: [setup, fetch-latest-tags, build-base-arch, build-zilean-arch, build-pgadmin-arch, build-systemstats-arch, build-riven-frontend-arch, build-riven-backend-arch, build-dumb-frontend-arch, build-plex-debrid-arch, build-cli-debrid-arch, build-requirements-arch]
+    needs: [setup, fetch-latest-tags, build-base-arch, build-zilean-arch, build-pgadmin-arch, build-systemstats-arch, build-riven-frontend-arch,  build-dumb-frontend-arch, build-plex-debrid-arch, build-cli-debrid-arch, build-requirements-arch]
     runs-on: [ self-hosted, Linux, X64 ]
     permissions: { contents: read, packages: write }
     env:
@@ -410,7 +410,7 @@ jobs:
 
   build-arm64-digest:
     name: Build linux/arm64 → Docker Hub (by digest)
-    needs: [setup, fetch-latest-tags, build-base-arch, build-zilean-arch, build-pgadmin-arch, build-systemstats-arch, build-riven-frontend-arch, build-riven-backend-arch, build-dumb-frontend-arch, build-plex-debrid-arch, build-cli-debrid-arch, build-requirements-arch]
+    needs: [setup, fetch-latest-tags, build-base-arch, build-zilean-arch, build-pgadmin-arch, build-systemstats-arch, build-riven-frontend-arch,  build-dumb-frontend-arch, build-plex-debrid-arch, build-cli-debrid-arch, build-requirements-arch]
     runs-on: [ self-hosted, Linux, ARM64 ]
     permissions: { contents: read, packages: write }
     env:
