@@ -80,34 +80,7 @@ RUN curl -L https://github.com/iPromKnight/zilean/archive/refs/tags/${ZILEAN_TAG
     rm -rf /tmp/zilean*
 
 ####################################################################################################################################################
-# Stage 4: riven-frontend-builder
-####################################################################################################################################################
-FROM base AS riven-frontend-builder
-ARG RIVEN_FRONTEND_TAG
-RUN curl -L https://github.com/rivenmedia/riven-frontend/archive/refs/tags/${RIVEN_FRONTEND_TAG}.zip -o riven-frontend.zip && \
-    unzip riven-frontend.zip && mkdir -p /riven/frontend && mv riven-frontend-*/* /riven/frontend && rm riven-frontend.zip
-WORKDIR /riven/frontend
-RUN sed -i '/export default defineConfig({/a\    build: {\n        minify: false\n    },' vite.config.ts && \
-    sed -i "s#/riven/version.txt#/riven/frontend/version.txt#g" src/routes/settings/about/+page.server.ts && \
-    sed -i "s/export const prerender = true;/export const prerender = false;/g" src/routes/settings/about/+page.server.ts && \
-    echo "store-dir=./.pnpm-store\nchild-concurrency=1\nfetch-retries=10\nfetch-retry-factor=3\nfetch-retry-mintimeout=15000" > /riven/frontend/.npmrc && \
-    pnpm install && pnpm run build && pnpm prune --prod
-
-####################################################################################################################################################
-# Stage 5: riven-backend-builder
-####################################################################################################################################################
-#FROM base AS riven-backend-builder
-#ARG RIVEN_TAG
-#RUN curl -L https://github.com/rivenmedia/riven/archive/refs/tags/${RIVEN_TAG}.zip -o riven.zip && \
-#    unzip riven.zip && mkdir -p /riven/backend && mv riven-*/* /riven/backend && rm riven.zip
-#WORKDIR /riven/backend
-#RUN python3.11 -m venv /riven/backend/venv && \
-#    . /riven/backend/venv/bin/activate && \
-#    pip install --upgrade pip && pip install poetry && \
-#    poetry config virtualenvs.create false && poetry install --no-root --without dev
-
-####################################################################################################################################################
-# Stage 6: dumb-frontend-builder
+# Stage 4: dumb-frontend-builder
 ####################################################################################################################################################
 FROM base AS dumb-frontend-builder
 ARG DUMB_FRONTEND_TAG
@@ -118,7 +91,7 @@ RUN echo "store-dir=./.pnpm-store\nchild-concurrency=1\nfetch-retries=10\nfetch-
     pnpm install --reporter=verbose && pnpm run build --log-level verbose
 
 ####################################################################################################################################################
-# Stage 7: plex_debrid-builder
+# Stage 5: plex_debrid-builder
 ####################################################################################################################################################
 FROM base AS plex_debrid-builder
 ARG PLEX_DEBRID_TAG
@@ -130,7 +103,7 @@ RUN python3.11 -m venv /plex_debrid/venv && \
     /plex_debrid/venv/bin/python -m pip install -r /plex_debrid/requirements.txt
 
 ####################################################################################################################################################
-# Stage 8: cli_debrid-builder
+# Stage 6: cli_debrid-builder
 ####################################################################################################################################################
 FROM base AS cli_debrid-builder
 ARG CLI_DEBRID_TAG
@@ -141,7 +114,7 @@ RUN python3.11 -m venv /cli_debrid/venv && \
     /cli_debrid/venv/bin/python -m pip install -r /cli_debrid/requirements-linux.txt
 
 ####################################################################################################################################################
-# Stage 9: requirements-builder
+# Stage 7: requirements-builder
 ####################################################################################################################################################
 FROM base AS requirements-builder
 COPY pyproject.toml poetry.lock ./
@@ -151,7 +124,7 @@ RUN python3.11 -m venv /venv && \
     poetry config virtualenvs.create false && poetry install --no-root
 
 ####################################################################################################################################################
-# Stage 10: final-stage
+# Stage 8: final-stage
 ####################################################################################################################################################
 FROM base AS final-stage
 ARG TARGETARCH
@@ -166,8 +139,6 @@ COPY --from=pgadmin-builder /pgadmin/venv /pgadmin/venv
 COPY --from=systemstats-builder /usr/share/postgresql/16/extension/system_stats* /usr/share/postgresql/16/extension/
 COPY --from=systemstats-builder /usr/lib/postgresql/16/lib/system_stats.so /usr/lib/postgresql/16/lib/
 COPY --from=zilean-builder /zilean /zilean
-COPY --from=riven-frontend-builder /riven/frontend /riven/frontend
-COPY --from=riven-backend-builder /riven/backend /riven/backend
 COPY --from=dumb-frontend-builder /dumb/frontend /dumb/frontend
 COPY --from=plex_debrid-builder /plex_debrid /plex_debrid
 COPY --from=cli_debrid-builder /cli_debrid /cli_debrid

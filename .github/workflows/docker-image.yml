@@ -49,8 +49,6 @@ jobs:
       PGAGENT_TAG: ${{ steps.fetch_pgagent_tag.outputs.PGAGENT_TAG }}
       SYS_STATS_TAG: ${{ steps.fetch_sys_stats_tag.outputs.SYS_STATS_TAG }}
       ZILEAN_TAG: ${{ steps.fetch_zilean_tag.outputs.ZILEAN_TAG }}
-      RIVEN_TAG: ${{ steps.fetch_riven_tag.outputs.RIVEN_TAG }}
-      RIVEN_FRONTEND_TAG: ${{ steps.fetch_riven_frontend_tag.outputs.RIVEN_FRONTEND_TAG }}
       DUMB_FRONTEND_TAG: ${{ steps.fetch_dumb_frontend_tag.outputs.DUMB_FRONTEND_TAG }}
       PLEX_DEBRID_TAG: ${{ steps.fetch_plex_debrid_tag.outputs.PLEX_DEBRID_TAG }}
       CLI_DEBRID_TAG: ${{ steps.fetch_cli_debrid_tag.outputs.CLI_DEBRID_TAG }}
@@ -72,18 +70,6 @@ jobs:
         run: |
           ZILEAN_TAG=$(curl -s https://api.github.com/repos/iPromKnight/zilean/releases/latest | jq -r .tag_name)
           echo "ZILEAN_TAG=$ZILEAN_TAG" >> $GITHUB_OUTPUT
-
-      - name: Fetch latest riven release tag
-        id: fetch_riven_tag
-        run: |
-          RIVEN_TAG=$(curl -s https://api.github.com/repos/rivenmedia/riven/releases/latest | jq -r .tag_name)
-          echo "RIVEN_TAG=$RIVEN_TAG" >> $GITHUB_OUTPUT
-
-      - name: Fetch latest riven-frontend release tag
-        id: fetch_riven_frontend_tag
-        run: |
-          RIVEN_FRONTEND_TAG=$(curl -s https://api.github.com/repos/rivenmedia/riven-frontend/releases/latest | jq -r .tag_name)
-          echo "RIVEN_FRONTEND_TAG=$RIVEN_FRONTEND_TAG" >> $GITHUB_OUTPUT
 
       - name: Fetch latest dmbdb release tag
         id: fetch_dumb_frontend_tag
@@ -201,56 +187,6 @@ jobs:
           cache-to:   type=local,dest=/home/docker/buildx-cache/${{ github.repository }}/${{ env.BRANCH_NAME }}/systemstats,mode=max
           push: false
 
-  build-riven-frontend-arch:
-    needs: [setup, fetch-latest-tags, build-base-arch]
-    strategy:
-      matrix: { arch: [ X64, ARM64 ] }
-    runs-on: [ "self-hosted", "Linux", "${{ matrix.arch }}" ]
-    env:
-      BRANCH_NAME: ${{ needs.setup.outputs.BRANCH_NAME }}
-      PLATFORM: ${{ matrix.arch == 'X64' && 'linux/amd64' || 'linux/arm64' }}
-    steps:
-      - uses: actions/checkout@v4
-      - uses: docker/setup-buildx-action@v3
-      - name: Build riven-frontend-builder (native ${{ env.PLATFORM }})
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: ./Dockerfile
-          target: riven-frontend-builder
-          platforms: ${{ env.PLATFORM }}
-          build-args: RIVEN_FRONTEND_TAG=${{ needs.fetch-latest-tags.outputs.RIVEN_FRONTEND_TAG }}
-          cache-from: |
-            type=local,src=/home/docker/buildx-cache/${{ github.repository }}/${{ env.BRANCH_NAME }}/base
-            type=local,src=/home/docker/buildx-cache/${{ github.repository }}/${{ env.BRANCH_NAME }}/riven-frontend
-          cache-to:   type=local,dest=/home/docker/buildx-cache/${{ github.repository }}/${{ env.BRANCH_NAME }}/riven-frontend,mode=max
-          push: false
-
-#  build-riven-backend-arch:
-#    needs: [setup, fetch-latest-tags, build-base-arch]
-#    strategy:
-#      matrix: { arch: [ X64, ARM64 ] }
-#    runs-on: [ "self-hosted", "Linux", "${{ matrix.arch }}" ]
-#    env:
-#      BRANCH_NAME: ${{ needs.setup.outputs.BRANCH_NAME }}
-#      PLATFORM: ${{ matrix.arch == 'X64' && 'linux/amd64' || 'linux/arm64' }}
-#    steps:
-#      - uses: actions/checkout@v4
-#      - uses: docker/setup-buildx-action@v3
-#      - name: Build riven-backend-builder (native ${{ env.PLATFORM }})
-#        uses: docker/build-push-action@v6
-#        with:
-#          context: .
-#          file: ./Dockerfile
-#          target: riven-backend-builder
-#          platforms: ${{ env.PLATFORM }}
-#          build-args: RIVEN_TAG=${{ needs.fetch-latest-tags.outputs.RIVEN_TAG }}
-#          cache-from: |
-#            type=local,src=/home/docker/buildx-cache/${{ github.repository }}/${{ env.BRANCH_NAME }}/base
-#            type=local,src=/home/docker/buildx-cache/${{ github.repository }}/${{ env.BRANCH_NAME }}/riven-backend
-#          cache-to:   type=local,dest=/home/docker/buildx-cache/${{ github.repository }}/${{ env.BRANCH_NAME }}/riven-backend,mode=max
-#          push: false
-
   build-dumb-frontend-arch:
     needs: [setup, fetch-latest-tags, build-base-arch]
     strategy:
@@ -352,7 +288,7 @@ jobs:
 
   build-amd64-digest:
     name: Build linux/amd64 → Docker Hub (by digest)
-    needs: [setup, fetch-latest-tags, build-base-arch, build-zilean-arch, build-pgadmin-arch, build-systemstats-arch, build-riven-frontend-arch,  build-dumb-frontend-arch, build-plex-debrid-arch, build-cli-debrid-arch, build-requirements-arch]
+    needs: [setup, fetch-latest-tags, build-base-arch, build-zilean-arch, build-pgadmin-arch, build-systemstats-arch, build-dumb-frontend-arch, build-plex-debrid-arch, build-cli-debrid-arch, build-requirements-arch]
     runs-on: [ self-hosted, Linux, X64 ]
     permissions: { contents: read, packages: write }
     env:
@@ -391,8 +327,6 @@ jobs:
             type=local,src=/home/docker/buildx-cache/${{ github.repository }}/${{ env.BRANCH_NAME }}/zilean
             type=local,src=/home/docker/buildx-cache/${{ github.repository }}/${{ env.BRANCH_NAME }}/pgadmin
             type=local,src=/home/docker/buildx-cache/${{ github.repository }}/${{ env.BRANCH_NAME }}/systemstats
-            type=local,src=/home/docker/buildx-cache/${{ github.repository }}/${{ env.BRANCH_NAME }}/riven-frontend
-            type=local,src=/home/docker/buildx-cache/${{ github.repository }}/${{ env.BRANCH_NAME }}/riven-backend
             type=local,src=/home/docker/buildx-cache/${{ github.repository }}/${{ env.BRANCH_NAME }}/dumb-frontend
             type=local,src=/home/docker/buildx-cache/${{ github.repository }}/${{ env.BRANCH_NAME }}/plex-debrid
             type=local,src=/home/docker/buildx-cache/${{ github.repository }}/${{ env.BRANCH_NAME }}/cli-debrid
@@ -402,15 +336,13 @@ jobs:
             PGAGENT_TAG=${{ needs.fetch-latest-tags.outputs.PGAGENT_TAG }}
             SYS_STATS_TAG=${{ needs.fetch-latest-tags.outputs.SYS_STATS_TAG }}
             ZILEAN_TAG=${{ needs.fetch-latest-tags.outputs.ZILEAN_TAG }}
-            RIVEN_TAG=${{ needs.fetch-latest-tags.outputs.RIVEN_TAG }}
-            RIVEN_FRONTEND_TAG=${{ needs.fetch-latest-tags.outputs.RIVEN_FRONTEND_TAG }}
             DUMB_FRONTEND_TAG=${{ needs.fetch-latest-tags.outputs.DUMB_FRONTEND_TAG }}
             PLEX_DEBRID_TAG=${{ needs.fetch-latest-tags.outputs.PLEX_DEBRID_TAG }}
             CLI_DEBRID_TAG=${{ needs.fetch-latest-tags.outputs.CLI_DEBRID_TAG }}
 
   build-arm64-digest:
     name: Build linux/arm64 → Docker Hub (by digest)
-    needs: [setup, fetch-latest-tags, build-base-arch, build-zilean-arch, build-pgadmin-arch, build-systemstats-arch, build-riven-frontend-arch,  build-dumb-frontend-arch, build-plex-debrid-arch, build-cli-debrid-arch, build-requirements-arch]
+    needs: [setup, fetch-latest-tags, build-base-arch, build-zilean-arch, build-pgadmin-arch, build-systemstats-arch, build-dumb-frontend-arch, build-plex-debrid-arch, build-cli-debrid-arch, build-requirements-arch]
     runs-on: [ self-hosted, Linux, ARM64 ]
     permissions: { contents: read, packages: write }
     env:
@@ -449,8 +381,6 @@ jobs:
             type=local,src=/home/docker/buildx-cache/${{ github.repository }}/${{ env.BRANCH_NAME }}/zilean
             type=local,src=/home/docker/buildx-cache/${{ github.repository }}/${{ env.BRANCH_NAME }}/pgadmin
             type=local,src=/home/docker/buildx-cache/${{ github.repository }}/${{ env.BRANCH_NAME }}/systemstats
-            type=local,src=/home/docker/buildx-cache/${{ github.repository }}/${{ env.BRANCH_NAME }}/riven-frontend
-            type=local,src=/home/docker/buildx-cache/${{ github.repository }}/${{ env.BRANCH_NAME }}/riven-backend
             type=local,src=/home/docker/buildx-cache/${{ github.repository }}/${{ env.BRANCH_NAME }}/dumb-frontend
             type=local,src=/home/docker/buildx-cache/${{ github.repository }}/${{ env.BRANCH_NAME }}/plex-debrid
             type=local,src=/home/docker/buildx-cache/${{ github.repository }}/${{ env.BRANCH_NAME }}/cli-debrid
@@ -460,8 +390,6 @@ jobs:
             PGAGENT_TAG=${{ needs.fetch-latest-tags.outputs.PGAGENT_TAG }}
             SYS_STATS_TAG=${{ needs.fetch-latest-tags.outputs.SYS_STATS_TAG }}
             ZILEAN_TAG=${{ needs.fetch-latest-tags.outputs.ZILEAN_TAG }}
-            RIVEN_TAG=${{ needs.fetch-latest-tags.outputs.RIVEN_TAG }}
-            RIVEN_FRONTEND_TAG=${{ needs.fetch-latest-tags.outputs.RIVEN_FRONTEND_TAG }}
             DUMB_FRONTEND_TAG=${{ needs.fetch-latest-tags.outputs.DUMB_FRONTEND_TAG }}
             PLEX_DEBRID_TAG=${{ needs.fetch-latest-tags.outputs.PLEX_DEBRID_TAG }}
             CLI_DEBRID_TAG=${{ needs.fetch-latest-tags.outputs.CLI_DEBRID_TAG }}
