@@ -1,7 +1,7 @@
 from utils.global_logger import logger
 from utils.config_loader import CONFIG_MANAGER
 from utils import nzbdav_db
-from utils.user_management import chown_recursive
+from utils.user_management import chown_recursive, chown_single
 from typing import Optional, Tuple
 import xml.etree.ElementTree as ET
 import json, os, time, urllib.request, urllib.error
@@ -135,6 +135,9 @@ def _ensure_symlink_roots(paths: list[str]) -> None:
     group_id = CONFIG_MANAGER.get("pgid")
     for path in paths:
         os.makedirs(path, exist_ok=True)
+        parent_dir = os.path.dirname(path.rstrip(os.sep))
+        if parent_dir and parent_dir != os.sep:
+            chown_single(parent_dir, user_id, group_id)
         chown_recursive(path, user_id, group_id)
 
 
