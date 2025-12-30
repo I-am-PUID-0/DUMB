@@ -18,7 +18,7 @@
         <link rel="prev" href="../plex-debrid/">
       
       
-        <link rel="next" href="../../dependent/">
+        <link rel="next" href="../sonarr/">
       
       
       <link rel="icon" href="../../../assets/images/favicon.ico">
@@ -92,9 +92,8 @@
     
 <!-- Custom Banner -->
 <div class="banner">
-    <p style="color:white; display:inline;">⚠️ Documentation is in progress. Portions are being adapted from DMB and may
-        not reflect the final DUMB setup. This
-        notice will be updated once the migration is complete.</p>
+    <p style="color:white; display:inline;">⚠️ Documentation may lag behind new features and development. Details can change
+        as DUMB evolves, so some pages might not reflect the latest behavior.</p>
 </div>
 
 <!-- Original Header -->
@@ -1025,12 +1024,81 @@
   
   
     <li class="md-nav__item">
+      <a href="../nzbdav/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    NzbDAV
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../plex-media-server/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     Plex Media Server
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../jellyfin/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Jellyfin
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../emby/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Emby
     
   </span>
   
@@ -1208,6 +1276,121 @@
   
 </nav>
       
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../sonarr/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Sonarr
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../radarr/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Radarr
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../lidarr/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Lidarr
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../prowlarr/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Prowlarr
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../whisparr/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Whisparr
+    
+  </span>
+  
+
+      </a>
     </li>
   
 
@@ -2556,7 +2739,7 @@
 
 
 <h1 id="riven-backend-configuration">Riven Backend Configuration<a class="headerlink" href="#riven-backend-configuration" title="Permanent link">#</a></h1>
-<p>The <strong>Riven Backend</strong> is the core component responsible for data handling, automation, API integrations, and scraping within the Riven ecosystem. Proper configuration ensures seamless integration with services like Overseerr, Plex, and Trakt.</p>
+<p>The <strong>Riven Backend</strong> is the core component responsible for data handling, automation, API integrations, and scraping within the Riven ecosystem. Proper configuration ensures seamless integration with services like Seerr, Plex, and Trakt.</p>
 <h2 id="configuration-settings-in-dumb_configjson">Configuration Settings in <code>dumb_config.json</code><a class="headerlink" href="#configuration-settings-in-dumb_configjson" title="Permanent link">#</a></h2>
 <div class="highlight"><pre><span></span><code><span class="nt">&quot;riven_backend&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">    </span><span class="nt">&quot;enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
@@ -2639,7 +2822,7 @@
 <ul>
 <li><strong>General</strong> – Adjust base settings like min/max files size, etc.</li>
 <li><strong>Media Server</strong> – Add your Plex, Jellyfin, or Emby server details for library syncing.</li>
-<li><strong>Content</strong> – Configure sources such as Trakt, Overseerr, or the Plex Watchlist, MDB List, Listrr.</li>
+<li><strong>Content</strong> – Configure sources such as Trakt, Seerr, or the Plex Watchlist, MDB List, Listrr.</li>
 <li><strong>Scrapers</strong> – Enable one or more scrapers (e.g., Zilean, Torrentio, Knightcrawler, Orionoid, Jackett, Mediafusion, Prowlarr, Comet).</li>
 <li><strong>Ranking</strong> – Customize how results are scored and filtered.</li>
 </ul>

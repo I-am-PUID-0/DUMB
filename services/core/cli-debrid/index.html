@@ -92,9 +92,8 @@
     
 <!-- Custom Banner -->
 <div class="banner">
-    <p style="color:white; display:inline;">⚠️ Documentation is in progress. Portions are being adapted from DMB and may
-        not reflect the final DUMB setup. This
-        notice will be updated once the migration is complete.</p>
+    <p style="color:white; display:inline;">⚠️ Documentation may lag behind new features and development. Details can change
+        as DUMB evolves, so some pages might not reflect the latest behavior.</p>
 </div>
 
 <!-- Original Header -->
@@ -1223,12 +1222,81 @@
   
   
     <li class="md-nav__item">
+      <a href="../nzbdav/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    NzbDAV
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../plex-media-server/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     Plex Media Server
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../jellyfin/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Jellyfin
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../emby/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Emby
     
   </span>
   
@@ -1275,6 +1343,121 @@
   
   <span class="md-ellipsis">
     Riven Backend
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../sonarr/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Sonarr
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../radarr/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Radarr
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../lidarr/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Lidarr
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../prowlarr/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Prowlarr
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../whisparr/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Whisparr
     
   </span>
   
@@ -2700,7 +2883,7 @@
 
 
 <h1 id="cli-debrid-core-service">CLI Debrid (Core Service)<a class="headerlink" href="#cli-debrid-core-service" title="Permanent link">#</a></h1>
-<p><strong>CLI Debrid</strong> is a core content orchestrator in the DUMB ecosystem. It automates media collection and upgrading through Debrid services (e.g. Real-Debrid), working alongside Trakt, Plex, Overseerr, and various scrapers. CLI Debrid can either monitor your Plex libraries or generate symlinks for organized media delivery to Plex or similar servers.</p>
+<p><strong>CLI Debrid</strong> is a core content orchestrator in the DUMB ecosystem. It automates media collection and upgrading through Debrid services (e.g. Real-Debrid), working alongside Trakt, Plex, Seerr, and various scrapers. CLI Debrid can either monitor your Plex libraries or generate symlinks for organized media delivery to Plex or similar servers.</p>
 <hr />
 <h2 id="-service-relationships">🔗 Service Relationships<a class="headerlink" href="#-service-relationships" title="Permanent link">#</a></h2>
 <table>
@@ -2785,11 +2968,11 @@
 <li>Monitors your Plex library or local folder structure (symlinked library)</li>
 <li>Scrapes for content from various sources (Zilean, Jackett, Torrentio, Nyaa, Media Fusion)</li>
 <li>Downloads new or upgraded content using Debrid providers</li>
-<li>Optionally leverages webhook notifications from Overseerr or Zurg to trigger updates</li>
+<li>Optionally leverages webhook notifications from Seerr or Zurg to trigger updates</li>
 </ul>
 <h3 id="-supported-features">🎛️ Supported Features<a class="headerlink" href="#-supported-features" title="Permanent link">#</a></h3>
 <ul>
-<li>Content Sources: MDBList, Trakt, Overseerr</li>
+<li>Content Sources: MDBList, Trakt, Seerr</li>
 <li>Upgrading: Queue system for quality upgrades</li>
 <li>Web UI: Web dashboard for real-time monitoring and control</li>
 <li>Metadata: Cached locally in the <code>cli_battery</code></li>
@@ -2928,7 +3111,7 @@
 <h2 id="-webhook-support">📡 Webhook Support<a class="headerlink" href="#-webhook-support" title="Permanent link">#</a></h2>
 <p>CLI Debrid can listen for:</p>
 <ul>
-<li><strong>Overseerr Webhooks</strong>: Add content when users request it</li>
+<li><strong>Seerr Webhooks</strong>: Add content when users request it</li>
 <li><strong>Zurg Webhooks</strong>: React to completed downloads (Symlink mode)</li>
 </ul>
 <p>Example Zurg update hook:</p>

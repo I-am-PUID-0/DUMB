@@ -92,9 +92,8 @@
     
 <!-- Custom Banner -->
 <div class="banner">
-    <p style="color:white; display:inline;">⚠️ Documentation is in progress. Portions are being adapted from DMB and may
-        not reflect the final DUMB setup. This
-        notice will be updated once the migration is complete.</p>
+    <p style="color:white; display:inline;">⚠️ Documentation may lag behind new features and development. Details can change
+        as DUMB evolves, so some pages might not reflect the latest behavior.</p>
 </div>
 
 <!-- Original Header -->
@@ -1023,12 +1022,81 @@
   
   
     <li class="md-nav__item">
+      <a href="../../core/nzbdav/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    NzbDAV
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../core/plex-media-server/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     Plex Media Server
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../core/jellyfin/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Jellyfin
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../core/emby/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Emby
     
   </span>
   
@@ -1075,6 +1143,121 @@
   
   <span class="md-ellipsis">
     Riven Backend
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../core/sonarr/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Sonarr
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../core/radarr/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Radarr
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../core/lidarr/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Lidarr
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../core/prowlarr/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Prowlarr
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../core/whisparr/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Whisparr
     
   </span>
   
@@ -3012,7 +3195,7 @@
 <li><strong><code>process_name</code></strong>: The label used in logs and process tracking.</li>
 <li><strong><code>suppress_logging</code></strong>: If <code>true</code>, disables log output for this service.</li>
 <li><strong><code>log_level</code></strong>: Logging verbosity level (e.g., <code>DEBUG</code>, <code>INFO</code>).</li>
-<li><strong><code>key_type</code></strong>: The debrid service to use (<code>RealDebrid</code>, <code>AllDebrid</code>, etc.).</li>
+<li><strong><code>key_type</code></strong>: The debrid or WebDAV service to use (<code>RealDebrid</code>, <code>AllDebrid</code>, <code>NzbDAV</code>, etc.).</li>
 <li><strong><code>zurg_enabled</code></strong>: Whether Zurg is linked to this rclone mount.</li>
 <li><strong><code>decypharr_enabled</code></strong>: Whether Decypharr is linked to this rclone mount.</li>
 <li><strong><code>mount_dir</code></strong>: The container path where the remote drive is to be mounted.</li>
@@ -3028,6 +3211,7 @@
 <ul>
 <li>If <code>zurg_enabled</code> &amp; <code>zurg_config_file</code> are <strong>set</strong>: DUMB will configure rclone to use <strong>Zurg's WebDAV</strong> endpoint. The API key should be defined in the <strong>Zurg instance</strong>, not the rclone one.</li>
 <li>If <code>decypharr_enabled</code> is <strong>set</strong>: DUMB will configure rclone to use <strong>Decypharr's WebDAV</strong> endpoint. The API key should be defined in the <strong>Decypharr</strong> config.</li>
+<li>If <code>key_type</code> is <strong><code>NzbDAV</code></strong>: DUMB will configure rclone to use <strong>NzbDAV's WebDAV</strong> endpoint and read credentials from <code>WEBDAV_USER</code>/<code>WEBDAV_PASSWORD</code> (or the NzbDAV database). The rclone <code>api_key</code> field is ignored.</li>
 <li>If <code>decypharr_enabled</code>, <code>zurg_enabled</code> &amp; <code>zurg_config_file</code> are <strong>unset or blank</strong>: DUMB will configure rclone to <strong>directly connect to the debrid service</strong>, and the API key must be set in the rclone instance.</li>
 </ul>
 <h3 id="-adding-more-instances">➕ Adding More Instances<a class="headerlink" href="#-adding-more-instances" title="Permanent link">#</a></h3>
@@ -3035,7 +3219,7 @@
 <ul>
 <li>Each <code>instance name</code> is <strong>unique</strong></li>
 <li>Each <code>process_name</code> is <strong>unique</strong></li>
-<li>The <code>key_type</code> must match the type of Debrid service used (e.g., <code>RealDebrid</code>, <code>AllDebrid</code>, <code>TorBox</code>, <code>Premiumize</code>)</li>
+<li>The <code>key_type</code> must match the type of Debrid or WebDAV service used (e.g., <code>RealDebrid</code>, <code>AllDebrid</code>, <code>TorBox</code>, <code>Premiumize</code>, <code>NzbDAV</code>)</li>
 </ul>
 <div class="admonition note">
 <p class="admonition-title">The below example creates a zurg attached rclone mount and a direct debrid connection rclone mount</p>
@@ -3057,6 +3241,7 @@
 <span class="w">      </span><span class="nt">&quot;cache_dir&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/cache&quot;</span><span class="p">,</span>
 <span class="w">      </span><span class="nt">&quot;config_dir&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/config&quot;</span><span class="p">,</span>
 <span class="w">      </span><span class="nt">&quot;config_file&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/config/rclone.config&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;log_file&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/log/rclone_w_realdebrid.log&quot;</span><span class="p">,</span>
 <span class="w">      </span><span class="nt">&quot;zurg_config_file&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/zurg/RD/config.yml&quot;</span><span class="p">,</span>
 <span class="w">      </span><span class="nt">&quot;command&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[],</span>
 <span class="w">      </span><span class="nt">&quot;api_key&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&quot;</span>
@@ -3075,6 +3260,7 @@
 <span class="w">      </span><span class="nt">&quot;cache_dir&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/cache&quot;</span><span class="p">,</span>
 <span class="w">      </span><span class="nt">&quot;config_dir&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/config&quot;</span><span class="p">,</span>
 <span class="w">      </span><span class="nt">&quot;config_file&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/config/rclone.config&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;log_file&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/log/rclone_w_alldebrid.log&quot;</span><span class="p">,</span>
 <span class="w">      </span><span class="nt">&quot;zurg_config_file&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&quot;</span><span class="p">,</span>
 <span class="w">      </span><span class="nt">&quot;command&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[],</span>
 <span class="w">      </span><span class="nt">&quot;api_key&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;YOUR DEBRID API KEY&quot;</span>

@@ -92,9 +92,8 @@
     
 <!-- Custom Banner -->
 <div class="banner">
-    <p style="color:white; display:inline;">⚠️ Documentation is in progress. Portions are being adapted from DMB and may
-        not reflect the final DUMB setup. This
-        notice will be updated once the migration is complete.</p>
+    <p style="color:white; display:inline;">⚠️ Documentation may lag behind new features and development. Details can change
+        as DUMB evolves, so some pages might not reflect the latest behavior.</p>
 </div>
 
 <!-- Original Header -->
@@ -1012,12 +1011,81 @@
   
   
     <li class="md-nav__item">
+      <a href="../../services/core/nzbdav/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    NzbDAV
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../services/core/plex-media-server/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     Plex Media Server
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/core/jellyfin/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Jellyfin
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/core/emby/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Emby
     
   </span>
   
@@ -1064,6 +1132,121 @@
   
   <span class="md-ellipsis">
     Riven Backend
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/core/sonarr/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Sonarr
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/core/radarr/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Radarr
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/core/lidarr/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Lidarr
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/core/prowlarr/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Prowlarr
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/core/whisparr/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Whisparr
     
   </span>
   
@@ -1912,18 +2095,63 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#post-configsave" class="md-nav__link">
+  <a href="#get-configschema" class="md-nav__link">
     <span class="md-ellipsis">
-      POST /config/save
+      GET /config/schema
     </span>
   </a>
   
 </li>
         
           <li class="md-nav__item">
-  <a href="#post-configvalidate" class="md-nav__link">
+  <a href="#post-configprocess-configschema" class="md-nav__link">
     <span class="md-ellipsis">
-      POST /config/validate
+      POST /config/process-config/schema
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#post-configservice-config" class="md-nav__link">
+    <span class="md-ellipsis">
+      POST /config/service-config
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#get-configservice-ui" class="md-nav__link">
+    <span class="md-ellipsis">
+      GET /config/service-ui
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#get-configonboarding-status" class="md-nav__link">
+    <span class="md-ellipsis">
+      GET /config/onboarding-status
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#post-configonboarding-completed" class="md-nav__link">
+    <span class="md-ellipsis">
+      POST /config/onboarding-completed
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#post-configreset-onboarding" class="md-nav__link">
+    <span class="md-ellipsis">
+      POST /config/reset-onboarding
     </span>
   </a>
   
@@ -2470,18 +2698,63 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#post-configsave" class="md-nav__link">
+  <a href="#get-configschema" class="md-nav__link">
     <span class="md-ellipsis">
-      POST /config/save
+      GET /config/schema
     </span>
   </a>
   
 </li>
         
           <li class="md-nav__item">
-  <a href="#post-configvalidate" class="md-nav__link">
+  <a href="#post-configprocess-configschema" class="md-nav__link">
     <span class="md-ellipsis">
-      POST /config/validate
+      POST /config/process-config/schema
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#post-configservice-config" class="md-nav__link">
+    <span class="md-ellipsis">
+      POST /config/service-config
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#get-configservice-ui" class="md-nav__link">
+    <span class="md-ellipsis">
+      GET /config/service-ui
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#get-configonboarding-status" class="md-nav__link">
+    <span class="md-ellipsis">
+      GET /config/onboarding-status
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#post-configonboarding-completed" class="md-nav__link">
+    <span class="md-ellipsis">
+      POST /config/onboarding-completed
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#post-configreset-onboarding" class="md-nav__link">
+    <span class="md-ellipsis">
+      POST /config/reset-onboarding
     </span>
   </a>
   
@@ -2533,40 +2806,85 @@
 <p>The Configuration API is responsible for exposing endpoints that manage and manipulate DUMB's configuration settings (<code>dumb_config.json</code>). These endpoints provide tools for loading, updating, saving, and validating configuration data for all DUMB services.</p>
 <hr />
 <h2 id="-module-configpy">🧩 Module: <code>config.py</code><a class="headerlink" href="#-module-configpy" title="Permanent link">#</a></h2>
-<p>Located in: <code>api/routes/config.py</code></p>
+<p>Located in: <code>api/routers/config.py</code></p>
 <hr />
 <h2 id="-endpoints">📘 Endpoints<a class="headerlink" href="#-endpoints" title="Permanent link">#</a></h2>
 <h3 id="get-config"><code>GET /config</code><a class="headerlink" href="#get-config" title="Permanent link">#</a></h3>
 <p><strong>Description:</strong>
-Returns the currently loaded in-memory configuration.</p>
+Returns the currently loaded in-memory configuration. You can optionally pass <code>process_name</code> to fetch a single service block.</p>
 <p><strong>Usage Example:</strong>
 <div class="highlight"><pre><span></span><code>curl<span class="w"> </span>http://localhost:8000/config
 </code></pre></div></p>
 <hr />
 <h3 id="post-config"><code>POST /config</code><a class="headerlink" href="#post-config" title="Permanent link">#</a></h3>
 <p><strong>Description:</strong>
-Accepts an updated config object and applies it in memory.</p>
+Updates config in memory. When <code>process_name</code> is provided, it updates only that service block and can optionally persist to disk. Without <code>process_name</code>, it performs a global update.</p>
+<p><strong>Request Body:</strong>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;process_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Riven Backend&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;updates&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;log_level&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;DEBUG&quot;</span>
+<span class="w">  </span><span class="p">},</span>
+<span class="w">  </span><span class="nt">&quot;persist&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span>
+<span class="p">}</span>
+</code></pre></div></p>
 <p><strong>Usage Example:</strong>
 <div class="highlight"><pre><span></span><code>curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://localhost:8000/config<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Content-Type: application/json&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-d<span class="w"> </span>@updated_config.json
+<span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{&quot;process_name&quot;:&quot;Riven Backend&quot;,&quot;updates&quot;:{&quot;log_level&quot;:&quot;DEBUG&quot;},&quot;persist&quot;:true}&#39;</span>
 </code></pre></div></p>
 <hr />
-<h3 id="post-configsave"><code>POST /config/save</code><a class="headerlink" href="#post-configsave" title="Permanent link">#</a></h3>
+<h3 id="get-configschema"><code>GET /config/schema</code><a class="headerlink" href="#get-configschema" title="Permanent link">#</a></h3>
 <p><strong>Description:</strong>
-Saves the current in-memory config to the <code>dumb_config.json</code> file.</p>
+Returns the JSON schema used for config validation.</p>
 <p><strong>Usage Example:</strong>
-<div class="highlight"><pre><span></span><code>curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://localhost:8000/config/save
+<div class="highlight"><pre><span></span><code>curl<span class="w"> </span>http://localhost:8000/config/schema
 </code></pre></div></p>
 <hr />
-<h3 id="post-configvalidate"><code>POST /config/validate</code><a class="headerlink" href="#post-configvalidate" title="Permanent link">#</a></h3>
+<h3 id="post-configprocess-configschema"><code>POST /config/process-config/schema</code><a class="headerlink" href="#post-configprocess-configschema" title="Permanent link">#</a></h3>
 <p><strong>Description:</strong>
-Validates the structure and format of a provided config file (without applying changes).</p>
+Returns the config schema subtree for a specific <code>process_name</code>.</p>
+<p><strong>Request Body:</strong>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;process_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Riven Backend&quot;</span>
+<span class="p">}</span>
+</code></pre></div></p>
 <p><strong>Usage Example:</strong>
-<div class="highlight"><pre><span></span><code>curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://localhost:8000/config/validate<span class="w"> </span><span class="se">\</span>
+<div class="highlight"><pre><span></span><code>curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://localhost:8000/config/process-config/schema<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Content-Type: application/json&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-d<span class="w"> </span>@test_config.json
+<span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{&quot;process_name&quot;:&quot;Riven Backend&quot;}&#39;</span>
 </code></pre></div></p>
+<hr />
+<h3 id="post-configservice-config"><code>POST /config/service-config</code><a class="headerlink" href="#post-configservice-config" title="Permanent link">#</a></h3>
+<p><strong>Description:</strong>
+Reads or updates a service-specific config file (JSON/YAML/CONF/Python/XML). If <code>updates</code> is omitted, the raw config is returned.</p>
+<p><strong>Request Body:</strong>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;service_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Zurg w/ RealDebrid&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;updates&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&quot;</span>
+<span class="p">}</span>
+</code></pre></div></p>
+<p><strong>Usage Example:</strong>
+<div class="highlight"><pre><span></span><code>curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://localhost:8000/config/service-config<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Content-Type: application/json&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{&quot;service_name&quot;:&quot;Zurg w/ RealDebrid&quot;}&#39;</span>
+</code></pre></div></p>
+<hr />
+<h3 id="get-configservice-ui"><code>GET /config/service-ui</code><a class="headerlink" href="#get-configservice-ui" title="Permanent link">#</a></h3>
+<p><strong>Description:</strong>
+Returns a list of enabled services with UI ports and writes a Traefik dynamic config file.</p>
+<hr />
+<h3 id="get-configonboarding-status"><code>GET /config/onboarding-status</code><a class="headerlink" href="#get-configonboarding-status" title="Permanent link">#</a></h3>
+<p><strong>Description:</strong>
+Returns whether onboarding is required.</p>
+<hr />
+<h3 id="post-configonboarding-completed"><code>POST /config/onboarding-completed</code><a class="headerlink" href="#post-configonboarding-completed" title="Permanent link">#</a></h3>
+<p><strong>Description:</strong>
+Marks onboarding as complete.</p>
+<hr />
+<h3 id="post-configreset-onboarding"><code>POST /config/reset-onboarding</code><a class="headerlink" href="#post-configreset-onboarding" title="Permanent link">#</a></h3>
+<p><strong>Description:</strong>
+Resets onboarding to incomplete.</p>
 <hr />
 <h2 id="-developer-notes">🧪 Developer Notes<a class="headerlink" href="#-developer-notes" title="Permanent link">#</a></h2>
 <ul>

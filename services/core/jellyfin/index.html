@@ -12,28 +12,28 @@
         <meta name="author" content="DUMB Team">
       
       
-        <link rel="canonical" href="https://I-am-PUID-0.github.io/DUMB/faq/rclone/">
+        <link rel="canonical" href="https://I-am-PUID-0.github.io/DUMB/services/core/jellyfin/">
       
       
-        <link rel="prev" href="../postgres/">
+        <link rel="prev" href="../plex-media-server/">
       
       
-        <link rel="next" href="../riven/">
+        <link rel="next" href="../emby/">
       
       
-      <link rel="icon" href="../../assets/images/favicon.ico">
+      <link rel="icon" href="../../../assets/images/favicon.ico">
       <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.14">
     
     
       
-        <title>rclone - DUMB</title>
+        <title>Jellyfin - DUMB</title>
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.342714a4.min.css">
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.342714a4.min.css">
       
         
-        <link rel="stylesheet" href="../../assets/stylesheets/palette.06af60db.min.css">
+        <link rel="stylesheet" href="../../../assets/stylesheets/palette.06af60db.min.css">
       
       
 
@@ -52,9 +52,9 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/css/main.css">
+      <link rel="stylesheet" href="../../../assets/css/main.css">
     
-    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    <script>__md_scope=new URL("../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
 
@@ -80,7 +80,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#rclone-faq" class="md-skip">
+        <a href="#jellyfin-core-service" class="md-skip">
           Skip to content
         </a>
       
@@ -101,9 +101,9 @@
 
 <header class="md-header" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="../.." title="DUMB" class="md-header__button md-logo" aria-label="DUMB" data-md-component="logo">
+    <a href="../../.." title="DUMB" class="md-header__button md-logo" aria-label="DUMB" data-md-component="logo">
       
-  <img src="../../assets/images/DUMB.png" alt="logo">
+  <img src="../../../assets/images/DUMB.png" alt="logo">
 
     </a>
     <label class="md-header__button md-icon" for="__drawer">
@@ -120,7 +120,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              rclone
+              Jellyfin
             
           </span>
         </div>
@@ -233,7 +233,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../.." class="md-tabs__link">
+      <a href="../../.." class="md-tabs__link">
         
   
   
@@ -254,7 +254,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../features/" class="md-tabs__link">
+        <a href="../../../features/" class="md-tabs__link">
           
   
   
@@ -274,7 +274,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../getting-started/" class="md-tabs__link">
+        <a href="../../../getting-started/" class="md-tabs__link">
           
   
   
@@ -290,11 +290,13 @@
   
   
   
+    
+  
   
     
     
-      <li class="md-tabs__item">
-        <a href="../../services/" class="md-tabs__link">
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../../" class="md-tabs__link">
           
   
   
@@ -314,7 +316,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../deployment/" class="md-tabs__link">
+        <a href="../../../deployment/" class="md-tabs__link">
           
   
   
@@ -334,7 +336,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../api/" class="md-tabs__link">
+        <a href="../../../api/" class="md-tabs__link">
           
   
   
@@ -350,13 +352,11 @@
   
   
   
-    
-  
   
     
     
-      <li class="md-tabs__item md-tabs__item--active">
-        <a href="../general/" class="md-tabs__link">
+      <li class="md-tabs__item">
+        <a href="../../../faq/general/" class="md-tabs__link">
           
   
   
@@ -374,7 +374,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../../changelog/" class="md-tabs__link">
+      <a href="../../../changelog/" class="md-tabs__link">
         
   
   
@@ -393,7 +393,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../../contributing/" class="md-tabs__link">
+      <a href="../../../contributing/" class="md-tabs__link">
         
   
   
@@ -412,7 +412,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../../about/" class="md-tabs__link">
+      <a href="../../../about/" class="md-tabs__link">
         
   
   
@@ -447,9 +447,9 @@
 
 <nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="../.." title="DUMB" class="md-nav__button md-logo" aria-label="DUMB" data-md-component="logo">
+    <a href="../../.." title="DUMB" class="md-nav__button md-logo" aria-label="DUMB" data-md-component="logo">
       
-  <img src="../../assets/images/DUMB.png" alt="logo">
+  <img src="../../../assets/images/DUMB.png" alt="logo">
 
     </a>
     DUMB
@@ -476,7 +476,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../.." class="md-nav__link">
+      <a href="../../.." class="md-nav__link">
         
   
   
@@ -541,7 +541,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/" class="md-nav__link">
+      <a href="../../../features/" class="md-nav__link">
         
   
   
@@ -564,7 +564,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/configuration/" class="md-nav__link">
+      <a href="../../../features/configuration/" class="md-nav__link">
         
   
   
@@ -587,7 +587,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/usage/" class="md-nav__link">
+      <a href="../../../features/usage/" class="md-nav__link">
         
   
   
@@ -660,7 +660,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../getting-started/" class="md-nav__link">
+      <a href="../../../getting-started/" class="md-nav__link">
         
   
   
@@ -683,7 +683,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../getting-started/installation/" class="md-nav__link">
+      <a href="../../../getting-started/installation/" class="md-nav__link">
         
   
   
@@ -710,26 +710,31 @@
       
   
   
+    
   
   
+  
     
     
     
     
+      
+        
+        
       
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
         
           
-          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
             
   
   
@@ -742,7 +747,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_4">
             <span class="md-nav__icon md-icon"></span>
             Services
@@ -756,7 +761,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/" class="md-nav__link">
+      <a href="../../" class="md-nav__link">
         
   
   
@@ -785,17 +790,20 @@
       
       
         
+          
+          
+        
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
       
         
         
         <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2" >
         
           
-          <label class="md-nav__link" for="__nav_4_2" id="__nav_4_2_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_4_2" id="__nav_4_2_label" tabindex="">
             
   
   
@@ -822,7 +830,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/dumb/" class="md-nav__link">
+      <a href="../../dumb/" class="md-nav__link">
         
   
   
@@ -845,7 +853,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/dumb/api/" class="md-nav__link">
+      <a href="../../dumb/api/" class="md-nav__link">
         
   
   
@@ -868,7 +876,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/dumb/dumb-frontend/" class="md-nav__link">
+      <a href="../../dumb/dumb-frontend/" class="md-nav__link">
         
   
   
@@ -896,26 +904,31 @@
                 
   
   
+    
   
   
+  
     
     
     
     
       
       
-        
-      
-    
-    
-    <li class="md-nav__item md-nav__item--nested">
-      
-        
-        
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_3" >
         
           
-          <label class="md-nav__link" for="__nav_4_3" id="__nav_4_3_label" tabindex="0">
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_3" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_4_3" id="__nav_4_3_label" tabindex="">
             
   
   
@@ -928,7 +941,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_3_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_3_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_4_3">
             <span class="md-nav__icon md-icon"></span>
             Core
@@ -942,7 +955,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/core/" class="md-nav__link">
+      <a href="../" class="md-nav__link">
         
   
   
@@ -965,7 +978,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/core/cli-debrid/" class="md-nav__link">
+      <a href="../cli-debrid/" class="md-nav__link">
         
   
   
@@ -988,7 +1001,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/core/decypharr/" class="md-nav__link">
+      <a href="../decypharr/" class="md-nav__link">
         
   
   
@@ -1011,7 +1024,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/core/nzbdav/" class="md-nav__link">
+      <a href="../nzbdav/" class="md-nav__link">
         
   
   
@@ -1034,7 +1047,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/core/plex-media-server/" class="md-nav__link">
+      <a href="../plex-media-server/" class="md-nav__link">
         
   
   
@@ -1054,10 +1067,32 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../../services/core/jellyfin/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    Jellyfin
+    
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -1068,6 +1103,77 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#-service-relationships" class="md-nav__link">
+    <span class="md-ellipsis">
+      🔗 Service Relationships
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#-configuration-in-dumb_configjson" class="md-nav__link">
+    <span class="md-ellipsis">
+      📦 Configuration in dumb_config.json
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="📦 Configuration in dumb_config.json">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#-key-configuration-fields" class="md-nav__link">
+    <span class="md-ellipsis">
+      🔍 Key Configuration Fields
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#-accessing-the-ui" class="md-nav__link">
+    <span class="md-ellipsis">
+      🌐 Accessing the UI
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#-resources" class="md-nav__link">
+    <span class="md-ellipsis">
+      🔗 Resources
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -1080,7 +1186,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/core/emby/" class="md-nav__link">
+      <a href="../emby/" class="md-nav__link">
         
   
   
@@ -1103,7 +1209,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/core/plex-debrid/" class="md-nav__link">
+      <a href="../plex-debrid/" class="md-nav__link">
         
   
   
@@ -1126,7 +1232,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/core/riven-backend/" class="md-nav__link">
+      <a href="../riven-backend/" class="md-nav__link">
         
   
   
@@ -1149,7 +1255,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/core/sonarr/" class="md-nav__link">
+      <a href="../sonarr/" class="md-nav__link">
         
   
   
@@ -1172,7 +1278,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/core/radarr/" class="md-nav__link">
+      <a href="../radarr/" class="md-nav__link">
         
   
   
@@ -1195,7 +1301,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/core/lidarr/" class="md-nav__link">
+      <a href="../lidarr/" class="md-nav__link">
         
   
   
@@ -1218,7 +1324,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/core/prowlarr/" class="md-nav__link">
+      <a href="../prowlarr/" class="md-nav__link">
         
   
   
@@ -1241,7 +1347,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/core/whisparr/" class="md-nav__link">
+      <a href="../whisparr/" class="md-nav__link">
         
   
   
@@ -1278,17 +1384,20 @@
       
       
         
+          
+          
+        
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
       
         
         
         <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_4" >
         
           
-          <label class="md-nav__link" for="__nav_4_4" id="__nav_4_4_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_4_4" id="__nav_4_4_label" tabindex="">
             
   
   
@@ -1315,7 +1424,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/dependent/" class="md-nav__link">
+      <a href="../../dependent/" class="md-nav__link">
         
   
   
@@ -1338,7 +1447,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/dependent/cli-battery/" class="md-nav__link">
+      <a href="../../dependent/cli-battery/" class="md-nav__link">
         
   
   
@@ -1361,7 +1470,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/dependent/phalanx-db/" class="md-nav__link">
+      <a href="../../dependent/phalanx-db/" class="md-nav__link">
         
   
   
@@ -1384,7 +1493,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/dependent/postgres/" class="md-nav__link">
+      <a href="../../dependent/postgres/" class="md-nav__link">
         
   
   
@@ -1407,7 +1516,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/dependent/rclone/" class="md-nav__link">
+      <a href="../../dependent/rclone/" class="md-nav__link">
         
   
   
@@ -1430,7 +1539,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/dependent/zurg/" class="md-nav__link">
+      <a href="../../dependent/zurg/" class="md-nav__link">
         
   
   
@@ -1467,17 +1576,20 @@
       
       
         
+          
+          
+        
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
       
         
         
         <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_5" >
         
           
-          <label class="md-nav__link" for="__nav_4_5" id="__nav_4_5_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_4_5" id="__nav_4_5_label" tabindex="">
             
   
   
@@ -1504,7 +1616,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/optional/" class="md-nav__link">
+      <a href="../../optional/" class="md-nav__link">
         
   
   
@@ -1527,7 +1639,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/optional/pgadmin/" class="md-nav__link">
+      <a href="../../optional/pgadmin/" class="md-nav__link">
         
   
   
@@ -1550,7 +1662,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/optional/riven-frontend/" class="md-nav__link">
+      <a href="../../optional/riven-frontend/" class="md-nav__link">
         
   
   
@@ -1573,7 +1685,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/optional/zilean/" class="md-nav__link">
+      <a href="../../optional/zilean/" class="md-nav__link">
         
   
   
@@ -1654,7 +1766,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../deployment/" class="md-nav__link">
+      <a href="../../../deployment/" class="md-nav__link">
         
   
   
@@ -1677,7 +1789,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../deployment/docker/" class="md-nav__link">
+      <a href="../../../deployment/docker/" class="md-nav__link">
         
   
   
@@ -1700,7 +1812,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../deployment/portainer/" class="md-nav__link">
+      <a href="../../../deployment/portainer/" class="md-nav__link">
         
   
   
@@ -1723,7 +1835,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../deployment/unraid/" class="md-nav__link">
+      <a href="../../../deployment/unraid/" class="md-nav__link">
         
   
   
@@ -1746,7 +1858,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../deployment/wsl/" class="md-nav__link">
+      <a href="../../../deployment/wsl/" class="md-nav__link">
         
   
   
@@ -1769,7 +1881,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../deployment/proxmox/" class="md-nav__link">
+      <a href="../../../deployment/proxmox/" class="md-nav__link">
         
   
   
@@ -1792,7 +1904,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../deployment/synology/" class="md-nav__link">
+      <a href="../../../deployment/synology/" class="md-nav__link">
         
   
   
@@ -1815,7 +1927,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../deployment/qnap/" class="md-nav__link">
+      <a href="../../../deployment/qnap/" class="md-nav__link">
         
   
   
@@ -1838,7 +1950,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../deployment/truenas/" class="md-nav__link">
+      <a href="../../../deployment/truenas/" class="md-nav__link">
         
   
   
@@ -1861,7 +1973,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../deployment/dockge/" class="md-nav__link">
+      <a href="../../../deployment/dockge/" class="md-nav__link">
         
   
   
@@ -1934,7 +2046,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/" class="md-nav__link">
+      <a href="../../../api/" class="md-nav__link">
         
   
   
@@ -1957,7 +2069,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/health/" class="md-nav__link">
+      <a href="../../../api/health/" class="md-nav__link">
         
   
   
@@ -1980,7 +2092,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/process/" class="md-nav__link">
+      <a href="../../../api/process/" class="md-nav__link">
         
   
   
@@ -2003,7 +2115,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/config/" class="md-nav__link">
+      <a href="../../../api/config/" class="md-nav__link">
         
   
   
@@ -2026,7 +2138,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/logs/" class="md-nav__link">
+      <a href="../../../api/logs/" class="md-nav__link">
         
   
   
@@ -2049,7 +2161,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/websocket_logs/" class="md-nav__link">
+      <a href="../../../api/websocket_logs/" class="md-nav__link">
         
   
   
@@ -2076,31 +2188,26 @@
       
   
   
-    
   
   
-  
     
     
     
     
-      
-        
-        
       
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
         
           
-          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="">
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
             
   
   
@@ -2113,7 +2220,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_7">
             <span class="md-nav__icon md-icon"></span>
             FAQ
@@ -2127,7 +2234,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../general/" class="md-nav__link">
+      <a href="../../../faq/general/" class="md-nav__link">
         
   
   
@@ -2150,7 +2257,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../dumb/" class="md-nav__link">
+      <a href="../../../faq/dumb/" class="md-nav__link">
         
   
   
@@ -2173,7 +2280,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../decypharr/" class="md-nav__link">
+      <a href="../../../faq/decypharr/" class="md-nav__link">
         
   
   
@@ -2196,7 +2303,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../cli-debrid/" class="md-nav__link">
+      <a href="../../../faq/cli-debrid/" class="md-nav__link">
         
   
   
@@ -2219,7 +2326,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../plex/" class="md-nav__link">
+      <a href="../../../faq/plex/" class="md-nav__link">
         
   
   
@@ -2242,7 +2349,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../plex-debrid/" class="md-nav__link">
+      <a href="../../../faq/plex-debrid/" class="md-nav__link">
         
   
   
@@ -2265,7 +2372,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../pgadmin/" class="md-nav__link">
+      <a href="../../../faq/pgadmin/" class="md-nav__link">
         
   
   
@@ -2288,7 +2395,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../postgres/" class="md-nav__link">
+      <a href="../../../faq/postgres/" class="md-nav__link">
         
   
   
@@ -2308,32 +2415,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    rclone
-    
-  </span>
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../../../faq/rclone/" class="md-nav__link">
         
   
   
@@ -2344,221 +2429,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#-frequently-asked-questions-faq" class="md-nav__link">
-    <span class="md-ellipsis">
-      ❓ Frequently Asked Questions (FAQ)
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="❓ Frequently Asked Questions (FAQ)">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#i-think-i-might-be-rate-limited-by-the-debrid-service---seeing-423-errors" class="md-nav__link">
-    <span class="md-ellipsis">
-      I think I might be rate limited by the debrid service - seeing 423 errors.
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#how-do-i-enable-rclone-filtering-to-include-only-specific-resolutions" class="md-nav__link">
-    <span class="md-ellipsis">
-      How do I enable rclone filtering to include only specific resolutions?
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="How do I enable rclone filtering to include only specific resolutions?">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#using-rclone---exclude-pattern-matching" class="md-nav__link">
-    <span class="md-ellipsis">
-      Using rclone --exclude pattern matching:
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Using rclone --exclude pattern matching:">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#example-docker-compose-to-include-only-4k2160uhd-content" class="md-nav__link">
-    <span class="md-ellipsis">
-      Example docker-compose to include only 4k|2160|UHD content.
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#example-docker-compose-to-exclude-only-4k2160uhd-content" class="md-nav__link">
-    <span class="md-ellipsis">
-      Example docker-compose to exclude only 4k|2160|UHD content.
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#using-rclone---filter-from-pattern-matching" class="md-nav__link">
-    <span class="md-ellipsis">
-      Using rclone --filter-from pattern matching:
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Using rclone --filter-from pattern matching:">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#example-docker-compose-to-include-only-4k2160uhd-content_1" class="md-nav__link">
-    <span class="md-ellipsis">
-      Example docker-compose to include only 4k|2160|UHD content.
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Example docker-compose to include only 4k|2160|UHD content.">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#example-filter_include_2160txt" class="md-nav__link">
-    <span class="md-ellipsis">
-      Example filter_include_2160.txt
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#example-docker-compose-to-exclude-only-4k2160uhd-content_1" class="md-nav__link">
-    <span class="md-ellipsis">
-      Example docker-compose to exclude only 4k|2160|UHD content.
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Example docker-compose to exclude only 4k|2160|UHD content.">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#example-filter_exclude_2160txt" class="md-nav__link">
-    <span class="md-ellipsis">
-      Example filter_exclude_2160.txt
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#error-response-from-daemon-path-yourhostpathmnt-is-mounted-on--but-it-is-not-a-shared-mount" class="md-nav__link">
-    <span class="md-ellipsis">
-      Error response from daemon: path /your/host/path/mnt is mounted on / but it is not a shared mount.
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#ubuntu-systemd-service" class="md-nav__link">
-    <span class="md-ellipsis">
-      Ubuntu systemd service:
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Ubuntu systemd service:">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#create-a-systemd-service-file" class="md-nav__link">
-    <span class="md-ellipsis">
-      Create a systemd service file:
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#enable-and-start-the-service" class="md-nav__link">
-    <span class="md-ellipsis">
-      Enable and start the service:
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#verify-the-service-is-active" class="md-nav__link">
-    <span class="md-ellipsis">
-      Verify the service is active:
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#-related-pages" class="md-nav__link">
-    <span class="md-ellipsis">
-      📎 Related Pages
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -2571,7 +2441,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../riven/" class="md-nav__link">
+      <a href="../../../faq/riven/" class="md-nav__link">
         
   
   
@@ -2594,7 +2464,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../zilean/" class="md-nav__link">
+      <a href="../../../faq/zilean/" class="md-nav__link">
         
   
   
@@ -2617,7 +2487,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../zurg/" class="md-nav__link">
+      <a href="../../../faq/zurg/" class="md-nav__link">
         
   
   
@@ -2647,7 +2517,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../changelog/" class="md-nav__link">
+      <a href="../../../changelog/" class="md-nav__link">
         
   
   
@@ -2669,7 +2539,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../contributing/" class="md-nav__link">
+      <a href="../../../contributing/" class="md-nav__link">
         
   
   
@@ -2691,7 +2561,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../about/" class="md-nav__link">
+      <a href="../../../about/" class="md-nav__link">
         
   
   
@@ -2733,183 +2603,30 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#-frequently-asked-questions-faq" class="md-nav__link">
+  <a href="#-service-relationships" class="md-nav__link">
     <span class="md-ellipsis">
-      ❓ Frequently Asked Questions (FAQ)
+      🔗 Service Relationships
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="❓ Frequently Asked Questions (FAQ)">
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#-configuration-in-dumb_configjson" class="md-nav__link">
+    <span class="md-ellipsis">
+      📦 Configuration in dumb_config.json
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="📦 Configuration in dumb_config.json">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#i-think-i-might-be-rate-limited-by-the-debrid-service---seeing-423-errors" class="md-nav__link">
+  <a href="#-key-configuration-fields" class="md-nav__link">
     <span class="md-ellipsis">
-      I think I might be rate limited by the debrid service - seeing 423 errors.
+      🔍 Key Configuration Fields
     </span>
   </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#how-do-i-enable-rclone-filtering-to-include-only-specific-resolutions" class="md-nav__link">
-    <span class="md-ellipsis">
-      How do I enable rclone filtering to include only specific resolutions?
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="How do I enable rclone filtering to include only specific resolutions?">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#using-rclone---exclude-pattern-matching" class="md-nav__link">
-    <span class="md-ellipsis">
-      Using rclone --exclude pattern matching:
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Using rclone --exclude pattern matching:">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#example-docker-compose-to-include-only-4k2160uhd-content" class="md-nav__link">
-    <span class="md-ellipsis">
-      Example docker-compose to include only 4k|2160|UHD content.
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#example-docker-compose-to-exclude-only-4k2160uhd-content" class="md-nav__link">
-    <span class="md-ellipsis">
-      Example docker-compose to exclude only 4k|2160|UHD content.
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#using-rclone---filter-from-pattern-matching" class="md-nav__link">
-    <span class="md-ellipsis">
-      Using rclone --filter-from pattern matching:
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Using rclone --filter-from pattern matching:">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#example-docker-compose-to-include-only-4k2160uhd-content_1" class="md-nav__link">
-    <span class="md-ellipsis">
-      Example docker-compose to include only 4k|2160|UHD content.
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Example docker-compose to include only 4k|2160|UHD content.">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#example-filter_include_2160txt" class="md-nav__link">
-    <span class="md-ellipsis">
-      Example filter_include_2160.txt
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#example-docker-compose-to-exclude-only-4k2160uhd-content_1" class="md-nav__link">
-    <span class="md-ellipsis">
-      Example docker-compose to exclude only 4k|2160|UHD content.
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Example docker-compose to exclude only 4k|2160|UHD content.">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#example-filter_exclude_2160txt" class="md-nav__link">
-    <span class="md-ellipsis">
-      Example filter_exclude_2160.txt
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#error-response-from-daemon-path-yourhostpathmnt-is-mounted-on--but-it-is-not-a-shared-mount" class="md-nav__link">
-    <span class="md-ellipsis">
-      Error response from daemon: path /your/host/path/mnt is mounted on / but it is not a shared mount.
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#ubuntu-systemd-service" class="md-nav__link">
-    <span class="md-ellipsis">
-      Ubuntu systemd service:
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Ubuntu systemd service:">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#create-a-systemd-service-file" class="md-nav__link">
-    <span class="md-ellipsis">
-      Create a systemd service file:
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#enable-and-start-the-service" class="md-nav__link">
-    <span class="md-ellipsis">
-      Enable and start the service:
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#verify-the-service-is-active" class="md-nav__link">
-    <span class="md-ellipsis">
-      Verify the service is active:
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
         
@@ -2919,9 +2636,18 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#-related-pages" class="md-nav__link">
+  <a href="#-accessing-the-ui" class="md-nav__link">
     <span class="md-ellipsis">
-      📎 Related Pages
+      🌐 Accessing the UI
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#-resources" class="md-nav__link">
+    <span class="md-ellipsis">
+      🔗 Resources
     </span>
   </a>
   
@@ -2946,78 +2672,68 @@
   
 
 
-<h1 id="rclone-faq">rclone FAQ<a class="headerlink" href="#rclone-faq" title="Permanent link">#</a></h1>
-<p>Below are some common questions and solutions related to using <strong>rclone</strong> with <strong>DUMB</strong>.</p>
+<h1 id="jellyfin-core-service">Jellyfin (Core Service)<a class="headerlink" href="#jellyfin-core-service" title="Permanent link">#</a></h1>
+<p><strong>Jellyfin</strong> is an open-source media server for organizing and streaming your media library. It can be used as an alternative to Plex or Emby.</p>
 <hr />
-<h2 id="-frequently-asked-questions-faq">❓ Frequently Asked Questions (FAQ)<a class="headerlink" href="#-frequently-asked-questions-faq" title="Permanent link">#</a></h2>
-<h3 id="i-think-i-might-be-rate-limited-by-the-debrid-service---seeing-423-errors">I think I might be rate limited by the debrid service - seeing <code>423</code> errors.<a class="headerlink" href="#i-think-i-might-be-rate-limited-by-the-debrid-service---seeing-423-errors" title="Permanent link">#</a></h3>
-<p>Add <code>- RCLONE_TSP_LIMIT=10</code> to the environment variable section of the compose.</p>
+<h2 id="-service-relationships">🔗 Service Relationships<a class="headerlink" href="#-service-relationships" title="Permanent link">#</a></h2>
+<table>
+<thead>
+<tr>
+<th>Classification</th>
+<th>Role</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Core Service</td>
+<td>Media server</td>
+</tr>
+<tr>
+<td>Depends On</td>
+<td>Content in <code>/mnt/debrid</code></td>
+</tr>
+<tr>
+<td>Optional</td>
+<td>None</td>
+</tr>
+<tr>
+<td>Exposes UI</td>
+<td>Yes (Web UI)</td>
+</tr>
+</tbody>
+</table>
 <hr />
-<h3 id="how-do-i-enable-rclone-filtering-to-include-only-specific-resolutions">How do I enable rclone filtering to include only specific resolutions?<a class="headerlink" href="#how-do-i-enable-rclone-filtering-to-include-only-specific-resolutions" title="Permanent link">#</a></h3>
-<h4 id="using-rclone---exclude-pattern-matching">Using rclone <a href="https://rclone.org/filtering/#exclude-exclude-files-matching-pattern">--exclude</a> pattern matching:<a class="headerlink" href="#using-rclone---exclude-pattern-matching" title="Permanent link">#</a></h4>
-<h5 id="example-docker-compose-to-include-only-4k2160uhd-content">Example docker-compose to include only 4k|2160|UHD content.<a class="headerlink" href="#example-docker-compose-to-include-only-4k2160uhd-content" title="Permanent link">#</a></h5>
-<p>Add <code>- RCLONE_EXCLUDE=**/**{{(?i)(1080|720|480)}}**</code> to the environment variable section of the compose.</p>
-<h5 id="example-docker-compose-to-exclude-only-4k2160uhd-content">Example docker-compose to exclude only 4k|2160|UHD content.<a class="headerlink" href="#example-docker-compose-to-exclude-only-4k2160uhd-content" title="Permanent link">#</a></h5>
-<p>Add <code>- RCLONE_EXCLUDE=**/**{{(?i)(4k|uhd|2160)}}**</code> to the environment variable section of the compose. </p>
-<h4 id="using-rclone---filter-from-pattern-matching">Using rclone <a href="https://rclone.org/filtering/#filter-from-read-filtering-patterns-from-a-file">--filter-from</a> pattern matching:<a class="headerlink" href="#using-rclone---filter-from-pattern-matching" title="Permanent link">#</a></h4>
-<h5 id="example-docker-compose-to-include-only-4k2160uhd-content_1">Example docker-compose to include only 4k|2160|UHD content.<a class="headerlink" href="#example-docker-compose-to-include-only-4k2160uhd-content_1" title="Permanent link">#</a></h5>
-<p>Add <code>- RCLONE_FILTER_FROM=/config/filter_include_2160.txt</code> to the environment variable section of the compose and add the below content to a <code>filter_include_2160.txt</code> file in the config directory for the container. </p>
-<h6 id="example-filter_include_2160txt">Example filter_include_2160.txt<a class="headerlink" href="#example-filter_include_2160txt" title="Permanent link">#</a></h6>
-<div class="highlight"><pre><span></span><code>-<span class="w"> </span>**/**<span class="o">{{(</span>?i<span class="o">)(</span><span class="m">1080</span><span class="p">|</span><span class="m">720</span><span class="p">|</span><span class="m">480</span><span class="o">)}}</span>**
-+<span class="w"> </span>*
+<h2 id="-configuration-in-dumb_configjson">📦 Configuration in <code>dumb_config.json</code><a class="headerlink" href="#-configuration-in-dumb_configjson" title="Permanent link">#</a></h2>
+<div class="highlight"><pre><span></span><code><span class="nt">&quot;jellyfin&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;process_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Jellyfin Media Server&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;suppress_logging&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;auto_update&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;auto_update_interval&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">24</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;pinned_version&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;config_dir&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/jellyfin&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;config_file&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/jellyfin/config/system.xml&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;log_file&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/jellyfin/log/jellyfin.log&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;command&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[],</span>
+<span class="w">  </span><span class="nt">&quot;env&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{}</span>
+<span class="p">}</span>
 </code></pre></div>
-<h5 id="example-docker-compose-to-exclude-only-4k2160uhd-content_1">Example docker-compose to exclude only 4k|2160|UHD content.<a class="headerlink" href="#example-docker-compose-to-exclude-only-4k2160uhd-content_1" title="Permanent link">#</a></h5>
-<p>Add <code>- RCLONE_FILTER_FROM=/config/filter_exclude_2160.txt</code> to the environment variable section of the compose and the below content to a <code>filter_exclude_2160.txt</code> file in the config directory for the container.</p>
-<h6 id="example-filter_exclude_2160txt">Example filter_exclude_2160.txt<a class="headerlink" href="#example-filter_exclude_2160txt" title="Permanent link">#</a></h6>
-<div class="highlight"><pre><span></span><code>-<span class="w"> </span>**/**<span class="o">{{(</span>?i<span class="o">)(</span>4k<span class="p">|</span>uhd<span class="p">|</span><span class="m">2160</span><span class="o">)}}</span>**
-+<span class="w"> </span>*
-</code></pre></div>
-<hr />
-<h3 id="error-response-from-daemon-path-yourhostpathmnt-is-mounted-on--but-it-is-not-a-shared-mount">Error response from daemon: path <code>/your/host/path/mnt</code> is mounted on <code>/</code> but it is not a shared mount.<a class="headerlink" href="#error-response-from-daemon-path-yourhostpathmnt-is-mounted-on--but-it-is-not-a-shared-mount" title="Permanent link">#</a></h3>
-<p>From the host OS, enter <code>sudo mount --make-rshared /</code> </p>
-<p>Or if using a NAS device <code>sudo mount --make-rshared /volume1/</code> </p>
-<p>If neither of the above resolves the error, ensure that docker is not installed via snap. Install docker via apt. </p>
-<div class="admonition note">
-<p class="admonition-title">Note</p>
-<p><code>sudo mount --make-rshared</code> does not persist reboots, so it will need to be run each time WSL2 or Windows is restarted. Alternatively, see the below guide for automatically executing the command on startup for Ubuntu.</p>
-</div>
-<h3 id="ubuntu-systemd-service">Ubuntu systemd service:<a class="headerlink" href="#ubuntu-systemd-service" title="Permanent link">#</a></h3>
-<p>To make Ubuntu run a command like <code>sudo mount --make-rshared /</code> on startup, you can use a systemd service unit that executes this command at boot.</p>
-<p>Systemd is a system and service manager for Linux operating systems, which allows you to specify custom startup tasks through service units.</p>
-<p>Here's how you can do it:</p>
-<h4 id="create-a-systemd-service-file">Create a systemd service file:<a class="headerlink" href="#create-a-systemd-service-file" title="Permanent link">#</a></h4>
-<p>First, you need to create a new systemd service file. You can do this by creating a file in the /etc/systemd/system directory. Let's call this file make-rshared.service.</p>
-<p>Open a terminal and use your favorite text editor to create this file. You'll need sudo privileges to create a file in this directory. For example, using nano:</p>
-<div class="highlight"><pre><span></span><code>sudo<span class="w"> </span>nano<span class="w"> </span>/etc/systemd/system/make-rshared.service
-</code></pre></div>
-<p>Add the following contents to the service file:</p>
-<div class="highlight"><pre><span></span><code><span class="o">[</span>Unit<span class="o">]</span>
-<span class="nv">Description</span><span class="o">=</span>Make<span class="w"> </span>root<span class="w"> </span>filesystem<span class="w"> </span>rshared
-<span class="nv">After</span><span class="o">=</span>local-fs.target
-
-<span class="o">[</span>Service<span class="o">]</span>
-<span class="nv">Type</span><span class="o">=</span>oneshot
-<span class="nv">ExecStart</span><span class="o">=</span>/bin/mount<span class="w"> </span>--make-rshared<span class="w"> </span>/
-<span class="nv">RemainAfterExit</span><span class="o">=</span>yes
-
-<span class="o">[</span>Install<span class="o">]</span>
-<span class="nv">WantedBy</span><span class="o">=</span>multi-user.target
-</code></pre></div>
-<h4 id="enable-and-start-the-service">Enable and start the service:<a class="headerlink" href="#enable-and-start-the-service" title="Permanent link">#</a></h4>
-<p>After saving the file, you need to reload the systemd daemon to recognize your new service and then enable the service to start on boot:</p>
-<p><div class="highlight"><pre><span></span><code>sudo<span class="w"> </span>systemctl<span class="w"> </span>daemon-reload
-sudo<span class="w"> </span>systemctl<span class="w"> </span><span class="nb">enable</span><span class="w"> </span>make-rshared.service
-</code></pre></div>
-To start the service immediately without rebooting, you can use:</p>
-<div class="highlight"><pre><span></span><code>sudo<span class="w"> </span>systemctl<span class="w"> </span>start<span class="w"> </span>make-rshared.service
-</code></pre></div>
-<h4 id="verify-the-service-is-active">Verify the service is active:<a class="headerlink" href="#verify-the-service-is-active" title="Permanent link">#</a></h4>
-<p>After rebooting or starting the service, you can check its status to ensure it's active and has run successfully:</p>
-<div class="highlight"><pre><span></span><code>sudo<span class="w"> </span>systemctl<span class="w"> </span>status<span class="w"> </span>make-rshared.service
-</code></pre></div>
-<h2 id="-related-pages">📎 Related Pages<a class="headerlink" href="#-related-pages" title="Permanent link">#</a></h2>
+<h3 id="-key-configuration-fields">🔍 Key Configuration Fields<a class="headerlink" href="#-key-configuration-fields" title="Permanent link">#</a></h3>
 <ul>
-<li><a href="../../services/dependent/rclone/">Rclone Configuration</a></li>
+<li><code>pinned_version</code>: Optional version pin for Jellyfin updates.</li>
+<li><code>config_dir</code>, <code>config_file</code>, <code>log_file</code>: Paths for config and logs.</li>
+<li><code>command</code>: Override the default startup command if needed.</li>
+</ul>
+<hr />
+<h2 id="-accessing-the-ui">🌐 Accessing the UI<a class="headerlink" href="#-accessing-the-ui" title="Permanent link">#</a></h2>
+<ul>
+<li>Navigate to: <code>http://&lt;host&gt;:8096</code> (default Jellyfin port)</li>
+</ul>
+<hr />
+<h2 id="-resources">🔗 Resources<a class="headerlink" href="#-resources" title="Permanent link">#</a></h2>
+<ul>
+<li><a href="https://jellyfin.org/">Jellyfin Website</a></li>
+<li><a href="https://github.com/jellyfin/jellyfin">Jellyfin GitHub</a></li>
 </ul>
 
 
@@ -3025,6 +2741,9 @@ To start the service immediately without rebooting, you can use:</p>
 
 
 
+
+  
+  
 
 
 
@@ -3062,16 +2781,16 @@ To start the service immediately without rebooting, you can use:</p>
     
     
       
-      <script id="__config" type="application/json">{"base": "../..", "features": ["navigation.tabs", "navigation.sections", "navigation.instant", "navigation.tracking", "search.suggest", "search.highlight", "content.code.copy", "content.code.annotate"], "search": "../../assets/javascripts/workers/search.d50fe291.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"base": "../../..", "features": ["navigation.tabs", "navigation.sections", "navigation.instant", "navigation.tracking", "search.suggest", "search.highlight", "content.code.copy", "content.code.annotate"], "search": "../../../assets/javascripts/workers/search.d50fe291.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../../assets/javascripts/bundle.13a4f30d.min.js"></script>
+      <script src="../../../assets/javascripts/bundle.13a4f30d.min.js"></script>
       
         <script src="https://cdn.jsdelivr.net/npm/medium-zoom@1.1.0/dist/medium-zoom.min.js"></script>
       
-        <script src="../../assets/js/zoom.js"></script>
+        <script src="../../../assets/js/zoom.js"></script>
       
-        <script src="../../assets/js/github-meta.js"></script>
+        <script src="../../../assets/js/github-meta.js"></script>
       
     
   </body>

@@ -92,9 +92,8 @@
     
 <!-- Custom Banner -->
 <div class="banner">
-    <p style="color:white; display:inline;">⚠️ Documentation is in progress. Portions are being adapted from DMB and may
-        not reflect the final DUMB setup. This
-        notice will be updated once the migration is complete.</p>
+    <p style="color:white; display:inline;">⚠️ Documentation may lag behind new features and development. Details can change
+        as DUMB evolves, so some pages might not reflect the latest behavior.</p>
 </div>
 
 <!-- Original Header -->
@@ -1023,12 +1022,81 @@
   
   
     <li class="md-nav__item">
+      <a href="../../core/nzbdav/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    NzbDAV
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../core/plex-media-server/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     Plex Media Server
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../core/jellyfin/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Jellyfin
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../core/emby/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Emby
     
   </span>
   
@@ -1075,6 +1143,121 @@
   
   <span class="md-ellipsis">
     Riven Backend
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../core/sonarr/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Sonarr
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../core/radarr/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Radarr
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../core/lidarr/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Lidarr
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../core/prowlarr/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Prowlarr
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../core/whisparr/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Whisparr
     
   </span>
   
@@ -2579,7 +2762,7 @@
 <hr />
 <h2 id="-configuration-settings-in-dumb_configjson">⚙️ Configuration Settings in <code>dumb_config.json</code><a class="headerlink" href="#-configuration-settings-in-dumb_configjson" title="Permanent link">#</a></h2>
 <div class="highlight"><pre><span></span><code><span class="nt">&quot;pgadmin&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<span class="w">    </span><span class="nt">&quot;enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;process_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;pgAdmin4&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;config_dir&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/pgadmin/data&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;config_file&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/pgadmin/data/config_local.py&quot;</span><span class="p">,</span>
@@ -2588,7 +2771,7 @@
 <span class="w">    </span><span class="nt">&quot;default_server&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;0.0.0.0&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;setup_email&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;DUMB@DUMB.DUMB&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;setup_password&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;postgres&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;command&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[]</span>
+<span class="w">    </span><span class="nt">&quot;command&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&quot;</span>
 <span class="p">},</span>
 </code></pre></div>
 <h3 id="-configuration-key-descriptions">🔍 Configuration Key Descriptions<a class="headerlink" href="#-configuration-key-descriptions" title="Permanent link">#</a></h3>
@@ -2613,7 +2796,7 @@
 <h2 id="-accessing-pgadmin">🚪 Accessing pgAdmin<a class="headerlink" href="#-accessing-pgadmin" title="Permanent link">#</a></h2>
 <ul>
 <li>Navigate to: <code>http://&lt;host&gt;:&lt;port&gt;</code> <ul>
-<li>default port <code>5055</code></li>
+<li>default port <code>5050</code></li>
 </ul>
 </li>
 <li>Login using the credentials set via environment variables:</li>

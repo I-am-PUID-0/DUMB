@@ -92,9 +92,8 @@
     
 <!-- Custom Banner -->
 <div class="banner">
-    <p style="color:white; display:inline;">⚠️ Documentation is in progress. Portions are being adapted from DMB and may
-        not reflect the final DUMB setup. This
-        notice will be updated once the migration is complete.</p>
+    <p style="color:white; display:inline;">⚠️ Documentation may lag behind new features and development. Details can change
+        as DUMB evolves, so some pages might not reflect the latest behavior.</p>
 </div>
 
 <!-- Original Header -->
@@ -1012,12 +1011,81 @@
   
   
     <li class="md-nav__item">
+      <a href="../../services/core/nzbdav/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    NzbDAV
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../services/core/plex-media-server/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     Plex Media Server
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/core/jellyfin/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Jellyfin
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/core/emby/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Emby
     
   </span>
   
@@ -1064,6 +1132,121 @@
   
   <span class="md-ellipsis">
     Riven Backend
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/core/sonarr/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Sonarr
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/core/radarr/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Radarr
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/core/lidarr/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Lidarr
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/core/prowlarr/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Prowlarr
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/core/whisparr/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Whisparr
     
   </span>
   
@@ -1936,21 +2119,6 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="🔁 Message Format">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#fields" class="md-nav__link">
-    <span class="md-ellipsis">
-      Fields:
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
 </li>
       
         <li class="md-nav__item">
@@ -2439,21 +2607,6 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="🔁 Message Format">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#fields" class="md-nav__link">
-    <span class="md-ellipsis">
-      Fields:
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
 </li>
       
         <li class="md-nav__item">
@@ -2517,24 +2670,12 @@
 <h2 id="-websocket-endpoint">📡 WebSocket Endpoint<a class="headerlink" href="#-websocket-endpoint" title="Permanent link">#</a></h2>
 <div class="highlight"><pre><span></span><code>/ws/logs
 </code></pre></div>
-<p>Connect to this endpoint using a WebSocket client (e.g., browser or Python client) to receive structured log entries in JSON format.</p>
+<p>Connect to this endpoint using a WebSocket client (e.g., browser or Python client) to receive log lines as plain text.</p>
 <hr />
 <h2 id="-message-format">🔁 Message Format<a class="headerlink" href="#-message-format" title="Permanent link">#</a></h2>
-<p>Each log entry sent through the WebSocket has the following structure:</p>
-<div class="highlight"><pre><span></span><code><span class="p">{</span>
-<span class="w">  </span><span class="nt">&quot;message&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;[INFO] riven_backend: Startup complete&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;level&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;INFO&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;process_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;riven_backend&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;timestamp&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2025-04-01T12:34:56.789Z&quot;</span>
-<span class="p">}</span>
+<p>Each log entry is sent as a plain text line formatted by DUMB’s logger, for example:</p>
+<div class="highlight"><pre><span></span><code>Apr 12, 2025 10:04:01 - INFO - Riven Backend started
 </code></pre></div>
-<h3 id="fields">Fields:<a class="headerlink" href="#fields" title="Permanent link">#</a></h3>
-<ul>
-<li><strong>message</strong>: Raw log message as a string</li>
-<li><strong>level</strong>: Log level (<code>DEBUG</code>, <code>INFO</code>, <code>WARNING</code>, etc.)</li>
-<li><strong>process_name</strong>: Name of the subprocess that generated the log</li>
-<li><strong>timestamp</strong>: ISO 8601 formatted UTC timestamp</li>
-</ul>
 <hr />
 <h2 id="-filtering-logs-client-side">🔍 Filtering Logs (Client-side)<a class="headerlink" href="#-filtering-logs-client-side" title="Permanent link">#</a></h2>
 <p>The server pushes all logs to connected clients. It is up to the client to filter based on:</p>
@@ -2550,6 +2691,7 @@
 <li>The server <strong>broadcasts logs</strong> to all connected WebSocket clients.</li>
 <li>If the connection is dropped, reconnect using <code>/ws/logs</code>.</li>
 <li>Log history is <strong>not buffered</strong>, so missed logs are not resent on reconnect.</li>
+<li>Sending <code>{"type":"ping"}</code> will return <code>pong</code>.</li>
 </ul>
 <hr />
 <h2 id="-example-python-client">🧪 Example (Python Client)<a class="headerlink" href="#-example-python-client" title="Permanent link">#</a></h2>
@@ -2561,8 +2703,7 @@
     <span class="n">uri</span> <span class="o">=</span> <span class="s2">&quot;ws://localhost:8000/ws/logs&quot;</span>
     <span class="k">async</span> <span class="k">with</span> <span class="n">websockets</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">uri</span><span class="p">)</span> <span class="k">as</span> <span class="n">websocket</span><span class="p">:</span>
         <span class="k">async</span> <span class="k">for</span> <span class="n">message</span> <span class="ow">in</span> <span class="n">websocket</span><span class="p">:</span>
-            <span class="n">log</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
-            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;[</span><span class="si">{</span><span class="n">log</span><span class="p">[</span><span class="s1">&#39;level&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">] </span><span class="si">{</span><span class="n">log</span><span class="p">[</span><span class="s1">&#39;process_name&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">log</span><span class="p">[</span><span class="s1">&#39;message&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
 
 <span class="n">asyncio</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">consume_logs</span><span class="p">())</span>
 </code></pre></div>

@@ -92,9 +92,8 @@
     
 <!-- Custom Banner -->
 <div class="banner">
-    <p style="color:white; display:inline;">⚠️ Documentation is in progress. Portions are being adapted from DMB and may
-        not reflect the final DUMB setup. This
-        notice will be updated once the migration is complete.</p>
+    <p style="color:white; display:inline;">⚠️ Documentation may lag behind new features and development. Details can change
+        as DUMB evolves, so some pages might not reflect the latest behavior.</p>
 </div>
 
 <!-- Original Header -->
@@ -1101,12 +1100,81 @@
   
   
     <li class="md-nav__item">
+      <a href="core/nzbdav/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    NzbDAV
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="core/plex-media-server/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     Plex Media Server
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="core/jellyfin/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Jellyfin
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="core/emby/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Emby
     
   </span>
   
@@ -1153,6 +1221,121 @@
   
   <span class="md-ellipsis">
     Riven Backend
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="core/sonarr/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Sonarr
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="core/radarr/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Radarr
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="core/lidarr/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Lidarr
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="core/prowlarr/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Prowlarr
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="core/whisparr/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Whisparr
     
   </span>
   
@@ -2480,7 +2663,10 @@
 <p><strong>Debrid Orchestration &amp; Content Management</strong></p>
 <ul>
 <li>🧠 <strong>Riven Backend</strong>, 🧲 <strong>CLI Debrid</strong>, 🚁 <strong>Plex Debrid</strong>, and 🌐 <strong>Decypharr</strong> each serve as a Debrid orchestrator: requesting, managing, and monitoring content acquisition workflows</li>
-<li>These core services integrate with providers like Trakt, Overseerr, and Debrid APIs to manage what content gets fetched</li>
+<li>These core services integrate with providers like Trakt, Seerr, and Debrid APIs to manage what content gets fetched</li>
+<li>📥 <strong>NzbDAV</strong> provides a WebDAV endpoint and download client integration for NZB workflows</li>
+<li>📚 <strong>Sonarr/Radarr/Lidarr/Whisparr</strong> manage media queues and organize content from download clients</li>
+<li>🧭 <strong>Prowlarr</strong> manages indexers and syncs them to the Arrs</li>
 </ul>
 </li>
 <li>
@@ -2490,6 +2676,7 @@
 <li>It relies on symlinked or mounted content made available through rclone/Zurg from the other core services</li>
 </ul>
 </li>
+<li>🍿 <strong>Jellyfin</strong> and <strong>Emby</strong> can be used as alternatives to Plex for library playback</li>
 </ul>
 </li>
 <li>
@@ -2556,9 +2743,49 @@
 <td>Debrid orchestrator for Arrs via torrent API integration</td>
 </tr>
 <tr>
+<td><a href="core/nzbdav/">NzbDAV</a></td>
+<td>Core</td>
+<td>WebDAV gateway for NZB + Arr download client workflows</td>
+</tr>
+<tr>
 <td><a href="core/plex-media-server/">Plex</a></td>
 <td>Core</td>
 <td>Media server for hosting and playing content</td>
+</tr>
+<tr>
+<td><a href="core/jellyfin/">Jellyfin</a></td>
+<td>Core</td>
+<td>Media server for hosting and playing content</td>
+</tr>
+<tr>
+<td><a href="core/emby/">Emby</a></td>
+<td>Core</td>
+<td>Media server for hosting and playing content</td>
+</tr>
+<tr>
+<td><a href="core/sonarr/">Sonarr</a></td>
+<td>Core</td>
+<td>TV automation and organization</td>
+</tr>
+<tr>
+<td><a href="core/radarr/">Radarr</a></td>
+<td>Core</td>
+<td>Movie automation and organization</td>
+</tr>
+<tr>
+<td><a href="core/lidarr/">Lidarr</a></td>
+<td>Core</td>
+<td>Music automation and organization</td>
+</tr>
+<tr>
+<td><a href="core/prowlarr/">Prowlarr</a></td>
+<td>Core</td>
+<td>Indexer management for Arrs</td>
+</tr>
+<tr>
+<td><a href="core/whisparr/">Whisparr</a></td>
+<td>Core</td>
+<td>Adult content automation and organization</td>
 </tr>
 <tr>
 <td><a href="dependent/rclone/">rclone</a></td>

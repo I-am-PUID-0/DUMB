@@ -18,7 +18,7 @@
         <link rel="prev" href="../cli-debrid/">
       
       
-        <link rel="next" href="../plex-media-server/">
+        <link rel="next" href="../nzbdav/">
       
       
       <link rel="icon" href="../../../assets/images/favicon.ico">
@@ -92,9 +92,8 @@
     
 <!-- Custom Banner -->
 <div class="banner">
-    <p style="color:white; display:inline;">⚠️ Documentation is in progress. Portions are being adapted from DMB and may
-        not reflect the final DUMB setup. This
-        notice will be updated once the migration is complete.</p>
+    <p style="color:white; display:inline;">⚠️ Documentation may lag behind new features and development. Details can change
+        as DUMB evolves, so some pages might not reflect the latest behavior.</p>
 </div>
 
 <!-- Original Header -->
@@ -1128,6 +1127,15 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#-arr-core_service-setting" class="md-nav__link">
+    <span class="md-ellipsis">
+      🧭 Arr core_service Setting
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#1-bind-mount-setup" class="md-nav__link">
     <span class="md-ellipsis">
       1. Bind Mount Setup
@@ -1211,12 +1219,81 @@
   
   
     <li class="md-nav__item">
+      <a href="../nzbdav/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    NzbDAV
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../plex-media-server/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     Plex Media Server
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../jellyfin/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Jellyfin
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../emby/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Emby
     
   </span>
   
@@ -1263,6 +1340,121 @@
   
   <span class="md-ellipsis">
     Riven Backend
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../sonarr/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Sonarr
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../radarr/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Radarr
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../lidarr/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Lidarr
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../prowlarr/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Prowlarr
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../whisparr/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Whisparr
     
   </span>
   
@@ -2589,6 +2781,15 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#-arr-core_service-setting" class="md-nav__link">
+    <span class="md-ellipsis">
+      🧭 Arr core_service Setting
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#1-bind-mount-setup" class="md-nav__link">
     <span class="md-ellipsis">
       1. Bind Mount Setup
@@ -2732,19 +2933,21 @@
 <span class="w">    </span><span class="nt">&quot;config_file&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/decypharr/config.json&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;log_file&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/decypharr/logs/decypharr.log&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;env&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{},</span>
-<span class="w">    </span><span class="nt">&quot;debrid_service&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;api_key&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&quot;</span>
+<span class="w">    </span><span class="nt">&quot;use_embedded_rclone&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;api_keys&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{}</span>
 <span class="p">},</span>
 </code></pre></div>
 <h3 id="-key-configuration-fields">🔍 Key Configuration Fields<a class="headerlink" href="#-key-configuration-fields" title="Permanent link">#</a></h3>
 <ul>
-<li><code>enabled</code>: Toggle to run CLI Debrid via DUMB.</li>
+<li><code>enabled</code>: Toggle to run Decypharr via DUMB.</li>
 <li><code>process_name</code>: Used for display and logs.</li>
 <li><code>repo_owner</code>, <code>repo_name</code>: GitHub repo to use for updates.</li>
 <li><code>release_version_enabled</code>, <code>branch_enabled</code>: Target a specific tag or branch.</li>
 <li><code>log_level</code>, <code>suppress_logging</code>: Logging controls.</li>
-<li><code>port</code>: Flask web interface port.</li>
-<li><code>env</code>: Environment variable configuration used by CLI Debrid.</li>
+<li><code>port</code>: Web UI port.</li>
+<li><code>env</code>: Environment variables passed to Decypharr.</li>
+<li><code>use_embedded_rclone</code>: Enable the embedded rclone integration (recommended).</li>
+<li><code>api_keys</code>: Per-provider API keys used by Decypharr.</li>
 <li><code>clear_on_update</code>, <code>exclude_dirs</code>: Clean old files during update while protecting data dirs.</li>
 </ul>
 <hr />
@@ -2769,9 +2972,14 @@
 </ul>
 <hr />
 <h2 id="-integration-with-dumb">📦 Integration with DUMB<a class="headerlink" href="#-integration-with-dumb" title="Permanent link">#</a></h2>
+<h3 id="-arr-core_service-setting">🧭 Arr <code>core_service</code> Setting<a class="headerlink" href="#-arr-core_service-setting" title="Permanent link">#</a></h3>
+<p>For Sonarr/Radarr/Lidarr/Whisparr instances you want wired to Decypharr, set:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">&quot;core_service&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;decypharr&quot;</span>
+</code></pre></div>
+<p>This tells DUMB to auto-configure Arr integration around Decypharr’s WebDAV and symlink workflows.</p>
 <p>To successfully run Decypharr with DUMB, the following configuration and mounting steps must be completed:</p>
 <h3 id="1-bind-mount-setup">1. Bind Mount Setup<a class="headerlink" href="#1-bind-mount-setup" title="Permanent link">#</a></h3>
-<p>In both your <code>DUMB</code> and <code>arrs</code> docker-compose files, include the following bind mounts (replace <code>...</code> with the full host path to your DUMB bind mount):</p>
+<p>If you are passing the rclone mount to an <strong>external</strong> Arr or media server container, include the following bind mounts in both your <code>DUMB</code> and <code>arrs</code> docker-compose files (replace <code>...</code> with the full host path to your DUMB bind mount):</p>
 <p><strong>DUMB Compose</strong>:</p>
 <div class="highlight"><pre><span></span><code><span class="nt">volumes</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">.../DUMB/mnt/debrid:/mnt/debrid:rshared</span>
@@ -2781,7 +2989,7 @@
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">.../DUMB/mnt/debrid:/mnt/debrid:rslave</span>
 </code></pre></div>
 <blockquote>
-<p>These mounts are required to ensure Decypharr-created symlinks are visible to the Arr containers.</p>
+<p>These mounts are only required when Arrs or media servers run <strong>outside</strong> the DUMB container and need access to the rclone mount and Decypharr symlinks.</p>
 </blockquote>
 <h3 id="2-configure-root-folders-in-arrs">2. Configure Root Folders in Arrs<a class="headerlink" href="#2-configure-root-folders-in-arrs" title="Permanent link">#</a></h3>
 <p>Inside the Sonarr and Radarr web UI:</p>

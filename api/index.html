@@ -92,9 +92,8 @@
     
 <!-- Custom Banner -->
 <div class="banner">
-    <p style="color:white; display:inline;">⚠️ Documentation is in progress. Portions are being adapted from DMB and may
-        not reflect the final DUMB setup. This
-        notice will be updated once the migration is complete.</p>
+    <p style="color:white; display:inline;">⚠️ Documentation may lag behind new features and development. Details can change
+        as DUMB evolves, so some pages might not reflect the latest behavior.</p>
 </div>
 
 <!-- Original Header -->
@@ -1012,12 +1011,81 @@
   
   
     <li class="md-nav__item">
+      <a href="../services/core/nzbdav/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    NzbDAV
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../services/core/plex-media-server/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     Plex Media Server
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../services/core/jellyfin/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Jellyfin
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../services/core/emby/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Emby
     
   </span>
   
@@ -1064,6 +1132,121 @@
   
   <span class="md-ellipsis">
     Riven Backend
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../services/core/sonarr/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Sonarr
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../services/core/radarr/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Radarr
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../services/core/lidarr/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Lidarr
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../services/core/prowlarr/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Prowlarr
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../services/core/whisparr/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Whisparr
     
   </span>
   
@@ -2496,32 +2679,52 @@
 <tbody>
 <tr>
 <td>GET</td>
-<td><code>/processes</code></td>
+<td><code>/health</code></td>
+<td>Container health check</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/process/processes</code></td>
 <td>List all services in <code>dumb_config.json</code></td>
 </tr>
 <tr>
+<td>GET</td>
+<td><code>/process</code></td>
+<td>Get a specific service by <code>process_name</code></td>
+</tr>
+<tr>
 <td>POST</td>
-<td><code>/start-service</code></td>
+<td><code>/process/start-service</code></td>
 <td>Start a specific service</td>
 </tr>
 <tr>
 <td>POST</td>
-<td><code>/stop-service</code></td>
+<td><code>/process/stop-service</code></td>
 <td>Stop a specific service</td>
 </tr>
 <tr>
 <td>POST</td>
-<td><code>/restart-service</code></td>
+<td><code>/process/restart-service</code></td>
 <td>Restart a specific service</td>
 </tr>
 <tr>
 <td>GET</td>
-<td><code>/service-status</code></td>
+<td><code>/process/service-status</code></td>
 <td>Get the current status of a service</td>
 </tr>
 <tr>
-<td>WS</td>
+<td>POST</td>
+<td><code>/process/start-core-service</code></td>
+<td>Start core services + dependencies</td>
+</tr>
+<tr>
+<td>GET</td>
 <td><code>/logs</code></td>
+<td>Read service log chunks</td>
+</tr>
+<tr>
+<td>WS</td>
+<td><code>/ws/logs</code></td>
 <td>Real-time log streaming</td>
 </tr>
 </tbody>

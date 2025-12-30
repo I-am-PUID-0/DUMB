@@ -92,9 +92,8 @@
     
 <!-- Custom Banner -->
 <div class="banner">
-    <p style="color:white; display:inline;">⚠️ Documentation is in progress. Portions are being adapted from DMB and may
-        not reflect the final DUMB setup. This
-        notice will be updated once the migration is complete.</p>
+    <p style="color:white; display:inline;">⚠️ Documentation may lag behind new features and development. Details can change
+        as DUMB evolves, so some pages might not reflect the latest behavior.</p>
 </div>
 
 <!-- Original Header -->
@@ -1012,12 +1011,81 @@
   
   
     <li class="md-nav__item">
+      <a href="../../services/core/nzbdav/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    NzbDAV
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../services/core/plex-media-server/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     Plex Media Server
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/core/jellyfin/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Jellyfin
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/core/emby/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Emby
     
   </span>
   
@@ -1064,6 +1132,121 @@
   
   <span class="md-ellipsis">
     Riven Backend
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/core/sonarr/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Sonarr
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/core/radarr/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Radarr
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/core/lidarr/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Lidarr
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/core/prowlarr/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Prowlarr
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/core/whisparr/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Whisparr
     
   </span>
   
@@ -2499,40 +2682,43 @@
 </thead>
 <tbody>
 <tr>
-<td><code>lines</code></td>
+<td><code>process_name</code></td>
+<td>string</td>
+<td>Required process name (e.g., <code>Riven Backend</code>, <code>Zurg w/ RealDebrid</code>).</td>
+</tr>
+<tr>
+<td><code>cursor</code></td>
 <td>int</td>
-<td>Number of recent log lines to return (default: 100).</td>
+<td>Last byte offset returned by the API (omit for first request).</td>
 </tr>
 <tr>
-<td><code>level</code></td>
-<td>string</td>
-<td>Optional filter by log level (e.g., <code>INFO</code>, <code>ERROR</code>, <code>DEBUG</code>).</td>
-</tr>
-<tr>
-<td><code>name</code></td>
-<td>string</td>
-<td>Optional filter by process or service name (e.g., <code>riven</code>, <code>postgres</code>).</td>
+<td><code>tail_bytes</code></td>
+<td>int</td>
+<td>Initial bytes to read from the end when no cursor (default: 131072).</td>
 </tr>
 </tbody>
 </table>
 <hr />
 <h2 id="-example-request">🧪 Example Request<a class="headerlink" href="#-example-request" title="Permanent link">#</a></h2>
-<div class="highlight"><pre><span></span><code>GET /logs?lines=50&amp;level=ERROR&amp;name=zilean
+<div class="highlight"><pre><span></span><code>GET /logs?process_name=Riven%20Backend
 </code></pre></div>
-<p>This request fetches the last 50 lines of logs for the <code>zilean</code> service that have an <code>ERROR</code> log level.</p>
+<p>This request fetches the latest log chunk for the specified service.</p>
 <hr />
 <h2 id="-response-format">✅ Response Format<a class="headerlink" href="#-response-format" title="Permanent link">#</a></h2>
-<p>Returns a JSON array of log entries:</p>
-<div class="highlight"><pre><span></span><code><span class="p">[</span>
-<span class="w">  </span><span class="s2">&quot;2024-04-01 12:00:01 INFO rclone: Mount started successfully&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="s2">&quot;2024-04-01 12:01:02 ERROR zilean: Failed to connect to database&quot;</span>
-<span class="p">]</span>
+<p>Returns a JSON object containing the log chunk and cursor:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;process_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Riven Backend&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;cursor&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">123456</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;chunk&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Apr 12, 2025 10:04:01 - INFO - Riven Backend started\n&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;reset&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;log&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Apr 12, 2025 10:04:01 - INFO - Riven Backend started\n&quot;</span>
+<span class="p">}</span>
 </code></pre></div>
 <hr />
 <h2 id="-notes">⚠️ Notes<a class="headerlink" href="#-notes" title="Permanent link">#</a></h2>
 <ul>
-<li>This endpoint provides logs captured by DUMB's internal logger and may not reflect stdout/stderr of subprocesses unless specifically routed.</li>
-<li>Filtering by <code>name</code> is useful to narrow down issues with a specific subprocess.</li>
+<li>When <code>reset</code> is <code>true</code>, clients should replace their log buffer with <code>chunk</code>.</li>
+<li>On incremental requests, pass the returned <code>cursor</code> to get only new bytes.</li>
 </ul>
 <hr />
 <h2 id="-related">🧱 Related<a class="headerlink" href="#-related" title="Permanent link">#</a></h2>

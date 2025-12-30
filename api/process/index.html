@@ -26,7 +26,7 @@
     
     
       
-        <title>Process Management - DUMB</title>
+        <title>Process Management API - DUMB</title>
       
     
     
@@ -80,7 +80,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#title-process-management-api" class="md-skip">
+        <a href="#-process-management-api" class="md-skip">
           Skip to content
         </a>
       
@@ -92,9 +92,8 @@
     
 <!-- Custom Banner -->
 <div class="banner">
-    <p style="color:white; display:inline;">⚠️ Documentation is in progress. Portions are being adapted from DMB and may
-        not reflect the final DUMB setup. This
-        notice will be updated once the migration is complete.</p>
+    <p style="color:white; display:inline;">⚠️ Documentation may lag behind new features and development. Details can change
+        as DUMB evolves, so some pages might not reflect the latest behavior.</p>
 </div>
 
 <!-- Original Header -->
@@ -121,7 +120,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Process Management
+              Process Management API
             
           </span>
         </div>
@@ -1012,12 +1011,81 @@
   
   
     <li class="md-nav__item">
+      <a href="../../services/core/nzbdav/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    NzbDAV
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../services/core/plex-media-server/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     Plex Media Server
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/core/jellyfin/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Jellyfin
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/core/emby/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Emby
     
   </span>
   
@@ -1064,6 +1132,121 @@
   
   <span class="md-ellipsis">
     Riven Backend
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/core/sonarr/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Sonarr
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/core/radarr/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Radarr
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/core/lidarr/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Lidarr
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/core/prowlarr/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Prowlarr
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/core/whisparr/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Whisparr
     
   </span>
   
@@ -1808,6 +1991,8 @@
       <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
       
       
+        
+      
       
         <label class="md-nav__link md-nav__link--active" for="__toc">
           
@@ -1840,6 +2025,8 @@
   
   
   
+    
+  
   
     <label class="md-nav__title" for="__toc">
       <span class="md-nav__icon md-icon"></span>
@@ -1848,25 +2035,6 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#title-process-management-api" class="md-nav__link">
-    <span class="md-ellipsis">
-      title: Process Management API
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#-process-management-api" class="md-nav__link">
-    <span class="md-ellipsis">
-      ⚙️ Process Management API
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="⚙️ Process Management API">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
   <a href="#-endpoints" class="md-nav__link">
     <span class="md-ellipsis">
       🔄 Endpoints
@@ -1934,13 +2102,13 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#post-processstart" class="md-nav__link">
+  <a href="#post-processstart-service" class="md-nav__link">
     <span class="md-ellipsis">
-      POST /process/start
+      POST /process/start-service
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="POST /process/start">
+    <nav class="md-nav" aria-label="POST /process/start-service">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -1967,13 +2135,13 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#post-processstop" class="md-nav__link">
+  <a href="#post-processstop-service" class="md-nav__link">
     <span class="md-ellipsis">
-      POST /process/stop
+      POST /process/stop-service
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="POST /process/stop">
+    <nav class="md-nav" aria-label="POST /process/stop-service">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -1991,13 +2159,13 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#post-processrestart" class="md-nav__link">
+  <a href="#post-processrestart-service" class="md-nav__link">
     <span class="md-ellipsis">
-      POST /process/restart
+      POST /process/restart-service
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="POST /process/restart">
+    <nav class="md-nav" aria-label="POST /process/restart-service">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -2080,12 +2248,30 @@
   
 </li>
         
-      </ul>
-    </nav>
+          <li class="md-nav__item">
+  <a href="#get-processcore-services" class="md-nav__link">
+    <span class="md-ellipsis">
+      GET /process/core-services
+    </span>
+  </a>
   
 </li>
         
           <li class="md-nav__item">
+  <a href="#get-processoptional-services" class="md-nav__link">
+    <span class="md-ellipsis">
+      GET /process/optional-services
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#-notes" class="md-nav__link">
     <span class="md-ellipsis">
       🧐 Notes
@@ -2093,18 +2279,13 @@
   </a>
   
 </li>
-        
-          <li class="md-nav__item">
+      
+        <li class="md-nav__item">
   <a href="#-related-files" class="md-nav__link">
     <span class="md-ellipsis">
       📌 Related Files
     </span>
   </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
@@ -2602,6 +2783,8 @@
   
   
   
+    
+  
   
     <label class="md-nav__title" for="__toc">
       <span class="md-nav__icon md-icon"></span>
@@ -2610,25 +2793,6 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#title-process-management-api" class="md-nav__link">
-    <span class="md-ellipsis">
-      title: Process Management API
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#-process-management-api" class="md-nav__link">
-    <span class="md-ellipsis">
-      ⚙️ Process Management API
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="⚙️ Process Management API">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
   <a href="#-endpoints" class="md-nav__link">
     <span class="md-ellipsis">
       🔄 Endpoints
@@ -2696,13 +2860,13 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#post-processstart" class="md-nav__link">
+  <a href="#post-processstart-service" class="md-nav__link">
     <span class="md-ellipsis">
-      POST /process/start
+      POST /process/start-service
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="POST /process/start">
+    <nav class="md-nav" aria-label="POST /process/start-service">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -2729,13 +2893,13 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#post-processstop" class="md-nav__link">
+  <a href="#post-processstop-service" class="md-nav__link">
     <span class="md-ellipsis">
-      POST /process/stop
+      POST /process/stop-service
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="POST /process/stop">
+    <nav class="md-nav" aria-label="POST /process/stop-service">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -2753,13 +2917,13 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#post-processrestart" class="md-nav__link">
+  <a href="#post-processrestart-service" class="md-nav__link">
     <span class="md-ellipsis">
-      POST /process/restart
+      POST /process/restart-service
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="POST /process/restart">
+    <nav class="md-nav" aria-label="POST /process/restart-service">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -2842,12 +3006,30 @@
   
 </li>
         
-      </ul>
-    </nav>
+          <li class="md-nav__item">
+  <a href="#get-processcore-services" class="md-nav__link">
+    <span class="md-ellipsis">
+      GET /process/core-services
+    </span>
+  </a>
   
 </li>
         
           <li class="md-nav__item">
+  <a href="#get-processoptional-services" class="md-nav__link">
+    <span class="md-ellipsis">
+      GET /process/optional-services
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#-notes" class="md-nav__link">
     <span class="md-ellipsis">
       🧐 Notes
@@ -2855,18 +3037,13 @@
   </a>
   
 </li>
-        
-          <li class="md-nav__item">
+      
+        <li class="md-nav__item">
   <a href="#-related-files" class="md-nav__link">
     <span class="md-ellipsis">
       📌 Related Files
     </span>
   </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
@@ -2889,14 +3066,12 @@
   
 
 
-<hr />
-<h2 id="title-process-management-api">title: Process Management API<a class="headerlink" href="#title-process-management-api" title="Permanent link">#</a></h2>
 <h1 id="-process-management-api">⚙️ Process Management API<a class="headerlink" href="#-process-management-api" title="Permanent link">#</a></h1>
-<p>The <strong>Process Management</strong> endpoints handle the launching, stopping, restarting, and tracking of subprocesses managed by DUMB.</p>
+<p>The <strong>Process Management</strong> endpoints handle launching, stopping, restarting, and tracking subprocesses managed by DUMB.</p>
 <hr />
 <h2 id="-endpoints">🔄 Endpoints<a class="headerlink" href="#-endpoints" title="Permanent link">#</a></h2>
 <h3 id="get-processprocesses"><code>GET /process/processes</code><a class="headerlink" href="#get-processprocesses" title="Permanent link">#</a></h3>
-<p>Returns a list of all configured processes, including both running and stopped services. This includes metadata like enabled status, version, and repository URL.</p>
+<p>Returns all configured processes, including enabled status, version, repo URL, and sponsorship URL.</p>
 <h4 id="-example-response">✅ Example Response:<a class="headerlink" href="#-example-response" title="Permanent link">#</a></h4>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;processes&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
@@ -2904,28 +3079,19 @@
 <span class="w">      </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;rclone w/ RealDebrid&quot;</span><span class="p">,</span>
 <span class="w">      </span><span class="nt">&quot;process_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;rclone w/ RealDebrid&quot;</span><span class="p">,</span>
 <span class="w">      </span><span class="nt">&quot;enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;config&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span><span class="w"> </span><span class="err">...</span><span class="w"> </span><span class="p">},</span>
+<span class="w">      </span><span class="nt">&quot;config&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;...&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;...&quot;</span><span class="w"> </span><span class="p">},</span>
 <span class="w">      </span><span class="nt">&quot;version&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;1.65.1&quot;</span><span class="p">,</span>
 <span class="w">      </span><span class="nt">&quot;key&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;rclone&quot;</span><span class="p">,</span>
 <span class="w">      </span><span class="nt">&quot;config_key&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;rclone&quot;</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;repo_url&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;https://rclone.org&quot;</span>
-<span class="w">    </span><span class="p">},</span>
-<span class="w">    </span><span class="p">{</span>
-<span class="w">      </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Zurg w/ RealDebrid&quot;</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;process_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Zurg w/ RealDebrid&quot;</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;config&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span><span class="w"> </span><span class="err">...</span><span class="w"> </span><span class="p">},</span>
-<span class="w">      </span><span class="nt">&quot;version&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;0.5.2&quot;</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;key&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;zurg&quot;</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;config_key&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;zurg&quot;</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;repo_url&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;https://github.com/I-am-PUID-0/DUMB&quot;</span>
+<span class="w">      </span><span class="nt">&quot;repo_url&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;https://rclone.org&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;sponsorship_url&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;https://rclone.org/sponsor/&quot;</span>
 <span class="w">    </span><span class="p">}</span>
 <span class="w">  </span><span class="p">]</span>
 <span class="p">}</span>
 </code></pre></div>
 <hr />
 <h3 id="get-process"><code>GET /process</code><a class="headerlink" href="#get-process" title="Permanent link">#</a></h3>
-<p>Fetch details about a specific process including the config block, version, and config key.</p>
+<p>Fetch details about a specific process.</p>
 <h4 id="-required-query-parameter">⚠️ Required Query Parameter:<a class="headerlink" href="#-required-query-parameter" title="Permanent link">#</a></h4>
 <ul>
 <li><code>process_name</code> (string)</li>
@@ -2933,14 +3099,14 @@
 <h4 id="-example-response_1">✅ Example Response:<a class="headerlink" href="#-example-response_1" title="Permanent link">#</a></h4>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;process_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;rclone w/ RealDebrid&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;config&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span><span class="w"> </span><span class="err">...</span><span class="w"> </span><span class="p">},</span>
+<span class="w">  </span><span class="nt">&quot;config&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;...&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;...&quot;</span><span class="w"> </span><span class="p">},</span>
 <span class="w">  </span><span class="nt">&quot;version&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;1.65.1&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;config_key&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;rclone&quot;</span>
 <span class="p">}</span>
 </code></pre></div>
 <hr />
-<h3 id="post-processstart"><code>POST /process/start</code><a class="headerlink" href="#post-processstart" title="Permanent link">#</a></h3>
-<p>Starts a specific process using its name as defined in <code>dumb_config.json</code>.</p>
+<h3 id="post-processstart-service"><code>POST /process/start-service</code><a class="headerlink" href="#post-processstart-service" title="Permanent link">#</a></h3>
+<p>Starts a specific process.</p>
 <h4 id="-request-body">🔧 Request Body:<a class="headerlink" href="#-request-body" title="Permanent link">#</a></h4>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;process_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;rclone w/ RealDebrid&quot;</span>
@@ -2953,7 +3119,7 @@
 <span class="p">}</span>
 </code></pre></div>
 <hr />
-<h3 id="post-processstop"><code>POST /process/stop</code><a class="headerlink" href="#post-processstop" title="Permanent link">#</a></h3>
+<h3 id="post-processstop-service"><code>POST /process/stop-service</code><a class="headerlink" href="#post-processstop-service" title="Permanent link">#</a></h3>
 <p>Stops a running process.</p>
 <h4 id="-request-body_1">🔧 Request Body:<a class="headerlink" href="#-request-body_1" title="Permanent link">#</a></h4>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
@@ -2961,7 +3127,7 @@
 <span class="p">}</span>
 </code></pre></div>
 <hr />
-<h3 id="post-processrestart"><code>POST /process/restart</code><a class="headerlink" href="#post-processrestart" title="Permanent link">#</a></h3>
+<h3 id="post-processrestart-service"><code>POST /process/restart-service</code><a class="headerlink" href="#post-processrestart-service" title="Permanent link">#</a></h3>
 <p>Restarts a running process.</p>
 <h4 id="-request-body_2">🔧 Request Body:<a class="headerlink" href="#-request-body_2" title="Permanent link">#</a></h4>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
@@ -2970,7 +3136,7 @@
 </code></pre></div>
 <hr />
 <h3 id="get-processservice-status"><code>GET /process/service-status</code><a class="headerlink" href="#get-processservice-status" title="Permanent link">#</a></h3>
-<p>Gets the current status of a process</p>
+<p>Gets the current status of a process.</p>
 <h4 id="-example-response_3">✅ Example Response:<a class="headerlink" href="#-example-response_3" title="Permanent link">#</a></h4>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;process_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;rclone w/ RealDebrid&quot;</span><span class="p">,</span>
@@ -2979,27 +3145,29 @@
 </code></pre></div>
 <hr />
 <h3 id="post-processstart-core-service"><code>POST /process/start-core-service</code><a class="headerlink" href="#post-processstart-core-service" title="Permanent link">#</a></h3>
-<p>Starts one or more <strong>core services</strong> and all required dependencies, optionally starting <strong>optional services</strong> as well.
-This endpoint is primarily used during the <strong>onboarding</strong> process by the DUMB frontend to prepare services like Riven, Decypharr, or Plex Debrid.</p>
+<p>Starts one or more core services and all required dependencies. This is used during onboarding.</p>
+<p>The <code>core_services</code> field can be a single object or an array. The <code>name</code> can be the config key (e.g., <code>riven_backend</code>) or a display name (e.g., <code>Riven</code>).</p>
 <h4 id="-request-body-examples">🔧 Request Body Examples:<a class="headerlink" href="#-request-body-examples" title="Permanent link">#</a></h4>
-<p><strong>Riven Backend</strong></p>
+<p><strong>Riven</strong></p>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;core_services&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<span class="w">    </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Riven Backend&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;riven_backend&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;debrid_service&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;RealDebrid&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;debrid_key&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;abc123&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;service_options&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{}</span>
 <span class="w">  </span><span class="p">},</span>
-<span class="w">  </span><span class="nt">&quot;optional_services&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;zilean&quot;</span><span class="p">,</span><span class="s2">&quot;pgadmin&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;riven_frontend&quot;</span><span class="p">]</span>
+<span class="w">  </span><span class="nt">&quot;optional_services&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;zilean&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;pgadmin&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;riven_frontend&quot;</span><span class="p">]</span>
 <span class="p">}</span>
 </code></pre></div>
 <p><strong>Decypharr</strong></p>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;core_services&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<span class="w">    </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Decypharr&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;decypharr&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;debrid_service&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;RealDebrid&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;debrid_key&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;abc123&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;service_options&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{}</span>
+<span class="w">    </span><span class="nt">&quot;service_options&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">&quot;decypharr&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;use_embedded_rclone&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="w"> </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
 <span class="w">  </span><span class="p">},</span>
 <span class="w">  </span><span class="nt">&quot;optional_services&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[]</span>
 <span class="p">}</span>
@@ -3007,7 +3175,7 @@ This endpoint is primarily used during the <strong>onboarding</strong> process b
 <p><strong>CLI Debrid</strong></p>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;core_services&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<span class="w">    </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;CLI Debrid&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;cli_debrid&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;debrid_service&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;RealDebrid&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;debrid_key&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;abc123&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;service_options&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
@@ -3020,7 +3188,7 @@ This endpoint is primarily used during the <strong>onboarding</strong> process b
 <p><strong>Plex Debrid</strong></p>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;core_services&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<span class="w">    </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Plex Debrid&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;plex_debrid&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;debrid_service&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;RealDebrid&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;debrid_key&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;abc123&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;service_options&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
@@ -3030,31 +3198,30 @@ This endpoint is primarily used during the <strong>onboarding</strong> process b
 <span class="w">  </span><span class="p">},</span>
 <span class="w">  </span><span class="nt">&quot;optional_services&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[]</span>
 <span class="p">}</span>
-<span class="err">```jso</span><span class="kc">n</span>
 </code></pre></div>
-<p>The <code>core_services</code> field can be a single object or an array. Each core service will:</p>
-<ul>
-<li>Automatically provision any missing dependency instances (e.g. rclone/zurg).</li>
-<li>Apply any <code>service_options</code> overrides (e.g. log levels, ports).</li>
-<li>Start in the correct order, verifying success.</li>
-</ul>
 <h4 id="-example-response_4">✅ Example Response:<a class="headerlink" href="#-example-response_4" title="Permanent link">#</a></h4>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;results&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
-<span class="w">    </span><span class="p">{</span><span class="nt">&quot;service&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Riven Backend&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;started&quot;</span><span class="p">},</span>
-<span class="w">    </span><span class="p">{</span><span class="nt">&quot;service&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Decypharr&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;started&quot;</span><span class="p">}</span>
+<span class="w">    </span><span class="p">{</span><span class="nt">&quot;service&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;riven_backend&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;started&quot;</span><span class="p">},</span>
+<span class="w">    </span><span class="p">{</span><span class="nt">&quot;service&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;decypharr&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;started&quot;</span><span class="p">}</span>
 <span class="w">  </span><span class="p">],</span>
 <span class="w">  </span><span class="nt">&quot;errors&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[]</span>
 <span class="p">}</span>
 </code></pre></div>
 <h4 id="ℹ-notes">ℹ️ Notes:<a class="headerlink" href="#ℹ-notes" title="Permanent link">#</a></h4>
 <ul>
-<li>Dependencies like Zurg or Rclone will be created using templates and attached to the calling core service.</li>
-<li>Optional services such as <code>pgadmin</code> or <code>zilean</code> are only started if included and configured.</li>
-<li><code>debrid_key</code> is injected into Zurg if required.</li>
+<li>Dependencies like Zurg or rclone are created using templates and attached to the calling core service.</li>
+<li>Optional services such as <code>pgadmin</code> or <code>zilean</code> are started only if included.</li>
+<li><code>debrid_key</code> is injected into Zurg or Decypharr as needed.</li>
 <li><code>service_options</code> can override config values such as <code>log_level</code>, <code>port</code>, or <code>enabled</code>.</li>
-<li>Any startup errors will appear in the <code>errors</code> list with detailed messages.</li>
+<li>Any startup errors appear in the <code>errors</code> list.</li>
 </ul>
+<hr />
+<h3 id="get-processcore-services"><code>GET /process/core-services</code><a class="headerlink" href="#get-processcore-services" title="Permanent link">#</a></h3>
+<p>Returns the available core services, their dependencies, and default service options (used by onboarding).</p>
+<hr />
+<h3 id="get-processoptional-services"><code>GET /process/optional-services</code><a class="headerlink" href="#get-processoptional-services" title="Permanent link">#</a></h3>
+<p>Returns optional services. You can pass <code>core_service</code> and <code>optional_services</code> query params to tailor the list.</p>
 <hr />
 <h2 id="-notes">🧐 Notes<a class="headerlink" href="#-notes" title="Permanent link">#</a></h2>
 <ul>
@@ -3065,7 +3232,7 @@ This endpoint is primarily used during the <strong>onboarding</strong> process b
 <h2 id="-related-files">📌 Related Files<a class="headerlink" href="#-related-files" title="Permanent link">#</a></h2>
 <ul>
 <li><a href="https://github.com/I-am-PUID-0/DUMB/blob/master/api/routers/process.py"><code>process.py</code></a></li>
-<li><a href="../config/"><code>Configuration</code></a></li>
+<li><a href="../config/">Configuration</a></li>
 </ul>
 
 
@@ -3073,6 +3240,9 @@ This endpoint is primarily used during the <strong>onboarding</strong> process b
 
 
 
+
+  
+  
 
 
 
