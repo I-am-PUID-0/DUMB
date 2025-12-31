@@ -789,6 +789,114 @@ def _find_free_port(start_port: int, used_ports: set[int], service_key: str) -> 
         port += 1
 
 
+def _reserve_port(
+    used_ports: dict[int, str],
+    desired: int,
+    service_key: str,
+    owner: str,
+    logger,
+    label: str = "port",
+) -> int | None:
+    """
+    Reserve a port globally, auto-shifting if it's already used by another owner.
+    """
+    if not isinstance(desired, int) or desired <= 0:
+        return None
+
+    existing_owner = used_ports.get(desired)
+    if existing_owner and existing_owner != owner:
+        new_port = _find_free_port(desired + 1, set(used_ports.keys()), service_key)
+        logger.info(
+            f"[{service_key}] Port {desired} already in use; assigning {new_port} for {label}."
+        )
+        used_ports[new_port] = owner
+        return new_port
+
+    used_ports[desired] = owner
+    return desired
+
+
+def _reserve_config_port(
+    service_key: str,
+    cfg: dict,
+    field: str,
+    used_ports: dict[int, str],
+    logger,
+    owner_suffix: str | None = None,
+    label: str | None = None,
+    default: int | None = None,
+) -> None:
+    """
+    Reserve a global port for a config field, updating config if auto-shifted.
+    """
+    desired = cfg.get(field, default)
+    if not isinstance(desired, int) or desired <= 0:
+        if isinstance(default, int) and default > 0:
+            desired = default
+        else:
+            return
+
+    owner = f"{service_key}:{owner_suffix or field}"
+    chosen = _reserve_port(
+        used_ports=used_ports,
+        desired=desired,
+        service_key=service_key,
+        owner=owner,
+        logger=logger,
+        label=label or field,
+    )
+    if chosen is None:
+        return
+    if cfg.get(field) != chosen:
+        cfg[field] = chosen
+        CONFIG_MANAGER.save_config()
+
+
+def _seed_used_ports(config: dict, used_ports: dict[int, str], logger=None) -> None:
+    """
+    Seed port ownership from enabled configs to avoid global collisions.
+    """
+    if not isinstance(config, dict):
+        return
+
+    def _add(port: int | None, owner: str) -> None:
+        if not isinstance(port, int) or port <= 0:
+            return
+        if port in used_ports and used_ports[port] != owner:
+            if logger:
+                logger.warning(
+                    "Port %s already reserved by %s; %s may be auto-shifted.",
+                    port,
+                    used_ports[port],
+                    owner,
+                )
+            return
+        used_ports[port] = owner
+
+    for key, cfg in config.items():
+        if not isinstance(cfg, dict):
+            continue
+
+        if key == "dumb":
+            for subkey in ("api_service", "frontend"):
+                subcfg = cfg.get(subkey, {})
+                if isinstance(subcfg, dict) and subcfg.get("enabled"):
+                    _add(subcfg.get("port"), f"dumb_{subkey}:port")
+            continue
+
+        if "instances" in cfg and isinstance(cfg["instances"], dict):
+            for inst_name, inst_cfg in cfg["instances"].items():
+                if isinstance(inst_cfg, dict) and inst_cfg.get("enabled"):
+                    _add(inst_cfg.get("port"), f"{key}:{inst_name}")
+            continue
+
+        if cfg.get("enabled"):
+            if key == "nzbdav":
+                _add(cfg.get("frontend_port"), "nzbdav:frontend_port")
+                _add(cfg.get("backend_port"), "nzbdav:backend_port")
+            _add(cfg.get("port"), f"{key}:port")
+
+
 def _ensure_unique_instance_port(
     service_key: str,
     inst_name: str,
@@ -855,6 +963,8 @@ def _run_startup(request: UnifiedStartRequest, updater, api_state, logger):
 
     # Work in-place on the “single source of truth”
     config = CONFIG_MANAGER.config
+    used_ports: dict[int, str] = {}
+    _seed_used_ports(config, used_ports, logger)
 
     # Load template for creating new instances if needed
     with open("/utils/dumb_config.json") as f:
@@ -875,6 +985,7 @@ def _run_startup(request: UnifiedStartRequest, updater, api_state, logger):
                 service.service_options.get(ident, {}),
                 logger,
             )
+            _reserve_config_port(ident, cfg, "port", used_ports, logger)
             proc_name = cfg["process_name"]
             logger.info(f"Starting core service setup: {proc_name}")
             auto_up = cfg.get("auto_update", False)
@@ -895,6 +1006,7 @@ def _run_startup(request: UnifiedStartRequest, updater, api_state, logger):
         if not pg.get("enabled"):
             pg["enabled"] = True
             CONFIG_MANAGER.save_config()
+        _reserve_config_port("postgres", pg, "port", used_ports, logger)
         pg_name = pg["process_name"]
         logger.info(f"Ensuring '{pg_name}' is running for optional service(s)...")
         if not wait_for_process_running(api_state, pg_name):
@@ -918,6 +1030,24 @@ def _run_startup(request: UnifiedStartRequest, updater, api_state, logger):
                     merged_options.update(svc.service_options[opt])
 
             apply_service_options(opt_cfg, merged_options, logger)
+            _reserve_config_port(opt, opt_cfg, "port", used_ports, logger)
+            if opt == "nzbdav":
+                _reserve_config_port(
+                    "nzbdav",
+                    opt_cfg,
+                    "frontend_port",
+                    used_ports,
+                    logger,
+                    label="frontend",
+                )
+                _reserve_config_port(
+                    "nzbdav",
+                    opt_cfg,
+                    "backend_port",
+                    used_ports,
+                    logger,
+                    label="backend",
+                )
 
             proc = opt_cfg["process_name"]
             logger.info(f"Starting optional service: {proc}")
@@ -1082,23 +1212,32 @@ def _run_startup(request: UnifiedStartRequest, updater, api_state, logger):
 
                             if dep == "zurg":
                                 # allocate a free port
-                                used_ports = {
+                                local_used_ports = {
                                     c["port"] for c in instances.values() if "port" in c
                                 }
                                 port = 9090
-                                while port in used_ports:
+                                while port in local_used_ports or port in used_ports:
                                     port += 1
                                 new_cfg.update(
                                     {
                                         "enabled": True,
                                         "core_service": config_key,
                                         "process_name": f"Zurg w/ {display}",
-                                        "port": port,
                                         "config_dir": f"/zurg/RD/{display}",
                                         "config_file": f"/zurg/RD/{display}/config.yml",
                                         "command": f"/zurg/RD/{display}/zurg",
                                     }
                                 )
+                                reserved = _reserve_port(
+                                    used_ports=used_ports,
+                                    desired=port,
+                                    service_key="zurg",
+                                    owner=f"zurg:{instance_key}",
+                                    logger=logger,
+                                    label="port",
+                                )
+                                if reserved is not None:
+                                    new_cfg["port"] = reserved
                                 if service_type == "realdebrid" and service_key:
                                     new_cfg["api_key"] = service_key
 
@@ -1345,6 +1484,15 @@ def _run_startup(request: UnifiedStartRequest, updater, api_state, logger):
                         template_config=template_config,
                         logger=logger,
                     )
+                    _reserve_config_port(
+                        config_key,
+                        inst_cfg,
+                        "port",
+                        used_ports,
+                        logger,
+                        owner_suffix=inst_name,
+                        label=f"{inst_name} port",
+                    )
 
                     proc_name = inst_cfg.get("process_name")
                     if not proc_name:
@@ -1366,6 +1514,24 @@ def _run_startup(request: UnifiedStartRequest, updater, api_state, logger):
                 apply_service_options(
                     core_cfg, core_service.service_options.get(config_key, {}), logger
                 )
+                _reserve_config_port(config_key, core_cfg, "port", used_ports, logger)
+                if config_key == "nzbdav":
+                    _reserve_config_port(
+                        "nzbdav",
+                        core_cfg,
+                        "frontend_port",
+                        used_ports,
+                        logger,
+                        label="frontend",
+                    )
+                    _reserve_config_port(
+                        "nzbdav",
+                        core_cfg,
+                        "backend_port",
+                        used_ports,
+                        logger,
+                        label="backend",
+                    )
                 proc_name = core_cfg["process_name"]
                 auto_up = core_cfg.get("auto_update", False)
                 if not wait_for_process_running(api_state, proc_name):
@@ -1399,6 +1565,7 @@ def _run_startup(request: UnifiedStartRequest, updater, api_state, logger):
                         core_service.service_options.get(opt, {}),
                         logger,
                     )
+                    _reserve_config_port(opt, oc, "port", used_ports, logger)
                     op = oc["process_name"]
                     if not wait_for_process_running(api_state, op):
                         updater.auto_update(

@@ -39,6 +39,155 @@ DDDDDDDDDDDDD             UUUUUUUUU      MMMMMMMM               MMMMMMMMBBBBBBBB
     logger.info(ascii_art + "\n")
 
 
+def _find_free_port(start_port: int, used_ports: set[int]) -> int:
+    port = start_port
+    while port in used_ports:
+        port += 1
+    return port
+
+
+def _reserve_port(
+    used_ports: dict[int, str], desired: int, owner: str, label: str
+) -> tuple[int | None, bool]:
+    if not isinstance(desired, int) or desired <= 0:
+        return None, False
+
+    existing_owner = used_ports.get(desired)
+    if existing_owner and existing_owner != owner:
+        new_port = _find_free_port(desired + 1, set(used_ports.keys()))
+        logger.info(
+            "Port %s already in use by %s; assigning %s for %s.",
+            desired,
+            existing_owner,
+            new_port,
+            label,
+        )
+        used_ports[new_port] = owner
+        return new_port, True
+
+    used_ports[desired] = owner
+    return desired, False
+
+
+def _reserve_config_port(
+    cfg: dict,
+    field: str,
+    used_ports: dict[int, str],
+    owner: str,
+    label: str,
+) -> bool:
+    desired = cfg.get(field)
+    chosen, changed = _reserve_port(used_ports, desired, owner, label)
+    if chosen is None:
+        return False
+    if cfg.get(field) != chosen:
+        cfg[field] = chosen
+        return True
+    return changed
+
+
+def _seed_used_ports(config_obj: dict, used_ports: dict[int, str]) -> None:
+    if not isinstance(config_obj, dict):
+        return
+
+    def _add(port: int | None, owner: str) -> None:
+        if not isinstance(port, int) or port <= 0:
+            return
+        if port in used_ports and used_ports[port] != owner:
+            logger.warning(
+                "Port %s already reserved by %s; %s may be auto-shifted.",
+                port,
+                used_ports[port],
+                owner,
+            )
+            return
+        used_ports[port] = owner
+
+    for key, cfg in config_obj.items():
+        if not isinstance(cfg, dict):
+            continue
+
+        if key == "dumb":
+            for subkey in ("api_service", "frontend"):
+                subcfg = cfg.get(subkey, {})
+                if isinstance(subcfg, dict) and subcfg.get("enabled"):
+                    _add(subcfg.get("port"), f"dumb_{subkey}:port")
+            continue
+
+        if "instances" in cfg and isinstance(cfg["instances"], dict):
+            for inst_name, inst_cfg in cfg["instances"].items():
+                if isinstance(inst_cfg, dict) and inst_cfg.get("enabled"):
+                    _add(inst_cfg.get("port"), f"{key}:{inst_name}")
+            continue
+
+        if cfg.get("enabled"):
+            if key == "nzbdav":
+                _add(cfg.get("frontend_port"), "nzbdav:frontend_port")
+                _add(cfg.get("backend_port"), "nzbdav:backend_port")
+            _add(cfg.get("port"), f"{key}:port")
+
+
+def _apply_global_port_reservations(config_manager) -> None:
+    used_ports: dict[int, str] = {}
+    _seed_used_ports(config_manager.config, used_ports)
+    changed = False
+
+    dumb_cfg = config_manager.get("dumb", {})
+    for subkey in ("api_service", "frontend"):
+        subcfg = dumb_cfg.get(subkey, {})
+        if isinstance(subcfg, dict) and subcfg.get("enabled"):
+            changed |= _reserve_config_port(
+                subcfg,
+                "port",
+                used_ports,
+                f"dumb_{subkey}:port",
+                f"DUMB {subkey} port",
+            )
+
+    for key, cfg in config_manager.config.items():
+        if key == "dumb" or not isinstance(cfg, dict):
+            continue
+
+        if "instances" in cfg and isinstance(cfg["instances"], dict):
+            for inst_name, inst_cfg in cfg["instances"].items():
+                if isinstance(inst_cfg, dict) and inst_cfg.get("enabled"):
+                    changed |= _reserve_config_port(
+                        inst_cfg,
+                        "port",
+                        used_ports,
+                        f"{key}:{inst_name}",
+                        f"{key} {inst_name} port",
+                    )
+            continue
+
+        if cfg.get("enabled"):
+            if key == "nzbdav":
+                changed |= _reserve_config_port(
+                    cfg,
+                    "frontend_port",
+                    used_ports,
+                    "nzbdav:frontend_port",
+                    "NzbDAV frontend port",
+                )
+                changed |= _reserve_config_port(
+                    cfg,
+                    "backend_port",
+                    used_ports,
+                    "nzbdav:backend_port",
+                    "NzbDAV backend port",
+                )
+            changed |= _reserve_config_port(
+                cfg,
+                "port",
+                used_ports,
+                f"{key}:port",
+                f"{key} port",
+            )
+
+    if changed:
+        config_manager.save_config()
+
+
 def start_configured_process(config_obj, updater, key_name, exit_on_error=True):
     try:
         if "instances" in config_obj:
@@ -83,6 +232,8 @@ def main():
     except Exception as e:
         logger.error(f"An error occurred while creating system user: {e}")
         process_handler.shutdown(exit_code=1)
+
+    _apply_global_port_reservations(config)
 
     if config.get("dumb", {}).get("api_service", {}).get("enabled"):
         start_fastapi_process()
