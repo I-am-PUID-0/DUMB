@@ -154,10 +154,13 @@ class ProcessHandler:
 
             skip_preexec = process_name in process_static_list
 
+            stdout_target = subprocess.DEVNULL if suppress_logging else subprocess.PIPE
+            stderr_target = subprocess.DEVNULL if suppress_logging else subprocess.PIPE
+
             process = subprocess.Popen(
                 command,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
+                stdout=stdout_target,
+                stderr=stderr_target,
                 start_new_session=True,
                 cwd=config_dir,
                 universal_newlines=True,
