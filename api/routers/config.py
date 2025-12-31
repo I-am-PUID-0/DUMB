@@ -164,7 +164,18 @@ def save_config_file(config_path, config_data, config_format, updates=None):
     try:
         if updates:
             if isinstance(updates, dict):
-                config_data.update(updates)
+                if config_format == "xml":
+                    if len(config_data) == 1:
+                        root_key = next(iter(config_data))
+                        root_val = config_data.get(root_key)
+                        if root_key not in updates and isinstance(root_val, dict):
+                            root_val.update(updates)
+                        else:
+                            config_data.update(updates)
+                    else:
+                        config_data.update(updates)
+                else:
+                    config_data.update(updates)
             elif isinstance(updates, str):
                 if config_format == "yaml":
                     updates_dict = yaml.load(updates)
@@ -182,10 +193,8 @@ def save_config_file(config_path, config_data, config_format, updates=None):
                     write_python_config(config_path, updates)
                     return
                 elif config_format == "xml":
-                    raise HTTPException(
-                        status_code=400,
-                        detail="Saving updates to XML config files is not supported.",
-                    )
+                    write_to_file(config_path, updates)
+                    return
                 else:
                     raise HTTPException(
                         status_code=400,
@@ -205,6 +214,44 @@ def save_config_file(config_path, config_data, config_format, updates=None):
             write_rclone_config(config_path, config_data)
         elif config_format == "python":
             write_python_config(config_path, config_data)
+        elif config_format == "xml":
+            existing_xml = ""
+            if config_path.exists():
+                with open(config_path, "r", encoding="utf-8") as file:
+                    existing_xml = file.read()
+            existing_has_decl = existing_xml.lstrip().startswith("<?xml")
+            indent_str = None
+            for line in existing_xml.splitlines():
+                stripped = line.lstrip()
+                if not stripped or stripped.startswith("<?xml"):
+                    continue
+                if line.startswith(("<", "</")):
+                    continue
+                if stripped.startswith("<"):
+                    indent_str = line[: len(line) - len(stripped)]
+                    break
+            xml_text = xmltodict.unparse(config_data, pretty=True)
+            if isinstance(xml_text, bytes):
+                xml_text = xml_text.decode("utf-8")
+            if indent_str is not None:
+                xml_lines = []
+                for line in xml_text.splitlines():
+                    tab_count = 0
+                    for ch in line:
+                        if ch == "\t":
+                            tab_count += 1
+                        else:
+                            break
+                    if tab_count:
+                        line = f"{indent_str * tab_count}{line[tab_count:]}"
+                    xml_lines.append(line)
+                xml_text = "\n".join(xml_lines)
+            if existing_has_decl and not xml_text.lstrip().startswith("<?xml"):
+                xml_text = f'<?xml version="1.0" encoding="utf-8"?>\n{xml_text}'
+            if not existing_has_decl and xml_text.lstrip().startswith("<?xml"):
+                xml_text = xml_text.lstrip()
+                xml_text = "\n".join(xml_text.splitlines()[1:])
+            write_to_file(config_path, xml_text)
         else:
             raise HTTPException(
                 status_code=400, detail=f"Unsupported config format: {config_format}"
@@ -295,10 +342,22 @@ def parse_rclone_config(file_path):
 def write_rclone_config(file_path, config_data):
     validate_file_path(file_path)
 
-    if not isinstance(config_data, str):
-        raise ValueError("Expected raw string for Rclone config.")
+    if isinstance(config_data, str):
+        write_to_file(file_path, config_data)
+        return
+    if not isinstance(config_data, dict):
+        raise ValueError("Expected raw string or dict for Rclone config.")
 
-    write_to_file(file_path, config_data)
+    parser = configparser.ConfigParser()
+    parser.optionxform = str
+    for section, values in config_data.items():
+        parser[section] = {}
+        if isinstance(values, dict):
+            for key, value in values.items():
+                parser[section][key] = str(value)
+
+    with open(file_path, "w") as file:
+        parser.write(file)
 
 
 def parse_python_config(file_path):
