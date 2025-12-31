@@ -551,6 +551,9 @@
         "config_dir": {
           "type": "string"
         },
+        "log_file": {
+          "type": "string"
+        },
         "webdav_password": {
           "type": "string"
         },
@@ -578,6 +581,7 @@
         "platforms",
         "command",
         "config_dir",
+        "log_file",
         "webdav_password",
         "env"
       ]
@@ -1850,6 +1854,9 @@
         "config_file": {
           "type": "string"
         },
+        "log_file": {
+          "type": "string"
+        },
         "env": {
           "type": "object",
           "properties": {
@@ -1920,6 +1927,7 @@
         "command",
         "config_dir",
         "config_file",
+        "log_file",
         "env"
       ]
     },

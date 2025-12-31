@@ -170,6 +170,7 @@
         ],
         "command": [],
         "config_dir": "/nzbdav",
+        "log_file": "/log/nzbdav.log",
         "webdav_password": "1P@55w0rd",
         "env": {}
     },
@@ -542,6 +543,7 @@
         ],
         "config_dir": "/zilean",
         "config_file": "/zilean/app/data/settings.json",
+        "log_file": "/log/zilean.log",
         "env": {
             "DOTNET_RUNNING_IN_CONTAINER": "true",
             "DOTNET_gcServer": "1",

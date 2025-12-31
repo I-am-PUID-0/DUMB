@@ -1,4 +1,4 @@
-from utils.logger import SubprocessLogger
+from utils.logger import SubprocessLogger, get_subprocess_file_logger
 from utils.config_loader import CONFIG_MANAGER
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import shlex, os, time, signal, threading, subprocess, sys, uvicorn
@@ -157,6 +157,30 @@ class ProcessHandler:
             stdout_target = subprocess.DEVNULL if suppress_logging else subprocess.PIPE
             stderr_target = subprocess.DEVNULL if suppress_logging else subprocess.PIPE
 
+            subprocess_file_logger = None
+            if not suppress_logging and key in {"nzbdav", "zilean", "rclone"}:
+                log_file = config.get("log_file")
+                if log_file:
+                    subprocess_file_logger = get_subprocess_file_logger(
+                        log_file,
+                        log_level=config.get("log_level", "INFO"),
+                        log_name=f"{process_name}-subprocess",
+                    )
+                    if key == "rclone" and isinstance(command, list):
+                        filtered_command = []
+                        skip_next = False
+                        for part in command:
+                            if skip_next:
+                                skip_next = False
+                                continue
+                            if part == "--log-file":
+                                skip_next = True
+                                continue
+                            if part.startswith("--log-file="):
+                                continue
+                            filtered_command.append(part)
+                        command = filtered_command
+
             process = subprocess.Popen(
                 command,
                 stdout=stdout_target,
@@ -171,7 +195,9 @@ class ProcessHandler:
 
             if not suppress_logging:
                 subprocess_logger = SubprocessLogger(
-                    self.logger, f"{process_description}"
+                    self.logger,
+                    f"{process_description}",
+                    file_logger=subprocess_file_logger,
                 )
                 subprocess_logger.start_logging_stdout(process)
                 subprocess_logger.start_monitoring_stderr(

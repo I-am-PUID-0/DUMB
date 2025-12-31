@@ -2124,6 +2124,31 @@ def rclone_setup():
                 f.write(f"[{section}]\n")
                 f.write("\n".join(lines) + "\n")
 
+    def scrub_rclone_log_file_flag(instance):
+        existing = instance.get("command", [])
+        if isinstance(existing, str):
+            existing = shlex.split(existing)
+        if not isinstance(existing, list):
+            return False
+
+        filtered = []
+        skip_next = False
+        for item in existing:
+            if skip_next:
+                skip_next = False
+                continue
+            if item == "--log-file":
+                skip_next = True
+                continue
+            if isinstance(item, str) and item.startswith("--log-file="):
+                continue
+            filtered.append(item)
+
+        if filtered != existing:
+            instance["command"] = filtered
+            return True
+        return False
+
     try:
 
         def setup_rclone_instance(instance_name, instance):
@@ -2135,6 +2160,15 @@ def rclone_setup():
             from utils.dependencies import get_api_state
 
             api_state = get_api_state()
+            if scrub_rclone_log_file_flag(instance):
+                try:
+                    CONFIG_MANAGER.save_config(process_name)
+                except Exception as e:
+                    logger.warning(
+                        "Failed to persist rclone log-file cleanup for %s: %s",
+                        process_name,
+                        e,
+                    )
             if api_state.get_status(process_name) == "running":
                 logger.info(f"{process_name} is already running. Skipping setup.")
                 return True, None
@@ -2334,7 +2368,6 @@ def rclone_setup():
                 mount_dir = instance["mount_dir"]
                 config_file = instance["config_file"]
                 cache_dir = os.path.abspath(instance["cache_dir"])
-                log_file = os.path.abspath(instance["log_file"])
                 log_level = instance.get("log_level", "INFO").upper()
 
                 base_cmd = [
@@ -2352,7 +2385,6 @@ def rclone_setup():
                     "--dir-cache-time": "10s",
                     "--allow-non-empty": None,
                     "--cache-dir": cache_dir,
-                    "--log-file": log_file,
                     "--log-level": log_level,
                 }
                 if instance.get("key_type", "").lower() == "nzbdav":

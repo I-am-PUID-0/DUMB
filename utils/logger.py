@@ -5,8 +5,9 @@ from colorlog import ColoredFormatter
 
 
 class SubprocessLogger:
-    def __init__(self, logger, key_type):
+    def __init__(self, logger, key_type, file_logger=None):
         self.logger = logger
+        self.file_logger = file_logger
         self.stdout_thread = None
         self.stderr_thread = None
         self.stop_event = threading.Event()
@@ -20,6 +21,17 @@ class SubprocessLogger:
             "CRITICAL": logger.critical,
             "UNKNOWN": logger.info,
         }
+        self.file_log_methods = None
+        if self.file_logger:
+            self.file_log_methods = {
+                "DEBUG": self.file_logger.debug,
+                "INFO": self.file_logger.info,
+                "NOTICE": self.file_logger.debug,
+                "WARNING": self.file_logger.warning,
+                "ERROR": self.file_logger.error,
+                "CRITICAL": self.file_logger.critical,
+                "UNKNOWN": self.file_logger.info,
+            }
 
     @staticmethod
     def parse_log_level_and_message(line, process_name):
@@ -127,9 +139,15 @@ class SubprocessLogger:
                 )
                 log_func = self.log_methods.get(log_level, self.logger.info)
                 if process_name == "rclone":
-                    log_func(f'rclone mount name "{mount_name}": {message}')
+                    formatted = f'rclone mount name "{mount_name}": {message}'
                 else:
-                    log_func(f"{process_name} subprocess: {message}")
+                    formatted = f"{process_name} subprocess: {message}"
+                log_func(formatted)
+                if self.file_log_methods:
+                    file_log_func = self.file_log_methods.get(
+                        log_level, self.file_logger.info
+                    )
+                    file_log_func(formatted)
 
     def start_monitoring_stderr(self, process, mount_name, process_name):
         self.stderr_thread = threading.Thread(
@@ -154,7 +172,13 @@ class SubprocessLogger:
                         line, self.key_type
                     )
                     log_func = self.log_methods.get(log_level, self.logger.info)
-                    log_func(f"{self.key_type} subprocess: {message}")
+                    formatted = f"{self.key_type} subprocess: {message}"
+                    log_func(formatted)
+                    if self.file_log_methods:
+                        file_log_func = self.file_log_methods.get(
+                            log_level, self.file_logger.info
+                        )
+                        file_log_func(formatted)
         except ValueError as e:
             self.logger.error(
                 f"Error reading subprocess output for {self.key_type}: {e}"
@@ -324,6 +348,7 @@ class CustomRotatingFileHandler(BaseRotatingHandler):
             base_filename_with_path, ext = os.path.splitext(self.baseFilename)
             base_filename = os.path.basename(base_filename_with_path)
             dir_name = os.path.dirname(base_filename_with_path)
+            original_base_filename = self.baseFilename
 
             match = re.search(r"(\d{4}-\d{2}-\d{2})", base_filename)
             if match:
@@ -336,22 +361,19 @@ class CustomRotatingFileHandler(BaseRotatingHandler):
                 base_filename_without_date = base_filename.replace(f"-{base_date}", "")
             else:
                 base_filename_without_date = base_filename
+            rollover_date = base_date or current_date
 
             for i in range(self.backupCount - 1, 0, -1):
                 sfn = os.path.join(
                     dir_name,
                     (
-                        f"{base_filename_without_date}-{base_date}_{i}.log"
-                        if base_date
-                        else f"{base_filename_without_date}_{i}.log"
+                        f"{base_filename_without_date}-{rollover_date}_{i}.log"
                     ),
                 )
                 dfn = os.path.join(
                     dir_name,
                     (
-                        f"{base_filename_without_date}-{base_date}_{i + 1}.log"
-                        if base_date
-                        else f"{base_filename_without_date}_{i + 1}.log"
+                        f"{base_filename_without_date}-{rollover_date}_{i + 1}.log"
                     ),
                 )
                 if os.path.exists(sfn):
@@ -363,9 +385,7 @@ class CustomRotatingFileHandler(BaseRotatingHandler):
             dfn = os.path.join(
                 dir_name,
                 (
-                    f"{base_filename_without_date}-{base_date}_1.log"
-                    if base_date
-                    else f"{base_filename_without_date}_1.log"
+                    f"{base_filename_without_date}-{rollover_date}_1.log"
                 ),
             )
             self.logger.debug(f"Renaming {self.baseFilename} to {dfn}")
@@ -379,10 +399,13 @@ class CustomRotatingFileHandler(BaseRotatingHandler):
                     self.logger.debug(f"Deleting old log file {s}")
                     os.remove(s)
 
-            new_log_filename = os.path.join(
-                dir_name, f"{base_filename_without_date}-{current_date}.log"
-            )
-            self.baseFilename = new_log_filename
+            if base_date:
+                new_log_filename = os.path.join(
+                    dir_name, f"{base_filename_without_date}-{current_date}.log"
+                )
+                self.baseFilename = new_log_filename
+            else:
+                self.baseFilename = original_base_filename
             if not self.delay:
                 self.stream = self._open()
 
@@ -564,4 +587,51 @@ def get_logger(log_name=None, log_dir=None, websocket_manager=None):
         ws_handler.setFormatter(file_formatter)
         logger.addHandler(ws_handler)
     # logger.debug(f"New handlers: {[type(h).__name__ for h in logger.handlers]}")
+    return logger
+
+
+def get_subprocess_file_logger(log_file, log_level=None, log_name=None):
+    log_level = (log_level or CONFIG_MANAGER.get("dumb").get("log_level", "INFO")).upper()
+    numeric_level = getattr(logging, log_level, logging.INFO)
+    backupCount_env = CONFIG_MANAGER.get("dumb").get("log_count", 2)
+    try:
+        backupCount = int(backupCount_env)
+    except (ValueError, TypeError):
+        backupCount = 2
+    max_log_size_env = CONFIG_MANAGER.get("dumb").get("log_size", "10M")
+    try:
+        max_log_size = (
+            parse_size(max_log_size_env) if max_log_size_env else 10 * 1024 * 1024
+        )
+    except (ValueError, TypeError):
+        max_log_size = 10 * 1024 * 1024
+
+    log_file = os.path.abspath(log_file)
+    os.makedirs(os.path.dirname(log_file), exist_ok=True)
+
+    log_name = log_name or f"subprocess:{os.path.basename(log_file)}"
+    logger = logging.getLogger(log_name)
+    logger.setLevel(numeric_level)
+    logger.propagate = False
+
+    file_formatter = logging.Formatter(
+        "%(asctime)s - %(levelname)s - %(message)s", datefmt="%b %e, %Y %H:%M:%S"
+    )
+    handler = CustomRotatingFileHandler(
+        log_file,
+        when="midnight",
+        interval=1,
+        backupCount=backupCount,
+        maxBytes=max_log_size,
+    )
+    handler.setFormatter(file_formatter)
+
+    if not any(
+        isinstance(h, CustomRotatingFileHandler)
+        and getattr(h, "baseFilename", None) == log_file
+        for h in logger.handlers
+    ):
+        logger.addHandler(handler)
+
+    os.chmod(log_file, 0o666)
     return logger
