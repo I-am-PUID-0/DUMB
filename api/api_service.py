@@ -11,12 +11,16 @@ from utils.dependencies import (
     get_process_handler,
     get_logger,
     get_websocket_manager,
+    get_metrics_manager,
+    get_metrics_collector,
 )
 from api.routers.process import process_router
 from api.routers.config import config_router
 from api.routers.health import health_router
 from api.routers.logs import logs_router
 from api.routers.websocket_logs import websocket_router
+from api.routers.metrics import metrics_router
+from api.routers.websocket_metrics import websocket_metrics_router
 from utils.config_loader import CONFIG_MANAGER
 import threading, tomllib
 
@@ -52,12 +56,16 @@ def create_app() -> FastAPI:
     app.dependency_overrides[get_logger] = get_logger
     app.dependency_overrides[get_api_state] = get_api_state
     app.dependency_overrides[get_websocket_manager] = get_websocket_manager
+    app.dependency_overrides[get_metrics_manager] = get_metrics_manager
+    app.dependency_overrides[get_metrics_collector] = get_metrics_collector
 
     app.include_router(process_router, prefix="/process", tags=["Process Management"])
     app.include_router(config_router, prefix="/config", tags=["Configuration"])
     app.include_router(health_router, prefix="/health", tags=["Health"])
     app.include_router(logs_router, prefix="/logs", tags=["Logs"])
+    app.include_router(metrics_router, prefix="/metrics", tags=["Metrics"])
     app.include_router(websocket_router, prefix="/ws", tags=["WebSocket Logs"])
+    app.include_router(websocket_metrics_router, prefix="/ws", tags=["WebSocket Metrics"])
 
     @app.get("/scalar", include_in_schema=False)
     async def scalar_docs():

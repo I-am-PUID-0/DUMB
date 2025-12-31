@@ -2,6 +2,8 @@ from utils.config_loader import CONFIG_MANAGER as config
 from utils.global_logger import logger, websocket_manager
 from utils import user_management
 from api.api_service import start_fastapi_process
+from api.connection_manager import ConnectionManager
+from utils.metrics_history import MetricsHistoryWriter
 from utils.processes import ProcessHandler
 from utils.auto_update import Update
 from utils.dependencies import initialize_dependencies
@@ -66,11 +68,13 @@ def main():
 
     process_handler = ProcessHandler(logger)
     updater = Update(process_handler)
+    metrics_manager = ConnectionManager()
 
     initialize_dependencies(
         process_handler=process_handler,
         updater=updater,
         websocket_manager=websocket_manager,
+        metrics_manager=metrics_manager,
         logger=logger,
     )
 
@@ -88,6 +92,38 @@ def main():
         start_configured_process(dumb_config.get("frontend", {}), updater, "frontend")
     except Exception:
         process_handler.shutdown(exit_code=1)
+
+    def metrics_history_worker():
+        metrics_cfg = config.get("dumb", {}).get("metrics", {})
+        if not metrics_cfg.get("history_enabled", True):
+            return
+
+        interval = metrics_cfg.get("history_interval_sec", 5)
+        retention_days = metrics_cfg.get("history_retention_days", 7)
+        max_file_mb = metrics_cfg.get("history_max_file_mb", 50)
+        history_dir = metrics_cfg.get("history_dir", "/config/metrics")
+        try:
+            interval = float(interval)
+        except (TypeError, ValueError):
+            interval = 5.0
+        interval = max(0.5, interval)
+
+        writer = MetricsHistoryWriter(
+            base_dir=history_dir,
+            retention_days=retention_days,
+            max_file_mb=max_file_mb,
+            logger=logger,
+        )
+        from utils.dependencies import get_metrics_collector
+
+        collector = get_metrics_collector()
+        while True:
+            try:
+                snapshot = collector.snapshot()
+                writer.write(snapshot)
+            except Exception as e:
+                logger.error(f"Metrics history worker error: {e}")
+            time.sleep(interval)
 
     try:
         grouped_keys = [
@@ -137,6 +173,9 @@ def main():
 
     thread = threading.Thread(target=healthcheck, daemon=True)
     thread.start()
+
+    metrics_thread = threading.Thread(target=metrics_history_worker, daemon=True)
+    metrics_thread.start()
 
     threading.Event().wait()
 

@@ -178,6 +178,33 @@
             "config_dir",
             "env"
           ]
+        },
+        "metrics": {
+          "type": "object",
+          "properties": {
+            "history_enabled": {
+              "type": "boolean"
+            },
+            "history_interval_sec": {
+              "type": "number"
+            },
+            "history_retention_days": {
+              "type": "number"
+            },
+            "history_max_file_mb": {
+              "type": "number"
+            },
+            "history_dir": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "history_enabled",
+            "history_interval_sec",
+            "history_retention_days",
+            "history_max_file_mb",
+            "history_dir"
+          ]
         }
       },
       "required": [
@@ -193,7 +220,8 @@
         "github_username",
         "onboarding_completed",
         "api_service",
-        "frontend"
+        "frontend",
+        "metrics"
       ]
     },
     "cli_debrid": {
