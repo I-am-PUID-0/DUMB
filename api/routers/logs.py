@@ -1,10 +1,21 @@
 from fastapi import APIRouter, Depends, Query
 from pathlib import Path
+from pydantic import BaseModel
+from typing import Optional
 from utils.dependencies import get_logger, resolve_path
 from utils.config_loader import CONFIG_MANAGER
 import os, re, asyncio
 
 logs_router = APIRouter()
+
+
+class LogFileResponse(BaseModel):
+    process_name: str
+    size: int
+    cursor: int
+    chunk: str
+    reset: bool
+    log: Optional[str] = None
 
 
 def find_log_file(process_name: str, logger):
@@ -88,7 +99,7 @@ def _read_chunk(path: Path, start: int) -> bytes:
         return f.read()
 
 
-@logs_router.get("")
+@logs_router.get("", response_model=LogFileResponse)
 async def get_log_file(
     process_name: str = Query(..., description="The process name"),
     cursor: int | None = Query(
@@ -109,6 +120,7 @@ async def get_log_file(
         if not log_path or not log_path.exists():
             return {
                 "process_name": process_name,
+                "size": 0,
                 "cursor": 0,
                 "chunk": "",
                 "reset": True,
@@ -124,6 +136,7 @@ async def get_log_file(
                 # After initial snapshot, cursor should point to EOF
                 return {
                     "process_name": process_name,
+                    "size": size,
                     "cursor": size,
                     "chunk": text,
                     "reset": True,
@@ -132,6 +145,7 @@ async def get_log_file(
             data = _read_chunk(log_path, start)
             return {
                 "process_name": process_name,
+                "size": size,
                 "cursor": size,
                 "chunk": data.decode("utf-8", "replace"),
                 "reset": True,
@@ -144,6 +158,7 @@ async def get_log_file(
             data = _read_chunk(log_path, start)
             return {
                 "process_name": process_name,
+                "size": size,
                 "cursor": size,
                 "chunk": data.decode("utf-8", "replace"),
                 "reset": True,
@@ -154,6 +169,7 @@ async def get_log_file(
         new_cursor = cursor + len(data)
         return {
             "process_name": process_name,
+            "size": size,
             "cursor": new_cursor,
             "chunk": data.decode("utf-8", "replace"),
             "reset": False,
