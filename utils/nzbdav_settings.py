@@ -138,7 +138,27 @@ def _ensure_symlink_roots(paths: list[str]) -> None:
         parent_dir = os.path.dirname(path.rstrip(os.sep))
         if parent_dir and parent_dir != os.sep:
             chown_single(parent_dir, user_id, group_id)
-        chown_recursive(path, user_id, group_id)
+        try:
+            stat_info = os.stat(path)
+        except Exception as e:
+            logger.debug("Failed stat for %s: %s", path, e)
+            stat_info = None
+        chown_single(path, user_id, group_id)
+        if (
+            stat_info
+            and stat_info.st_uid == user_id
+            and stat_info.st_gid == group_id
+        ):
+            logger.debug(
+                "Skipping recursive chown for %s; owner matches %s:%s",
+                path,
+                user_id,
+                group_id,
+            )
+            continue
+        ok, err = chown_recursive(path, user_id, group_id)
+        if err:
+            logger.debug("Recursive chown failed for %s: %s", path, err)
 
 
 def ensure_nzbdav_download_client(

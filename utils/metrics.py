@@ -131,6 +131,9 @@ class MetricsCollector:
         detected_ports = self._collect_listen_ports(proc)
         if detected_ports:
             metrics["ports"] = detected_ports
+        connections = self._collect_process_connections(proc)
+        if connections:
+            metrics["net_connections"] = connections
         return metrics
 
     def _collect_listen_ports(self, proc):
@@ -140,6 +143,24 @@ class MetricsCollector:
                 if conn.status == psutil.CONN_LISTEN and conn.laddr:
                     ports.add(conn.laddr.port)
             return sorted(ports)
+        except (psutil.NoSuchProcess, psutil.AccessDenied, AttributeError):
+            return []
+
+    def _collect_process_connections(self, proc, limit=50):
+        try:
+            connections = []
+            for conn in proc.net_connections(kind="inet"):
+                if conn.status != psutil.CONN_ESTABLISHED:
+                    continue
+                entry = {
+                    "status": conn.status,
+                    "laddr": _addr_to_tuple(conn.laddr),
+                    "raddr": _addr_to_tuple(conn.raddr),
+                }
+                connections.append(entry)
+                if limit and len(connections) >= limit:
+                    break
+            return connections
         except (psutil.NoSuchProcess, psutil.AccessDenied, AttributeError):
             return []
 
@@ -245,3 +266,9 @@ class MetricsCollector:
             return psutil.Process(1).create_time()
         except Exception:
             return time.time()
+
+
+def _addr_to_tuple(addr):
+    if not addr:
+        return None
+    return [addr.ip, addr.port]
