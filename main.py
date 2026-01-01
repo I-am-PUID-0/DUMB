@@ -7,7 +7,7 @@ from utils.metrics_history import MetricsHistoryWriter
 from utils.processes import ProcessHandler
 from utils.auto_update import Update
 from utils.dependencies import initialize_dependencies
-import subprocess, threading, time, tomllib
+import subprocess, threading, time, tomllib, os
 
 
 def log_ascii_art():
@@ -218,12 +218,14 @@ def main():
     process_handler = ProcessHandler(logger)
     updater = Update(process_handler)
     metrics_manager = ConnectionManager()
+    status_manager = ConnectionManager()
 
     initialize_dependencies(
         process_handler=process_handler,
         updater=updater,
         websocket_manager=websocket_manager,
         metrics_manager=metrics_manager,
+        status_manager=status_manager,
         logger=logger,
     )
 
@@ -237,6 +239,9 @@ def main():
 
     if config.get("dumb", {}).get("api_service", {}).get("enabled"):
         start_fastapi_process()
+        api_cfg = config.get("dumb", {}).get("api_service", {})
+        api_name = api_cfg.get("process_name", "DUMB API")
+        process_handler.register_external_process(api_name, os.getpid())
 
     try:
         dumb_config = config.get("dumb", {})

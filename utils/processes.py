@@ -21,6 +21,7 @@ class ProcessHandler:
         self.logger = logger
         self.processes = {}
         self.process_names = {}
+        self.external_processes = {}
         self.subprocess_loggers = {}
         self.stdout = ""
         self.stderr = ""
@@ -32,6 +33,8 @@ class ProcessHandler:
         running_processes = {
             process_info["name"]: pid for pid, process_info in self.processes.items()
         }
+        if self.external_processes:
+            running_processes.update(self.external_processes)
         file_path = "/healthcheck/running_processes.json"
         directory = os.path.dirname(file_path)
 
@@ -41,6 +44,17 @@ class ProcessHandler:
                 dump(running_processes, f)
         except Exception as e:
             self.logger.error(f"Failed to write running processes file: {e}")
+
+    def register_external_process(self, process_name, pid):
+        if not process_name or not pid:
+            return
+        self.external_processes[process_name] = pid
+        self._update_running_processes_file()
+
+    def unregister_external_process(self, process_name):
+        if process_name in self.external_processes:
+            del self.external_processes[process_name]
+            self._update_running_processes_file()
 
     def start_process(
         self,

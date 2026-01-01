@@ -335,7 +335,7 @@ ALIAS_TO_KEY = {v.lower(): k for k, v in CORE_SERVICE_NAMES.items()} | {
 
 
 @process_router.get("/")
-async def fetch_process(process_name: str = Query(...), logger=Depends(get_logger)):
+def fetch_process(process_name: str = Query(...), logger=Depends(get_logger)):
     try:
         if not process_name:
             raise HTTPException(status_code=400, detail="process_name is required")
@@ -363,8 +363,7 @@ async def fetch_process(process_name: str = Query(...), logger=Depends(get_logge
 
 
 @process_router.get("/processes")
-async def fetch_processes():
-    logger = (Depends(get_logger),)
+def fetch_processes(logger=Depends(get_logger)):
     try:
         processes = []
         config = CONFIG_MANAGER.config
@@ -617,12 +616,18 @@ async def restart_service(
 
 
 @process_router.get("/service-status")
-async def service_status(
+def service_status(
     process_name: str = Query(..., description="The name of the process to check"),
+    include_health: bool = Query(
+        False, description="If true, include health checks for the process"
+    ),
     api_state=Depends(get_api_state),
 ):
-    status = api_state.get_status(process_name)
-    return {"process_name": process_name, "status": status}
+    details = api_state.get_status_details(
+        process_name, include_health=include_health
+    )
+    response = {"process_name": process_name, **details}
+    return response
 
 
 def wait_for_process_running(

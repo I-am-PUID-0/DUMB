@@ -10,12 +10,13 @@ _shared_instances = {}
 
 
 def initialize_dependencies(
-    process_handler, updater, websocket_manager, metrics_manager, logger
+    process_handler, updater, websocket_manager, metrics_manager, status_manager, logger
 ):
     _shared_instances["process_handler"] = process_handler
     _shared_instances["updater"] = updater
     _shared_instances["websocket_manager"] = websocket_manager
     _shared_instances["metrics_manager"] = metrics_manager
+    _shared_instances["status_manager"] = status_manager
     _shared_instances["logger"] = logger
     _shared_instances["api_state"] = APIState(
         process_handler=process_handler, logger=logger
@@ -39,6 +40,10 @@ def get_websocket_manager() -> ConnectionManager:
 
 def get_metrics_manager() -> ConnectionManager:
     return _shared_instances["metrics_manager"]
+
+
+def get_status_manager() -> ConnectionManager:
+    return _shared_instances["status_manager"]
 
 
 def get_logger() -> Logger:

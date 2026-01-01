@@ -308,7 +308,7 @@ class ConfigManager:
         if instance_name:
             config = self.get(key).get("instances").get(instance_name)
         elif key and key == "dumb_frontend" or key == "dumb_api_service":
-            section, key = key.split("_")
+            section, key = key.split("_", 1)
             config = self.get(key, section)
         else:
             config = self.get(key)

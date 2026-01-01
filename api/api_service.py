@@ -21,6 +21,7 @@ from api.routers.logs import logs_router
 from api.routers.websocket_logs import websocket_router
 from api.routers.metrics import metrics_router
 from api.routers.websocket_metrics import websocket_metrics_router
+from api.routers.websocket_status import websocket_status_router
 from utils.config_loader import CONFIG_MANAGER
 import threading, tomllib
 
@@ -66,6 +67,7 @@ def create_app() -> FastAPI:
     app.include_router(metrics_router, prefix="/metrics", tags=["Metrics"])
     app.include_router(websocket_router, prefix="/ws", tags=["WebSocket Logs"])
     app.include_router(websocket_metrics_router, prefix="/ws", tags=["WebSocket Metrics"])
+    app.include_router(websocket_status_router, prefix="/ws", tags=["WebSocket Status"])
 
     @app.get("/scalar", include_in_schema=False)
     async def scalar_docs():

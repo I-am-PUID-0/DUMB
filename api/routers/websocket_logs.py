@@ -1,5 +1,7 @@
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends
 from utils.dependencies import get_websocket_manager
+import json
+
 
 websocket_router = APIRouter()
 
@@ -12,7 +14,17 @@ async def websocket_logs(
     try:
         while True:
             data = await websocket.receive_text()
-            if data == '{"type":"ping"}':
+            if data == "ping":
                 await websocket.send_text("pong")
+                continue
+            if data and data[0] == "{":
+                try:
+                    payload = json.loads(data)
+                except json.JSONDecodeError:
+                    continue
+                if payload.get("type") == "ping":
+                    await websocket.send_text("pong")
     except WebSocketDisconnect:
+        pass
+    finally:
         await websocket_manager.disconnect(websocket)
