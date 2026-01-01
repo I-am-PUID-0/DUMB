@@ -181,6 +181,7 @@
         "repo_name": "Emby.Releases",
         "release_version_enabled": false,
         "release_version": "4.8.11.0",
+        "use_system_ffmpeg": true,
         "suppress_logging": false,
         "log_level": "INFO",
         "port": 8096,

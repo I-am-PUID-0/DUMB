@@ -1718,6 +1718,28 @@ def setup_emby():
         else:
             cmd = [emby_bin]
         logger.info("Setting up Emby Server runtime...")
+        use_system_ffmpeg = config.get("use_system_ffmpeg", True)
+        if use_system_ffmpeg:
+            def relink_binary(link_path, target_path, label):
+                if not os.path.exists(target_path):
+                    logger.warning(
+                        f"System {label} not found at {target_path}; skipping relink."
+                    )
+                    return
+                if os.path.islink(link_path) and os.readlink(link_path) == target_path:
+                    logger.debug(f"Emby {label} already linked to system {label}.")
+                    return
+                if os.path.lexists(link_path):
+                    backup_path = f"{link_path}.bak"
+                    if os.path.exists(backup_path):
+                        os.remove(backup_path)
+                    shutil.move(link_path, backup_path)
+                os.makedirs(os.path.dirname(link_path), exist_ok=True)
+                os.symlink(target_path, link_path)
+                logger.debug(f"Linked Emby {label} to system {label}.")
+
+            relink_binary("/opt/emby-server/bin/emby-ffmpeg", "/usr/bin/ffmpeg", "ffmpeg")
+            relink_binary("/opt/emby-server/bin/ffprobe", "/usr/bin/ffprobe", "ffprobe")
         config["command"] = cmd + [
             "-programdata",
             emby_config_dir,

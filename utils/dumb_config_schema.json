@@ -607,6 +607,9 @@
         "release_version": {
           "type": "string"
         },
+        "use_system_ffmpeg": {
+          "type": "boolean"
+        },
         "suppress_logging": {
           "type": "boolean"
         },
@@ -648,6 +651,7 @@
         "repo_name",
         "release_version_enabled",
         "release_version",
+        "use_system_ffmpeg",
         "suppress_logging",
         "log_level",
         "port",
