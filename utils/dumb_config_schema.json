@@ -182,6 +182,14 @@
         "metrics": {
           "type": "object",
           "properties": {
+            "system_scope": {
+              "type": "string",
+              "enum": [
+                "host",
+                "cgroup",
+                "auto"
+              ]
+            },
             "history_enabled": {
               "type": "boolean"
             },
