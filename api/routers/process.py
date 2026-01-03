@@ -55,6 +55,7 @@ STATIC_URLS_BY_KEY = {
     "whisparr": "https://whisparr.com",
     "whisparr-v3": "https://whisparr.com",
     "tautulli": "https://tautulli.com",
+    "seerr": "https://github.com/seerr-team/seerr",
 }
 
 SPONSORSHIP_URLS_BY_KEY = {
@@ -81,6 +82,7 @@ SPONSORSHIP_URLS_BY_KEY = {
     "whisparr-v3": "https://opencollective.com/whisparr",
     "zurg": "https://github.com/sponsors/debridmediamanager",
     "tautulli": "https://tautulli.com/#donate",
+    "seerr": "https://opencollective.com/seerr",
 }
 
 DEFAULT_SERVICE_PORTS = {
@@ -94,6 +96,7 @@ DEFAULT_SERVICE_PORTS = {
     "plex": 32400,
     "emby": 8096,
     "tautulli": 8181,
+    "seerr": 5055,
 }
 ## Future support for restricting service port ranges
 SERVICE_PORT_RANGES = {
@@ -117,6 +120,7 @@ CORE_SERVICE_DEPENDENCIES = {
     "bazarr": [],
     "prowlarr": [],
     "whisparr": [],
+    "seerr": [],
 }
 
 CORE_SERVICE_NAMES = {
@@ -132,6 +136,7 @@ CORE_SERVICE_NAMES = {
     "lidarr": "Lidarr",
     "prowlarr": "Prowlarr",
     "whisparr": "Whisparr",
+    "seerr": "Seerr",
 }
 
 CORE_SERVICE_DESCRIPTIONS = {
@@ -257,6 +262,13 @@ Whisparr
 - Supports multiple instances for different user profiles or libraries.
 
 Documentation: https://i-am-puid-0.github.io/DUMB/services/core/whisparr""",
+    "seerr": """\
+Seerr
+- Media request management tool for Plex, Jellyfin, and Emby.
+- Provides a web UI for requesting, approving, and tracking content.
+- Integrates with Sonarr and Radarr for automated downloads.
+
+Documentation: https://github.com/seerr-team/seerr""",
 }
 
 OPTIONAL_POST_CORE = ["riven_frontend"]
@@ -1606,7 +1618,10 @@ def _run_startup(request: UnifiedStartRequest, updater, api_state, logger):
                         oc["enabled"] = True
                         CONFIG_MANAGER.save_config()
                     merged_options = {}
-                    if core_service.service_options and opt in core_service.service_options:
+                    if (
+                        core_service.service_options
+                        and opt in core_service.service_options
+                    ):
                         merged_options.update(core_service.service_options[opt])
                     if opt in optional_service_options:
                         merged_options.update(optional_service_options[opt])

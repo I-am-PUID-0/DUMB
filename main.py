@@ -320,6 +320,7 @@ def main():
             "jellyfin",
             "emby",
             "tautulli",
+            "seerr",
         ]
         for key in grouped_keys:
             cfg = config.get(key, {})

@@ -309,6 +309,44 @@
         "log_file": "/tautulli/data/logs/tautulli.log",
         "env": {}
     },
+    "seerr": {
+        "instances": {
+            "Default": {
+                "enabled": false,
+                "core_service": "",
+                "process_name": "Seerr",
+                "repo_owner": "seerr-team",
+                "repo_name": "seerr",
+                "release_version_enabled": false,
+                "release_version": "latest",
+                "branch_enabled": false,
+                "branch": "main",
+                "suppress_logging": false,
+                "log_level": "INFO",
+                "port": 5055,
+                "auto_update": false,
+                "auto_update_interval": 24,
+                "clear_on_update": true,
+                "exclude_dirs": [
+                    "/seerr/default/config"
+                ],
+                "platforms": [
+                    "pnpm"
+                ],
+                "command": [
+                    "node",
+                    "dist/index.js"
+                ],
+                "config_dir": "/seerr/default",
+                "config_file": "/seerr/default/config/settings.json",
+                "log_file": "/seerr/default/config/logs/jellyseerr.log",
+                "env": {
+                    "NODE_ENV": "production",
+                    "PORT": "{port}"
+                }
+            }
+        }
+    },
     "plex_debrid": {
         "enabled": false,
         "process_name": "Plex Debrid",

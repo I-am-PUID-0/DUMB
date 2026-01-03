@@ -33,6 +33,14 @@ class Versions:
                     config.get("config_dir", "/tautulli"), "version.txt"
                 )
                 is_file = True
+            elif key == "seerr":
+                config = CONFIG_MANAGER.get_instance(instance_name, key)
+                if not config:
+                    raise ValueError(f"Configuration for {process_name} not found.")
+                version_path = os.path.join(
+                    config.get("config_dir", "/seerr/default"), "version.txt"
+                )
+                is_file = True
             elif key == "riven_frontend":
                 version_path = "/riven/frontend/version.txt"
                 is_file = True
@@ -230,6 +238,7 @@ class Versions:
                             or key == "decypharr"
                             or key == "nzbdav"
                             or key == "tautulli"
+                            or key == "seerr"
                             or key == "emby"
                         ):
                             version = f.read().strip()
@@ -274,6 +283,10 @@ class Versions:
                     f.write(version)
             elif key == "tautulli":
                 version_path = version_path or "/tautulli/version.txt"
+                with open(version_path, "w") as f:
+                    f.write(version)
+            elif key == "seerr":
+                version_path = version_path or "/seerr/default/version.txt"
                 with open(version_path, "w") as f:
                     f.write(version)
             elif key == "emby":

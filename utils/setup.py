@@ -112,6 +112,13 @@ def setup_release_version(process_handler, config, process_name, key):
             version_path=os.path.join(config["config_dir"], "version.txt"),
             version=config["release_version"],
         )
+    elif key == "seerr":
+        versions.version_write(
+            process_name,
+            key,
+            version_path=os.path.join(config["config_dir"], "version.txt"),
+            version=config["release_version"],
+        )
 
     success, error = additional_setup(process_handler, process_name, config, key)
     if not success:
@@ -290,6 +297,7 @@ def setup_project(process_handler, process_name):
             config["env"] = env
 
         if config.get("env"):
+            env_changed = False
             for env_key, value in config["env"].items():
                 if isinstance(value, str) and "{" in value and "}" in value:
                     if "$" in value:
@@ -320,7 +328,11 @@ def setup_project(process_handler, process_name):
                                 placeholder_pattern, str(config[placeholder])
                             )
 
-                    config["env"][env_key] = value
+                    if config["env"].get(env_key) != value:
+                        env_changed = True
+                        config["env"][env_key] = value
+            if env_changed:
+                CONFIG_MANAGER.save_config(process_name)
 
         if key == "dumb_frontend":
             success, error = dumb_frontend_setup()
@@ -405,6 +417,10 @@ def setup_project(process_handler, process_name):
 
         if key == "tautulli":
             success, error = setup_tautulli(process_handler)
+            if not success:
+                return False, error
+        if key == "seerr":
+            success, error = setup_seerr(process_handler)
             if not success:
                 return False, error
 
@@ -1784,6 +1800,167 @@ def setup_tautulli(process_handler):
     return True, None
 
 
+def setup_seerr(process_handler):
+    config = CONFIG_MANAGER.get("seerr", {})
+    if not config:
+        return False, "Seerr configuration not found."
+
+    instances = config.get("instances", {})
+    if not instances:
+        logger.info("No Seerr instances configured.")
+        return True, None
+
+    for instance_name, instance in instances.items():
+        if not instance.get("enabled", False):
+            logger.debug("Skipping disabled Seerr instance: %s", instance_name)
+            continue
+
+        instance_config_dir = instance.get("config_dir") or f"/seerr/{instance_name.lower()}"
+        instance["config_dir"] = instance_config_dir
+        path_changed = False
+
+        def _rewrite_seerr_path(value):
+            if isinstance(value, str) and value.startswith("/seerr/default"):
+                return value.replace("/seerr/default", instance_config_dir, 1)
+            return value
+
+        exclude_dirs = instance.get("exclude_dirs", [])
+        if exclude_dirs:
+            rewritten = []
+            for path in exclude_dirs:
+                rewritten.append(_rewrite_seerr_path(path))
+            if rewritten != exclude_dirs:
+                instance["exclude_dirs"] = rewritten
+                path_changed = True
+
+        config_file = instance.get("config_file")
+        new_config_file = _rewrite_seerr_path(config_file)
+        if new_config_file != config_file:
+            instance["config_file"] = new_config_file
+            path_changed = True
+
+        log_file = instance.get("log_file")
+        new_log_file = _rewrite_seerr_path(log_file)
+        if new_log_file != log_file:
+            instance["log_file"] = new_log_file
+            path_changed = True
+        instance_env = instance.get("env", {}) or {}
+        env_changed = False
+        new_port = str(instance.get("port", 5055))
+        if instance_env.get("PORT") != new_port:
+            instance_env["PORT"] = new_port
+            env_changed = True
+        if "NODE_ENV" not in instance_env:
+            instance_env["NODE_ENV"] = "production"
+            env_changed = True
+        instance["env"] = instance_env
+        entry_path = os.path.join(instance_config_dir, "dist", "index.js")
+        repo_marker = os.path.join(instance_config_dir, "package.json")
+        if env_changed or path_changed:
+            CONFIG_MANAGER.save_config(instance.get("process_name"))
+
+        os.makedirs(instance_config_dir, exist_ok=True)
+        _chown_recursive_if_needed(
+            instance_config_dir, CONFIG_MANAGER.get("puid"), CONFIG_MANAGER.get("pgid")
+        )
+        real_config_dir = os.path.realpath(instance_config_dir)
+        if real_config_dir != instance_config_dir:
+            _chown_recursive_if_needed(
+                real_config_dir, CONFIG_MANAGER.get("puid"), CONFIG_MANAGER.get("pgid")
+            )
+
+        needs_download = not os.path.isfile(repo_marker)
+        if needs_download:
+            logger.warning(
+                "Seerr instance %s not found at %s. Downloading...",
+                instance_name,
+                repo_marker,
+            )
+            exclude_dirs = None
+            if instance.get("clear_on_update"):
+                exclude_dirs = instance.get("exclude_dirs", [])
+                success, error = clear_directory(instance_config_dir, exclude_dirs)
+                if not success:
+                    return False, f"Failed to clear directory: {error}"
+
+            if instance.get("branch_enabled"):
+                branch = instance.get("branch", "main")
+                branch_url, zip_folder_name = downloader.get_branch(
+                    instance.get("repo_owner"),
+                    instance.get("repo_name"),
+                    branch,
+                )
+                if not branch_url:
+                    return False, f"Failed to fetch branch {branch}"
+                success, error = downloader.download_and_extract(
+                    branch_url,
+                    instance_config_dir,
+                    zip_folder_name=zip_folder_name,
+                    exclude_dirs=exclude_dirs,
+                )
+                if not success:
+                    return False, f"Failed to download Seerr branch: {error}"
+            else:
+                release_version = instance.get("release_version", "latest")
+                version_to_write = release_version
+                if release_version.lower() == "latest":
+                    latest_version, latest_error = downloader.get_latest_release(
+                        instance.get("repo_owner"),
+                        instance.get("repo_name"),
+                        nightly=False,
+                    )
+                    if latest_version:
+                        version_to_write = latest_version
+                    else:
+                        logger.warning(
+                            "Failed to resolve latest Seerr version: %s", latest_error
+                        )
+                success, error = downloader.download_release_version(
+                    process_name=instance.get("process_name"),
+                    key="seerr",
+                    repo_owner=instance.get("repo_owner"),
+                    repo_name=instance.get("repo_name"),
+                    release_version=release_version,
+                    target_dir=instance_config_dir,
+                    exclude_dirs=exclude_dirs,
+                )
+                if not success:
+                    return False, f"Failed to download Seerr release: {error}"
+                versions.version_write(
+                    instance.get("process_name"),
+                    key="seerr",
+                    version_path=os.path.join(instance_config_dir, "version.txt"),
+                    version=version_to_write,
+                )
+
+            _chown_recursive_if_needed(
+                instance_config_dir, CONFIG_MANAGER.get("puid"), CONFIG_MANAGER.get("pgid")
+            )
+
+        if instance.get("platforms"):
+            node_modules_path = os.path.join(instance_config_dir, "node_modules")
+            if needs_download or not os.path.isdir(node_modules_path) or not os.path.isfile(entry_path):
+                success, error = setup_environment(
+                    process_handler,
+                    "seerr",
+                    instance.get("platforms"),
+                    instance_config_dir,
+                )
+                if not success:
+                    return (
+                        False,
+                        f"Failed to set up environment for Seerr instance {instance_name}: {error}",
+                    )
+        next_dir = os.path.join(real_config_dir, ".next")
+        if os.path.isdir(next_dir):
+            _chown_recursive_if_needed(
+                next_dir, CONFIG_MANAGER.get("puid"), CONFIG_MANAGER.get("pgid")
+            )
+
+    logger.info("Seerr setup complete.")
+    return True, None
+
+
 def setup_jellyfin():
     config = CONFIG_MANAGER.get("jellyfin")
 
@@ -3129,6 +3306,71 @@ def setup_pnpm_environment(process_handler, config_dir):
         env.setdefault("PNPM_CHILD_CONCURRENCY", "2")
         env.setdefault("PNPM_FETCH_RETRIES", "5")
 
+        def _parse_required_pnpm_major():
+            package_json_path = os.path.join(config_dir, "package.json")
+            if not os.path.isfile(package_json_path):
+                return None
+            try:
+                import json
+
+                with open(package_json_path, "r") as f:
+                    package_data = json.load(f)
+                engines = package_data.get("engines", {}) or {}
+                pnpm_req = engines.get("pnpm")
+                if not pnpm_req:
+                    return None
+                match = re.search(r"(\d+)", str(pnpm_req))
+                return match.group(1) if match else None
+            except Exception as e:
+                logger.debug("Failed to parse pnpm engine requirement: %s", e)
+                return None
+
+        def _pnpm_major_from_version(version):
+            if not version:
+                return None
+            match = re.match(r"(\d+)", version.strip())
+            return match.group(1) if match else None
+
+        def _ensure_pnpm_version(required_major):
+            if not required_major:
+                return
+            current_version = None
+            try:
+                result = subprocess.run(
+                    ["pnpm", "-v"], capture_output=True, text=True, env=env
+                )
+                if result.returncode == 0:
+                    current_version = result.stdout.strip()
+            except FileNotFoundError:
+                current_version = None
+
+            current_major = _pnpm_major_from_version(current_version)
+            if current_major == required_major:
+                return
+
+            logger.warning(
+                "pnpm version mismatch (required %s.x, found %s). Attempting to switch.",
+                required_major,
+                current_version or "missing",
+            )
+
+            if shutil.which("corepack"):
+                process_handler.start_process(
+                    "corepack_prepare",
+                    config_dir,
+                    ["corepack", "prepare", f"pnpm@{required_major}", "--activate"],
+                    env=env,
+                )
+                process_handler.wait("corepack_prepare")
+            else:
+                logger.warning(
+                    "corepack not available; pnpm version may remain incompatible."
+                )
+
+        required_major = _parse_required_pnpm_major()
+        _ensure_pnpm_version(required_major)
+        use_corepack_pnpm = required_major is not None
+
         def cleanup_pnpm_tmp():
             pnpm_root = os.path.join(config_dir, "node_modules", ".pnpm")
             if not os.path.isdir(pnpm_root):
@@ -3146,9 +3388,10 @@ def setup_pnpm_environment(process_handler, config_dir):
                     logger.debug("Failed to remove pnpm tmp path %s: %s", path, e)
 
         for attempt in range(5):
-            process_handler.start_process(
-                "pnpm_install", config_dir, ["pnpm", "install"], env=env
-            )
+            pnpm_cmd = ["pnpm", "install"]
+            if use_corepack_pnpm:
+                pnpm_cmd = ["corepack", "pnpm", "install"]
+            process_handler.start_process("pnpm_install", config_dir, pnpm_cmd, env=env)
             process_handler.wait("pnpm_install")
             if process_handler.returncode == 0:
                 break
@@ -3166,23 +3409,67 @@ def setup_pnpm_environment(process_handler, config_dir):
             return False, f"Error during pnpm install: {process_handler.stderr}"
 
         package_json_path = os.path.join(config_dir, "package.json")
-        build_script_exists = False
+        build_script = None
+        scripts = {}
         if os.path.isfile(package_json_path):
             import json
 
             with open(package_json_path, "r") as f:
                 package_data = json.load(f)
-                scripts = package_data.get("scripts", {})
-                build_script_exists = "build" in scripts
+                scripts = package_data.get("scripts", {}) or {}
+                build_script = scripts.get("build")
 
-        if build_script_exists:
-            logger.info(f"Build script found. Running pnpm build...")
-            process_handler.start_process(
-                "pnpm_build", config_dir, ["pnpm", "run", "build"], env=env
-            )
-            process_handler.wait("pnpm_build")
-            if process_handler.returncode != 0:
-                return False, f"Error during pnpm build: {process_handler.stderr}"
+        if build_script:
+            logger.info("Build script found. Running pnpm build...")
+            if use_corepack_pnpm and "pnpm " in build_script:
+                script_names = []
+                for match in re.findall(
+                    r"pnpm(?:\s+run)?\s+([^\s&|;]+)", build_script
+                ):
+                    if match not in script_names:
+                        script_names.append(match)
+                if not script_names and scripts:
+                    for candidate in ("build:next", "build:server"):
+                        if candidate in scripts:
+                            script_names.append(candidate)
+                if script_names:
+                    for script_name in script_names:
+                        logger.info("Running pnpm %s via corepack...", script_name)
+                        process_handler.start_process(
+                            "pnpm_build",
+                            config_dir,
+                            ["corepack", "pnpm", "run", script_name],
+                            env=env,
+                        )
+                        process_handler.wait("pnpm_build")
+                        if process_handler.returncode != 0:
+                            return (
+                                False,
+                                f"Error during pnpm {script_name}: {process_handler.stderr}",
+                            )
+                else:
+                    logger.warning(
+                        "Build script references pnpm but no sub-scripts found; using pnpm run build."
+                    )
+                    process_handler.start_process(
+                        "pnpm_build",
+                        config_dir,
+                        ["corepack", "pnpm", "run", "build"],
+                        env=env,
+                    )
+                    process_handler.wait("pnpm_build")
+                    if process_handler.returncode != 0:
+                        return False, f"Error during pnpm build: {process_handler.stderr}"
+            else:
+                pnpm_build_cmd = ["pnpm", "run", "build"]
+                if use_corepack_pnpm:
+                    pnpm_build_cmd = ["corepack", "pnpm", "run", "build"]
+                process_handler.start_process(
+                    "pnpm_build", config_dir, pnpm_build_cmd, env=env
+                )
+                process_handler.wait("pnpm_build")
+                if process_handler.returncode != 0:
+                    return False, f"Error during pnpm build: {process_handler.stderr}"
         else:
             logger.info(f"No build script found. Skipping pnpm build step.")
 
