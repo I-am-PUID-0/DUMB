@@ -1804,3 +1804,11 @@ async def get_optional_services(
         )
 
     return {"optional_services": results}
+
+
+@process_router.get("/capabilities")
+async def get_capabilities():
+    return {
+        "optional_only_onboarding": True,
+        "optional_service_options": True,
+    }
