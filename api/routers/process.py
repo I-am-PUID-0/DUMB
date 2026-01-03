@@ -30,6 +30,7 @@ class CoreServiceConfig(BaseModel):
 class UnifiedStartRequest(BaseModel):
     core_services: Union[List[CoreServiceConfig], CoreServiceConfig]
     optional_services: Optional[List[str]] = []
+    optional_service_options: Optional[Dict[str, Dict[str, Any]]] = {}
     model_config = ConfigDict(extra="forbid")
 
 
@@ -971,6 +972,7 @@ def _run_startup(request: UnifiedStartRequest, updater, api_state, logger):
     core_services = remaining_services
     raw_optionals = request.optional_services or []
     optional_services = [normalize_identifier(svc).lower() for svc in raw_optionals]
+    optional_service_options = request.optional_service_options or {}
 
     results = []
     errors = []
@@ -1042,6 +1044,8 @@ def _run_startup(request: UnifiedStartRequest, updater, api_state, logger):
             for svc in priority_services + core_services:
                 if svc.service_options and opt in svc.service_options:
                     merged_options.update(svc.service_options[opt])
+            if opt in optional_service_options:
+                merged_options.update(optional_service_options[opt])
 
             apply_service_options(opt_cfg, merged_options, logger)
             _reserve_config_port(opt, opt_cfg, "port", used_ports, logger)
@@ -1070,6 +1074,33 @@ def _run_startup(request: UnifiedStartRequest, updater, api_state, logger):
                     proc, enable_update=opt_cfg.get("auto_update", False)
                 )
                 wait_for_process_running(api_state, proc)
+
+    #
+    # 3.1) Start any “optional post-core” services when no cores are selected
+    #
+    if not core_services:
+        for opt in optional_services:
+            if opt in config and opt in OPTIONAL_POST_CORE:
+                opt_cfg = config[opt]
+                if not opt_cfg.get("enabled"):
+                    opt_cfg["enabled"] = True
+                    CONFIG_MANAGER.save_config()
+                merged_options = {}
+                if opt in optional_service_options:
+                    merged_options.update(optional_service_options[opt])
+                apply_service_options(
+                    opt_cfg,
+                    merged_options,
+                    logger,
+                )
+                _reserve_config_port(opt, opt_cfg, "port", used_ports, logger)
+                proc = opt_cfg["process_name"]
+                logger.info(f"Starting optional service: {proc}")
+                if not wait_for_process_running(api_state, proc):
+                    updater.auto_update(
+                        proc, enable_update=opt_cfg.get("auto_update", False)
+                    )
+                    wait_for_process_running(api_state, proc)
     #
     # 4) Now start each core service in turn, handling dependencies as needed
     #
@@ -1574,9 +1605,14 @@ def _run_startup(request: UnifiedStartRequest, updater, api_state, logger):
                     if not oc.get("enabled"):
                         oc["enabled"] = True
                         CONFIG_MANAGER.save_config()
+                    merged_options = {}
+                    if core_service.service_options and opt in core_service.service_options:
+                        merged_options.update(core_service.service_options[opt])
+                    if opt in optional_service_options:
+                        merged_options.update(optional_service_options[opt])
                     apply_service_options(
                         oc,
-                        core_service.service_options.get(opt, {}),
+                        merged_options,
                         logger,
                     )
                     _reserve_config_port(opt, oc, "port", used_ports, logger)
