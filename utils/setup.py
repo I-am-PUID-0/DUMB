@@ -486,6 +486,7 @@ def ensure_arr_config(
 """
         with open(config_file, "w") as f:
             f.write(config_content)
+        chown_single(config_file, user_id, group_id)
         _chown_recursive_if_needed(os.path.dirname(config_file), user_id, group_id)
         logger.info(f"[{app_name}] Created new config.xml at {config_file}")
         return
@@ -503,6 +504,7 @@ def ensure_arr_config(
             )
             port_elem.text = str(port)
             tree.write(config_file)
+            chown_single(config_file, user_id, group_id)
         else:
             logger.debug(f"[{app_name}] Port already set to {port} in config.xml")
         if loglevel_elem is not None and loglevel_elem.text != loglevel:
@@ -511,6 +513,7 @@ def ensure_arr_config(
             )
             loglevel_elem.text = loglevel
             tree.write(config_file)
+            chown_single(config_file, user_id, group_id)
         else:
             logger.debug(
                 f"[{app_name}] Log level already set to {loglevel} in config.xml"
@@ -521,6 +524,8 @@ def ensure_arr_config(
             )
             Instance_elem.text = app_name
             tree.write(config_file)
+            chown_single(config_file, user_id, group_id)
+        chown_single(config_file, user_id, group_id)
     except Exception as e:
         logger.error(f"[{app_name}] Failed to update existing config.xml: {e}")
 
