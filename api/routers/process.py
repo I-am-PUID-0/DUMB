@@ -53,6 +53,7 @@ STATIC_URLS_BY_KEY = {
     "readarr": "https://readarr.com",
     "whisparr": "https://whisparr.com",
     "whisparr-v3": "https://whisparr.com",
+    "tautulli": "https://tautulli.com",
 }
 
 SPONSORSHIP_URLS_BY_KEY = {
@@ -78,6 +79,7 @@ SPONSORSHIP_URLS_BY_KEY = {
     "whisparr": "https://opencollective.com/whisparr",
     "whisparr-v3": "https://opencollective.com/whisparr",
     "zurg": "https://github.com/sponsors/debridmediamanager",
+    "tautulli": "https://tautulli.com/#donate",
 }
 
 DEFAULT_SERVICE_PORTS = {
@@ -90,6 +92,7 @@ DEFAULT_SERVICE_PORTS = {
     "jellyfin": 8096,
     "plex": 32400,
     "emby": 8096,
+    "tautulli": 8181,
 }
 ## Future support for restricting service port ranges
 SERVICE_PORT_RANGES = {
@@ -262,6 +265,7 @@ OPTIONAL_SERVICES = {
     "pgadmin": "PgAdmin",
     "postgres": "Postgres",
     "riven_frontend": "Riven Frontend",
+    "tautulli": "Tautulli",
 }
 
 OPTIONAL_SERVICES_DESCRIPTIONS = {
@@ -294,6 +298,13 @@ Riven Frontend
 - Allows users to trigger actions like metadata updates, link creation, and more.
 
 Documentation: https://i-am-puid-0.github.io/DUMB/services/optional/riven-frontend""",
+    "tautulli": """\
+Tautulli
+- Plex monitoring and analytics tool.
+- Tracks stream activity, history, and user stats.
+- Provides alerts, newsletters, and watch history insights.
+
+Documentation: https://github.com/Tautulli/Tautulli""",
 }
 
 ### create a list of debrid providers that are supported by each core service, and if any core service uses zurg as a dependency, then it is limited to RealDebrid.
@@ -623,9 +634,7 @@ def service_status(
     ),
     api_state=Depends(get_api_state),
 ):
-    details = api_state.get_status_details(
-        process_name, include_health=include_health
-    )
+    details = api_state.get_status_details(process_name, include_health=include_health)
     response = {"process_name": process_name, **details}
     return response
 

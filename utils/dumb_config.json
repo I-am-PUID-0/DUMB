@@ -272,6 +272,43 @@
         "command": [],
         "env": {}
     },
+    "tautulli": {
+        "enabled": false,
+        "process_name": "Tautulli",
+        "repo_owner": "Tautulli",
+        "repo_name": "Tautulli",
+        "release_version_enabled": false,
+        "release_version": "latest",
+        "branch_enabled": false,
+        "branch": "master",
+        "suppress_logging": false,
+        "log_level": "INFO",
+        "port": 8181,
+        "auto_update": false,
+        "auto_update_interval": 24,
+        "clear_on_update": true,
+        "exclude_dirs": [
+            "/tautulli/data"
+        ],
+        "platforms": [
+            "python"
+        ],
+        "command": [
+            "/tautulli/venv/bin/python",
+            "Tautulli.py",
+            "--config",
+            "/tautulli/data/config.ini",
+            "--datadir",
+            "/tautulli/data",
+            "--nolaunch",
+            "--port",
+            "{port}"
+        ],
+        "config_dir": "/tautulli",
+        "config_file": "/tautulli/data/config.ini",
+        "log_file": "/tautulli/data/logs/tautulli.log",
+        "env": {}
+    },
     "plex_debrid": {
         "enabled": false,
         "process_name": "Plex Debrid",

@@ -65,7 +65,6 @@
 
 **Debrid Unlimited Media Bridge (DUMB)** is an All-In-One (AIO) docker image for the unified deployment of the following projects/tools.
 
-
 ## 📦 Projects Included
 
 > You are free to use whichever components you like. Not all are required, and some may provide overlapping functionality in different ways.
@@ -83,7 +82,8 @@
 | [phalanx_db](https://github.com/godver3/phalanx_db_hyperswarm)   | [godver3](https://github.com/godver3)                                | [Discord](https://discord.gg/jAmqZJCZJ4)                                                                                                         | [Sponsor](https://github.com/sponsors/godver3)                                                    |
 | [plex_debrid](https://github.com/itsToggle/plex_debrid)          | [itsToggle](https://github.com/itsToggle)                            | [Discord](https://discord.gg/u3vTDGjeKE) • [Issues](https://github.com/itsToggle/plex_debrid/issues)                                            | [Affiliate](http://real-debrid.com/?id=5708990) • [PayPal](https://www.paypal.com/paypalme/oidulibbe) |
 | [Plex Media Server](https://www.plex.tv/media-server-downloads/) | [plexinc](https://www.plex.tv/)                                     | [Support](https://support.plex.tv/)                                                                                                              | [Donate](https://www.plex.tv/plex-pass/) (via Plex Pass)                                           |
-| [PostgreSQL](https://www.postgresql.org/)                         | [Michael Stonebraker](https://en.wikipedia.org/wiki/Michael_Stonebraker) | [Docs](https://www.postgresql.org/docs/)                                                                                                         | [Donate](https://www.postgresql.org/about/donate/)                                                |
+| [Tautulli](https://tautulli.com/)                                | [Tautulli](https://github.com/Tautulli)                             | [Docs](https://github.com/Tautulli/Tautulli/wiki) • [Issues](https://github.com/Tautulli/Tautulli/issues)                                       | [Donate](https://tautulli.com/#donate)                                                            |
+| [PostgreSQL](https://www.postgresql.org/)                         | [Michael Stonebraker](https://en.wikipedia.org/wiki/Michael_Stonebraker) | [Docs](https://www.postgresql.org/docs/)                                                                                                         | [Donate](https://www.postgresql.org/about/#donate/)                                                |
 | [Prowlarr](https://prowlarr.com/)                                 | [Prowlarr Team](https://github.com/Prowlarr/Prowlarr)                | [Docs](https://wiki.servarr.com/) • [Discord](https://prowlarr.com/discord)                                                                       | [Sponsor](https://github.com/sponsors/Prowlarr)                                                   |
 | [Radarr](https://radarr.video/)                                   | [Radarr Team](https://github.com/Radarr/Radarr)                      | [Docs](https://wiki.servarr.com/) • [Discord](https://radarr.video/discord)                                                                       | [Sponsor](https://github.com/sponsors/Radarr)                                                     |
 | [rclone](https://github.com/rclone/rclone)                        | [Nick Craig-Wood](https://github.com/ncw)                            | [Docs](https://rclone.org/)                                                                                                                      | [Sponsor](https://rclone.org/sponsor/)                                                            |
@@ -92,7 +92,6 @@
 | [Whisparr](https://github.com/Whisparr/Whisparr)                  | [Whisparr Team](https://github.com/Whisparr)                         | [Docs](https://wiki.servarr.com/) • [Discord](https://whisparr.com/discord)                                                                       | [Sponsor](https://opencollective.com/whisparr)                                                   |
 | [Zilean](https://github.com/iPromKnight/zilean)                   | [iPromKnight](https://github.com/iPromKnight)                        | [Docs](https://ipromknight.github.io/zilean/) • [Issues](https://github.com/iPromKnight/zilean/issues)                                         | —                                                                                                   |
 | [Zurg](https://github.com/debridmediamanager/zurg-testing)        | [yowmamasita](https://github.com/yowmamasita)                        | [Wiki](https://github.com/debridmediamanager/zurg-testing/wiki)                                                                                 | [Sponsor](https://github.com/sponsors/debridmediamanager)                                         |
-
 
 ## 🌟 Features
 
@@ -107,6 +106,7 @@ A prebuilt image is hosted on [Docker Hub](https://hub.docker.com/r/iampuid0/dum
 A prebuilt image is hosted on [GitHub Container Registry](https://github.com/I-am-PUID-0/DUMB/pkgs/container/DUMB).
 
 ## 🐳 Docker-compose
+>
 > [!NOTE]
 > The below "ports" section of the compose should be updated based on the service ports used when needing to be exposed.
 > See the below [Default Ports Used](https://github.com/I-am-PUID-0/DUMB?tab=readme-ov-file#-defualt-ports-used) section for more details
@@ -145,6 +145,7 @@ services:
 The following table lists the required environment variables used by the container. The environment variables are set via the `-e` parameter or via the docker-compose file within the `environment:` section or with a .env file saved to the config directory. Value of this parameter is listed as `<VARIABLE_NAME>=<Value>`
 
 Variables required by DUMB:
+
 | Variable       | Default  | Description                                                       |
 | -------------- | -------- | ------------------------------------------------------------------|
 | `PUID`         | `1000`   | Your User ID |
@@ -180,6 +181,7 @@ The following table describes the ports used by the container. The mappings are 
 | `3000`         | TCP      | Riven frontend -  Web UI accessible at the assigned port                             |
 | `8080`         | TCP      | Riven backend - The API is accessible at the assigned port                           |
 | `8989`         | TCP      | Sonarr - Web UI accessible at the assigned port                                      |
+| `8181`         | TCP      | Tautulli - Web UI accessible at the assigned port                                    |
 | `6969`         | TCP      | Whisparr - Web UI accessible at the assigned port                                    |
 | `8182`         | TCP      | Zilean - The API and Web UI (/swagger/index.html) is accessible at the assigned port |
 | `9090`         | TCP      | Zurg -  Web UI accessible at the assigned port                                       |

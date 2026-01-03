@@ -319,6 +319,7 @@ def main():
             "plex",
             "jellyfin",
             "emby",
+            "tautulli",
         ]
         for key in grouped_keys:
             cfg = config.get(key, {})

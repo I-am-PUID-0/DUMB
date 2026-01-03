@@ -5,8 +5,8 @@ from utils.download import Downloader
 from utils.versions import Versions
 from utils.plex import PlexInstaller
 from utils.user_management import chown_recursive, chown_single
-import base64
-import yaml, os, shutil, random, subprocess, re, glob, secrets, shlex, time
+import xml.etree.ElementTree as ET
+import yaml, os, shutil, random, subprocess, re, glob, secrets, shlex, time, urllib.parse, base64
 
 user_id = CONFIG_MANAGER.get("puid")
 group_id = CONFIG_MANAGER.get("pgid")
@@ -99,6 +99,13 @@ def setup_release_version(process_handler, config, process_name, key):
             version=config["release_version"],
         )
     elif key == "nzbdav":
+        versions.version_write(
+            process_name,
+            key,
+            version_path=os.path.join(config["config_dir"], "version.txt"),
+            version=config["release_version"],
+        )
+    elif key == "tautulli":
         versions.version_write(
             process_name,
             key,
@@ -393,6 +400,11 @@ def setup_project(process_handler, process_name):
 
         if key == "plex":
             success, error = setup_plex()
+            if not success:
+                return False, error
+
+        if key == "tautulli":
+            success, error = setup_tautulli(process_handler)
             if not success:
                 return False, error
 
@@ -1535,6 +1547,243 @@ def setup_plex():
     return True, None
 
 
+def _configure_tautulli_plex(config_file):
+    plex_config = CONFIG_MANAGER.get("plex", {})
+    if not plex_config.get("enabled"):
+        return False, None
+    logger.info("Configuring Tautulli with Plex settings...")
+    plex_address = CONFIG_MANAGER.get("dumb", {}).get("plex_address") or ""
+    plex_token = CONFIG_MANAGER.get("dumb", {}).get("plex_token") or ""
+    plex_identifier = ""
+    plex_port = str(plex_config.get("port", 32400))
+    plex_name = plex_config.get("friendly_name") or plex_config.get(
+        "process_name", "Plex Media Server"
+    )
+    plex_prefs_path = plex_config.get(
+        "config_file", "/plex/Plex Media Server/Preferences.xml"
+    )
+    if os.path.exists(plex_prefs_path):
+        try:
+            tree = ET.parse(plex_prefs_path)
+            root = tree.getroot()
+            plex_identifier = (
+                root.attrib.get("MachineIdentifier")
+                or root.attrib.get("ProcessedMachineIdentifier")
+                or ""
+            )
+            if not plex_token:
+                plex_token = root.attrib.get("PlexOnlineToken") or plex_token
+        except Exception as e:
+            logger.warning("Failed to read Plex preferences for Tautulli: %s", e)
+
+    if plex_address:
+        parsed = urllib.parse.urlparse(plex_address)
+        plex_scheme = parsed.scheme or "http"
+        plex_host = parsed.hostname or parsed.path or "127.0.0.1"
+        plex_port = str(parsed.port or plex_port)
+        plex_url = f"{plex_scheme}://{plex_host}:{plex_port}"
+    else:
+        plex_host = "127.0.0.1"
+        plex_url = f"http://{plex_host}:{plex_port}"
+
+    if not os.path.exists(config_file):
+        return False, None
+
+    desired = {
+        "pms_token": plex_token,
+        "pms_url": plex_url,
+        "pms_url_manual": "1" if plex_url else "",
+        "pms_name": plex_name,
+        "pms_ip": plex_host,
+        "pms_port": plex_port,
+        "pms_identifier": plex_identifier,
+    }
+
+    with open(config_file, "r") as f:
+        lines = f.readlines()
+
+    pms_start = None
+    pms_end = None
+    section_re = re.compile(r"^\s*\[[^\]]+\]\s*$")
+    for idx, line in enumerate(lines):
+        if line.strip().lower() == "[pms]":
+            pms_start = idx
+            continue
+        if pms_start is not None and idx > pms_start and section_re.match(line):
+            pms_end = idx
+            break
+
+    if pms_start is None:
+        pms_start = len(lines)
+        pms_end = len(lines)
+        lines.append("\n" if lines and not lines[-1].endswith("\n") else "")
+        lines.append("[PMS]\n")
+        pms_start = len(lines) - 1
+        pms_end = len(lines)
+
+    if pms_end is None:
+        pms_end = len(lines)
+
+    key_line_index = {}
+    for idx in range(pms_start + 1, pms_end):
+        line = lines[idx]
+        if "=" not in line:
+            continue
+        key = line.split("=", 1)[0].strip()
+        if key:
+            key_line_index[key] = idx
+
+    changed = False
+    insert_lines = []
+
+    def _is_blank(value: str) -> bool:
+        stripped = value.strip()
+        return stripped == "" or stripped in ('""', "''")
+
+    for key, value in desired.items():
+        if not value:
+            continue
+        if key in key_line_index:
+            idx = key_line_index[key]
+            current = lines[idx].split("=", 1)[1].strip()
+            if _is_blank(current):
+                lines[idx] = f"{key} = {value}\n"
+                changed = True
+        else:
+            insert_lines.append(f"{key} = {value}\n")
+            changed = True
+
+    if insert_lines:
+        lines[pms_end:pms_end] = insert_lines
+
+    if not changed:
+        logger.info("Tautulli Plex settings are already up to date.")
+        return False, None
+
+    with open(config_file, "w") as f:
+        f.writelines(lines)
+    _chown_recursive_if_needed(
+        os.path.dirname(config_file),
+        CONFIG_MANAGER.get("puid"),
+        CONFIG_MANAGER.get("pgid"),
+    )
+    logger.info("Tautulli Plex settings updated.")
+    return True, None
+
+
+def setup_tautulli(process_handler):
+    config = CONFIG_MANAGER.get("tautulli")
+
+    if not config or not config.get("enabled"):
+        logger.info("Tautulli is disabled. Skipping setup.")
+        return True, None
+
+    config_dir = config.get("config_dir", "/tautulli")
+    config_file = config.get("config_file", "/tautulli/data/config.ini")
+    data_dir = os.path.dirname(config_file)
+    log_file = config.get("log_file", "/tautulli/data/logs/tautulli.log")
+    log_dir = os.path.dirname(log_file)
+    tautulli_py_path = os.path.join(config_dir, "Tautulli.py")
+
+    for path in [config_dir, data_dir, log_dir]:
+        os.makedirs(path, exist_ok=True)
+        _chown_recursive_if_needed(
+            path, CONFIG_MANAGER.get("puid"), CONFIG_MANAGER.get("pgid")
+        )
+
+    if not os.path.isfile(tautulli_py_path):
+        logger.warning("Tautulli not found at %s. Downloading...", tautulli_py_path)
+        exclude_dirs = None
+        if config.get("clear_on_update"):
+            exclude_dirs = config.get("exclude_dirs", [])
+            success, error = clear_directory(config_dir, exclude_dirs)
+            if not success:
+                return False, f"Failed to clear directory: {error}"
+
+        if config.get("branch_enabled"):
+            branch = config.get("branch", "master")
+            branch_url, zip_folder_name = downloader.get_branch(
+                config.get("repo_owner"),
+                config.get("repo_name"),
+                branch,
+            )
+            if not branch_url:
+                return False, f"Failed to fetch branch {branch}"
+            success, error = downloader.download_and_extract(
+                branch_url,
+                config_dir,
+                zip_folder_name=zip_folder_name,
+                exclude_dirs=exclude_dirs,
+            )
+            if not success:
+                return False, f"Failed to download Tautulli branch: {error}"
+        else:
+            release_version = config.get("release_version", "latest")
+            version_to_write = release_version
+            if release_version.lower() == "latest":
+                latest_version, latest_error = downloader.get_latest_release(
+                    config.get("repo_owner"),
+                    config.get("repo_name"),
+                    nightly=False,
+                )
+                if latest_version:
+                    version_to_write = latest_version
+                else:
+                    logger.warning(
+                        "Failed to resolve latest Tautulli version: %s", latest_error
+                    )
+            success, error = downloader.download_release_version(
+                process_name=config.get("process_name"),
+                key="tautulli",
+                repo_owner=config.get("repo_owner"),
+                repo_name=config.get("repo_name"),
+                release_version=release_version,
+                target_dir=config_dir,
+                exclude_dirs=exclude_dirs,
+            )
+            if not success:
+                return False, f"Failed to download Tautulli release: {error}"
+            versions.version_write(
+                config.get("process_name"),
+                key="tautulli",
+                version_path=os.path.join(config_dir, "version.txt"),
+                version=version_to_write,
+            )
+
+    if config.get("platforms"):
+        venv_path = os.path.join(config_dir, "venv")
+        if not os.path.isdir(venv_path):
+            success, error = setup_environment(
+                process_handler,
+                "tautulli",
+                config.get("platforms"),
+                config_dir,
+            )
+            if not success:
+                return False, f"Failed to set up environment for Tautulli: {error}"
+    # updated, error = _configure_tautulli_plex(config_file)
+    # if error:
+    #    return False, error
+    # if updated:
+    #    logger.info("Configured Tautulli Plex settings from Plex config.")
+
+    command = config.get("command", [])
+    port = str(config.get("port", 8181))
+    if isinstance(command, list):
+        for i, arg in enumerate(command):
+            if arg in ("-p", "--port") and i + 1 < len(command):
+                if command[i + 1] != "{port}":
+                    command[i + 1] = "{port}"
+                break
+        command = [
+            arg.replace("{port}", port) if "{port}" in arg else arg for arg in command
+        ]
+        config["command"] = command
+
+    logger.info("Tautulli setup complete.")
+    return True, None
+
+
 def setup_jellyfin():
     config = CONFIG_MANAGER.get("jellyfin")
 
@@ -1747,6 +1996,7 @@ def setup_emby():
         logger.info("Setting up Emby Server runtime...")
         use_system_ffmpeg = config.get("use_system_ffmpeg", True)
         if use_system_ffmpeg:
+
             def relink_binary(link_path, target_path, label):
                 if not os.path.exists(target_path):
                     logger.warning(
@@ -1765,7 +2015,9 @@ def setup_emby():
                 os.symlink(target_path, link_path)
                 logger.debug(f"Linked Emby {label} to system {label}.")
 
-            relink_binary("/opt/emby-server/bin/emby-ffmpeg", "/usr/bin/ffmpeg", "ffmpeg")
+            relink_binary(
+                "/opt/emby-server/bin/emby-ffmpeg", "/usr/bin/ffmpeg", "ffmpeg"
+            )
             relink_binary("/opt/emby-server/bin/ffprobe", "/usr/bin/ffprobe", "ffprobe")
         config["command"] = cmd + [
             "-programdata",
