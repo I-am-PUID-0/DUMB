@@ -44,7 +44,7 @@ async def websocket_metrics(
                 .get("metrics", {})
                 .get("history_dir", "/config/metrics")
             )
-            items, series, truncated, stats = read_history_series(
+            items, series, truncated, stats, bucket_seconds = read_history_series(
                 history_dir=history_dir,
                 since=history_since,
                 full=history_full,
@@ -63,6 +63,7 @@ async def websocket_metrics(
                         "timestamps": [item.get("timestamp") for item in items],
                         "truncated": truncated,
                         "stats": stats,
+                        "bucket_seconds": bucket_seconds,
                     }
                 )
             )

@@ -14,6 +14,26 @@ downloader = Downloader()
 versions = Versions()
 
 
+def _chown_recursive_if_needed(path: str, user_id: int, group_id: int) -> None:
+    try:
+        stat_info = os.stat(path)
+    except Exception as e:
+        logger.debug("Failed stat for %s: %s", path, e)
+        stat_info = None
+    chown_single(path, user_id, group_id)
+    if stat_info and stat_info.st_uid == user_id and stat_info.st_gid == group_id:
+        logger.debug(
+            "Skipping recursive chown for %s; owner matches %s:%s",
+            path,
+            user_id,
+            group_id,
+        )
+        return
+    ok, err = chown_recursive(path, user_id, group_id)
+    if err:
+        logger.debug("Recursive chown failed for %s: %s", path, err)
+
+
 def setup_release_version(process_handler, config, process_name, key):
     if key == "plex_debrid":
         return False, "Release version not supported for plex_debrid."
@@ -466,7 +486,7 @@ def ensure_arr_config(
 """
         with open(config_file, "w") as f:
             f.write(config_content)
-        chown_recursive(os.path.dirname(config_file), user_id, group_id)
+        _chown_recursive_if_needed(os.path.dirname(config_file), user_id, group_id)
         logger.info(f"[{app_name}] Created new config.xml at {config_file}")
         return
 
@@ -539,7 +559,9 @@ def setup_arr_instance(key, instance_name, instance, process_name):
         os.chmod(binary_path, 0o755)
     config_dir = instance["config_dir"]
     os.makedirs(config_dir, exist_ok=True)
-    chown_recursive(config_dir, CONFIG_MANAGER.get("puid"), CONFIG_MANAGER.get("pgid"))
+    _chown_recursive_if_needed(
+        config_dir, CONFIG_MANAGER.get("puid"), CONFIG_MANAGER.get("pgid")
+    )
 
     logger.info(f"Setting up {process_name} environment...")
     config_file = instance["config_file"]

@@ -10,7 +10,7 @@ def read_history(history_dir, since=None, full=False, limit=5000, default_hours=
 
     items = []
     truncated = False
-    files = _list_history_files(history_dir)
+    files = _list_history_files(history_dir, since=since)
     for path in reversed(files):
         for entry in _read_history_file(path):
             timestamp = entry.get("timestamp")
@@ -29,16 +29,39 @@ def read_history(history_dir, since=None, full=False, limit=5000, default_hours=
     return items, truncated
 
 
-def _list_history_files(history_dir):
+def _list_history_files(history_dir, since=None):
     if not os.path.isdir(history_dir):
         return []
-    return sorted(
-        [
-            os.path.join(history_dir, name)
-            for name in os.listdir(history_dir)
-            if name.startswith("metrics-") and name.endswith(".jsonl")
-        ]
-    )
+    cutoff_date = None
+    if since is not None:
+        try:
+            cutoff_date = time.strftime("%Y%m%d", time.localtime(since))
+        except (OSError, ValueError):
+            cutoff_date = None
+    files = []
+    for name in os.listdir(history_dir):
+        date_str = _parse_history_date(name)
+        if not date_str:
+            continue
+        if cutoff_date and date_str < cutoff_date:
+            continue
+        files.append(os.path.join(history_dir, name))
+    return sorted(files)
+
+
+def _parse_history_date(name):
+    if not name.startswith("metrics-") or not name.endswith(".jsonl"):
+        return None
+    parts = name.replace(".jsonl", "").split("-")
+    if len(parts) != 3:
+        return None
+    date_str = parts[1]
+    index_str = parts[2]
+    if len(date_str) != 8 or not date_str.isdigit():
+        return None
+    if not index_str.isdigit():
+        return None
+    return date_str
 
 
 def _read_history_file(path):
@@ -227,6 +250,18 @@ def read_history_series(
     bucket_seconds=None,
     max_points=600,
 ):
+    range_seconds = None
+    if since is not None:
+        range_seconds = max(time.time() - since, 1)
+    elif not full:
+        range_seconds = default_hours * 60 * 60
+
+    if range_seconds is not None and max_points and max_points > 0:
+        auto_bucket = max(5, int(math.ceil(range_seconds / max_points)))
+        if bucket_seconds is None or bucket_seconds <= 0:
+            bucket_seconds = auto_bucket
+        else:
+            bucket_seconds = max(bucket_seconds, auto_bucket)
     items, truncated = read_history(
         history_dir=history_dir,
         since=since,
@@ -240,4 +275,4 @@ def read_history_series(
     compacted = compact_history_items(selected)
     series = build_history_series(compacted)
     stats = compute_history_stats(items)
-    return compacted, series, truncated, stats
+    return compacted, series, truncated, stats, bucket_seconds

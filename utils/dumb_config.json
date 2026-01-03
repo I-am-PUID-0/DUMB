@@ -58,6 +58,7 @@
             "history_interval_sec": 5,
             "history_retention_days": 7,
             "history_max_file_mb": 50,
+            "history_max_total_mb": 100,
             "history_dir": "/config/metrics"
         }
     },

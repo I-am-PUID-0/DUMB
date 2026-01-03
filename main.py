@@ -250,33 +250,48 @@ def main():
         process_handler.shutdown(exit_code=1)
 
     def metrics_history_worker():
-        metrics_cfg = config.get("dumb", {}).get("metrics", {})
-        if not metrics_cfg.get("history_enabled", True):
-            return
+        def _get_metrics_cfg():
+            cfg_root = config.config if hasattr(config, "config") else config
+            return (cfg_root.get("dumb", {}) or {}).get("metrics", {})
 
-        interval = metrics_cfg.get("history_interval_sec", 5)
-        retention_days = metrics_cfg.get("history_retention_days", 7)
-        max_file_mb = metrics_cfg.get("history_max_file_mb", 50)
-        history_dir = metrics_cfg.get("history_dir", "/config/metrics")
-        try:
-            interval = float(interval)
-        except (TypeError, ValueError):
-            interval = 5.0
-        interval = max(0.5, interval)
-
-        writer = MetricsHistoryWriter(
-            base_dir=history_dir,
-            retention_days=retention_days,
-            max_file_mb=max_file_mb,
-            logger=logger,
-        )
         from utils.dependencies import get_metrics_collector
 
         collector = get_metrics_collector()
+        writer = None
+        last_writer_cfg = None
         while True:
             try:
-                snapshot = collector.snapshot()
-                writer.write(snapshot)
+                metrics_cfg = _get_metrics_cfg()
+                enabled = metrics_cfg.get("history_enabled", True)
+                interval = metrics_cfg.get("history_interval_sec", 5)
+                retention_days = metrics_cfg.get("history_retention_days", 7)
+                max_file_mb = metrics_cfg.get("history_max_file_mb", 50)
+                max_total_mb = metrics_cfg.get("history_max_total_mb", 100)
+                history_dir = metrics_cfg.get("history_dir", "/config/metrics")
+
+                try:
+                    interval = float(interval)
+                except (TypeError, ValueError):
+                    interval = 5.0
+                interval = max(0.5, interval)
+
+                writer_cfg = (history_dir, retention_days, max_file_mb, max_total_mb)
+                if enabled:
+                    if writer is None or writer_cfg != last_writer_cfg:
+                        writer = MetricsHistoryWriter(
+                            base_dir=history_dir,
+                            retention_days=retention_days,
+                            max_file_mb=max_file_mb,
+                            max_total_mb=max_total_mb,
+                            logger=logger,
+                        )
+                        last_writer_cfg = writer_cfg
+
+                    snapshot = collector.snapshot()
+                    writer.write(snapshot)
+                else:
+                    writer = None
+                    last_writer_cfg = None
             except Exception as e:
                 logger.error(f"Metrics history worker error: {e}")
             time.sleep(interval)

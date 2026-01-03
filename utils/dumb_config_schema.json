@@ -202,6 +202,9 @@
             "history_max_file_mb": {
               "type": "number"
             },
+            "history_max_total_mb": {
+              "type": "number"
+            },
             "history_dir": {
               "type": "string"
             }
@@ -211,6 +214,7 @@
             "history_interval_sec",
             "history_retention_days",
             "history_max_file_mb",
+            "history_max_total_mb",
             "history_dir"
           ]
         }

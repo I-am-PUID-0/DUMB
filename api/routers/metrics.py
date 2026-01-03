@@ -53,7 +53,7 @@ async def get_metrics_history_series(
     if since is None and not full:
         since = time.time() - (6 * 60 * 60)
 
-    items, series, truncated, stats = read_history_series(
+    items, series, truncated, stats, bucket_seconds = read_history_series(
         history_dir=history_dir,
         since=since,
         full=full,
@@ -69,4 +69,5 @@ async def get_metrics_history_series(
         "timestamps": timestamps,
         "truncated": truncated,
         "stats": stats,
+        "bucket_seconds": bucket_seconds,
     }
