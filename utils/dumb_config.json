@@ -15,6 +15,22 @@
         "github_token": "",
         "github_username": "",
         "onboarding_completed": false,
+        "auto_restart": {
+            "enabled": false,
+            "restart_on_unhealthy": true,
+            "healthcheck_interval": 30,
+            "unhealthy_threshold": 3,
+            "max_restarts": 3,
+            "window_seconds": 300,
+            "backoff_seconds": [
+                5,
+                15,
+                45,
+                120
+            ],
+            "grace_period_seconds": 30,
+            "services": []
+        },
         "api_service": {
             "enabled": true,
             "process_name": "DUMB API",

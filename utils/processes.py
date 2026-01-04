@@ -1,7 +1,7 @@
 from utils.logger import SubprocessLogger, get_subprocess_file_logger
 from utils.config_loader import CONFIG_MANAGER
 from concurrent.futures import ThreadPoolExecutor, as_completed
-import shlex, os, time, signal, threading, subprocess, sys, uvicorn
+import shlex, os, time, signal, threading, subprocess, sys, uvicorn, socket, psutil
 from json import dump
 
 
@@ -28,6 +28,9 @@ class ProcessHandler:
         self.returncode = None
         self.shutting_down = False
         self.setup_tracker = set()
+        self.auto_restart_state = {}
+        self.auto_restart_lock = threading.Lock()
+        self.auto_restart_thread = None
 
     def _update_running_processes_file(self):
         running_processes = {
@@ -65,6 +68,8 @@ class ProcessHandler:
         suppress_logging=False,
         env=None,
     ):
+        self._set_restart_disabled(process_name, False)
+        self._reset_healthcheck_state(process_name)
         skip_setup = {"pgAgent"}
         key = None
 
@@ -237,6 +242,7 @@ class ProcessHandler:
                 "name": process_name,
                 "description": process_description,
                 "process_obj": process,
+                "start_time": time.time(),
             }
             self.process_names[process_name] = process
 
@@ -272,12 +278,23 @@ class ProcessHandler:
                     break
                 process_info = self.processes.pop(pid, {"description": "Unknown"})
                 process_name = process_info.get("name")
+                process_obj = process_info.get("process_obj")
+                exit_code = None
+                if process_obj:
+                    exit_code = process_obj.returncode
                 if process_name in self.process_names:
                     del self.process_names[process_name]
                 self.logger.debug(
                     f"Reaped zombie process with PID: {pid}, "
                     f"Description: {process_info.get('description', 'Unknown')}"
                 )
+                if process_name:
+                    reason = (
+                        f"Exited with code {exit_code}"
+                        if exit_code is not None
+                        else "Exited"
+                    )
+                    self._maybe_schedule_restart(process_name, reason)
             except ChildProcessError:
                 break
 
@@ -317,7 +334,7 @@ class ProcessHandler:
 
             self._update_running_processes_file()
 
-    def stop_process(self, process_name):
+    def stop_process(self, process_name, disable_restart=True):
         try:
             process_description = process_name
             self.logger.info(f"Initiating shutdown for {process_description}")
@@ -325,6 +342,8 @@ class ProcessHandler:
             process = self.process_names.get(process_name)
             if process:
                 self.logger.debug(f"Process {process_name} found: {process}")
+                if disable_restart:
+                    self._set_restart_disabled(process_name, True)
                 process.terminate()
                 max_attempts = 1 if process_name == "riven_backend" else 3
                 attempt = 0
@@ -439,3 +458,322 @@ class ProcessHandler:
                         self.logger.error(
                             f"Failed to unmount rclone mount for instance {instance_name}: {rclone_mount_path}: {umount.stderr.strip()}"
                         )
+
+    def start_auto_restart_monitor(self):
+        if self.auto_restart_thread and self.auto_restart_thread.is_alive():
+            return
+
+        def monitor():
+            while not self.shutting_down:
+                cfg = self._get_auto_restart_config()
+                if not cfg.get("enabled", False):
+                    time.sleep(5)
+                    continue
+                grace_period = cfg.get("grace_period_seconds", 30)
+                for process_name, process in list(self.process_names.items()):
+                    if self.shutting_down:
+                        break
+                    policy = self._get_service_restart_policy(process_name)
+                    if not policy:
+                        continue
+                    if not policy.get("restart_on_unhealthy", True):
+                        continue
+                    if self._is_restart_disabled(process_name):
+                        continue
+                    if not process or process.poll() is not None:
+                        continue
+                    if not self._is_ready_for_healthcheck(process_name, grace_period):
+                        continue
+                    if not self._is_healthcheck_due(process_name, policy):
+                        continue
+                    healthy, reason = self._check_process_health(
+                        process_name, process.pid
+                    )
+                    should_restart = self._record_healthcheck_result(
+                        process_name, healthy, reason, policy
+                    )
+                    self._set_last_healthcheck_time(process_name)
+                    if should_restart and reason:
+                        self._maybe_schedule_restart(process_name, reason)
+                time.sleep(5)
+
+        self.auto_restart_thread = threading.Thread(
+            target=monitor, daemon=True, name="auto-restart-monitor"
+        )
+        self.auto_restart_thread.start()
+
+    def _get_auto_restart_config(self):
+        cfg = CONFIG_MANAGER.get("dumb", {}).get("auto_restart", {}) or {}
+        defaults = {
+            "enabled": False,
+            "restart_on_unhealthy": True,
+            "healthcheck_interval": 30,
+            "unhealthy_threshold": 3,
+            "max_restarts": 3,
+            "window_seconds": 300,
+            "backoff_seconds": [5, 15, 45, 120],
+            "grace_period_seconds": 30,
+            "services": [],
+        }
+        merged = defaults.copy()
+        merged.update(cfg)
+        return merged
+
+    def _get_restart_state(self, process_name):
+        return self.auto_restart_state.setdefault(
+            process_name,
+            {
+                "restart_attempts": 0,
+                "restart_successes": 0,
+                "restart_failures": 0,
+                "recent_attempts": [],
+                "pending": False,
+                "next_restart_time": None,
+                "disabled": False,
+                "last_restart_time": None,
+                "last_failure_reason": None,
+                "last_exit_time": None,
+                "last_exit_reason": None,
+                "last_healthcheck_time": None,
+                "unhealthy_count": 0,
+            },
+        )
+
+    def _normalize_restart_process_name(self, name):
+        return (name or "").strip().lower()
+
+    def _get_service_restart_policy(self, process_name):
+        cfg = self._get_auto_restart_config()
+        if not cfg.get("enabled", False):
+            return None
+
+        services = cfg.get("services", [])
+        if not services:
+            return None
+
+        target = self._normalize_restart_process_name(process_name)
+        for entry in services:
+            if not isinstance(entry, dict):
+                continue
+            entry_name = self._normalize_restart_process_name(
+                entry.get("process_name")
+            )
+            if not entry_name or entry_name != target:
+                continue
+            merged = cfg.copy()
+            merged.update(entry)
+            return merged if merged.get("enabled", cfg.get("enabled", False)) else None
+        return None
+
+    def _is_healthcheck_due(self, process_name, policy):
+        interval = policy.get("healthcheck_interval", 30)
+        if interval <= 0:
+            return False
+        with self.auto_restart_lock:
+            state = self._get_restart_state(process_name)
+            last = state.get("last_healthcheck_time")
+        if not last:
+            return True
+        return (time.time() - last) >= interval
+
+    def _set_last_healthcheck_time(self, process_name):
+        with self.auto_restart_lock:
+            state = self._get_restart_state(process_name)
+            state["last_healthcheck_time"] = time.time()
+
+    def _record_healthcheck_result(self, process_name, healthy, reason, policy):
+        if healthy:
+            with self.auto_restart_lock:
+                state = self._get_restart_state(process_name)
+                state["unhealthy_count"] = 0
+            return False
+
+        threshold = policy.get("unhealthy_threshold", 3)
+        with self.auto_restart_lock:
+            state = self._get_restart_state(process_name)
+            state["unhealthy_count"] += 1
+            count = state["unhealthy_count"]
+            if count >= threshold:
+                state["unhealthy_count"] = 0
+                return True
+        return False
+
+    def _reset_healthcheck_state(self, process_name):
+        with self.auto_restart_lock:
+            state = self._get_restart_state(process_name)
+            state["unhealthy_count"] = 0
+            state["last_healthcheck_time"] = None
+
+    def _set_restart_disabled(self, process_name, disabled):
+        with self.auto_restart_lock:
+            state = self._get_restart_state(process_name)
+            state["disabled"] = disabled
+
+    def _is_restart_disabled(self, process_name):
+        with self.auto_restart_lock:
+            state = self._get_restart_state(process_name)
+            return state.get("disabled", False)
+
+    def _is_ready_for_healthcheck(self, process_name, grace_period):
+        for pid, info in self.processes.items():
+            if info.get("name") == process_name:
+                start_time = info.get("start_time")
+                if not start_time:
+                    return True
+                return (time.time() - start_time) >= grace_period
+        return True
+
+    def _maybe_schedule_restart(self, process_name, reason):
+        if self.shutting_down or self._is_restart_disabled(process_name):
+            return
+        policy = self._get_service_restart_policy(process_name)
+        if not policy:
+            return
+
+        now = time.time()
+        with self.auto_restart_lock:
+            state = self._get_restart_state(process_name)
+            window_seconds = policy.get("window_seconds", 300)
+            recent = [t for t in state["recent_attempts"] if now - t < window_seconds]
+            state["recent_attempts"] = recent
+            if len(recent) >= policy.get("max_restarts", 3):
+                state["last_failure_reason"] = reason
+                self.logger.warning(
+                    f"Auto-restart suppressed for {process_name}: restart limit reached."
+                )
+                return
+            if state["pending"]:
+                return
+
+            backoffs = policy.get("backoff_seconds", [5, 15, 45, 120])
+            index = min(len(recent), max(len(backoffs) - 1, 0))
+            delay = backoffs[index] if backoffs else 0
+            state["pending"] = True
+            state["next_restart_time"] = now + delay
+            state["last_exit_time"] = now
+            state["last_exit_reason"] = reason
+
+        def do_restart():
+            if delay:
+                time.sleep(delay)
+            if self.shutting_down or self._is_restart_disabled(process_name):
+                with self.auto_restart_lock:
+                    state = self._get_restart_state(process_name)
+                    state["pending"] = False
+                    state["next_restart_time"] = None
+                return
+            if process_name in self.process_names:
+                self.stop_process(process_name, disable_restart=False)
+
+            with self.auto_restart_lock:
+                state = self._get_restart_state(process_name)
+                state["restart_attempts"] += 1
+                state["recent_attempts"].append(time.time())
+
+            success, error = self.start_process(process_name)
+            with self.auto_restart_lock:
+                state = self._get_restart_state(process_name)
+                state["pending"] = False
+                state["next_restart_time"] = None
+                if success:
+                    now_ts = time.time()
+                    state["restart_successes"] += 1
+                    state["last_restart_time"] = now_ts
+                    state["last_failure_reason"] = None
+                else:
+                    state["restart_failures"] += 1
+                    state["last_failure_reason"] = error
+            if success:
+                self.logger.warning(
+                    f"Auto-restarted {process_name} after failure: {reason}"
+                )
+            else:
+                self.logger.error(
+                    f"Auto-restart failed for {process_name}: {error}"
+                )
+
+        threading.Thread(
+            target=do_restart, daemon=True, name=f"auto-restart-{process_name}"
+        ).start()
+
+    def _collect_config_ports(self, config):
+        ports = set()
+        for key in ("port", "frontend_port", "backend_port", "webdav_port"):
+            value = config.get(key)
+            if isinstance(value, int):
+                ports.add(value)
+        env = config.get("env", {})
+        for key in ("PORT", "FRONTEND_PORT", "BACKEND_PORT", "WEBDAV_PORT"):
+            value = env.get(key)
+            if isinstance(value, str) and value.isdigit():
+                ports.add(int(value))
+        return sorted(ports)
+
+    def _normalize_host(self, host):
+        if not host or host in {"0.0.0.0", "::"}:
+            return "127.0.0.1"
+        return host
+
+    def _is_port_open(self, host, port, timeout=1.5):
+        try:
+            with socket.create_connection((host, port), timeout=timeout):
+                return True
+        except OSError:
+            return False
+
+    def _get_process_config(self, process_name):
+        if not CONFIG_MANAGER:
+            return None
+        key, instance_name = CONFIG_MANAGER.find_key_for_process(process_name)
+        if not key and not instance_name:
+            return None
+        return CONFIG_MANAGER.get_instance(instance_name, key)
+
+    def _check_process_health(self, process_name, pid):
+        if not pid or not psutil.pid_exists(pid):
+            return False, "Process PID not running"
+
+        try:
+            proc = psutil.Process(pid)
+            if not proc.is_running() or proc.status() == psutil.STATUS_ZOMBIE:
+                return False, "Process not healthy"
+        except (psutil.NoSuchProcess, psutil.AccessDenied):
+            return False, "Process could not be inspected"
+
+        config = self._get_process_config(process_name)
+        if not config:
+            return True, None
+
+        host = self._normalize_host(config.get("host"))
+        ports = self._collect_config_ports(config)
+        for port in ports:
+            if not self._is_port_open(host, port):
+                return False, f"Port {host}:{port} not responding"
+
+        return True, None
+
+    def get_restart_stats(self, process_name):
+        policy = self._get_service_restart_policy(process_name)
+        if policy:
+            unhealthy_threshold = policy.get("unhealthy_threshold", 3)
+        else:
+            unhealthy_threshold = self._get_auto_restart_config().get(
+                "unhealthy_threshold", 3
+            )
+        with self.auto_restart_lock:
+            state = self._get_restart_state(process_name)
+            return {
+                "restart_attempts": state["restart_attempts"],
+                "restart_successes": state["restart_successes"],
+                "restart_failures": state["restart_failures"],
+                "recent_restart_attempts": len(state["recent_attempts"]),
+                "pending": state["pending"],
+                "next_restart_time": state["next_restart_time"],
+                "disabled": state["disabled"],
+                "last_restart_time": state["last_restart_time"],
+                "last_failure_reason": state["last_failure_reason"],
+                "last_exit_time": state["last_exit_time"],
+                "last_exit_reason": state["last_exit_reason"],
+                "unhealthy_count": state["unhealthy_count"],
+                "unhealthy_threshold": unhealthy_threshold,
+            }

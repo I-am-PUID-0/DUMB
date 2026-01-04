@@ -229,6 +229,7 @@ def main():
         status_manager=status_manager,
         logger=logger,
     )
+    process_handler.start_auto_restart_monitor()
 
     try:
         user_management.create_system_user()

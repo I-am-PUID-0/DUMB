@@ -49,6 +49,90 @@
         "onboarding_completed": {
           "type": "boolean"
         },
+        "auto_restart": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "restart_on_unhealthy": {
+              "type": "boolean"
+            },
+            "healthcheck_interval": {
+              "type": "number"
+            },
+            "unhealthy_threshold": {
+              "type": "integer"
+            },
+            "max_restarts": {
+              "type": "integer"
+            },
+            "window_seconds": {
+              "type": "number"
+            },
+            "backoff_seconds": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              }
+            },
+            "grace_period_seconds": {
+              "type": "number"
+            },
+            "services": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "process_name": {
+                    "type": "string"
+                  },
+                  "enabled": {
+                    "type": "boolean"
+                  },
+                  "restart_on_unhealthy": {
+                    "type": "boolean"
+                  },
+                  "healthcheck_interval": {
+                    "type": "number"
+                  },
+                  "unhealthy_threshold": {
+                    "type": "integer"
+                  },
+                  "max_restarts": {
+                    "type": "integer"
+                  },
+                  "window_seconds": {
+                    "type": "number"
+                  },
+                  "backoff_seconds": {
+                    "type": "array",
+                    "items": {
+                      "type": "number"
+                    }
+                  },
+                  "grace_period_seconds": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "process_name"
+                ]
+              }
+            }
+          },
+          "required": [
+            "enabled",
+            "restart_on_unhealthy",
+            "healthcheck_interval",
+            "unhealthy_threshold",
+            "max_restarts",
+            "window_seconds",
+            "backoff_seconds",
+            "grace_period_seconds",
+            "services"
+          ]
+        },
         "api_service": {
           "type": "object",
           "properties": {
@@ -231,6 +315,7 @@
         "github_token",
         "github_username",
         "onboarding_completed",
+        "auto_restart",
         "api_service",
         "frontend",
         "metrics"

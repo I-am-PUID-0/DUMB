@@ -100,7 +100,15 @@ class APIState:
             return {"status": status}
 
         healthy, reason = self._check_health(matched_name, pid, status)
-        return {"status": status, "healthy": healthy, "health_reason": reason}
+        restart_stats = self.process_handler.get_restart_stats(
+            matched_name or process_name
+        )
+        return {
+            "status": status,
+            "healthy": healthy,
+            "health_reason": reason,
+            "restart": restart_stats,
+        }
 
     def get_running_status_snapshot(self, include_health=False):
         running_processes = self._refresh_status_cache()
@@ -117,6 +125,7 @@ class APIState:
                     "status": "running",
                     "healthy": healthy,
                     "health_reason": reason,
+                    "restart": self.process_handler.get_restart_stats(name),
                 }
             )
         return snapshot
