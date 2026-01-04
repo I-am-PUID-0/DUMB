@@ -935,6 +935,94 @@
         "friendly_name": {
           "type": "string"
         },
+        "dbrepair": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "run_before_start": {
+              "type": "boolean"
+            },
+            "interval_minutes": {
+              "type": "number"
+            },
+            "idle_check_minutes": {
+              "type": "number"
+            },
+            "backoff_multiplier": {
+              "type": "number"
+            },
+            "max_backoff_minutes": {
+              "type": "number"
+            },
+            "max_wait_minutes": {
+              "type": "number"
+            },
+            "install_dir": {
+              "type": "string"
+            },
+            "executable": {
+              "type": "string"
+            },
+            "sqlite_path": {
+              "type": "string"
+            },
+            "databases_path": {
+              "type": "string"
+            },
+            "required_args": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "script_args": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "log_file": {
+              "type": "string"
+            },
+            "db_path": {
+              "type": "string"
+            },
+            "work_dir": {
+              "type": "string"
+            },
+            "command": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "env": {
+              "type": "object"
+            }
+          },
+          "required": [
+            "enabled",
+            "run_before_start",
+            "interval_minutes",
+            "idle_check_minutes",
+            "backoff_multiplier",
+            "max_backoff_minutes",
+            "max_wait_minutes",
+            "install_dir",
+            "executable",
+            "sqlite_path",
+            "databases_path",
+            "required_args",
+            "script_args",
+            "log_file",
+            "db_path",
+            "work_dir",
+            "command",
+            "env"
+          ]
+        },
         "command": {
           "type": "array",
           "items": {
@@ -959,6 +1047,7 @@
         "log_file",
         "plex_claim",
         "friendly_name",
+        "dbrepair",
         "command",
         "env"
       ]

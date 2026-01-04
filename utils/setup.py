@@ -1517,6 +1517,16 @@ def setup_plex():
         chown_recursive(
             config["config_dir"], CONFIG_MANAGER.get("puid"), CONFIG_MANAGER.get("pgid")
         )
+    dbrepair_cfg = config.get("dbrepair", {}) or {}
+    dbrepair_dir = dbrepair_cfg.get("install_dir", "/data/dbrepair")
+    try:
+        os.makedirs(dbrepair_dir, exist_ok=True)
+        if os.stat(dbrepair_dir).st_uid != CONFIG_MANAGER.get("puid"):
+            chown_recursive(
+                dbrepair_dir, CONFIG_MANAGER.get("puid"), CONFIG_MANAGER.get("pgid")
+            )
+    except Exception as e:
+        logger.warning("Failed to prepare DBRepair dir %s: %s", dbrepair_dir, e)
     logger.info("Setting up Plex Media Server environment...")
     env_vars = {
         "PLEX_MEDIA_SERVER_APPLICATION_SUPPORT_DIR": config["config_dir"],
@@ -1558,6 +1568,12 @@ def setup_plex():
                         CONFIG_MANAGER.get("puid"),
                         CONFIG_MANAGER.get("pgid"),
                     )
+    dbrepair_cfg = config.get("dbrepair", {}) or {}
+    if dbrepair_cfg.get("enabled") and dbrepair_cfg.get("run_before_start"):
+        from utils.plex_dbrepair import run_dbrepair_once
+
+        if not run_dbrepair_once(run_before_start=True):
+            logger.warning("DBRepair pre-start run skipped or failed.")
     command = ["/usr/lib/plexmediaserver/Plex Media Server"]
     config["command"] = command
     return True, None

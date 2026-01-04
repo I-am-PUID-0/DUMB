@@ -21,6 +21,12 @@ class LogFileResponse(BaseModel):
 def find_log_file(process_name: str, logger):
     logger.debug(f"Looking up process: {process_name}")
 
+    if process_name.lower() in {"plex dbrepair", "dbrepair"}:
+        plex_cfg = CONFIG_MANAGER.get("plex", {}) or {}
+        log_file = plex_cfg.get("dbrepair", {}).get("log_file")
+        if log_file:
+            return resolve_path(log_file)
+
     if "dumb" in process_name.lower() or "dmb" in process_name.lower():
         log_dir = resolve_path("/log")
         if log_dir.exists():

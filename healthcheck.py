@@ -61,6 +61,8 @@ def _get_process_config(process_name):
 def verify_processes(running_processes):
     error_messages = []
     for process_name, pid in running_processes.items():
+        if process_name.lower() in {"plex dbrepair", "dbrepair"}:
+            continue
         if not psutil.pid_exists(pid):
             error_messages.append(
                 f"The process {process_name} (PID: {pid}) is not running."

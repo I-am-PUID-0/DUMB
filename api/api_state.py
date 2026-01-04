@@ -59,6 +59,10 @@ class APIState:
         for stored_name in running_processes:
             if normalized_input == normalize(stored_name):
                 return "running"
+        if normalized_input in {"plexdbrepair", "dbrepair"}:
+            plex_cfg = CONFIG_MANAGER.get("plex", {}) or {}
+            if plex_cfg.get("dbrepair", {}).get("enabled"):
+                return "idle"
         return "stopped"
 
     def get_running_processes(self):
@@ -80,6 +84,10 @@ class APIState:
 
         if normalized_input in ("dumbapi", "dmbapi"):
             status = "running"
+        elif normalized_input in {"plexdbrepair", "dbrepair"}:
+            plex_cfg = CONFIG_MANAGER.get("plex", {}) or {}
+            if plex_cfg.get("dbrepair", {}).get("enabled"):
+                status = "idle"
         else:
             for stored_name, stored_pid in running_processes.items():
                 if normalized_input == normalize(stored_name):
@@ -147,6 +155,8 @@ class APIState:
         return CONFIG_MANAGER.get_instance(instance_name, key)
 
     def _check_health(self, process_name, pid, status):
+        if status == "idle":
+            return True, "Process idle"
         if status != "running" or not process_name:
             return False, "Process not running"
 

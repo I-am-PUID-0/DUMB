@@ -7,6 +7,7 @@ from utils.metrics_history import MetricsHistoryWriter
 from utils.processes import ProcessHandler
 from utils.auto_update import Update
 from utils.dependencies import initialize_dependencies
+from utils.plex_dbrepair import start_plex_dbrepair_worker
 import subprocess, threading, time, tomllib, os
 
 
@@ -349,6 +350,10 @@ def main():
 
     metrics_thread = threading.Thread(target=metrics_history_worker, daemon=True)
     metrics_thread.start()
+
+    plex_cfg = config.get("plex", {}) or {}
+    if plex_cfg.get("dbrepair", {}).get("enabled"):
+        start_plex_dbrepair_worker()
 
     threading.Event().wait()
 

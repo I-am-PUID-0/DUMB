@@ -161,6 +161,8 @@ class ProcessHandler:
                 "dotnet_env_restore",
                 "dotnet_publish",
                 "go_build",
+                "Plex DBRepair",
+                "dbrepair",
             ]
 
             if enabled_rclone_processes:
@@ -225,7 +227,7 @@ class ProcessHandler:
 
             self.logger.info(f"{process_name} process started with PID: {process.pid}")
 
-            if any("plexmediaserver" in part for part in command):
+            if isinstance(command, list) and command and "plexmediaserver" in command[0]:
                 self.logger.info(
                     "If you see 'Critical: libusb_init failed' in the logs, "
                     "it is a known issue with Plex and can be ignored."
@@ -312,6 +314,8 @@ class ProcessHandler:
 
             if process_name in self.process_names:
                 del self.process_names[process_name]
+
+            self._update_running_processes_file()
 
     def stop_process(self, process_name):
         try:
