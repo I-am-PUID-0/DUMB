@@ -138,6 +138,9 @@ def load_config_file(config_path):
             else:
                 config_data, raw_config = parse_rclone_config(config_path)
                 config_format = "rclone"
+        elif config_path.suffix == ".ini":
+            config_data, raw_config = parse_ini_config(config_path)
+            config_format = "ini"
         elif config_path.suffix == ".py":
             config_data = parse_python_config(config_path)
             with open(config_path, "r") as file:
@@ -194,6 +197,9 @@ def save_config_file(config_path, config_data, config_format, updates=None):
                     return
                 elif config_format == "xml":
                     write_to_file(config_path, updates)
+                    return
+                elif config_format == "ini":
+                    write_ini_config(config_path, updates)
                     return
                 else:
                     raise HTTPException(
@@ -252,6 +258,8 @@ def save_config_file(config_path, config_data, config_format, updates=None):
                 xml_text = xml_text.lstrip()
                 xml_text = "\n".join(xml_text.splitlines()[1:])
             write_to_file(config_path, xml_text)
+        elif config_format == "ini":
+            write_ini_config(config_path, config_data)
         else:
             raise HTTPException(
                 status_code=400, detail=f"Unsupported config format: {config_format}"
@@ -349,6 +357,41 @@ def write_rclone_config(file_path, config_data):
         raise ValueError("Expected raw string or dict for Rclone config.")
 
     parser = configparser.ConfigParser()
+    parser.optionxform = str
+    for section, values in config_data.items():
+        parser[section] = {}
+        if isinstance(values, dict):
+            for key, value in values.items():
+                parser[section][key] = str(value)
+
+    with open(file_path, "w") as file:
+        parser.write(file)
+
+
+def parse_ini_config(file_path):
+    parser = configparser.ConfigParser(interpolation=None)
+    parser.optionxform = str
+    parser.read(file_path)
+    config_data = {
+        section: dict(parser.items(section, raw=True)) for section in parser.sections()
+    }
+
+    with open(file_path, "r") as file:
+        raw_text = file.read()
+
+    return config_data, raw_text
+
+
+def write_ini_config(file_path, config_data):
+    validate_file_path(file_path)
+
+    if isinstance(config_data, str):
+        write_to_file(file_path, config_data)
+        return
+    if not isinstance(config_data, dict):
+        raise ValueError("Expected raw string or dict for INI config.")
+
+    parser = configparser.ConfigParser(interpolation=None)
     parser.optionxform = str
     for section, values in config_data.items():
         parser[section] = {}
