@@ -78,6 +78,25 @@
             "history_dir": "/config/metrics"
         }
     },
+    "traefik": {
+        "enabled": false,
+        "process_name": "Traefik",
+        "pinned_version": "v3.6.6",
+        "suppress_logging": false,
+        "log_level": "INFO",
+        "port": 18080,
+        "entrypoints": {
+            "web": {
+                "address": ":18080"
+            }
+        },
+        "command": [
+            "/traefik/traefik",
+            "--configFile=/config/traefik/traefik.yml"
+        ],
+        "config_dir": "/config/traefik",
+        "config_file": "/config/traefik/traefik.yml"
+    },
     "cli_debrid": {
         "enabled": false,
         "process_name": "CLI Debrid",
@@ -218,6 +237,7 @@
         "auto_update": false,
         "auto_update_interval": 24,
         "pinned_version": "",
+        "port": 8096,
         "config_dir": "/jellyfin",
         "config_file": "/jellyfin/config/system.xml",
         "log_file": "/jellyfin/log/jellyfin.log",
@@ -288,7 +308,7 @@
         "dbrepair": {
             "enabled": false,
             "run_before_start": false,
-            "interval_minutes": 1440,
+            "interval_minutes": 10080,
             "idle_check_minutes": 5,
             "backoff_multiplier": 2.0,
             "max_backoff_minutes": 60,

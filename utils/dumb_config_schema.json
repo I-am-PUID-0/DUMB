@@ -321,6 +321,56 @@
         "metrics"
       ]
     },
+    "traefik": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "process_name": {
+          "type": "string"
+        },
+        "pinned_version": {
+          "type": "string"
+        },
+        "suppress_logging": {
+          "type": "boolean"
+        },
+        "log_level": {
+          "type": "string"
+        },
+        "port": {
+          "type": "integer"
+        },
+        "entrypoints": {
+          "type": "object"
+        },
+        "command": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "config_dir": {
+          "type": "string"
+        },
+        "config_file": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "enabled",
+        "process_name",
+        "pinned_version",
+        "suppress_logging",
+        "log_level",
+        "port",
+        "entrypoints",
+        "command",
+        "config_dir",
+        "config_file"
+      ]
+    },
     "cli_debrid": {
       "type": "object",
       "properties": {
@@ -782,6 +832,9 @@
         "pinned_version": {
           "type": "string"
         },
+        "port": {
+          "type": "number"
+        },
         "config_dir": {
           "type": "string"
         },
@@ -808,6 +861,7 @@
         "auto_update",
         "auto_update_interval",
         "pinned_version",
+        "port",
         "config_dir",
         "config_file",
         "log_file",
@@ -2452,6 +2506,7 @@
     "tz",
     "data_root",
     "dumb",
+    "traefik",
     "cli_debrid",
     "cli_battery",
     "decypharr",

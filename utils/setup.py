@@ -4,9 +4,10 @@ from utils.global_logger import logger
 from utils.download import Downloader
 from utils.versions import Versions
 from utils.plex import PlexInstaller
+from utils.traefik_setup import setup_traefik
 from utils.user_management import chown_recursive, chown_single
 import xml.etree.ElementTree as ET
-import yaml, os, shutil, random, subprocess, re, glob, secrets, shlex, time, urllib.parse, base64
+import yaml, os, shutil, random, subprocess, re, glob, secrets, shlex, time, urllib.parse, base64, platform, tarfile, tempfile, urllib.request
 
 user_id = CONFIG_MANAGER.get("puid")
 group_id = CONFIG_MANAGER.get("pgid")
@@ -461,6 +462,11 @@ def setup_project(process_handler, process_name):
 
         if key == "bazarr":
             success, error = setup_bazarr(process_handler)
+            if not success:
+                return False, error
+
+        if key == "traefik":
+            success, error = setup_traefik(process_handler)
             if not success:
                 return False, error
 
@@ -1831,7 +1837,9 @@ def setup_seerr(process_handler):
             logger.debug("Skipping disabled Seerr instance: %s", instance_name)
             continue
 
-        instance_config_dir = instance.get("config_dir") or f"/seerr/{instance_name.lower()}"
+        instance_config_dir = (
+            instance.get("config_dir") or f"/seerr/{instance_name.lower()}"
+        )
         instance["config_dir"] = instance_config_dir
         path_changed = False
 
@@ -1950,12 +1958,18 @@ def setup_seerr(process_handler):
                 )
 
             _chown_recursive_if_needed(
-                instance_config_dir, CONFIG_MANAGER.get("puid"), CONFIG_MANAGER.get("pgid")
+                instance_config_dir,
+                CONFIG_MANAGER.get("puid"),
+                CONFIG_MANAGER.get("pgid"),
             )
 
         if instance.get("platforms"):
             node_modules_path = os.path.join(instance_config_dir, "node_modules")
-            if needs_download or not os.path.isdir(node_modules_path) or not os.path.isfile(entry_path):
+            if (
+                needs_download
+                or not os.path.isdir(node_modules_path)
+                or not os.path.isfile(entry_path)
+            ):
                 success, error = setup_environment(
                     process_handler,
                     "seerr",
@@ -2039,19 +2053,25 @@ def setup_jellyfin():
             chown_recursive(
                 dir_path, CONFIG_MANAGER.get("puid"), CONFIG_MANAGER.get("pgid")
             )
-    logger.info("Setting up Jellyfin Media Server environment...")
-    config["command"] = [
-        "/usr/lib/jellyfin/bin/jellyfin",
-        "--datadir",
-        os.path.join(config["config_dir"], "data"),
-        "--configdir",
-        os.path.join(config["config_dir"], "config"),
-        "--cachedir",
-        os.path.join(config["config_dir"], "cache"),
-        "--logdir",
-        os.path.join(config["config_dir"], "log"),
-    ]
-    return True, None
+        logger.info("Setting up Jellyfin Media Server environment...")
+        config["command"] = [
+            "/usr/lib/jellyfin/bin/jellyfin",
+            "--datadir",
+            os.path.join(config["config_dir"], "data"),
+            "--configdir",
+            os.path.join(config["config_dir"], "config"),
+            "--cachedir",
+            os.path.join(config["config_dir"], "cache"),
+            "--logdir",
+            os.path.join(config["config_dir"], "log"),
+        ]
+        try:
+            from utils.jellyfin_settings import patch_jellyfin_config
+
+            patch_jellyfin_config(config.get("port"))
+        except Exception as e:
+            logger.warning(f"Failed to patch Jellyfin system.xml port: {e}")
+        return True, None
 
 
 def setup_emby():
@@ -2224,6 +2244,12 @@ def setup_emby():
         ]
         logger.debug(f"Emby command set to: {config['command']}")
         config["env"] = config.get("env") or {}
+        try:
+            from utils.emby_settings import patch_emby_config
+
+            patch_emby_config(config.get("port"))
+        except Exception as e:
+            logger.warning(f"Failed to patch Emby system.xml port: {e}")
 
         return True, None
 
@@ -3439,9 +3465,7 @@ def setup_pnpm_environment(process_handler, config_dir):
             logger.info("Build script found. Running pnpm build...")
             if use_corepack_pnpm and "pnpm " in build_script:
                 script_names = []
-                for match in re.findall(
-                    r"pnpm(?:\s+run)?\s+([^\s&|;]+)", build_script
-                ):
+                for match in re.findall(r"pnpm(?:\s+run)?\s+([^\s&|;]+)", build_script):
                     if match not in script_names:
                         script_names.append(match)
                 if not script_names and scripts:
@@ -3475,7 +3499,10 @@ def setup_pnpm_environment(process_handler, config_dir):
                     )
                     process_handler.wait("pnpm_build")
                     if process_handler.returncode != 0:
-                        return False, f"Error during pnpm build: {process_handler.stderr}"
+                        return (
+                            False,
+                            f"Error during pnpm build: {process_handler.stderr}",
+                        )
             else:
                 pnpm_build_cmd = ["pnpm", "run", "build"]
                 if use_corepack_pnpm:
@@ -3494,88 +3521,3 @@ def setup_pnpm_environment(process_handler, config_dir):
 
     except Exception as e:
         return False, f"Error during pnpm setup: {e}"
-
-
-def setup_traefik(process_handler):
-    """Configures and starts Traefik using ProcessHandler"""
-
-    traefik_config = CONFIG_MANAGER.get("traefik")
-    if not traefik_config or not traefik_config.get("enabled"):
-        logger.info("Traefik is disabled. Skipping setup.")
-        return True, None
-
-    config_dir = traefik_config.get("config_dir", "/config/traefik")
-
-    # Ensure config directory exists
-    os.makedirs(config_dir, exist_ok=True)
-
-    logger.info(f"Setting up Traefik configuration in {config_dir}")
-
-    # Generate traefik.yml (static configuration)
-    static_config = {
-        "entryPoints": traefik_config.get("entrypoints", {}),
-        "api": {"dashboard": True},
-        "providers": {"file": {"directory": config_dir, "watch": True}},
-    }
-
-    static_config_path = os.path.join(config_dir, "traefik.yml")
-    with open(static_config_path, "w") as file:
-        yaml.dump(static_config, file, default_flow_style=False)
-
-    logger.info(f"Generated Traefik static config: {static_config_path}")
-
-    # Generate dynamic configuration for services
-    dynamic_config = {"http": {"routers": {}, "services": {}, "middlewares": {}}}
-
-    # Add middleware definitions
-    if "middlewares" in traefik_config:
-        dynamic_config["http"]["middlewares"] = traefik_config["middlewares"]
-
-    # Add services and routers
-    for service_name, service_info in traefik_config.get("services", {}).items():
-        router_name = f"{service_name}_router"
-        service_url = service_info.get("url")
-        middlewares = service_info.get("middlewares", [])
-
-        if not service_url:
-            logger.warning(f"Skipping {service_name}, no URL defined")
-            continue
-
-        dynamic_config["http"]["services"][service_name] = {
-            "loadBalancer": {"servers": [{"url": service_url}]}
-        }
-
-        dynamic_config["http"]["routers"][router_name] = {
-            "rule": f"PathPrefix(`/{service_name}`)",
-            "service": service_name,
-            "entryPoints": ["web"],
-            "middlewares": middlewares,
-        }
-
-    dynamic_config_path = os.path.join(config_dir, "dynamic_config.yml")
-    with open(dynamic_config_path, "w") as file:
-        yaml.dump(dynamic_config, file, default_flow_style=False)
-
-    logger.info(f"Generated Traefik dynamic config: {dynamic_config_path}")
-
-    return True, None
-
-
-def start_traefik(process_handler, config_dir: str):
-    """Ensures Traefik is running via ProcessHandler"""
-
-    traefik_bin = "/usr/local/bin/traefik"  # Adjust path if needed
-
-    # Check if Traefik is already running
-    if process_handler.is_process_running("traefik"):
-        logger.info("Traefik is already running, restarting it.")
-        process_handler.stop_process("traefik")
-
-    # Start Traefik with config directory
-    process_handler.start_process(
-        process_name="traefik",
-        cmd=[traefik_bin, "--configFile", os.path.join(config_dir, "traefik.yml")],
-        env={},
-    )
-
-    logger.info("Traefik has been started successfully.")

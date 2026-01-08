@@ -11,7 +11,7 @@ from utils.dependencies import (
 from utils.config_loader import CONFIG_MANAGER, find_service_config
 from utils.setup import setup_project
 from utils.versions import Versions
-import json, copy, time, glob, re
+import json, copy, time, glob, re, socket, errno, psutil
 
 
 class ServiceRequest(BaseModel):
@@ -56,6 +56,7 @@ STATIC_URLS_BY_KEY = {
     "whisparr-v3": "https://whisparr.com",
     "tautulli": "https://tautulli.com",
     "seerr": "https://github.com/seerr-team/seerr",
+    "traefik": "https://traefik.io/",
 }
 
 SPONSORSHIP_URLS_BY_KEY = {
@@ -83,6 +84,7 @@ SPONSORSHIP_URLS_BY_KEY = {
     "zurg": "https://github.com/sponsors/debridmediamanager",
     "tautulli": "https://tautulli.com/#donate",
     "seerr": "https://opencollective.com/seerr",
+    "traefik": "https://github.com/sponsors/traefik",
 }
 
 DEFAULT_SERVICE_PORTS = {
@@ -170,9 +172,10 @@ Decypharr Service
 Documentation: https://i-am-puid-0.github.io/DUMB/services/core/decypharr""",
     "nzbdav": """\
 NzbDAV Service
-- Combined backend and frontend WebDAV service for NZB access.
-- Provides a single endpoint for browsing and serving content.
-- Designed to be built and run as a single service in DUMB.
+- Implementation of QbitTorrent with Multiple NZB provider service support.
+- Utilizes Sonarr and Radarr for media requests and management.
+- Provides a WebDAV connection for easy access to media files.
+- Integrates with Rclone for mounting of WebDAV content.
 
 Documentation: https://github.com/nzbdav-dev/nzbdav""",
     "plex": """\
@@ -182,7 +185,6 @@ Plex Media Server
 - Works seamlessly with the other DUMB services via shared mount paths.
 - By enabling Plex, you confirm that you have read and agree to the Plex Terms of Service: https://www.plex.tv/about/privacy-legal/plex-terms-of-service/
 
-Note: Automatic update is not supported for Plex Media Server at this time.
 Recommended to run onboarding for Plex Media Server separately due to claim token timeout of 5 minutes.
 
 Documentation: https://i-am-puid-0.github.io/DUMB/services/core/plex-media-server""",
@@ -809,11 +811,57 @@ def _find_free_port(start_port: int, used_ports: set[int], service_key: str) -> 
         low, high = SERVICE_PORT_RANGES[service_key]
     port = max(start_port, low) if low is not None else start_port
     while True:
-        if port not in used_ports and (high is None or port <= high):
+        if (
+            port not in used_ports
+            and _is_port_available(port)
+            and (high is None or port <= high)
+        ):
             return port
         if high is not None and port > high:
             high = None
         port += 1
+
+
+def _check_bind(family: int, addr: str, port: int) -> bool | None:
+    sock = None
+    try:
+        sock = socket.socket(family, socket.SOCK_STREAM)
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        if family == socket.AF_INET6:
+            try:
+                sock.setsockopt(socket.IPPROTO_IPV6, socket.IPV6_V6ONLY, 1)
+            except OSError:
+                pass
+        sock.bind((addr, port))
+        return True
+    except OSError as exc:
+        if exc.errno in (errno.EADDRINUSE, errno.EACCES, errno.EPERM):
+            return False
+        if exc.errno in (errno.EAFNOSUPPORT, errno.EADDRNOTAVAIL, errno.EINVAL):
+            return None
+        return False
+    finally:
+        if sock is not None:
+            sock.close()
+
+
+def _is_port_available(port: int) -> bool:
+    try:
+        for conn in psutil.net_connections(kind="inet"):
+            if conn.status == psutil.CONN_LISTEN and conn.laddr:
+                if conn.laddr.port == port:
+                    return False
+    except Exception:
+        pass
+    checks = [
+        (socket.AF_INET, "0.0.0.0"),
+        (socket.AF_INET6, "::"),
+    ]
+    for family, addr in checks:
+        result = _check_bind(family, addr, port)
+        if result is False:
+            return False
+    return True
 
 
 def _reserve_port(
@@ -835,6 +883,14 @@ def _reserve_port(
         new_port = _find_free_port(desired + 1, set(used_ports.keys()), service_key)
         logger.info(
             f"[{service_key}] Port {desired} already in use; assigning {new_port} for {label}."
+        )
+        used_ports[new_port] = owner
+        return new_port
+    if not _is_port_available(desired):
+        new_port = _find_free_port(desired + 1, set(used_ports.keys()), service_key)
+        logger.info(
+            f"[{service_key}] Port {desired} already in use by another process; "
+            f"assigning {new_port} for {label}."
         )
         used_ports[new_port] = owner
         return new_port
@@ -951,9 +1007,18 @@ def _ensure_unique_instance_port(
         inst_cfg["port"] = new_port
         CONFIG_MANAGER.save_config()
     else:
-        inst_cfg["port"] = desired
+        final_port = desired
+        if not _is_port_available(desired):
+            final_port = _find_free_port(desired + 1, used, service_key)
+            logger.info(
+                f"[{service_key}] Port {desired} already in use by another process; "
+                f"assigning {final_port} for instance '{inst_name}'."
+            )
+        inst_cfg["port"] = final_port
+        if final_port != desired:
+            CONFIG_MANAGER.save_config()
         logger.debug(
-            f"[{service_key}] Using port {desired} for instance '{inst_name}'."
+            f"[{service_key}] Using port {final_port} for instance '{inst_name}'."
         )
 
 

@@ -72,7 +72,7 @@ def create_app() -> FastAPI:
     @app.get("/scalar", include_in_schema=False)
     async def scalar_docs():
         return get_scalar_api_reference(
-            openapi_url=app.openapi_url,
+            openapi_url="openapi.json",
             title=app.title,
         )
 

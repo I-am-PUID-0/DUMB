@@ -8,7 +8,7 @@ from utils.processes import ProcessHandler
 from utils.auto_update import Update
 from utils.dependencies import initialize_dependencies
 from utils.plex_dbrepair import start_plex_dbrepair_worker
-import subprocess, threading, time, tomllib, os
+import subprocess, threading, time, tomllib, os, socket, errno, psutil
 
 
 def log_ascii_art():
@@ -42,9 +42,51 @@ DDDDDDDDDDDDD             UUUUUUUUU      MMMMMMMM               MMMMMMMMBBBBBBBB
 
 def _find_free_port(start_port: int, used_ports: set[int]) -> int:
     port = start_port
-    while port in used_ports:
+    while port in used_ports or not _is_port_available(port):
         port += 1
     return port
+
+
+def _check_bind(family: int, addr: str, port: int) -> bool | None:
+    sock = None
+    try:
+        sock = socket.socket(family, socket.SOCK_STREAM)
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        if family == socket.AF_INET6:
+            try:
+                sock.setsockopt(socket.IPPROTO_IPV6, socket.IPV6_V6ONLY, 1)
+            except OSError:
+                pass
+        sock.bind((addr, port))
+        return True
+    except OSError as exc:
+        if exc.errno in (errno.EADDRINUSE, errno.EACCES, errno.EPERM):
+            return False
+        if exc.errno in (errno.EAFNOSUPPORT, errno.EADDRNOTAVAIL, errno.EINVAL):
+            return None
+        return False
+    finally:
+        if sock is not None:
+            sock.close()
+
+
+def _is_port_available(port: int) -> bool:
+    try:
+        for conn in psutil.net_connections(kind="inet"):
+            if conn.status == psutil.CONN_LISTEN and conn.laddr:
+                if conn.laddr.port == port:
+                    return False
+    except Exception:
+        pass
+    checks = [
+        (socket.AF_INET, "0.0.0.0"),
+        (socket.AF_INET6, "::"),
+    ]
+    for family, addr in checks:
+        result = _check_bind(family, addr, port)
+        if result is False:
+            return False
+    return True
 
 
 def _reserve_port(
@@ -60,6 +102,16 @@ def _reserve_port(
             "Port %s already in use by %s; assigning %s for %s.",
             desired,
             existing_owner,
+            new_port,
+            label,
+        )
+        used_ports[new_port] = owner
+        return new_port, True
+    if not _is_port_available(desired):
+        new_port = _find_free_port(desired + 1, set(used_ports.keys()))
+        logger.info(
+            "Port %s already in use by another process; assigning %s for %s.",
+            desired,
             new_port,
             label,
         )
@@ -300,6 +352,7 @@ def main():
 
     try:
         grouped_keys = [
+            "traefik",
             "zurg",
             "prowlarr",
             "radarr",

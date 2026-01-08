@@ -1,11 +1,15 @@
-from fastapi import APIRouter, HTTPException, Depends, Query
+from fastapi import APIRouter, HTTPException, Depends, Query, Request
 from typing import Union, Optional, Dict, Any, List
 from pydantic import BaseModel
-from utils.dependencies import get_logger, resolve_path
+from utils.dependencies import get_logger, get_process_handler, resolve_path
 from utils.config_loader import CONFIG_MANAGER, find_service_config
+from utils.traefik_setup import (
+    ensure_ui_services_config,
+    get_traefik_config_dir,
+    setup_traefik,
+)
 from jsonschema import validate, ValidationError
 from ruamel.yaml import YAML
-from pathlib import Path
 import os, json, configparser, xmltodict, ast
 
 
@@ -26,37 +30,9 @@ class ProcessSchemaRequest(BaseModel):
 
 config_router = APIRouter()
 
-TRAEFIK_CONFIG_DIR = Path("/config/traefik")
 
-
-def ensure_traefik_config():
-    """Ensure the Traefik config directory exists."""
-    TRAEFIK_CONFIG_DIR.mkdir(parents=True, exist_ok=True)
-
-
-def generate_traefik_config(services):
-    """Generate a Traefik dynamic configuration for detected services."""
-    traefik_config = {"http": {"routers": {}, "services": {}}}
-
-    for service in services:
-        service_name = service["name"].replace(" ", "_").lower()
-        host = service["host"]
-        port = service["port"]
-
-        router_name = f"{service_name}_router"
-        service_entry = f"{service_name}_service"
-
-        traefik_config["http"]["routers"][router_name] = {
-            "entryPoints": ["web"],
-            "rule": f"PathPrefix(`/service/ui/{service_name}`)",
-            "service": service_entry,
-        }
-
-        traefik_config["http"]["services"][service_entry] = {
-            "loadBalancer": {"servers": [{"url": f"http://{host}:{port}"}]}
-        }
-
-    return traefik_config
+class ServiceUiToggleRequest(BaseModel):
+    enabled: bool = True
 
 
 def validate_file_path(file_path):
@@ -83,6 +59,30 @@ def write_to_file(file_path, content):
         raise HTTPException(
             status_code=500, detail=f"Failed to write to file {file_path}: {e}"
         )
+
+
+def _normalize_direct_url(service, request: Request):
+    direct_url = service.get("direct_url")
+    if not direct_url:
+        return service
+    if service.get("direct_url_locked"):
+        return service
+    host = (service.get("host") or "").lower()
+    if host and host not in ("127.0.0.1", "0.0.0.0", "::", "localhost"):
+        return service
+    port = service.get("port")
+    if not port:
+        return service
+    scheme = request.headers.get("x-forwarded-proto") or request.url.scheme or "http"
+    forwarded_host = request.headers.get("x-forwarded-host")
+    host_header = forwarded_host or request.headers.get("host")
+    request_host = None
+    if host_header:
+        request_host = host_header.split(",")[0].split(":")[0].strip()
+    if not request_host:
+        return service
+    service["direct_url"] = f"{scheme}://{request_host}:{port}/"
+    return service
 
 
 def find_service_config(config, service_name, parent_path=""):
@@ -640,53 +640,66 @@ async def handle_service_config(
 
 
 @config_router.get("/service-ui")
-async def get_service_ui_links(logger=Depends(get_logger)):
+async def get_service_ui_links(
+    request: Request,
+    logger=Depends(get_logger),
+):
     """Retrieve service UI links and generate Traefik configs dynamically."""
     try:
-        services = []
-
-        # Ensure Traefik config directory exists
-        ensure_traefik_config()
-
-        for key, value in CONFIG_MANAGER.config.items():
-            if not isinstance(value, dict):
-                continue
-
-            # Top-level service
-            if value.get("enabled") and "port" in value:
-                services.append(
-                    {
-                        "name": key,
-                        "host": value.get("host", "127.0.0.1"),
-                        "port": value["port"],
-                    }
-                )
-
-            # Instances handling
-            if "instances" in value:
-                for instance_name, instance_config in value["instances"].items():
-                    if instance_config.get("enabled") and "port" in instance_config:
-                        services.append(
-                            {
-                                "name": instance_name,
-                                "host": instance_config.get("host", "127.0.0.1"),
-                                "port": instance_config["port"],
-                            }
-                        )
-
-        # Generate and write Traefik config
-        traefik_config = generate_traefik_config(services)
-        traefik_config_path = TRAEFIK_CONFIG_DIR / "services.yaml"
-
-        with open(traefik_config_path, "w") as file:
-            json.dump(traefik_config, file, indent=4)
+        traefik_config_dir = get_traefik_config_dir()
+        services = ensure_ui_services_config(str(traefik_config_dir))
+        services = [_normalize_direct_url(service, request) for service in services]
+        traefik_config_path = traefik_config_dir / "services.yaml"
 
         logger.info("Updated Traefik configuration for service UIs.")
-        return {"services": services, "traefik_config": str(traefik_config_path)}
+        return {
+            "enabled": bool(CONFIG_MANAGER.config.get("traefik", {}).get("enabled")),
+            "services": services,
+            "traefik_config": str(traefik_config_path),
+        }
 
     except Exception as e:
         logger.error(f"Failed to fetch services: {e}")
         raise HTTPException(status_code=500, detail="Failed to fetch services")
+
+
+@config_router.post("/service-ui")
+async def toggle_service_ui(
+    request: Request,
+    body: ServiceUiToggleRequest,
+    process_handler=Depends(get_process_handler),
+    logger=Depends(get_logger),
+):
+    """Enable or disable embedded service UIs and manage Traefik."""
+    try:
+        traefik_cfg = CONFIG_MANAGER.config.get("traefik", {})
+        process_name = traefik_cfg.get("process_name", "Traefik")
+        enabled = bool(body.enabled)
+
+        traefik_cfg["enabled"] = enabled
+        CONFIG_MANAGER.config["traefik"] = traefik_cfg
+        CONFIG_MANAGER.save_config()
+
+        traefik_config_dir = get_traefik_config_dir()
+        services = ensure_ui_services_config(str(traefik_config_dir))
+        services = [_normalize_direct_url(service, request) for service in services]
+        traefik_config_path = traefik_config_dir / "services.yaml"
+
+        if enabled:
+            setup_traefik(process_handler)
+            process_handler.stop_process(process_name)
+            process_handler.start_process(process_name)
+        else:
+            process_handler.stop_process(process_name)
+
+        return {
+            "enabled": enabled,
+            "services": services,
+            "traefik_config": str(traefik_config_path),
+        }
+    except Exception as e:
+        logger.error(f"Failed to toggle service UI: {e}")
+        raise HTTPException(status_code=500, detail="Failed to toggle service UI")
 
 
 @config_router.get("/onboarding-status")

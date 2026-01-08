@@ -141,6 +141,24 @@ class ProcessHandler:
                         env["LOG_LEVEL"] = config.get("log_level", "INFO")
                 else:
                     env = config.get("env", None)
+                if key == "emby":
+                    try:
+                        from utils.emby_settings import patch_emby_config
+
+                        patch_emby_config(config.get("port"))
+                    except Exception as e:
+                        self.logger.warning(
+                            f"Failed to patch Emby system.xml port: {e}"
+                        )
+                if key == "jellyfin":
+                    try:
+                        from utils.jellyfin_settings import patch_jellyfin_config
+
+                        patch_jellyfin_config(config.get("port"))
+                    except Exception as e:
+                        self.logger.warning(
+                            f"Failed to patch Jellyfin system.xml port: {e}"
+                        )
 
             process_env = os.environ.copy()
             if env is not None:

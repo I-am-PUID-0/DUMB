@@ -35,6 +35,16 @@ def find_log_file(process_name: str, logger):
             )
             return log_files[0] if log_files else None
 
+    if process_name.lower() == "traefik":
+        traefik_log = resolve_path("/log/traefik.log")
+        if traefik_log.exists():
+            return traefik_log
+
+    if process_name.lower() in {"traefik access", "traefik_access"}:
+        access_log = resolve_path("/log/traefik_access.log")
+        if access_log.exists():
+            return access_log
+
     key, instance_name = CONFIG_MANAGER.find_key_for_process(process_name)
     logger.debug(f"Found key: {key}, instance: {instance_name}")
     if not key:

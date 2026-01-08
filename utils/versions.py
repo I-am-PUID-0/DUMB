@@ -1,7 +1,7 @@
 from utils.global_logger import logger
 from utils.download import Downloader
 from utils.config_loader import CONFIG_MANAGER
-import os, subprocess, json, re, requests
+import os, subprocess, json, re, requests, shlex
 
 
 class Versions:
@@ -199,6 +199,28 @@ class Versions:
             elif key == "plex_debrid":
                 version_path = "/plex_debrid/ui/ui_settings.py"
                 is_file = True
+            elif key == "traefik":
+                try:
+                    command = CONFIG_MANAGER.get("traefik", {}).get("command")
+                    traefik_bin = "/traefik/traefik"
+                    if isinstance(command, str):
+                        command = shlex.split(command)
+                    if isinstance(command, list) and command:
+                        traefik_bin = command[0]
+                    result = subprocess.run(
+                        [traefik_bin, "version"],
+                        capture_output=True,
+                        text=True,
+                        timeout=5,
+                    )
+                    if result.returncode == 0:
+                        match = re.search(r"Version:\s*v?(\d+\.\d+\.\d+)", result.stdout)
+                        if match:
+                            return f"v{match.group(1)}", None
+                        return result.stdout.strip() or None, None
+                    return None, f"Failed to get Traefik version: {result.stderr.strip()}"
+                except Exception as e:
+                    return None, f"Error reading Traefik version: {e}"
 
             if is_file:
                 try:
