@@ -237,6 +237,15 @@ def build_ui_services() -> List[Dict[str, Any]]:
     return services
 
 
+def _sanitize_service_name(name: str) -> str:
+    """Sanitize service name for use in URLs and routing.
+
+    Replaces spaces and forward slashes with underscores, then lowercases.
+    This ensures the name is URL-safe and consistent across all uses.
+    """
+    return name.replace(" ", "_").replace("/", "_").lower()
+
+
 def generate_traefik_config(services: List[Dict[str, Any]]) -> Dict[str, Any]:
     """Generate a Traefik dynamic configuration for detected services."""
     traefik_config = {"http": {"routers": {}, "services": {}, "middlewares": {}}}
@@ -251,7 +260,7 @@ def generate_traefik_config(services: List[Dict[str, Any]]) -> Dict[str, Any]:
     }
 
     for service in services:
-        service_name = service["name"].replace(" ", "_").lower()
+        service_name = _sanitize_service_name(service["name"])
         host = service["host"]
         port = service["port"]
         path = service.get("path", "")

@@ -653,7 +653,8 @@ async def get_service_ui_map(
         for service in services:
             if service.get("name") and service.get("config_key"):
                 # Sanitize the name the same way Traefik config does
-                sanitized_name = service["name"].replace(" ", "_").lower()
+                # Replace spaces and forward slashes with underscores, then lowercase
+                sanitized_name = service["name"].replace(" ", "_").replace("/", "_").lower()
                 service_map[sanitized_name] = service["config_key"]
 
         return service_map
