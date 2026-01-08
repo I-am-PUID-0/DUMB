@@ -123,7 +123,8 @@ def ensure_traefik_config() -> None:
     get_traefik_config_dir().mkdir(parents=True, exist_ok=True)
 
 
-def _resolve_ui_service(service_def: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+def _resolve_ui_service(service_def: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """Resolve service definition to actual services. Returns a list to support multiple instances."""
     config_key = service_def["config_key"]
     subkey = service_def.get("subkey")
     config = CONFIG_MANAGER.config
@@ -134,7 +135,7 @@ def _resolve_ui_service(service_def: Dict[str, Any]) -> Optional[Dict[str, Any]]
         entrypoints = traefik_cfg.get("entrypoints", {})
         web_address = entrypoints.get("web", {}).get("address", ":18080")
         web_port = _parse_entrypoint_port(web_address, fallback=18080)
-        return {
+        return [{
             "name": service_def["name"],
             "process_name": "Traefik",
             "config_key": config_key,
@@ -143,16 +144,16 @@ def _resolve_ui_service(service_def: Dict[str, Any]) -> Optional[Dict[str, Any]]
             "path": service_def.get("path", ""),
             "path_prefix": service_def.get("path_prefix", ""),
             "internal_service": internal_service,
-        }
+        }]
 
     if config_key == "dumb" and subkey:
         cfg = config.get("dumb", {}).get(subkey, {})
         if not cfg.get("enabled"):
-            return None
+            return []
         host = cfg.get("host", "127.0.0.1")
         if host in ("0.0.0.0", "::"):
             host = "127.0.0.1"
-        return {
+        return [{
             "name": service_def["name"],
             "process_name": cfg.get("process_name", service_def["name"]),
             "config_key": config_key,
@@ -161,34 +162,37 @@ def _resolve_ui_service(service_def: Dict[str, Any]) -> Optional[Dict[str, Any]]
             "path": service_def.get("path", ""),
             "path_prefix": service_def.get("path_prefix", ""),
             "internal_service": internal_service,
-        }
+        }]
 
     cfg = config.get(config_key, {})
     if not isinstance(cfg, dict):
-        return None
+        return []
 
+    # Handle multiple instances
     if "instances" in cfg and isinstance(cfg["instances"], dict):
+        services = []
         for instance_cfg in cfg["instances"].values():
             if instance_cfg.get("enabled") and "port" in instance_cfg:
                 host = instance_cfg.get("host", cfg.get("host", "127.0.0.1"))
                 if host in ("0.0.0.0", "::"):
                     host = "127.0.0.1"
-                return {
-                    "name": service_def["name"],
-                    "process_name": instance_cfg.get(
-                        "process_name", service_def["name"]
-                    ),
-                    "config_key": config_key,
+                # Use process_name from instance config, which includes instance name
+                process_name = instance_cfg.get("process_name", service_def["name"])
+                services.append({
+                    "name": process_name,  # Use full process name (e.g., "Sonarr NzbDAV")
+                    "process_name": process_name,
+                    "config_key": config_key,  # This is the service type (e.g., "sonarr")
                     "host": host,
                     "port": instance_cfg.get("port"),
                     "path": service_def.get("path", ""),
                     "path_prefix": service_def.get("path_prefix", ""),
                     "internal_service": internal_service,
-                }
-        return None
+                })
+        return services
 
+    # Handle single instance (no instances key)
     if not cfg.get("enabled"):
-        return None
+        return []
 
     host = cfg.get("host", "127.0.0.1")
     if host in ("0.0.0.0", "::"):
@@ -196,11 +200,11 @@ def _resolve_ui_service(service_def: Dict[str, Any]) -> Optional[Dict[str, Any]]
     if config_key == "nzbdav":
         port = cfg.get("frontend_port")
         if not port:
-            return None
+            return []
     else:
         port = cfg.get("port")
         if not port:
-            return None
+            return []
     service = {
         "name": service_def["name"],
         "process_name": cfg.get("process_name", service_def["name"]),
@@ -220,15 +224,16 @@ def _resolve_ui_service(service_def: Dict[str, Any]) -> Optional[Dict[str, Any]]
             service["direct_url_locked"] = True
         else:
             service["direct_url"] = f"http://{host}:{port}/"
-    return service
+    return [service]
 
 
 def build_ui_services() -> List[Dict[str, Any]]:
     services = []
     for service_def in UI_SERVICE_DEFS:
-        resolved = _resolve_ui_service(service_def)
-        if resolved and resolved.get("port"):
-            services.append(resolved)
+        resolved_services = _resolve_ui_service(service_def)
+        for resolved in resolved_services:
+            if resolved.get("port"):
+                services.append(resolved)
     return services
 
 

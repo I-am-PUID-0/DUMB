@@ -7,6 +7,7 @@ from utils.traefik_setup import (
     ensure_ui_services_config,
     get_traefik_config_dir,
     setup_traefik,
+    build_ui_services,
 )
 from jsonschema import validate, ValidationError
 from ruamel.yaml import YAML
@@ -637,6 +638,29 @@ async def handle_service_config(
         "config": config_data,
         "raw": raw_config,
     }
+
+
+@config_router.get("/service-ui-map")
+async def get_service_ui_map(
+    logger=Depends(get_logger),
+):
+    """Get mapping of service names to config_key for routing."""
+    try:
+        services = build_ui_services()
+        # Build a map of sanitized service name -> config_key
+        # The sanitized name matches what appears in the URL path
+        service_map = {}
+        for service in services:
+            if service.get("name") and service.get("config_key"):
+                # Sanitize the name the same way Traefik config does
+                sanitized_name = service["name"].replace(" ", "_").lower()
+                service_map[sanitized_name] = service["config_key"]
+
+        return service_map
+
+    except Exception as e:
+        logger.error(f"Failed to build service map: {e}")
+        raise HTTPException(status_code=500, detail="Failed to build service map")
 
 
 @config_router.get("/service-ui")
