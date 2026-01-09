@@ -49,6 +49,7 @@
             "branch": "main",
             "suppress_logging": false,
             "log_level": "INFO",
+            "log_file": "/log/dumb_frontend.log",
             "origins": [
                 "http://0.0.0.0:3005"
             ],
@@ -84,6 +85,8 @@
         "pinned_version": "v3.6.6",
         "suppress_logging": false,
         "log_level": "INFO",
+        "log_file": "/log/traefik.log",
+        "access_log_file": "/log/traefik_access.log",
         "port": 18080,
         "entrypoints": {
             "web": {
@@ -289,6 +292,7 @@
             "phalanx_db_rest.js"
         ],
         "config_dir": "/phalanx_db",
+        "log_file": "/log/phalanx_db.log",
         "env": {}
     },
     "plex": {
@@ -462,6 +466,7 @@
         ],
         "config_dir": "/postgres_data",
         "config_file": "/postgres_data/postgresql.conf",
+        "log_file": "/log/postgres.log",
         "initdb_args": "--data-checksums",
         "user": "DUMB",
         "password": "postgres",

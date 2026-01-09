@@ -5,9 +5,10 @@ from colorlog import ColoredFormatter
 
 
 class SubprocessLogger:
-    def __init__(self, logger, key_type, file_logger=None):
+    def __init__(self, logger, key_type, file_logger=None, access_logger=None):
         self.logger = logger
         self.file_logger = file_logger
+        self.access_logger = access_logger
         self.stdout_thread = None
         self.stderr_thread = None
         self.stop_event = threading.Event()
@@ -32,6 +33,17 @@ class SubprocessLogger:
                 "CRITICAL": self.file_logger.critical,
                 "UNKNOWN": self.file_logger.info,
             }
+
+    def _is_traefik_access_log(self, line):
+        if self.key_type != "Traefik":
+            return False
+        if not line or not line.startswith("{"):
+            return False
+        if '"RequestMethod"' in line and '"RequestPath"' in line:
+            return True
+        if '"ClientAddr"' in line and '"RequestMethod"' in line:
+            return True
+        return False
 
     @staticmethod
     def parse_log_level_and_message(line, process_name):
@@ -134,6 +146,9 @@ class SubprocessLogger:
             else:
                 line = line.strip()
             if line:
+                if self.access_logger and self._is_traefik_access_log(line):
+                    self.access_logger.info(line)
+                    continue
                 log_level, message = SubprocessLogger.parse_log_level_and_message(
                     line, process_name
                 )
@@ -168,6 +183,9 @@ class SubprocessLogger:
                 else:
                     line = line.strip()
                 if line:
+                    if self.access_logger and self._is_traefik_access_log(line):
+                        self.access_logger.info(line)
+                        continue
                     log_level, message = SubprocessLogger.parse_log_level_and_message(
                         line, self.key_type
                     )
@@ -625,6 +643,48 @@ def get_subprocess_file_logger(log_file, log_level=None, log_name=None):
         maxBytes=max_log_size,
     )
     handler.setFormatter(file_formatter)
+
+    if not any(
+        isinstance(h, CustomRotatingFileHandler)
+        and getattr(h, "baseFilename", None) == log_file
+        for h in logger.handlers
+    ):
+        logger.addHandler(handler)
+
+    os.chmod(log_file, 0o666)
+    return logger
+
+
+def get_subprocess_access_logger(log_file, log_name=None):
+    backupCount_env = CONFIG_MANAGER.get("dumb").get("log_count", 2)
+    try:
+        backupCount = int(backupCount_env)
+    except (ValueError, TypeError):
+        backupCount = 2
+    max_log_size_env = CONFIG_MANAGER.get("dumb").get("log_size", "10M")
+    try:
+        max_log_size = (
+            parse_size(max_log_size_env) if max_log_size_env else 10 * 1024 * 1024
+        )
+    except (ValueError, TypeError):
+        max_log_size = 10 * 1024 * 1024
+
+    log_file = os.path.abspath(log_file)
+    os.makedirs(os.path.dirname(log_file), exist_ok=True)
+
+    log_name = log_name or f"subprocess:access:{os.path.basename(log_file)}"
+    logger = logging.getLogger(log_name)
+    logger.setLevel(logging.INFO)
+    logger.propagate = False
+
+    handler = CustomRotatingFileHandler(
+        log_file,
+        when="midnight",
+        interval=1,
+        backupCount=backupCount,
+        maxBytes=max_log_size,
+    )
+    handler.setFormatter(logging.Formatter("%(message)s"))
 
     if not any(
         isinstance(h, CustomRotatingFileHandler)

@@ -578,12 +578,17 @@ def setup_traefik(process_handler) -> Optional[tuple]:
     log_dir = "/log"
     os.makedirs(log_dir, exist_ok=True)
     log_level = (traefik_config.get("log_level") or "DEBUG").upper()
+    log_file = traefik_config.get("log_file")
+    access_log_file = traefik_config.get("access_log_file")
+    log_config = {"level": log_level}
+    if not log_file:
+        # Keep Traefik writing to a file unless we manage rotation via subprocess logging.
+        log_config["filePath"] = os.path.join(log_dir, "traefik.log")
     static_config = {
         "entryPoints": entrypoints,
         "api": {"dashboard": True, "insecure": True},
-        "log": {"level": log_level, "filePath": os.path.join(log_dir, "traefik.log")},
+        "log": log_config,
         "accessLog": {
-            "filePath": os.path.join(log_dir, "traefik_access.log"),
             "format": "json",
             "fields": {
                 "names": {
@@ -600,6 +605,11 @@ def setup_traefik(process_handler) -> Optional[tuple]:
             }
         },
     }
+    if not access_log_file:
+        # Keep Traefik writing to a file unless we manage rotation via subprocess logging.
+        static_config["accessLog"]["filePath"] = os.path.join(
+            log_dir, "traefik_access.log"
+        )
 
     static_config_path = str(get_traefik_config_file())
     with open(static_config_path, "w") as file:

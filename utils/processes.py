@@ -1,4 +1,8 @@
-from utils.logger import SubprocessLogger, get_subprocess_file_logger
+from utils.logger import (
+    SubprocessLogger,
+    get_subprocess_file_logger,
+    get_subprocess_access_logger,
+)
 from utils.config_loader import CONFIG_MANAGER
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import shlex, os, time, signal, threading, subprocess, sys, uvicorn, socket, psutil
@@ -197,7 +201,16 @@ class ProcessHandler:
             stderr_target = subprocess.DEVNULL if suppress_logging else subprocess.PIPE
 
             subprocess_file_logger = None
-            if not suppress_logging and key in {"nzbdav", "zilean", "rclone"}:
+            subprocess_access_logger = None
+            if not suppress_logging and key in {
+                "nzbdav",
+                "zilean",
+                "rclone",
+                "traefik",
+                "dumb_frontend",
+                "phalanx_db",
+                "postgres",
+            }:
                 log_file = config.get("log_file")
                 if log_file:
                     subprocess_file_logger = get_subprocess_file_logger(
@@ -205,20 +218,27 @@ class ProcessHandler:
                         log_level=config.get("log_level", "INFO"),
                         log_name=f"{process_name}-subprocess",
                     )
-                    if key == "rclone" and isinstance(command, list):
-                        filtered_command = []
-                        skip_next = False
-                        for part in command:
-                            if skip_next:
-                                skip_next = False
-                                continue
-                            if part == "--log-file":
-                                skip_next = True
-                                continue
-                            if part.startswith("--log-file="):
-                                continue
-                            filtered_command.append(part)
-                        command = filtered_command
+                if key == "traefik":
+                    access_log_file = config.get("access_log_file")
+                    if access_log_file:
+                        subprocess_access_logger = get_subprocess_access_logger(
+                            access_log_file,
+                            log_name=f"{process_name}-access",
+                        )
+                if key == "rclone" and isinstance(command, list):
+                    filtered_command = []
+                    skip_next = False
+                    for part in command:
+                        if skip_next:
+                            skip_next = False
+                            continue
+                        if part == "--log-file":
+                            skip_next = True
+                            continue
+                        if part.startswith("--log-file="):
+                            continue
+                        filtered_command.append(part)
+                    command = filtered_command
 
             process = subprocess.Popen(
                 command,
@@ -237,6 +257,7 @@ class ProcessHandler:
                     self.logger,
                     f"{process_description}",
                     file_logger=subprocess_file_logger,
+                    access_logger=subprocess_access_logger,
                 )
                 subprocess_logger.start_logging_stdout(process)
                 subprocess_logger.start_monitoring_stderr(

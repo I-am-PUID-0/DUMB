@@ -193,6 +193,9 @@
             "log_level": {
               "type": "string"
             },
+            "log_file": {
+              "type": "string"
+            },
             "origins": {
               "type": "array",
               "items": {
@@ -250,6 +253,7 @@
             "branch",
             "suppress_logging",
             "log_level",
+            "log_file",
             "origins",
             "host",
             "port",
@@ -337,6 +341,12 @@
           "type": "boolean"
         },
         "log_level": {
+          "type": "string"
+        },
+        "log_file": {
+          "type": "string"
+        },
+        "access_log_file": {
           "type": "string"
         },
         "port": {
@@ -1006,6 +1016,9 @@
         "config_dir": {
           "type": "string"
         },
+        "log_file": {
+          "type": "string"
+        },
         "env": {
           "type": "object"
         }
@@ -1029,6 +1042,7 @@
         "platforms",
         "command",
         "config_dir",
+        "log_file",
         "env"
       ]
     },
@@ -1541,6 +1555,9 @@
         "config_file": {
           "type": "string"
         },
+        "log_file": {
+          "type": "string"
+        },
         "initdb_args": {
           "type": "string"
         },
@@ -1576,6 +1593,7 @@
         "databases",
         "config_dir",
         "config_file",
+        "log_file",
         "initdb_args",
         "user",
         "password",
