@@ -49,6 +49,25 @@
         "onboarding_completed": {
           "type": "boolean"
         },
+        "ui": {
+          "type": "object",
+          "properties": {
+            "log_timestamp": {
+              "type": "object",
+              "properties": {
+                "dateOrder": {
+                  "type": "string"
+                },
+                "hourFormat": {
+                  "type": "string"
+                },
+                "zeroPad": {
+                  "type": "boolean"
+                }
+              }
+            }
+          }
+        },
         "auto_restart": {
           "type": "object",
           "properties": {

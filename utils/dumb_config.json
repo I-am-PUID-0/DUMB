@@ -15,6 +15,13 @@
         "github_token": "",
         "github_username": "",
         "onboarding_completed": false,
+        "ui": {
+            "log_timestamp": {
+                "dateOrder": "MDY",
+                "hourFormat": "12",
+                "zeroPad": true
+            }
+        },
         "auto_restart": {
             "enabled": false,
             "restart_on_unhealthy": true,
