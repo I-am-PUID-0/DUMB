@@ -1,6 +1,10 @@
 from fastapi import APIRouter, Depends, WebSocket
 from starlette.websockets import WebSocketDisconnect
-from utils.dependencies import get_api_state, get_status_manager
+from utils.dependencies import (
+    get_api_state,
+    get_status_manager,
+    get_websocket_current_user,
+)
 import asyncio, json
 
 websocket_status_router = APIRouter()
@@ -11,6 +15,7 @@ async def websocket_status(
     websocket: WebSocket,
     api_state=Depends(get_api_state),
     status_manager=Depends(get_status_manager),
+    current_user: str = Depends(get_websocket_current_user),
 ):
     interval = 2.0
     if "interval" in websocket.query_params:

@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, Query
-from utils.dependencies import get_metrics_collector
+from utils.dependencies import get_metrics_collector, get_optional_current_user
 from utils.config_loader import CONFIG_MANAGER
 from utils.metrics_history_reader import read_history, read_history_series
 import time
@@ -9,7 +9,10 @@ metrics_router = APIRouter()
 
 
 @metrics_router.get("")
-async def get_metrics_snapshot(collector=Depends(get_metrics_collector)):
+async def get_metrics_snapshot(
+    collector=Depends(get_metrics_collector),
+    current_user: str = Depends(get_optional_current_user),
+):
     return collector.snapshot()
 
 
@@ -18,6 +21,7 @@ async def get_metrics_history(
     since: float | None = Query(default=None),
     full: bool = Query(default=False),
     limit: int = Query(default=5000),
+    current_user: str = Depends(get_optional_current_user),
 ):
     history_dir = (
         CONFIG_MANAGER.get("dumb", {})
@@ -44,6 +48,7 @@ async def get_metrics_history_series(
     limit: int = Query(default=5000),
     bucket_seconds: int | None = Query(default=None),
     max_points: int = Query(default=600),
+    current_user: str = Depends(get_optional_current_user),
 ):
     history_dir = (
         CONFIG_MANAGER.get("dumb", {})

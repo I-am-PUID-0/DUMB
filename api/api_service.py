@@ -22,6 +22,7 @@ from api.routers.websocket_logs import websocket_router
 from api.routers.metrics import metrics_router
 from api.routers.websocket_metrics import websocket_metrics_router
 from api.routers.websocket_status import websocket_status_router
+from api.routers.auth import auth_router
 from utils.config_loader import CONFIG_MANAGER
 import threading, tomllib
 
@@ -60,6 +61,7 @@ def create_app() -> FastAPI:
     app.dependency_overrides[get_metrics_manager] = get_metrics_manager
     app.dependency_overrides[get_metrics_collector] = get_metrics_collector
 
+    app.include_router(auth_router, prefix="/auth", tags=["Authentication"])
     app.include_router(process_router, prefix="/process", tags=["Process Management"])
     app.include_router(config_router, prefix="/config", tags=["Configuration"])
     app.include_router(health_router, prefix="/health", tags=["Health"])

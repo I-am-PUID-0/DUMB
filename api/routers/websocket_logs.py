@@ -1,5 +1,5 @@
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends
-from utils.dependencies import get_websocket_manager
+from utils.dependencies import get_websocket_manager, get_websocket_current_user
 import json
 
 
@@ -8,7 +8,9 @@ websocket_router = APIRouter()
 
 @websocket_router.websocket("/logs")
 async def websocket_logs(
-    websocket: WebSocket, websocket_manager=Depends(get_websocket_manager)
+    websocket: WebSocket,
+    websocket_manager=Depends(get_websocket_manager),
+    current_user: str = Depends(get_websocket_current_user),
 ):
     await websocket_manager.connect(websocket)
     try:

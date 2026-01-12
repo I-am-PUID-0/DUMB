@@ -7,6 +7,7 @@ from utils.dependencies import (
     get_logger,
     get_api_state,
     get_updater,
+    get_optional_current_user,
 )
 from utils.config_loader import CONFIG_MANAGER, find_service_config
 from utils.setup import setup_project
@@ -361,7 +362,11 @@ ALIAS_TO_KEY = {v.lower(): k for k, v in CORE_SERVICE_NAMES.items()} | {
 
 
 @process_router.get("/")
-def fetch_process(process_name: str = Query(...), logger=Depends(get_logger)):
+def fetch_process(
+    process_name: str = Query(...),
+    logger=Depends(get_logger),
+    current_user: str = Depends(get_optional_current_user),
+):
     try:
         if not process_name:
             raise HTTPException(status_code=400, detail="process_name is required")
@@ -389,7 +394,9 @@ def fetch_process(process_name: str = Query(...), logger=Depends(get_logger)):
 
 
 @process_router.get("/processes")
-def fetch_processes(logger=Depends(get_logger)):
+def fetch_processes(
+    logger=Depends(get_logger), current_user: str = Depends(get_optional_current_user)
+):
     try:
         processes = []
         config = CONFIG_MANAGER.config
@@ -445,6 +452,7 @@ async def start_service(
     process_handler=Depends(get_process_handler),
     updater=Depends(get_updater),
     logger=Depends(get_logger),
+    current_user: str = Depends(get_optional_current_user),
 ):
     def start():
         process_name = request.process_name
@@ -529,6 +537,7 @@ async def stop_service(
     request: ServiceRequest,
     process_handler=Depends(get_process_handler),
     logger=Depends(get_logger),
+    current_user: str = Depends(get_optional_current_user),
     api_state=Depends(get_api_state),
 ):
     def stop():
@@ -568,6 +577,7 @@ async def restart_service(
     updater=Depends(get_updater),
     logger=Depends(get_logger),
     api_state=Depends(get_api_state),
+    current_user: str = Depends(get_optional_current_user),
 ):
     def restart():
         process_name = request.process_name
@@ -648,6 +658,7 @@ def service_status(
         False, description="If true, include health checks for the process"
     ),
     api_state=Depends(get_api_state),
+    current_user: str = Depends(get_optional_current_user),
 ):
     details = api_state.get_status_details(process_name, include_health=include_health)
     response = {"process_name": process_name, **details}
@@ -1028,6 +1039,7 @@ async def start_core_services(
     updater=Depends(get_updater),
     api_state=Depends(get_api_state),
     logger=Depends(get_logger),
+    current_user: str = Depends(get_optional_current_user),
 ):
     outcome = await run_in_threadpool(_run_startup, request, updater, api_state, logger)
     return outcome
@@ -1717,7 +1729,9 @@ def _run_startup(request: UnifiedStartRequest, updater, api_state, logger):
 
 
 @process_router.get("/core-services")
-async def get_core_services(logger=Depends(get_logger)):
+async def get_core_services(
+    logger=Depends(get_logger), current_user: str = Depends(get_optional_current_user)
+):
     config_paths = glob.glob("/utils/*_config.json")
     if not config_paths:
         logger.error("No template config file found in /utils")
@@ -1822,6 +1836,7 @@ async def get_core_services(logger=Depends(get_logger)):
 @process_router.get("/optional-services")
 async def get_optional_services(
     logger=Depends(get_logger),
+    current_user: str = Depends(get_optional_current_user),
     core_service: Optional[str] = Query(
         None, description="Key of chosen core service (to hide its dependencies)"
     ),
@@ -1887,7 +1902,7 @@ async def get_optional_services(
 
 
 @process_router.get("/capabilities")
-async def get_capabilities():
+async def get_capabilities(current_user: str = Depends(get_optional_current_user)):
     return {
         "optional_only_onboarding": True,
         "optional_service_options": True,

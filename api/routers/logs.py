@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, Query
 from pathlib import Path
 from pydantic import BaseModel
 from typing import Optional
-from utils.dependencies import get_logger, resolve_path
+from utils.dependencies import get_logger, resolve_path, get_optional_current_user
 from utils.config_loader import CONFIG_MANAGER
 import os, re, asyncio
 
@@ -128,6 +128,7 @@ async def get_log_file(
         description="Initial bytes from end when no cursor",
     ),
     logger=Depends(get_logger),
+    current_user: str = Depends(get_optional_current_user),
 ):
     loop = asyncio.get_running_loop()
 

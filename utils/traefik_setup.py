@@ -393,7 +393,10 @@ def generate_traefik_config(services: List[Dict[str, Any]]) -> Dict[str, Any]:
                 traefik_config["http"]["routers"][referer_router] = {
                     "entryPoints": ["web"],
                     "rule": (
-                        f"HeadersRegexp(`Referer`, `.*/ui/{service_name}.*`) && "
+                        # Use HeaderRegexp (not HeadersRegexp) - correct Traefik v2+ syntax
+                        # Match requests with Referer header containing /ui/nzbdav
+                        # And PathPrefix to catch root-relative requests from NzbDAV UI
+                        f"HeaderRegexp(`Referer`, `.*\\/ui\\/{service_name}.*`) && "
                         "PathPrefix(`/`)"
                     ),
                     "priority": 2000,

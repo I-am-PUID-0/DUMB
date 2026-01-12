@@ -1,7 +1,12 @@
 from fastapi import APIRouter, HTTPException, Depends, Query, Request
 from typing import Union, Optional, Dict, Any, List
 from pydantic import BaseModel
-from utils.dependencies import get_logger, get_process_handler, resolve_path
+from utils.dependencies import (
+    get_logger,
+    get_process_handler,
+    resolve_path,
+    get_optional_current_user,
+)
 from utils.config_loader import CONFIG_MANAGER, find_service_config
 from utils.traefik_setup import (
     ensure_ui_services_config,
@@ -457,9 +462,10 @@ def find_schema(schema, path_parts):
 @config_router.get("/")
 async def get_config(
     process_name: Optional[str] = Query(
-        None, description="If set, return only that service’s config"
+        None, description="If set, return only that service's config"
     ),
     logger=Depends(get_logger),
+    current_user: str = Depends(get_optional_current_user),
 ):
     if process_name:
         service_cfg, _ = find_service_config(CONFIG_MANAGER.config, process_name)
@@ -475,6 +481,7 @@ async def get_config(
 async def update_config(
     request: ConfigUpdateRequest,
     logger=Depends(get_logger),
+    current_user: str = Depends(get_optional_current_user),
 ):
     if request.process_name:
         process_name = request.process_name
@@ -561,12 +568,14 @@ async def update_config(
 
 
 @config_router.get("/schema")
-def get_config_schema():
+def get_config_schema(current_user: str = Depends(get_optional_current_user)):
     return CONFIG_MANAGER.schema
 
 
 @config_router.post("/process-config/schema")
-def get_service_config_schema(req: ProcessSchemaRequest) -> Dict[str, Any]:
+def get_service_config_schema(
+    req: ProcessSchemaRequest, current_user: str = Depends(get_optional_current_user)
+) -> Dict[str, Any]:
     if not (CONFIG_MANAGER and CONFIG_MANAGER.schema and CONFIG_MANAGER.config):
         raise HTTPException(status_code=503, detail="Config/schema not loaded")
 
@@ -590,7 +599,9 @@ def get_service_config_schema(req: ProcessSchemaRequest) -> Dict[str, Any]:
 
 @config_router.post("/service-config")
 async def handle_service_config(
-    request: ServiceConfigRequest, logger=Depends(get_logger)
+    request: ServiceConfigRequest,
+    logger=Depends(get_logger),
+    current_user: str = Depends(get_optional_current_user),
 ):
     service_name = request.service_name
     updates = request.updates
@@ -643,6 +654,7 @@ async def handle_service_config(
 @config_router.get("/service-ui-map")
 async def get_service_ui_map(
     logger=Depends(get_logger),
+    current_user: str = Depends(get_optional_current_user),
 ):
     """Get mapping of service names to config_key for routing."""
     try:
@@ -668,6 +680,7 @@ async def get_service_ui_map(
 async def get_service_ui_links(
     request: Request,
     logger=Depends(get_logger),
+    current_user: str = Depends(get_optional_current_user),
 ):
     """Retrieve service UI links and generate Traefik configs dynamically."""
     try:
@@ -694,6 +707,7 @@ async def toggle_service_ui(
     body: ServiceUiToggleRequest,
     process_handler=Depends(get_process_handler),
     logger=Depends(get_logger),
+    current_user: str = Depends(get_optional_current_user),
 ):
     """Enable or disable embedded service UIs and manage Traefik."""
     try:
@@ -728,7 +742,7 @@ async def toggle_service_ui(
 
 
 @config_router.get("/onboarding-status")
-async def onboarding_status():
+async def onboarding_status(current_user: str = Depends(get_optional_current_user)):
     cfg = CONFIG_MANAGER.config
     return {
         "needs_onboarding": not cfg.get("dumb", {}).get("onboarding_completed", False)
@@ -736,7 +750,9 @@ async def onboarding_status():
 
 
 @config_router.post("/onboarding-completed")
-async def onboarding_completed(logger=Depends(get_logger)):
+async def onboarding_completed(
+    logger=Depends(get_logger), current_user: str = Depends(get_optional_current_user)
+):
     cfg = CONFIG_MANAGER.config
     cfg["dumb"]["onboarding_completed"] = True
     logger.info("Onboarding completed successfully.")
@@ -745,7 +761,9 @@ async def onboarding_completed(logger=Depends(get_logger)):
 
 
 @config_router.post("/reset-onboarding")
-async def reset_onboarding(logger=Depends(get_logger)):
+async def reset_onboarding(
+    logger=Depends(get_logger), current_user: str = Depends(get_optional_current_user)
+):
     cfg = CONFIG_MANAGER.config
     cfg["dumb"]["onboarding_completed"] = False
     logger.info("Onboarding status reset to false.")

@@ -2,7 +2,11 @@ import asyncio
 import json
 from fastapi import APIRouter, Depends, WebSocket
 from starlette.websockets import WebSocketDisconnect
-from utils.dependencies import get_metrics_collector, get_metrics_manager
+from utils.dependencies import (
+    get_metrics_collector,
+    get_metrics_manager,
+    get_websocket_current_user,
+)
 from utils.config_loader import CONFIG_MANAGER
 from utils.metrics_history_reader import read_history, read_history_series
 
@@ -19,6 +23,7 @@ async def websocket_metrics(
     websocket: WebSocket,
     collector=Depends(get_metrics_collector),
     metrics_manager=Depends(get_metrics_manager),
+    current_user: str = Depends(get_websocket_current_user),
 ):
     interval = 2.0
     if "interval" in websocket.query_params:
