@@ -177,6 +177,7 @@ class ProcessHandler:
 
             process_static_list = [
                 "poetry_install",
+                "poetry_update_plexapi",
                 "install_poetry",
                 "poetry_env_setup",
                 "PostgreSQL_init",
@@ -271,7 +272,11 @@ class ProcessHandler:
 
             self.logger.info(f"{process_name} process started with PID: {process.pid}")
 
-            if isinstance(command, list) and command and "plexmediaserver" in command[0]:
+            if (
+                isinstance(command, list)
+                and command
+                and "plexmediaserver" in command[0]
+            ):
                 self.logger.info(
                     "If you see 'Critical: libusb_init failed' in the logs, "
                     "it is a known issue with Plex and can be ignored."
@@ -594,9 +599,7 @@ class ProcessHandler:
         for entry in services:
             if not isinstance(entry, dict):
                 continue
-            entry_name = self._normalize_restart_process_name(
-                entry.get("process_name")
-            )
+            entry_name = self._normalize_restart_process_name(entry.get("process_name"))
             if not entry_name or entry_name != target:
                 continue
             merged = cfg.copy()
@@ -727,9 +730,7 @@ class ProcessHandler:
                     f"Auto-restarted {process_name} after failure: {reason}"
                 )
             else:
-                self.logger.error(
-                    f"Auto-restart failed for {process_name}: {error}"
-                )
+                self.logger.error(f"Auto-restart failed for {process_name}: {error}")
 
         threading.Thread(
             target=do_restart, daemon=True, name=f"auto-restart-{process_name}"

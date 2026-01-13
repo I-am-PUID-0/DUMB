@@ -53,6 +53,8 @@ def setup_release_version(process_handler, config, process_name, key):
     else:
         target_dir = config["config_dir"]
 
+    os.makedirs(target_dir, exist_ok=True)
+
     if config.get("clear_on_update"):
         exclude_dirs = config.get("exclude_dirs", [])
         success, error = clear_directory(target_dir, exclude_dirs)
@@ -144,6 +146,7 @@ def setup_branch_version(process_handler, config, process_name, key):
         return False, "Branch version not supported for Zurg."
     else:
         logger.info(f"Using branch {config['branch']} for {process_name}")
+        os.makedirs(target_dir, exist_ok=True)
         branch_url, zip_folder_name = downloader.get_branch(
             config["repo_owner"], config["repo_name"], config["branch"]
         )
@@ -209,6 +212,83 @@ def additional_setup(process_handler, process_name, config, key):
     return True, None
 
 
+def _needs_riven_bootstrap(key, config_dir):
+    if not config_dir:
+        return False
+    if key == "riven_backend":
+        return not os.path.isfile(os.path.join(config_dir, "pyproject.toml"))
+    if key == "riven_frontend":
+        return not os.path.isfile(os.path.join(config_dir, "package.json"))
+    return False
+
+
+def _maybe_patch_riven_plexapi_dependency(
+    process_handler, key, config_dir, poetry_executable, env
+):
+    if key != "riven_backend":
+        return True, None
+    pyproject_path = os.path.join(config_dir, "pyproject.toml")
+    if not os.path.isfile(pyproject_path):
+        logger.warning("Riven pyproject.toml not found at %s", pyproject_path)
+        return True, None
+
+    with open(pyproject_path, "r") as file:
+        lines = file.readlines()
+
+    version_match = None
+    for line in lines:
+        if re.match(r'^\s*version\s*=\s*"', line):
+            version_match = re.search(r'"\s*([^"]+)\s*"', line)
+            break
+    if not version_match:
+        logger.debug("Riven version not found in %s; skipping plexapi patch", pyproject_path)
+        return True, None
+
+    release_version = version_match.group(1).strip().lower()
+    if release_version != "0.23.6":
+        return True, None
+
+    start_idx = None
+    end_idx = None
+    brace_balance = 0
+    indent = ""
+    for i, line in enumerate(lines):
+        if start_idx is None and re.search(r"^\s*plexapi\s*=\s*\{", line):
+            start_idx = i
+            indent_match = re.match(r"^(\s*)", line)
+            indent = indent_match.group(1) if indent_match else ""
+        if start_idx is not None:
+            brace_balance += line.count("{") - line.count("}")
+            if brace_balance <= 0:
+                end_idx = i
+                break
+
+    if start_idx is None:
+        logger.info("Riven plexapi dependency not found in %s", pyproject_path)
+        return True, None
+
+    replacement_line = f'{indent}plexapi = "4.17.0"\n'
+    if lines[start_idx : end_idx + 1] == [replacement_line]:
+        return True, None
+
+    lines[start_idx : end_idx + 1] = [replacement_line]
+    with open(pyproject_path, "w") as file:
+        file.writelines(lines)
+
+    logger.info("Pinned Riven plexapi to 4.17.0 for release %s", release_version)
+    process_handler.start_process(
+        "poetry_update_plexapi",
+        config_dir,
+        [poetry_executable, "update", "plexapi"],
+        env=env,
+    )
+    process_handler.wait("poetry_update_plexapi")
+    if process_handler.returncode != 0:
+        return False, f"Error updating plexapi dependency: {process_handler.stderr}"
+
+    return True, None
+
+
 def setup_project(process_handler, process_name):
     key, instance_name = CONFIG_MANAGER.find_key_for_process(process_name)
     if not key:
@@ -226,7 +306,36 @@ def setup_project(process_handler, process_name):
 
     logger.info(f"Setting up {process_name}...")
     try:
-        if config.get("release_version_enabled") and not config.get("auto_update"):
+        bootstrap_installed = False
+        if (
+            not config.get("release_version_enabled")
+            and not config.get("branch_enabled")
+            and _needs_riven_bootstrap(key, config.get("config_dir"))
+        ):
+            original_release_version = config.get("release_version")
+            if not original_release_version or original_release_version.lower() != "latest":
+                config["release_version"] = "latest"
+            logger.info(
+                "Riven not found at %s; bootstrapping release %s",
+                config.get("config_dir"),
+                config.get("release_version"),
+            )
+            success, error = setup_release_version(
+                process_handler, config, process_name, key
+            )
+            if not success:
+                return False, error
+            bootstrap_installed = True
+            if original_release_version is not None:
+                config["release_version"] = original_release_version
+            else:
+                config.pop("release_version", None)
+
+        if (
+            not bootstrap_installed
+            and config.get("release_version_enabled")
+            and not config.get("auto_update")
+        ):
             repo_owner = config.get("repo_owner")
             repo_name = config.get("repo_name")
             requested_version = config.get("release_version")
@@ -288,7 +397,7 @@ def setup_project(process_handler, process_name):
                             f"No update needed for {process_name}: current version matches requested version {requested_version}"
                         )
 
-        elif config.get("branch_enabled"):
+        elif not bootstrap_installed and config.get("branch_enabled"):
             success, error = setup_branch_version(
                 process_handler, config, process_name, key
             )
@@ -3232,6 +3341,11 @@ def setup_python_environment(process_handler, key, config_dir):
             env["PATH"] = f"{venv_path}/bin:" + env["PATH"]
             env["POETRY_VIRTUALENVS_CREATE"] = "false"
             env["VIRTUAL_ENV"] = venv_path
+            env["POETRY_CACHE_DIR"] = os.path.join(venv_path, ".cache", "pypoetry")
+            env["POETRY_CONFIG_DIR"] = os.path.join(venv_path, ".config", "pypoetry")
+            env["POETRY_VIRTUALENVS_PATH"] = os.path.join(
+                venv_path, ".cache", "pypoetry", "virtualenvs"
+            )
 
             process_handler.start_process(
                 "install_poetry",
@@ -3245,6 +3359,12 @@ def setup_python_environment(process_handler, key, config_dir):
 
             if process_handler.returncode != 0:
                 return False, f"Error installing Poetry: {process_handler.stderr}"
+
+            success, error = _maybe_patch_riven_plexapi_dependency(
+                process_handler, key, config_dir, poetry_executable, env
+            )
+            if not success:
+                return False, error
 
             process_handler.start_process(
                 "poetry_install",
