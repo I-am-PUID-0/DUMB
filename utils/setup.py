@@ -229,31 +229,64 @@ def setup_project(process_handler, process_name):
         if config.get("release_version_enabled") and not config.get("auto_update"):
             repo_owner = config.get("repo_owner")
             repo_name = config.get("repo_name")
-            nightly = "nightly" in config["release_version"].lower()
-            prerelease = config.get("release_version").lower() == "prerelease"
-            update_needed, update_info = versions.compare_versions(
-                process_name,
-                repo_owner,
-                repo_name,
-                instance_name,
-                key,
-                nightly=nightly,
-                prerelease=prerelease,
-            )
-
-            if update_needed:
-                logger.info(
-                    f"Update needed for {process_name}: {update_info['latest_version']}, but using the requested version: {config['release_version']}"
+            requested_version = config.get("release_version")
+            if not requested_version:
+                logger.warning(
+                    f"Release version enabled for {process_name} but no version provided."
                 )
-                success, error = setup_release_version(
-                    process_handler, config, process_name, key
-                )
-                if not success:
-                    return False, error
             else:
-                logger.info(
-                    f"No update needed for {process_name}: current version is {update_info['current_version']}, and requested version is: {config['release_version']}"
-                )
+                requested_lower = requested_version.lower()
+                is_latest = requested_lower == "latest"
+                nightly = "nightly" in requested_lower
+                prerelease = requested_lower == "prerelease"
+                if is_latest or nightly or prerelease:
+                    update_needed, update_info = versions.compare_versions(
+                        process_name,
+                        repo_owner,
+                        repo_name,
+                        instance_name,
+                        key,
+                        nightly=nightly,
+                        prerelease=prerelease,
+                    )
+
+                    if update_needed:
+                        logger.info(
+                            f"Update needed for {process_name}: {update_info['latest_version']}, but using the requested version: {requested_version}"
+                        )
+                        success, error = setup_release_version(
+                            process_handler, config, process_name, key
+                        )
+                        if not success:
+                            return False, error
+                    else:
+                        logger.info(
+                            f"No update needed for {process_name}: current version is {update_info['current_version']}, and requested version is: {requested_version}"
+                        )
+                else:
+                    current_version, error = versions.version_check(
+                        process_name, instance_name, key
+                    )
+                    if not current_version:
+                        logger.warning(
+                            "Failed to read current version for %s: %s",
+                            process_name,
+                            error,
+                        )
+                        current_version = "0.0.0"
+                    if current_version != requested_version:
+                        logger.info(
+                            f"Installing requested version for {process_name}: {requested_version} (current: {current_version})"
+                        )
+                        success, error = setup_release_version(
+                            process_handler, config, process_name, key
+                        )
+                        if not success:
+                            return False, error
+                    else:
+                        logger.info(
+                            f"No update needed for {process_name}: current version matches requested version {requested_version}"
+                        )
 
         elif config.get("branch_enabled"):
             success, error = setup_branch_version(

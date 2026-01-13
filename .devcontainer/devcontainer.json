@@ -1,6 +1,6 @@
 {
   "name": "DUMB Dev Container",
-  "image": "iampuid0/dumb:latest",
+  "image": "iampuid0/dumb:dev",
   "workspaceFolder": "/workspace",
   "customizations": {
     "vscode": {
