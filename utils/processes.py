@@ -458,20 +458,48 @@ class ProcessHandler:
         processes_to_stop = list(self.process_names.keys())
         self.logger.info(f"Processes to stop: {', '.join(processes_to_stop)}")
 
-        with ThreadPoolExecutor() as executor:
-            futures = {
-                executor.submit(self.stop_process, process_name): process_name
-                for process_name in processes_to_stop
-                if process_name in self.process_names
-            }
+        media_keys = ("plex", "jellyfin", "emby")
+        media_processes = []
+        for key in media_keys:
+            cfg = CONFIG_MANAGER.get(key, {}) or {}
+            process_name = cfg.get("process_name")
+            if process_name:
+                media_processes.append(process_name)
 
-            for future in as_completed(futures):
-                process_name = futures[future]
-                try:
-                    future.result()
-                    self.logger.info(f"{process_name} has been stopped successfully.")
-                except Exception as e:
-                    self.logger.error(f"Error stopping {process_name}: {e}")
+        media_to_stop = [
+            name for name in media_processes if name in self.process_names
+        ]
+        if media_to_stop:
+            self.logger.info(
+                "Stopping media servers first: %s", ", ".join(media_to_stop)
+            )
+        for process_name in media_to_stop:
+            try:
+                self.stop_process(process_name)
+                self.logger.info(f"{process_name} has been stopped successfully.")
+            except Exception as e:
+                self.logger.error(f"Error stopping {process_name}: {e}")
+
+        remaining_to_stop = [
+            name for name in processes_to_stop if name in self.process_names
+        ]
+        if remaining_to_stop:
+            with ThreadPoolExecutor() as executor:
+                futures = {
+                    executor.submit(self.stop_process, process_name): process_name
+                    for process_name in remaining_to_stop
+                    if process_name in self.process_names
+                }
+
+                for future in as_completed(futures):
+                    process_name = futures[future]
+                    try:
+                        future.result()
+                        self.logger.info(
+                            f"{process_name} has been stopped successfully."
+                        )
+                    except Exception as e:
+                        self.logger.error(f"Error stopping {process_name}: {e}")
         self._update_running_processes_file()
         self.shutdown_threads()
         time.sleep(5)
