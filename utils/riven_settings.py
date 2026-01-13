@@ -177,6 +177,8 @@ def set_env_variables():
             f"http://{zilean_config.get('host')}:{zilean_config.get('port')}",
         )
 
+    postgres_port = postgres_config.get("port", 5432)
+
     env_vars = {
         "RIVEN_DOWNLOADERS_REAL_DEBRID_API_KEY": real_debrid_api_key,
         "RIVEN_DOWNLOADERS_ALL_DEBRID_API_KEY": all_debrid_api_key,
@@ -192,8 +194,8 @@ def set_env_variables():
         "RIVEN_SYMLINK_RCLONE_PATH": symlink_rclone_path,
         "RIVEN_SYMLINK_LIBRARY_PATH": riven_backend_config.get("symlink_library_path"),
         "BACKEND_URL": f"http://{riven_backend_config.get('host')}:{riven_backend_config.get('port')}",
-        "RIVEN_DATABASE_URL": f"postgres://{postgres_config.get('user')}:{postgres_config.get('password')}@{postgres_config.get('host')}/riven",
-        "RIVEN_DATABASE_HOST": f"postgresql+psycopg2://{postgres_config.get('user')}:{postgres_config.get('password')}@{postgres_config.get('host')}/riven",
+        "RIVEN_DATABASE_URL": f"postgres://{postgres_config.get('user')}:{postgres_config.get('password')}@{postgres_config.get('host')}:{postgres_port}/riven",
+        "RIVEN_DATABASE_HOST": f"postgresql+psycopg2://{postgres_config.get('user')}:{postgres_config.get('password')}@{postgres_config.get('host')}:{postgres_port}/riven",
     }
 
     default_env_vars = {}

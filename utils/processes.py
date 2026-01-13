@@ -6,6 +6,7 @@ from utils.logger import (
 from utils.config_loader import CONFIG_MANAGER
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import shlex, os, time, signal, threading, subprocess, sys, uvicorn, socket, psutil
+import requests
 from json import dump
 
 
@@ -76,6 +77,7 @@ class ProcessHandler:
         self._reset_healthcheck_state(process_name)
         skip_setup = {"pgAgent"}
         key = None
+        config_for_wait = None
 
         if process_name in skip_setup:
             self.logger.info(
@@ -111,19 +113,103 @@ class ProcessHandler:
                 )
                 key, instance_name = CONFIG_MANAGER.find_key_for_process(process_name)
                 config = CONFIG_MANAGER.get_instance(instance_name, key)
+                config_for_wait = config
                 command = config.get("command", command)
                 self.logger.debug(f"Command for {process_name}: {command}")
                 config_dir = config.get("config_dir", config_dir)
                 suppress_logging = config.get("suppress_logging", suppress_logging)
                 env = env or {}
                 env.update(config.get("env", {}))
-                if config.get("wait_for_dir"):
-                    dependency_dir = config["wait_for_dir"]
+
+            if config_for_wait is None:
+                key, instance_name = CONFIG_MANAGER.find_key_for_process(process_name)
+                config_for_wait = CONFIG_MANAGER.get_instance(instance_name, key)
+
+            if config_for_wait:
+                if config_for_wait.get("wait_for_dir"):
+                    dependency_dir = config_for_wait["wait_for_dir"]
                     while not os.path.exists(dependency_dir):
+                        if self.shutting_down:
+                            self.logger.info(
+                                "Shutdown requested; skipping wait for directory %s.",
+                                dependency_dir,
+                            )
+                            return False, "Shutdown requested"
                         self.logger.info(
-                            f"Waiting for directory {dependency_dir} to become available..."
+                            "Waiting for directory %s to become available...",
+                            dependency_dir,
                         )
                         time.sleep(10)
+
+                wait_mounts = config_for_wait.get("wait_for_mounts") or []
+                if wait_mounts:
+                    while True:
+                        if self.shutting_down:
+                            self.logger.info(
+                                "Shutdown requested; skipping wait for mounts."
+                            )
+                            return False, "Shutdown requested"
+                        missing = [
+                            mount_path
+                            for mount_path in wait_mounts
+                            if not os.path.ismount(mount_path)
+                        ]
+                        if not missing:
+                            break
+                        self.logger.info(
+                            "Waiting for mounts to become available: %s",
+                            ", ".join(missing),
+                        )
+                        time.sleep(10)
+
+                wait_urls = config_for_wait.get("wait_for_url") or []
+                if wait_urls:
+                    time.sleep(5)
+                    start_time = time.time()
+                    for wait_entry in wait_urls:
+                        wait_url = wait_entry.get("url")
+                        if not wait_url:
+                            continue
+                        auth = wait_entry.get("auth")
+                        self.logger.info(
+                            "Waiting to start %s until %s is accessible.",
+                            process_name,
+                            wait_url,
+                        )
+                        while time.time() - start_time < 600:
+                            if self.shutting_down:
+                                self.logger.info(
+                                    "Shutdown requested; skipping wait for %s.",
+                                    wait_url,
+                                )
+                                return False, "Shutdown requested"
+                            try:
+                                if auth:
+                                    response = requests.get(
+                                        wait_url,
+                                        auth=(auth["user"], auth["password"]),
+                                    )
+                                else:
+                                    response = requests.get(wait_url)
+                                if 200 <= response.status_code < 300:
+                                    self.logger.info(
+                                        "%s is accessible with %s.",
+                                        wait_url,
+                                        response.status_code,
+                                    )
+                                    break
+                                self.logger.debug(
+                                    "Received status code %s while waiting for %s.",
+                                    response.status_code,
+                                    wait_url,
+                                )
+                            except requests.RequestException as e:
+                                self.logger.debug("Waiting for %s: %s", wait_url, e)
+                            time.sleep(5)
+                        else:
+                            raise RuntimeError(
+                                f"Timeout: {wait_url} is not accessible after 600 seconds."
+                            )
 
             def preexec_fn():
                 os.setgid(group_id)

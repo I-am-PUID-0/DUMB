@@ -8,7 +8,8 @@ from utils.processes import ProcessHandler
 from utils.auto_update import Update
 from utils.dependencies import initialize_dependencies
 from utils.plex_dbrepair import start_plex_dbrepair_worker
-import subprocess, threading, time, tomllib, os, socket, errno, psutil
+from concurrent.futures import ThreadPoolExecutor, wait, FIRST_COMPLETED
+import subprocess, threading, time, tomllib, os, socket, errno, psutil, json
 
 
 def log_ascii_art():
@@ -265,6 +266,153 @@ def start_configured_process(config_obj, updater, key_name, exit_on_error=True):
             raise
 
 
+def _service_has_enabled_instance(config_obj: dict) -> bool:
+    if not isinstance(config_obj, dict):
+        return False
+    if "instances" in config_obj and isinstance(config_obj["instances"], dict):
+        return any(
+            isinstance(inst, dict) and inst.get("enabled")
+            for inst in config_obj["instances"].values()
+        )
+    return bool(config_obj.get("enabled"))
+
+
+def _read_decypharr_mount_path(decypharr_cfg: dict) -> str | None:
+    if not decypharr_cfg.get("use_embedded_rclone"):
+        return None
+    config_file = decypharr_cfg.get("config_file")
+    if config_file and os.path.exists(config_file):
+        try:
+            with open(config_file, "r") as handle:
+                data = json.load(handle)
+            mount_path = (data.get("rclone") or {}).get("mount_path")
+            if isinstance(mount_path, str) and mount_path.strip():
+                return mount_path
+        except Exception as e:
+            logger.debug("Failed to read Decypharr mount path: %s", e)
+    return "/mnt/debrid/decypharr"
+
+
+def _collect_mount_paths(config_manager) -> list[str]:
+    mount_paths = set()
+    rclone_instances = config_manager.get("rclone", {}).get("instances", {}) or {}
+    for instance in rclone_instances.values():
+        if not isinstance(instance, dict) or not instance.get("enabled"):
+            continue
+        mount_dir = instance.get("mount_dir")
+        mount_name = instance.get("mount_name")
+        if mount_dir and mount_name:
+            mount_paths.add(os.path.join(mount_dir, mount_name))
+
+    decypharr_cfg = config_manager.get("decypharr", {}) or {}
+    if decypharr_cfg.get("enabled") and decypharr_cfg.get("use_embedded_rclone"):
+        mount_path = _read_decypharr_mount_path(decypharr_cfg)
+        if mount_path:
+            mount_paths.add(mount_path)
+
+    return sorted(mount_paths)
+
+
+def _merge_wait_for_mounts(config_obj: dict, mount_paths: list[str]) -> None:
+    existing = config_obj.get("wait_for_mounts") or []
+    merged = sorted(set(existing) | set(mount_paths))
+    if merged:
+        config_obj["wait_for_mounts"] = merged
+
+
+def _apply_mount_waits(config_manager, mount_paths: list[str]) -> None:
+    if not mount_paths:
+        return
+    mount_wait_keys = {
+        "plex",
+        "jellyfin",
+        "emby",
+    }
+    for key in mount_wait_keys:
+        cfg = config_manager.get(key, {})
+        if not isinstance(cfg, dict):
+            continue
+        if "instances" in cfg and isinstance(cfg["instances"], dict):
+            for inst in cfg["instances"].values():
+                if isinstance(inst, dict) and inst.get("enabled"):
+                    _merge_wait_for_mounts(inst, mount_paths)
+        elif cfg.get("enabled"):
+            _merge_wait_for_mounts(cfg, mount_paths)
+
+
+def _build_dependency_map(config_manager) -> dict[str, set[str]]:
+    deps = {
+        "riven_backend": {"postgres"},
+        "riven_frontend": {"riven_backend"},
+        "zilean": {"postgres"},
+        "pgadmin": {"postgres"},
+    }
+
+    rclone_deps = set()
+    rclone_instances = config_manager.get("rclone", {}).get("instances", {}) or {}
+    for instance in rclone_instances.values():
+        if not isinstance(instance, dict) or not instance.get("enabled"):
+            continue
+        if instance.get("zurg_enabled"):
+            rclone_deps.add("zurg")
+        if instance.get("decypharr_enabled"):
+            rclone_deps.add("decypharr")
+        key_type = (instance.get("key_type") or "").lower()
+        if key_type == "nzbdav" or instance.get("core_service") == "nzbdav":
+            rclone_deps.add("nzbdav")
+    if rclone_deps:
+        deps["rclone"] = rclone_deps
+
+    return deps
+
+
+def _start_processes_with_dependencies(
+    process_handler, updater, config_manager, keys: list[str], dependency_map
+) -> None:
+    enabled = {
+        key: _service_has_enabled_instance(config_manager.get(key, {})) for key in keys
+    }
+    pending = {key for key in keys if enabled.get(key)}
+    deps = {
+        key: {d for d in dependency_map.get(key, set()) if enabled.get(d)}
+        for key in pending
+    }
+
+    def _start_key(key: str) -> None:
+        cfg = config_manager.get(key, {})
+        start_configured_process(cfg, updater, key)
+
+    in_progress = {}
+    completed = set()
+    with ThreadPoolExecutor() as executor:
+        while pending or in_progress:
+            if process_handler.shutting_down:
+                for future in list(in_progress):
+                    future.cancel()
+                return
+            ready = [key for key in list(pending) if deps.get(key, set()) <= completed]
+            for key in ready:
+                if process_handler.shutting_down:
+                    break
+                pending.remove(key)
+                in_progress[executor.submit(_start_key, key)] = key
+
+            if not in_progress:
+                raise RuntimeError(
+                    f"Dependency resolution stalled. Remaining: {sorted(pending)}"
+                )
+
+            done, _ = wait(in_progress.keys(), return_when=FIRST_COMPLETED)
+            for future in done:
+                key = in_progress.pop(future)
+                try:
+                    future.result()
+                except Exception as e:
+                    logger.error("Failed while starting %s: %s", key, e)
+                    process_handler.shutdown(exit_code=1)
+                completed.add(key)
+
+
 def main():
     log_ascii_art()
 
@@ -290,6 +438,8 @@ def main():
         process_handler.shutdown(exit_code=1)
 
     _apply_global_port_reservations(config)
+    mount_paths = _collect_mount_paths(config)
+    _apply_mount_waits(config, mount_paths)
 
     if config.get("dumb", {}).get("api_service", {}).get("enabled"):
         start_fastapi_process()
@@ -351,8 +501,10 @@ def main():
             time.sleep(interval)
 
     try:
+        if config.get("traefik", {}).get("enabled"):
+            start_configured_process(config.get("traefik", {}), updater, "traefik")
+
         grouped_keys = [
-            "traefik",
             "zurg",
             "prowlarr",
             "radarr",
@@ -377,9 +529,10 @@ def main():
             "tautulli",
             "seerr",
         ]
-        for key in grouped_keys:
-            cfg = config.get(key, {})
-            start_configured_process(cfg, updater, key)
+        dependency_map = _build_dependency_map(config)
+        _start_processes_with_dependencies(
+            process_handler, updater, config, grouped_keys, dependency_map
+        )
 
     except Exception as e:
         logger.error(e)

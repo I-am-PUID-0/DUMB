@@ -364,6 +364,8 @@ def _wait_for_arr(
     deadline = time.time() + max(1, timeout_s)
     url = _join(host, "/api/v3/system/status")
     while time.time() < deadline:
+        if _shutdown_requested():
+            return False
         try:
             _arr_req(url, token, "GET", timeout=5)
             return True
@@ -384,6 +386,8 @@ def _with_retries(
     last_err = None
     delay = max(0.1, base_delay_s)
     for i in range(max(1, attempts)):
+        if _shutdown_requested():
+            raise RuntimeError("Shutdown requested")
         try:
             return fn(*args, **kwargs)
         except Exception as e:
@@ -395,12 +399,24 @@ def _with_retries(
     raise last_err if last_err else RuntimeError("retry failed")
 
 
+def _shutdown_requested() -> bool:
+    try:
+        from utils.dependencies import get_process_handler
+
+        handler = get_process_handler()
+    except Exception:
+        return False
+    return bool(getattr(handler, "shutting_down", False))
+
+
 # ---------------------------------------------------------------------------
 # Main patch entrypoint
 # ---------------------------------------------------------------------------
 
 
 def patch_decypharr_config():
+    if _shutdown_requested():
+        return False, "Shutdown requested"
     config_path = CONFIG_MANAGER.get("decypharr", {}).get(
         "config_file", "/decypharr/config.json"
     )

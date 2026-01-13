@@ -35,6 +35,80 @@ def _chown_recursive_if_needed(path: str, user_id: int, group_id: int) -> None:
         logger.debug("Recursive chown failed for %s: %s", path, err)
 
 
+def _update_zilean_connection_string(
+    conn: str,
+    postgres_host: str,
+    postgres_port: int,
+    postgres_user: str,
+    postgres_password: str,
+) -> str:
+    if not isinstance(conn, str) or not conn:
+        return conn
+
+    trailing_semicolon = conn.endswith(";")
+    parts = []
+    for segment in conn.split(";"):
+        if not segment:
+            continue
+        if "=" in segment:
+            key, value = segment.split("=", 1)
+            parts.append([key, value])
+        else:
+            parts.append([segment, ""])
+
+    values = {key.strip().lower(): value for key, value in parts}
+    current_db = values.get("database")
+    if current_db and current_db.lower() != "zilean":
+        return conn
+
+    updated = False
+    for pair in parts:
+        key = pair[0].strip().lower()
+        if key == "host" and pair[1] != postgres_host:
+            pair[1] = postgres_host
+            updated = True
+        elif key == "port" and pair[1] != str(postgres_port):
+            pair[1] = str(postgres_port)
+            updated = True
+        elif key == "username" and pair[1] != postgres_user:
+            pair[1] = postgres_user
+            updated = True
+        elif key == "password" and pair[1] != postgres_password:
+            pair[1] = postgres_password
+            updated = True
+
+    if not updated:
+        return conn
+
+    rebuilt = ";".join(f"{k}={v}" if v != "" else k for k, v in parts)
+    if trailing_semicolon:
+        rebuilt += ";"
+    return rebuilt
+
+
+def _update_postgres_url(
+    conn: str,
+    postgres_host: str,
+    postgres_port: int,
+    postgres_user: str,
+    postgres_password: str,
+) -> str:
+    if not isinstance(conn, str) or not conn:
+        return conn
+
+    try:
+        parsed = urllib.parse.urlparse(conn)
+    except Exception:
+        return conn
+
+    if parsed.scheme not in ("postgres", "postgresql", "postgresql+psycopg2"):
+        return conn
+
+    netloc = f"{postgres_user}:{postgres_password}@{postgres_host}:{postgres_port}"
+    updated = parsed._replace(netloc=netloc)
+    return urllib.parse.urlunparse(updated)
+
+
 def setup_release_version(process_handler, config, process_name, key):
     if key == "plex_debrid":
         return False, "Release version not supported for plex_debrid."
@@ -442,10 +516,55 @@ def setup_project(process_handler, process_name):
         if config.get("env"):
             env_changed = False
             for env_key, value in config["env"].items():
-                if isinstance(value, str) and "{" in value and "}" in value:
-                    if "$" in value:
-                        continue
+                if not isinstance(value, str):
+                    continue
 
+                updated_value = value
+                if key == "zilean" and env_key == "Zilean__Database__ConnectionString":
+                    postgres_host = CONFIG_MANAGER.get("postgres").get(
+                        "host", "127.0.0.1"
+                    )
+                    postgres_port = CONFIG_MANAGER.get("postgres").get("port", 5432)
+                    postgres_user = CONFIG_MANAGER.get("postgres").get(
+                        "user", "DUMB"
+                    )
+                    postgres_password = CONFIG_MANAGER.get("postgres").get(
+                        "password", "postgres"
+                    )
+                    updated_value = _update_zilean_connection_string(
+                        updated_value,
+                        postgres_host,
+                        postgres_port,
+                        postgres_user,
+                        postgres_password,
+                    )
+                elif key == "riven_backend" and env_key in (
+                    "RIVEN_DATABASE_URL",
+                    "RIVEN_DATABASE_HOST",
+                ):
+                    postgres_host = CONFIG_MANAGER.get("postgres").get(
+                        "host", "127.0.0.1"
+                    )
+                    postgres_port = CONFIG_MANAGER.get("postgres").get("port", 5432)
+                    postgres_user = CONFIG_MANAGER.get("postgres").get(
+                        "user", "DUMB"
+                    )
+                    postgres_password = CONFIG_MANAGER.get("postgres").get(
+                        "password", "postgres"
+                    )
+                    updated_value = _update_postgres_url(
+                        updated_value,
+                        postgres_host,
+                        postgres_port,
+                        postgres_user,
+                        postgres_password,
+                    )
+
+                if (
+                    "{" in updated_value
+                    and "}" in updated_value
+                    and "$" not in updated_value
+                ):
                     if key == "zilean":
                         postgres_host = CONFIG_MANAGER.get("postgres").get(
                             "host", "127.0.0.1"
@@ -457,8 +576,8 @@ def setup_project(process_handler, process_name):
                         postgres_password = CONFIG_MANAGER.get("postgres").get(
                             "password", "postgres"
                         )
-                        value = (
-                            value.replace("{postgres_host}", postgres_host)
+                        updated_value = (
+                            updated_value.replace("{postgres_host}", postgres_host)
                             .replace("{postgres_port}", str(postgres_port))
                             .replace("{postgres_user}", postgres_user)
                             .replace("{postgres_password}", postgres_password)
@@ -466,14 +585,14 @@ def setup_project(process_handler, process_name):
 
                     for placeholder in config.keys():
                         placeholder_pattern = f"{{{placeholder}}}"
-                        if placeholder_pattern in value:
-                            value = value.replace(
+                        if placeholder_pattern in updated_value:
+                            updated_value = updated_value.replace(
                                 placeholder_pattern, str(config[placeholder])
                             )
 
-                    if config["env"].get(env_key) != value:
-                        env_changed = True
-                        config["env"][env_key] = value
+                if config["env"].get(env_key) != updated_value:
+                    env_changed = True
+                    config["env"][env_key] = updated_value
             if env_changed:
                 CONFIG_MANAGER.save_config(process_name)
 
@@ -2904,6 +3023,7 @@ def rclone_setup():
                     "vendor = other",
                     "pacer_min_sleep = 0",
                 ]
+                instance["wait_for_url"] = [{"url": url}]
 
             else:
                 key_type = instance.get("key_type", "").lower()
@@ -3007,6 +3127,11 @@ def rclone_setup():
                                 config_data[mount_name].append(
                                     f"pass = {obscured_password}"
                                 )
+                    auth = {"user": webdav_user, "password": webdav_pass} if webdav_pass else None
+                    wait_entry = {"url": url}
+                    if auth:
+                        wait_entry["auth"] = auth
+                    instance["wait_for_url"] = [wait_entry]
 
             write_config(config_file, config_data)
 
@@ -3491,15 +3616,23 @@ def setup_pnpm_environment(process_handler, config_dir):
     try:
         chown_recursive(config_dir, user_id, group_id)
         with open(os.path.join(config_dir, ".npmrc"), "w") as file:
-            file.write("store-dir=./.pnpm-store\n")
+            file.write(
+                "store-dir=./.pnpm-store\n"
+                "child-concurrency=1\n"
+                "network-concurrency=1\n"
+                "fetch-retries=10\n"
+                "fetch-retry-factor=3\n"
+                "fetch-retry-mintimeout=15000\n"
+                "package-import-method=copy\n"
+            )
 
         logger.info(f"Setting up pnpm environment in {config_dir}")
         env = os.environ.copy()
         env["HOME"] = config_dir
         env["npm_config_userconfig"] = os.path.join(config_dir, ".npmrc")
-        env.setdefault("PNPM_NETWORK_CONCURRENCY", "4")
-        env.setdefault("PNPM_CHILD_CONCURRENCY", "2")
-        env.setdefault("PNPM_FETCH_RETRIES", "5")
+        env.setdefault("PNPM_NETWORK_CONCURRENCY", "1")
+        env.setdefault("PNPM_CHILD_CONCURRENCY", "1")
+        env.setdefault("PNPM_FETCH_RETRIES", "10")
 
         def _parse_required_pnpm_major():
             package_json_path = os.path.join(config_dir, "package.json")

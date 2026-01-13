@@ -507,8 +507,37 @@ class Update:
 
         if config.get("wait_for_dir", False):
             while not os.path.exists(wait_dir := config["wait_for_dir"]):
+                if self.process_handler.shutting_down:
+                    self.logger.info(
+                        "Shutdown requested; skipping wait for directory %s.",
+                        wait_dir,
+                    )
+                    return False, "Shutdown requested"
                 self.logger.info(
                     f"Waiting for directory {wait_dir} to become available before starting {process_name}"
+                )
+                time.sleep(10)
+
+        wait_mounts = config.get("wait_for_mounts") or []
+        if wait_mounts:
+            while True:
+                if self.process_handler.shutting_down:
+                    self.logger.info(
+                        "Shutdown requested; skipping wait for mounts before %s.",
+                        process_name,
+                    )
+                    return False, "Shutdown requested"
+                missing = [
+                    mount_path
+                    for mount_path in wait_mounts
+                    if not os.path.ismount(mount_path)
+                ]
+                if not missing:
+                    break
+                self.logger.info(
+                    "Waiting for mounts to become available before starting %s: %s",
+                    process_name,
+                    ", ".join(missing),
                 )
                 time.sleep(10)
 
@@ -526,6 +555,12 @@ class Update:
                 )
 
                 while time.time() - start_time < 600:
+                    if self.process_handler.shutting_down:
+                        self.logger.info(
+                            "Shutdown requested; skipping wait for %s.",
+                            wait_url,
+                        )
+                        return False, "Shutdown requested"
                     try:
                         if auth:
                             response = requests.get(
@@ -581,6 +616,8 @@ class Update:
             suppress_logging=suppress_logging,
             env=env,
         )
+        if self.process_handler.shutting_down:
+            return process, "Shutdown requested"
         if key == "riven_backend":
             from utils.riven_settings import load_settings
 
@@ -588,6 +625,8 @@ class Update:
             load_settings()
 
         if key == "decypharr":
+            if self.process_handler.shutting_down:
+                return process, "Shutdown requested"
             from utils.decypharr_settings import patch_decypharr_config
 
             time.sleep(10)
@@ -607,6 +646,8 @@ class Update:
                 self.logger.warning("Decypharr config patch failed: %s", error)
 
         if key == "nzbdav":
+            if self.process_handler.shutting_down:
+                return process, "Shutdown requested"
             from utils.nzbdav_settings import patch_nzbdav_config
 
             time.sleep(10)
@@ -634,6 +675,8 @@ class Update:
             "whisparr",
             "whisparr-v3",
         ]:
+            if self.process_handler.shutting_down:
+                return process, "Shutdown requested"
             from utils.prowlarr_settings import patch_prowlarr_apps
 
             time.sleep(10)
@@ -642,6 +685,8 @@ class Update:
                 self.logger.warning("Prowlarr app sync failed: %s", err)
 
         if key == "plex":
+            if self.process_handler.shutting_down:
+                return process, "Shutdown requested"
             from utils.plex_settings import patch_plex_config
 
             time.sleep(10)
