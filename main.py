@@ -8,7 +8,8 @@ from utils.processes import ProcessHandler
 from utils.auto_update import Update
 from utils.dependencies import initialize_dependencies
 from utils.plex_dbrepair import start_plex_dbrepair_worker
-from concurrent.futures import ThreadPoolExecutor, wait, FIRST_COMPLETED
+from utils.setup import setup_project
+from concurrent.futures import ThreadPoolExecutor, wait, FIRST_COMPLETED, as_completed
 import subprocess, threading, time, tomllib, os, socket, errno, psutil, json, urllib.parse
 
 
@@ -541,6 +542,58 @@ def _apply_waits_to_service(config_manager, key: str, wait_entries: list[dict]) 
         _set_wait_for_urls(cfg, wait_entries)
 
 
+def _collect_enabled_process_names(config_manager) -> list[str]:
+    process_names = []
+    for key, cfg in config_manager.config.items():
+        if not isinstance(cfg, dict):
+            continue
+        if key == "dumb":
+            continue
+        if "instances" in cfg and isinstance(cfg["instances"], dict):
+            for inst_cfg in cfg["instances"].values():
+                if isinstance(inst_cfg, dict) and inst_cfg.get("enabled"):
+                    process_name = inst_cfg.get("process_name")
+                    if process_name:
+                        process_names.append(process_name)
+            continue
+        if cfg.get("enabled"):
+            process_name = cfg.get("process_name")
+            if process_name:
+                process_names.append(process_name)
+    return process_names
+
+
+def _preinstall_enabled_services(process_handler, config_manager) -> None:
+    process_names = _collect_enabled_process_names(config_manager)
+    if not process_names:
+        return
+    logger.info("Pre-installing enabled services before startup.")
+    max_workers = min(4, max(1, len(process_names)))
+
+    def _run_preinstall(name: str) -> None:
+        if process_handler.shutting_down:
+            return
+        with process_handler.process_context(name):
+            key, _ = config_manager.find_key_for_process(name)
+            if key in {"pgadmin", "postgres"}:
+                logger.info("Preinstall skip for %s; requires running dependency.", name)
+                return
+            success, error = setup_project(process_handler, name, preinstall=True)
+            if not success:
+                raise RuntimeError(error)
+
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        futures = {executor.submit(_run_preinstall, name): name for name in process_names}
+        for future in as_completed(futures):
+            name = futures[future]
+            try:
+                future.result()
+            except Exception as e:
+                logger.error("Pre-install failed for %s: %s", name, e)
+                process_handler.shutdown(exit_code=1)
+                raise
+
+
 def _build_dependency_map(config_manager) -> dict[str, set[str]]:
     deps = {
         "riven_backend": {"postgres"},
@@ -676,6 +729,7 @@ def main():
     _apply_prowlarr_waits(config, _collect_arr_ping_waits(config))
     _apply_waits_to_service(config, "tautulli", _build_plex_wait_entries(config))
     _apply_waits_to_service(config, "seerr", _build_media_wait_entries(config))
+    _preinstall_enabled_services(process_handler, config)
 
     if config.get("dumb", {}).get("api_service", {}).get("enabled"):
         start_fastapi_process()

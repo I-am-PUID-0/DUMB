@@ -5,6 +5,7 @@ from utils.logger import (
 )
 from utils.config_loader import CONFIG_MANAGER
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from contextlib import contextmanager
 import shlex, os, time, signal, threading, subprocess, sys, uvicorn, socket, psutil
 import requests
 from json import dump
@@ -28,14 +29,87 @@ class ProcessHandler:
         self.process_names = {}
         self.external_processes = {}
         self.subprocess_loggers = {}
-        self.stdout = ""
-        self.stderr = ""
-        self.returncode = None
+        self._global_stdout = ""
+        self._global_stderr = ""
+        self._global_returncode = None
+        self._thread_state = threading.local()
         self.shutting_down = False
         self.setup_tracker = set()
+        self.setup_tracker_lock = threading.Lock()
         self.auto_restart_state = {}
         self.auto_restart_lock = threading.Lock()
         self.auto_restart_thread = None
+
+    def _get_thread_state(self):
+        state = getattr(self._thread_state, "state", None)
+        if state is None:
+            state = {
+                "has_result": False,
+                "returncode": None,
+                "stdout": "",
+                "stderr": "",
+                "prefix": None,
+            }
+            self._thread_state.state = state
+        return state
+
+    def _prefixed_name(self, process_name: str) -> str:
+        prefix = self._get_thread_state().get("prefix")
+        if prefix:
+            return f"{prefix}:{process_name}"
+        return process_name
+
+    @contextmanager
+    def process_context(self, prefix: str):
+        state = self._get_thread_state()
+        previous = state.get("prefix")
+        state["prefix"] = prefix
+        try:
+            yield
+        finally:
+            state["prefix"] = previous
+
+    @property
+    def returncode(self):
+        state = self._get_thread_state()
+        if state.get("has_result"):
+            return state.get("returncode")
+        return self._global_returncode
+
+    @returncode.setter
+    def returncode(self, value):
+        state = self._get_thread_state()
+        state["has_result"] = True
+        state["returncode"] = value
+        self._global_returncode = value
+
+    @property
+    def stdout(self):
+        state = self._get_thread_state()
+        if state.get("has_result"):
+            return state.get("stdout")
+        return self._global_stdout
+
+    @stdout.setter
+    def stdout(self, value):
+        state = self._get_thread_state()
+        state["has_result"] = True
+        state["stdout"] = value
+        self._global_stdout = value
+
+    @property
+    def stderr(self):
+        state = self._get_thread_state()
+        if state.get("has_result"):
+            return state.get("stderr")
+        return self._global_stderr
+
+    @stderr.setter
+    def stderr(self, value):
+        state = self._get_thread_state()
+        state["has_result"] = True
+        state["stderr"] = value
+        self._global_stderr = value
 
     def _update_running_processes_file(self):
         running_processes = {
@@ -73,8 +147,9 @@ class ProcessHandler:
         suppress_logging=False,
         env=None,
     ):
-        self._set_restart_disabled(process_name, False)
-        self._reset_healthcheck_state(process_name)
+        internal_name = self._prefixed_name(process_name)
+        self._set_restart_disabled(internal_name, False)
+        self._reset_healthcheck_state(internal_name)
         skip_setup = {"pgAgent"}
         key = None
         config_for_wait = None
@@ -90,8 +165,11 @@ class ProcessHandler:
                     f"Failed to locate key for {process_name}. Assuming no setup required."
                 )
             else:
-                if process_name not in self.setup_tracker:
-                    self.logger.debug(f"Pre Setup tracker: {self.setup_tracker}")
+                with self.setup_tracker_lock:
+                    needs_setup = process_name not in self.setup_tracker
+                    tracker_snapshot = set(self.setup_tracker)
+                if needs_setup:
+                    self.logger.debug(f"Pre Setup tracker: {tracker_snapshot}")
                     self.logger.info(f"{process_name} needs setup. Running setup...")
                     from utils.setup import setup_project
 
@@ -100,7 +178,7 @@ class ProcessHandler:
                         return False, f"Failed to set up {process_name}: {error}"
 
         try:
-            if process_name in self.process_names:
+            if internal_name in self.process_names:
                 self.logger.info(f"{process_name} is already running. Skipping...")
                 return True, None
 
@@ -128,6 +206,7 @@ class ProcessHandler:
             if config_for_wait:
                 if config_for_wait.get("wait_for_dir"):
                     dependency_dir = config_for_wait["wait_for_dir"]
+                    sleep_s = 10
                     while not os.path.exists(dependency_dir):
                         if self.shutting_down:
                             self.logger.info(
@@ -139,10 +218,12 @@ class ProcessHandler:
                             "Waiting for directory %s to become available...",
                             dependency_dir,
                         )
-                        time.sleep(10)
+                        time.sleep(sleep_s)
+                        sleep_s = min(60, int(sleep_s * 1.5))
 
                 wait_mounts = config_for_wait.get("wait_for_mounts") or []
                 if wait_mounts:
+                    sleep_s = 10
                     while True:
                         if self.shutting_down:
                             self.logger.info(
@@ -160,7 +241,8 @@ class ProcessHandler:
                             "Waiting for mounts to become available: %s",
                             ", ".join(missing),
                         )
-                        time.sleep(10)
+                        time.sleep(sleep_s)
+                        sleep_s = min(60, int(sleep_s * 1.5))
 
                 wait_urls = config_for_wait.get("wait_for_url") or []
                 if wait_urls:
@@ -182,6 +264,7 @@ class ProcessHandler:
                         if not wait_url:
                             continue
                         auth = wait_entry.get("auth")
+                        sleep_s = 5
                         while time.time() - start_time < 600:
                             if self.shutting_down:
                                 self.logger.info(
@@ -211,7 +294,8 @@ class ProcessHandler:
                                 )
                             except requests.RequestException as e:
                                 self.logger.debug("Waiting for %s: %s", wait_url, e)
-                            time.sleep(5)
+                            time.sleep(sleep_s)
+                            sleep_s = min(60, int(sleep_s * 1.5))
                         else:
                             raise RuntimeError(
                                 f"Timeout: {wait_url} is not accessible after 600 seconds."
@@ -356,7 +440,7 @@ class ProcessHandler:
                 subprocess_logger.start_monitoring_stderr(
                     process, instance_name, process_name
                 )
-                self.subprocess_loggers[process_name] = subprocess_logger
+                self.subprocess_loggers[internal_name] = subprocess_logger
 
             # success, error = self._check_immediate_exit_and_log(process, process_name)
             # if not success:
@@ -376,11 +460,12 @@ class ProcessHandler:
 
             self.processes[process.pid] = {
                 "name": process_name,
+                "internal_name": internal_name,
                 "description": process_description,
                 "process_obj": process,
                 "start_time": time.time(),
             }
-            self.process_names[process_name] = process
+            self.process_names[internal_name] = process
 
             if process:
                 self._update_running_processes_file()
@@ -414,12 +499,13 @@ class ProcessHandler:
                     break
                 process_info = self.processes.pop(pid, {"description": "Unknown"})
                 process_name = process_info.get("name")
+                internal_name = process_info.get("internal_name", process_name)
                 process_obj = process_info.get("process_obj")
                 exit_code = None
                 if process_obj:
                     exit_code = process_obj.returncode
-                if process_name in self.process_names:
-                    del self.process_names[process_name]
+                if internal_name in self.process_names:
+                    del self.process_names[internal_name]
                 self.logger.debug(
                     f"Reaped zombie process with PID: {pid}, "
                     f"Description: {process_info.get('description', 'Unknown')}"
@@ -439,7 +525,8 @@ class ProcessHandler:
             self.logger.debug(f"Skipping wait for {process_name} due to shutdown mode.")
             return
 
-        process = self.process_names.get(process_name)
+        internal_name = self._prefixed_name(process_name)
+        process = self.process_names.get(internal_name)
 
         if not process:
             self.logger.warning(
@@ -457,16 +544,16 @@ class ProcessHandler:
         except Exception as e:
             self.logger.error(f"Error while waiting for process {process_name}: {e}")
         finally:
-            if process_name in self.subprocess_loggers:
-                self.subprocess_loggers[process_name].stop_logging_stdout()
-                self.subprocess_loggers[process_name].stop_monitoring_stderr()
-                del self.subprocess_loggers[process_name]
+            if internal_name in self.subprocess_loggers:
+                self.subprocess_loggers[internal_name].stop_logging_stdout()
+                self.subprocess_loggers[internal_name].stop_monitoring_stderr()
+                del self.subprocess_loggers[internal_name]
 
             if process.pid in self.processes:
                 del self.processes[process.pid]
 
-            if process_name in self.process_names:
-                del self.process_names[process_name]
+            if internal_name in self.process_names:
+                del self.process_names[internal_name]
 
             self._update_running_processes_file()
 
@@ -475,20 +562,33 @@ class ProcessHandler:
             process_description = process_name
             self.logger.info(f"Initiating shutdown for {process_description}")
 
-            process = self.process_names.get(process_name)
+            internal_name = (
+                process_name
+                if process_name in self.process_names
+                else self._prefixed_name(process_name)
+            )
+            process = self.process_names.get(internal_name)
             if process:
+                policy_name = process_name
+                if internal_name in self.process_names and internal_name != process_name:
+                    for info in self.processes.values():
+                        if info.get("internal_name") == internal_name:
+                            policy_name = info.get("name", process_name)
+                            break
+                policy = self._get_shutdown_policy(policy_name)
+                max_attempts = policy.get("max_attempts", 3)
+                wait_timeout = policy.get("wait_timeout", 10)
                 self.logger.debug(f"Process {process_name} found: {process}")
                 if disable_restart:
-                    self._set_restart_disabled(process_name, True)
+                    self._set_restart_disabled(internal_name, True)
                 process.terminate()
-                max_attempts = 1 if process_name == "riven_backend" else 3
                 attempt = 0
                 while attempt < max_attempts:
                     self.logger.debug(
                         f"Waiting for {process_description} to terminate (attempt {attempt + 1})..."
                     )
                     try:
-                        process.wait(timeout=10)
+                        process.wait(timeout=wait_timeout)
                         if process.poll() is not None:
                             self.logger.info(
                                 f"{process_description} process terminated gracefully."
@@ -496,7 +596,7 @@ class ProcessHandler:
                             break
                     except subprocess.TimeoutExpired:
                         self.logger.warning(
-                            f"{process_description} process did not terminate within 10 seconds on attempt {attempt + 1}."
+                            f"{process_description} process did not terminate within {wait_timeout} seconds on attempt {attempt + 1}."
                         )
                     attempt += 1
                     time.sleep(5)
@@ -509,12 +609,12 @@ class ProcessHandler:
                     self.logger.info(
                         f"{process_description} process forcefully terminated."
                     )
-                if self.subprocess_loggers.get(process_name):
-                    self.subprocess_loggers[process_name].stop_logging_stdout()
-                    self.subprocess_loggers[process_name].stop_monitoring_stderr()
-                    del self.subprocess_loggers[process_name]
+                if self.subprocess_loggers.get(internal_name):
+                    self.subprocess_loggers[internal_name].stop_logging_stdout()
+                    self.subprocess_loggers[internal_name].stop_monitoring_stderr()
+                    del self.subprocess_loggers[internal_name]
                     self.logger.debug(f"Stopped logging for {process_description}")
-                self.process_names.pop(process_name, None)
+                self.process_names.pop(internal_name, None)
                 process_info = self.processes.pop(process.pid, None)
                 if process_info:
                     self.logger.debug(
@@ -535,63 +635,166 @@ class ProcessHandler:
         self.logger.debug(
             f"shutdown_threads called with args: {args}, kwargs: {kwargs}"
         )
+        skip_prefixes = ("AnyIO", "asyncio")
+        skip_names = ("healthcheck", "metrics_history_worker")
         for thread in threading.enumerate():
-            if thread.is_alive() and thread is not threading.main_thread():
-                self.logger.info(f"Joining thread: {thread.name}")
-                thread.join(timeout=5)
-                if thread.is_alive():
-                    self.logger.warning(
-                        f"Thread {thread.name} did not terminate in time."
-                    )
+            if thread is threading.main_thread():
+                continue
+            if not thread.is_alive():
+                continue
+            if thread.daemon:
+                continue
+            if thread.name in skip_names or thread.name.startswith(skip_prefixes):
+                self.logger.info("Skipping join for thread: %s", thread.name)
+                continue
+            self.logger.info("Joining thread: %s", thread.name)
+            thread.join(timeout=3)
+            if thread.is_alive():
+                self.logger.warning("Thread %s did not terminate in time.", thread.name)
+
+    def _collect_enabled_processes_by_key(self):
+        entries = {}
+        for key, cfg in CONFIG_MANAGER.config.items():
+            if not isinstance(cfg, dict):
+                continue
+            if key == "dumb":
+                for subkey in ("api_service", "frontend"):
+                    subcfg = cfg.get(subkey, {})
+                    if isinstance(subcfg, dict) and subcfg.get("enabled"):
+                        pname = subcfg.get("process_name")
+                        if pname:
+                            entries.setdefault(f"dumb_{subkey}", []).append(pname)
+                continue
+            if "instances" in cfg and isinstance(cfg["instances"], dict):
+                for inst_cfg in cfg["instances"].values():
+                    if isinstance(inst_cfg, dict) and inst_cfg.get("enabled"):
+                        pname = inst_cfg.get("process_name")
+                        if pname:
+                            entries.setdefault(key, []).append(pname)
+                continue
+            if cfg.get("enabled"):
+                pname = cfg.get("process_name")
+                if pname:
+                    entries.setdefault(key, []).append(pname)
+        return entries
+
+    def _get_internal_names_for(self, process_name):
+        internal = []
+        for info in self.processes.values():
+            if info.get("name") == process_name:
+                internal.append(info.get("internal_name", process_name))
+        return internal
+
+    def _get_shutdown_policy(self, process_name):
+        key, _ = CONFIG_MANAGER.find_key_for_process(process_name)
+        policy = {
+            "max_attempts": 3,
+            "wait_timeout": 10,
+        }
+        if key in ("plex", "jellyfin", "emby"):
+            policy.update(max_attempts=6, wait_timeout=15)
+        elif key in ("postgres",):
+            policy.update(max_attempts=6, wait_timeout=15)
+        elif key in ("rclone", "decypharr", "nzbdav", "zurg"):
+            policy.update(max_attempts=4, wait_timeout=12)
+        elif key in ("cli_debrid",):
+            policy.update(max_attempts=4, wait_timeout=12)
+        return policy
 
     def shutdown(self, signum=None, frame=None, exit_code=0):
         self.shutting_down = True
         self.logger.info("Shutdown signal received. Cleaning up...")
         processes_to_stop = list(self.process_names.keys())
-        self.logger.info(f"Processes to stop: {', '.join(processes_to_stop)}")
+        self.logger.info("Processes to stop: %s", ", ".join(processes_to_stop))
 
-        media_keys = ("plex", "jellyfin", "emby")
-        media_processes = []
-        for key in media_keys:
-            cfg = CONFIG_MANAGER.get(key, {}) or {}
-            process_name = cfg.get("process_name")
-            if process_name:
-                media_processes.append(process_name)
-
-        media_to_stop = [
-            name for name in media_processes if name in self.process_names
+        by_key = self._collect_enabled_processes_by_key()
+        tiers = [
+            ("media", ("plex", "jellyfin", "emby")),
+            (
+                "apps",
+                (
+                    "tautulli",
+                    "seerr",
+                    "prowlarr",
+                    "bazarr",
+                    "sonarr",
+                    "radarr",
+                    "lidarr",
+                    "readarr",
+                    "whisparr",
+                    "whisparr-v3",
+                    "huntarr",
+                    "riven_frontend",
+                    "riven_backend",
+                    "zilean",
+                    "phalanx_db",
+                ),
+            ),
+            (
+                "clients",
+                (
+                    "decypharr",
+                    "nzbdav",
+                    "rclone",
+                    "zurg",
+                    "plex_debrid",
+                    "cli_debrid",
+                    "cli_battery",
+                    "traefik",
+                    "dumb_api_service",
+                    "dumb_frontend",
+                ),
+            ),
+            ("db", ("pgadmin", "postgres")),
         ]
-        if media_to_stop:
-            self.logger.info(
-                "Stopping media servers first: %s", ", ".join(media_to_stop)
-            )
-        for process_name in media_to_stop:
-            try:
-                self.stop_process(process_name)
-                self.logger.info(f"{process_name} has been stopped successfully.")
-            except Exception as e:
-                self.logger.error(f"Error stopping {process_name}: {e}")
 
-        remaining_to_stop = [
-            name for name in processes_to_stop if name in self.process_names
-        ]
-        if remaining_to_stop:
+        def _stop_names(names):
+            internal_names = []
+            for name in names:
+                internal_names.extend(self._get_internal_names_for(name))
+            internal_names = [n for n in internal_names if n in self.process_names]
+            if not internal_names:
+                return
             with ThreadPoolExecutor() as executor:
                 futures = {
-                    executor.submit(self.stop_process, process_name): process_name
-                    for process_name in remaining_to_stop
-                    if process_name in self.process_names
+                    executor.submit(self.stop_process, name): name
+                    for name in internal_names
+                }
+                for future in as_completed(futures):
+                    name = futures[future]
+                    try:
+                        future.result()
+                        self.logger.info("%s has been stopped successfully.", name)
+                    except Exception as e:
+                        self.logger.error("Error stopping %s: %s", name, e)
+
+        for tier_name, keys in tiers:
+            tier_names = []
+            for key in keys:
+                tier_names.extend(by_key.get(key, []))
+            if tier_names:
+                self.logger.info(
+                    "Stopping %s tier: %s", tier_name, ", ".join(tier_names)
+                )
+            _stop_names(tier_names)
+
+        remaining = [name for name in self.process_names.keys()]
+        if remaining:
+            self.logger.info("Stopping remaining processes: %s", ", ".join(remaining))
+            with ThreadPoolExecutor() as executor:
+                futures = {
+                    executor.submit(self.stop_process, name): name
+                    for name in remaining
+                    if name in self.process_names
                 }
 
                 for future in as_completed(futures):
-                    process_name = futures[future]
+                    name = futures[future]
                     try:
                         future.result()
-                        self.logger.info(
-                            f"{process_name} has been stopped successfully."
-                        )
+                        self.logger.info("%s has been stopped successfully.", name)
                     except Exception as e:
-                        self.logger.error(f"Error stopping {process_name}: {e}")
+                        self.logger.error("Error stopping %s: %s", name, e)
         self._update_running_processes_file()
         self.shutdown_threads()
         time.sleep(5)

@@ -363,7 +363,7 @@ def _maybe_patch_riven_plexapi_dependency(
     return True, None
 
 
-def setup_project(process_handler, process_name):
+def setup_project(process_handler, process_name, preinstall: bool = False):
     key, instance_name = CONFIG_MANAGER.find_key_for_process(process_name)
     if not key:
         raise ValueError(f"Key for {process_name} not found in the configuration.")
@@ -372,7 +372,9 @@ def setup_project(process_handler, process_name):
     if not config:
         raise ValueError(f"Configuration for {process_name} not found.")
 
-    if process_name in process_handler.setup_tracker and not key == "nzbdav":
+    with process_handler.setup_tracker_lock:
+        already_setup = process_name in process_handler.setup_tracker
+    if already_setup and not key == "nzbdav":
         process_handler.logger.info(
             f"{process_name} is already set up. Skipping setup."
         )
@@ -724,12 +726,12 @@ def setup_project(process_handler, process_name):
                 return False, error
 
         if key == "decypharr":
-            success, error = setup_decypharr()
+            success, error = setup_decypharr(preinstall=preinstall)
             if not success:
                 return False, error
 
         if key == "nzbdav":
-            success, error = setup_nzbdav(process_handler)
+            success, error = setup_nzbdav(process_handler, preinstall=preinstall)
             if not success:
                 return False, error
 
@@ -767,8 +769,10 @@ def setup_project(process_handler, process_name):
                 if not success:
                     return False, error
 
-        process_handler.setup_tracker.add(process_name)
-        logger.debug(f"Post Setup tracker: {process_handler.setup_tracker}")
+        with process_handler.setup_tracker_lock:
+            process_handler.setup_tracker.add(process_name)
+            tracker_snapshot = set(process_handler.setup_tracker)
+        logger.debug(f"Post Setup tracker: {tracker_snapshot}")
         logger.info(f"{process_name} setup complete")
         return True, None
 
@@ -988,7 +992,7 @@ def setup_bazarr(process_handler=None):
         return False, f"Error during Bazarr setup: {e}"
 
 
-def setup_decypharr():
+def setup_decypharr(preinstall: bool = False):
     config = CONFIG_MANAGER.get("decypharr")
     if not config:
         return False, "Configuration for Decypharr not found."
@@ -1044,7 +1048,9 @@ def setup_decypharr():
             success, error = fuse_config()
             if not success:
                 return False, error
-        if os.path.exists(decypharr_config_file):
+        if preinstall:
+            logger.info("Decypharr preinstall: skipping runtime config patch.")
+        elif os.path.exists(decypharr_config_file):
             from utils.decypharr_settings import patch_decypharr_config
 
             patch_decypharr_config()
@@ -1054,7 +1060,7 @@ def setup_decypharr():
         return False, f"Error during Decypharr setup: {e}"
 
 
-def setup_nzbdav(process_handler):
+def setup_nzbdav(process_handler, preinstall: bool = False):
     config = CONFIG_MANAGER.get("nzbdav")
     if not config:
         return False, "Configuration for NzbDAV not found."
@@ -1076,7 +1082,7 @@ def setup_nzbdav(process_handler):
             os.makedirs(nzbdav_config_dir, exist_ok=True)
         chown_single(nzbdav_config_dir, user_id, group_id)
         os.makedirs(config_path, exist_ok=True)
-        chown_recursive(config_path, user_id, group_id)
+        _chown_recursive_if_needed(config_path, user_id, group_id)
 
         backend_project_path, _ = _find_nzbdav_backend_project(
             nzbdav_config_dir, config
@@ -1164,14 +1170,17 @@ def setup_nzbdav(process_handler):
         if nzbdav_config_file and os.path.exists(nzbdav_config_file):
             chown_single(nzbdav_config_file, user_id, group_id)
 
-        try:
-            from utils.nzbdav_settings import patch_nzbdav_config
+        if preinstall:
+            logger.info("NzbDAV preinstall: skipping runtime config patch.")
+        else:
+            try:
+                from utils.nzbdav_settings import patch_nzbdav_config
 
-            patched, err = patch_nzbdav_config()
-            if not patched and err:
-                logger.warning("NzbDAV post-setup config patch failed: %s", err)
-        except Exception as e:
-            logger.warning("NzbDAV post-setup config patch skipped: %s", e)
+                patched, err = patch_nzbdav_config()
+                if not patched and err:
+                    logger.warning("NzbDAV post-setup config patch failed: %s", err)
+            except Exception as e:
+                logger.warning("NzbDAV post-setup config patch skipped: %s", e)
 
         return True, None
     except Exception as e:
@@ -3684,6 +3693,14 @@ def setup_python_environment(process_handler, key, config_dir):
         logger.info(f"Setting up Python environment in {config_dir}")
 
         venv_path = os.path.join(config_dir, "venv")
+        cache_root = os.path.join(config_dir, ".cache")
+        pip_cache = os.path.join(cache_root, "pip")
+        poetry_cache = os.path.join(cache_root, "pypoetry")
+        os.makedirs(pip_cache, exist_ok=True)
+        os.makedirs(poetry_cache, exist_ok=True)
+        chown_single(cache_root, user_id, group_id)
+        chown_single(pip_cache, user_id, group_id)
+        chown_single(poetry_cache, user_id, group_id)
 
         process_handler.start_process(
             "python_env_setup", config_dir, ["python", "-m", "venv", "venv"]
@@ -3699,12 +3716,17 @@ def setup_python_environment(process_handler, key, config_dir):
         python_executable = os.path.abspath(f"{venv_path}/bin/python")
         poetry_executable = os.path.abspath(f"{venv_path}/bin/poetry")
         pip_executable = os.path.abspath(f"{venv_path}/bin/pip")
+        base_env = os.environ.copy()
+        base_env["PIP_CACHE_DIR"] = pip_cache
 
         if requirements_file is not None:
             install_cmd = f"{pip_executable} install -r {requirements_file}"
             logger.debug(f"Installing requirements from {requirements_file} for {key}")
             process_handler.start_process(
-                "install_requirements", config_dir, ["/bin/bash", "-c", install_cmd]
+                "install_requirements",
+                config_dir,
+                ["/bin/bash", "-c", install_cmd],
+                env=base_env,
             )
             process_handler.wait("install_requirements")
 
@@ -3715,14 +3737,14 @@ def setup_python_environment(process_handler, key, config_dir):
 
         if poetry_install is True:
             logger.debug(f"Installing Poetry for {key}")
-            env = os.environ.copy()
+            env = base_env.copy()
             env["PATH"] = f"{venv_path}/bin:" + env["PATH"]
             env["POETRY_VIRTUALENVS_CREATE"] = "false"
             env["VIRTUAL_ENV"] = venv_path
-            env["POETRY_CACHE_DIR"] = os.path.join(venv_path, ".cache", "pypoetry")
-            env["POETRY_CONFIG_DIR"] = os.path.join(venv_path, ".config", "pypoetry")
+            env["POETRY_CACHE_DIR"] = poetry_cache
+            env["POETRY_CONFIG_DIR"] = os.path.join(cache_root, "pypoetry", "config")
             env["POETRY_VIRTUALENVS_PATH"] = os.path.join(
-                venv_path, ".cache", "pypoetry", "virtualenvs"
+                cache_root, "pypoetry", "virtualenvs"
             )
 
             process_handler.start_process(
@@ -3777,6 +3799,12 @@ def setup_dotnet_environment(
 ):
     try:
         logger.info(f"Setting up .NET environment in {config_dir}")
+        env = (env or os.environ.copy()).copy()
+        nuget_packages = os.path.join(config_dir, ".nuget", "packages")
+        os.makedirs(nuget_packages, exist_ok=True)
+        chown_single(os.path.join(config_dir, ".nuget"), user_id, group_id)
+        chown_single(nuget_packages, user_id, group_id)
+        env.setdefault("NUGET_PACKAGES", nuget_packages)
         restore_target = restore_project_path or config_dir
         process_handler.start_process(
             "dotnet_env_restore",
@@ -3867,7 +3895,7 @@ def vite_modifications(config_dir):
 
 def setup_pnpm_environment(process_handler, config_dir):
     try:
-        chown_recursive(config_dir, user_id, group_id)
+        _chown_recursive_if_needed(config_dir, user_id, group_id)
         with open(os.path.join(config_dir, ".npmrc"), "w") as file:
             file.write(
                 "store-dir=./.pnpm-store\n"
@@ -3883,6 +3911,9 @@ def setup_pnpm_environment(process_handler, config_dir):
         env = os.environ.copy()
         env["HOME"] = config_dir
         env["npm_config_userconfig"] = os.path.join(config_dir, ".npmrc")
+        env["npm_config_cache"] = os.path.join(config_dir, ".npm-cache")
+        os.makedirs(env["npm_config_cache"], exist_ok=True)
+        chown_single(env["npm_config_cache"], user_id, group_id)
         env.setdefault("PNPM_NETWORK_CONCURRENCY", "1")
         env.setdefault("PNPM_CHILD_CONCURRENCY", "1")
         env.setdefault("PNPM_FETCH_RETRIES", "10")

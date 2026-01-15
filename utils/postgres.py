@@ -620,7 +620,8 @@ def pgadmin_setup(process_handler):
 
         pgadmin_db_uri = f"postgresql://{postgres_user}:{postgres_password}@{postgres_host}:{postgres_port}/pgadmin"
 
-        process_handler.setup_tracker.add(pgadmin_process_name)
+        with process_handler.setup_tracker_lock:
+            process_handler.setup_tracker.add(pgadmin_process_name)
         success, error = start_pgadmin(
             process_handler,
             pgadmin_config_dir,
@@ -633,7 +634,8 @@ def pgadmin_setup(process_handler):
             pgadmin_default_server,
         )
         if not success:
-            process_handler.setup_tracker.remove(pgadmin_process_name)
+            with process_handler.setup_tracker_lock:
+                process_handler.setup_tracker.remove(pgadmin_process_name)
             return False, error
 
         server_details = {
@@ -647,7 +649,8 @@ def pgadmin_setup(process_handler):
 
         success, error = add_pgadmin_server_to_db(pgadmin_db_uri, server_details)
         if not success:
-            process_handler.setup_tracker.remove(pgadmin_process_name)
+            with process_handler.setup_tracker_lock:
+                process_handler.setup_tracker.remove(pgadmin_process_name)
             return False, error
 
         success, error = start_pgagent(
@@ -657,11 +660,13 @@ def pgadmin_setup(process_handler):
             return False, error
 
         logger.info("pgAdmin setup completed successfully.")
-        process_handler.setup_tracker.add(pgadmin_process_name)
+        with process_handler.setup_tracker_lock:
+            process_handler.setup_tracker.add(pgadmin_process_name)
         return True, None
 
     except Exception as e:
-        process_handler.setup_tracker.remove(pgadmin_process_name)
+        with process_handler.setup_tracker_lock:
+            process_handler.setup_tracker.remove(pgadmin_process_name)
         return False, f"Unhandled exception during pgAdmin setup: {e}"
 
 
@@ -1002,7 +1007,8 @@ def postgres_setup(process_handler=None):
             postgres_config_dir=postgres_config_dir,
             postgres_config_file=postgres_config_file,
         )
-        process_handler.setup_tracker.add(postgres_process_name)
+        with process_handler.setup_tracker_lock:
+            process_handler.setup_tracker.add(postgres_process_name)
         process = process_handler.start_process(
             postgres_process_name, postgres_config_dir, postgres_command
         )

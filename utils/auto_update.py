@@ -203,8 +203,9 @@ class Update:
             )
             if process_name in self.process_handler.process_names:
                 self.stop_process(process_name)
-            if process_name in self.process_handler.setup_tracker:
-                self.process_handler.setup_tracker.remove(process_name)
+            with self.process_handler.setup_tracker_lock:
+                if process_name in self.process_handler.setup_tracker:
+                    self.process_handler.setup_tracker.remove(process_name)
             release_version = f"{update_info.get('latest_version')}"
             if not prerelease and not nightly:
                 config["release_version"] = release_version
@@ -256,8 +257,9 @@ class Update:
         )
         if process_name in self.process_handler.process_names:
             self.stop_process(process_name)
-        if process_name in self.process_handler.setup_tracker:
-            self.process_handler.setup_tracker.remove(process_name)
+        with self.process_handler.setup_tracker_lock:
+            if process_name in self.process_handler.setup_tracker:
+                self.process_handler.setup_tracker.remove(process_name)
 
         success, error = setup_project(self.process_handler, process_name)
         if not success:
@@ -295,8 +297,9 @@ class Update:
         )
         if process_name in self.process_handler.process_names:
             self.stop_process(process_name)
-        if process_name in self.process_handler.setup_tracker:
-            self.process_handler.setup_tracker.remove(process_name)
+        with self.process_handler.setup_tracker_lock:
+            if process_name in self.process_handler.setup_tracker:
+                self.process_handler.setup_tracker.remove(process_name)
 
         installer = JellyfinInstaller()
         success, error = installer.install_jellyfin_server()
@@ -335,8 +338,9 @@ class Update:
         )
         if process_name in self.process_handler.process_names:
             self.stop_process(process_name)
-        if process_name in self.process_handler.setup_tracker:
-            self.process_handler.setup_tracker.remove(process_name)
+        with self.process_handler.setup_tracker_lock:
+            if process_name in self.process_handler.setup_tracker:
+                self.process_handler.setup_tracker.remove(process_name)
 
         original_release_enabled = config.get("release_version_enabled")
         original_release_version = config.get("release_version")
@@ -376,8 +380,9 @@ class Update:
         )
         if process_name in self.process_handler.process_names:
             self.stop_process(process_name)
-        if process_name in self.process_handler.setup_tracker:
-            self.process_handler.setup_tracker.remove(process_name)
+        with self.process_handler.setup_tracker_lock:
+            if process_name in self.process_handler.setup_tracker:
+                self.process_handler.setup_tracker.remove(process_name)
 
         success, error = installer.install()
         if not success:
@@ -479,8 +484,9 @@ class Update:
         )
         if process_name in self.process_handler.process_names:
             self.stop_process(process_name)
-        if process_name in self.process_handler.setup_tracker:
-            self.process_handler.setup_tracker.remove(process_name)
+        with self.process_handler.setup_tracker_lock:
+            if process_name in self.process_handler.setup_tracker:
+                self.process_handler.setup_tracker.remove(process_name)
 
         success, error = installer.install_plex_media_server()
         if not success:
@@ -512,6 +518,7 @@ class Update:
             instance_name = refreshed_instance
 
         if config.get("wait_for_dir", False):
+            sleep_s = 10
             while not os.path.exists(wait_dir := config["wait_for_dir"]):
                 if self.process_handler.shutting_down:
                     self.logger.info(
@@ -522,10 +529,12 @@ class Update:
                 self.logger.info(
                     f"Waiting for directory {wait_dir} to become available before starting {process_name}"
                 )
-                time.sleep(10)
+                time.sleep(sleep_s)
+                sleep_s = min(60, int(sleep_s * 1.5))
 
         wait_mounts = config.get("wait_for_mounts") or []
         if wait_mounts:
+            sleep_s = 10
             while True:
                 if self.process_handler.shutting_down:
                     self.logger.info(
@@ -545,7 +554,8 @@ class Update:
                     process_name,
                     ", ".join(missing),
                 )
-                time.sleep(10)
+                time.sleep(sleep_s)
+                sleep_s = min(60, int(sleep_s * 1.5))
 
         if config.get("wait_for_url", False):
             wait_for_urls = config["wait_for_url"]
@@ -560,6 +570,7 @@ class Update:
                     f"Waiting to start {process_name} until {wait_url} is accessible."
                 )
 
+                sleep_s = 5
                 while time.time() - start_time < 600:
                     if self.process_handler.shutting_down:
                         self.logger.info(
@@ -589,7 +600,8 @@ class Update:
                             )
                     except requests.RequestException as e:
                         logger.debug(f"Waiting for {wait_url}: {e}")
-                    time.sleep(5)
+                    time.sleep(sleep_s)
+                    sleep_s = min(60, int(sleep_s * 1.5))
                 else:
                     raise RuntimeError(
                         f"Timeout: {wait_url} is not accessible after 600 seconds."

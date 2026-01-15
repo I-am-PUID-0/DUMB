@@ -1,4 +1,5 @@
 from utils.global_logger import logger
+from utils.apt_lock import run_locked, apt_lock
 import subprocess, os
 
 
@@ -32,18 +33,19 @@ class JellyfinInstaller:
                 self.logger.info("Installing Jellyfin media server...")
 
             # Step 1: Ensure required tools
-            subprocess.run(["apt", "update"], check=True)
-            subprocess.run(["apt", "install", "-y", "gnupg", "curl"], check=True)
+            run_locked(["apt", "update"], check=True)
+            run_locked(["apt", "install", "-y", "gnupg", "curl"], check=True)
 
             # Step 2: Add universe repo
             with open("/etc/os-release") as f:
                 os_release = f.read().lower()
             if "ubuntu" in os_release:
-                subprocess.run(["add-apt-repository", "-y", "universe"], check=True)
+                run_locked(["add-apt-repository", "-y", "universe"], check=True)
 
             # Step 3: Create keyring and download GPG key
             os.makedirs("/etc/apt/keyrings", exist_ok=True)
-            self.download_and_install_jellyfin_gpg_key()
+            with apt_lock():
+                self.download_and_install_jellyfin_gpg_key()
 
             # Step 4: Create sources file
             version_os = subprocess.check_output(
@@ -72,15 +74,15 @@ class JellyfinInstaller:
                 f.write(sources_content)
 
             # Step 5: Update apt
-            subprocess.run(["apt", "update"], check=True)
+            run_locked(["apt", "update"], check=True)
 
             # Step 6: Install jellyfin metapackage
             if version:
-                subprocess.run(
+                run_locked(
                     ["apt", "install", "-y", f"jellyfin={version}"], check=True
                 )
             else:
-                subprocess.run(["apt", "install", "-y", "jellyfin"], check=True)
+                run_locked(["apt", "install", "-y", "jellyfin"], check=True)
 
             # Step 7: Ensure web client is available
             expected_web_path = "/usr/lib/jellyfin/bin/jellyfin-web"

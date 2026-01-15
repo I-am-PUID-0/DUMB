@@ -1,4 +1,5 @@
 from utils.global_logger import logger
+from utils.apt_lock import run_locked
 from utils.config_loader import CONFIG_MANAGER
 from utils.versions import Versions
 import os, platform, subprocess, tempfile, requests
@@ -98,7 +99,7 @@ class PlexInstaller:
                     for chunk in r.iter_content(chunk_size=8192):
                         tmp_file.write(chunk)
 
-            subprocess.run(
+            run_locked(
                 [
                     "dpkg",
                     "-i",
