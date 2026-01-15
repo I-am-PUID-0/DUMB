@@ -913,6 +913,9 @@
                 "core_service": {
                   "type": "string"
                 },
+                "use_huntarr": {
+                  "type": "boolean"
+                },
                 "process_name": {
                   "type": "string"
                 },
@@ -950,6 +953,7 @@
               "required": [
                 "enabled",
                 "core_service",
+                "use_huntarr",
                 "process_name",
                 "suppress_logging",
                 "auto_update",
@@ -1322,6 +1326,123 @@
         "config_file",
         "log_file",
         "env"
+      ]
+    },
+    "huntarr": {
+      "type": "object",
+      "properties": {
+        "instances": {
+          "type": "object",
+          "patternProperties": {
+            ".*": {
+              "type": "object",
+              "properties": {
+                "enabled": {
+                  "type": "boolean"
+                },
+                "core_service": {
+                  "type": "string"
+                },
+                "process_name": {
+                  "type": "string"
+                },
+                "repo_owner": {
+                  "type": "string"
+                },
+                "repo_name": {
+                  "type": "string"
+                },
+                "release_version_enabled": {
+                  "type": "boolean"
+                },
+                "release_version": {
+                  "type": "string"
+                },
+                "branch_enabled": {
+                  "type": "boolean"
+                },
+                "branch": {
+                  "type": "string"
+                },
+                "suppress_logging": {
+                  "type": "boolean"
+                },
+                "log_level": {
+                  "type": "string"
+                },
+                "port": {
+                  "type": "integer"
+                },
+                "auto_update": {
+                  "type": "boolean"
+                },
+                "auto_update_interval": {
+                  "type": "number"
+                },
+                "clear_on_update": {
+                  "type": "boolean"
+                },
+                "exclude_dirs": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "platforms": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "command": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "config_dir": {
+                  "type": "string"
+                },
+                "config_file": {
+                  "type": "string"
+                },
+                "log_file": {
+                  "type": "string"
+                },
+                "env": {
+                  "type": "object"
+                }
+              },
+              "required": [
+                "enabled",
+                "core_service",
+                "process_name",
+                "repo_owner",
+                "repo_name",
+                "release_version_enabled",
+                "release_version",
+                "branch_enabled",
+                "branch",
+                "suppress_logging",
+                "log_level",
+                "port",
+                "auto_update",
+                "auto_update_interval",
+                "clear_on_update",
+                "exclude_dirs",
+                "platforms",
+                "command",
+                "config_dir",
+                "config_file",
+                "log_file",
+                "env"
+              ]
+            }
+          }
+        }
+      },
+      "required": [
+        "instances"
       ]
     },
     "seerr": {
@@ -1752,6 +1873,9 @@
                 "core_service": {
                   "type": "string"
                 },
+                "use_huntarr": {
+                  "type": "boolean"
+                },
                 "process_name": {
                   "type": "string"
                 },
@@ -1789,6 +1913,7 @@
               "required": [
                 "enabled",
                 "core_service",
+                "use_huntarr",
                 "process_name",
                 "suppress_logging",
                 "auto_update",
@@ -2138,6 +2263,9 @@
                 "core_service": {
                   "type": "string"
                 },
+                "use_huntarr": {
+                  "type": "boolean"
+                },
                 "process_name": {
                   "type": "string"
                 },
@@ -2175,6 +2303,7 @@
               "required": [
                 "enabled",
                 "core_service",
+                "use_huntarr",
                 "process_name",
                 "suppress_logging",
                 "auto_update",
@@ -2209,6 +2338,9 @@
                 "core_service": {
                   "type": "string"
                 },
+                "use_huntarr": {
+                  "type": "boolean"
+                },
                 "process_name": {
                   "type": "string"
                 },
@@ -2246,6 +2378,7 @@
               "required": [
                 "enabled",
                 "core_service",
+                "use_huntarr",
                 "process_name",
                 "suppress_logging",
                 "auto_update",
@@ -2553,6 +2686,7 @@
     "phalanx_db",
     "plex",
     "tautulli",
+    "huntarr",
     "seerr",
     "plex_debrid",
     "postgres",

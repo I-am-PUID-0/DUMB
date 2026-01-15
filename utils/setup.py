@@ -485,10 +485,17 @@ def setup_project(process_handler, process_name):
                 logger.info(f"Copied .env from {src} to {dest}")
 
         if key == "nzbdav":
+            webdav_password = (config.get("webdav_password") or "").strip()
+            if not webdav_password:
+                webdav_password = secrets.token_urlsafe(24)
+                config["webdav_password"] = webdav_password
+                CONFIG_MANAGER.save_config(process_name)
+                logger.info("Generated NzbDAV WebDAV password.")
+
             backend_port = str(config.get("backend_port", 8080))
             default_env = {
                 "LOG_LEVEL": config.get("log_level", "INFO").upper(),
-                "WEBDAV_PASSWORD": config.get("webdav_password", "1P@55w0rd"),
+                "WEBDAV_PASSWORD": webdav_password,
                 "ASPNETCORE_URLS": f"http://+:{backend_port}",
                 "CONFIG_PATH": config.get("config_dir") or "/nzbdav",
                 "PORT": str(config.get("frontend_port", 3000)),
@@ -679,6 +686,11 @@ def setup_project(process_handler, process_name):
 
         if key == "tautulli":
             success, error = setup_tautulli(process_handler)
+            if not success:
+                return False, error
+
+        if key == "huntarr":
+            success, error = setup_huntarr(process_handler)
             if not success:
                 return False, error
         if key == "seerr":
@@ -873,6 +885,15 @@ def setup_arr_instance(key, instance_name, instance, process_name):
         "--nobrowser",
         f"--data={config_dir}",
     ]
+    if key == "prowlarr":
+        try:
+            from utils.prowlarr_settings import ensure_custom_indexers
+
+            zilean_cfg = CONFIG_MANAGER.get("zilean", {}) or {}
+            zilean_port = int(zilean_cfg.get("port", 8182))
+            ensure_custom_indexers(config_dir, zilean_port)
+        except Exception as exc:
+            logger.warning("Prowlarr custom indexer sync skipped: %s", exc)
 
     return True, None
 
@@ -1784,6 +1805,15 @@ def setup_plex():
         chown_recursive(
             config["config_dir"], CONFIG_MANAGER.get("puid"), CONFIG_MANAGER.get("pgid")
         )
+    pid_path = os.path.join(
+        config["config_dir"], "Plex Media Server", "plexmediaserver.pid"
+    )
+    if os.path.exists(pid_path):
+        try:
+            os.remove(pid_path)
+            logger.info("Removed stale Plex PID file at %s", pid_path)
+        except Exception as e:
+            logger.warning("Failed to remove Plex PID file at %s: %s", pid_path, e)
     dbrepair_cfg = config.get("dbrepair", {}) or {}
     dbrepair_dir = dbrepair_cfg.get("install_dir", "/data/dbrepair")
     try:
@@ -2250,6 +2280,229 @@ def setup_seerr(process_handler):
 
     logger.info("Seerr setup complete.")
     return True, None
+
+
+def setup_huntarr(process_handler):
+    config = CONFIG_MANAGER.get("huntarr", {})
+    if not config:
+        return False, "Huntarr configuration not found."
+
+    instances = config.get("instances", {})
+    if not instances:
+        logger.info("No Huntarr instances configured.")
+        return True, None
+
+    for instance_name, instance in instances.items():
+        if not instance.get("enabled", False):
+            logger.debug("Skipping disabled Huntarr instance: %s", instance_name)
+            continue
+
+        instance_config_dir = (
+            instance.get("config_dir") or f"/huntarr/{instance_name.lower()}"
+        )
+        instance["config_dir"] = instance_config_dir
+        path_changed = False
+
+        def _rewrite_huntarr_path(value):
+            if isinstance(value, str) and value.startswith("/huntarr/default"):
+                return value.replace("/huntarr/default", instance_config_dir, 1)
+            return value
+
+        exclude_dirs = instance.get("exclude_dirs", [])
+        if exclude_dirs:
+            rewritten = [_rewrite_huntarr_path(path) for path in exclude_dirs]
+            if rewritten != exclude_dirs:
+                instance["exclude_dirs"] = rewritten
+                path_changed = True
+
+        config_file = instance.get("config_file")
+        new_config_file = _rewrite_huntarr_path(config_file)
+        if new_config_file != config_file:
+            instance["config_file"] = new_config_file
+            path_changed = True
+
+        log_file = instance.get("log_file")
+        new_log_file = _rewrite_huntarr_path(log_file)
+        if new_log_file != log_file:
+            instance["log_file"] = new_log_file
+            path_changed = True
+
+        command = instance.get("command", [])
+        if isinstance(command, list):
+            updated_command = [_rewrite_huntarr_path(arg) for arg in command]
+            if updated_command != command:
+                instance["command"] = updated_command
+                path_changed = True
+
+        instance_env = instance.get("env", {}) or {}
+        env_changed = False
+        new_port = str(instance.get("port", 9705))
+        if instance_env.get("HUNTARR_PORT") != new_port:
+            instance_env["HUNTARR_PORT"] = new_port
+            env_changed = True
+
+        config_root = os.path.join(instance_config_dir, "config")
+        if instance_env.get("HUNTARR_CONFIG_DIR") != config_root:
+            instance_env["HUNTARR_CONFIG_DIR"] = config_root
+            env_changed = True
+
+        instance["env"] = instance_env
+        if env_changed or path_changed:
+            CONFIG_MANAGER.save_config(instance.get("process_name"))
+
+        os.makedirs(instance_config_dir, exist_ok=True)
+        os.makedirs(config_root, exist_ok=True)
+        log_dir = os.path.join(instance_config_dir, "logs")
+        os.makedirs(log_dir, exist_ok=True)
+        _chown_recursive_if_needed(
+            instance_config_dir, CONFIG_MANAGER.get("puid"), CONFIG_MANAGER.get("pgid")
+        )
+        _chown_recursive_if_needed(
+            config_root, CONFIG_MANAGER.get("puid"), CONFIG_MANAGER.get("pgid")
+        )
+        _chown_recursive_if_needed(
+            log_dir, CONFIG_MANAGER.get("puid"), CONFIG_MANAGER.get("pgid")
+        )
+
+        repo_marker = os.path.join(instance_config_dir, "main.py")
+        needs_download = not os.path.isfile(repo_marker)
+        if needs_download:
+            logger.warning(
+                "Huntarr instance %s not found at %s. Downloading...",
+                instance_name,
+                repo_marker,
+            )
+            exclude_dirs = None
+            if instance.get("clear_on_update"):
+                exclude_dirs = instance.get("exclude_dirs", [])
+                success, error = clear_directory(instance_config_dir, exclude_dirs)
+                if not success:
+                    return False, f"Failed to clear directory: {error}"
+
+            if instance.get("branch_enabled"):
+                branch = instance.get("branch", "main")
+                branch_url, zip_folder_name = downloader.get_branch(
+                    instance.get("repo_owner"),
+                    instance.get("repo_name"),
+                    branch,
+                )
+                if not branch_url:
+                    return False, f"Failed to fetch branch {branch}"
+                success, error = downloader.download_and_extract(
+                    branch_url,
+                    instance_config_dir,
+                    zip_folder_name=zip_folder_name,
+                    exclude_dirs=exclude_dirs,
+                )
+                if not success:
+                    return False, f"Failed to download Huntarr branch: {error}"
+            else:
+                release_version = instance.get("release_version", "latest")
+                version_to_write = release_version
+                if release_version.lower() == "latest":
+                    latest_version, latest_error = downloader.get_latest_release(
+                        instance.get("repo_owner"),
+                        instance.get("repo_name"),
+                        nightly=False,
+                    )
+                    if latest_version:
+                        version_to_write = latest_version
+                    else:
+                        logger.warning(
+                            "Failed to resolve latest Huntarr version: %s",
+                            latest_error,
+                        )
+                success, error = downloader.download_release_version(
+                    process_name=instance.get("process_name"),
+                    key="huntarr",
+                    repo_owner=instance.get("repo_owner"),
+                    repo_name=instance.get("repo_name"),
+                    release_version=release_version,
+                    target_dir=instance_config_dir,
+                    exclude_dirs=exclude_dirs,
+                )
+                if not success:
+                    return False, f"Failed to download Huntarr release: {error}"
+                versions.version_write(
+                    instance.get("process_name"),
+                    key="huntarr",
+                    version_path=os.path.join(instance_config_dir, "version.txt"),
+                    version=version_to_write,
+                )
+
+            _chown_recursive_if_needed(
+                instance_config_dir,
+                CONFIG_MANAGER.get("puid"),
+                CONFIG_MANAGER.get("pgid"),
+            )
+
+        if instance.get("platforms"):
+            venv_marker = os.path.join(instance_config_dir, "venv", "bin", "python")
+            if needs_download or not os.path.isfile(venv_marker):
+                success, error = setup_environment(
+                    process_handler,
+                    "huntarr",
+                    instance.get("platforms"),
+                    instance_config_dir,
+                )
+                if not success:
+                    return (
+                        False,
+                        f"Failed to set up environment for Huntarr instance {instance_name}: {error}",
+                    )
+
+        if not instance.get("command"):
+            instance["command"] = [
+                os.path.join(instance_config_dir, "venv", "bin", "python"),
+                "main.py",
+            ]
+            CONFIG_MANAGER.save_config(instance.get("process_name"))
+
+        _patch_huntarr_database_paths(instance_config_dir)
+
+    try:
+        from utils.huntarr_settings import patch_huntarr_config
+
+        ok, err = patch_huntarr_config()
+        if not ok and err:
+            logger.warning("Huntarr config sync failed: %s", err)
+    except Exception as exc:
+        logger.warning("Huntarr config sync skipped: %s", exc)
+
+    logger.info("Huntarr setup complete.")
+    return True, None
+
+
+def _patch_huntarr_database_paths(instance_config_dir: str) -> None:
+    db_path = os.path.join(
+        instance_config_dir, "src", "primary", "utils", "database.py"
+    )
+    if not os.path.isfile(db_path):
+        logger.debug("Huntarr database.py not found at %s", db_path)
+        return
+
+    try:
+        with open(db_path, "r") as handle:
+            content = handle.read()
+    except Exception as exc:
+        logger.warning("Failed reading Huntarr database.py: %s", exc)
+        return
+
+    target_line = '        config_dir = Path("/config")\n'
+    replacement_line = (
+        '        config_dir = Path(os.environ.get("HUNTARR_CONFIG_DIR") or "/config")\n'
+    )
+
+    if target_line not in content:
+        logger.debug("Huntarr database.py patch not needed or already applied.")
+        return
+
+    updated = content.replace(target_line, replacement_line, 1)
+    try:
+        with open(db_path, "w") as handle:
+            handle.write(updated)
+    except Exception as exc:
+        logger.warning("Failed writing Huntarr database.py patch: %s", exc)
 
 
 def setup_jellyfin():

@@ -162,14 +162,20 @@ class Update:
                 process_name, config, key, instance_name
             )
 
-        if "nightly" in config["release_version"].lower():
-            nightly = True
-            prerelease = False
-            self.logger.info(f"Checking for nightly updates for {process_name}.")
-        elif "prerelease" in config["release_version"].lower():
-            nightly = False
-            prerelease = True
-            self.logger.info(f"Checking for prerelease updates for {process_name}.")
+        if config.get("release_version_enabled"):
+            release_value = (config.get("release_version") or "").lower()
+            if "nightly" in release_value:
+                nightly = True
+                prerelease = False
+                self.logger.info(f"Checking for nightly updates for {process_name}.")
+            elif "prerelease" in release_value:
+                nightly = False
+                prerelease = True
+                self.logger.info(f"Checking for prerelease updates for {process_name}.")
+            else:
+                nightly = False
+                prerelease = False
+                self.logger.info(f"Checking for stable updates for {process_name}.")
         else:
             nightly = False
             prerelease = False
@@ -677,6 +683,17 @@ class Update:
         ]:
             if self.process_handler.shutting_down:
                 return process, "Shutdown requested"
+            prowlarr_cfg = CONFIG_MANAGER.get("prowlarr") or {}
+            if isinstance(prowlarr_cfg.get("instances"), dict):
+                prowlarr_enabled = any(
+                    isinstance(inst, dict) and inst.get("enabled")
+                    for inst in prowlarr_cfg["instances"].values()
+                )
+            else:
+                prowlarr_enabled = bool(prowlarr_cfg.get("enabled"))
+            if not prowlarr_enabled:
+                return process, None
+
             from utils.prowlarr_settings import patch_prowlarr_apps
 
             time.sleep(10)

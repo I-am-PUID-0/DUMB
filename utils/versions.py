@@ -33,6 +33,14 @@ class Versions:
                     config.get("config_dir", "/tautulli"), "version.txt"
                 )
                 is_file = True
+            elif key == "huntarr":
+                config = CONFIG_MANAGER.get_instance(instance_name, key)
+                if not config:
+                    raise ValueError(f"Configuration for {process_name} not found.")
+                version_path = os.path.join(
+                    config.get("config_dir", "/huntarr/default"), "version.txt"
+                )
+                is_file = True
             elif key == "seerr":
                 config = CONFIG_MANAGER.get_instance(instance_name, key)
                 if not config:
@@ -260,6 +268,7 @@ class Versions:
                             or key == "decypharr"
                             or key == "nzbdav"
                             or key == "tautulli"
+                            or key == "huntarr"
                             or key == "seerr"
                             or key == "emby"
                         ):
@@ -305,6 +314,10 @@ class Versions:
                     f.write(version)
             elif key == "tautulli":
                 version_path = version_path or "/tautulli/version.txt"
+                with open(version_path, "w") as f:
+                    f.write(version)
+            elif key == "huntarr":
+                version_path = version_path or "/huntarr/default/version.txt"
                 with open(version_path, "w") as f:
                     f.write(version)
             elif key == "seerr":

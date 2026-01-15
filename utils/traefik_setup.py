@@ -33,6 +33,7 @@ UI_SERVICE_DEFS = [
     {"name": "lidarr", "config_key": "lidarr"},
     {"name": "plex", "config_key": "plex", "path": "/web/index.html"},
     {"name": "tautulli", "config_key": "tautulli"},
+    {"name": "huntarr", "config_key": "huntarr"},
     {"name": "seerr", "config_key": "seerr"},
     {"name": "pgadmin4", "config_key": "pgadmin"},
     {"name": "prowlarr", "config_key": "prowlarr"},

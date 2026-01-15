@@ -2,6 +2,7 @@ from utils.global_logger import logger
 from utils.config_loader import CONFIG_MANAGER
 from collections import OrderedDict
 import os, json, time
+import threading
 import xml.etree.ElementTree as ET
 import urllib.request
 import urllib.error
@@ -51,13 +52,13 @@ def _parse_arr_api_key(config_xml_path: str) -> str:
 
 def _collect_arr_entries(decypharr_cfg: dict) -> list:
     """
-    Build the arrs[] list from CONFIG_MANAGER instances of sonarr/radarr
+    Build the arrs[] list from CONFIG_MANAGER instances of sonarr/radarr/lidarr
     whose `core_service` == "decypharr". Host is always 127.0.0.1 and the
     port is taken from the instance config; token from the instance's config.xml.
     Includes per-instance labeling using instance_name.
     """
     entries = []
-    for svc_name in ("sonarr", "radarr"):
+    for svc_name in ("sonarr", "radarr", "lidarr", "whisparr"):
         svc_cfg = CONFIG_MANAGER.get(svc_name) or {}
         instances = (svc_cfg.get("instances") or {}) or {}
         for inst_key, inst in instances.items():
@@ -117,34 +118,85 @@ def _arr_req(
         headers["Content-Type"] = "application/json"
         body = json.dumps(data).encode("utf-8")
     req = urllib.request.Request(url, data=body, headers=headers, method=method)
-    with urllib.request.urlopen(req, timeout=timeout) as resp:
-        raw = resp.read()
-        if not raw:
-            return None
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            raw = resp.read()
+            if not raw:
+                return None
+            try:
+                return json.loads(raw.decode("utf-8"))
+            except Exception:
+                return raw.decode("utf-8")
+    except urllib.error.HTTPError as e:
         try:
-            return json.loads(raw.decode("utf-8"))
+            body = e.read().decode("utf-8")
         except Exception:
-            return raw.decode("utf-8")
+            body = ""
+        if body:
+            logger.warning("Arr API error response from %s: %s", url, body)
+        raise
 
 
 def _normalize_path(p: str) -> str:
     return os.path.normpath((p or "").rstrip("/"))
 
 
-def _ensure_arr_rootfolder(host: str, token: str, path: str) -> bool:
+def _arr_url(host: str, api_version: str, path: str) -> str:
+    return _join(host, f"/api/{api_version}/{path.lstrip('/')}")
+
+
+def _get_lidarr_rootfolder_payload(host: str, token: str, path: str) -> Optional[dict]:
+    quality_profiles = _arr_req(_arr_url(host, "v1", "qualityprofile"), token, "GET") or []
+    meta_profiles = _arr_req(_arr_url(host, "v1", "metadataprofile"), token, "GET") or []
+    if not meta_profiles:
+        meta_profiles = (
+            _arr_req(_arr_url(host, "v1", "metadata/profile"), token, "GET") or []
+        )
+    quality_id = next(
+        (p.get("id") for p in quality_profiles if isinstance(p, dict) and p.get("id")),
+        None,
+    )
+    meta_id = next(
+        (p.get("id") for p in meta_profiles if isinstance(p, dict) and p.get("id")),
+        None,
+    )
+    if not quality_id or not meta_id:
+        logger.warning(
+            "Lidarr rootfolder payload missing profiles (quality=%s, metadata=%s)",
+            quality_id,
+            meta_id,
+        )
+        return None
+    name = os.path.basename(path.rstrip("/")) or path
+    return {
+        "name": name,
+        "path": path,
+        "defaultQualityProfileId": quality_id,
+        "defaultMetadataProfileId": meta_id,
+    }
+
+
+def _ensure_arr_rootfolder(
+    host: str, token: str, path: str, api_version: str = "v3"
+) -> bool:
     """Ensure a root folder exists on a Sonarr/Radarr instance.
     Returns True if created, False if already present or on error."""
     if not (host and token and path):
         return False
     try:
-        url = _join(host, "/api/v3/rootfolder")
+        url = _arr_url(host, api_version, "rootfolder")
         existing = _arr_req(url, token, "GET") or []
         if any(
             _normalize_path(x.get("path", "")) == _normalize_path(path)
             for x in (existing or [])
         ):
             return False
-        _arr_req(url, token, "POST", {"path": path})
+        payload = {"path": path}
+        if api_version == "v1":
+            payload = _get_lidarr_rootfolder_payload(host, token, path) or payload
+            if payload == {"path": path}:
+                return False
+        _arr_req(url, token, "POST", payload)
         logger.info(f"Created root folder '{path}' on {host}")
         return True
     except urllib.error.HTTPError as e:
@@ -154,11 +206,84 @@ def _ensure_arr_rootfolder(host: str, token: str, path: str) -> bool:
     return False
 
 
+def _coerce_chmod_value(current_value, desired_value: str):
+    if isinstance(current_value, int):
+        try:
+            return int(str(desired_value))
+        except ValueError:
+            return current_value
+    return str(desired_value)
+
+
+def _ensure_arr_permissions(
+    host: str,
+    token: str,
+    chmod_folder: str = "777",
+    set_permissions: bool = True,
+    api_version: str = "v3",
+    chmod_file: str = "666",
+) -> bool:
+    if not (host and token):
+        return False
+    try:
+        url = _arr_url(host, api_version, "config/mediamanagement")
+        current = _arr_req(url, token, "GET") or {}
+        if not isinstance(current, dict):
+            return False
+        desired = current.copy()
+        perms_key = "setPermissions"
+        if "setPermissionsLinux" in current and "setPermissions" not in current:
+            perms_key = "setPermissionsLinux"
+        desired[perms_key] = bool(set_permissions)
+        desired["chmodFolder"] = _coerce_chmod_value(
+            current.get("chmodFolder"), chmod_folder
+        )
+        if "chmodFile" in current:
+            desired["chmodFile"] = _coerce_chmod_value(
+                current.get("chmodFile"), chmod_file
+            )
+        updated = (
+            desired.get(perms_key) != current.get(perms_key)
+            or desired.get("chmodFolder") != current.get("chmodFolder")
+            or desired.get("chmodFile") != current.get("chmodFile")
+        )
+        if not updated:
+            return False
+        _arr_req(url, token, "PUT", desired)
+        verify = _arr_req(url, token, "GET") or {}
+        if (
+            isinstance(verify, dict)
+            and verify.get(perms_key) != desired.get(perms_key)
+        ):
+            logger.warning(
+                "Arr permissions update did not persist on %s: %s=%s",
+                host,
+                perms_key,
+                verify.get(perms_key),
+            )
+        logger.info(
+            "Updated Arr permissions on %s: %s=%s chmodFolder=%s",
+            host,
+            perms_key,
+            desired.get(perms_key),
+            desired.get("chmodFolder"),
+        )
+        return True
+    except urllib.error.HTTPError as e:
+        logger.warning(f"HTTP error updating Arr permissions on {host}: {e}")
+    except Exception as e:
+        logger.warning(f"Failed to update Arr permissions on {host}: {e}")
+    return False
+
+
 # --- Download client (qBittorrent) upsert -----------------------------------
 
 
-def _get_qbt_schema(host: str, key: str):
-    schemas = _arr_req(_join(host, "/api/v3/downloadclient/schema"), key, "GET") or []
+def _get_qbt_schema(host: str, key: str, api_version: str = "v3"):
+    schemas = (
+        _arr_req(_arr_url(host, api_version, "downloadclient/schema"), key, "GET")
+        or []
+    )
     for item in schemas:
         impl = (item.get("implementation") or "").lower()
         name = (item.get("implementationName") or "").lower()
@@ -175,7 +300,8 @@ def _build_fields_from_schema(schema: dict, overrides: dict) -> list:
             continue
         fields[n] = f.get("value")
     for k, v in (overrides or {}).items():
-        fields[k] = v
+        if k in fields:
+            fields[k] = v
     return [{"name": k, "value": v} for k, v in fields.items()]
 
 
@@ -188,6 +314,7 @@ def ensure_decypharr_download_client(
     category_map: Optional[dict] = None,
     category: Optional[str] = None,
     test_before_save: bool = False,
+    api_version: str = "v3",
 ) -> Tuple[bool, Optional[int]]:
     """Create or update a qBittorrent client named `decypharr` that points to Decypharr.
 
@@ -220,7 +347,7 @@ def ensure_decypharr_download_client(
         effective_category,
     )
 
-    schema = _get_qbt_schema(arr_host, arr_api_key)
+    schema = _get_qbt_schema(arr_host, arr_api_key, api_version=api_version)
     if not schema:
         raise RuntimeError("Could not fetch download client schema from Arr")
 
@@ -294,7 +421,10 @@ def ensure_decypharr_download_client(
 
     if test_before_save:
         _arr_req(
-            _join(arr_host, "/api/v3/downloadclient/test"), arr_api_key, "POST", desired
+            _arr_url(arr_host, api_version, "downloadclient/test"),
+            arr_api_key,
+            "POST",
+            desired,
         )
 
     def _verify_saved(client_id: Optional[int]) -> None:
@@ -304,7 +434,7 @@ def ensure_decypharr_download_client(
         try:
             saved = (
                 _arr_req(
-                    _join(arr_host, f"/api/v3/downloadclient/{client_id}"),
+                    _arr_url(arr_host, api_version, f"downloadclient/{client_id}"),
                     arr_api_key,
                     "GET",
                 )
@@ -322,7 +452,10 @@ def ensure_decypharr_download_client(
             )
 
     existing = (
-        _arr_req(_join(arr_host, "/api/v3/downloadclient"), arr_api_key, "GET") or []
+        _arr_req(
+            _arr_url(arr_host, api_version, "downloadclient"), arr_api_key, "GET"
+        )
+        or []
     )
     match = next(
         (c for c in existing if (c.get("name") or "").lower() == name.lower()), None
@@ -333,7 +466,7 @@ def ensure_decypharr_download_client(
         put_body = desired.copy()
         put_body["id"] = client_id
         _arr_req(
-            _join(arr_host, f"/api/v3/downloadclient/{client_id}"),
+            _arr_url(arr_host, api_version, f"downloadclient/{client_id}"),
             arr_api_key,
             "PUT",
             put_body,
@@ -343,7 +476,10 @@ def ensure_decypharr_download_client(
 
     created = (
         _arr_req(
-            _join(arr_host, "/api/v3/downloadclient"), arr_api_key, "POST", desired
+            _arr_url(arr_host, api_version, "downloadclient"),
+            arr_api_key,
+            "POST",
+            desired,
         )
         or {}
     )
@@ -358,11 +494,15 @@ def ensure_decypharr_download_client(
 
 
 def _wait_for_arr(
-    host: str, token: str, timeout_s: int = 60, interval_s: float = 2.0
+    host: str,
+    token: str,
+    timeout_s: int = 60,
+    interval_s: float = 2.0,
+    api_version: str = "v3",
 ) -> bool:
-    """Poll /api/v3/system/status until the Arr instance is responding or timeout."""
+    """Poll /api/{version}/system/status until the Arr instance is responding or timeout."""
     deadline = time.time() + max(1, timeout_s)
-    url = _join(host, "/api/v3/system/status")
+    url = _arr_url(host, api_version, "system/status")
     while time.time() < deadline:
         if _shutdown_requested():
             return False
@@ -397,6 +537,45 @@ def _with_retries(
             time.sleep(delay)
             delay *= backoff
     raise last_err if last_err else RuntimeError("retry failed")
+
+
+def _wait_for_decypharr(
+    host: str, port: int, timeout_s: int = 10, interval_s: float = 1.0
+) -> bool:
+    deadline = time.time() + max(1, timeout_s)
+    url = f"http://{host}:{port}/"
+    while time.time() < deadline:
+        try:
+            req = urllib.request.Request(url, method="GET")
+            with urllib.request.urlopen(req, timeout=3) as resp:
+                resp.read(1)
+            return True
+        except Exception:
+            time.sleep(interval_s)
+    return False
+
+
+_DECYPHARR_RETRY_LOCK = threading.Lock()
+_DECYPHARR_RETRY_SCHEDULED = False
+
+
+def _schedule_decypharr_retry(delay_s: int = 15) -> None:
+    global _DECYPHARR_RETRY_SCHEDULED
+    with _DECYPHARR_RETRY_LOCK:
+        if _DECYPHARR_RETRY_SCHEDULED:
+            return
+        _DECYPHARR_RETRY_SCHEDULED = True
+
+    def _runner():
+        global _DECYPHARR_RETRY_SCHEDULED
+        try:
+            time.sleep(max(1, delay_s))
+            patch_decypharr_config()
+        finally:
+            with _DECYPHARR_RETRY_LOCK:
+                _DECYPHARR_RETRY_SCHEDULED = False
+
+    threading.Thread(target=_runner, daemon=True).start()
 
 
 def _shutdown_requested() -> bool:
@@ -679,11 +858,16 @@ def patch_decypharr_config():
             arrs = desired_arrs or []
             movies_root = "/mnt/debrid/decypharr_symlinks/movies"
             shows_root = "/mnt/debrid/decypharr_symlinks/shows"
+            music_root = "/mnt/debrid/decypharr_symlinks/music"
+            whisparr_root = "/mnt/debrid/decypharr_symlinks/whisparr"
             for entry in arrs:
                 svc = (entry.get("name") or "").split(":", 1)[0].lower()
                 host = entry.get("host")
                 token = entry.get("token")
-                if not _wait_for_arr(host, token, timeout_s=60, interval_s=2.0):
+                api_version = "v1" if svc == "lidarr" else "v3"
+                if not _wait_for_arr(
+                    host, token, timeout_s=60, interval_s=2.0, api_version=api_version
+                ):
                     logger.warning(
                         f"Arr not up yet, skipping rootfolder ensure for {host}"
                     )
@@ -691,11 +875,67 @@ def patch_decypharr_config():
                 try:
                     if svc == "radarr":
                         _with_retries(
-                            _ensure_arr_rootfolder, host, token, movies_root, attempts=3
+                            _ensure_arr_permissions,
+                            host,
+                            token,
+                            attempts=3,
+                            api_version=api_version,
+                        )
+                        _with_retries(
+                            _ensure_arr_rootfolder,
+                            host,
+                            token,
+                            movies_root,
+                            attempts=3,
+                            api_version=api_version,
                         )
                     elif svc == "sonarr":
                         _with_retries(
-                            _ensure_arr_rootfolder, host, token, shows_root, attempts=3
+                            _ensure_arr_permissions,
+                            host,
+                            token,
+                            attempts=3,
+                            api_version=api_version,
+                        )
+                        _with_retries(
+                            _ensure_arr_rootfolder,
+                            host,
+                            token,
+                            shows_root,
+                            attempts=3,
+                            api_version=api_version,
+                        )
+                    elif svc == "lidarr":
+                        _with_retries(
+                            _ensure_arr_permissions,
+                            host,
+                            token,
+                            attempts=3,
+                            api_version=api_version,
+                        )
+                        _with_retries(
+                            _ensure_arr_rootfolder,
+                            host,
+                            token,
+                            music_root,
+                            attempts=3,
+                            api_version=api_version,
+                        )
+                    elif svc == "whisparr":
+                        _with_retries(
+                            _ensure_arr_permissions,
+                            host,
+                            token,
+                            attempts=3,
+                            api_version=api_version,
+                        )
+                        _with_retries(
+                            _ensure_arr_rootfolder,
+                            host,
+                            token,
+                            whisparr_root,
+                            attempts=3,
+                            api_version=api_version,
                         )
                 except Exception as e:
                     logger.warning(
@@ -707,11 +947,25 @@ def patch_decypharr_config():
         # ---- Ensure download client 'decypharr' on each Arr ----
         try:
             arrs = desired_arrs or []
+            decypharr_port = int(decypharr_config.get("port", 8282))
+            if not _wait_for_decypharr(
+                "127.0.0.1", decypharr_port, timeout_s=10, interval_s=1.0
+            ):
+                logger.warning(
+                    "Decypharr backend not reachable on %s:%s; skipping download client setup.",
+                    "127.0.0.1",
+                    decypharr_port,
+                )
+                _schedule_decypharr_retry()
+                return updated, None
             for entry in arrs:
                 svc = (entry.get("name") or "").split(":", 1)[0].lower()
                 host = entry.get("host")
                 token = entry.get("token")
-                if not _wait_for_arr(host, token, timeout_s=60, interval_s=2.0):
+                api_version = "v1" if svc == "lidarr" else "v3"
+                if not _wait_for_arr(
+                    host, token, timeout_s=60, interval_s=2.0, api_version=api_version
+                ):
                     logger.warning(
                         f"Arr not up yet, skipping download client ensure for {host}"
                     )
@@ -721,12 +975,18 @@ def patch_decypharr_config():
                         ensure_decypharr_download_client,
                         arr_host=host,
                         arr_api_key=token,
-                        decypharr_port=int(decypharr_config.get("port", 8282)),
+                        decypharr_port=decypharr_port,
                         service=svc,
                         name="decypharr",
                         category=entry.get("name"),
-                        category_map={"radarr": "radarr", "sonarr": "sonarr"},
+                        category_map={
+                            "radarr": "radarr",
+                            "sonarr": "sonarr",
+                            "lidarr": "lidarr",
+                            "whisparr": "whisparr",
+                        },
                         test_before_save=False,
+                        api_version=api_version,
                         attempts=3,
                     )
                 except Exception as e:

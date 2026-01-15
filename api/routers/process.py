@@ -58,6 +58,7 @@ STATIC_URLS_BY_KEY = {
     "tautulli": "https://tautulli.com",
     "seerr": "https://github.com/seerr-team/seerr",
     "traefik": "https://traefik.io/",
+    "huntarr": "https://plexguide.github.io/Huntarr.io/",
 }
 
 SPONSORSHIP_URLS_BY_KEY = {
@@ -86,6 +87,7 @@ SPONSORSHIP_URLS_BY_KEY = {
     "tautulli": "https://tautulli.com/#donate",
     "seerr": "https://opencollective.com/seerr",
     "traefik": "https://github.com/sponsors/traefik",
+    "huntarr": "https://plexguide.github.io/Huntarr.io/donate.html",
 }
 
 DEFAULT_SERVICE_PORTS = {
@@ -100,6 +102,7 @@ DEFAULT_SERVICE_PORTS = {
     "emby": 8096,
     "tautulli": 8181,
     "seerr": 5055,
+    "huntarr": 9705,
 }
 ## Future support for restricting service port ranges
 SERVICE_PORT_RANGES = {
@@ -124,6 +127,7 @@ CORE_SERVICE_DEPENDENCIES = {
     "prowlarr": [],
     "whisparr": [],
     "seerr": [],
+    "huntarr": [],
 }
 
 CORE_SERVICE_NAMES = {
@@ -140,6 +144,7 @@ CORE_SERVICE_NAMES = {
     "prowlarr": "Prowlarr",
     "whisparr": "Whisparr",
     "seerr": "Seerr",
+    "huntarr": "Huntarr",
 }
 
 CORE_SERVICE_DESCRIPTIONS = {
@@ -272,6 +277,13 @@ Seerr
 - Integrates with Sonarr and Radarr for automated downloads.
 
 Documentation: https://github.com/seerr-team/seerr""",
+    "huntarr": """\
+Huntarr
+- Continuously scans Sonarr/Radarr/Lidarr/Whisparr libraries for missing items and upgrades.
+- Automates backlog searches in gentle batches to avoid indexer abuse.
+- Supports multiple instances and per-arr configuration.
+
+Documentation: https://plexguide.github.io/Huntarr.io/""",
 }
 
 OPTIONAL_POST_CORE = ["riven_frontend"]
@@ -351,8 +363,9 @@ SERVICE_OPTION_DESCRIPTIONS = {
     "setup_password": "Password for pgAdmin4 login.",
     "origin": "CORS origin for the service",
     "use_embedded_rclone": "If true, uses the embedded rclone for Decypharr. (Recommended)",
+    "use_huntarr": "If true, auto-configures Huntarr for this Arr instance.",
     "core_service": "Specifies which core service this service applies to; e.g., decypharr, nzbdav, or none (blank).",
-    "webdav_password": "Password for accessing the NzbDAV WebDAV service. (Default: '1P@55w0rd')",
+    "webdav_password": "Password for accessing the NzbDAV WebDAV service. Leave blank to auto-generate.",
 }
 
 BASIC_FIELDS = set(SERVICE_OPTION_DESCRIPTIONS.keys())
@@ -517,6 +530,25 @@ async def start_service(
                         logger.warning("Prowlarr app sync failed: %s", err)
                 except Exception as e:
                     logger.warning("Prowlarr app sync skipped: %s", e)
+            if key in [
+                "huntarr",
+                "sonarr",
+                "radarr",
+                "lidarr",
+                "whisparr",
+            ]:
+                try:
+                    from utils.huntarr_settings import (
+                        any_arr_uses_huntarr,
+                        patch_huntarr_config,
+                    )
+
+                    if key == "huntarr" or any_arr_uses_huntarr():
+                        ok, err = patch_huntarr_config()
+                        if not ok and err:
+                            logger.warning("Huntarr config sync failed: %s", err)
+                except Exception as e:
+                    logger.warning("Huntarr config sync skipped: %s", e)
             return {
                 "status": "Service started successfully",
                 "process_name": process_name,
@@ -630,6 +662,25 @@ async def restart_service(
                         logger.warning("Prowlarr app sync failed: %s", err)
                 except Exception as e:
                     logger.warning("Prowlarr app sync skipped: %s", e)
+            if key in [
+                "huntarr",
+                "sonarr",
+                "radarr",
+                "lidarr",
+                "whisparr",
+            ]:
+                try:
+                    from utils.huntarr_settings import (
+                        any_arr_uses_huntarr,
+                        patch_huntarr_config,
+                    )
+
+                    if key == "huntarr" or any_arr_uses_huntarr():
+                        ok, err = patch_huntarr_config()
+                        if not ok and err:
+                            logger.warning("Huntarr config sync failed: %s", err)
+                except Exception as e:
+                    logger.warning("Huntarr config sync skipped: %s", e)
 
             status = api_state.get_status(process_name)
             if status != "running":
@@ -1033,6 +1084,88 @@ def _ensure_unique_instance_port(
         )
 
 
+def _start_optional_service(
+    opt_key: str,
+    opt_cfg: dict,
+    merged_options: dict,
+    used_ports: dict[int, str],
+    updater,
+    api_state,
+    logger,
+    template_config: dict,
+) -> None:
+    if "instances" in opt_cfg and isinstance(opt_cfg["instances"], dict):
+        instances = opt_cfg["instances"]
+        for inst_name, inst_cfg in instances.items():
+            if not isinstance(inst_cfg, dict):
+                continue
+            if not inst_cfg.get("enabled"):
+                inst_cfg["enabled"] = True
+                CONFIG_MANAGER.save_config()
+
+            apply_service_options(inst_cfg, merged_options, logger)
+            _ensure_unique_instance_port(
+                service_key=opt_key,
+                inst_name=inst_name,
+                inst_cfg=inst_cfg,
+                instances=instances,
+                template_config=template_config,
+                logger=logger,
+            )
+            _reserve_config_port(
+                opt_key,
+                inst_cfg,
+                "port",
+                used_ports,
+                logger,
+                owner_suffix=inst_name,
+                label=f"{inst_name} port",
+            )
+
+            proc = inst_cfg.get("process_name")
+            if not proc:
+                raise HTTPException(
+                    500, detail=f"Process name not defined for '{opt_key}:{inst_name}'."
+                )
+            logger.info(f"Starting optional service: {proc}")
+            if not wait_for_process_running(api_state, proc):
+                updater.auto_update(
+                    proc, enable_update=inst_cfg.get("auto_update", False)
+                )
+                wait_for_process_running(api_state, proc)
+        return
+
+    if not opt_cfg.get("enabled"):
+        opt_cfg["enabled"] = True
+        CONFIG_MANAGER.save_config()
+
+    apply_service_options(opt_cfg, merged_options, logger)
+    _reserve_config_port(opt_key, opt_cfg, "port", used_ports, logger)
+    if opt_key == "nzbdav":
+        _reserve_config_port(
+            "nzbdav",
+            opt_cfg,
+            "frontend_port",
+            used_ports,
+            logger,
+            label="frontend",
+        )
+        _reserve_config_port(
+            "nzbdav",
+            opt_cfg,
+            "backend_port",
+            used_ports,
+            logger,
+            label="backend",
+        )
+
+    proc = opt_cfg.get("process_name")
+    logger.info(f"Starting optional service: {proc}")
+    if not wait_for_process_running(api_state, proc):
+        updater.auto_update(proc, enable_update=opt_cfg.get("auto_update", False))
+        wait_for_process_running(api_state, proc)
+
+
 @process_router.post("/start-core-service")
 async def start_core_services(
     request: UnifiedStartRequest,
@@ -1124,9 +1257,6 @@ def _run_startup(request: UnifiedStartRequest, updater, api_state, logger):
     for opt in optional_services:
         if opt in config and opt not in OPTIONAL_POST_CORE:
             opt_cfg = config[opt]
-            if not opt_cfg.get("enabled"):
-                opt_cfg["enabled"] = True
-                CONFIG_MANAGER.save_config()
 
             # Merge all service_options across services (priority + normal)
             merged_options = {}
@@ -1135,34 +1265,16 @@ def _run_startup(request: UnifiedStartRequest, updater, api_state, logger):
                     merged_options.update(svc.service_options[opt])
             if opt in optional_service_options:
                 merged_options.update(optional_service_options[opt])
-
-            apply_service_options(opt_cfg, merged_options, logger)
-            _reserve_config_port(opt, opt_cfg, "port", used_ports, logger)
-            if opt == "nzbdav":
-                _reserve_config_port(
-                    "nzbdav",
-                    opt_cfg,
-                    "frontend_port",
-                    used_ports,
-                    logger,
-                    label="frontend",
-                )
-                _reserve_config_port(
-                    "nzbdav",
-                    opt_cfg,
-                    "backend_port",
-                    used_ports,
-                    logger,
-                    label="backend",
-                )
-
-            proc = opt_cfg["process_name"]
-            logger.info(f"Starting optional service: {proc}")
-            if not wait_for_process_running(api_state, proc):
-                updater.auto_update(
-                    proc, enable_update=opt_cfg.get("auto_update", False)
-                )
-                wait_for_process_running(api_state, proc)
+            _start_optional_service(
+                opt_key=opt,
+                opt_cfg=opt_cfg,
+                merged_options=merged_options,
+                used_ports=used_ports,
+                updater=updater,
+                api_state=api_state,
+                logger=logger,
+                template_config=template_config,
+            )
 
     #
     # 3.1) Start any “optional post-core” services when no cores are selected
@@ -1171,25 +1283,19 @@ def _run_startup(request: UnifiedStartRequest, updater, api_state, logger):
         for opt in optional_services:
             if opt in config and opt in OPTIONAL_POST_CORE:
                 opt_cfg = config[opt]
-                if not opt_cfg.get("enabled"):
-                    opt_cfg["enabled"] = True
-                    CONFIG_MANAGER.save_config()
                 merged_options = {}
                 if opt in optional_service_options:
                     merged_options.update(optional_service_options[opt])
-                apply_service_options(
-                    opt_cfg,
-                    merged_options,
-                    logger,
+                _start_optional_service(
+                    opt_key=opt,
+                    opt_cfg=opt_cfg,
+                    merged_options=merged_options,
+                    used_ports=used_ports,
+                    updater=updater,
+                    api_state=api_state,
+                    logger=logger,
+                    template_config=template_config,
                 )
-                _reserve_config_port(opt, opt_cfg, "port", used_ports, logger)
-                proc = opt_cfg["process_name"]
-                logger.info(f"Starting optional service: {proc}")
-                if not wait_for_process_running(api_state, proc):
-                    updater.auto_update(
-                        proc, enable_update=opt_cfg.get("auto_update", False)
-                    )
-                    wait_for_process_running(api_state, proc)
     #
     # 4) Now start each core service in turn, handling dependencies as needed
     #
@@ -1691,9 +1797,6 @@ def _run_startup(request: UnifiedStartRequest, updater, api_state, logger):
             for opt in optional_services:
                 if opt in config and opt in OPTIONAL_POST_CORE:
                     oc = config[opt]
-                    if not oc.get("enabled"):
-                        oc["enabled"] = True
-                        CONFIG_MANAGER.save_config()
                     merged_options = {}
                     if (
                         core_service.service_options
@@ -1702,23 +1805,56 @@ def _run_startup(request: UnifiedStartRequest, updater, api_state, logger):
                         merged_options.update(core_service.service_options[opt])
                     if opt in optional_service_options:
                         merged_options.update(optional_service_options[opt])
-                    apply_service_options(
-                        oc,
-                        merged_options,
-                        logger,
+                    _start_optional_service(
+                        opt_key=opt,
+                        opt_cfg=oc,
+                        merged_options=merged_options,
+                        used_ports=used_ports,
+                        updater=updater,
+                        api_state=api_state,
+                        logger=logger,
+                        template_config=template_config,
                     )
-                    _reserve_config_port(opt, oc, "port", used_ports, logger)
-                    op = oc["process_name"]
-                    if not wait_for_process_running(api_state, op):
-                        updater.auto_update(
-                            op, enable_update=oc.get("auto_update", False)
-                        )
-                        wait_for_process_running(api_state, op)
 
             results.append({"service": core_service.name, "status": "started"})
 
         except HTTPException as e:
             errors.append({"service": core_service.name, "error": e.detail})
+
+    try:
+        from utils.huntarr_settings import any_arr_uses_huntarr, patch_huntarr_config
+
+        if any_arr_uses_huntarr():
+            huntarr_cfg = config.get("huntarr", {})
+            if isinstance(huntarr_cfg, dict):
+                instances = huntarr_cfg.get("instances", {}) or {}
+                enabled_any = any(
+                    isinstance(inst, dict) and inst.get("enabled")
+                    for inst in instances.values()
+                )
+                if instances and not enabled_any:
+                    first = next(iter(instances.values()))
+                    if isinstance(first, dict):
+                        first["enabled"] = True
+                        CONFIG_MANAGER.save_config()
+
+                merged_options = optional_service_options.get("huntarr", {})
+                _start_optional_service(
+                    opt_key="huntarr",
+                    opt_cfg=huntarr_cfg,
+                    merged_options=merged_options,
+                    used_ports=used_ports,
+                    updater=updater,
+                    api_state=api_state,
+                    logger=logger,
+                    template_config=template_config,
+                )
+
+                ok, err = patch_huntarr_config()
+                if not ok and err:
+                    logger.warning("Huntarr config sync failed: %s", err)
+    except Exception as exc:
+        logger.warning("Huntarr auto-config skipped: %s", exc)
 
     # Final persist & reload to ensure in-memory matches on-disk
     CONFIG_MANAGER.save_config()
@@ -1877,14 +2013,39 @@ async def get_optional_services(
         if key == "postgres" and picked & {"zilean", "pgadmin"}:
             continue
         raw = default_conf.get(key, {})
-        svc_opts = {
-            k: raw[k]
-            for k in SERVICE_OPTION_DESCRIPTIONS
-            if k in raw and k in BASIC_FIELDS
-        }
+        svc_opts = {}
+        instance_options: Dict[str, Dict[str, Any]] = {}
+        supports_instances = False
+        if isinstance(raw, dict) and isinstance(raw.get("instances"), dict):
+            tmpl_instances = raw.get("instances") or {}
+            supports_instances = bool(tmpl_instances)
+            if supports_instances:
+                first_inst = next(iter(tmpl_instances.values()), {})
+                if isinstance(first_inst, dict):
+                    svc_opts = {
+                        k: v for k, v in first_inst.items() if k in BASIC_FIELDS
+                    }
+                for iname, icfg in tmpl_instances.items():
+                    if isinstance(icfg, dict):
+                        instance_options[iname] = {
+                            k: v for k, v in icfg.items() if k in BASIC_FIELDS
+                        }
+        if not svc_opts and isinstance(raw, dict):
+            svc_opts = {
+                k: raw[k]
+                for k in SERVICE_OPTION_DESCRIPTIONS
+                if k in raw and k in BASIC_FIELDS
+            }
+
         svc_opt_desc = {
             field: SERVICE_OPTION_DESCRIPTIONS[field] for field in svc_opts.keys()
         }
+        instance_opt_desc: Dict[str, Dict[str, str]] = {}
+        if supports_instances:
+            for iname, opts in instance_options.items():
+                instance_opt_desc[iname] = {
+                    field: SERVICE_OPTION_DESCRIPTIONS[field] for field in opts.keys()
+                }
 
         results.append(
             {
@@ -1895,6 +2056,9 @@ async def get_optional_services(
                 ),
                 "service_options": svc_opts,
                 "service_option_descriptions": svc_opt_desc,
+                "supports_instances": supports_instances,
+                "instance_options": instance_options,
+                "instance_option_descriptions": instance_opt_desc,
             }
         )
 

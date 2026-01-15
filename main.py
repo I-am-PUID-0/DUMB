@@ -9,7 +9,7 @@ from utils.auto_update import Update
 from utils.dependencies import initialize_dependencies
 from utils.plex_dbrepair import start_plex_dbrepair_worker
 from concurrent.futures import ThreadPoolExecutor, wait, FIRST_COMPLETED
-import subprocess, threading, time, tomllib, os, socket, errno, psutil, json
+import subprocess, threading, time, tomllib, os, socket, errno, psutil, json, urllib.parse
 
 
 def log_ascii_art():
@@ -277,6 +277,44 @@ def _service_has_enabled_instance(config_obj: dict) -> bool:
     return bool(config_obj.get("enabled"))
 
 
+def _service_has_huntarr_instance(config_obj: dict) -> bool:
+    if not isinstance(config_obj, dict):
+        return False
+    if "instances" not in config_obj or not isinstance(config_obj["instances"], dict):
+        return False
+    return any(
+        isinstance(inst, dict)
+        and inst.get("enabled")
+        and inst.get("use_huntarr")
+        for inst in config_obj["instances"].values()
+    )
+
+
+def _enable_huntarr_if_needed(config_manager) -> None:
+    if not any(
+        _service_has_huntarr_instance(config_manager.get(svc, {}))
+        for svc in ("sonarr", "radarr", "lidarr", "whisparr")
+    ):
+        return
+
+    huntarr_cfg = config_manager.get("huntarr", {})
+    if not isinstance(huntarr_cfg, dict):
+        return
+    instances = huntarr_cfg.get("instances", {}) or {}
+    if not isinstance(instances, dict) or not instances:
+        return
+
+    if any(
+        isinstance(inst, dict) and inst.get("enabled") for inst in instances.values()
+    ):
+        return
+
+    first = next(iter(instances.values()))
+    if isinstance(first, dict):
+        first["enabled"] = True
+        config_manager.save_config()
+
+
 def _read_decypharr_mount_path(decypharr_cfg: dict) -> str | None:
     if not decypharr_cfg.get("use_embedded_rclone"):
         return None
@@ -293,6 +331,54 @@ def _read_decypharr_mount_path(decypharr_cfg: dict) -> str | None:
     return "/mnt/debrid/decypharr"
 
 
+def _extract_decypharr_debrid_mount(
+    folder_path: str, mount_base: str | None
+) -> str | None:
+    if not folder_path:
+        return None
+    norm_path = os.path.normpath(folder_path)
+    candidates = []
+    if mount_base:
+        candidates.append(os.path.normpath(mount_base))
+    candidates.append("/mnt/debrid/decypharr")
+    for base in candidates:
+        if norm_path.startswith(base + os.sep):
+            rel = norm_path[len(base) + 1 :]
+            parts = [p for p in rel.split(os.sep) if p]
+            if parts:
+                return os.path.join(base, parts[0])
+    return None
+
+
+def _collect_decypharr_mount_paths(decypharr_cfg: dict) -> list[str]:
+    if not decypharr_cfg.get("use_embedded_rclone"):
+        return []
+    config_file = decypharr_cfg.get("config_file")
+    if not config_file or not os.path.exists(config_file):
+        return []
+    try:
+        with open(config_file, "r") as handle:
+            data = json.load(handle)
+    except Exception as e:
+        logger.debug("Failed to read Decypharr config: %s", e)
+        return []
+
+    mount_base = (data.get("rclone") or {}).get("mount_path")
+    if not isinstance(mount_base, str):
+        mount_base = None
+    mounts = set()
+    for debrid in data.get("debrids") or []:
+        if not isinstance(debrid, dict):
+            continue
+        folder = debrid.get("folder")
+        mount_path = _extract_decypharr_debrid_mount(folder, mount_base)
+        if mount_path:
+            mounts.add(mount_path)
+        elif mount_base and debrid.get("name"):
+            mounts.add(os.path.join(mount_base, str(debrid["name"])))
+    return sorted(mounts)
+
+
 def _collect_mount_paths(config_manager) -> list[str]:
     mount_paths = set()
     rclone_instances = config_manager.get("rclone", {}).get("instances", {}) or {}
@@ -306,9 +392,13 @@ def _collect_mount_paths(config_manager) -> list[str]:
 
     decypharr_cfg = config_manager.get("decypharr", {}) or {}
     if decypharr_cfg.get("enabled") and decypharr_cfg.get("use_embedded_rclone"):
-        mount_path = _read_decypharr_mount_path(decypharr_cfg)
-        if mount_path:
-            mount_paths.add(mount_path)
+        decypharr_mounts = _collect_decypharr_mount_paths(decypharr_cfg)
+        if decypharr_mounts:
+            mount_paths.update(decypharr_mounts)
+        else:
+            mount_path = _read_decypharr_mount_path(decypharr_cfg)
+            if mount_path:
+                mount_paths.add(mount_path)
 
     return sorted(mount_paths)
 
@@ -318,6 +408,20 @@ def _merge_wait_for_mounts(config_obj: dict, mount_paths: list[str]) -> None:
     merged = sorted(set(existing) | set(mount_paths))
     if merged:
         config_obj["wait_for_mounts"] = merged
+
+
+def _set_wait_for_urls(config_obj: dict, wait_entries: list[dict]) -> None:
+    existing = []
+    seen = set()
+    for entry in wait_entries:
+        url = entry.get("url")
+        if url and url not in seen:
+            existing.append(entry)
+            seen.add(url)
+    if existing:
+        config_obj["wait_for_url"] = existing
+    else:
+        config_obj.pop("wait_for_url", None)
 
 
 def _apply_mount_waits(config_manager, mount_paths: list[str]) -> None:
@@ -340,6 +444,103 @@ def _apply_mount_waits(config_manager, mount_paths: list[str]) -> None:
             _merge_wait_for_mounts(cfg, mount_paths)
 
 
+def _collect_arr_ping_waits(config_manager) -> list[dict]:
+    wait_entries = []
+    for service in ("sonarr", "radarr", "lidarr", "whisparr"):
+        instances = config_manager.get(service, {}).get("instances", {}) or {}
+        for instance in instances.values():
+            if not isinstance(instance, dict) or not instance.get("enabled"):
+                continue
+            port = instance.get("port")
+            if not port:
+                continue
+            host = instance.get("host") or "127.0.0.1"
+            base_url = instance.get("base_url") or instance.get("url_base") or ""
+            if isinstance(base_url, str):
+                base_url = base_url.strip()
+                if base_url in ("", "/"):
+                    base_url = ""
+                else:
+                    base_url = "/" + base_url.lstrip("/")
+            else:
+                base_url = ""
+            wait_entries.append({"url": f"http://{host}:{port}{base_url}/ping"})
+    return wait_entries
+
+
+def _apply_prowlarr_waits(config_manager, wait_entries: list[dict]) -> None:
+    if not wait_entries:
+        return
+    cfg = config_manager.get("prowlarr", {})
+    if not isinstance(cfg, dict):
+        return
+    wait_urls = [entry.get("url") for entry in wait_entries if entry.get("url")]
+    has_enabled = _service_has_enabled_instance(cfg)
+    if wait_urls and has_enabled:
+        logger.info(
+            "Prowlarr will wait for Arr services to be ready: %s",
+            ", ".join(wait_urls),
+        )
+    if not has_enabled:
+        return
+
+    if "instances" in cfg and isinstance(cfg["instances"], dict):
+        for inst in cfg["instances"].values():
+            if isinstance(inst, dict) and inst.get("enabled"):
+                _set_wait_for_urls(inst, wait_entries)
+    elif cfg.get("enabled"):
+        _set_wait_for_urls(cfg, wait_entries)
+
+
+def _build_plex_wait_entries(config_manager) -> list[dict]:
+    plex_cfg = config_manager.get("plex", {}) or {}
+    if not _service_has_enabled_instance(plex_cfg):
+        return []
+    plex_address = (config_manager.get("dumb", {}) or {}).get("plex_address") or ""
+    plex_port = plex_cfg.get("port", 32400)
+    base_url = ""
+    if plex_address:
+        parsed = urllib.parse.urlparse(plex_address)
+        if parsed.scheme and parsed.hostname:
+            host = parsed.hostname
+            if parsed.port:
+                base_url = f"{parsed.scheme}://{host}:{parsed.port}"
+            else:
+                base_url = f"{parsed.scheme}://{host}"
+    if not base_url:
+        base_url = f"http://127.0.0.1:{plex_port}"
+    return [{"url": f"{base_url}/identity"}]
+
+
+def _build_media_wait_entries(config_manager) -> list[dict]:
+    wait_entries = []
+    plex_entries = _build_plex_wait_entries(config_manager)
+    wait_entries.extend(plex_entries)
+    for key in ("jellyfin", "emby"):
+        cfg = config_manager.get(key, {}) or {}
+        if not _service_has_enabled_instance(cfg):
+            continue
+        port = cfg.get("port")
+        if not port:
+            continue
+        wait_entries.append({"url": f"http://127.0.0.1:{port}/System/Info/Public"})
+    return wait_entries
+
+
+def _apply_waits_to_service(config_manager, key: str, wait_entries: list[dict]) -> None:
+    if not wait_entries:
+        return
+    cfg = config_manager.get(key, {})
+    if not isinstance(cfg, dict):
+        return
+    if "instances" in cfg and isinstance(cfg["instances"], dict):
+        for inst in cfg["instances"].values():
+            if isinstance(inst, dict) and inst.get("enabled"):
+                _set_wait_for_urls(inst, wait_entries)
+    elif cfg.get("enabled"):
+        _set_wait_for_urls(cfg, wait_entries)
+
+
 def _build_dependency_map(config_manager) -> dict[str, set[str]]:
     deps = {
         "riven_backend": {"postgres"},
@@ -347,6 +548,38 @@ def _build_dependency_map(config_manager) -> dict[str, set[str]]:
         "zilean": {"postgres"},
         "pgadmin": {"postgres"},
     }
+
+    if _service_has_enabled_instance(config_manager.get("plex", {})):
+        deps["tautulli"] = {"plex"}
+        deps.setdefault("seerr", set()).add("plex")
+    if _service_has_enabled_instance(config_manager.get("jellyfin", {})):
+        deps.setdefault("seerr", set()).add("jellyfin")
+    if _service_has_enabled_instance(config_manager.get("emby", {})):
+        deps.setdefault("seerr", set()).add("emby")
+
+    prowlarr_deps = set()
+    if _service_has_enabled_instance(config_manager.get("sonarr", {})):
+        prowlarr_deps.add("sonarr")
+    if _service_has_enabled_instance(config_manager.get("radarr", {})):
+        prowlarr_deps.add("radarr")
+    if _service_has_enabled_instance(config_manager.get("lidarr", {})):
+        prowlarr_deps.add("lidarr")
+    if _service_has_enabled_instance(config_manager.get("whisparr", {})):
+        prowlarr_deps.add("whisparr")
+    if prowlarr_deps:
+        deps["prowlarr"] = prowlarr_deps
+
+    huntarr_deps = set()
+    if _service_has_huntarr_instance(config_manager.get("sonarr", {})):
+        huntarr_deps.add("sonarr")
+    if _service_has_huntarr_instance(config_manager.get("radarr", {})):
+        huntarr_deps.add("radarr")
+    if _service_has_huntarr_instance(config_manager.get("lidarr", {})):
+        huntarr_deps.add("lidarr")
+    if _service_has_huntarr_instance(config_manager.get("whisparr", {})):
+        huntarr_deps.add("whisparr")
+    if huntarr_deps:
+        deps["huntarr"] = huntarr_deps
 
     rclone_deps = set()
     rclone_instances = config_manager.get("rclone", {}).get("instances", {}) or {}
@@ -440,6 +673,9 @@ def main():
     _apply_global_port_reservations(config)
     mount_paths = _collect_mount_paths(config)
     _apply_mount_waits(config, mount_paths)
+    _apply_prowlarr_waits(config, _collect_arr_ping_waits(config))
+    _apply_waits_to_service(config, "tautulli", _build_plex_wait_entries(config))
+    _apply_waits_to_service(config, "seerr", _build_media_wait_entries(config))
 
     if config.get("dumb", {}).get("api_service", {}).get("enabled"):
         start_fastapi_process()
@@ -506,11 +742,12 @@ def main():
 
         grouped_keys = [
             "zurg",
-            "prowlarr",
             "radarr",
             "sonarr",
             "lidarr",
             "whisparr",
+            "prowlarr",
+            "huntarr",
             "decypharr",
             "nzbdav",
             "rclone",
@@ -529,6 +766,7 @@ def main():
             "tautulli",
             "seerr",
         ]
+        _enable_huntarr_if_needed(config)
         dependency_map = _build_dependency_map(config)
         _start_processes_with_dependencies(
             process_handler, updater, config, grouped_keys, dependency_map

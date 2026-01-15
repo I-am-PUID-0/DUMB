@@ -218,7 +218,7 @@
         "command": [],
         "config_dir": "/nzbdav",
         "log_file": "/log/nzbdav.log",
-        "webdav_password": "1P@55w0rd",
+        "webdav_password": "",
         "env": {}
     },
     "emby": {
@@ -259,6 +259,7 @@
             "Default": {
                 "enabled": false,
                 "core_service": "",
+                "use_huntarr": false,
                 "process_name": "Lidarr",
                 "suppress_logging": false,
                 "auto_update": false,
@@ -377,6 +378,44 @@
         "config_file": "/tautulli/data/config.ini",
         "log_file": "/tautulli/data/logs/tautulli.log",
         "env": {}
+    },
+    "huntarr": {
+        "instances": {
+            "Default": {
+                "enabled": false,
+                "core_service": "",
+                "process_name": "Huntarr",
+                "repo_owner": "plexguide",
+                "repo_name": "Huntarr.io",
+                "release_version_enabled": false,
+                "release_version": "latest",
+                "branch_enabled": false,
+                "branch": "main",
+                "suppress_logging": false,
+                "log_level": "INFO",
+                "port": 9705,
+                "auto_update": false,
+                "auto_update_interval": 24,
+                "clear_on_update": false,
+                "exclude_dirs": [
+                    "/huntarr/default/config"
+                ],
+                "platforms": [
+                    "python"
+                ],
+                "command": [
+                    "/huntarr/default/venv/bin/python",
+                    "main.py"
+                ],
+                "config_dir": "/huntarr/default",
+                "config_file": "/huntarr/default/config/huntarr.db",
+                "log_file": "/huntarr/default/logs/huntarr.log",
+                "env": {
+                    "HUNTARR_CONFIG_DIR": "/huntarr/default/config",
+                    "HUNTARR_PORT": "{port}"
+                }
+            }
+        }
     },
     "seerr": {
         "instances": {
@@ -607,6 +646,7 @@
             "Default": {
                 "enabled": false,
                 "core_service": "",
+                "use_huntarr": false,
                 "process_name": "Radarr",
                 "suppress_logging": false,
                 "auto_update": false,
@@ -626,6 +666,7 @@
             "Default": {
                 "enabled": false,
                 "core_service": "",
+                "use_huntarr": false,
                 "process_name": "Sonarr",
                 "suppress_logging": false,
                 "auto_update": false,
@@ -645,6 +686,7 @@
             "Default": {
                 "enabled": false,
                 "core_service": "",
+                "use_huntarr": false,
                 "process_name": "Whisparr",
                 "suppress_logging": false,
                 "auto_update": false,

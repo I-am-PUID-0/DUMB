@@ -5,6 +5,7 @@ from utils.user_management import chown_recursive, chown_single
 from typing import Optional, Tuple
 import xml.etree.ElementTree as ET
 import json, os, time, urllib.request, urllib.error
+import threading
 
 
 def _parse_arr_api_key(config_xml_path: str) -> str:
@@ -21,10 +22,17 @@ def _parse_arr_api_key(config_xml_path: str) -> str:
     return ""
 
 
-def _collect_arr_entries() -> Tuple[list[dict], list[dict]]:
+def _collect_arr_entries() -> Tuple[list[dict], list[dict], list[dict], list[dict]]:
     radarr_entries = []
     sonarr_entries = []
-    for svc_name, bucket in (("radarr", radarr_entries), ("sonarr", sonarr_entries)):
+    lidarr_entries = []
+    whisparr_entries = []
+    for svc_name, bucket in (
+        ("radarr", radarr_entries),
+        ("sonarr", sonarr_entries),
+        ("lidarr", lidarr_entries),
+        ("whisparr", whisparr_entries),
+    ):
         svc_cfg = CONFIG_MANAGER.get(svc_name) or {}
         instances = (svc_cfg.get("instances") or {}) or {}
         for inst_key, inst in instances.items():
@@ -51,7 +59,7 @@ def _collect_arr_entries() -> Tuple[list[dict], list[dict]]:
                 )
                 continue
             bucket.append({"Host": host, "ApiKey": token})
-    return radarr_entries, sonarr_entries
+    return radarr_entries, sonarr_entries, lidarr_entries, whisparr_entries
 
 
 def _join(host: str, path: str) -> str:
@@ -71,18 +79,30 @@ def _arr_req(
         headers["Content-Type"] = "application/json"
         body = json.dumps(data).encode("utf-8")
     req = urllib.request.Request(url, data=body, headers=headers, method=method)
-    with urllib.request.urlopen(req, timeout=timeout) as resp:
-        raw = resp.read()
-        if not raw:
-            return None
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            raw = resp.read()
+            if not raw:
+                return None
+            try:
+                return json.loads(raw.decode("utf-8"))
+            except Exception:
+                return raw.decode("utf-8")
+    except urllib.error.HTTPError as e:
         try:
-            return json.loads(raw.decode("utf-8"))
+            body = e.read().decode("utf-8")
         except Exception:
-            return raw.decode("utf-8")
+            body = ""
+        if body:
+            logger.warning("Arr API error response from %s: %s", url, body)
+        raise
 
 
-def _get_sab_schema(host: str, key: str):
-    schemas = _arr_req(_join(host, "/api/v3/downloadclient/schema"), key, "GET") or []
+def _get_sab_schema(host: str, key: str, api_version: str = "v3"):
+    schemas = (
+        _arr_req(_arr_url(host, api_version, "downloadclient/schema"), key, "GET")
+        or []
+    )
     for item in schemas:
         impl = (item.get("implementation") or "").lower()
         name = (item.get("implementationName") or "").lower()
@@ -99,7 +119,8 @@ def _build_fields_from_schema(schema: dict, overrides: dict) -> list:
             continue
         fields[n] = f.get("value")
     for k, v in (overrides or {}).items():
-        fields[k] = v
+        if k in fields:
+            fields[k] = v
     return [{"name": k, "value": v} for k, v in fields.items()]
 
 
@@ -107,26 +128,138 @@ def _normalize_path(p: str) -> str:
     return os.path.normpath((p or "").rstrip("/"))
 
 
-def _ensure_arr_rootfolder(host: str, token: str, path: str) -> bool:
+def _arr_url(host: str, api_version: str, path: str) -> str:
+    return _join(host, f"/api/{api_version}/{path.lstrip('/')}")
+
+
+def _get_lidarr_rootfolder_payload(host: str, token: str, path: str) -> Optional[dict]:
+    quality_profiles = _arr_req(_arr_url(host, "v1", "qualityprofile"), token, "GET") or []
+    meta_profiles = _arr_req(_arr_url(host, "v1", "metadataprofile"), token, "GET") or []
+    if not meta_profiles:
+        meta_profiles = (
+            _arr_req(_arr_url(host, "v1", "metadata/profile"), token, "GET") or []
+        )
+    quality_id = next(
+        (p.get("id") for p in quality_profiles if isinstance(p, dict) and p.get("id")),
+        None,
+    )
+    meta_id = next(
+        (p.get("id") for p in meta_profiles if isinstance(p, dict) and p.get("id")),
+        None,
+    )
+    if not quality_id or not meta_id:
+        logger.warning(
+            "Lidarr rootfolder payload missing profiles (quality=%s, metadata=%s)",
+            quality_id,
+            meta_id,
+        )
+        return None
+    name = os.path.basename(path.rstrip("/")) or path
+    return {
+        "name": name,
+        "path": path,
+        "defaultQualityProfileId": quality_id,
+        "defaultMetadataProfileId": meta_id,
+    }
+
+
+def _ensure_arr_rootfolder(
+    host: str, token: str, path: str, api_version: str = "v3"
+) -> bool:
     """Ensure a root folder exists on a Sonarr/Radarr instance.
     Returns True if created, False if already present or on error."""
     if not (host and token and path):
         return False
     try:
-        url = _join(host, "/api/v3/rootfolder")
+        url = _arr_url(host, api_version, "rootfolder")
         existing = _arr_req(url, token, "GET") or []
         if any(
             _normalize_path(x.get("path", "")) == _normalize_path(path)
             for x in (existing or [])
         ):
             return False
-        _arr_req(url, token, "POST", {"path": path})
+        payload = {"path": path}
+        if api_version == "v1":
+            payload = _get_lidarr_rootfolder_payload(host, token, path) or payload
+            if payload == {"path": path}:
+                return False
+        _arr_req(url, token, "POST", payload)
         logger.info("Created root folder '%s' on %s", path, host)
         return True
     except urllib.error.HTTPError as e:
         logger.warning("HTTP error ensuring rootfolder %s on %s: %s", path, host, e)
     except Exception as e:
         logger.warning("Failed to ensure rootfolder %s on %s: %s", path, host, e)
+    return False
+
+
+def _coerce_chmod_value(current_value, desired_value: str):
+    if isinstance(current_value, int):
+        try:
+            return int(str(desired_value))
+        except ValueError:
+            return current_value
+    return str(desired_value)
+
+
+def _ensure_arr_permissions(
+    host: str,
+    token: str,
+    chmod_folder: str = "777",
+    set_permissions: bool = True,
+    api_version: str = "v3",
+    chmod_file: str = "666",
+) -> bool:
+    if not (host and token):
+        return False
+    try:
+        url = _arr_url(host, api_version, "config/mediamanagement")
+        current = _arr_req(url, token, "GET") or {}
+        if not isinstance(current, dict):
+            return False
+        desired = current.copy()
+        perms_key = "setPermissions"
+        if "setPermissionsLinux" in current and "setPermissions" not in current:
+            perms_key = "setPermissionsLinux"
+        desired[perms_key] = bool(set_permissions)
+        desired["chmodFolder"] = _coerce_chmod_value(
+            current.get("chmodFolder"), chmod_folder
+        )
+        if "chmodFile" in current:
+            desired["chmodFile"] = _coerce_chmod_value(
+                current.get("chmodFile"), chmod_file
+            )
+        updated = (
+            desired.get(perms_key) != current.get(perms_key)
+            or desired.get("chmodFolder") != current.get("chmodFolder")
+            or desired.get("chmodFile") != current.get("chmodFile")
+        )
+        if not updated:
+            return False
+        _arr_req(url, token, "PUT", desired)
+        verify = _arr_req(url, token, "GET") or {}
+        if (
+            isinstance(verify, dict)
+            and verify.get(perms_key) != desired.get(perms_key)
+        ):
+            logger.warning(
+                "Arr permissions update did not persist on %s: %s=%s",
+                host,
+                perms_key,
+                verify.get(perms_key),
+            )
+        logger.info(
+            "Updated Arr permissions on %s: %s=%s chmodFolder=%s",
+            host,
+            perms_key,
+            desired.get(perms_key),
+            desired.get("chmodFolder"),
+        )
+        return True
+    except urllib.error.HTTPError as e:
+        logger.warning("HTTP error updating Arr permissions on %s: %s", host, e)
+    except Exception as e:
+        logger.warning("Failed to update Arr permissions on %s: %s", host, e)
     return False
 
 
@@ -171,6 +304,7 @@ def ensure_nzbdav_download_client(
     category_map: Optional[dict] = None,
     category: Optional[str] = None,
     test_before_save: bool = False,
+    api_version: str = "v3",
 ) -> Tuple[bool, Optional[int]]:
     def _set_field(fields_list, field_name: str, value) -> bool:
         for f in fields_list or []:
@@ -184,7 +318,7 @@ def ensure_nzbdav_download_client(
         service, service
     )
 
-    schema = _get_sab_schema(arr_host, arr_api_key)
+    schema = _get_sab_schema(arr_host, arr_api_key, api_version=api_version)
     if not schema:
         raise RuntimeError("Could not fetch download client schema from Arr")
 
@@ -232,11 +366,17 @@ def ensure_nzbdav_download_client(
 
     if test_before_save:
         _arr_req(
-            _join(arr_host, "/api/v3/downloadclient/test"), arr_api_key, "POST", desired
+            _arr_url(arr_host, api_version, "downloadclient/test"),
+            arr_api_key,
+            "POST",
+            desired,
         )
 
     existing = (
-        _arr_req(_join(arr_host, "/api/v3/downloadclient"), arr_api_key, "GET") or []
+        _arr_req(
+            _arr_url(arr_host, api_version, "downloadclient"), arr_api_key, "GET"
+        )
+        or []
     )
     match = next(
         (c for c in existing if (c.get("name") or "").lower() == name.lower()), None
@@ -247,7 +387,7 @@ def ensure_nzbdav_download_client(
         put_body = desired.copy()
         put_body["id"] = client_id
         _arr_req(
-            _join(arr_host, f"/api/v3/downloadclient/{client_id}"),
+            _arr_url(arr_host, api_version, f"downloadclient/{client_id}"),
             arr_api_key,
             "PUT",
             put_body,
@@ -256,7 +396,10 @@ def ensure_nzbdav_download_client(
 
     created = (
         _arr_req(
-            _join(arr_host, "/api/v3/downloadclient"), arr_api_key, "POST", desired
+            _arr_url(arr_host, api_version, "downloadclient"),
+            arr_api_key,
+            "POST",
+            desired,
         )
         or {}
     )
@@ -264,10 +407,14 @@ def ensure_nzbdav_download_client(
 
 
 def _wait_for_arr(
-    host: str, token: str, timeout_s: int = 60, interval_s: float = 2.0
+    host: str,
+    token: str,
+    timeout_s: int = 60,
+    interval_s: float = 2.0,
+    api_version: str = "v3",
 ) -> bool:
     deadline = time.time() + max(1, timeout_s)
-    url = _join(host, "/api/v3/system/status")
+    url = _arr_url(host, api_version, "system/status")
     while time.time() < deadline:
         try:
             _arr_req(url, token, "GET", timeout=5)
@@ -297,6 +444,45 @@ def _with_retries(
             time.sleep(delay)
             delay *= backoff
     raise last_err if last_err else RuntimeError("retry failed")
+
+
+def _wait_for_nzbdav(
+    host: str, port: int, timeout_s: int = 10, interval_s: float = 1.0
+) -> bool:
+    deadline = time.time() + max(1, timeout_s)
+    url = f"http://{host}:{port}/"
+    while time.time() < deadline:
+        try:
+            req = urllib.request.Request(url, method="GET")
+            with urllib.request.urlopen(req, timeout=3) as resp:
+                resp.read(1)
+            return True
+        except Exception:
+            time.sleep(interval_s)
+    return False
+
+
+_NZBDAV_RETRY_LOCK = threading.Lock()
+_NZBDAV_RETRY_SCHEDULED = False
+
+
+def _schedule_nzbdav_retry(delay_s: int = 15) -> None:
+    global _NZBDAV_RETRY_SCHEDULED
+    with _NZBDAV_RETRY_LOCK:
+        if _NZBDAV_RETRY_SCHEDULED:
+            return
+        _NZBDAV_RETRY_SCHEDULED = True
+
+    def _runner():
+        global _NZBDAV_RETRY_SCHEDULED
+        try:
+            time.sleep(max(1, delay_s))
+            patch_nzbdav_config()
+        finally:
+            with _NZBDAV_RETRY_LOCK:
+                _NZBDAV_RETRY_SCHEDULED = False
+
+    threading.Thread(target=_runner, daemon=True).start()
 
 
 def _merge_instances(existing: list[dict], auto_list: list[dict]) -> list[dict]:
@@ -332,14 +518,18 @@ def patch_nzbdav_config():
 
     movies_root = "/mnt/debrid/nzbdav-symlinks/movies"
     shows_root = "/mnt/debrid/nzbdav-symlinks/shows"
+    music_root = "/mnt/debrid/nzbdav-symlinks/music"
+    whisparr_root = "/mnt/debrid/nzbdav-symlinks/whisparr"
     try:
-        _ensure_symlink_roots([movies_root, shows_root])
+        _ensure_symlink_roots([movies_root, shows_root, music_root, whisparr_root])
     except Exception as e:
         logger.warning("Failed to ensure NzbDAV symlink roots: %s", e)
 
-    radarr_entries, sonarr_entries = _collect_arr_entries()
-    if not radarr_entries and not sonarr_entries:
-        logger.info("No Radarr/Sonarr instances configured for NzbDAV.")
+    radarr_entries, sonarr_entries, lidarr_entries, whisparr_entries = (
+        _collect_arr_entries()
+    )
+    if not radarr_entries and not sonarr_entries and not lidarr_entries and not whisparr_entries:
+        logger.info("No Radarr/Sonarr/Lidarr/Whisparr instances configured for NzbDAV.")
         return False, None
 
     try:
@@ -357,11 +547,19 @@ def patch_nzbdav_config():
     merged_sonarr = _merge_instances(
         existing_obj.get("SonarrInstances", []), sonarr_entries
     )
+    merged_lidarr = _merge_instances(
+        existing_obj.get("LidarrInstances", []), lidarr_entries
+    )
+    merged_whisparr = _merge_instances(
+        existing_obj.get("WhisparrInstances", []), whisparr_entries
+    )
     queue_rules = existing_obj.get("QueueRules", []) or []
 
     new_obj = {
         "RadarrInstances": merged_radarr,
         "SonarrInstances": merged_sonarr,
+        "LidarrInstances": merged_lidarr,
+        "WhisparrInstances": merged_whisparr,
         "QueueRules": queue_rules,
     }
     new_value = json.dumps(new_obj, separators=(",", ":"), sort_keys=True)
@@ -388,30 +586,96 @@ def patch_nzbdav_config():
             api_key = entry.get("ApiKey")
             if not (host and api_key):
                 continue
-            if not _wait_for_arr(host, api_key):
+            api_version = "v3"
+            if not _wait_for_arr(host, api_key, api_version=api_version):
                 logger.warning("Timed out waiting for Radarr at %s", host)
                 continue
+            _with_retries(
+                _ensure_arr_permissions,
+                host,
+                api_key,
+                attempts=3,
+                api_version=api_version,
+            )
             _with_retries(
                 _ensure_arr_rootfolder,
                 host,
                 api_key,
                 movies_root,
                 attempts=3,
+                api_version=api_version,
             )
         for entry in sonarr_entries:
             host = entry.get("Host")
             api_key = entry.get("ApiKey")
             if not (host and api_key):
                 continue
-            if not _wait_for_arr(host, api_key):
+            api_version = "v3"
+            if not _wait_for_arr(host, api_key, api_version=api_version):
                 logger.warning("Timed out waiting for Sonarr at %s", host)
                 continue
+            _with_retries(
+                _ensure_arr_permissions,
+                host,
+                api_key,
+                attempts=3,
+                api_version=api_version,
+            )
             _with_retries(
                 _ensure_arr_rootfolder,
                 host,
                 api_key,
                 shows_root,
                 attempts=3,
+                api_version=api_version,
+            )
+        for entry in lidarr_entries:
+            host = entry.get("Host")
+            api_key = entry.get("ApiKey")
+            if not (host and api_key):
+                continue
+            api_version = "v1"
+            if not _wait_for_arr(host, api_key, api_version=api_version):
+                logger.warning("Timed out waiting for Lidarr at %s", host)
+                continue
+            _with_retries(
+                _ensure_arr_permissions,
+                host,
+                api_key,
+                attempts=3,
+                api_version=api_version,
+            )
+            _with_retries(
+                _ensure_arr_rootfolder,
+                host,
+                api_key,
+                music_root,
+                attempts=3,
+                api_version=api_version,
+            )
+        for entry in whisparr_entries:
+            host = entry.get("Host")
+            api_key = entry.get("ApiKey")
+            if not (host and api_key):
+                continue
+            api_version = "v3"
+            if not _wait_for_arr(host, api_key, api_version=api_version):
+                logger.warning("Timed out waiting for Whisparr at %s", host)
+                continue
+            _with_retries(
+                _ensure_arr_permissions,
+                host,
+                api_key,
+                attempts=3,
+                api_version=api_version,
+            )
+            _with_retries(
+                _ensure_arr_rootfolder,
+                host,
+                api_key,
+                whisparr_root,
+                attempts=3,
+                api_version=api_version,
             )
     except Exception as e:
         logger.warning("Failed to ensure Arr root folders: %s", e)
@@ -420,13 +684,28 @@ def patch_nzbdav_config():
         logger.warning("NzbDAV API key not found; skipping Arr download client setup.")
         return updated, None
 
-    category_map = {"radarr": "movies", "sonarr": "tv"}
+    if not _wait_for_nzbdav("127.0.0.1", backend_port, timeout_s=10, interval_s=1.0):
+        logger.warning(
+            "NzbDAV backend not reachable on %s:%s; skipping download client setup.",
+            "127.0.0.1",
+            backend_port,
+        )
+        _schedule_nzbdav_retry()
+        return updated, None
+
+    category_map = {
+        "radarr": "movies",
+        "sonarr": "tv",
+        "lidarr": "music",
+        "whisparr": "whisparr",
+    }
     for entry in radarr_entries:
         host = entry.get("Host")
         api_key = entry.get("ApiKey")
         if not (host and api_key):
             continue
-        if not _wait_for_arr(host, api_key):
+        api_version = "v3"
+        if not _wait_for_arr(host, api_key, api_version=api_version):
             logger.warning("Timed out waiting for Radarr at %s", host)
             continue
         try:
@@ -439,6 +718,7 @@ def patch_nzbdav_config():
                 "radarr",
                 name="nzbdav",
                 category_map=category_map,
+                api_version=api_version,
             )
         except Exception as e:
             logger.warning("Failed configuring Radarr download client: %s", e)
@@ -448,7 +728,8 @@ def patch_nzbdav_config():
         api_key = entry.get("ApiKey")
         if not (host and api_key):
             continue
-        if not _wait_for_arr(host, api_key):
+        api_version = "v3"
+        if not _wait_for_arr(host, api_key, api_version=api_version):
             logger.warning("Timed out waiting for Sonarr at %s", host)
             continue
         try:
@@ -461,8 +742,57 @@ def patch_nzbdav_config():
                 "sonarr",
                 name="nzbdav",
                 category_map=category_map,
+                api_version=api_version,
             )
         except Exception as e:
             logger.warning("Failed configuring Sonarr download client: %s", e)
+
+    for entry in lidarr_entries:
+        host = entry.get("Host")
+        api_key = entry.get("ApiKey")
+        if not (host and api_key):
+            continue
+        api_version = "v1"
+        if not _wait_for_arr(host, api_key, api_version=api_version):
+            logger.warning("Timed out waiting for Lidarr at %s", host)
+            continue
+        try:
+            _with_retries(
+                ensure_nzbdav_download_client,
+                host,
+                api_key,
+                backend_port,
+                nzbdav_api_key,
+                "lidarr",
+                name="nzbdav",
+                category_map=category_map,
+                api_version=api_version,
+            )
+        except Exception as e:
+            logger.warning("Failed configuring Lidarr download client: %s", e)
+
+    for entry in whisparr_entries:
+        host = entry.get("Host")
+        api_key = entry.get("ApiKey")
+        if not (host and api_key):
+            continue
+        api_version = "v3"
+        if not _wait_for_arr(host, api_key, api_version=api_version):
+            logger.warning("Timed out waiting for Whisparr at %s", host)
+            continue
+        try:
+            _with_retries(
+                ensure_nzbdav_download_client,
+                host,
+                api_key,
+                backend_port,
+                nzbdav_api_key,
+                "whisparr",
+                name="nzbdav",
+                category_map=category_map,
+                api_version=api_version,
+            )
+        except Exception as e:
+            logger.warning("Failed configuring Whisparr download client: %s", e)
 
     return updated, None

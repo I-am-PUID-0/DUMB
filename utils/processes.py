@@ -164,6 +164,17 @@ class ProcessHandler:
 
                 wait_urls = config_for_wait.get("wait_for_url") or []
                 if wait_urls:
+                    url_list = [
+                        entry.get("url")
+                        for entry in wait_urls
+                        if isinstance(entry, dict) and entry.get("url")
+                    ]
+                    if url_list:
+                        self.logger.info(
+                            "Waiting for URLs to become available before starting %s: %s",
+                            process_name,
+                            ", ".join(url_list),
+                        )
                     time.sleep(5)
                     start_time = time.time()
                     for wait_entry in wait_urls:
@@ -171,11 +182,6 @@ class ProcessHandler:
                         if not wait_url:
                             continue
                         auth = wait_entry.get("auth")
-                        self.logger.info(
-                            "Waiting to start %s until %s is accessible.",
-                            process_name,
-                            wait_url,
-                        )
                         while time.time() - start_time < 600:
                             if self.shutting_down:
                                 self.logger.info(
