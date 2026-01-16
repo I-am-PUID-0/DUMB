@@ -540,6 +540,16 @@ async def update_config(
         if persist:
             logger.info(f"Persisting updated config for service '{process_name}'")
             CONFIG_MANAGER.save_config(process_name=process_name)
+            try:
+                config_key, _ = CONFIG_MANAGER.find_key_for_process(process_name)
+                if config_key in ("nzbdav", "sonarr", "radarr", "lidarr", "whisparr"):
+                    from utils.nzbdav_settings import patch_nzbdav_config
+
+                    patched, err = patch_nzbdav_config()
+                    if not patched and err:
+                        logger.warning("NzbDAV auto-sync after config update failed: %s", err)
+            except Exception as exc:
+                logger.warning("NzbDAV auto-sync after config update skipped: %s", exc)
 
         return {
             "status": "service config updated",
@@ -563,6 +573,18 @@ async def update_config(
             CONFIG_MANAGER.config[key] = value
 
     CONFIG_MANAGER.save_config()
+    try:
+        touched_keys = set(updates.keys())
+        if touched_keys.intersection(
+            {"nzbdav", "sonarr", "radarr", "lidarr", "whisparr"}
+        ):
+            from utils.nzbdav_settings import patch_nzbdav_config
+
+            patched, err = patch_nzbdav_config()
+            if not patched and err:
+                logger.warning("NzbDAV auto-sync after config update failed: %s", err)
+    except Exception as exc:
+        logger.warning("NzbDAV auto-sync after config update skipped: %s", exc)
 
     return {"status": "global config updated", "keys": list(updates.keys())}
 

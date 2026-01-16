@@ -22,6 +22,24 @@ def _parse_arr_api_key(config_xml_path: str) -> str:
     return ""
 
 
+def _slugify_category(value: str) -> str:
+    text = (value or "").strip().lower()
+    if not text:
+        return ""
+    safe = []
+    for ch in text:
+        if ch.isalnum():
+            safe.append(ch)
+        elif ch in ("-", "_"):
+            safe.append(ch)
+        else:
+            safe.append("-")
+    result = "".join(safe).strip("-")
+    while "--" in result:
+        result = result.replace("--", "-")
+    return result
+
+
 def _collect_arr_entries() -> Tuple[list[dict], list[dict], list[dict], list[dict]]:
     radarr_entries = []
     sonarr_entries = []
@@ -58,7 +76,15 @@ def _collect_arr_entries() -> Tuple[list[dict], list[dict], list[dict], list[dic
                     "Skipping %s instance %s: missing API key", svc_name, inst_key
                 )
                 continue
-            bucket.append({"Host": host, "ApiKey": token})
+            inst_name = (
+                inst.get("instance_name") or inst.get("name") or inst_key or ""
+            ).strip()
+            category = _slugify_category(f"{svc_name}-{inst_name}") or _slugify_category(
+                svc_name
+            )
+            bucket.append(
+                {"Host": host, "ApiKey": token, "Instance": inst_name, "Category": category}
+            )
     return radarr_entries, sonarr_entries, lidarr_entries, whisparr_entries
 
 
@@ -93,6 +119,7 @@ def _arr_req(
             body = e.read().decode("utf-8")
         except Exception:
             body = ""
+        setattr(e, "body", body)
         if body:
             logger.warning("Arr API error response from %s: %s", url, body)
         raise
@@ -313,6 +340,12 @@ def ensure_nzbdav_download_client(
                 return True
         return False
 
+    def _clear_category_fields(fields_list) -> None:
+        for f in fields_list or []:
+            name = (f.get("name") or "").lower()
+            if name in ("category", "moviecategory", "tvcategory", "musiccategory"):
+                f["value"] = ""
+
     service = (service or "").lower()
     effective_category = (category or "").strip() or (category_map or {}).get(
         service, service
@@ -335,7 +368,7 @@ def ensure_nzbdav_download_client(
     }
 
     schema_names = {str(f.get("name") or "").lower() for f in fields_schema}
-    for key in ("category", "moviecategory", "tvcategory"):
+    for key in ("category", "moviecategory", "tvcategory", "musiccategory"):
         if key in schema_names:
             overrides[key] = effective_category
 
@@ -350,6 +383,7 @@ def ensure_nzbdav_download_client(
     if not _set_field(fields, "category", effective_category):
         _set_field(fields, "movieCategory", effective_category)
         _set_field(fields, "tvCategory", effective_category)
+        _set_field(fields, "musicCategory", effective_category)
 
     desired = {
         "name": name,
@@ -386,24 +420,51 @@ def ensure_nzbdav_download_client(
         client_id = match.get("id")
         put_body = desired.copy()
         put_body["id"] = client_id
-        _arr_req(
-            _arr_url(arr_host, api_version, f"downloadclient/{client_id}"),
-            arr_api_key,
-            "PUT",
-            put_body,
-        )
+        try:
+            _arr_req(
+                _arr_url(arr_host, api_version, f"downloadclient/{client_id}"),
+                arr_api_key,
+                "PUT",
+                put_body,
+            )
+        except urllib.error.HTTPError as exc:
+            if "Category does not exist" in getattr(exc, "body", ""):
+                _clear_category_fields(put_body.get("fields"))
+                _arr_req(
+                    _arr_url(arr_host, api_version, f"downloadclient/{client_id}"),
+                    arr_api_key,
+                    "PUT",
+                    put_body,
+                )
+            else:
+                raise
         return True, client_id
 
-    created = (
-        _arr_req(
-            _arr_url(arr_host, api_version, "downloadclient"),
-            arr_api_key,
-            "POST",
-            desired,
+    try:
+        created = (
+            _arr_req(
+                _arr_url(arr_host, api_version, "downloadclient"),
+                arr_api_key,
+                "POST",
+                desired,
+            )
+            or {}
         )
-        or {}
-    )
-    return True, created.get("id")
+        return True, created.get("id")
+    except urllib.error.HTTPError as exc:
+        if "Category does not exist" in getattr(exc, "body", ""):
+            _clear_category_fields(desired.get("fields"))
+            created = (
+                _arr_req(
+                    _arr_url(arr_host, api_version, "downloadclient"),
+                    arr_api_key,
+                    "POST",
+                    desired,
+                )
+                or {}
+            )
+            return True, created.get("id")
+        raise
 
 
 def _wait_for_arr(
@@ -457,6 +518,10 @@ def _wait_for_nzbdav(
             with urllib.request.urlopen(req, timeout=3) as resp:
                 resp.read(1)
             return True
+        except urllib.error.HTTPError as exc:
+            if exc.code in (200, 401, 403):
+                return True
+            time.sleep(interval_s)
         except Exception:
             time.sleep(interval_s)
     return False
@@ -516,21 +581,28 @@ def patch_nzbdav_config():
     except FileNotFoundError as e:
         return False, str(e)
 
-    movies_root = "/mnt/debrid/nzbdav-symlinks/movies"
-    shows_root = "/mnt/debrid/nzbdav-symlinks/shows"
-    music_root = "/mnt/debrid/nzbdav-symlinks/music"
-    whisparr_root = "/mnt/debrid/nzbdav-symlinks/whisparr"
-    try:
-        _ensure_symlink_roots([movies_root, shows_root, music_root, whisparr_root])
-    except Exception as e:
-        logger.warning("Failed to ensure NzbDAV symlink roots: %s", e)
-
     radarr_entries, sonarr_entries, lidarr_entries, whisparr_entries = (
         _collect_arr_entries()
     )
     if not radarr_entries and not sonarr_entries and not lidarr_entries and not whisparr_entries:
         logger.info("No Radarr/Sonarr/Lidarr/Whisparr instances configured for NzbDAV.")
         return False, None
+
+    symlink_root = "/mnt/debrid/nzbdav-symlinks"
+    root_paths = []
+    for entry in (
+        radarr_entries + sonarr_entries + lidarr_entries + whisparr_entries
+    ):
+        category = (entry.get("Category") or "").strip().lower()
+        if not category:
+            continue
+        root_paths.append(os.path.join(symlink_root, category))
+    root_paths = sorted(set(root_paths))
+    if root_paths:
+        try:
+            _ensure_symlink_roots([symlink_root] + root_paths)
+        except Exception as e:
+            logger.warning("Failed to ensure NzbDAV symlink roots: %s", e)
 
     try:
         existing = nzbdav_db.get_config_value("arr.instances")
@@ -572,6 +644,30 @@ def patch_nzbdav_config():
         updated = True
         logger.info("Updated NzbDAV arr.instances configuration.")
 
+    try:
+        current_categories = nzbdav_db.get_config_value("api.categories") or ""
+        category_set = {
+            item.strip().lower()
+            for item in current_categories.split(",")
+            if item.strip()
+        }
+        category_set.update({"movies", "tv", "music", "whisparr"})
+        for entry in (
+            radarr_entries + sonarr_entries + lidarr_entries + whisparr_entries
+        ):
+            cat = (entry.get("Category") or "").strip().lower()
+            if cat:
+                category_set.add(cat)
+        desired_categories = ",".join(sorted(category_set))
+        if desired_categories and desired_categories != current_categories:
+            ok, err = nzbdav_db.set_config_value("api.categories", desired_categories)
+            if not ok:
+                return False, err
+            updated = True
+            logger.info("Updated NzbDAV api.categories to %s", desired_categories)
+    except FileNotFoundError as e:
+        return False, str(e)
+
     rclone_mount_dir = nzbdav_db.get_config_value("rclone.mount-dir")
     if not rclone_mount_dir:
         ok, err = nzbdav_db.set_config_value("rclone.mount-dir", "/mnt/debrid/nzbdav")
@@ -584,6 +680,12 @@ def patch_nzbdav_config():
         for entry in radarr_entries:
             host = entry.get("Host")
             api_key = entry.get("ApiKey")
+            root_path = entry.get("Category")
+            root_path = (
+                os.path.join(symlink_root, root_path)
+                if root_path
+                else None
+            )
             if not (host and api_key):
                 continue
             api_version = "v3"
@@ -597,17 +699,24 @@ def patch_nzbdav_config():
                 attempts=3,
                 api_version=api_version,
             )
-            _with_retries(
-                _ensure_arr_rootfolder,
-                host,
-                api_key,
-                movies_root,
-                attempts=3,
-                api_version=api_version,
-            )
+            if root_path:
+                _with_retries(
+                    _ensure_arr_rootfolder,
+                    host,
+                    api_key,
+                    root_path,
+                    attempts=3,
+                    api_version=api_version,
+                )
         for entry in sonarr_entries:
             host = entry.get("Host")
             api_key = entry.get("ApiKey")
+            root_path = entry.get("Category")
+            root_path = (
+                os.path.join(symlink_root, root_path)
+                if root_path
+                else None
+            )
             if not (host and api_key):
                 continue
             api_version = "v3"
@@ -621,17 +730,24 @@ def patch_nzbdav_config():
                 attempts=3,
                 api_version=api_version,
             )
-            _with_retries(
-                _ensure_arr_rootfolder,
-                host,
-                api_key,
-                shows_root,
-                attempts=3,
-                api_version=api_version,
-            )
+            if root_path:
+                _with_retries(
+                    _ensure_arr_rootfolder,
+                    host,
+                    api_key,
+                    root_path,
+                    attempts=3,
+                    api_version=api_version,
+                )
         for entry in lidarr_entries:
             host = entry.get("Host")
             api_key = entry.get("ApiKey")
+            root_path = entry.get("Category")
+            root_path = (
+                os.path.join(symlink_root, root_path)
+                if root_path
+                else None
+            )
             if not (host and api_key):
                 continue
             api_version = "v1"
@@ -645,17 +761,24 @@ def patch_nzbdav_config():
                 attempts=3,
                 api_version=api_version,
             )
-            _with_retries(
-                _ensure_arr_rootfolder,
-                host,
-                api_key,
-                music_root,
-                attempts=3,
-                api_version=api_version,
-            )
+            if root_path:
+                _with_retries(
+                    _ensure_arr_rootfolder,
+                    host,
+                    api_key,
+                    root_path,
+                    attempts=3,
+                    api_version=api_version,
+                )
         for entry in whisparr_entries:
             host = entry.get("Host")
             api_key = entry.get("ApiKey")
+            root_path = entry.get("Category")
+            root_path = (
+                os.path.join(symlink_root, root_path)
+                if root_path
+                else None
+            )
             if not (host and api_key):
                 continue
             api_version = "v3"
@@ -669,14 +792,15 @@ def patch_nzbdav_config():
                 attempts=3,
                 api_version=api_version,
             )
-            _with_retries(
-                _ensure_arr_rootfolder,
-                host,
-                api_key,
-                whisparr_root,
-                attempts=3,
-                api_version=api_version,
-            )
+            if root_path:
+                _with_retries(
+                    _ensure_arr_rootfolder,
+                    host,
+                    api_key,
+                    root_path,
+                    attempts=3,
+                    api_version=api_version,
+                )
     except Exception as e:
         logger.warning("Failed to ensure Arr root folders: %s", e)
 
@@ -717,6 +841,7 @@ def patch_nzbdav_config():
                 nzbdav_api_key,
                 "radarr",
                 name="nzbdav",
+                category=entry.get("Category"),
                 category_map=category_map,
                 api_version=api_version,
             )
@@ -741,6 +866,7 @@ def patch_nzbdav_config():
                 nzbdav_api_key,
                 "sonarr",
                 name="nzbdav",
+                category=entry.get("Category"),
                 category_map=category_map,
                 api_version=api_version,
             )
@@ -765,6 +891,7 @@ def patch_nzbdav_config():
                 nzbdav_api_key,
                 "lidarr",
                 name="nzbdav",
+                category=entry.get("Category"),
                 category_map=category_map,
                 api_version=api_version,
             )
@@ -789,6 +916,7 @@ def patch_nzbdav_config():
                 nzbdav_api_key,
                 "whisparr",
                 name="nzbdav",
+                category=entry.get("Category"),
                 category_map=category_map,
                 api_version=api_version,
             )

@@ -123,6 +123,49 @@ def ensure_run_directory():
         return False, f"Error setting up /run/postgresql directory: {e}"
 
 
+def remove_postgres_lock_files(postgres_host, postgres_port, postgres_user):
+    try:
+        result = subprocess.run(
+            [
+                "pg_isready",
+                "-U",
+                postgres_user,
+                "-h",
+                postgres_host,
+                "-p",
+                str(postgres_port),
+            ],
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode == 0:
+            logger.info(
+                "PostgreSQL is already accepting connections. Skipping lock cleanup."
+            )
+            return True, None
+    except Exception as e:
+        logger.debug(f"pg_isready check failed during lock cleanup: {e}")
+
+    lock_filename = f".s.PGSQL.{postgres_port}.lock"
+    socket_filename = f".s.PGSQL.{postgres_port}"
+    paths_to_remove = {
+        os.path.join("/run/postgresql", lock_filename),
+        os.path.join("/var/run/postgresql", lock_filename),
+        os.path.join("/run/postgresql", socket_filename),
+        os.path.join("/var/run/postgresql", socket_filename),
+    }
+    for path in paths_to_remove:
+        if not os.path.exists(path):
+            logger.debug(f"No PostgreSQL socket/lock file at {path}.")
+            continue
+        try:
+            os.remove(path)
+            logger.warning(f"Removed stale PostgreSQL socket/lock file at {path}.")
+        except OSError as e:
+            logger.warning(f"Failed to remove PostgreSQL socket/lock file {path}: {e}")
+    return True, None
+
+
 def initialize_postgres_config_dir_directory(
     process_handler, postgres_config_dir, postgres_user, postgres_password
 ):
@@ -980,6 +1023,11 @@ def postgres_setup(process_handler=None):
             return False, error
 
         success, error = ensure_run_directory()
+        if not success:
+            return False, error
+        success, error = remove_postgres_lock_files(
+            postgres_host, postgres_port, postgres_user
+        )
         if not success:
             return False, error
 

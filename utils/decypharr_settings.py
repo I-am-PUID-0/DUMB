@@ -30,6 +30,24 @@ def _provider_folder(name_lc: str, mount_root: str) -> str:
         return os.path.join(mount_root, name_lc, "other")
 
 
+def _slugify_category(value: str) -> str:
+    text = (value or "").strip().lower()
+    if not text:
+        return ""
+    safe = []
+    for ch in text:
+        if ch.isalnum():
+            safe.append(ch)
+        elif ch in ("-", "_"):
+            safe.append(ch)
+        else:
+            safe.append("-")
+    result = "".join(safe).strip("-")
+    while "--" in result:
+        result = result.replace("--", "-")
+    return result
+
+
 # ---------------------------------------------------------------------------
 # Helpers: Arr discovery & API
 # ---------------------------------------------------------------------------
@@ -854,14 +872,20 @@ def patch_decypharr_config():
             logger.warning(f"Failed to synchronize arrs: {e}")
 
         # ---- Ensure Arr root folders (movies/shows symlinks) ----
+        root_paths = []
         try:
             arrs = desired_arrs or []
-            movies_root = "/mnt/debrid/decypharr_symlinks/movies"
-            shows_root = "/mnt/debrid/decypharr_symlinks/shows"
-            music_root = "/mnt/debrid/decypharr_symlinks/music"
-            whisparr_root = "/mnt/debrid/decypharr_symlinks/whisparr"
+            base_root = "/mnt/debrid/decypharr_symlinks"
             for entry in arrs:
-                svc = (entry.get("name") or "").split(":", 1)[0].lower()
+                name_label = (entry.get("name") or "")
+                svc, _, instance_name = name_label.partition(":")
+                svc = svc.strip().lower()
+                instance_name = instance_name.strip()
+                instance_slug = _slugify_category(f"{svc}-{instance_name}") or _slugify_category(
+                    svc
+                )
+                root_path = f"{base_root}/{instance_slug}"
+                root_paths.append(root_path)
                 host = entry.get("host")
                 token = entry.get("token")
                 api_version = "v1" if svc == "lidarr" else "v3"
@@ -873,7 +897,7 @@ def patch_decypharr_config():
                     )
                     continue
                 try:
-                    if svc == "radarr":
+                    if svc in ("radarr", "sonarr", "lidarr", "whisparr"):
                         _with_retries(
                             _ensure_arr_permissions,
                             host,
@@ -885,55 +909,7 @@ def patch_decypharr_config():
                             _ensure_arr_rootfolder,
                             host,
                             token,
-                            movies_root,
-                            attempts=3,
-                            api_version=api_version,
-                        )
-                    elif svc == "sonarr":
-                        _with_retries(
-                            _ensure_arr_permissions,
-                            host,
-                            token,
-                            attempts=3,
-                            api_version=api_version,
-                        )
-                        _with_retries(
-                            _ensure_arr_rootfolder,
-                            host,
-                            token,
-                            shows_root,
-                            attempts=3,
-                            api_version=api_version,
-                        )
-                    elif svc == "lidarr":
-                        _with_retries(
-                            _ensure_arr_permissions,
-                            host,
-                            token,
-                            attempts=3,
-                            api_version=api_version,
-                        )
-                        _with_retries(
-                            _ensure_arr_rootfolder,
-                            host,
-                            token,
-                            music_root,
-                            attempts=3,
-                            api_version=api_version,
-                        )
-                    elif svc == "whisparr":
-                        _with_retries(
-                            _ensure_arr_permissions,
-                            host,
-                            token,
-                            attempts=3,
-                            api_version=api_version,
-                        )
-                        _with_retries(
-                            _ensure_arr_rootfolder,
-                            host,
-                            token,
-                            whisparr_root,
+                            root_path,
                             attempts=3,
                             api_version=api_version,
                         )
@@ -1050,9 +1026,8 @@ def patch_decypharr_config():
         required_dirs = [
             "/mnt/debrid/decypharr_downloads",
             "/mnt/debrid/decypharr_symlinks",
-            "/mnt/debrid/decypharr_symlinks/movies",
-            "/mnt/debrid/decypharr_symlinks/shows",
         ]
+        required_dirs.extend(root_paths or [])
         if use_embedded:
             required_dirs.append(
                 config_data.get("rclone", {}).get(

@@ -1,5 +1,5 @@
 from utils.global_logger import logger
-import platform, subprocess, os, re, requests, json
+import platform, subprocess, os, re, requests, json, time
 
 
 class ArrInstaller:
@@ -52,6 +52,25 @@ class ArrInstaller:
             return f"{base_url}&arch=arm"
         else:
             raise ValueError(f"Unsupported architecture: {arch}")
+
+    def get_fallback_download_url(self):
+        if self.app_name != "sonarr":
+            return None
+        arch = platform.machine()
+        version_query = ""
+        if self.version and self.version not in ("3", "4"):
+            version_query = f"&version={self.version}"
+        base_url = (
+            f"https://{self.app_name}.servarr.com/v1/update/main/updatefile"
+            f"?os=linux&runtime=netcore{version_query}"
+        )
+        if arch == "x86_64":
+            return f"{base_url}&arch=x64"
+        elif arch == "aarch64":
+            return f"{base_url}&arch=arm64"
+        elif arch == "armv7l":
+            return f"{base_url}&arch=arm"
+        return None
 
     def resolve_pinned_download_url(self):
         if not self.version or self.version in ("3", "4"):
@@ -189,7 +208,6 @@ class ArrInstaller:
             logger.info(f"Installing {self.app_name_cap}...")
 
             os.makedirs(self.install_dir, exist_ok=True)
-            url = self.get_download_url()
 
             def download_with_wget(download_url):
                 before_files = set(os.listdir(self.install_dir))
@@ -201,7 +219,40 @@ class ArrInstaller:
                 after_files = set(os.listdir(self.install_dir))
                 return [name for name in (after_files - before_files) if name]
 
-            new_files = download_with_wget(url)
+            def download_with_retries(download_urls, retries=3):
+                last_error = None
+                for attempt in range(1, retries + 1):
+                    for download_url in download_urls:
+                        if not download_url:
+                            continue
+                        try:
+                            return download_with_wget(download_url), None
+                        except subprocess.CalledProcessError as exc:
+                            last_error = exc
+                            logger.warning(
+                                "%s download failed (attempt %s/%s): %s",
+                                self.app_name_cap,
+                                attempt,
+                                retries,
+                                exc,
+                            )
+                    if attempt < retries:
+                        logger.info(
+                            "%s download retry scheduled (attempt %s/%s).",
+                            self.app_name_cap,
+                            attempt + 1,
+                            retries,
+                        )
+                        time.sleep(2 ** attempt)
+                return None, last_error
+
+            download_urls = [self.get_download_url(), self.get_fallback_download_url()]
+            new_files, error = download_with_retries(download_urls)
+            if not new_files:
+                raise subprocess.CalledProcessError(
+                    getattr(error, "returncode", 1),
+                    getattr(error, "cmd", "wget"),
+                )
             tarball = next((f for f in new_files if f.endswith(".tar.gz")), None)
             if not tarball and new_files:
                 for name in new_files:
