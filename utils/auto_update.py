@@ -404,7 +404,7 @@ class Update:
             if process_name in self.process_handler.setup_tracker:
                 self.process_handler.setup_tracker.remove(process_name)
 
-        success, error = installer.install()
+        success, error = installer.install(force=True)
         if not success:
             return (
                 False,

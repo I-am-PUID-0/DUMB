@@ -203,11 +203,23 @@ class ArrInstaller:
 
         return None, f"No matching Linux {arch_key} tarball found on GitHub."
 
-    def install(self):
+    def install(self, force=False):
         try:
             logger.info(f"Installing {self.app_name_cap}...")
 
             os.makedirs(self.install_dir, exist_ok=True)
+            binary_path = os.path.join(
+                self.install_dir, self.app_name_cap, self.app_name_cap
+            )
+            if not force and os.path.exists(binary_path):
+                if not os.access(binary_path, os.X_OK):
+                    os.chmod(binary_path, 0o755)
+                logger.info(
+                    "%s binary already present at %s; skipping install.",
+                    self.app_name_cap,
+                    binary_path,
+                )
+                return True, None
 
             def download_with_wget(download_url):
                 before_files = set(os.listdir(self.install_dir))
