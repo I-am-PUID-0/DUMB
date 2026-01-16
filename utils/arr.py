@@ -327,10 +327,10 @@ class ArrInstaller:
                                                     break
                                             except Exception:
                                                 continue
-                                    if not tarball:
-                                        raise FileNotFoundError(
-                                            f"Downloaded archive not found. Response: {error_text}"
-                                        )
+                                        if not tarball:
+                                            raise FileNotFoundError(
+                                                f"Downloaded archive not found. Response: {error_text}"
+                                            )
                                 else:
                                     github_url, github_error = (
                                         self.resolve_pinned_github_download_url()
@@ -375,9 +375,24 @@ class ArrInstaller:
                     except UnicodeDecodeError:
                         pass
                 if not tarball:
+                    for name in new_files:
+                        try:
+                            os.remove(os.path.join(self.install_dir, name))
+                        except OSError:
+                            continue
                     raise FileNotFoundError("Downloaded archive not found.")
 
-            subprocess.run(["tar", "xzf", tarball], check=True, cwd=self.install_dir)
+            subprocess.run(
+                [
+                    "tar",
+                    "xzf",
+                    tarball,
+                    "--no-same-owner",
+                    "--no-same-permissions",
+                ],
+                check=True,
+                cwd=self.install_dir,
+            )
             os.remove(os.path.join(self.install_dir, tarball))
             binary_path = os.path.join(
                 self.install_dir, self.app_name_cap, self.app_name_cap
