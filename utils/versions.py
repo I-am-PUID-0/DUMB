@@ -9,6 +9,29 @@ class Versions:
         self.logger = logger
         self.downloader = Downloader()
 
+    def read_arr_version_from_dir(self, key: str, install_dir: str):
+        dll_path = os.path.join(
+            install_dir, key.capitalize(), f"{key.capitalize()}.Core.dll"
+        )
+        if not os.path.exists(dll_path):
+            return None, f"{key.capitalize()}.Core.dll not found in {install_dir}"
+        try:
+            result = subprocess.run(
+                ["strings", dll_path], capture_output=True, text=True
+            )
+        except Exception as exc:
+            return None, f"Failed to read {dll_path}: {exc}"
+        if result.returncode != 0:
+            return None, f"strings failed for {dll_path}: {result.stderr.strip()}"
+        grep_string = f"{key.capitalize()}.Common, Version="
+        for line in result.stdout.splitlines():
+            if grep_string in line:
+                match = re.search(r"Version=([\d\.]+)", line)
+                if match:
+                    return match.group(1), None
+                break
+        return None, f"{key.capitalize()} version not found in Core.dll"
+
     def version_check(
         self, process_name=None, instance_name=None, key=None, version_path=None
     ):
@@ -222,11 +245,16 @@ class Versions:
                         timeout=5,
                     )
                     if result.returncode == 0:
-                        match = re.search(r"Version:\s*v?(\d+\.\d+\.\d+)", result.stdout)
+                        match = re.search(
+                            r"Version:\s*v?(\d+\.\d+\.\d+)", result.stdout
+                        )
                         if match:
                             return f"v{match.group(1)}", None
                         return result.stdout.strip() or None, None
-                    return None, f"Failed to get Traefik version: {result.stderr.strip()}"
+                    return (
+                        None,
+                        f"Failed to get Traefik version: {result.stderr.strip()}",
+                    )
                 except Exception as e:
                     return None, f"Error reading Traefik version: {e}"
 

@@ -3,13 +3,19 @@ import platform, subprocess, os, re, requests, json
 
 
 class ArrInstaller:
-    def __init__(self, app_name: str, version: str = "4", branch: str = "main"):
+    def __init__(
+        self,
+        app_name: str,
+        version: str = "4",
+        branch: str = "main",
+        install_dir=None,
+    ):
         self.logger = logger
         self.app_name = app_name.lower()
         self.app_name_cap = app_name.capitalize()
         self.version = version
         self.branch = branch
-        self.install_dir = f"/opt/{self.app_name}"
+        self.install_dir = install_dir or f"/opt/{self.app_name}"
 
     def get_download_url(self):
         arch = platform.machine()
@@ -137,7 +143,10 @@ class ArrInstaller:
             try:
                 response = requests.get(url, headers=headers, timeout=10)
                 if response.status_code != 200:
-                    return None, f"Failed to fetch releases list: {response.status_code}"
+                    return (
+                        None,
+                        f"Failed to fetch releases list: {response.status_code}",
+                    )
                 releases = response.json()
                 for item in releases:
                     tag = item.get("tag_name", "")
@@ -251,11 +260,7 @@ class ArrInstaller:
                                 if pinned_url:
                                     new_files = download_with_wget(pinned_url)
                                     tarball = next(
-                                        (
-                                            f
-                                            for f in new_files
-                                            if f.endswith(".tar.gz")
-                                        ),
+                                        (f for f in new_files if f.endswith(".tar.gz")),
                                         None,
                                     )
                                     if not tarball and new_files:
@@ -295,7 +300,9 @@ class ArrInstaller:
                                                     self.install_dir, name
                                                 )
                                                 try:
-                                                    with open(candidate_path, "rb") as f:
+                                                    with open(
+                                                        candidate_path, "rb"
+                                                    ) as f:
                                                         header = f.read(2)
                                                     if header == b"\x1f\x8b":
                                                         tarball = name

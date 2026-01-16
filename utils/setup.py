@@ -7,12 +7,40 @@ from utils.plex import PlexInstaller
 from utils.traefik_setup import setup_traefik
 from utils.user_management import chown_recursive, chown_single
 import xml.etree.ElementTree as ET
-import yaml, os, shutil, random, subprocess, re, glob, secrets, shlex, time, urllib.parse, base64, platform, tarfile, tempfile, urllib.request
+import os, shutil, random, subprocess, re, glob, secrets, shlex, time, urllib.parse, base64, threading
+
+# import yaml, platform, tarfile, tempfile, urllib.request
 
 user_id = CONFIG_MANAGER.get("puid")
 group_id = CONFIG_MANAGER.get("pgid")
 downloader = Downloader()
 versions = Versions()
+_INSTALL_LOCKS = {}
+
+
+def _get_install_lock(key: str) -> threading.Lock:
+    lock = _INSTALL_LOCKS.get(key)
+    if lock is None:
+        lock = threading.Lock()
+        _INSTALL_LOCKS[key] = lock
+    return lock
+
+
+def _resolve_arr_install_dir(
+    key: str, instance_name: str, instance: dict
+) -> tuple[str, bool]:
+    shared_dir = f"/opt/{key}"
+    pinned_version = (instance.get("pinned_version") or "").strip()
+    if not pinned_version:
+        return shared_dir, False
+
+    shared_version, _ = versions.read_arr_version_from_dir(key, shared_dir)
+    if shared_version and shared_version == pinned_version:
+        return shared_dir, False
+
+    instance_slug = instance_name.lower().replace(" ", "_")
+    instance_dir = os.path.join(shared_dir, "instances", instance_slug)
+    return instance_dir, True
 
 
 def _chown_recursive_if_needed(path: str, user_id: int, group_id: int) -> None:
@@ -315,7 +343,9 @@ def _maybe_patch_riven_plexapi_dependency(
             version_match = re.search(r'"\s*([^"]+)\s*"', line)
             break
     if not version_match:
-        logger.debug("Riven version not found in %s; skipping plexapi patch", pyproject_path)
+        logger.debug(
+            "Riven version not found in %s; skipping plexapi patch", pyproject_path
+        )
         return True, None
 
     release_version = version_match.group(1).strip().lower()
@@ -363,7 +393,33 @@ def _maybe_patch_riven_plexapi_dependency(
     return True, None
 
 
+def install_project(process_handler, process_name):
+    return _setup_project(
+        process_handler, process_name, install_phase=True, configure_phase=False
+    )
+
+
+def configure_project(process_handler, process_name):
+    return _setup_project(
+        process_handler, process_name, install_phase=False, configure_phase=True
+    )
+
+
 def setup_project(process_handler, process_name, preinstall: bool = False):
+    if preinstall:
+        return install_project(process_handler, process_name)
+    success, error = install_project(process_handler, process_name)
+    if not success:
+        return False, error
+    return configure_project(process_handler, process_name)
+
+
+def _setup_project(
+    process_handler,
+    process_name,
+    install_phase: bool,
+    configure_phase: bool,
+):
     key, instance_name = CONFIG_MANAGER.find_key_for_process(process_name)
     if not key:
         raise ValueError(f"Key for {process_name} not found in the configuration.")
@@ -374,119 +430,128 @@ def setup_project(process_handler, process_name, preinstall: bool = False):
 
     with process_handler.setup_tracker_lock:
         already_setup = process_name in process_handler.setup_tracker
-    if already_setup and not key == "nzbdav":
+    if configure_phase and already_setup and not key == "nzbdav":
         process_handler.logger.info(
             f"{process_name} is already set up. Skipping setup."
         )
         return True, None
 
-    logger.info(f"Setting up {process_name}...")
+    if install_phase and not configure_phase:
+        logger.info(f"Installing {process_name} artifacts...")
+    elif configure_phase and not install_phase:
+        logger.info(f"Configuring {process_name}...")
+    else:
+        logger.info(f"Setting up {process_name}...")
     try:
         bootstrap_installed = False
-        if (
-            not config.get("release_version_enabled")
-            and not config.get("branch_enabled")
-            and _needs_riven_bootstrap(key, config.get("config_dir"))
-        ):
-            original_release_version = config.get("release_version")
-            if not original_release_version or original_release_version.lower() != "latest":
-                config["release_version"] = "latest"
-            logger.info(
-                "Riven not found at %s; bootstrapping release %s",
-                config.get("config_dir"),
-                config.get("release_version"),
-            )
-            success, error = setup_release_version(
-                process_handler, config, process_name, key
-            )
-            if not success:
-                return False, error
-            bootstrap_installed = True
-            if original_release_version is not None:
-                config["release_version"] = original_release_version
-            else:
-                config.pop("release_version", None)
-
-        if (
-            not bootstrap_installed
-            and config.get("release_version_enabled")
-            and not config.get("auto_update")
-        ):
-            repo_owner = config.get("repo_owner")
-            repo_name = config.get("repo_name")
-            requested_version = config.get("release_version")
-            if not requested_version:
-                logger.warning(
-                    f"Release version enabled for {process_name} but no version provided."
+        if install_phase:
+            if (
+                not config.get("release_version_enabled")
+                and not config.get("branch_enabled")
+                and _needs_riven_bootstrap(key, config.get("config_dir"))
+            ):
+                original_release_version = config.get("release_version")
+                if (
+                    not original_release_version
+                    or original_release_version.lower() != "latest"
+                ):
+                    config["release_version"] = "latest"
+                logger.info(
+                    "Riven not found at %s; bootstrapping release %s",
+                    config.get("config_dir"),
+                    config.get("release_version"),
                 )
-            else:
-                requested_lower = requested_version.lower()
-                is_latest = requested_lower == "latest"
-                nightly = "nightly" in requested_lower
-                prerelease = requested_lower == "prerelease"
-                if is_latest or nightly or prerelease:
-                    update_needed, update_info = versions.compare_versions(
-                        process_name,
-                        repo_owner,
-                        repo_name,
-                        instance_name,
-                        key,
-                        nightly=nightly,
-                        prerelease=prerelease,
-                    )
-
-                    if update_needed:
-                        logger.info(
-                            f"Update needed for {process_name}: {update_info['latest_version']}, but using the requested version: {requested_version}"
-                        )
-                        success, error = setup_release_version(
-                            process_handler, config, process_name, key
-                        )
-                        if not success:
-                            return False, error
-                    else:
-                        logger.info(
-                            f"No update needed for {process_name}: current version is {update_info['current_version']}, and requested version is: {requested_version}"
-                        )
+                success, error = setup_release_version(
+                    process_handler, config, process_name, key
+                )
+                if not success:
+                    return False, error
+                bootstrap_installed = True
+                if original_release_version is not None:
+                    config["release_version"] = original_release_version
                 else:
-                    current_version, error = versions.version_check(
-                        process_name, instance_name, key
+                    config.pop("release_version", None)
+
+            if (
+                not bootstrap_installed
+                and config.get("release_version_enabled")
+                and not config.get("auto_update")
+            ):
+                repo_owner = config.get("repo_owner")
+                repo_name = config.get("repo_name")
+                requested_version = config.get("release_version")
+                if not requested_version:
+                    logger.warning(
+                        f"Release version enabled for {process_name} but no version provided."
                     )
-                    if not current_version:
-                        logger.warning(
-                            "Failed to read current version for %s: %s",
+                else:
+                    requested_lower = requested_version.lower()
+                    is_latest = requested_lower == "latest"
+                    nightly = "nightly" in requested_lower
+                    prerelease = requested_lower == "prerelease"
+                    if is_latest or nightly or prerelease:
+                        update_needed, update_info = versions.compare_versions(
                             process_name,
-                            error,
+                            repo_owner,
+                            repo_name,
+                            instance_name,
+                            key,
+                            nightly=nightly,
+                            prerelease=prerelease,
                         )
-                        current_version = "0.0.0"
-                    if current_version != requested_version:
-                        logger.info(
-                            f"Installing requested version for {process_name}: {requested_version} (current: {current_version})"
-                        )
-                        success, error = setup_release_version(
-                            process_handler, config, process_name, key
-                        )
-                        if not success:
-                            return False, error
+
+                        if update_needed:
+                            logger.info(
+                                f"Update needed for {process_name}: {update_info['latest_version']}, but using the requested version: {requested_version}"
+                            )
+                            success, error = setup_release_version(
+                                process_handler, config, process_name, key
+                            )
+                            if not success:
+                                return False, error
+                        else:
+                            logger.info(
+                                f"No update needed for {process_name}: current version is {update_info['current_version']}, and requested version is: {requested_version}"
+                            )
                     else:
-                        logger.info(
-                            f"No update needed for {process_name}: current version matches requested version {requested_version}"
+                        current_version, error = versions.version_check(
+                            process_name, instance_name, key
                         )
+                        if not current_version:
+                            logger.warning(
+                                "Failed to read current version for %s: %s",
+                                process_name,
+                                error,
+                            )
+                            current_version = "0.0.0"
+                        if current_version != requested_version:
+                            logger.info(
+                                f"Installing requested version for {process_name}: {requested_version} (current: {current_version})"
+                            )
+                            success, error = setup_release_version(
+                                process_handler, config, process_name, key
+                            )
+                            if not success:
+                                return False, error
+                        else:
+                            logger.info(
+                                f"No update needed for {process_name}: current version matches requested version {requested_version}"
+                            )
 
-        elif not bootstrap_installed and config.get("branch_enabled"):
-            success, error = setup_branch_version(
-                process_handler, config, process_name, key
-            )
-            if not success:
-                return False, error
+            elif not bootstrap_installed and config.get("branch_enabled"):
+                success, error = setup_branch_version(
+                    process_handler, config, process_name, key
+                )
+                if not success:
+                    return False, error
 
-        if config.get("env_copy"):
+        if configure_phase and config.get("env_copy"):
             src, dest = config["env_copy"]["source"], config["env_copy"]["destination"]
             if os.path.exists(src):
                 shutil.copy(src, dest)
                 logger.info(f"Copied .env from {src} to {dest}")
 
-        if key == "nzbdav":
+        if configure_phase and key == "nzbdav":
             webdav_password = (config.get("webdav_password") or "").strip()
             if not webdav_password:
                 webdav_password = secrets.token_urlsafe(24)
@@ -522,7 +587,7 @@ def setup_project(process_handler, process_name, preinstall: bool = False):
                     )
             config["env"] = env
 
-        if config.get("env"):
+        if configure_phase and config.get("env"):
             env_changed = False
             for env_key, value in config["env"].items():
                 if not isinstance(value, str):
@@ -534,9 +599,7 @@ def setup_project(process_handler, process_name, preinstall: bool = False):
                         "host", "127.0.0.1"
                     )
                     postgres_port = CONFIG_MANAGER.get("postgres").get("port", 5432)
-                    postgres_user = CONFIG_MANAGER.get("postgres").get(
-                        "user", "DUMB"
-                    )
+                    postgres_user = CONFIG_MANAGER.get("postgres").get("user", "DUMB")
                     postgres_password = CONFIG_MANAGER.get("postgres").get(
                         "password", "postgres"
                     )
@@ -555,9 +618,7 @@ def setup_project(process_handler, process_name, preinstall: bool = False):
                         "host", "127.0.0.1"
                     )
                     postgres_port = CONFIG_MANAGER.get("postgres").get("port", 5432)
-                    postgres_user = CONFIG_MANAGER.get("postgres").get(
-                        "user", "DUMB"
-                    )
+                    postgres_user = CONFIG_MANAGER.get("postgres").get("user", "DUMB")
                     postgres_password = CONFIG_MANAGER.get("postgres").get(
                         "password", "postgres"
                     )
@@ -605,12 +666,12 @@ def setup_project(process_handler, process_name, preinstall: bool = False):
             if env_changed:
                 CONFIG_MANAGER.save_config(process_name)
 
-        if key == "dumb_frontend":
+        if configure_phase and key == "dumb_frontend":
             success, error = dumb_frontend_setup()
             if not success:
                 return False, error
 
-        if key == "riven_frontend":
+        if configure_phase and key == "riven_frontend":
             copy_server_config(
                 "/config/server.json",
                 os.path.join(config["config_dir"], "config/server.json"),
@@ -633,7 +694,7 @@ def setup_project(process_handler, process_name, preinstall: bool = False):
                 }
             )
             config["env"] = existing_env
-        if key == "riven_backend":
+        if configure_phase and key == "riven_backend":
             port = str(config.get("port", 8080))
             command = config.get("command", [])
             if not isinstance(command, list):
@@ -659,11 +720,14 @@ def setup_project(process_handler, process_name, preinstall: bool = False):
                 os.chown(symlink_library_path, user_id, group_id)
 
         if key == "zurg":
-            success, error = zurg_setup()
+            success, error = zurg_setup(
+                install_only=install_phase and not configure_phase,
+                configure_only=configure_phase and not install_phase,
+            )
             if not success:
                 return False, error
 
-        if key == "zilean":
+        if configure_phase and key == "zilean":
             config_app_wwwroot_dir = os.path.join(
                 config["config_dir"], "app", "wwwroot"
             )
@@ -671,77 +735,117 @@ def setup_project(process_handler, process_name, preinstall: bool = False):
             if not os.path.exists(config_wwwroot_dir):
                 os.symlink(config_app_wwwroot_dir, config_wwwroot_dir)
 
-        if key == "rclone":
+        if configure_phase and key == "rclone":
             success, error = rclone_setup()
             if not success:
                 return False, error
 
-        if key == "postgres":
+        if configure_phase and key == "postgres":
             success, error = postgres.postgres_setup(process_handler)
             if not success:
                 return False, error
 
         if key == "plex":
-            success, error = setup_plex()
+            success, error = setup_plex(
+                install_only=install_phase and not configure_phase,
+                configure_only=configure_phase and not install_phase,
+            )
             if not success:
                 return False, error
 
         if key == "tautulli":
-            success, error = setup_tautulli(process_handler)
+            success, error = setup_tautulli(
+                process_handler,
+                install_only=install_phase and not configure_phase,
+                configure_only=configure_phase and not install_phase,
+            )
             if not success:
                 return False, error
 
         if key == "huntarr":
-            success, error = setup_huntarr(process_handler)
+            success, error = setup_huntarr(
+                process_handler,
+                install_only=install_phase and not configure_phase,
+                configure_only=configure_phase and not install_phase,
+            )
             if not success:
                 return False, error
         if key == "seerr":
-            success, error = setup_seerr(process_handler)
+            success, error = setup_seerr(
+                process_handler,
+                install_only=install_phase and not configure_phase,
+                configure_only=configure_phase and not install_phase,
+            )
             if not success:
                 return False, error
 
         if key == "jellyfin":
-            success, error = setup_jellyfin()
+            success, error = setup_jellyfin(
+                install_only=install_phase and not configure_phase,
+                configure_only=configure_phase and not install_phase,
+            )
             if not success:
                 return False, error
 
         if key == "emby":
-            success, error = setup_emby()
+            success, error = setup_emby(
+                install_only=install_phase and not configure_phase,
+                configure_only=configure_phase and not install_phase,
+            )
             if not success:
                 return False, error
 
-        if key == "pgadmin":
+        if configure_phase and key == "pgadmin":
             success, error = postgres.pgadmin_setup(process_handler)
             if not success:
                 return False, error
 
-        if key == "plex_debrid":
+        if configure_phase and key == "plex_debrid":
             success, error = plex_debrid_setup()
             if not success:
                 return False, error
 
         if key == "phalanx_db":
-            success, error = phalanx_setup(process_handler)
+            success, error = phalanx_setup(
+                process_handler,
+                install_only=install_phase and not configure_phase,
+                configure_only=configure_phase and not install_phase,
+            )
             if not success:
                 return False, error
 
         if key == "decypharr":
-            success, error = setup_decypharr(preinstall=preinstall)
+            success, error = setup_decypharr(
+                install_only=install_phase and not configure_phase,
+                configure_only=configure_phase and not install_phase,
+            )
             if not success:
                 return False, error
 
         if key == "nzbdav":
-            success, error = setup_nzbdav(process_handler, preinstall=preinstall)
+            success, error = setup_nzbdav(
+                process_handler,
+                install_only=install_phase and not configure_phase,
+                configure_only=configure_phase and not install_phase,
+            )
             if not success:
                 return False, error
 
         if key == "bazarr":
-            success, error = setup_bazarr(process_handler)
+            success, error = setup_bazarr(
+                process_handler,
+                install_only=install_phase and not configure_phase,
+                configure_only=configure_phase and not install_phase,
+            )
             if not success:
                 return False, error
 
         if key == "traefik":
-            success, error = setup_traefik(process_handler)
+            success, error = setup_traefik(
+                process_handler,
+                install_only=install_phase and not configure_phase,
+                configure_only=configure_phase and not install_phase,
+            )
             if not success:
                 return False, error
 
@@ -754,26 +858,60 @@ def setup_project(process_handler, process_name, preinstall: bool = False):
             "whisparr",
             "whisparr-v3",
         ]:
-            for instance_name, instance in (
-                CONFIG_MANAGER.get(key, {}).get("instances", {}).items()
-            ):
-                if not instance.get("enabled"):
-                    continue
-                process_name = instance["process_name"]
-                logger.debug(
-                    f"Setting up {process_name} with instance name {instance_name} for instance {instance}..."
-                )
-                success, error = setup_arr_instance(
-                    key, instance_name, instance, process_name
-                )
+            if install_phase and not configure_phase:
+                success, error = install_arr_instances(key)
                 if not success:
                     return False, error
+            elif configure_phase:
+                if instance_name:
+                    instance = CONFIG_MANAGER.get_instance(instance_name, key)
+                    if instance and instance.get("enabled"):
+                        logger.debug(
+                            "Setting up %s with instance name %s for instance %s...",
+                            process_name,
+                            instance_name,
+                            instance,
+                        )
+                        success, error = setup_arr_instance(
+                            key,
+                            instance_name,
+                            instance,
+                            process_name,
+                            configure_only=True,
+                        )
+                        if not success:
+                            return False, error
+                else:
+                    for instance_name, instance in (
+                        CONFIG_MANAGER.get(key, {}).get("instances", {}).items()
+                    ):
+                        if not instance.get("enabled"):
+                            continue
+                        process_name = instance["process_name"]
+                        logger.debug(
+                            "Setting up %s with instance name %s for instance %s...",
+                            process_name,
+                            instance_name,
+                            instance,
+                        )
+                        success, error = setup_arr_instance(
+                            key,
+                            instance_name,
+                            instance,
+                            process_name,
+                            configure_only=True,
+                        )
+                        if not success:
+                            return False, error
 
-        with process_handler.setup_tracker_lock:
-            process_handler.setup_tracker.add(process_name)
-            tracker_snapshot = set(process_handler.setup_tracker)
-        logger.debug(f"Post Setup tracker: {tracker_snapshot}")
-        logger.info(f"{process_name} setup complete")
+        if configure_phase:
+            with process_handler.setup_tracker_lock:
+                process_handler.setup_tracker.add(process_name)
+                tracker_snapshot = set(process_handler.setup_tracker)
+            logger.debug(f"Post Setup tracker: {tracker_snapshot}")
+            logger.info(f"{process_name} setup complete")
+        elif install_phase:
+            logger.info(f"{process_name} install phase complete")
         return True, None
 
     except Exception as e:
@@ -841,43 +979,88 @@ def ensure_arr_config(
         logger.error(f"[{app_name}] Failed to update existing config.xml: {e}")
 
 
-def setup_arr_instance(key, instance_name, instance, process_name):
-    binary_path = f"/opt/{key}/{key.capitalize()}/{key.capitalize()}"
-    pinned_version = instance.get("pinned_version")
-    if not os.path.exists(binary_path):
-        logger.warning(f"{key.capitalize()} binary not found. Installing...")
-        from utils.arr import ArrInstaller
-
-        installer = ArrInstaller(key, version=pinned_version or "4")
-        success, error = installer.install()
-        if not success:
-            return False, error
-    elif pinned_version:
-        current_version, error = versions.version_check(
-            process_name, instance_name, key
-        )
-        if not current_version:
+def _install_arr_binary(key, instance_name, instance, process_name):
+    install_dir, is_instance_dir = _resolve_arr_install_dir(
+        key, instance_name, instance
+    )
+    binary_path = os.path.join(install_dir, key.capitalize(), f"{key.capitalize()}")
+    pinned_version = (instance.get("pinned_version") or "").strip()
+    with _get_install_lock(key):
+        if not os.path.exists(binary_path):
             logger.warning(
-                f"Failed to read {key.capitalize()} version for pin check: {error}"
-            )
-        elif current_version != pinned_version:
-            logger.info(
-                f"{key.capitalize()} pinned to {pinned_version}; installing over {current_version}."
+                "%s binary not found in %s. Installing...",
+                key.capitalize(),
+                install_dir,
             )
             from utils.arr import ArrInstaller
 
-            installer = ArrInstaller(key, version=pinned_version or "4")
+            installer = ArrInstaller(
+                key, version=pinned_version or "4", install_dir=install_dir
+            )
             success, error = installer.install()
             if not success:
-                return False, error
-    if not os.access(binary_path, os.X_OK):
-        logger.warning(f"{binary_path} not executable. Fixing permissions...")
-        os.chmod(binary_path, 0o755)
+                return False, error, install_dir, binary_path, is_instance_dir
+        elif pinned_version:
+            current_version, _ = versions.read_arr_version_from_dir(key, install_dir)
+            if not current_version:
+                logger.warning(
+                    "Failed to read %s version for pin check in %s.",
+                    key.capitalize(),
+                    install_dir,
+                )
+            elif current_version != pinned_version:
+                logger.info(
+                    "%s pinned to %s; installing over %s in %s.",
+                    key.capitalize(),
+                    pinned_version,
+                    current_version,
+                    install_dir,
+                )
+                from utils.arr import ArrInstaller
+
+                installer = ArrInstaller(
+                    key, version=pinned_version or "4", install_dir=install_dir
+                )
+                success, error = installer.install()
+                if not success:
+                    return False, error, install_dir, binary_path, is_instance_dir
+        if not os.access(binary_path, os.X_OK):
+            logger.warning("%s not executable. Fixing permissions...", binary_path)
+            os.chmod(binary_path, 0o755)
+    return True, None, install_dir, binary_path, is_instance_dir
+
+
+def setup_arr_instance(
+    key, instance_name, instance, process_name, install_only=False, configure_only=False
+):
+    if install_only and configure_only:
+        return False, "Invalid arr setup phase."
+    if configure_only:
+        install_dir, _ = _resolve_arr_install_dir(key, instance_name, instance)
+        binary_path = os.path.join(install_dir, key.capitalize(), f"{key.capitalize()}")
+        if not os.path.exists(binary_path):
+            return False, f"{key.capitalize()} binary missing in {install_dir}."
+    else:
+        success, error, install_dir, binary_path, _ = _install_arr_binary(
+            key, instance_name, instance, process_name
+        )
+        if not success:
+            return False, error
+
+    if not install_only and instance.get("install_dir") != install_dir:
+        instance["install_dir"] = install_dir
+        CONFIG_MANAGER.save_config(process_name)
     config_dir = instance["config_dir"]
     os.makedirs(config_dir, exist_ok=True)
-    _chown_recursive_if_needed(
-        config_dir, CONFIG_MANAGER.get("puid"), CONFIG_MANAGER.get("pgid")
-    )
+    if configure_only:
+        chown_single(config_dir, CONFIG_MANAGER.get("puid"), CONFIG_MANAGER.get("pgid"))
+    else:
+        _chown_recursive_if_needed(
+            config_dir, CONFIG_MANAGER.get("puid"), CONFIG_MANAGER.get("pgid")
+        )
+
+    if install_only:
+        return True, None
 
     logger.info(f"Setting up {process_name} environment...")
     config_file = instance["config_file"]
@@ -902,11 +1085,33 @@ def setup_arr_instance(key, instance_name, instance, process_name):
     return True, None
 
 
-def setup_bazarr(process_handler=None):
+def install_arr_instances(key):
+    instances = CONFIG_MANAGER.get(key, {}).get("instances", {}) or {}
+    for instance_name, instance in instances.items():
+        if not instance.get("enabled"):
+            continue
+        process_name = instance.get("process_name") or instance_name
+        success, error = setup_arr_instance(
+            key,
+            instance_name,
+            instance,
+            process_name,
+            install_only=True,
+        )
+        if not success:
+            return False, error
+    return True, None
+
+
+def setup_bazarr(
+    process_handler=None, install_only: bool = False, configure_only: bool = False
+):
     config = CONFIG_MANAGER.get("bazarr", {})
     if not config:
         return False, "Bazarr configuration not found."
     try:
+        if install_only and configure_only:
+            return False, "Invalid Bazarr setup phase."
 
         def setup_bazarr_instance(instance_name, instance):
             if not instance.get("enabled", False):
@@ -927,7 +1132,10 @@ def setup_bazarr(process_handler=None):
                 chown_recursive(instance_config_dir, user_id, group_id)
             ### check if the bazarr.py file exists in the install_path
             bazarr_py_path = os.path.join(install_path, "bazarr.py")
-            if not os.path.exists(bazarr_py_path):
+            needs_download = not os.path.exists(bazarr_py_path)
+            if needs_download and configure_only:
+                return False, f"Bazarr instance {instance_name} not installed."
+            if needs_download:
                 logger.warning(
                     f"Bazarr instance {instance_name} not found at {install_path}. Downloading..."
                 )
@@ -970,6 +1178,9 @@ def setup_bazarr(process_handler=None):
                         )
                     chown_recursive(install_path, user_id, group_id)
 
+            if install_only:
+                return True, None
+
             instance["command"] = [
                 f"{install_path}/venv/bin/python",
                 f"{bazarr_py_path}",
@@ -992,7 +1203,7 @@ def setup_bazarr(process_handler=None):
         return False, f"Error during Bazarr setup: {e}"
 
 
-def setup_decypharr(preinstall: bool = False):
+def setup_decypharr(install_only: bool = False, configure_only: bool = False):
     config = CONFIG_MANAGER.get("decypharr")
     if not config:
         return False, "Configuration for Decypharr not found."
@@ -1000,6 +1211,8 @@ def setup_decypharr(preinstall: bool = False):
     logger.info("Starting Decypharr setup...")
 
     try:
+        if install_only and configure_only:
+            return False, "Invalid Decypharr setup phase."
         decypharr_config_dir = config.get("config_dir")
         decypharr_config_file = config.get("config_file")
         decypharr_binary_file = "decypharr"
@@ -1012,7 +1225,7 @@ def setup_decypharr(preinstall: bool = False):
             os.makedirs(decypharr_config_dir, exist_ok=True)
         chown_single(decypharr_config_dir, user_id, group_id)
 
-        if not os.path.isfile(binary_path):
+        if not configure_only and not os.path.isfile(binary_path):
             logger.warning(
                 f"Decypharr project not found at {decypharr_config_dir}. Downloading..."
             )
@@ -1044,13 +1257,15 @@ def setup_decypharr(preinstall: bool = False):
         if os.path.isfile(binary_path):
             os.chmod(binary_path, 0o755)
             logger.debug(f"Marked {binary_path} as executable")
+        elif configure_only:
+            return False, f"Decypharr binary missing at {binary_path}."
         if decypharr_embedded_rclone:
             success, error = fuse_config()
             if not success:
                 return False, error
-        if preinstall:
-            logger.info("Decypharr preinstall: skipping runtime config patch.")
-        elif os.path.exists(decypharr_config_file):
+        if install_only:
+            logger.info("Decypharr install phase: skipping runtime config patch.")
+        elif configure_only and os.path.exists(decypharr_config_file):
             from utils.decypharr_settings import patch_decypharr_config
 
             patch_decypharr_config()
@@ -1060,7 +1275,9 @@ def setup_decypharr(preinstall: bool = False):
         return False, f"Error during Decypharr setup: {e}"
 
 
-def setup_nzbdav(process_handler, preinstall: bool = False):
+def setup_nzbdav(
+    process_handler, install_only: bool = False, configure_only: bool = False
+):
     config = CONFIG_MANAGER.get("nzbdav")
     if not config:
         return False, "Configuration for NzbDAV not found."
@@ -1068,6 +1285,8 @@ def setup_nzbdav(process_handler, preinstall: bool = False):
     logger.info("Starting NzbDAV setup...")
 
     try:
+        if install_only and configure_only:
+            return False, "Invalid NzbDAV setup phase."
         nzbdav_config_dir = config.get("config_dir", "/nzbdav")
         nzbdav_config_file = config.get("config_file")
         backend_output_dir = config.get("backend_output_dir") or os.path.join(
@@ -1088,6 +1307,8 @@ def setup_nzbdav(process_handler, preinstall: bool = False):
             nzbdav_config_dir, config
         )
         if not backend_project_path or not os.path.exists(backend_project_path):
+            if configure_only:
+                return False, "NzbDAV project not installed."
             logger.warning(
                 f"NzbDAV project not found at {nzbdav_config_dir}. Downloading..."
             )
@@ -1150,29 +1371,32 @@ def setup_nzbdav(process_handler, preinstall: bool = False):
             if frontend_dir and not os.path.isdir(backend_wwwroot):
                 build_needed = True
 
-        if build_needed:
+        if build_needed and not configure_only:
             success, error = setup_nzbdav_build(process_handler, config)
             if not success:
                 return False, error
+        elif build_needed and configure_only:
+            return False, "NzbDAV build output missing during configure phase."
 
-        backend_command, error = _nzbdav_build_command(backend_output_dir)
-        if not backend_command:
-            return False, error
-        frontend_dir = _find_nzbdav_frontend_dir(nzbdav_config_dir, config)
-        script_path = _write_nzbdav_start_script(
-            nzbdav_config_dir,
-            backend_command,
-            frontend_dir,
-            int(config.get("backend_port", 8080)),
-        )
-        config["command"] = ["/bin/sh", script_path]
+        if not install_only:
+            backend_command, error = _nzbdav_build_command(backend_output_dir)
+            if not backend_command:
+                return False, error
+            frontend_dir = _find_nzbdav_frontend_dir(nzbdav_config_dir, config)
+            script_path = _write_nzbdav_start_script(
+                nzbdav_config_dir,
+                backend_command,
+                frontend_dir,
+                int(config.get("backend_port", 8080)),
+            )
+            config["command"] = ["/bin/sh", script_path]
 
         if nzbdav_config_file and os.path.exists(nzbdav_config_file):
             chown_single(nzbdav_config_file, user_id, group_id)
 
-        if preinstall:
-            logger.info("NzbDAV preinstall: skipping runtime config patch.")
-        else:
+        if install_only:
+            logger.info("NzbDAV install phase: skipping runtime config patch.")
+        elif configure_only:
             try:
                 from utils.nzbdav_settings import patch_nzbdav_config
 
@@ -1650,7 +1874,9 @@ def dumb_frontend_setup():
     return True, None
 
 
-def phalanx_setup(process_handler):
+def phalanx_setup(
+    process_handler, install_only: bool = False, configure_only: bool = False
+):
     config = CONFIG_MANAGER.get("phalanx_db")
     if not config:
         return False, "Configuration for Phalanx not found."
@@ -1658,12 +1884,16 @@ def phalanx_setup(process_handler):
     logger.info("Starting Phalanx setup...")
 
     try:
+        if install_only and configure_only:
+            return False, "Invalid Phalanx setup phase."
         phalanx_config_dir = config.get("config_dir")
         phalanx_data_dir = os.path.join(phalanx_config_dir, "data")
         original_package_file = os.path.join(phalanx_config_dir, "package.json")
         platforms = config.get("platforms", [])
 
         if not os.path.isfile(original_package_file):
+            if configure_only:
+                return False, "Phalanx DB not installed."
             logger.warning(
                 f"Phalanx project not found at {phalanx_config_dir}. Downloading..."
             )
@@ -1692,6 +1922,9 @@ def phalanx_setup(process_handler):
                 )
                 if not success:
                     return False, f"Failed to set up environment: {error}"
+
+        if install_only:
+            return True, None
 
         for subdir in ["db_data", "p2p-db-storage", "logs", "autobase_storage_v4"]:
             target_path = os.path.join(phalanx_data_dir, subdir)
@@ -1763,7 +1996,7 @@ def phalanx_setup(process_handler):
         return False, f"Error during Phalanx setup: {e}"
 
 
-def setup_plex():
+def setup_plex(install_only: bool = False, configure_only: bool = False):
     config = CONFIG_MANAGER.get("plex")
 
     if not config or not config.get("enabled"):
@@ -1774,6 +2007,9 @@ def setup_plex():
         if not version:
             return version
         return version[1:] if version.startswith("v") else version
+
+    if install_only and configure_only:
+        return False, "Invalid Plex setup phase."
 
     plex_media_server_dir = config.get(
         "plex_media_server_dir", "/usr/lib/plexmediaserver"
@@ -1809,11 +2045,16 @@ def setup_plex():
                 logger.error(f"Plex pinned install failed: {error}")
                 return False, error
 
+    if install_only:
+        return True, None
+
     os.makedirs(config["config_dir"], exist_ok=True)
     if os.stat(config["config_dir"]).st_uid != CONFIG_MANAGER.get("puid"):
         chown_recursive(
             config["config_dir"], CONFIG_MANAGER.get("puid"), CONFIG_MANAGER.get("pgid")
         )
+    if configure_only and not os.path.exists(plex_media_server_dir):
+        return False, f"Plex not installed at {plex_media_server_dir}."
     pid_path = os.path.join(
         config["config_dir"], "Plex Media Server", "plexmediaserver.pid"
     )
@@ -2009,7 +2250,9 @@ def _configure_tautulli_plex(config_file):
     return True, None
 
 
-def setup_tautulli(process_handler):
+def setup_tautulli(
+    process_handler, install_only: bool = False, configure_only: bool = False
+):
     config = CONFIG_MANAGER.get("tautulli")
 
     if not config or not config.get("enabled"):
@@ -2029,7 +2272,14 @@ def setup_tautulli(process_handler):
             path, CONFIG_MANAGER.get("puid"), CONFIG_MANAGER.get("pgid")
         )
 
-    if not os.path.isfile(tautulli_py_path):
+    if install_only and configure_only:
+        return False, "Invalid Tautulli setup phase."
+
+    needs_download = not os.path.isfile(tautulli_py_path)
+    if needs_download and configure_only:
+        return False, f"Tautulli not installed at {tautulli_py_path}."
+
+    if needs_download:
         logger.warning("Tautulli not found at %s. Downloading...", tautulli_py_path)
         exclude_dirs = None
         if config.get("clear_on_update"):
@@ -2088,7 +2338,7 @@ def setup_tautulli(process_handler):
                 version=version_to_write,
             )
 
-    if config.get("platforms"):
+    if config.get("platforms") and not configure_only:
         venv_path = os.path.join(config_dir, "venv")
         if not os.path.isdir(venv_path):
             success, error = setup_environment(
@@ -2099,6 +2349,9 @@ def setup_tautulli(process_handler):
             )
             if not success:
                 return False, f"Failed to set up environment for Tautulli: {error}"
+
+    if install_only:
+        return True, None
     # updated, error = _configure_tautulli_plex(config_file)
     # if error:
     #    return False, error
@@ -2122,7 +2375,9 @@ def setup_tautulli(process_handler):
     return True, None
 
 
-def setup_seerr(process_handler):
+def setup_seerr(
+    process_handler, install_only: bool = False, configure_only: bool = False
+):
     config = CONFIG_MANAGER.get("seerr", {})
     if not config:
         return False, "Seerr configuration not found."
@@ -2131,6 +2386,9 @@ def setup_seerr(process_handler):
     if not instances:
         logger.info("No Seerr instances configured.")
         return True, None
+
+    if install_only and configure_only:
+        return False, "Invalid Seerr setup phase."
 
     for instance_name, instance in instances.items():
         if not instance.get("enabled", False):
@@ -2180,7 +2438,7 @@ def setup_seerr(process_handler):
         instance["env"] = instance_env
         entry_path = os.path.join(instance_config_dir, "dist", "index.js")
         repo_marker = os.path.join(instance_config_dir, "package.json")
-        if env_changed or path_changed:
+        if not install_only and (env_changed or path_changed):
             CONFIG_MANAGER.save_config(instance.get("process_name"))
 
         os.makedirs(instance_config_dir, exist_ok=True)
@@ -2194,6 +2452,8 @@ def setup_seerr(process_handler):
             )
 
         needs_download = not os.path.isfile(repo_marker)
+        if needs_download and configure_only:
+            return False, f"Seerr instance {instance_name} not installed."
         if needs_download:
             logger.warning(
                 "Seerr instance %s not found at %s. Downloading...",
@@ -2263,7 +2523,7 @@ def setup_seerr(process_handler):
                 CONFIG_MANAGER.get("pgid"),
             )
 
-        if instance.get("platforms"):
+        if instance.get("platforms") and not configure_only:
             node_modules_path = os.path.join(instance_config_dir, "node_modules")
             if (
                 needs_download
@@ -2287,11 +2547,16 @@ def setup_seerr(process_handler):
                 next_dir, CONFIG_MANAGER.get("puid"), CONFIG_MANAGER.get("pgid")
             )
 
+        if install_only:
+            continue
+
     logger.info("Seerr setup complete.")
     return True, None
 
 
-def setup_huntarr(process_handler):
+def setup_huntarr(
+    process_handler, install_only: bool = False, configure_only: bool = False
+):
     config = CONFIG_MANAGER.get("huntarr", {})
     if not config:
         return False, "Huntarr configuration not found."
@@ -2300,6 +2565,9 @@ def setup_huntarr(process_handler):
     if not instances:
         logger.info("No Huntarr instances configured.")
         return True, None
+
+    if install_only and configure_only:
+        return False, "Invalid Huntarr setup phase."
 
     for instance_name, instance in instances.items():
         if not instance.get("enabled", False):
@@ -2356,7 +2624,7 @@ def setup_huntarr(process_handler):
             env_changed = True
 
         instance["env"] = instance_env
-        if env_changed or path_changed:
+        if not install_only and (env_changed or path_changed):
             CONFIG_MANAGER.save_config(instance.get("process_name"))
 
         os.makedirs(instance_config_dir, exist_ok=True)
@@ -2375,6 +2643,8 @@ def setup_huntarr(process_handler):
 
         repo_marker = os.path.join(instance_config_dir, "main.py")
         needs_download = not os.path.isfile(repo_marker)
+        if needs_download and configure_only:
+            return False, f"Huntarr instance {instance_name} not installed."
         if needs_download:
             logger.warning(
                 "Huntarr instance %s not found at %s. Downloading...",
@@ -2445,7 +2715,7 @@ def setup_huntarr(process_handler):
                 CONFIG_MANAGER.get("pgid"),
             )
 
-        if instance.get("platforms"):
+        if instance.get("platforms") and not configure_only:
             venv_marker = os.path.join(instance_config_dir, "venv", "bin", "python")
             if needs_download or not os.path.isfile(venv_marker):
                 success, error = setup_environment(
@@ -2460,23 +2730,25 @@ def setup_huntarr(process_handler):
                         f"Failed to set up environment for Huntarr instance {instance_name}: {error}",
                     )
 
-        if not instance.get("command"):
+        if not install_only and not instance.get("command"):
             instance["command"] = [
                 os.path.join(instance_config_dir, "venv", "bin", "python"),
                 "main.py",
             ]
             CONFIG_MANAGER.save_config(instance.get("process_name"))
 
-        _patch_huntarr_database_paths(instance_config_dir)
+        if not install_only:
+            _patch_huntarr_database_paths(instance_config_dir)
 
-    try:
-        from utils.huntarr_settings import patch_huntarr_config
+    if not install_only:
+        try:
+            from utils.huntarr_settings import patch_huntarr_config
 
-        ok, err = patch_huntarr_config()
-        if not ok and err:
-            logger.warning("Huntarr config sync failed: %s", err)
-    except Exception as exc:
-        logger.warning("Huntarr config sync skipped: %s", exc)
+            ok, err = patch_huntarr_config()
+            if not ok and err:
+                logger.warning("Huntarr config sync failed: %s", err)
+        except Exception as exc:
+            logger.warning("Huntarr config sync skipped: %s", exc)
 
     logger.info("Huntarr setup complete.")
     return True, None
@@ -2514,7 +2786,7 @@ def _patch_huntarr_database_paths(instance_config_dir: str) -> None:
         logger.warning("Failed writing Huntarr database.py patch: %s", exc)
 
 
-def setup_jellyfin():
+def setup_jellyfin(install_only: bool = False, configure_only: bool = False):
     config = CONFIG_MANAGER.get("jellyfin")
 
     if not config or not config.get("enabled"):
@@ -2533,6 +2805,9 @@ def setup_jellyfin():
             return None
         except Exception:
             return None
+
+    if install_only and configure_only:
+        return False, "Invalid Jellyfin setup phase."
 
     jellyfin_service_path = "/usr/lib/jellyfin/bin/jellyfin"
     pinned_version = config.get("pinned_version")
@@ -2558,6 +2833,12 @@ def setup_jellyfin():
             success, error = installer.install_jellyfin_server(version=pinned_version)
             if not success:
                 return False, error
+
+    if install_only:
+        return True, None
+
+    if configure_only and not os.path.exists(jellyfin_service_path):
+        return False, f"Jellyfin not installed at {jellyfin_service_path}."
 
     os.makedirs(config["config_dir"], exist_ok=True)
     chown_recursive(
@@ -2597,12 +2878,14 @@ def setup_jellyfin():
         return True, None
 
 
-def setup_emby():
+def setup_emby(install_only: bool = False, configure_only: bool = False):
     config = CONFIG_MANAGER.get("emby")
     if not config:
         return False, "Configuration for Emby not found."
 
     try:
+        if install_only and configure_only:
+            return False, "Invalid Emby setup phase."
         emby_config_dir = config.get("config_dir") or "/emby"
         emby_config_file = config.get("config_file")
 
@@ -2725,6 +3008,12 @@ def setup_emby():
                 success, error, emby_bin = install_emby(target_release)
                 if not success:
                     return False, error
+        if install_only:
+            return True, None
+
+        if configure_only and not emby_bin:
+            return False, "Emby binary not installed."
+
         if emby_bin.endswith(".dll"):
             cmd = ["dotnet", emby_bin]
         else:
@@ -2780,7 +3069,7 @@ def setup_emby():
         return False, f"Error during Emby setup: {e}"
 
 
-def zurg_setup():
+def zurg_setup(install_only: bool = False, configure_only: bool = False):
     config = CONFIG_MANAGER.get("zurg")
     if not config:
         return False, "Configuration for Zurg not found."
@@ -2788,6 +3077,8 @@ def zurg_setup():
     logger.info("Starting Zurg setup...")
 
     try:
+        if install_only and configure_only:
+            return False, "Invalid Zurg setup phase."
 
         def setup_zurg_instance(instance, key_type):
             try:
@@ -2802,19 +3093,36 @@ def zurg_setup():
                         CONFIG_MANAGER.get("puid"),
                         CONFIG_MANAGER.get("pgid"),
                     )
-                instance_user = instance["user"]
-                instance_password = instance["password"]
-                instance_port = instance["port"]
-                logger.debug(f"Initial port from config: {instance_port}")
-                if not instance_port:
-                    instance_port = random.randint(9001, 9999)
-                    logger.debug(f"Assigned random port: {instance_port}")
-                    instance["port"] = instance_port
                 instance_zurg_binaries = os.path.join(instance_config_dir, "zurg")
                 instance_config_file = os.path.join(instance_config_dir, "config.yml")
                 instance_plex_update_file = os.path.join(
                     instance_config_dir, "plex_update.sh"
                 )
+                if install_only:
+                    if not os.path.exists(instance_zurg_binaries):
+                        logger.debug(
+                            "Zurg binary not found at %s. Downloading...",
+                            instance_zurg_binaries,
+                        )
+                        release_version = (
+                            instance.get("release_version")
+                            if instance.get("release_version_enabled")
+                            else "latest"
+                        )
+                        success, error = downloader.download_release_version(
+                            process_name=instance["process_name"],
+                            key="zurg",
+                            repo_owner=instance["repo_owner"],
+                            repo_name=instance["repo_name"],
+                            release_version=release_version,
+                            target_dir=instance_config_dir,
+                            zip_folder_name=None,
+                            exclude_dirs=instance.get("exclude_dirs", []),
+                        )
+                        if not success:
+                            return False, f"Failed to download Zurg: {error}"
+                        downloader.set_permissions(instance_zurg_binaries, 0o755)
+                    return True, None
 
                 if os.path.exists("/config/zurg"):
                     logger.debug(
@@ -2869,6 +3177,15 @@ def zurg_setup():
                         CONFIG_MANAGER.get("pgid"),
                     )
 
+                instance_user = instance["user"]
+                instance_password = instance["password"]
+                instance_port = instance["port"]
+                logger.debug(f"Initial port from config: {instance_port}")
+                if not instance_port:
+                    instance_port = random.randint(9001, 9999)
+                    logger.debug(f"Assigned random port: {instance_port}")
+                    instance["port"] = instance_port
+
                 update_port(instance_config_file, instance_port)
 
                 token = instance["api_key"]
@@ -2883,6 +3200,8 @@ def zurg_setup():
                     f"Zurg instance '{key_type}' configured with port {instance_port}."
                 )
                 if not os.path.exists(instance_zurg_binaries):
+                    if configure_only:
+                        return False, f"Zurg binary missing for {key_type}."
                     logger.debug(
                         f"Zurg binary not found at {instance_zurg_binaries}. Downloading..."
                     )
@@ -2903,7 +3222,7 @@ def zurg_setup():
                     if not success:
                         return False, f"Failed to download Zurg: {error}"
                     downloader.set_permissions(instance_zurg_binaries, 0o755)
-                elif os.path.exists(instance_zurg_binaries):
+                elif os.path.exists(instance_zurg_binaries) and not configure_only:
                     logger.debug(f"Zurg binary found at {instance_zurg_binaries}.")
                     if not instance.get("release_version_enabled"):
                         current_version, update_info = versions.compare_versions(
@@ -3389,7 +3708,11 @@ def rclone_setup():
                                 config_data[mount_name].append(
                                     f"pass = {obscured_password}"
                                 )
-                    auth = {"user": webdav_user, "password": webdav_pass} if webdav_pass else None
+                    auth = (
+                        {"user": webdav_user, "password": webdav_pass}
+                        if webdav_pass
+                        else None
+                    )
                     wait_entry = {"url": url}
                     if auth:
                         wait_entry["auth"] = auth

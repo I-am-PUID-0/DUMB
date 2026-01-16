@@ -239,9 +239,23 @@ class Update:
             return False, f"No updates available for {process_name}."
 
         versions = Versions()
-        current_version, error = versions.version_check(
-            process_name, instance_name, key
-        )
+        install_dir = config.get("install_dir")
+        if install_dir and key in (
+            "sonarr",
+            "radarr",
+            "lidarr",
+            "prowlarr",
+            "readarr",
+            "whisparr",
+            "whisparr-v3",
+        ):
+            current_version, error = versions.read_arr_version_from_dir(
+                key, install_dir
+            )
+        else:
+            current_version, error = versions.version_check(
+                process_name, instance_name, key
+            )
         self.logger.info(
             f"{process_name} pinned version: {target_version} (current: {current_version or 'unknown'})."
         )
@@ -362,10 +376,16 @@ class Update:
 
     def update_check_arr_latest(self, process_name, config, key, instance_name):
         versions = Versions()
-        current_version, error = versions.version_check(
-            process_name, instance_name, key
-        )
-        installer = ArrInstaller(key)
+        install_dir = config.get("install_dir")
+        if install_dir:
+            current_version, error = versions.read_arr_version_from_dir(
+                key, install_dir
+            )
+        else:
+            current_version, error = versions.version_check(
+                process_name, instance_name, key
+            )
+        installer = ArrInstaller(key, install_dir=install_dir)
         latest_version, latest_error = installer.get_latest_version()
         if not latest_version:
             return False, f"Failed to get latest {key} version: {latest_error}"
@@ -513,7 +533,9 @@ class Update:
             process_name
         )
         if refreshed_key:
-            config = CONFIG_MANAGER.get_instance(refreshed_instance, refreshed_key) or config
+            config = (
+                CONFIG_MANAGER.get_instance(refreshed_instance, refreshed_key) or config
+            )
             key = refreshed_key
             instance_name = refreshed_instance
 

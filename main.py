@@ -284,9 +284,7 @@ def _service_has_huntarr_instance(config_obj: dict) -> bool:
     if "instances" not in config_obj or not isinstance(config_obj["instances"], dict):
         return False
     return any(
-        isinstance(inst, dict)
-        and inst.get("enabled")
-        and inst.get("use_huntarr")
+        isinstance(inst, dict) and inst.get("enabled") and inst.get("use_huntarr")
         for inst in config_obj["instances"].values()
     )
 
@@ -542,8 +540,8 @@ def _apply_waits_to_service(config_manager, key: str, wait_entries: list[dict]) 
         _set_wait_for_urls(cfg, wait_entries)
 
 
-def _collect_enabled_process_names(config_manager) -> list[str]:
-    process_names = []
+def _collect_preinstall_targets(config_manager) -> list[tuple[str, str]]:
+    targets = []
     for key, cfg in config_manager.config.items():
         if not isinstance(cfg, dict):
             continue
@@ -554,36 +552,42 @@ def _collect_enabled_process_names(config_manager) -> list[str]:
                 if isinstance(inst_cfg, dict) and inst_cfg.get("enabled"):
                     process_name = inst_cfg.get("process_name")
                     if process_name:
-                        process_names.append(process_name)
+                        targets.append((key, process_name))
+                    break
             continue
         if cfg.get("enabled"):
             process_name = cfg.get("process_name")
             if process_name:
-                process_names.append(process_name)
-    return process_names
+                targets.append((key, process_name))
+    return targets
 
 
 def _preinstall_enabled_services(process_handler, config_manager) -> None:
-    process_names = _collect_enabled_process_names(config_manager)
-    if not process_names:
+    targets = _collect_preinstall_targets(config_manager)
+    if not targets:
         return
     logger.info("Pre-installing enabled services before startup.")
-    max_workers = min(4, max(1, len(process_names)))
+    max_workers = min(4, max(1, len(targets)))
 
-    def _run_preinstall(name: str) -> None:
+    def _run_preinstall(key: str, name: str) -> None:
         if process_handler.shutting_down:
             return
         with process_handler.process_context(name):
-            key, _ = config_manager.find_key_for_process(name)
             if key in {"pgadmin", "postgres"}:
-                logger.info("Preinstall skip for %s; requires running dependency.", name)
+                logger.info(
+                    "Preinstall skip for %s; requires running dependency.", name
+                )
                 return
+            logger.info("Preinstall start: %s", name)
             success, error = setup_project(process_handler, name, preinstall=True)
             if not success:
                 raise RuntimeError(error)
+            logger.info("Preinstall done: %s", name)
 
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        futures = {executor.submit(_run_preinstall, name): name for name in process_names}
+        futures = {
+            executor.submit(_run_preinstall, key, name): name for key, name in targets
+        }
         for future in as_completed(futures):
             name = futures[future]
             try:
@@ -592,6 +596,8 @@ def _preinstall_enabled_services(process_handler, config_manager) -> None:
                 logger.error("Pre-install failed for %s: %s", name, e)
                 process_handler.shutdown(exit_code=1)
                 raise
+    logger.info("Pre-install phase complete.")
+    process_handler.preinstall_complete = True
 
 
 def _build_dependency_map(config_manager) -> dict[str, set[str]]:

@@ -136,16 +136,18 @@ def _resolve_ui_service(service_def: Dict[str, Any]) -> List[Dict[str, Any]]:
         entrypoints = traefik_cfg.get("entrypoints", {})
         web_address = entrypoints.get("web", {}).get("address", ":18080")
         web_port = _parse_entrypoint_port(web_address, fallback=18080)
-        return [{
-            "name": service_def["name"],
-            "process_name": "Traefik",
-            "config_key": config_key,
-            "host": "127.0.0.1",
-            "port": web_port + 1,
-            "path": service_def.get("path", ""),
-            "path_prefix": service_def.get("path_prefix", ""),
-            "internal_service": internal_service,
-        }]
+        return [
+            {
+                "name": service_def["name"],
+                "process_name": "Traefik",
+                "config_key": config_key,
+                "host": "127.0.0.1",
+                "port": web_port + 1,
+                "path": service_def.get("path", ""),
+                "path_prefix": service_def.get("path_prefix", ""),
+                "internal_service": internal_service,
+            }
+        ]
 
     if config_key == "dumb" and subkey:
         cfg = config.get("dumb", {}).get(subkey, {})
@@ -154,16 +156,18 @@ def _resolve_ui_service(service_def: Dict[str, Any]) -> List[Dict[str, Any]]:
         host = cfg.get("host", "127.0.0.1")
         if host in ("0.0.0.0", "::"):
             host = "127.0.0.1"
-        return [{
-            "name": service_def["name"],
-            "process_name": cfg.get("process_name", service_def["name"]),
-            "config_key": config_key,
-            "host": host,
-            "port": cfg.get("port"),
-            "path": service_def.get("path", ""),
-            "path_prefix": service_def.get("path_prefix", ""),
-            "internal_service": internal_service,
-        }]
+        return [
+            {
+                "name": service_def["name"],
+                "process_name": cfg.get("process_name", service_def["name"]),
+                "config_key": config_key,
+                "host": host,
+                "port": cfg.get("port"),
+                "path": service_def.get("path", ""),
+                "path_prefix": service_def.get("path_prefix", ""),
+                "internal_service": internal_service,
+            }
+        ]
 
     cfg = config.get(config_key, {})
     if not isinstance(cfg, dict):
@@ -179,16 +183,18 @@ def _resolve_ui_service(service_def: Dict[str, Any]) -> List[Dict[str, Any]]:
                     host = "127.0.0.1"
                 # Use process_name from instance config, which includes instance name
                 process_name = instance_cfg.get("process_name", service_def["name"])
-                services.append({
-                    "name": process_name,  # Use full process name (e.g., "Sonarr NzbDAV")
-                    "process_name": process_name,
-                    "config_key": config_key,  # This is the service type (e.g., "sonarr")
-                    "host": host,
-                    "port": instance_cfg.get("port"),
-                    "path": service_def.get("path", ""),
-                    "path_prefix": service_def.get("path_prefix", ""),
-                    "internal_service": internal_service,
-                })
+                services.append(
+                    {
+                        "name": process_name,  # Use full process name (e.g., "Sonarr NzbDAV")
+                        "process_name": process_name,
+                        "config_key": config_key,  # This is the service type (e.g., "sonarr")
+                        "host": host,
+                        "port": instance_cfg.get("port"),
+                        "path": service_def.get("path", ""),
+                        "path_prefix": service_def.get("path_prefix", ""),
+                        "internal_service": internal_service,
+                    }
+                )
         return services
 
     # Handle single instance (no instances key)
@@ -300,7 +306,10 @@ def generate_traefik_config(services: List[Dict[str, Any]]) -> Dict[str, Any]:
             # Handle /index.html -> /web/index.html
             index_redirect = f"{service_name}_index_redirect"
             traefik_config["http"]["middlewares"][index_redirect] = {
-                "replacePathRegex": {"regex": r"^/index\.html", "replacement": f"{path_prefix}/index.html"}
+                "replacePathRegex": {
+                    "regex": r"^/index\.html",
+                    "replacement": f"{path_prefix}/index.html",
+                }
             }
             middlewares.append(index_redirect)
 
@@ -314,7 +323,7 @@ def generate_traefik_config(services: List[Dict[str, Any]]) -> Dict[str, Any]:
             traefik_config["http"]["middlewares"][web_dirs] = {
                 "replacePathRegex": {
                     "regex": r"^/(wizard|strings|scripts|lib|assets|fonts|images|css|js|sw\.js)(.*)",
-                    "replacement": f"{path_prefix}/$1$2"
+                    "replacement": f"{path_prefix}/$1$2",
                 }
             }
             middlewares.append(web_dirs)
@@ -553,12 +562,17 @@ def ensure_traefik_binary(version: Optional[str] = None) -> None:
     _download_traefik_release(normalized_version)
 
 
-def setup_traefik(process_handler) -> Optional[tuple]:
+def setup_traefik(
+    process_handler, install_only: bool = False, configure_only: bool = False
+) -> Optional[tuple]:
     """Configures and starts Traefik using ProcessHandler."""
     traefik_config = _get_traefik_config()
     if not traefik_config or not traefik_config.get("enabled"):
         logger.info("Traefik is disabled. Skipping setup.")
         return True, None
+
+    if install_only and configure_only:
+        return False, "Invalid Traefik setup phase."
 
     pinned_version = traefik_config.get("pinned_version") or traefik_config.get(
         "version"
@@ -567,7 +581,15 @@ def setup_traefik(process_handler) -> Optional[tuple]:
         process_name = traefik_config.get("process_name", "Traefik")
         if process_name in process_handler.process_names:
             process_handler.stop_process(process_name)
-    ensure_traefik_binary(version=pinned_version)
+    if configure_only:
+        traefik_bin = get_traefik_bin()
+        if not os.path.exists(traefik_bin):
+            return False, f"Traefik binary not found at {traefik_bin}."
+    else:
+        ensure_traefik_binary(version=pinned_version)
+
+    if install_only:
+        return True, None
 
     config_dir = str(get_traefik_config_dir())
     os.makedirs(config_dir, exist_ok=True)

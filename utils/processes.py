@@ -39,6 +39,7 @@ class ProcessHandler:
         self.auto_restart_state = {}
         self.auto_restart_lock = threading.Lock()
         self.auto_restart_thread = None
+        self.preinstall_complete = False
 
     def _get_thread_state(self):
         state = getattr(self._thread_state, "state", None)
@@ -171,9 +172,19 @@ class ProcessHandler:
                 if needs_setup:
                     self.logger.debug(f"Pre Setup tracker: {tracker_snapshot}")
                     self.logger.info(f"{process_name} needs setup. Running setup...")
-                    from utils.setup import setup_project
+                    from utils.setup import setup_project, configure_project
 
-                    success, error = setup_project(self, process_name)
+                    if self.preinstall_complete:
+                        success, error = configure_project(self, process_name)
+                        if not success:
+                            self.logger.warning(
+                                "Configure-only setup failed for %s (%s). Falling back to full setup.",
+                                process_name,
+                                error,
+                            )
+                            success, error = setup_project(self, process_name)
+                    else:
+                        success, error = setup_project(self, process_name)
                     if not success:
                         return False, f"Failed to set up {process_name}: {error}"
 
@@ -570,7 +581,10 @@ class ProcessHandler:
             process = self.process_names.get(internal_name)
             if process:
                 policy_name = process_name
-                if internal_name in self.process_names and internal_name != process_name:
+                if (
+                    internal_name in self.process_names
+                    and internal_name != process_name
+                ):
                     for info in self.processes.values():
                         if info.get("internal_name") == internal_name:
                             policy_name = info.get("name", process_name)
