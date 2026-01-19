@@ -40,6 +40,7 @@ class ProcessHandler:
         self.auto_restart_lock = threading.Lock()
         self.auto_restart_thread = None
         self.preinstall_complete = False
+        self.preinstalled_processes = set()
 
     def _get_thread_state(self):
         state = getattr(self._thread_state, "state", None)

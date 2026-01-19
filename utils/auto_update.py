@@ -1,7 +1,7 @@
 from utils.global_logger import logger
 from utils.logger import format_time
 from utils.versions import Versions
-from utils.setup import setup_project, setup_release_version
+from utils.setup import setup_project, setup_release_version, configure_project
 from utils.plex import PlexInstaller
 from utils.arr import ArrInstaller
 from utils.jellyfin import JellyfinInstaller
@@ -76,7 +76,65 @@ class Update:
             )
             self.schedule_thread.start()
 
-            return self.initial_update_check(process_name, config, key, instance_name)
+            if (
+                self.process_handler.preinstall_complete
+                and process_name in self.process_handler.preinstalled_processes
+            ):
+                self.logger.info(
+                    "Skipping initial update check for preinstalled %s.",
+                    process_name,
+                )
+                if self.process_handler.preinstall_complete:
+                    success, setup_error = configure_project(
+                        self.process_handler, process_name
+                    )
+                    if not success:
+                        self.logger.warning(
+                            "Configure-only setup failed for %s (%s). Falling back to full setup.",
+                            process_name,
+                            setup_error,
+                        )
+                        success, setup_error = setup_project(
+                            self.process_handler, process_name
+                        )
+                else:
+                    success, setup_error = setup_project(
+                        self.process_handler, process_name
+                    )
+                if not success:
+                    return None, setup_error
+
+                return self.start_process(process_name, config, key, instance_name)
+
+            success, error = self.initial_update_check(
+                process_name, config, key, instance_name
+            )
+            if success:
+                return success, error
+            self.logger.warning(
+                "Initial update check failed for %s: %s. Continuing startup without update.",
+                process_name,
+                error,
+            )
+            if self.process_handler.preinstall_complete:
+                success, setup_error = configure_project(
+                    self.process_handler, process_name
+                )
+                if not success:
+                    self.logger.warning(
+                        "Configure-only setup failed for %s (%s). Falling back to full setup.",
+                        process_name,
+                        setup_error,
+                    )
+                    success, setup_error = setup_project(
+                        self.process_handler, process_name
+                    )
+            else:
+                success, setup_error = setup_project(self.process_handler, process_name)
+            if not success:
+                return None, setup_error
+
+            return self.start_process(process_name, config, key, instance_name)
         else:
             self.logger.info(f"Automatic update disabled for {process_name}")
             success, error = setup_project(self.process_handler, process_name)

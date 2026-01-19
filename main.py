@@ -582,6 +582,7 @@ def _preinstall_enabled_services(process_handler, config_manager) -> None:
             success, error = setup_project(process_handler, name, preinstall=True)
             if not success:
                 raise RuntimeError(error)
+            process_handler.preinstalled_processes.add(name)
             logger.info("Preinstall done: %s", name)
 
     with ThreadPoolExecutor(max_workers=max_workers) as executor:

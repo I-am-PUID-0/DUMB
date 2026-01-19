@@ -427,30 +427,49 @@ class ArrInstaller:
         return None
 
     def get_latest_version(self):
-        url = self.get_download_url()
-        response = None
-        try:
-            response = requests.head(url, allow_redirects=True, timeout=10)
-            if response.status_code >= 400:
-                response = requests.get(
-                    url, stream=True, allow_redirects=True, timeout=15
-                )
-            filename = None
-            content_disposition = response.headers.get("Content-Disposition", "")
-            match = re.search(r'filename="?([^"]+)"?', content_disposition)
-            if match:
-                filename = match.group(1)
-            if not filename:
-                filename = os.path.basename(response.url)
-            version = self.extract_version_from_filename(filename)
-            if version:
-                return version, None
-            return None, f"Unable to parse version from {filename}"
-        except Exception as e:
-            return None, str(e)
-        finally:
-            if response is not None:
+        urls = [self.get_download_url()]
+        fallback_url = self.get_fallback_download_url()
+        if fallback_url and fallback_url not in urls:
+            urls.append(fallback_url)
+
+        errors = []
+        for url in urls:
+            for attempt in range(1, 3):
+                response = None
                 try:
-                    response.close()
-                except Exception:
-                    pass
+                    response = requests.head(url, allow_redirects=True, timeout=10)
+                    if response.status_code >= 400:
+                        response = requests.get(
+                            url, stream=True, allow_redirects=True, timeout=15
+                        )
+                    if response.status_code >= 400:
+                        raise RuntimeError(
+                            f"HTTP {response.status_code} for {url}"
+                        )
+                    filename = None
+                    content_disposition = response.headers.get(
+                        "Content-Disposition", ""
+                    )
+                    match = re.search(r'filename="?([^"]+)"?', content_disposition)
+                    if match:
+                        filename = match.group(1)
+                    if not filename:
+                        filename = os.path.basename(response.url)
+                    version = self.extract_version_from_filename(filename)
+                    if version:
+                        return version, None
+                    errors.append(f"Unable to parse version from {filename}")
+                except Exception as e:
+                    errors.append(str(e))
+                finally:
+                    if response is not None:
+                        try:
+                            response.close()
+                        except Exception:
+                            pass
+                if attempt < 2:
+                    time.sleep(2**attempt)
+
+        if errors:
+            return None, " | ".join(errors)
+        return None, "Failed to determine latest version."
