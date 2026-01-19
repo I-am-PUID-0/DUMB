@@ -322,8 +322,15 @@ def plex_dbrepair_worker():
 
         interval_minutes = float(db_cfg.get("interval_minutes", 1440))
         if first_run:
-            if db_cfg.get("run_before_start"):
-                next_run = time.monotonic() + interval_minutes * 60
+            # Always defer the first scheduled run by the configured interval.
+            # Pre-start runs are handled separately in setup.
+            next_run = time.monotonic() + interval_minutes * 60
+            next_run_wall = time.time() + interval_minutes * 60
+            logger.info(
+                "DBRepair scheduled to run after %.1f minutes (next run at %s).",
+                interval_minutes,
+                time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(next_run_wall)),
+            )
             first_run = False
         now = time.monotonic()
         if now < next_run:
