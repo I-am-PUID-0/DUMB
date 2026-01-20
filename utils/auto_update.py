@@ -12,6 +12,9 @@ import threading, time, os, schedule, requests, subprocess
 class Update:
     _scheduler_initialized = False
     _jobs = {}
+    _schedule_thread_started = False
+    _schedule_thread_count = 0
+    _schedule_thread_lock = threading.Lock()
 
     def __init__(self, process_handler):
         self.process_handler = process_handler
@@ -39,9 +42,42 @@ class Update:
                 f"Scheduled automatic update check for {process_name}, w/ key: {key}, and job ID: {id(self.scheduler.jobs[-1])}"
             )
 
-        while not self.process_handler.shutting_down:
-            self.scheduler.run_pending()
-            time.sleep(1)
+        with Update._schedule_thread_lock:
+            if Update._schedule_thread_started:
+                self.logger.debug(
+                    "Scheduler loop already active; skipping duplicate for %s. Active loops: %d, jobs: %d, thread: %s",
+                    process_name,
+                    Update._schedule_thread_count,
+                    len(self.scheduler.jobs),
+                    threading.current_thread().name,
+                )
+                return
+            Update._schedule_thread_started = True
+            Update._schedule_thread_count += 1
+            self.logger.debug(
+                "Scheduler loop started for %s. Active loops: %d, jobs: %d, thread: %s",
+                process_name,
+                Update._schedule_thread_count,
+                len(self.scheduler.jobs),
+                threading.current_thread().name,
+            )
+
+        try:
+            while not self.process_handler.shutting_down:
+                self.scheduler.run_pending()
+                time.sleep(1)
+        finally:
+            with Update._schedule_thread_lock:
+                Update._schedule_thread_started = False
+                if Update._schedule_thread_count > 0:
+                    Update._schedule_thread_count -= 1
+                self.logger.debug(
+                    "Scheduler loop stopped for %s. Active loops: %d, jobs: %d, thread: %s",
+                    process_name,
+                    Update._schedule_thread_count,
+                    len(self.scheduler.jobs),
+                    threading.current_thread().name,
+                )
 
     def auto_update_interval(self, process_name, config):
         default_interval = 24
@@ -60,6 +96,18 @@ class Update:
         config = CONFIG_MANAGER.get_instance(instance_name, key)
         if not config:
             return None, f"Configuration for {process_name} not found."
+
+        if (
+            config.get("pinned_version")
+            or config.get("release_version_enabled")
+            or config.get("branch_enabled")
+        ):
+            if not self._release_is_nightly_or_prerelease(config):
+                enable_update = False
+                self.logger.info(
+                    "Automatic updates disabled for %s due to pinned, release, or branch configuration.",
+                    process_name,
+                )
 
         if key in ["bazarr"]:
             enable_update = False
@@ -142,6 +190,12 @@ class Update:
                 return None, error
 
             return self.start_process(process_name, config, key, instance_name)
+
+    def _release_is_nightly_or_prerelease(self, config):
+        if not config.get("release_version_enabled"):
+            return False
+        release_value = (config.get("release_version") or "").lower()
+        return "nightly" in release_value or "prerelease" in release_value
 
     def initial_update_check(self, process_name, config, key, instance_name):
         with self.updating:

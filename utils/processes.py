@@ -591,7 +591,7 @@ class ProcessHandler:
                             policy_name = info.get("name", process_name)
                             break
                 policy = self._get_shutdown_policy(policy_name)
-                max_attempts = policy.get("max_attempts", 3)
+                max_attempts = policy.get("max_attempts", 2)
                 wait_timeout = policy.get("wait_timeout", 10)
                 self.logger.debug(f"Process {process_name} found: {process}")
                 if disable_restart:
@@ -716,6 +716,60 @@ class ProcessHandler:
             policy.update(max_attempts=4, wait_timeout=12)
         return policy
 
+    def _log_postgres_connections(self):
+        try:
+            cfg = CONFIG_MANAGER.get("postgres", {})
+            if not isinstance(cfg, dict) or not cfg.get("enabled", False):
+                return
+            host = cfg.get("host", "127.0.0.1")
+            port = cfg.get("port", 5432)
+            user = cfg.get("user", "postgres")
+            password = cfg.get("password", "")
+            cmd = [
+                "psql",
+                f"-h{host}",
+                f"-p{port}",
+                "-U",
+                user,
+                "-d",
+                "postgres",
+                "-At",
+                "-c",
+                "SELECT pid,usename,datname,client_addr,state,application_name,"
+                "backend_type,state_change "
+                "FROM pg_stat_activity WHERE pid <> pg_backend_pid();",
+            ]
+            env = os.environ.copy()
+            if password:
+                env["PGPASSWORD"] = str(password)
+            result = subprocess.run(
+                cmd, env=env, capture_output=True, text=True, timeout=10
+            )
+            if result.returncode != 0:
+                err = (result.stderr or result.stdout or "").strip()
+                self.logger.warning(
+                    "Failed to query PostgreSQL connections: %s", err or "unknown error"
+                )
+                return
+            rows = [line.strip() for line in result.stdout.splitlines() if line.strip()]
+            if rows:
+                self.logger.warning(
+                    "Active PostgreSQL connections during shutdown:\n%s",
+                    "\n".join(rows),
+                )
+            else:
+                self.logger.info(
+                    "No active PostgreSQL connections detected at shutdown."
+                )
+        except FileNotFoundError:
+            self.logger.warning("psql not found; skipping PostgreSQL connection check.")
+        except subprocess.TimeoutExpired:
+            self.logger.warning(
+                "Timed out querying PostgreSQL connections during shutdown."
+            )
+        except Exception as e:
+            self.logger.warning("Failed to query PostgreSQL connections: %s", e)
+
     def shutdown(self, signum=None, frame=None, exit_code=0):
         self.shutting_down = True
         self.logger.info("Shutdown signal received. Cleaning up...")
@@ -784,6 +838,45 @@ class ProcessHandler:
                         self.logger.error("Error stopping %s: %s", name, e)
 
         for tier_name, keys in tiers:
+            if tier_name == "db":
+                for key in keys:
+                    tier_names = by_key.get(key, [])
+                    if tier_names:
+                        self.logger.info(
+                            "Stopping %s tier (%s): %s",
+                            tier_name,
+                            key,
+                            ", ".join(tier_names),
+                        )
+                    for name in tier_names:
+                        if key == "postgres":
+                            pgagent_names = self._get_internal_names_for("pgAgent")
+                            if pgagent_names:
+                                self.logger.info(
+                                    "Stopping db helper before PostgreSQL: %s",
+                                    ", ".join(pgagent_names),
+                                )
+                                for pgagent_name in pgagent_names:
+                                    try:
+                                        self.stop_process(pgagent_name)
+                                        self.logger.info(
+                                            "%s has been stopped successfully.",
+                                            pgagent_name,
+                                        )
+                                    except Exception as e:
+                                        self.logger.error(
+                                            "Error stopping %s: %s",
+                                            pgagent_name,
+                                            e,
+                                        )
+                            self._log_postgres_connections()
+                        try:
+                            self.stop_process(name)
+                            self.logger.info("%s has been stopped successfully.", name)
+                        except Exception as e:
+                            self.logger.error("Error stopping %s: %s", name, e)
+                continue
+
             tier_names = []
             for key in keys:
                 tier_names.extend(by_key.get(key, []))

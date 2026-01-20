@@ -472,20 +472,24 @@ def _setup_project(
                 else:
                     config.pop("release_version", None)
 
+            requested_version = config.get("release_version")
+            requested_lower = (requested_version or "").lower()
+            allow_release_with_auto_update = (
+                requested_lower in {"latest", "prerelease"}
+                or "nightly" in requested_lower
+            )
             if (
                 not bootstrap_installed
                 and config.get("release_version_enabled")
-                and not config.get("auto_update")
+                and (not config.get("auto_update") or allow_release_with_auto_update)
             ):
                 repo_owner = config.get("repo_owner")
                 repo_name = config.get("repo_name")
-                requested_version = config.get("release_version")
                 if not requested_version:
                     logger.warning(
                         f"Release version enabled for {process_name} but no version provided."
                     )
                 else:
-                    requested_lower = requested_version.lower()
                     is_latest = requested_lower == "latest"
                     nightly = "nightly" in requested_lower
                     prerelease = requested_lower == "prerelease"
@@ -1211,6 +1215,56 @@ def setup_decypharr(install_only: bool = False, configure_only: bool = False):
     logger.info("Starting Decypharr setup...")
 
     try:
+        def _collect_decypharr_mounts(config_path: str) -> list[str]:
+            if not config_path or not os.path.exists(config_path):
+                return []
+            try:
+                import json
+
+                with open(config_path, "r") as handle:
+                    data = json.load(handle)
+            except Exception as e:
+                logger.debug("Failed to read Decypharr config for mounts: %s", e)
+                return []
+
+            rclone_cfg = data.get("rclone") or {}
+            mount_base = rclone_cfg.get("mount_path") or "/mnt/debrid/decypharr"
+            if not isinstance(mount_base, str) or not mount_base.strip():
+                mount_base = "/mnt/debrid/decypharr"
+
+            mounts = set()
+            for debrid in data.get("debrids") or []:
+                if not isinstance(debrid, dict):
+                    continue
+                name = debrid.get("name")
+                if not name:
+                    continue
+                mounts.add(os.path.join(mount_base, str(name)))
+            return sorted(mounts)
+
+        def _unmount_decypharr_mounts(config_path: str) -> tuple[bool, str | None]:
+            mount_paths = _collect_decypharr_mounts(config_path)
+            if not mount_paths:
+                return True, None
+            for mount_path in mount_paths:
+                if not is_mount_point(mount_path):
+                    continue
+                logger.info(
+                    "Unmounting Decypharr rclone mount at %s before startup...",
+                    mount_path,
+                )
+                umount = subprocess.run(
+                    ["umount", mount_path], capture_output=True, text=True
+                )
+                if umount.returncode == 0:
+                    logger.info("Successfully unmounted %s.", mount_path)
+                else:
+                    error_msg = umount.stderr.strip() or "unknown error"
+                    logger.error(
+                        "Failed to unmount %s: %s", mount_path, error_msg
+                    )
+            return True, None
+
         if install_only and configure_only:
             return False, "Invalid Decypharr setup phase."
         decypharr_config_dir = config.get("config_dir")
@@ -1224,6 +1278,9 @@ def setup_decypharr(install_only: bool = False, configure_only: bool = False):
             )
             os.makedirs(decypharr_config_dir, exist_ok=True)
         chown_single(decypharr_config_dir, user_id, group_id)
+
+        if decypharr_embedded_rclone and decypharr_config_file:
+            _unmount_decypharr_mounts(decypharr_config_file)
 
         if not configure_only and not os.path.isfile(binary_path):
             logger.warning(

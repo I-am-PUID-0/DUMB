@@ -409,7 +409,7 @@
                 ],
                 "config_dir": "/huntarr/default",
                 "config_file": "/huntarr/default/config/huntarr.db",
-                "log_file": "/huntarr/default/logs/huntarr.log",
+                "log_file": "/huntarr/default/config/logs/huntarr.log",
                 "env": {
                     "HUNTARR_CONFIG_DIR": "/huntarr/default/config",
                     "HUNTARR_PORT": "{port}"
