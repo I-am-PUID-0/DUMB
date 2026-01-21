@@ -306,6 +306,12 @@ def additional_setup(process_handler, process_name, config, key):
         if not success:
             return False, error
 
+    if key == "cli_debrid":
+        utilities_dir = os.path.join(config["config_dir"], "utilities")
+        success, error = chown_recursive(utilities_dir, user_id, group_id)
+        if not success:
+            return False, error
+
     if key == "decypharr" and config.get("branch_enabled"):
         success, error = build_decypharr_dev(process_handler, config)
         if not success:
@@ -834,6 +840,15 @@ def _setup_project(
             )
             if not success:
                 return False, error
+
+        if key == "cli_debrid":
+            utilities_dir = os.path.join(
+                config.get("config_dir", "/cli_debrid"), "utilities"
+            )
+            if os.path.isdir(utilities_dir):
+                success, error = chown_recursive(utilities_dir, user_id, group_id)
+                if not success:
+                    return False, error
 
         if key == "bazarr":
             success, error = setup_bazarr(

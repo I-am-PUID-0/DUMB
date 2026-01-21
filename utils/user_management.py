@@ -259,6 +259,7 @@ def create_system_user(username="DUMB"):
         zilean_dir = "/zilean/app/data"
         plex_debrid_dir = "/plex_debrid/config"
         cli_debrid_dir = "/cli_debrid/data"
+        cli_debrid_utilities_dir = "/cli_debrid/utilities"
 
         rclone_instances = config.get("rclone", {}).get("instances", {})
 
@@ -271,6 +272,7 @@ def create_system_user(username="DUMB"):
         chown_recursive(zilean_dir, user_id, group_id)
         chown_recursive(plex_debrid_dir, user_id, group_id)
         chown_recursive(cli_debrid_dir, user_id, group_id)
+        chown_recursive(cli_debrid_utilities_dir, user_id, group_id)
 
         for instance_name, instance_config in rclone_instances.items():
             if instance_config.get("enabled", False):
