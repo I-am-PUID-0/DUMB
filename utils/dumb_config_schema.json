@@ -152,6 +152,45 @@
             "services"
           ]
         },
+        "ffprobe_monitor": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "interval_sec": {
+              "type": "number"
+            },
+            "min_process_age_sec": {
+              "type": "number"
+            },
+            "min_poke_interval_sec": {
+              "type": "number"
+            },
+            "poke_timeout_sec": {
+              "type": "number"
+            },
+            "max_pokes_per_cycle": {
+              "type": "integer"
+            },
+            "cache_ttl_sec": {
+              "type": "number"
+            },
+            "ffprobe_path": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "enabled",
+            "interval_sec",
+            "min_process_age_sec",
+            "min_poke_interval_sec",
+            "poke_timeout_sec",
+            "max_pokes_per_cycle",
+            "cache_ttl_sec",
+            "ffprobe_path"
+          ]
+        },
         "api_service": {
           "type": "object",
           "properties": {
@@ -339,6 +378,7 @@
         "github_username",
         "onboarding_completed",
         "auto_restart",
+        "ffprobe_monitor",
         "api_service",
         "frontend",
         "metrics"

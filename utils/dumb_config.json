@@ -38,6 +38,16 @@
             "grace_period_seconds": 30,
             "services": []
         },
+        "ffprobe_monitor": {
+            "enabled": true,
+            "interval_sec": 10,
+            "min_process_age_sec": 30,
+            "min_poke_interval_sec": 60,
+            "poke_timeout_sec": 30,
+            "max_pokes_per_cycle": 3,
+            "cache_ttl_sec": 3600,
+            "ffprobe_path": "ffprobe"
+        },
         "api_service": {
             "enabled": true,
             "process_name": "DUMB API",

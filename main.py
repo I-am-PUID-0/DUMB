@@ -8,6 +8,7 @@ from utils.processes import ProcessHandler
 from utils.auto_update import Update
 from utils.dependencies import initialize_dependencies
 from utils.plex_dbrepair import start_plex_dbrepair_worker
+from utils.ffprobe_monitor import start_ffprobe_monitor
 from utils.setup import setup_project
 from concurrent.futures import ThreadPoolExecutor, wait, FIRST_COMPLETED, as_completed
 import subprocess, threading, time, tomllib, os, socket, errno, psutil, json, urllib.parse
@@ -836,6 +837,8 @@ def main():
     except Exception as e:
         logger.error(e)
         process_handler.shutdown(exit_code=1)
+
+    start_ffprobe_monitor(process_handler, logger)
 
     def healthcheck():
         time.sleep(60)
