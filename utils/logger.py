@@ -5,23 +5,28 @@ from colorlog import ColoredFormatter
 
 
 class SubprocessLogger:
-    def __init__(self, logger, key_type, file_logger=None, access_logger=None):
+    def __init__(
+        self, logger, key_type, file_logger=None, access_logger=None, log_to_main=True
+    ):
         self.logger = logger
         self.file_logger = file_logger
         self.access_logger = access_logger
+        self.log_to_main = log_to_main
         self.stdout_thread = None
         self.stderr_thread = None
         self.stop_event = threading.Event()
         self.key_type = key_type
-        self.log_methods = {
-            "DEBUG": logger.debug,
-            "INFO": logger.info,
-            "NOTICE": logger.debug,
-            "WARNING": logger.warning,
-            "ERROR": logger.error,
-            "CRITICAL": logger.critical,
-            "UNKNOWN": logger.info,
-        }
+        self.log_methods = {}
+        if self.log_to_main:
+            self.log_methods = {
+                "DEBUG": logger.debug,
+                "INFO": logger.info,
+                "NOTICE": logger.debug,
+                "WARNING": logger.warning,
+                "ERROR": logger.error,
+                "CRITICAL": logger.critical,
+                "UNKNOWN": logger.info,
+            }
         self.file_log_methods = None
         if self.file_logger:
             self.file_log_methods = {
@@ -152,12 +157,13 @@ class SubprocessLogger:
                 log_level, message = SubprocessLogger.parse_log_level_and_message(
                     line, process_name
                 )
-                log_func = self.log_methods.get(log_level, self.logger.info)
                 if process_name == "rclone":
                     formatted = f'rclone mount name "{mount_name}": {message}'
                 else:
                     formatted = f"{process_name} subprocess: {message}"
-                log_func(formatted)
+                if self.log_to_main:
+                    log_func = self.log_methods.get(log_level, self.logger.info)
+                    log_func(formatted)
                 if self.file_log_methods:
                     file_log_func = self.file_log_methods.get(
                         log_level, self.file_logger.info
@@ -189,18 +195,23 @@ class SubprocessLogger:
                     log_level, message = SubprocessLogger.parse_log_level_and_message(
                         line, self.key_type
                     )
-                    log_func = self.log_methods.get(log_level, self.logger.info)
                     formatted = f"{self.key_type} subprocess: {message}"
-                    log_func(formatted)
+                    if self.log_to_main:
+                        log_func = self.log_methods.get(log_level, self.logger.info)
+                        log_func(formatted)
                     if self.file_log_methods:
                         file_log_func = self.file_log_methods.get(
                             log_level, self.file_logger.info
                         )
                         file_log_func(formatted)
         except ValueError as e:
-            self.logger.error(
+            error_message = (
                 f"Error reading subprocess output for {self.key_type}: {e}"
             )
+            if self.log_to_main:
+                self.logger.error(error_message)
+            elif self.file_logger:
+                self.file_logger.error(error_message)
 
     def start_logging_stdout(self, process):
         self.stdout_thread = threading.Thread(

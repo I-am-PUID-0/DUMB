@@ -610,6 +610,7 @@
         ],
         "config_dir": "/riven/backend",
         "config_file": "/riven/backend/data/settings.json",
+        "log_file": "/log/riven_backend.log",
         "env": {},
         "wait_for_dir": ""
     },
@@ -639,6 +640,7 @@
             "build"
         ],
         "config_dir": "/riven/frontend",
+        "log_file": "/log/riven_frontend.log",
         "env": {}
     },
     "radarr": {

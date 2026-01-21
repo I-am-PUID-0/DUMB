@@ -386,17 +386,21 @@ class ProcessHandler:
 
             skip_preexec = process_name in process_static_list
 
-            stdout_target = subprocess.DEVNULL if suppress_logging else subprocess.PIPE
-            stderr_target = subprocess.DEVNULL if suppress_logging else subprocess.PIPE
+            enable_subprocess_logging = not suppress_logging
+            stdout_target = subprocess.PIPE
+            stderr_target = subprocess.PIPE
 
             subprocess_file_logger = None
             subprocess_access_logger = None
-            if not suppress_logging and key in {
+            log_to_main = True
+            if key in {
                 "nzbdav",
                 "zilean",
                 "rclone",
                 "traefik",
                 "dumb_frontend",
+                "riven_backend",
+                "riven_frontend",
                 "phalanx_db",
                 "postgres",
             }:
@@ -407,6 +411,9 @@ class ProcessHandler:
                         log_level=config.get("log_level", "INFO"),
                         log_name=f"{process_name}-subprocess",
                     )
+                    if suppress_logging:
+                        enable_subprocess_logging = True
+                        log_to_main = False
                 if key == "traefik":
                     access_log_file = config.get("access_log_file")
                     if access_log_file:
@@ -414,7 +421,10 @@ class ProcessHandler:
                             access_log_file,
                             log_name=f"{process_name}-access",
                         )
-                if key == "rclone" and isinstance(command, list):
+                        if suppress_logging:
+                            enable_subprocess_logging = True
+                            log_to_main = False
+                if subprocess_file_logger and key == "rclone" and isinstance(command, list):
                     filtered_command = []
                     skip_next = False
                     for part in command:
@@ -428,6 +438,9 @@ class ProcessHandler:
                             continue
                         filtered_command.append(part)
                     command = filtered_command
+            if not enable_subprocess_logging:
+                stdout_target = subprocess.DEVNULL
+                stderr_target = subprocess.DEVNULL
 
             process = subprocess.Popen(
                 command,
@@ -441,12 +454,13 @@ class ProcessHandler:
                 env=process_env,
             )
 
-            if not suppress_logging:
+            if enable_subprocess_logging:
                 subprocess_logger = SubprocessLogger(
                     self.logger,
                     f"{process_description}",
                     file_logger=subprocess_file_logger,
                     access_logger=subprocess_access_logger,
+                    log_to_main=log_to_main,
                 )
                 subprocess_logger.start_logging_stdout(process)
                 subprocess_logger.start_monitoring_stderr(
@@ -713,7 +727,7 @@ class ProcessHandler:
         elif key in ("rclone", "decypharr", "nzbdav", "zurg"):
             policy.update(max_attempts=4, wait_timeout=12)
         elif key in ("cli_debrid",):
-            policy.update(max_attempts=4, wait_timeout=12)
+            policy.update(max_attempts=2, wait_timeout=10)
         return policy
 
     def _log_postgres_connections(self):
