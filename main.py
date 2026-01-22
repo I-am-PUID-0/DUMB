@@ -252,14 +252,23 @@ def start_configured_process(config_obj, updater, key_name, exit_on_error=True):
                 if instance.get("enabled"):
                     process_name = instance.get("process_name", name)
                     auto = instance.get("auto_update", False)
-                    updater.auto_update(process_name, auto)
+                    success, error = updater.auto_update(process_name, auto)
+                    if not success and error:
+                        logger.error(
+                            "Startup for %s failed (instance %s): %s",
+                            process_name,
+                            name,
+                            error,
+                        )
                     any_enabled = True
             if not any_enabled:
                 logger.debug(f"No enabled instances found in {key_name}. Skipping.")
         elif config_obj.get("enabled"):
             process_name = config_obj.get("process_name", key_name)
             auto = config_obj.get("auto_update", False)
-            updater.auto_update(process_name, auto)
+            success, error = updater.auto_update(process_name, auto)
+            if not success and error:
+                logger.error("Startup for %s failed: %s", process_name, error)
         else:
             logger.debug(f"{key_name} is disabled. Skipping process start.")
     except Exception as e:

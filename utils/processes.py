@@ -468,9 +468,9 @@ class ProcessHandler:
                 )
                 self.subprocess_loggers[internal_name] = subprocess_logger
 
-            # success, error = self._check_immediate_exit_and_log(process, process_name)
-            # if not success:
-            #    return False, error
+            success, error = self._check_immediate_exit_and_log(process, process_name)
+            if not success:
+                return False, error
 
             self.logger.info(f"{process_name} process started with PID: {process.pid}")
 
@@ -500,20 +500,38 @@ class ProcessHandler:
         except Exception as e:
             return False, f"Error running subprocess for {process_name}: {e}"
 
-    def _check_immediate_exit_and_log(self, process, process_name):
-        time.sleep(0.5)
-        if process.poll() is not None:
-            stdout_output = process.stdout.read().strip()
-            stderr_output = process.stderr.read().strip()
+    def _check_immediate_exit_and_log(
+        self,
+        process,
+        process_name,
+        timeout_seconds: float = 2.0,
+        interval_seconds: float = 0.2,
+    ):
+        deadline = time.time() + timeout_seconds
+        while time.time() < deadline:
+            if process.poll() is not None:
+                stdout_output = ""
+                stderr_output = ""
+                if process.stdout:
+                    try:
+                        stdout_output = process.stdout.read().strip()
+                    except Exception:
+                        stdout_output = ""
+                if process.stderr:
+                    try:
+                        stderr_output = process.stderr.read().strip()
+                    except Exception:
+                        stderr_output = ""
 
-            self.logger.error(
-                f"{process_name} exited immediately with return code {process.returncode}"
-            )
-            if stdout_output:
-                self.logger.error(f"{process_name} stdout:\n{stdout_output}")
-            if stderr_output:
-                self.logger.error(f"{process_name} stderr:\n{stderr_output}")
-            return False, f"{process_name} failed to start. See logs for details."
+                self.logger.error(
+                    f"{process_name} exited shortly after start with return code {process.returncode}"
+                )
+                if stdout_output:
+                    self.logger.error(f"{process_name} stdout:\n{stdout_output}")
+                if stderr_output:
+                    self.logger.error(f"{process_name} stderr:\n{stderr_output}")
+                return False, f"{process_name} failed to stay running."
+            time.sleep(interval_seconds)
 
         return True, None
 
