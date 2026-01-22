@@ -3831,8 +3831,9 @@ def rclone_setup():
                     "--cache-dir": cache_dir,
                     "--log-level": log_level,
                 }
+                default_flags = {}
                 if instance.get("key_type", "").lower() == "nzbdav":
-                    required_flags.update(
+                    default_flags.update(
                         {
                             "--vfs-cache-mode": "full",
                             "--buffer-size": "1024M",
@@ -3889,6 +3890,9 @@ def rclone_setup():
                     i += 1
                 for key, value in required_flags.items():
                     parsed_flags[key] = value
+                for key, value in default_flags.items():
+                    if key not in parsed_flags:
+                        parsed_flags[key] = value
 
                 final_cmd = base_cmd
                 for key, value in parsed_flags.items():
