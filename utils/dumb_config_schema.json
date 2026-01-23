@@ -951,7 +951,17 @@
                   "type": "boolean"
                 },
                 "core_service": {
-                  "type": "string"
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  ]
                 },
                 "use_huntarr": {
                   "type": "boolean"
@@ -1381,7 +1391,17 @@
                   "type": "boolean"
                 },
                 "core_service": {
-                  "type": "string"
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  ]
                 },
                 "process_name": {
                   "type": "string"
@@ -1498,7 +1518,17 @@
                   "type": "boolean"
                 },
                 "core_service": {
-                  "type": "string"
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  ]
                 },
                 "process_name": {
                   "type": "string"
@@ -1911,7 +1941,17 @@
                   "type": "boolean"
                 },
                 "core_service": {
-                  "type": "string"
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  ]
                 },
                 "use_huntarr": {
                   "type": "boolean"
@@ -1986,7 +2026,17 @@
                   "type": "boolean"
                 },
                 "core_service": {
-                  "type": "string"
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  ]
                 },
                 "process_name": {
                   "type": "string"
@@ -2309,7 +2359,17 @@
                   "type": "boolean"
                 },
                 "core_service": {
-                  "type": "string"
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  ]
                 },
                 "use_huntarr": {
                   "type": "boolean"
@@ -2384,7 +2444,17 @@
                   "type": "boolean"
                 },
                 "core_service": {
-                  "type": "string"
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  ]
                 },
                 "use_huntarr": {
                   "type": "boolean"
@@ -2623,7 +2693,17 @@
                   "type": "boolean"
                 },
                 "core_service": {
-                  "type": "string"
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  ]
                 },
                 "process_name": {
                   "type": "string"

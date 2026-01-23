@@ -1,5 +1,6 @@
 from utils.global_logger import logger
 from utils.config_loader import CONFIG_MANAGER
+from utils.core_services import get_core_services
 from utils.user_management import chown_recursive
 from typing import Optional, Tuple
 import xml.etree.ElementTree as ET
@@ -212,14 +213,14 @@ def _collect_arr_entries() -> list[dict]:
                     "Skipping %s instance %s: missing API key", svc_name, inst_key
                 )
                 continue
-            core_service = (inst.get("core_service") or "").strip().lower()
+            core_services = get_core_services(inst)
             entries.append(
                 {
                     "service": svc_name,
                     "instance": inst_key,
                     "host": host,
                     "api_key": token,
-                    "core_service": core_service,
+                    "core_services": core_services,
                 }
             )
     return entries
@@ -873,9 +874,10 @@ def patch_prowlarr_apps() -> Tuple[bool, Optional[str]]:
         )
         needed_tags = sorted(
             {
-                entry.get("core_service")
+                svc
                 for entry in arr_entries
-                if entry.get("core_service") in ("decypharr", "nzbdav")
+                for svc in entry.get("core_services") or []
+                if svc in ("decypharr", "nzbdav")
             }
         )
         if decypharr_enabled and "decypharr" not in needed_tags:
@@ -902,10 +904,10 @@ def patch_prowlarr_apps() -> Tuple[bool, Optional[str]]:
             app_name = ARR_APP_MAP.get(entry["service"], entry["service"].capitalize())
             arr_host = entry["host"]
             arr_key = entry["api_key"]
-            core_service = entry.get("core_service") or ""
+            core_services = entry.get("core_services") or []
             tag_ids = []
-            if core_service in tag_map:
-                tag_ids = [tag_map[core_service]]
+            if core_services:
+                tag_ids = [tag_map[svc] for svc in core_services if svc in tag_map]
             schema = _find_schema(schemas, app_name)
             if not schema:
                 logger.warning(

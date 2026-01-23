@@ -1,5 +1,6 @@
 from utils.global_logger import logger
 from utils.config_loader import CONFIG_MANAGER
+from utils.core_services import get_core_services, has_core_service
 from collections import OrderedDict
 import os, json, time
 import threading
@@ -71,7 +72,7 @@ def _parse_arr_api_key(config_xml_path: str) -> str:
 def _collect_arr_entries(decypharr_cfg: dict) -> list:
     """
     Build the arrs[] list from CONFIG_MANAGER instances of sonarr/radarr/lidarr
-    whose `core_service` == "decypharr". Host is always 127.0.0.1 and the
+    whose core_service list includes "decypharr". Host is always 127.0.0.1 and the
     port is taken from the instance config; token from the instance's config.xml.
     Includes per-instance labeling using instance_name.
     """
@@ -82,7 +83,7 @@ def _collect_arr_entries(decypharr_cfg: dict) -> list:
         for inst_key, inst in instances.items():
             if not inst.get("enabled"):
                 continue
-            if (inst.get("core_service") or "").lower() != "decypharr":
+            if not has_core_service(inst, "decypharr"):
                 continue
 
             # Port precedence: instance.port or instance.host_port
@@ -114,6 +115,25 @@ def _collect_arr_entries(decypharr_cfg: dict) -> list:
                 }
             )
     return entries
+
+
+def _instance_core_services(svc_name: str, instance_name: str) -> list[str]:
+    svc_cfg = CONFIG_MANAGER.get(svc_name) or {}
+    instances = (svc_cfg.get("instances") or {}) or {}
+    target = (instance_name or "").strip().lower()
+    if not target:
+        return []
+    for inst_key, inst in instances.items():
+        if not isinstance(inst, dict):
+            continue
+        candidates = [
+            inst_key,
+            inst.get("instance_name"),
+            inst.get("name"),
+        ]
+        if any((c or "").strip().lower() == target for c in candidates):
+            return get_core_services(inst)
+    return []
 
 
 # --- HTTP helpers for Arr ----------------------------------------------------
@@ -664,7 +684,7 @@ def patch_decypharr_config():
         debrid_instances = [
             inst
             for inst in rclone_instances.values()
-            if inst.get("enabled") and inst.get("core_service") == "decypharr"
+            if inst.get("enabled") and has_core_service(inst, "decypharr")
         ]
         usenet_instance = next(
             (
@@ -871,21 +891,45 @@ def patch_decypharr_config():
         except Exception as e:
             logger.warning(f"Failed to synchronize arrs: {e}")
 
-        # ---- Ensure Arr root folders (movies/shows symlinks) ----
+        # ---- Ensure Arr root folders (combined symlinks) ----
         root_paths = []
         try:
             arrs = desired_arrs or []
-            base_root = "/mnt/debrid/decypharr_symlinks"
             for entry in arrs:
                 name_label = (entry.get("name") or "")
                 svc, _, instance_name = name_label.partition(":")
                 svc = svc.strip().lower()
                 instance_name = instance_name.strip()
+                core_services = _instance_core_services(svc, instance_name)
+                use_combined = "decypharr" in core_services and "nzbdav" in core_services
+                base_root = (
+                    "/mnt/debrid/combined_symlinks"
+                    if use_combined
+                    else "/mnt/debrid/decypharr_symlinks"
+                )
+                logger.info(
+                    "Arr rootfolder base for %s:%s set to %s (combined=%s)",
+                    svc,
+                    instance_name or "default",
+                    base_root,
+                    use_combined,
+                )
                 instance_slug = _slugify_category(f"{svc}-{instance_name}") or _slugify_category(
                     svc
                 )
                 root_path = f"{base_root}/{instance_slug}"
                 root_paths.append(root_path)
+                try:
+                    if not os.path.exists(root_path):
+                        os.makedirs(root_path, exist_ok=True)
+                        logger.info(f"Created directory: {root_path}")
+                    if user_id is not None and group_id is not None:
+                        os.chown(root_path, int(user_id), int(group_id))
+                    os.chmod(root_path, 0o777)
+                except Exception as e:
+                    logger.warning(
+                        f"Failed to ensure rootfolder directory {root_path}: {e}"
+                    )
                 host = entry.get("host")
                 token = entry.get("token")
                 api_version = "v1" if svc == "lidarr" else "v3"

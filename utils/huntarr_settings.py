@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from utils.config_loader import CONFIG_MANAGER
+from utils.core_services import get_core_services
 from utils.global_logger import logger
 from utils.user_management import chown_single
 import copy
@@ -128,7 +129,7 @@ def _collect_arr_instances() -> Dict[str, list[dict[str, str]]]:
                     "name": inst_name,
                     "url": f"http://127.0.0.1:{port}",
                     "api_key": api_key,
-                    "core_service": (inst.get("core_service") or "").strip().lower(),
+                    "core_services": get_core_services(inst),
                 }
             )
     return result
@@ -161,7 +162,7 @@ def patch_huntarr_config() -> tuple[bool, str | None]:
     for inst_name, inst_cfg in instances.items():
         if not isinstance(inst_cfg, dict):
             continue
-        huntarr_core = (inst_cfg.get("core_service") or "").strip().lower()
+        huntarr_cores = get_core_services(inst_cfg)
         db_path = inst_cfg.get("config_file")
         if not db_path:
             config_dir = inst_cfg.get("config_dir") or "/huntarr/default"
@@ -173,11 +174,11 @@ def patch_huntarr_config() -> tuple[bool, str | None]:
         try:
             with sqlite3.connect(db_path) as conn:
                 for app_type, desired_instances in arr_instances.items():
-                    if huntarr_core:
+                    if huntarr_cores:
                         desired_instances = [
                             inst
                             for inst in desired_instances
-                            if inst.get("core_service") == huntarr_core
+                            if set(inst.get("core_services") or []) & set(huntarr_cores)
                         ]
                     if not desired_instances:
                         continue

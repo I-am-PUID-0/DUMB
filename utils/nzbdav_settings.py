@@ -1,5 +1,6 @@
 from utils.global_logger import logger
 from utils.config_loader import CONFIG_MANAGER
+from utils.core_services import get_core_services, has_core_service
 from utils import nzbdav_db
 from utils.user_management import chown_recursive, chown_single
 from typing import Optional, Tuple
@@ -56,7 +57,7 @@ def _collect_arr_entries() -> Tuple[list[dict], list[dict], list[dict], list[dic
         for inst_key, inst in instances.items():
             if not inst.get("enabled"):
                 continue
-            if (inst.get("core_service") or "").lower() != "nzbdav":
+            if not has_core_service(inst, "nzbdav"):
                 continue
             port = inst.get("port") or inst.get("host_port")
             try:
@@ -86,6 +87,25 @@ def _collect_arr_entries() -> Tuple[list[dict], list[dict], list[dict], list[dic
                 {"Host": host, "ApiKey": token, "Instance": inst_name, "Category": category}
             )
     return radarr_entries, sonarr_entries, lidarr_entries, whisparr_entries
+
+
+def _instance_core_services(svc_name: str, instance_name: str) -> list[str]:
+    svc_cfg = CONFIG_MANAGER.get(svc_name) or {}
+    instances = (svc_cfg.get("instances") or {}) or {}
+    target = (instance_name or "").strip().lower()
+    if not target:
+        return []
+    for inst_key, inst in instances.items():
+        if not isinstance(inst, dict):
+            continue
+        candidates = [
+            inst_key,
+            inst.get("instance_name"),
+            inst.get("name"),
+        ]
+        if any((c or "").strip().lower() == target for c in candidates):
+            return get_core_services(inst)
+    return []
 
 
 def _join(host: str, path: str) -> str:
@@ -304,6 +324,10 @@ def _ensure_symlink_roots(paths: list[str]) -> None:
             logger.debug("Failed stat for %s: %s", path, e)
             stat_info = None
         chown_single(path, user_id, group_id)
+        try:
+            os.chmod(path, 0o777)
+        except Exception as e:
+            logger.debug("Failed chmod for %s: %s", path, e)
         if (
             stat_info
             and stat_info.st_uid == user_id
@@ -588,19 +612,38 @@ def patch_nzbdav_config():
         logger.info("No Radarr/Sonarr/Lidarr/Whisparr instances configured for NzbDAV.")
         return False, None
 
-    symlink_root = "/mnt/debrid/nzbdav-symlinks"
     root_paths = []
-    for entry in (
-        radarr_entries + sonarr_entries + lidarr_entries + whisparr_entries
+    base_roots = set()
+    for svc_name, entries in (
+        ("radarr", radarr_entries),
+        ("sonarr", sonarr_entries),
+        ("lidarr", lidarr_entries),
+        ("whisparr", whisparr_entries),
     ):
-        category = (entry.get("Category") or "").strip().lower()
-        if not category:
-            continue
-        root_paths.append(os.path.join(symlink_root, category))
+        for entry in entries:
+            category = (entry.get("Category") or "").strip().lower()
+            if not category:
+                continue
+            core_services = _instance_core_services(svc_name, entry.get("Instance"))
+            use_combined = "decypharr" in core_services and "nzbdav" in core_services
+            symlink_root = (
+                "/mnt/debrid/combined_symlinks"
+                if use_combined
+                else "/mnt/debrid/nzbdav-symlinks"
+            )
+            logger.info(
+                "NzbDAV Arr rootfolder base for %s:%s set to %s (combined=%s)",
+                svc_name,
+                entry.get("Instance") or "default",
+                symlink_root,
+                use_combined,
+            )
+            base_roots.add(symlink_root)
+            root_paths.append(os.path.join(symlink_root, category))
     root_paths = sorted(set(root_paths))
     if root_paths:
         try:
-            _ensure_symlink_roots([symlink_root] + root_paths)
+            _ensure_symlink_roots(sorted(base_roots) + root_paths)
         except Exception as e:
             logger.warning("Failed to ensure NzbDAV symlink roots: %s", e)
 
@@ -681,11 +724,25 @@ def patch_nzbdav_config():
             host = entry.get("Host")
             api_key = entry.get("ApiKey")
             root_path = entry.get("Category")
-            root_path = (
-                os.path.join(symlink_root, root_path)
-                if root_path
-                else None
-            )
+            if root_path:
+                core_services = _instance_core_services("radarr", entry.get("Instance"))
+                use_combined = (
+                    "decypharr" in core_services and "nzbdav" in core_services
+                )
+                symlink_root = (
+                    "/mnt/debrid/combined_symlinks"
+                    if use_combined
+                    else "/mnt/debrid/nzbdav-symlinks"
+                )
+                logger.info(
+                    "NzbDAV Arr rootfolder base for radarr:%s set to %s (combined=%s)",
+                    entry.get("Instance") or "default",
+                    symlink_root,
+                    use_combined,
+                )
+                root_path = os.path.join(symlink_root, root_path)
+            else:
+                root_path = None
             if not (host and api_key):
                 continue
             api_version = "v3"
@@ -712,11 +769,25 @@ def patch_nzbdav_config():
             host = entry.get("Host")
             api_key = entry.get("ApiKey")
             root_path = entry.get("Category")
-            root_path = (
-                os.path.join(symlink_root, root_path)
-                if root_path
-                else None
-            )
+            if root_path:
+                core_services = _instance_core_services("sonarr", entry.get("Instance"))
+                use_combined = (
+                    "decypharr" in core_services and "nzbdav" in core_services
+                )
+                symlink_root = (
+                    "/mnt/debrid/combined_symlinks"
+                    if use_combined
+                    else "/mnt/debrid/nzbdav-symlinks"
+                )
+                logger.info(
+                    "NzbDAV Arr rootfolder base for sonarr:%s set to %s (combined=%s)",
+                    entry.get("Instance") or "default",
+                    symlink_root,
+                    use_combined,
+                )
+                root_path = os.path.join(symlink_root, root_path)
+            else:
+                root_path = None
             if not (host and api_key):
                 continue
             api_version = "v3"
@@ -743,11 +814,25 @@ def patch_nzbdav_config():
             host = entry.get("Host")
             api_key = entry.get("ApiKey")
             root_path = entry.get("Category")
-            root_path = (
-                os.path.join(symlink_root, root_path)
-                if root_path
-                else None
-            )
+            if root_path:
+                core_services = _instance_core_services("lidarr", entry.get("Instance"))
+                use_combined = (
+                    "decypharr" in core_services and "nzbdav" in core_services
+                )
+                symlink_root = (
+                    "/mnt/debrid/combined_symlinks"
+                    if use_combined
+                    else "/mnt/debrid/nzbdav-symlinks"
+                )
+                logger.info(
+                    "NzbDAV Arr rootfolder base for lidarr:%s set to %s (combined=%s)",
+                    entry.get("Instance") or "default",
+                    symlink_root,
+                    use_combined,
+                )
+                root_path = os.path.join(symlink_root, root_path)
+            else:
+                root_path = None
             if not (host and api_key):
                 continue
             api_version = "v1"
@@ -774,11 +859,27 @@ def patch_nzbdav_config():
             host = entry.get("Host")
             api_key = entry.get("ApiKey")
             root_path = entry.get("Category")
-            root_path = (
-                os.path.join(symlink_root, root_path)
-                if root_path
-                else None
-            )
+            if root_path:
+                core_services = _instance_core_services(
+                    "whisparr", entry.get("Instance")
+                )
+                use_combined = (
+                    "decypharr" in core_services and "nzbdav" in core_services
+                )
+                symlink_root = (
+                    "/mnt/debrid/combined_symlinks"
+                    if use_combined
+                    else "/mnt/debrid/nzbdav-symlinks"
+                )
+                logger.info(
+                    "NzbDAV Arr rootfolder base for whisparr:%s set to %s (combined=%s)",
+                    entry.get("Instance") or "default",
+                    symlink_root,
+                    use_combined,
+                )
+                root_path = os.path.join(symlink_root, root_path)
+            else:
+                root_path = None
             if not (host and api_key):
                 continue
             api_version = "v3"

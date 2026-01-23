@@ -11,6 +11,7 @@ from utils.dependencies import (
 )
 from utils.config_loader import CONFIG_MANAGER, find_service_config
 from utils.setup import setup_project
+from utils.core_services import has_core_service
 from utils.versions import Versions
 import json, copy, time, glob, re, socket, errno, psutil
 
@@ -364,7 +365,7 @@ SERVICE_OPTION_DESCRIPTIONS = {
     "origin": "CORS origin for the service",
     "use_embedded_rclone": "If true, uses the embedded rclone for Decypharr. (Recommended)",
     "use_huntarr": "If true, auto-configures Huntarr for this Arr instance.",
-    "core_service": "Specifies which core service this service applies to; e.g., decypharr, nzbdav, or none (blank).",
+    "core_service": "Specifies which core service(s) this service applies to; e.g., decypharr, nzbdav, or none (blank).",
     "webdav_password": "Password for accessing the NzbDAV WebDAV service. Leave blank to auto-generate.",
 }
 
@@ -1923,7 +1924,7 @@ async def get_core_services(
                     (
                         cfg
                         for cfg in instances.values()
-                        if cfg.get("core_service") == key
+                        if has_core_service(cfg, key)
                     ),
                     None,
                 ) or next(iter(instances.values()), None)

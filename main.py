@@ -7,6 +7,7 @@ from utils.metrics_history import MetricsHistoryWriter
 from utils.processes import ProcessHandler
 from utils.auto_update import Update
 from utils.dependencies import initialize_dependencies
+from utils.core_services import has_core_service
 from utils.plex_dbrepair import start_plex_dbrepair_worker
 from utils.ffprobe_monitor import start_ffprobe_monitor
 from utils.setup import setup_project
@@ -661,7 +662,7 @@ def _build_dependency_map(config_manager) -> dict[str, set[str]]:
         if instance.get("decypharr_enabled"):
             rclone_deps.add("decypharr")
         key_type = (instance.get("key_type") or "").lower()
-        if key_type == "nzbdav" or instance.get("core_service") == "nzbdav":
+        if key_type == "nzbdav" or has_core_service(instance, "nzbdav"):
             rclone_deps.add("nzbdav")
     if rclone_deps:
         deps["rclone"] = rclone_deps

@@ -1,5 +1,6 @@
 from utils.global_logger import logger
 from utils.config_loader import CONFIG_MANAGER
+from utils.core_services import has_core_service
 from json import load, dump, JSONDecodeError
 import os, time, re, requests
 
@@ -35,7 +36,7 @@ def parse_config_keys(config):
 
     enabled_rclone_instances = []
     for instance_name, instance in rclone_instances.items():
-        if instance.get("core_service") != "riven_backend":
+        if not has_core_service(instance, "riven_backend"):
             continue
         if not instance.get("enabled", False):
             continue
@@ -50,7 +51,7 @@ def parse_config_keys(config):
                 (
                     z
                     for z in zurg_instances.values()
-                    if z.get("core_service") == "riven_backend" and z.get("enabled")
+                    if has_core_service(z, "riven_backend") and z.get("enabled")
                 ),
                 None,
             )
