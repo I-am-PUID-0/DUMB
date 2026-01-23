@@ -365,7 +365,7 @@ SERVICE_OPTION_DESCRIPTIONS = {
     "origin": "CORS origin for the service",
     "use_embedded_rclone": "If true, uses the embedded rclone for Decypharr. (Recommended)",
     "use_huntarr": "If true, auto-configures Huntarr for this Arr instance.",
-    "core_service": "Specifies which core service(s) this service applies to; e.g., decypharr, nzbdav, or none (blank).",
+    "core_service": "Specifies which core service(s) this service applies to; e.g., decypharr, nzbdav, both (decypharr,nzbdav), or none (blank).",
     "webdav_password": "Password for accessing the NzbDAV WebDAV service. Leave blank to auto-generate.",
 }
 
@@ -1921,11 +1921,7 @@ async def get_core_services(
             if dep in ("zurg", "rclone"):
                 instances = default_conf.get(dep, {}).get("instances", {})
                 inst_cfg = next(
-                    (
-                        cfg
-                        for cfg in instances.values()
-                        if has_core_service(cfg, key)
-                    ),
+                    (cfg for cfg in instances.values() if has_core_service(cfg, key)),
                     None,
                 ) or next(iter(instances.values()), None)
                 if inst_cfg:
