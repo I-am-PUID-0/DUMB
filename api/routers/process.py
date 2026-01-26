@@ -89,6 +89,7 @@ SPONSORSHIP_URLS_BY_KEY = {
     "seerr": "https://opencollective.com/seerr",
     "traefik": "https://github.com/sponsors/traefik",
     "huntarr": "https://plexguide.github.io/Huntarr.io/donate.html",
+    "zilean": "https://ko-fi.com/W7W616IBNG",
 }
 
 DEFAULT_SERVICE_PORTS = {

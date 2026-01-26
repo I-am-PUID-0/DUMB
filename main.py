@@ -8,6 +8,7 @@ from utils.processes import ProcessHandler
 from utils.auto_update import Update
 from utils.dependencies import initialize_dependencies
 from utils.core_services import has_core_service
+from utils.core_services import get_core_services
 from utils.plex_dbrepair import start_plex_dbrepair_worker
 from utils.ffprobe_monitor import start_ffprobe_monitor
 from utils.setup import setup_project
@@ -519,7 +520,7 @@ def _build_plex_wait_entries(config_manager) -> list[dict]:
                 base_url = f"{parsed.scheme}://{host}"
     if not base_url:
         base_url = f"http://127.0.0.1:{plex_port}"
-    return [{"url": f"{base_url}/identity"}]
+    return [{"url": f"{base_url}/identity", "core_service": "plex"}]
 
 
 def _build_media_wait_entries(config_manager) -> list[dict]:
@@ -533,7 +534,9 @@ def _build_media_wait_entries(config_manager) -> list[dict]:
         port = cfg.get("port")
         if not port:
             continue
-        wait_entries.append({"url": f"http://127.0.0.1:{port}/System/Info/Public"})
+        wait_entries.append(
+            {"url": f"http://127.0.0.1:{port}/System/Info/Public", "core_service": key}
+        )
     return wait_entries
 
 
@@ -543,12 +546,31 @@ def _apply_waits_to_service(config_manager, key: str, wait_entries: list[dict]) 
     cfg = config_manager.get(key, {})
     if not isinstance(cfg, dict):
         return
+    core_key = key.strip().lower()
     if "instances" in cfg and isinstance(cfg["instances"], dict):
         for inst in cfg["instances"].values():
             if isinstance(inst, dict) and inst.get("enabled"):
-                _set_wait_for_urls(inst, wait_entries)
+                inst_entries = wait_entries
+                if core_key == "seerr":
+                    core_services = get_core_services(inst)
+                    if core_services:
+                        inst_entries = [
+                            entry
+                            for entry in wait_entries
+                            if entry.get("core_service") in core_services
+                        ]
+                _set_wait_for_urls(inst, inst_entries)
     elif cfg.get("enabled"):
-        _set_wait_for_urls(cfg, wait_entries)
+        inst_entries = wait_entries
+        if core_key == "seerr":
+            core_services = get_core_services(cfg)
+            if core_services:
+                inst_entries = [
+                    entry
+                    for entry in wait_entries
+                    if entry.get("core_service") in core_services
+                ]
+        _set_wait_for_urls(cfg, inst_entries)
 
 
 def _collect_preinstall_targets(config_manager) -> list[tuple[str, str]]:
