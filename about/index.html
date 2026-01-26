@@ -4334,25 +4334,32 @@
   <h1>About</h1>
 
 <h2 id="about-dumb-debrid-unlimited-media-bridge">About DUMB (Debrid Unlimited Media Bridge)<a class="headerlink" href="#about-dumb-debrid-unlimited-media-bridge" title="Permanent link">&para;</a></h2>
-<p><strong>Debrid Unlimited Media Bridge (DUMB)</strong> is an all-in-one, containerized platform for managing and automating media workflows using premium debrid services like Real-Debrid. Whether you're looking to automate downloads, organize libraries, mount remote content, or just reduce manual steps — DUMB aims to unify it all into a seamless experience.</p>
+<p><strong>Debrid Unlimited Media Bridge (DUMB)</strong> is an all-in-one, containerized platform for managing and automating media workflows using premium debrid services (like Real-Debrid) and Usenet. Whether you're looking to automate downloads, organize libraries, mount remote content, or just reduce manual steps, DUMB aims to unify it all into a seamless experience.</p>
 <hr />
 <h2 id="mission">Mission<a class="headerlink" href="#mission" title="Permanent link">&para;</a></h2>
 <p>DUMB was created with a single goal:</p>
-<p><strong>Bridge the gap between cloud-based debrid services and traditional media server ecosystems like Plex, Jellyfin, and Emby — with maximum automation and minimal configuration.</strong></p>
+<p><strong>Bridge the gap between debrid or Usenet services and traditional media server ecosystems like Plex, Jellyfin, and Emby — with maximum automation and minimal configuration.</strong></p>
 <p>By directly integrating the <strong>media server itself</strong> (e.g. Plex) within the DUMB container, the platform overcomes long-standing issues like broken bind mount propagation, sync delays, and external scan conflicts common in multi-container setups.</p>
 <hr />
 <h2 id="what-makes-dumb-unique">What Makes DUMB Unique?<a class="headerlink" href="#what-makes-dumb-unique" title="Permanent link">&para;</a></h2>
 <p>Unlike other solutions that focus on one piece of the puzzle, <strong>DUMB integrates every step</strong> of the media pipeline:</p>
 <ul>
-<li><em>Embedded Media Servers</em> — Plex, Jellyfin, and Emby run inside the same container, ensuring seamless access to mounted content and full internal control</li>
-<li><em>Service Coordination</em> — via the internal DUMB API and real-time config management</li>
-<li><em>Automated Acquisition</em> — with core services for discovery and Zurg and/or rclone for debrid content fetching</li>
-<li><em>Cloud Storage Mounting</em> — through rclone mounts direct to debrid (e.g., Real-Debrid WebDAV) or utilizing Zurg's WebDAV</li>
-<li><em>Library Management</em> — using symlinks, metadata enrichment, and optional server updates</li>
-<li><em>Metadata Caching</em> — with Zilean to reduce latency and boost scraping efficiency</li>
-<li><em>Visual Control</em> — via the DUMB Frontend for live logs, settings, and monitoring</li>
+<li><em>Embedded media servers</em> — Plex, Jellyfin, and Emby run inside the same container, ensuring seamless access to mounted content and full internal control</li>
+<li><em>Service coordination</em> — via the internal DUMB API and real-time config management</li>
+<li><em>Automated acquisition</em> — with core services for discovery and orchestrators like Riven, CLI Debrid, Decypharr, and NzbDAV</li>
+<li><em>Cloud storage mounting</em> — through rclone mounts direct to debrid (e.g., Real-Debrid WebDAV) or utilizing Zurg's WebDAV</li>
+<li><em>Arr automation</em> — Sonarr, Radarr, Lidarr, and Whisparr handle queues, renaming, and library organization</li>
+<li><em>Library management</em> — using symlinks, metadata enrichment, and optional server updates</li>
+<li><em>Metadata caching</em> — with Zilean to reduce latency and boost scraping efficiency</li>
+<li><em>Visual control</em> — via the DUMB Frontend for onboarding, live logs, settings, and monitoring</li>
 </ul>
 <p>All services are configured through a centralized file (<code>dumb_config.json</code>) and can be dynamically updated at runtime via the DUMB Frontend.</p>
+<div class="admonition info">
+<p class="admonition-title">Combined workflows</p>
+<p>You can attach a single Arr instance to multiple workflows by setting
+<code>core_service</code> to a list (for example <code>["decypharr", "nzbdav"]</code>). When combined,
+DUMB switches Arr root folders to <code>/mnt/debrid/combined_symlinks/&lt;slug&gt;</code>.</p>
+</div>
 <hr />
 <h2 id="architecture-at-a-glance">Architecture at a Glance<a class="headerlink" href="#architecture-at-a-glance" title="Permanent link">&para;</a></h2>
 <p>DUMB is built using a <strong>modular, microservices</strong> architecture, with the following components:</p>
@@ -4378,15 +4385,31 @@
 </tr>
 <tr>
 <td><strong>Riven</strong></td>
-<td>Content search, acquisition, and integration with platforms like Plex, Trakt, Seerr, etc</td>
+<td>Debrid content orchestration (Plex, Trakt, Seerr, lists)</td>
 </tr>
 <tr>
 <td><strong>CLI Debrid</strong></td>
-<td>Content search, acquisition, and integration with platforms like Plex, Trakt, Seerr, etc</td>
+<td>Debrid content orchestration (lists, watchlists, upgrades)</td>
 </tr>
 <tr>
 <td><strong>Decypharr</strong></td>
-<td>Content search, acquisition, and integration with platforms like Plex, Trakt, Seerr, etc</td>
+<td>Debrid workflow for Arr download clients and symlink libraries</td>
+</tr>
+<tr>
+<td><strong>NzbDAV</strong></td>
+<td>Usenet WebDAV gateway and Arr download-client integration</td>
+</tr>
+<tr>
+<td><strong>Prowlarr</strong></td>
+<td>Indexer management and sync to Arr services</td>
+</tr>
+<tr>
+<td><strong>Sonarr/Radarr/Lidarr/Whisparr</strong></td>
+<td>Arr automation for movies, TV, music, and adult content</td>
+</tr>
+<tr>
+<td><strong>Huntarr</strong></td>
+<td>Backlog search automation and quality upgrades</td>
 </tr>
 <tr>
 <td><strong>Zurg</strong></td>
