@@ -1,4 +1,4 @@
-﻿name: Test Discord Webhook
+name: Test Discord Webhook
 
 on:
   workflow_dispatch:
@@ -9,7 +9,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Post test announcement to Discord
         env:
