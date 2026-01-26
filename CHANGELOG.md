@@ -1,5 +1,108 @@
 # Changelog
 
+## [2.0.0](https://github.com/I-am-PUID-0/DUMB/compare/1.7.0...2.0.0) (2026-01-26)
+
+
+### ⚠ BREAKING CHANGES
+
+* **docker-image:** remove riven frontend and backend builder stages from Dockerfile
+
+### ✨ Features
+
+* add in-process ffprobe monitor for Sonarr/Radarr hangs ([0ff51a8](https://github.com/I-am-PUID-0/DUMB/commit/0ff51a850b54dac1b2f4dfd8044fde2497c303af))
+* **api process:** add capabilities endpoint to retrieve optional service options ([aab889d](https://github.com/I-am-PUID-0/DUMB/commit/aab889d847cac45d9afa0464fa8a16b529dfefb7))
+* **api process:** add support for optional service configurations in UnifiedStartRequest ([6c0308c](https://github.com/I-am-PUID-0/DUMB/commit/6c0308c7fa2dac33459633e5dde0a536bc7ee9b5))
+* **api:** add size attribute to log file response ([7696c22](https://github.com/I-am-PUID-0/DUMB/commit/7696c22836c7a3c4aaeaceba1abd7d42318b0546))
+* **arr:** implement pinned version support and update logic for ArrInstaller ([f60c1bd](https://github.com/I-am-PUID-0/DUMB/commit/f60c1bda1fa5605dc185e6677af1983b0f201cfb))
+* **auth:** implement JWT authentication with user management ([7596137](https://github.com/I-am-PUID-0/DUMB/commit/75961373b2ad405f046be0d78a20f95f1607927b))
+* **auto_update:** add support for Jellyfin and Emby updates with pinned versions ([f60c1bd](https://github.com/I-am-PUID-0/DUMB/commit/f60c1bda1fa5605dc185e6677af1983b0f201cfb))
+* **auto-restart:** implement auto-restart configuration and monitoring for processes ([a40e8e7](https://github.com/I-am-PUID-0/DUMB/commit/a40e8e7fabe5f7260020c174a0fa08344fcb432e)), closes [#57](https://github.com/I-am-PUID-0/DUMB/issues/57)
+* **auto-update:** enhance initial update check and preinstall handling ([39ab554](https://github.com/I-am-PUID-0/DUMB/commit/39ab5549def996da872f3d1b220f2782afdec3d9))
+* **config:** add support for INI configuration file parsing and writing ([50d8b2d](https://github.com/I-am-PUID-0/DUMB/commit/50d8b2de42befa085cb6703cdea1f31d6e18ddb3))
+* **config:** add UI log timestamp configuration options ([0c86aec](https://github.com/I-am-PUID-0/DUMB/commit/0c86aec19145a8b3858a5a20e6df423835806878))
+* **core-services:** add Zilean sponsorship URL and enhance core service handling in wait entries ([6ba1299](https://github.com/I-am-PUID-0/DUMB/commit/6ba12994129f20aeeeaf43a38cc63e7d69208d09))
+* **core-services:** support multi-core arr instances and conditional combined roots ([27cea3d](https://github.com/I-am-PUID-0/DUMB/commit/27cea3ddf0cc6c0c45edd487c4aaa8d60e5960a5))
+* **dbrepair:** implement Plex DBRepair functionality and configuration ([6ca1f67](https://github.com/I-am-PUID-0/DUMB/commit/6ca1f672788d5d37fe52582761f41ca8f67d484e)), closes [#97](https://github.com/I-am-PUID-0/DUMB/issues/97)
+* **emby:** add Emby Media Server port configuration ([ad2340e](https://github.com/I-am-PUID-0/DUMB/commit/ad2340e9fb90e3bd47380d9f92ccbd3a71d5a929))
+* **emby:** add use_system_ffmpeg option and relink binaries ([7f35c9e](https://github.com/I-am-PUID-0/DUMB/commit/7f35c9e017f68c4113663dd4ebcda8e2cf8e9f31))
+* **healthcheck:** adds process port verification ([7be53a0](https://github.com/I-am-PUID-0/DUMB/commit/7be53a08ce7f718d9524bb96a164907e02e50681))
+* **jellyfin:** add Jellyfin Media Server port configuration ([ad2340e](https://github.com/I-am-PUID-0/DUMB/commit/ad2340e9fb90e3bd47380d9f92ccbd3a71d5a929))
+* **logger:** Adds subprocess logging to files ([51de776](https://github.com/I-am-PUID-0/DUMB/commit/51de776f02fc67fff99b578b5faa3f3f1916d5aa))
+* **logging:** add log file configuration for various services and implement access logging ([80f466c](https://github.com/I-am-PUID-0/DUMB/commit/80f466cc4d0ccaf0c8b88cd9c390acefa4f4a397))
+* **logging:** keep file logging when suppressing console/websocket ([218fa2c](https://github.com/I-am-PUID-0/DUMB/commit/218fa2cd63d5eca09009289f7d4fd249a8d374e8))
+* **logs:** add Traefik log file discovery ([ad2340e](https://github.com/I-am-PUID-0/DUMB/commit/ad2340e9fb90e3bd47380d9f92ccbd3a71d5a929))
+* **metrics:** add history series endpoint and enhance metrics collection ([6f78400](https://github.com/I-am-PUID-0/DUMB/commit/6f7840033e13ea9199ff9db76372e19a8788d3ca))
+* **metrics:** add process connections collection to MetricsCollector ([629a853](https://github.com/I-am-PUID-0/DUMB/commit/629a8535815545119e48146180fc54154a10de6e))
+* **metrics:** Extends metrics history management ([01bd593](https://github.com/I-am-PUID-0/DUMB/commit/01bd593356ded720d8fb82de1a2d7a7c768649f8))
+* **metrics:** implement metrics collection and history tracking ([dff26de](https://github.com/I-am-PUID-0/DUMB/commit/dff26de5066036375009edd8ea105b3aa53971e5))
+* **nzbdav:** add core service support, config, and setup flow ([20b9595](https://github.com/I-am-PUID-0/DUMB/commit/20b9595add59a2da0bc2469888b1fa13060452c8))
+* **plex:** add installation logic for Plex Media Server if not found during auto_update ([6364281](https://github.com/I-am-PUID-0/DUMB/commit/6364281b0bc73dc35212d73a050bd53332e6c96f))
+* **plex:** add support for pinned version in Plex installation and update checks ([cf29b7e](https://github.com/I-am-PUID-0/DUMB/commit/cf29b7e657c4742bf3c6db57b29d43f7fa96be73)), closes [#15](https://github.com/I-am-PUID-0/DUMB/issues/15)
+* **port-management:** implement comprehensive port availability checking ([ad2340e](https://github.com/I-am-PUID-0/DUMB/commit/ad2340e9fb90e3bd47380d9f92ccbd3a71d5a929))
+* **port-management:** implement global port reservation and configuration handling for NzbDAV ([827f1c8](https://github.com/I-am-PUID-0/DUMB/commit/827f1c83794b8ed8a8147aee37dd7f457d6456c4))
+* **processes:** prioritize stopping media servers before other processes ([2fdc98b](https://github.com/I-am-PUID-0/DUMB/commit/2fdc98b0b7e457ffd7cd750cb850eb618c7c0081))
+* **prowlarr:** auto-sync Arr applications on service lifecycle ([20b9595](https://github.com/I-am-PUID-0/DUMB/commit/20b9595add59a2da0bc2469888b1fa13060452c8))
+* **seerr:** add Seerr support and configuration options ([336cbec](https://github.com/I-am-PUID-0/DUMB/commit/336cbece18145c655c4049055c78a694879fb1b6))
+* **service-ui:** add endpoint to retrieve service UI mapping ([a52f4c6](https://github.com/I-am-PUID-0/DUMB/commit/a52f4c664e6d93e86470fcba0f233d39ab2e57f9))
+* **setup:** add riven bootstrap and plexapi dependency management to patch riven backend v0.23.6 pinned dep issue ([2bd5fd1](https://github.com/I-am-PUID-0/DUMB/commit/2bd5fd16eefa2664d57639da07ffbda3081ee735))
+* **setup:** Adds rclone unmount to decypharr ([5b4114f](https://github.com/I-am-PUID-0/DUMB/commit/5b4114fbc517385fb94240db8f92d7795a63da9c))
+* **setup:** implement project setup with preinstall support and locking mechanism ([8c62590](https://github.com/I-am-PUID-0/DUMB/commit/8c625908bbb47cffe5d6717432167ab108cfb23f))
+* **startup:** add dependency-aware orchestration and Huntarr support ([b04b9cf](https://github.com/I-am-PUID-0/DUMB/commit/b04b9cfe37513081b979769e3760ed525ad4e9de))
+* **startup:** add dependency-aware parallel startup and shutdown-safe waits ([a382f60](https://github.com/I-am-PUID-0/DUMB/commit/a382f60fad1bb01c53c44cecc1796aaa9cc6e167))
+* **status:** add websocket status endpoint and improve process health checks ([02a4d60](https://github.com/I-am-PUID-0/DUMB/commit/02a4d60279f9c9077c1ebfa155ad2918eb765f30))
+* **tautulli:** add Tautulli support and configuration options ([2d61f27](https://github.com/I-am-PUID-0/DUMB/commit/2d61f270a29dee92cdd0ea4a27b6ad4d95767f44)), closes [#16](https://github.com/I-am-PUID-0/DUMB/issues/16)
+* **traefik:** add Traefik reverse proxy integration for service UIs ([ad2340e](https://github.com/I-am-PUID-0/DUMB/commit/ad2340e9fb90e3bd47380d9f92ccbd3a71d5a929))
+* **traefik:** enhance service name sanitization for URL safety ([daa2dda](https://github.com/I-am-PUID-0/DUMB/commit/daa2dda76ada20c3931807bcdb641c2d39d722e6))
+
+
+### 🐛 Bug Fixes
+
+* **api:** correct OpenAPI URL reference in Scalar docs ([ad2340e](https://github.com/I-am-PUID-0/DUMB/commit/ad2340e9fb90e3bd47380d9f92ccbd3a71d5a929))
+* **arr:** add force option to install method to skip installation if binary exists ([f613120](https://github.com/I-am-PUID-0/DUMB/commit/f6131208b4c2a8b191490dcd99aacd1a59ac5366))
+* **arr:** improve error handling and extraction process in install method ([647c3d5](https://github.com/I-am-PUID-0/DUMB/commit/647c3d5018bfb28835fa243d4857ddcc2a1b0467))
+* **cli_debrid:** chown utilities on startup and during setup ([420eefb](https://github.com/I-am-PUID-0/DUMB/commit/420eefb516dc92453b2a99b4150faff117b3b889))
+* **config:** enhance XML config handling in save_config_file and write_rclone_config functions ([90a4554](https://github.com/I-am-PUID-0/DUMB/commit/90a4554e9fceb23ceba58e7b95018d003fe0f01a))
+* **config:** improves arr, decypharr, and nzbdav configuration handling ([2ad20b0](https://github.com/I-am-PUID-0/DUMB/commit/2ad20b0c9a78df250426fa1e1f43f17745735914))
+* **dbrepair:** defer first scheduled run by configured interval and log next run time ([7579908](https://github.com/I-am-PUID-0/DUMB/commit/7579908b2e550b35898fe2faf42244d16106a359))
+* **decypharr:** update arrs handling in patch_decypharr_config to use desired_arrs - avoiding external arrs ([2a65e2d](https://github.com/I-am-PUID-0/DUMB/commit/2a65e2dcebaee496cef6b251d3788950040e9650))
+* **deps:** update psutil to version 7.2.0 and adjust dependencies ([c43b45b](https://github.com/I-am-PUID-0/DUMB/commit/c43b45b63eb99f33c5e6e783e13bc37af31b8653))
+* **devcontainer:** change default terminal profile to bash and update postCreateCommand for poetry installation ([5ea1521](https://github.com/I-am-PUID-0/DUMB/commit/5ea1521b90f41efbff4741182808e0cd1e38f759))
+* **docker:** update dependencies in Dockerfile for improved compatibility ([d05a990](https://github.com/I-am-PUID-0/DUMB/commit/d05a990662cc898e5135b2833d7804882369aa0d)), closes [#98](https://github.com/I-am-PUID-0/DUMB/issues/98)
+* **jellyfin:** allow installation of specific Jellyfin versions ([f60c1bd](https://github.com/I-am-PUID-0/DUMB/commit/f60c1bda1fa5605dc185e6677af1983b0f201cfb))
+* **main:** start media server(s) after other services ([9a858a4](https://github.com/I-am-PUID-0/DUMB/commit/9a858a47f9426614a5ec0643a2134539043fe84c))
+* **nzbdav:** add chown_single call for parent directory in ensure_symlink_roots ([8db318b](https://github.com/I-am-PUID-0/DUMB/commit/8db318baa4265c045f512e81d5b3d756181d5c60))
+* **nzbdav:** enhance chown_single logic with error handling and logging ([629a853](https://github.com/I-am-PUID-0/DUMB/commit/629a8535815545119e48146180fc54154a10de6e))
+* **poetry.lock:** update ruamel.yaml version to 0.18.17 and adjust python version constraints ([5ea1521](https://github.com/I-am-PUID-0/DUMB/commit/5ea1521b90f41efbff4741182808e0cd1e38f759))
+* **processes:** improve error handling during process startup and logging ([cd544b1](https://github.com/I-am-PUID-0/DUMB/commit/cd544b1a58ab4e85e7bb5f6d8579d14c83d5ea03))
+* **processes:** update core_service description for clarity ([fdda589](https://github.com/I-am-PUID-0/DUMB/commit/fdda58958372b8f18cb549eac0d3bdcf2d11fb12))
+* **processes:** update stdout and stderr handling in start_process method for suppress_logging ([3bd3777](https://github.com/I-am-PUID-0/DUMB/commit/3bd37770eabb0b27c8ac20aff95a44610374a77b))
+* **rclone:** add default flags to rclone setup for missing parsed flags ([395557e](https://github.com/I-am-PUID-0/DUMB/commit/395557e8521502521112d9b1cd98009789fe9601))
+* **setup:** conditionally change ownership of Plex config directory ([9a858a4](https://github.com/I-am-PUID-0/DUMB/commit/9a858a47f9426614a5ec0643a2134539043fe84c))
+* **setup:** enhance version handling logic for release and branch setups ([0818bf0](https://github.com/I-am-PUID-0/DUMB/commit/0818bf034d977ef8ace78f9ea243aaf5ce515280)), closes [#101](https://github.com/I-am-PUID-0/DUMB/issues/101)
+
+
+### 🤡 Other Changes
+
+* **config:** add pinned_version field to configuration files and schema ([f60c1bd](https://github.com/I-am-PUID-0/DUMB/commit/f60c1bda1fa5605dc185e6677af1983b0f201cfb))
+* **config:** update Plex DBRepair default interval to weekly ([ad2340e](https://github.com/I-am-PUID-0/DUMB/commit/ad2340e9fb90e3bd47380d9f92ccbd3a71d5a929))
+* **deps:** update fastapi to version 0.127.0 and uvicorn to version 0.40.0 ([d05e2ed](https://github.com/I-am-PUID-0/DUMB/commit/d05e2ed61c6bf2ffa86f08ed7cae9e65ed1ddac7))
+* **nzbdav:** update service description ([ad2340e](https://github.com/I-am-PUID-0/DUMB/commit/ad2340e9fb90e3bd47380d9f92ccbd3a71d5a929))
+
+
+### 🛠️ Refactors
+
+* **docker-image:** comment out riven-backend-builder job and update dependencies in digest builds ([0750a71](https://github.com/I-am-PUID-0/DUMB/commit/0750a71528addbc7dd5e2abdea2319942edad454))
+* **docker-image:** remove riven frontend and backend builder stages from Dockerfile ([bfbbb7d](https://github.com/I-am-PUID-0/DUMB/commit/bfbbb7d256b54d11779fc420c54a45eca7418611))
+* **Dockerfile:** comment out riven-backend-builder stage for future review ([503a739](https://github.com/I-am-PUID-0/DUMB/commit/503a73943304f689a9690d9e024a57a40ff4ad2c))
+* **setup.py:** remove unused import of 'key' from tomlkit ([5ea1521](https://github.com/I-am-PUID-0/DUMB/commit/5ea1521b90f41efbff4741182808e0cd1e38f759))
+* **setup:** harden environment and rclone setup ([20b9595](https://github.com/I-am-PUID-0/DUMB/commit/20b9595add59a2da0bc2469888b1fa13060452c8)), closes [#56](https://github.com/I-am-PUID-0/DUMB/issues/56)
+* **startup:** split install/config phases; add arr per-instance installs for pinned versions ([0080e29](https://github.com/I-am-PUID-0/DUMB/commit/0080e29263e1a2ee49c1644b1246855d7cf115fb))
+
+
+### 🛠️ Build System
+
+* **deps:** Updates dependencies ([75a47cf](https://github.com/I-am-PUID-0/DUMB/commit/75a47cfebc111a24852a2f28ec52ac2525c23c74))
+
 ## [1.7.0](https://github.com/I-am-PUID-0/DUMB/compare/1.6.0...1.7.0) (2025-12-18)
 
 
