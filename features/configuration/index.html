@@ -731,6 +731,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="General Settings">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#user--timezone" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        User &amp; Timezone
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -745,13 +762,41 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#integration-tokens-credentials" class="md-nav__link">
+  <a href="#integration-tokens--credentials" class="md-nav__link">
     <span class="md-ellipsis">
       
         Integration Tokens &amp; Credentials
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="Integration Tokens &amp; Credentials">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#plex-integration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Plex Integration
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#github-integration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GitHub Integration
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -4284,6 +4329,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="General Settings">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#user--timezone" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        User &amp; Timezone
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -4298,13 +4360,41 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#integration-tokens-credentials" class="md-nav__link">
+  <a href="#integration-tokens--credentials" class="md-nav__link">
     <span class="md-ellipsis">
       
         Integration Tokens &amp; Credentials
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="Integration Tokens &amp; Credentials">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#plex-integration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Plex Integration
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#github-integration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GitHub Integration
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -4420,8 +4510,8 @@
   
 
 
-<h1 id="configuration">Configuration<a class="headerlink" href="#configuration" title="Permanent link">&para;</a></h1>
-<h2 id="overview">Overview<a class="headerlink" href="#overview" title="Permanent link">&para;</a></h2>
+<h1 id="configuration">Configuration<a class="headerlink" href="#configuration" title="Permanent link">#</a></h1>
+<h2 id="overview">Overview<a class="headerlink" href="#overview" title="Permanent link">#</a></h2>
 <p>DUMB relies on a <strong>centralized configuration file</strong>, <code>dumb_config.json</code>, to control its services, logging, API settings, and more. This file allows you to customize the behavior of DUMB without modifying the source code.</p>
 <p>DUMB also supports <strong>environment variables, .env files, and Docker secrets</strong>. If the same setting is defined in multiple places, the <strong>precedence is as follows:</strong></p>
 <div class="admonition tip">
@@ -4451,7 +4541,7 @@ flowchart TD
     MERGE ==&gt; API
     API ==&gt; PH
     PH ==&gt; SVC</code></pre>
-<h2 id="configuration-file-structure">Configuration File Structure<a class="headerlink" href="#configuration-file-structure" title="Permanent link">&para;</a></h2>
+<h2 id="configuration-file-structure">Configuration File Structure<a class="headerlink" href="#configuration-file-structure" title="Permanent link">#</a></h2>
 <div class="admonition caution">
 <p class="admonition-title">Be Careful When Modifying <code>dumb_config.json</code></p>
 <p>While DUMB is highly configurable via <code>dumb_config.json</code>,<br />
@@ -4495,8 +4585,8 @@ As such, it is <strong>not recommended</strong> to make modifications unless you
 <p>Each section configures a specific service.</p>
 <p>Below is a breakdown of some of the sections:</p>
 <hr />
-<h2 id="general-settings">General Settings<a class="headerlink" href="#general-settings" title="Permanent link">&para;</a></h2>
-<h3 id="user-timezone"><strong>User &amp; Timezone</strong><a class="headerlink" href="#user-timezone" title="Permanent link">&para;</a></h3>
+<h2 id="general-settings">General Settings<a class="headerlink" href="#general-settings" title="Permanent link">#</a></h2>
+<h3 id="user--timezone"><strong>User &amp; Timezone</strong><a class="headerlink" href="#user--timezone" title="Permanent link">#</a></h3>
 <div class="highlight"><pre><span></span><code><span class="nt">&quot;puid&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1000</span><span class="p">,</span>
 <span class="nt">&quot;pgid&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1000</span><span class="p">,</span>
 <span class="nt">&quot;tz&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&quot;</span><span class="p">,</span>
@@ -4512,7 +4602,7 @@ As such, it is <strong>not recommended</strong> to make modifications unless you
 <p><code>puid</code>/<code>pgid</code> cannot be set to <code>0</code> (root). DUMB requires a non-root user for security reasons.</p>
 </div>
 <hr />
-<h2 id="logging-settings">Logging Settings<a class="headerlink" href="#logging-settings" title="Permanent link">&para;</a></h2>
+<h2 id="logging-settings">Logging Settings<a class="headerlink" href="#logging-settings" title="Permanent link">#</a></h2>
 <p>Located in <code>dumb</code>:
 <div class="highlight"><pre><span></span><code><span class="nt">&quot;log_level&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;INFO&quot;</span><span class="p">,</span>
 <span class="nt">&quot;log_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;DUMB&quot;</span><span class="p">,</span>
@@ -4529,21 +4619,21 @@ As such, it is <strong>not recommended</strong> to make modifications unless you
 <li><strong>color_log</strong> – Enables colored log output.</li>
 </ul>
 <hr />
-<h2 id="integration-tokens-credentials">Integration Tokens &amp; Credentials<a class="headerlink" href="#integration-tokens-credentials" title="Permanent link">&para;</a></h2>
+<h2 id="integration-tokens--credentials">Integration Tokens &amp; Credentials<a class="headerlink" href="#integration-tokens--credentials" title="Permanent link">#</a></h2>
 <p>Located in the <code>dumb</code> section of <code>dumb_config.json</code>:</p>
 <div class="highlight"><pre><span></span><code><span class="nt">&quot;plex_token&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&quot;</span><span class="p">,</span>
 <span class="nt">&quot;plex_address&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&quot;</span><span class="p">,</span>
 <span class="nt">&quot;github_token&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&quot;</span><span class="p">,</span>
 <span class="nt">&quot;github_username&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&quot;</span>
 </code></pre></div>
-<h3 id="plex-integration">Plex Integration<a class="headerlink" href="#plex-integration" title="Permanent link">&para;</a></h3>
+<h3 id="plex-integration">Plex Integration<a class="headerlink" href="#plex-integration" title="Permanent link">#</a></h3>
 <ul>
 <li><strong><code>plex_token</code></strong> – This token is used by Riven backend for interacting with your Plex account. It allows features such as using watchlists and sending library scan requests to the Plex server.</li>
 <li><strong><code>plex_address</code></strong> – The internal or external URL of your Plex server (e.g., <code>http://127.0.0.1:32400</code>).</li>
 </ul>
 <p>These values are used automatically by Riven when setting up the <a href="../../services/core/riven-backend/">Riven Backend</a>.</p>
 <hr />
-<h3 id="github-integration">GitHub Integration<a class="headerlink" href="#github-integration" title="Permanent link">&para;</a></h3>
+<h3 id="github-integration">GitHub Integration<a class="headerlink" href="#github-integration" title="Permanent link">#</a></h3>
 <ul>
 <li><strong><code>github_token</code></strong> – Used to increase GitHub API rate limits and unlock access to private/sponsored repositories such as <a href="https://github.com/debridmediamanager/zurg"><code>zurg</code></a> when associated with your GitHub account.</li>
 <li><strong><code>github_username</code></strong> – (Reserved for future use) Will support additional GitHub-sourced services and contributor personalization.</li>
@@ -4567,7 +4657,7 @@ As such, it is <strong>not recommended</strong> to make modifications unless you
 <li>Add the token to your <code>.env</code> file or docker compose with <code>DMB_GITHUB_TOKEN=</code>, or <code>dumb_config.json</code> under <code>"github_token"</code></li>
 </ol>
 <hr />
-<h2 id="service-configuration">Service Configuration<a class="headerlink" href="#service-configuration" title="Permanent link">&para;</a></h2>
+<h2 id="service-configuration">Service Configuration<a class="headerlink" href="#service-configuration" title="Permanent link">#</a></h2>
 <p>Each DUMB-integrated service is configured within its own section of <code>dumb_config.json</code>.</p>
 <p>See the individual service pages for in-depth configuration details:</p>
 <ul>
@@ -4593,7 +4683,7 @@ As such, it is <strong>not recommended</strong> to make modifications unless you
 <li><a href="../../services/dependent/zurg/">Zurg</a></li>
 </ul>
 <hr />
-<h2 id="core_service-arr-integration"><code>core_service</code> (Arr integration)<a class="headerlink" href="#core_service-arr-integration" title="Permanent link">&para;</a></h2>
+<h2 id="core_service-arr-integration"><code>core_service</code> (Arr integration)<a class="headerlink" href="#core_service-arr-integration" title="Permanent link">#</a></h2>
 <p>Some services (notably the Arrs) include a <code>core_service</code> field to tell DUMB
 which core workflow(s) they should attach to. This field accepts a single value,
 a comma-separated string, or a list.</p>
@@ -4630,7 +4720,7 @@ a comma-separated string, or a list.</p>
 <span class="w">  </span><span class="p">}</span>
 <span class="p">}</span>
 </code></pre></div>
-<h2 id="next-steps">Next Steps<a class="headerlink" href="#next-steps" title="Permanent link">&para;</a></h2>
+<h2 id="next-steps">Next Steps<a class="headerlink" href="#next-steps" title="Permanent link">#</a></h2>
 <ol>
 <li>Review and modify <code>dumb_config.json</code> as needed.</li>
 <li>Review the <a href="../usage/">Usage</a> page. </li>

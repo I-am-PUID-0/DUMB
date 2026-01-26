@@ -4398,10 +4398,10 @@
   
 
 
-<h1 id="backend-architecture">Backend architecture<a class="headerlink" href="#backend-architecture" title="Permanent link">&para;</a></h1>
+<h1 id="backend-architecture">Backend architecture<a class="headerlink" href="#backend-architecture" title="Permanent link">#</a></h1>
 <p>The DUMB backend is a FastAPI service that manages configuration, process lifecycle, and real-time updates. It is the control plane for all managed services.</p>
 <hr />
-<h2 id="core-components">Core components<a class="headerlink" href="#core-components" title="Permanent link">&para;</a></h2>
+<h2 id="core-components">Core components<a class="headerlink" href="#core-components" title="Permanent link">#</a></h2>
 <table>
 <thead>
 <tr>
@@ -4441,7 +4441,7 @@
 </tbody>
 </table>
 <hr />
-<h2 id="control-plane-flow">Control plane flow<a class="headerlink" href="#control-plane-flow" title="Permanent link">&para;</a></h2>
+<h2 id="control-plane-flow">Control plane flow<a class="headerlink" href="#control-plane-flow" title="Permanent link">#</a></h2>
 <pre class="mermaid"><code>%%{ init: { "flowchart": { "curve": "basis" } } }%%
 flowchart TD
     UI([Frontend actions])
@@ -4460,7 +4460,7 @@ flowchart TD
     LOG ==&gt; WS
     WS ==&gt; UI</code></pre>
 <hr />
-<h2 id="request-flow">Request flow<a class="headerlink" href="#request-flow" title="Permanent link">&para;</a></h2>
+<h2 id="request-flow">Request flow<a class="headerlink" href="#request-flow" title="Permanent link">#</a></h2>
 <pre class="mermaid"><code>sequenceDiagram
     participant UI as Frontend
     participant API as DUMB API
@@ -4472,7 +4472,7 @@ flowchart TD
     PH--&gt;&gt;API: Status + logs
     API--&gt;&gt;UI: WebSocket updates</code></pre>
 <hr />
-<h2 id="configuration-pipeline">Configuration pipeline<a class="headerlink" href="#configuration-pipeline" title="Permanent link">&para;</a></h2>
+<h2 id="configuration-pipeline">Configuration pipeline<a class="headerlink" href="#configuration-pipeline" title="Permanent link">#</a></h2>
 <ol>
 <li>The API validates configuration updates.</li>
 <li>Service setup hooks patch service-specific configs (for example Decypharr or NzbDAV).</li>
@@ -4484,7 +4484,7 @@ flowchart TD
 <p>The backend is the source of truth for <code>dumb_config.json</code>. Manual edits are allowed, but should be followed by a reload or restart so the process handler picks up changes.</p>
 </div>
 <hr />
-<h2 id="service-orchestration">Service orchestration<a class="headerlink" href="#service-orchestration" title="Permanent link">&para;</a></h2>
+<h2 id="service-orchestration">Service orchestration<a class="headerlink" href="#service-orchestration" title="Permanent link">#</a></h2>
 <p>Service lifecycle is centralized in the process handler, which:</p>
 <ul>
 <li>Tracks enabled services and instances</li>
@@ -4493,7 +4493,7 @@ flowchart TD
 <li>Enforces shutdown ordering</li>
 </ul>
 <hr />
-<h2 id="websocket-channels">WebSocket channels<a class="headerlink" href="#websocket-channels" title="Permanent link">&para;</a></h2>
+<h2 id="websocket-channels">WebSocket channels<a class="headerlink" href="#websocket-channels" title="Permanent link">#</a></h2>
 <p>The backend exposes WebSocket endpoints for:</p>
 <ul>
 <li>Service status updates</li>
@@ -4502,7 +4502,7 @@ flowchart TD
 </ul>
 <p>These streams power the frontend’s real-time dashboard.</p>
 <hr />
-<h2 id="related-pages">Related pages<a class="headerlink" href="#related-pages" title="Permanent link">&para;</a></h2>
+<h2 id="related-pages">Related pages<a class="headerlink" href="#related-pages" title="Permanent link">#</a></h2>
 <ul>
 <li><a href="../../api/">API reference</a></li>
 <li><a href="../../api/process/">Process management</a></li>

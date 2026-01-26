@@ -739,6 +739,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Running DUMB">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#automatic-service-start" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Automatic Service Start
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -749,6 +766,34 @@
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="Managing Updates">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#manual-updates" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Manual Updates
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#auto-update" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Auto-Update
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -4229,6 +4274,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Running DUMB">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#automatic-service-start" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Automatic Service Start
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -4239,6 +4301,34 @@
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="Managing Updates">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#manual-updates" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Manual Updates
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#auto-update" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Auto-Update
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -4354,20 +4444,20 @@
   
 
 
-<h1 id="usage">Usage<a class="headerlink" href="#usage" title="Permanent link">&para;</a></h1>
-<h2 id="running-dumb">Running DUMB<a class="headerlink" href="#running-dumb" title="Permanent link">&para;</a></h2>
+<h1 id="usage">Usage<a class="headerlink" href="#usage" title="Permanent link">#</a></h1>
+<h2 id="running-dumb">Running DUMB<a class="headerlink" href="#running-dumb" title="Permanent link">#</a></h2>
 <p>DUMB automatically starts the services defined in <code>dumb_config.json</code> in the proper order. Each service can also be managed independently using the <a href="../../services/dumb/dumb-frontend.md/">DUMB Frontend</a> or by directly modifying the configuration.</p>
 <div class="admonition important">
 <p class="admonition-title">Onboarding</p>
 <p>DUMB is preset to disable all services, other than the API and Frontend on the first startup. </p>
 <p>On first launch of the <a href="../../services/dumb/dumb-frontend/">DUMB Frontend</a>, you will be directed to the Onboarding process.  </p>
 </div>
-<h3 id="automatic-service-start">Automatic Service Start<a class="headerlink" href="#automatic-service-start" title="Permanent link">&para;</a></h3>
+<h3 id="automatic-service-start">Automatic Service Start<a class="headerlink" href="#automatic-service-start" title="Permanent link">#</a></h3>
 <p>All services with <code>"enabled": true</code> in the config will be started on container launch.</p>
 <p>If a service fails to start, check its log file in the <code>/log</code> directory (or wherever <code>log_dir</code> is set).</p>
 <hr />
-<h2 id="managing-updates">Managing Updates<a class="headerlink" href="#managing-updates" title="Permanent link">&para;</a></h2>
-<h3 id="manual-updates">Manual Updates<a class="headerlink" href="#manual-updates" title="Permanent link">&para;</a></h3>
+<h2 id="managing-updates">Managing Updates<a class="headerlink" href="#managing-updates" title="Permanent link">#</a></h2>
+<h3 id="manual-updates">Manual Updates<a class="headerlink" href="#manual-updates" title="Permanent link">#</a></h3>
 <p>Each service can be updated by modifying the configuration file or using the <a href="../../services/dumb/dumb-frontend/">DUMB Frontend</a>. </p>
 <p>Updates include:</p>
 <ul>
@@ -4375,7 +4465,7 @@
 <li>Version pinning</li>
 <li>Auto-update toggling</li>
 </ul>
-<h3 id="auto-update">Auto-Update<a class="headerlink" href="#auto-update" title="Permanent link">&para;</a></h3>
+<h3 id="auto-update">Auto-Update<a class="headerlink" href="#auto-update" title="Permanent link">#</a></h3>
 <p>Some services support automatic updates. </p>
 <p>Enable by setting:
 <div class="highlight"><pre><span></span><code><span class="nt">&quot;auto_update&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
@@ -4404,7 +4494,7 @@
 <li>Zurg</li>
 </ul>
 <hr />
-<h2 id="shutdown-handling">Shutdown Handling<a class="headerlink" href="#shutdown-handling" title="Permanent link">&para;</a></h2>
+<h2 id="shutdown-handling">Shutdown Handling<a class="headerlink" href="#shutdown-handling" title="Permanent link">#</a></h2>
 <p>DUMB handles graceful shutdown of all services. </p>
 <p>This includes:</p>
 <ul>
@@ -4417,13 +4507,13 @@
 <span class="w">  </span><span class="nt">stop_grace_period</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">60s</span>
 </code></pre></div></p>
 <hr />
-<h2 id="tips">Tips<a class="headerlink" href="#tips" title="Permanent link">&para;</a></h2>
+<h2 id="tips">Tips<a class="headerlink" href="#tips" title="Permanent link">#</a></h2>
 <ul>
 <li>Always monitor <code>/log/*.log</code> files for troubleshooting or monitor the logs from the <strong>DUMB Frontend</strong>.</li>
 <li>Logs can be colored if <code>color_log</code> is enabled in the config.</li>
 </ul>
 <hr />
-<h2 id="related-docs">Related Docs<a class="headerlink" href="#related-docs" title="Permanent link">&para;</a></h2>
+<h2 id="related-docs">Related Docs<a class="headerlink" href="#related-docs" title="Permanent link">#</a></h2>
 <ul>
 <li><a href="../configuration/">Configuration</a></li>
 <li><a href="../../services/">Services Overview</a></li>

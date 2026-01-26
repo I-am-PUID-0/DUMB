@@ -4354,10 +4354,10 @@
   
 
 
-<h1 id="frontend-architecture">Frontend architecture<a class="headerlink" href="#frontend-architecture" title="Permanent link">&para;</a></h1>
+<h1 id="frontend-architecture">Frontend architecture<a class="headerlink" href="#frontend-architecture" title="Permanent link">#</a></h1>
 <p>The DUMB frontend is a Nuxt 4 application that renders the dashboard, service controls, and embedded UIs. It communicates with the DUMB API for configuration, logs, metrics, and service status.</p>
 <hr />
-<h2 id="key-directories">Key directories<a class="headerlink" href="#key-directories" title="Permanent link">&para;</a></h2>
+<h2 id="key-directories">Key directories<a class="headerlink" href="#key-directories" title="Permanent link">#</a></h2>
 <table>
 <thead>
 <tr>
@@ -4393,7 +4393,7 @@
 </tbody>
 </table>
 <hr />
-<h2 id="data-flow">Data flow<a class="headerlink" href="#data-flow" title="Permanent link">&para;</a></h2>
+<h2 id="data-flow">Data flow<a class="headerlink" href="#data-flow" title="Permanent link">#</a></h2>
 <pre class="mermaid"><code>%%{ init: { "flowchart": { "curve": "basis" } } }%%
 flowchart LR
     UI([Pages + components])
@@ -4408,14 +4408,14 @@ flowchart LR
     BE ==&gt; WS
     WS ==&gt; ST</code></pre>
 <hr />
-<h2 id="embedded-service-uis">Embedded service UIs<a class="headerlink" href="#embedded-service-uis" title="Permanent link">&para;</a></h2>
+<h2 id="embedded-service-uis">Embedded service UIs<a class="headerlink" href="#embedded-service-uis" title="Permanent link">#</a></h2>
 <p>The frontend can embed service UIs in iframes when Traefik is enabled, keeping navigation and authentication within the DUMB experience.</p>
 <div class="admonition tip">
 <p class="admonition-title">Traefik paths</p>
 <p>Embedded UIs use Traefik paths like <code>http://&lt;host&gt;/radarr/</code> or <code>http://&lt;host&gt;/sonarr/</code> when proxying is enabled.</p>
 </div>
 <hr />
-<h2 id="configuration-ux">Configuration UX<a class="headerlink" href="#configuration-ux" title="Permanent link">&para;</a></h2>
+<h2 id="configuration-ux">Configuration UX<a class="headerlink" href="#configuration-ux" title="Permanent link">#</a></h2>
 <p>Configuration editing is performed in the settings UI, which:</p>
 <ul>
 <li>Reads service config from the API</li>
@@ -4423,7 +4423,7 @@ flowchart LR
 <li>Submits updates to the backend for persistence</li>
 </ul>
 <hr />
-<h2 id="related-pages">Related pages<a class="headerlink" href="#related-pages" title="Permanent link">&para;</a></h2>
+<h2 id="related-pages">Related pages<a class="headerlink" href="#related-pages" title="Permanent link">#</a></h2>
 <ul>
 <li><a href="../../frontend/">Frontend overview</a></li>
 <li><a href="../../frontend/dashboard/">Dashboard guide</a></li>
