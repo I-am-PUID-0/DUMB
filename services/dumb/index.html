@@ -4279,7 +4279,7 @@
   
 
 
-<h1 id="dumb-services">DUMB Services<a class="headerlink" href="#dumb-services" title="Permanent link">&para;</a></h1>
+<h1 id="dumb-services">DUMB Services<a class="headerlink" href="#dumb-services" title="Permanent link">#</a></h1>
 <p>DUMB includes two internal services that form the backbone of the entire system:</p>
 <ul>
 <li>The <strong>DUMB API</strong> provides centralized coordination, configuration management, and control over all other services.</li>
@@ -4287,7 +4287,7 @@
 </ul>
 <p>These services are always required and are started automatically when the container launches.</p>
 <hr />
-<h2 id="what-are-dumb-services">What Are DUMB Services?<a class="headerlink" href="#what-are-dumb-services" title="Permanent link">&para;</a></h2>
+<h2 id="what-are-dumb-services">What Are DUMB Services?<a class="headerlink" href="#what-are-dumb-services" title="Permanent link">#</a></h2>
 <p>DUMB services are:</p>
 <ul>
 <li><strong>Core to the platform infrastructure</strong></li>
@@ -4295,7 +4295,7 @@
 <li>Required for orchestration, onboarding, and log visibility</li>
 </ul>
 <hr />
-<h2 id="dumb-service-index">DUMB Service Index<a class="headerlink" href="#dumb-service-index" title="Permanent link">&para;</a></h2>
+<h2 id="dumb-service-index">DUMB Service Index<a class="headerlink" href="#dumb-service-index" title="Permanent link">#</a></h2>
 <table>
 <thead>
 <tr>
@@ -4318,21 +4318,21 @@
 </tbody>
 </table>
 <hr />
-<h2 id="how-they-work">How They Work<a class="headerlink" href="#how-they-work" title="Permanent link">&para;</a></h2>
+<h2 id="how-they-work">How They Work<a class="headerlink" href="#how-they-work" title="Permanent link">#</a></h2>
 <ul>
 <li><strong><a href="../dumb/api/">DUMB API</a></strong> is the internal backend that exposes HTTP endpoints for service management, logs, onboarding, and health monitoring. It must be responsive for any service to be monitored or configured.</li>
 <li><strong><a href="../dumb/dumb-frontend/">DUMB Frontend</a></strong> connects to the DUMB API and renders a modern web interface to help users manage their instance through onboarding steps, status dashboards, log viewers, and config editors.</li>
 </ul>
 <p>These services talk to each other over localhost and coordinate all other configured components.</p>
 <hr />
-<h2 id="tips">Tips<a class="headerlink" href="#tips" title="Permanent link">&para;</a></h2>
+<h2 id="tips">Tips<a class="headerlink" href="#tips" title="Permanent link">#</a></h2>
 <ul>
 <li>Both services are auto-launched and should not be disabled.</li>
 <li>If the UI does not load, check the logs for <code>dumb_frontend</code> and <code>dumb_api</code>.</li>
 <li>Configuration updates and onboarding rely on the DUMB API — make sure it is reachable and healthy.</li>
 </ul>
 <hr />
-<h2 id="related-pages">Related Pages<a class="headerlink" href="#related-pages" title="Permanent link">&para;</a></h2>
+<h2 id="related-pages">Related Pages<a class="headerlink" href="#related-pages" title="Permanent link">#</a></h2>
 <ul>
 <li><a href="../../api/">API</a></li>
 <li><a href="../core/">Core Services</a></li>
