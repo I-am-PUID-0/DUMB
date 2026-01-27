@@ -4332,15 +4332,15 @@
   
 
 
-<h1 id="websocket-logs-api">WebSocket Logs API<a class="headerlink" href="#websocket-logs-api" title="Permanent link">#</a></h1>
+<h1 id="websocket-logs-api">WebSocket Logs API<a class="headerlink" href="#websocket-logs-api" title="Permanent link">&para;</a></h1>
 <p>The WebSocket Logs API provides a real-time streaming interface for receiving logs from all DUMB-managed subprocesses. It is primarily used by the DUMB Frontend to power the live log viewer.</p>
 <hr />
-<h2 id="websocket-endpoint">WebSocket Endpoint<a class="headerlink" href="#websocket-endpoint" title="Permanent link">#</a></h2>
+<h2 id="websocket-endpoint">WebSocket Endpoint<a class="headerlink" href="#websocket-endpoint" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code>/ws/logs
 </code></pre></div>
 <p>Connect to this endpoint using a WebSocket client (e.g., browser or Python client) to receive log lines as plain text.</p>
 <hr />
-<h2 id="message-format">Message Format<a class="headerlink" href="#message-format" title="Permanent link">#</a></h2>
+<h2 id="message-format">Message Format<a class="headerlink" href="#message-format" title="Permanent link">&para;</a></h2>
 <p>Each log entry is sent as a plain text line formatted by DUMB’s logger, for example:</p>
 <div class="highlight"><pre><span></span><code>Apr 12, 2025 10:04:01 - INFO - Riven Backend started
 </code></pre></div>
@@ -4366,7 +4366,7 @@
 </ul>
 </div>
 <hr />
-<h2 id="example-python-client">Example (Python Client)<a class="headerlink" href="#example-python-client" title="Permanent link">#</a></h2>
+<h2 id="example-python-client">Example (Python Client)<a class="headerlink" href="#example-python-client" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">websockets</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">asyncio</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
@@ -4380,7 +4380,7 @@
 <span class="n">asyncio</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">consume_logs</span><span class="p">())</span>
 </code></pre></div>
 <hr />
-<h2 id="related-modules">Related Modules<a class="headerlink" href="#related-modules" title="Permanent link">#</a></h2>
+<h2 id="related-modules">Related Modules<a class="headerlink" href="#related-modules" title="Permanent link">&para;</a></h2>
 <ul>
 <li><a href="https://github.com/I-am-PUID-0/DUMB/blob/master/api/routers/websocket_logs.py"><code>websocket_logs.py</code></a></li>
 <li><a href="../logs/">Logs API</a> for historical log file access</li>

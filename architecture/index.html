@@ -4260,10 +4260,10 @@
   
 
 
-<h1 id="architecture-overview">Architecture overview<a class="headerlink" href="#architecture-overview" title="Permanent link">#</a></h1>
+<h1 id="architecture-overview">Architecture overview<a class="headerlink" href="#architecture-overview" title="Permanent link">&para;</a></h1>
 <p>This section explains how DUMB is structured, how services are orchestrated, and how the frontend, backend, and proxy layers interact.</p>
 <hr />
-<h2 id="system-overview">System overview<a class="headerlink" href="#system-overview" title="Permanent link">#</a></h2>
+<h2 id="system-overview">System overview<a class="headerlink" href="#system-overview" title="Permanent link">&para;</a></h2>
 <p>DUMB bundles a FastAPI backend, a Nuxt 4 frontend, and a set of managed services (core, dependent, and optional). The backend owns configuration, process lifecycle, and update automation. The frontend surfaces status, logs, and configuration controls.</p>
 <pre class="mermaid"><code>flowchart TD
     U([User browser])
@@ -4285,7 +4285,7 @@
     TR ==&gt; SVC
 </code></pre>
 <hr />
-<h2 id="core-building-blocks">Core building blocks<a class="headerlink" href="#core-building-blocks" title="Permanent link">#</a></h2>
+<h2 id="core-building-blocks">Core building blocks<a class="headerlink" href="#core-building-blocks" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
@@ -4325,21 +4325,21 @@
 </tbody>
 </table>
 <hr />
-<h2 id="storage-and-mounts">Storage and mounts<a class="headerlink" href="#storage-and-mounts" title="Permanent link">#</a></h2>
+<h2 id="storage-and-mounts">Storage and mounts<a class="headerlink" href="#storage-and-mounts" title="Permanent link">&para;</a></h2>
 <p>Most services store state under <code>/data</code>, <code>/config</code>, or service-specific directories (for example <code>/riven</code>, <code>/cli_debrid</code>, <code>/decypharr</code>, <code>/nzbdav</code>). Media access is typically provided via <code>/mnt/debrid</code>, with symlink folders exposed for curated libraries.</p>
 <div class="admonition tip">
 <p class="admonition-title">Mount propagation</p>
 <p>When Arr services or media servers run outside the DUMB container, ensure mount propagation (<code>rshared</code>/<code>rslave</code>) is configured so symlinks and rclone mounts stay consistent.</p>
 </div>
 <hr />
-<h2 id="networking-and-proxying">Networking and proxying<a class="headerlink" href="#networking-and-proxying" title="Permanent link">#</a></h2>
+<h2 id="networking-and-proxying">Networking and proxying<a class="headerlink" href="#networking-and-proxying" title="Permanent link">&para;</a></h2>
 <p>DUMB exposes the frontend and API directly, while Traefik can be enabled to consolidate access to service UIs under a single port and path-based routing.</p>
 <div class="admonition info">
 <p class="admonition-title">Traefik is optional</p>
 <p>You can access service UIs directly on their ports, or enable Traefik to route everything under a single endpoint.</p>
 </div>
 <hr />
-<h2 id="configuration-lifecycle">Configuration lifecycle<a class="headerlink" href="#configuration-lifecycle" title="Permanent link">#</a></h2>
+<h2 id="configuration-lifecycle">Configuration lifecycle<a class="headerlink" href="#configuration-lifecycle" title="Permanent link">&para;</a></h2>
 <ol>
 <li>DUMB loads <code>dumb_config.json</code> on startup.</li>
 <li>The API and process handler apply config changes.</li>
@@ -4347,7 +4347,7 @@
 <li>The frontend reflects status and logs in real time.</li>
 </ol>
 <hr />
-<h2 id="related-pages">Related pages<a class="headerlink" href="#related-pages" title="Permanent link">#</a></h2>
+<h2 id="related-pages">Related pages<a class="headerlink" href="#related-pages" title="Permanent link">&para;</a></h2>
 <ul>
 <li><a href="backend/">Backend architecture</a></li>
 <li><a href="frontend/">Frontend architecture</a></li>
