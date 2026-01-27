@@ -185,7 +185,7 @@ NzbDAV Service
 - Provides a WebDAV connection for easy access to media files.
 - Integrates with Rclone for mounting of WebDAV content.
 
-Documentation: https://github.com/nzbdav-dev/nzbdav""",
+Documentation: https://dumbarr.com/services/core/nzbdav/""",
     "plex": """\
 Plex Media Server
 - Official Plex server for organizing, streaming, and sharing your media library.
@@ -278,14 +278,14 @@ Seerr
 - Provides a web UI for requesting, approving, and tracking content.
 - Integrates with Sonarr and Radarr for automated downloads.
 
-Documentation: https://github.com/seerr-team/seerr""",
+Documentation: https://dumbarr.com/services/core/seerr/""",
     "huntarr": """\
 Huntarr
 - Continuously scans Sonarr/Radarr/Lidarr/Whisparr libraries for missing items and upgrades.
 - Automates backlog searches in gentle batches to avoid indexer abuse.
 - Supports multiple instances and per-arr configuration.
 
-Documentation: https://plexguide.github.io/Huntarr.io/""",
+Documentation: https://dumbarr.com/services/core/huntarr/""",
 }
 
 OPTIONAL_POST_CORE = ["riven_frontend"]
