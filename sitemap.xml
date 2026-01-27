@@ -1,285 +1,285 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
       <url>
-        <loc>https://I-am-PUID-0.github.io/DUMB/</loc>
+        <loc>https://dumbarr.com/</loc>
       </url>
       <url>
-        <loc>https://I-am-PUID-0.github.io/DUMB/features/</loc>
+        <loc>https://dumbarr.com/features/</loc>
       </url>
       <url>
-        <loc>https://I-am-PUID-0.github.io/DUMB/features/configuration/</loc>
+        <loc>https://dumbarr.com/features/configuration/</loc>
       </url>
       <url>
-        <loc>https://I-am-PUID-0.github.io/DUMB/features/usage/</loc>
+        <loc>https://dumbarr.com/features/usage/</loc>
       </url>
       <url>
-        <loc>https://I-am-PUID-0.github.io/DUMB/features/authentication/</loc>
+        <loc>https://dumbarr.com/features/authentication/</loc>
       </url>
       <url>
-        <loc>https://I-am-PUID-0.github.io/DUMB/features/auto-restart/</loc>
+        <loc>https://dumbarr.com/features/auto-restart/</loc>
       </url>
       <url>
-        <loc>https://I-am-PUID-0.github.io/DUMB/features/auto-update/</loc>
+        <loc>https://dumbarr.com/features/auto-update/</loc>
       </url>
       <url>
-        <loc>https://I-am-PUID-0.github.io/DUMB/features/ffprobe-monitor/</loc>
+        <loc>https://dumbarr.com/features/ffprobe-monitor/</loc>
       </url>
       <url>
-        <loc>https://I-am-PUID-0.github.io/DUMB/features/metrics/</loc>
+        <loc>https://dumbarr.com/features/metrics/</loc>
       </url>
       <url>
-        <loc>https://I-am-PUID-0.github.io/DUMB/features/embedded-ui/</loc>
+        <loc>https://dumbarr.com/features/embedded-ui/</loc>
       </url>
       <url>
-        <loc>https://I-am-PUID-0.github.io/DUMB/frontend/</loc>
+        <loc>https://dumbarr.com/frontend/</loc>
       </url>
       <url>
-        <loc>https://I-am-PUID-0.github.io/DUMB/frontend/dashboard/</loc>
+        <loc>https://dumbarr.com/frontend/dashboard/</loc>
       </url>
       <url>
-        <loc>https://I-am-PUID-0.github.io/DUMB/frontend/onboarding/</loc>
+        <loc>https://dumbarr.com/frontend/onboarding/</loc>
       </url>
       <url>
-        <loc>https://I-am-PUID-0.github.io/DUMB/frontend/settings/</loc>
+        <loc>https://dumbarr.com/frontend/settings/</loc>
       </url>
       <url>
-        <loc>https://I-am-PUID-0.github.io/DUMB/frontend/service-pages/</loc>
+        <loc>https://dumbarr.com/frontend/service-pages/</loc>
       </url>
       <url>
-        <loc>https://I-am-PUID-0.github.io/DUMB/frontend/metrics/</loc>
+        <loc>https://dumbarr.com/frontend/metrics/</loc>
       </url>
       <url>
-        <loc>https://I-am-PUID-0.github.io/DUMB/architecture/</loc>
+        <loc>https://dumbarr.com/architecture/</loc>
       </url>
       <url>
-        <loc>https://I-am-PUID-0.github.io/DUMB/architecture/backend/</loc>
+        <loc>https://dumbarr.com/architecture/backend/</loc>
       </url>
       <url>
-        <loc>https://I-am-PUID-0.github.io/DUMB/architecture/frontend/</loc>
+        <loc>https://dumbarr.com/architecture/frontend/</loc>
       </url>
       <url>
-        <loc>https://I-am-PUID-0.github.io/DUMB/architecture/traefik/</loc>
+        <loc>https://dumbarr.com/architecture/traefik/</loc>
       </url>
       <url>
-        <loc>https://I-am-PUID-0.github.io/DUMB/services/</loc>
+        <loc>https://dumbarr.com/services/</loc>
       </url>
       <url>
-        <loc>https://I-am-PUID-0.github.io/DUMB/services/dumb/</loc>
+        <loc>https://dumbarr.com/services/dumb/</loc>
       </url>
       <url>
-        <loc>https://I-am-PUID-0.github.io/DUMB/services/dumb/api/</loc>
+        <loc>https://dumbarr.com/services/dumb/api/</loc>
       </url>
       <url>
-        <loc>https://I-am-PUID-0.github.io/DUMB/services/dumb/dumb-frontend/</loc>
+        <loc>https://dumbarr.com/services/dumb/dumb-frontend/</loc>
       </url>
       <url>
-        <loc>https://I-am-PUID-0.github.io/DUMB/services/core/</loc>
+        <loc>https://dumbarr.com/services/core/</loc>
       </url>
       <url>
-        <loc>https://I-am-PUID-0.github.io/DUMB/services/core/cli-debrid/</loc>
+        <loc>https://dumbarr.com/services/core/cli-debrid/</loc>
       </url>
       <url>
-        <loc>https://I-am-PUID-0.github.io/DUMB/services/core/decypharr/</loc>
+        <loc>https://dumbarr.com/services/core/decypharr/</loc>
       </url>
       <url>
-        <loc>https://I-am-PUID-0.github.io/DUMB/services/core/nzbdav/</loc>
+        <loc>https://dumbarr.com/services/core/nzbdav/</loc>
       </url>
       <url>
-        <loc>https://I-am-PUID-0.github.io/DUMB/services/core/plex-media-server/</loc>
+        <loc>https://dumbarr.com/services/core/plex-media-server/</loc>
       </url>
       <url>
-        <loc>https://I-am-PUID-0.github.io/DUMB/services/core/jellyfin/</loc>
+        <loc>https://dumbarr.com/services/core/jellyfin/</loc>
       </url>
       <url>
-        <loc>https://I-am-PUID-0.github.io/DUMB/services/core/emby/</loc>
+        <loc>https://dumbarr.com/services/core/emby/</loc>
       </url>
       <url>
-        <loc>https://I-am-PUID-0.github.io/DUMB/services/core/seerr/</loc>
+        <loc>https://dumbarr.com/services/core/seerr/</loc>
       </url>
       <url>
-        <loc>https://I-am-PUID-0.github.io/DUMB/services/core/plex-debrid/</loc>
+        <loc>https://dumbarr.com/services/core/plex-debrid/</loc>
       </url>
       <url>
-        <loc>https://I-am-PUID-0.github.io/DUMB/services/core/riven-backend/</loc>
+        <loc>https://dumbarr.com/services/core/riven-backend/</loc>
       </url>
       <url>
-        <loc>https://I-am-PUID-0.github.io/DUMB/services/core/sonarr/</loc>
+        <loc>https://dumbarr.com/services/core/sonarr/</loc>
       </url>
       <url>
-        <loc>https://I-am-PUID-0.github.io/DUMB/services/core/radarr/</loc>
+        <loc>https://dumbarr.com/services/core/radarr/</loc>
       </url>
       <url>
-        <loc>https://I-am-PUID-0.github.io/DUMB/services/core/lidarr/</loc>
+        <loc>https://dumbarr.com/services/core/lidarr/</loc>
       </url>
       <url>
-        <loc>https://I-am-PUID-0.github.io/DUMB/services/core/prowlarr/</loc>
+        <loc>https://dumbarr.com/services/core/prowlarr/</loc>
       </url>
       <url>
-        <loc>https://I-am-PUID-0.github.io/DUMB/services/core/whisparr/</loc>
+        <loc>https://dumbarr.com/services/core/whisparr/</loc>
       </url>
       <url>
-        <loc>https://I-am-PUID-0.github.io/DUMB/services/core/huntarr/</loc>
+        <loc>https://dumbarr.com/services/core/huntarr/</loc>
       </url>
       <url>
-        <loc>https://I-am-PUID-0.github.io/DUMB/services/dependent/</loc>
+        <loc>https://dumbarr.com/services/dependent/</loc>
       </url>
       <url>
-        <loc>https://I-am-PUID-0.github.io/DUMB/services/dependent/cli-battery/</loc>
+        <loc>https://dumbarr.com/services/dependent/cli-battery/</loc>
       </url>
       <url>
-        <loc>https://I-am-PUID-0.github.io/DUMB/services/dependent/phalanx-db/</loc>
+        <loc>https://dumbarr.com/services/dependent/phalanx-db/</loc>
       </url>
       <url>
-        <loc>https://I-am-PUID-0.github.io/DUMB/services/dependent/postgres/</loc>
+        <loc>https://dumbarr.com/services/dependent/postgres/</loc>
       </url>
       <url>
-        <loc>https://I-am-PUID-0.github.io/DUMB/services/dependent/rclone/</loc>
+        <loc>https://dumbarr.com/services/dependent/rclone/</loc>
       </url>
       <url>
-        <loc>https://I-am-PUID-0.github.io/DUMB/services/dependent/zurg/</loc>
+        <loc>https://dumbarr.com/services/dependent/zurg/</loc>
       </url>
       <url>
-        <loc>https://I-am-PUID-0.github.io/DUMB/services/optional/</loc>
+        <loc>https://dumbarr.com/services/optional/</loc>
       </url>
       <url>
-        <loc>https://I-am-PUID-0.github.io/DUMB/services/optional/pgadmin/</loc>
+        <loc>https://dumbarr.com/services/optional/pgadmin/</loc>
       </url>
       <url>
-        <loc>https://I-am-PUID-0.github.io/DUMB/services/optional/riven-frontend/</loc>
+        <loc>https://dumbarr.com/services/optional/riven-frontend/</loc>
       </url>
       <url>
-        <loc>https://I-am-PUID-0.github.io/DUMB/services/optional/tautulli/</loc>
+        <loc>https://dumbarr.com/services/optional/tautulli/</loc>
       </url>
       <url>
-        <loc>https://I-am-PUID-0.github.io/DUMB/services/optional/zilean/</loc>
+        <loc>https://dumbarr.com/services/optional/zilean/</loc>
       </url>
       <url>
-        <loc>https://I-am-PUID-0.github.io/DUMB/deployment/</loc>
+        <loc>https://dumbarr.com/deployment/</loc>
       </url>
       <url>
-        <loc>https://I-am-PUID-0.github.io/DUMB/deployment/docker/</loc>
+        <loc>https://dumbarr.com/deployment/docker/</loc>
       </url>
       <url>
-        <loc>https://I-am-PUID-0.github.io/DUMB/deployment/portainer/</loc>
+        <loc>https://dumbarr.com/deployment/portainer/</loc>
       </url>
       <url>
-        <loc>https://I-am-PUID-0.github.io/DUMB/deployment/unraid/</loc>
+        <loc>https://dumbarr.com/deployment/unraid/</loc>
       </url>
       <url>
-        <loc>https://I-am-PUID-0.github.io/DUMB/deployment/wsl/</loc>
+        <loc>https://dumbarr.com/deployment/wsl/</loc>
       </url>
       <url>
-        <loc>https://I-am-PUID-0.github.io/DUMB/deployment/proxmox/</loc>
+        <loc>https://dumbarr.com/deployment/proxmox/</loc>
       </url>
       <url>
-        <loc>https://I-am-PUID-0.github.io/DUMB/deployment/synology/</loc>
+        <loc>https://dumbarr.com/deployment/synology/</loc>
       </url>
       <url>
-        <loc>https://I-am-PUID-0.github.io/DUMB/deployment/qnap/</loc>
+        <loc>https://dumbarr.com/deployment/qnap/</loc>
       </url>
       <url>
-        <loc>https://I-am-PUID-0.github.io/DUMB/deployment/truenas/</loc>
+        <loc>https://dumbarr.com/deployment/truenas/</loc>
       </url>
       <url>
-        <loc>https://I-am-PUID-0.github.io/DUMB/deployment/dockge/</loc>
+        <loc>https://dumbarr.com/deployment/dockge/</loc>
       </url>
       <url>
-        <loc>https://I-am-PUID-0.github.io/DUMB/api/</loc>
+        <loc>https://dumbarr.com/api/</loc>
       </url>
       <url>
-        <loc>https://I-am-PUID-0.github.io/DUMB/api/auth/</loc>
+        <loc>https://dumbarr.com/api/auth/</loc>
       </url>
       <url>
-        <loc>https://I-am-PUID-0.github.io/DUMB/api/health/</loc>
+        <loc>https://dumbarr.com/api/health/</loc>
       </url>
       <url>
-        <loc>https://I-am-PUID-0.github.io/DUMB/api/process/</loc>
+        <loc>https://dumbarr.com/api/process/</loc>
       </url>
       <url>
-        <loc>https://I-am-PUID-0.github.io/DUMB/api/config/</loc>
+        <loc>https://dumbarr.com/api/config/</loc>
       </url>
       <url>
-        <loc>https://I-am-PUID-0.github.io/DUMB/api/logs/</loc>
+        <loc>https://dumbarr.com/api/logs/</loc>
       </url>
       <url>
-        <loc>https://I-am-PUID-0.github.io/DUMB/api/websocket/</loc>
+        <loc>https://dumbarr.com/api/websocket/</loc>
       </url>
       <url>
-        <loc>https://I-am-PUID-0.github.io/DUMB/api/websocket_logs/</loc>
+        <loc>https://dumbarr.com/api/websocket_logs/</loc>
       </url>
       <url>
-        <loc>https://I-am-PUID-0.github.io/DUMB/reference/</loc>
+        <loc>https://dumbarr.com/reference/</loc>
       </url>
       <url>
-        <loc>https://I-am-PUID-0.github.io/DUMB/reference/ports/</loc>
+        <loc>https://dumbarr.com/reference/ports/</loc>
       </url>
       <url>
-        <loc>https://I-am-PUID-0.github.io/DUMB/reference/environment-variables/</loc>
+        <loc>https://dumbarr.com/reference/environment-variables/</loc>
       </url>
       <url>
-        <loc>https://I-am-PUID-0.github.io/DUMB/reference/config-schema/</loc>
+        <loc>https://dumbarr.com/reference/config-schema/</loc>
       </url>
       <url>
-        <loc>https://I-am-PUID-0.github.io/DUMB/reference/instances/</loc>
+        <loc>https://dumbarr.com/reference/instances/</loc>
       </url>
       <url>
-        <loc>https://I-am-PUID-0.github.io/DUMB/reference/core-service/</loc>
+        <loc>https://dumbarr.com/reference/core-service/</loc>
       </url>
       <url>
-        <loc>https://I-am-PUID-0.github.io/DUMB/faq/general/</loc>
+        <loc>https://dumbarr.com/faq/general/</loc>
       </url>
       <url>
-        <loc>https://I-am-PUID-0.github.io/DUMB/faq/authentication/</loc>
+        <loc>https://dumbarr.com/faq/authentication/</loc>
       </url>
       <url>
-        <loc>https://I-am-PUID-0.github.io/DUMB/faq/cli-debrid/</loc>
+        <loc>https://dumbarr.com/faq/cli-debrid/</loc>
       </url>
       <url>
-        <loc>https://I-am-PUID-0.github.io/DUMB/faq/decypharr/</loc>
+        <loc>https://dumbarr.com/faq/decypharr/</loc>
       </url>
       <url>
-        <loc>https://I-am-PUID-0.github.io/DUMB/faq/dumb/</loc>
+        <loc>https://dumbarr.com/faq/dumb/</loc>
       </url>
       <url>
-        <loc>https://I-am-PUID-0.github.io/DUMB/faq/huntarr/</loc>
+        <loc>https://dumbarr.com/faq/huntarr/</loc>
       </url>
       <url>
-        <loc>https://I-am-PUID-0.github.io/DUMB/faq/pgadmin/</loc>
+        <loc>https://dumbarr.com/faq/pgadmin/</loc>
       </url>
       <url>
-        <loc>https://I-am-PUID-0.github.io/DUMB/faq/plex/</loc>
+        <loc>https://dumbarr.com/faq/plex/</loc>
       </url>
       <url>
-        <loc>https://I-am-PUID-0.github.io/DUMB/faq/plex-debrid/</loc>
+        <loc>https://dumbarr.com/faq/plex-debrid/</loc>
       </url>
       <url>
-        <loc>https://I-am-PUID-0.github.io/DUMB/faq/postgres/</loc>
+        <loc>https://dumbarr.com/faq/postgres/</loc>
       </url>
       <url>
-        <loc>https://I-am-PUID-0.github.io/DUMB/faq/rclone/</loc>
+        <loc>https://dumbarr.com/faq/rclone/</loc>
       </url>
       <url>
-        <loc>https://I-am-PUID-0.github.io/DUMB/faq/riven/</loc>
+        <loc>https://dumbarr.com/faq/riven/</loc>
       </url>
       <url>
-        <loc>https://I-am-PUID-0.github.io/DUMB/faq/seerr/</loc>
+        <loc>https://dumbarr.com/faq/seerr/</loc>
       </url>
       <url>
-        <loc>https://I-am-PUID-0.github.io/DUMB/faq/tautulli/</loc>
+        <loc>https://dumbarr.com/faq/tautulli/</loc>
       </url>
       <url>
-        <loc>https://I-am-PUID-0.github.io/DUMB/faq/zilean/</loc>
+        <loc>https://dumbarr.com/faq/zilean/</loc>
       </url>
       <url>
-        <loc>https://I-am-PUID-0.github.io/DUMB/faq/zurg/</loc>
+        <loc>https://dumbarr.com/faq/zurg/</loc>
       </url>
       <url>
-        <loc>https://I-am-PUID-0.github.io/DUMB/changelog/</loc>
+        <loc>https://dumbarr.com/changelog/</loc>
       </url>
       <url>
-        <loc>https://I-am-PUID-0.github.io/DUMB/contributing/</loc>
+        <loc>https://dumbarr.com/contributing/</loc>
       </url>
       <url>
-        <loc>https://I-am-PUID-0.github.io/DUMB/about/</loc>
+        <loc>https://dumbarr.com/about/</loc>
       </url>
 </urlset>

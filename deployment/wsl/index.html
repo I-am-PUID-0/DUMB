@@ -12,7 +12,7 @@
         <meta name="author" content="DUMB Team">
       
       
-        <link rel="canonical" href="https://I-am-PUID-0.github.io/DUMB/deployment/wsl/">
+        <link rel="canonical" href="https://dumbarr.com/deployment/wsl/">
       
       
         <link rel="prev" href="../unraid/">
@@ -2777,6 +2777,106 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Deploying DUMB on Windows Setup Guide (Docker&#x2f;WSL)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#wsl-install" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        WSL Install
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#docker-install" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Docker Install
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#accessing-the-mount-on-windows" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Accessing the Mount on Windows
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#mirrored-mode-networking" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Mirrored Mode Networking
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Mirrored Mode Networking">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#benefits-of-mirrored-networking" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Benefits of Mirrored Networking
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#enabling-mirrored-mode" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Enabling Mirrored Mode
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#additional-notes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Additional Notes
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#extra-credit" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Extra Credit
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
     </ul>
@@ -4179,6 +4279,106 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Deploying DUMB on Windows Setup Guide (Docker&#x2f;WSL)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#wsl-install" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        WSL Install
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#docker-install" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Docker Install
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#accessing-the-mount-on-windows" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Accessing the Mount on Windows
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#mirrored-mode-networking" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Mirrored Mode Networking
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Mirrored Mode Networking">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#benefits-of-mirrored-networking" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Benefits of Mirrored Networking
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#enabling-mirrored-mode" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Enabling Mirrored Mode
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#additional-notes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Additional Notes
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#extra-credit" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Extra Credit
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
     </ul>
@@ -4262,14 +4462,14 @@
 
   <h1>Deploy with WSL</h1>
 
-<h2 id="deploying-dumb-on-windows-setup-guide-dockerwsl">Deploying DUMB on Windows Setup Guide (Docker/WSL)<a class="headerlink" href="#deploying-dumb-on-windows-setup-guide-dockerwsl" title="Permanent link">&para;</a></h2>
+<h2 id="deploying-dumb-on-windows-setup-guide-dockerwsl">Deploying DUMB on Windows Setup Guide (Docker/WSL)<a class="headerlink" href="#deploying-dumb-on-windows-setup-guide-dockerwsl" title="Permanent link">#</a></h2>
 <div class="admonition warning">
 <p class="admonition-title">Docker Desktop</p>
 <p>Ensure that Docker Desktop is not installed; if so, uninstall and reboot before proceeding.</p>
 </div>
 <p>This guide will walk you through setting up DUMB on a Windows system using a <strong>lightweight Docker + WSL2 setup</strong>, without relying on Docker Desktop. </p>
 <hr />
-<h3 id="wsl-install">WSL Install<a class="headerlink" href="#wsl-install" title="Permanent link">&para;</a></h3>
+<h3 id="wsl-install">WSL Install<a class="headerlink" href="#wsl-install" title="Permanent link">#</a></h3>
 <ol>
 <li>
 <p>From the Microsoft Store, install <strong>Windows Subsystem for Linux (WSL)</strong></p>
@@ -4308,7 +4508,7 @@ sudo<span class="w"> </span>mount<span class="w"> </span>--make-rshared<span cla
 </li>
 </ol>
 <hr />
-<h3 id="docker-install">Docker Install<a class="headerlink" href="#docker-install" title="Permanent link">&para;</a></h3>
+<h3 id="docker-install">Docker Install<a class="headerlink" href="#docker-install" title="Permanent link">#</a></h3>
 <ol>
 <li>
 <p>Follow the <a href="https://docs.docker.com/engine/install/ubuntu/">official Docker Engine install guide for Ubuntu</a></p>
@@ -4322,7 +4522,7 @@ sudo<span class="w"> </span>mount<span class="w"> </span>--make-rshared<span cla
 </li>
 </ol>
 <hr />
-<h3 id="accessing-the-mount-on-windows">Accessing the Mount on Windows<a class="headerlink" href="#accessing-the-mount-on-windows" title="Permanent link">&para;</a></h3>
+<h3 id="accessing-the-mount-on-windows">Accessing the Mount on Windows<a class="headerlink" href="#accessing-the-mount-on-windows" title="Permanent link">#</a></h3>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
 <p>These steps are only required if sharing the mount outside of the container - e.g., to another media server, etc. </p>
@@ -4358,9 +4558,9 @@ sudo<span class="w"> </span>mount<span class="w"> </span>--make-rshared<span cla
 </li>
 </ol>
 <hr />
-<h3 id="mirrored-mode-networking">Mirrored Mode Networking<a class="headerlink" href="#mirrored-mode-networking" title="Permanent link">&para;</a></h3>
+<h3 id="mirrored-mode-networking">Mirrored Mode Networking<a class="headerlink" href="#mirrored-mode-networking" title="Permanent link">#</a></h3>
 <p>Starting with <strong>Windows 11 22H2</strong>, WSL2 supports a new networking mode called <strong>mirrored networking</strong>, which improves compatibility and unlocks several new features by mirroring Windows' network interfaces into Linux.</p>
-<h4 id="benefits-of-mirrored-networking">Benefits of Mirrored Networking<a class="headerlink" href="#benefits-of-mirrored-networking" title="Permanent link">&para;</a></h4>
+<h4 id="benefits-of-mirrored-networking">Benefits of Mirrored Networking<a class="headerlink" href="#benefits-of-mirrored-networking" title="Permanent link">#</a></h4>
 <ul>
 <li>Full <strong>IPv6</strong> support  </li>
 <li>Access <strong>Windows services</strong> from WSL using <code>127.0.0.1</code>  </li>
@@ -4369,7 +4569,7 @@ sudo<span class="w"> </span>mount<span class="w"> </span>--make-rshared<span cla
 <li>Reach WSL directly from your <strong>local LAN</strong></li>
 </ul>
 <hr />
-<h4 id="enabling-mirrored-mode">Enabling Mirrored Mode<a class="headerlink" href="#enabling-mirrored-mode" title="Permanent link">&para;</a></h4>
+<h4 id="enabling-mirrored-mode">Enabling Mirrored Mode<a class="headerlink" href="#enabling-mirrored-mode" title="Permanent link">#</a></h4>
 <ol>
 <li>
 <p>Open (or create) the <code>.wslconfig</code> file in your Windows home directory:</p>
@@ -4392,12 +4592,12 @@ sudo<span class="w"> </span>mount<span class="w"> </span>--make-rshared<span cla
 </li>
 </ol>
 <hr />
-<h4 id="additional-notes">Additional Notes<a class="headerlink" href="#additional-notes" title="Permanent link">&para;</a></h4>
+<h4 id="additional-notes">Additional Notes<a class="headerlink" href="#additional-notes" title="Permanent link">#</a></h4>
 <ul>
 <li>You can combine this with <a href="https://learn.microsoft.com/en-us/windows/wsl/wsl-config#configuration-settings-for-wslconfig"><code>autoProxy=true</code></a> if you're using a proxy.</li>
 <li>This setting applies globally across all WSL2 instances.</li>
 </ul>
-<h3 id="extra-credit">Extra Credit<a class="headerlink" href="#extra-credit" title="Permanent link">&para;</a></h3>
+<h3 id="extra-credit">Extra Credit<a class="headerlink" href="#extra-credit" title="Permanent link">#</a></h3>
 <p>If you want to manage Docker visually via Portainer:</p>
 <ol>
 <li>

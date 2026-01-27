@@ -12,7 +12,7 @@
         <meta name="author" content="DUMB Team">
       
       
-        <link rel="canonical" href="https://I-am-PUID-0.github.io/DUMB/api/auth/">
+        <link rel="canonical" href="https://dumbarr.com/api/auth/">
       
       
         <link rel="prev" href="../">
@@ -3064,6 +3064,335 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Endpoints">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#get-apiauthstatus" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GET /api/auth/status
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="GET &#x2f;api&#x2f;auth&#x2f;status">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#response" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Response
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#post-apiauthlogin" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        POST /api/auth/login
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="POST &#x2f;api&#x2f;auth&#x2f;login">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#request-body" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Request body
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#response_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Response
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#error-responses" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Error responses
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#post-apiauthrefresh" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        POST /api/auth/refresh
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="POST &#x2f;api&#x2f;auth&#x2f;refresh">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#request-body_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Request body
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#response_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Response
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#error-responses_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Error responses
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#post-apiauthverify" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        POST /api/auth/verify
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="POST &#x2f;api&#x2f;auth&#x2f;verify">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#request-body_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Request body
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#response_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Response
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#post-apiauthsetup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        POST /api/auth/setup
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="POST &#x2f;api&#x2f;auth&#x2f;setup">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#request-body_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Request body
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#response_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Response
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#error-responses_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Error responses
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#post-apiauthskip-setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        POST /api/auth/skip-setup
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="POST &#x2f;api&#x2f;auth&#x2f;skip-setup">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#response_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Response
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#post-apiauthenable" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        POST /api/auth/enable
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="POST &#x2f;api&#x2f;auth&#x2f;enable">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#response_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Response
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#error-responses_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Error responses
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#post-apiauthdisable" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        POST /api/auth/disable
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="POST &#x2f;api&#x2f;auth&#x2f;disable">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#response_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Response
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -3074,6 +3403,201 @@
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="User management endpoints">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#get-apiauthusers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GET /api/auth/users
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="GET &#x2f;api&#x2f;auth&#x2f;users">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#response_8" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Response
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#post-apiauthusers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        POST /api/auth/users
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="POST &#x2f;api&#x2f;auth&#x2f;users">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#request-body_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Request body
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#response_9" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Response
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#error-responses_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Error responses
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#put-apiauthusersusername" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        PUT /api/auth/users/{username}
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="PUT &#x2f;api&#x2f;auth&#x2f;users&#x2f;{username}">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#path-parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Path parameters
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#request-body_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Request body
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#response_10" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Response
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#error-responses_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Error responses
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#delete-apiauthusersusername" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DELETE /api/auth/users/{username}
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="DELETE &#x2f;api&#x2f;auth&#x2f;users&#x2f;{username}">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#path-parameters_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Path parameters
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#response_11" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Response
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#error-responses_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Error responses
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -3086,6 +3610,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Token structure">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#token-lifetimes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Token lifetimes
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -3097,6 +3638,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Using authentication with other endpoints">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#websocket-authentication" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        WebSocket authentication
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -3107,6 +3665,34 @@
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="Error handling">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#common-error-responses" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Common error responses
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#token-refresh-flow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Token refresh flow
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -4262,6 +4848,335 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Endpoints">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#get-apiauthstatus" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GET /api/auth/status
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="GET &#x2f;api&#x2f;auth&#x2f;status">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#response" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Response
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#post-apiauthlogin" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        POST /api/auth/login
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="POST &#x2f;api&#x2f;auth&#x2f;login">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#request-body" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Request body
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#response_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Response
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#error-responses" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Error responses
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#post-apiauthrefresh" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        POST /api/auth/refresh
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="POST &#x2f;api&#x2f;auth&#x2f;refresh">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#request-body_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Request body
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#response_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Response
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#error-responses_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Error responses
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#post-apiauthverify" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        POST /api/auth/verify
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="POST &#x2f;api&#x2f;auth&#x2f;verify">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#request-body_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Request body
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#response_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Response
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#post-apiauthsetup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        POST /api/auth/setup
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="POST &#x2f;api&#x2f;auth&#x2f;setup">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#request-body_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Request body
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#response_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Response
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#error-responses_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Error responses
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#post-apiauthskip-setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        POST /api/auth/skip-setup
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="POST &#x2f;api&#x2f;auth&#x2f;skip-setup">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#response_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Response
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#post-apiauthenable" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        POST /api/auth/enable
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="POST &#x2f;api&#x2f;auth&#x2f;enable">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#response_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Response
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#error-responses_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Error responses
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#post-apiauthdisable" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        POST /api/auth/disable
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="POST &#x2f;api&#x2f;auth&#x2f;disable">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#response_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Response
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -4272,6 +5187,201 @@
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="User management endpoints">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#get-apiauthusers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GET /api/auth/users
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="GET &#x2f;api&#x2f;auth&#x2f;users">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#response_8" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Response
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#post-apiauthusers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        POST /api/auth/users
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="POST &#x2f;api&#x2f;auth&#x2f;users">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#request-body_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Request body
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#response_9" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Response
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#error-responses_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Error responses
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#put-apiauthusersusername" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        PUT /api/auth/users/{username}
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="PUT &#x2f;api&#x2f;auth&#x2f;users&#x2f;{username}">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#path-parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Path parameters
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#request-body_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Request body
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#response_10" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Response
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#error-responses_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Error responses
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#delete-apiauthusersusername" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DELETE /api/auth/users/{username}
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="DELETE &#x2f;api&#x2f;auth&#x2f;users&#x2f;{username}">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#path-parameters_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Path parameters
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#response_11" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Response
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#error-responses_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Error responses
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -4284,6 +5394,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Token structure">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#token-lifetimes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Token lifetimes
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -4295,6 +5422,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Using authentication with other endpoints">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#websocket-authentication" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        WebSocket authentication
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -4305,6 +5449,34 @@
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="Error handling">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#common-error-responses" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Common error responses
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#token-refresh-flow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Token refresh flow
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -4398,16 +5570,16 @@
   
 
 
-<h1 id="authentication-api">Authentication API<a class="headerlink" href="#authentication-api" title="Permanent link">&para;</a></h1>
+<h1 id="authentication-api">Authentication API<a class="headerlink" href="#authentication-api" title="Permanent link">#</a></h1>
 <p>The Authentication API provides endpoints for user management, login, token handling, and authentication configuration.</p>
 <hr />
-<h2 id="overview">Overview<a class="headerlink" href="#overview" title="Permanent link">&para;</a></h2>
+<h2 id="overview">Overview<a class="headerlink" href="#overview" title="Permanent link">#</a></h2>
 <p>All authentication endpoints are prefixed with <code>/api/auth</code>. When authentication is enabled, most other API endpoints require a valid JWT token in the <code>Authorization: Bearer &lt;token&gt;</code> header.</p>
 <hr />
-<h2 id="endpoints">Endpoints<a class="headerlink" href="#endpoints" title="Permanent link">&para;</a></h2>
-<h3 id="get-apiauthstatus"><code>GET /api/auth/status</code><a class="headerlink" href="#get-apiauthstatus" title="Permanent link">&para;</a></h3>
+<h2 id="endpoints">Endpoints<a class="headerlink" href="#endpoints" title="Permanent link">#</a></h2>
+<h3 id="get-apiauthstatus"><code>GET /api/auth/status</code><a class="headerlink" href="#get-apiauthstatus" title="Permanent link">#</a></h3>
 <p>Returns the current authentication status.</p>
-<h4 id="response">Response<a class="headerlink" href="#response" title="Permanent link">&para;</a></h4>
+<h4 id="response">Response<a class="headerlink" href="#response" title="Permanent link">#</a></h4>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;has_users&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
@@ -4441,22 +5613,22 @@
 </tbody>
 </table>
 <hr />
-<h3 id="post-apiauthlogin"><code>POST /api/auth/login</code><a class="headerlink" href="#post-apiauthlogin" title="Permanent link">&para;</a></h3>
+<h3 id="post-apiauthlogin"><code>POST /api/auth/login</code><a class="headerlink" href="#post-apiauthlogin" title="Permanent link">#</a></h3>
 <p>Authenticates a user and returns JWT tokens.</p>
-<h4 id="request-body">Request body<a class="headerlink" href="#request-body" title="Permanent link">&para;</a></h4>
+<h4 id="request-body">Request body<a class="headerlink" href="#request-body" title="Permanent link">#</a></h4>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;username&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;admin&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;password&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;yourpassword&quot;</span>
 <span class="p">}</span>
 </code></pre></div>
-<h4 id="response_1">Response<a class="headerlink" href="#response_1" title="Permanent link">&para;</a></h4>
+<h4 id="response_1">Response<a class="headerlink" href="#response_1" title="Permanent link">#</a></h4>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;access_token&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;eyJhbGciOiJIUzI1NiIs...&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;refresh_token&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;eyJhbGciOiJIUzI1NiIs...&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;token_type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;bearer&quot;</span>
 <span class="p">}</span>
 </code></pre></div>
-<h4 id="error-responses">Error responses<a class="headerlink" href="#error-responses" title="Permanent link">&para;</a></h4>
+<h4 id="error-responses">Error responses<a class="headerlink" href="#error-responses" title="Permanent link">#</a></h4>
 <table>
 <thead>
 <tr>
@@ -4475,27 +5647,27 @@
 </tr>
 </tbody>
 </table>
-<h4 id="example">Example<a class="headerlink" href="#example" title="Permanent link">&para;</a></h4>
+<h4 id="example">Example<a class="headerlink" href="#example" title="Permanent link">#</a></h4>
 <div class="highlight"><pre><span></span><code>curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://localhost:8000/api/auth/login<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Content-Type: application/json&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{&quot;username&quot;: &quot;admin&quot;, &quot;password&quot;: &quot;yourpassword&quot;}&#39;</span>
 </code></pre></div>
 <hr />
-<h3 id="post-apiauthrefresh"><code>POST /api/auth/refresh</code><a class="headerlink" href="#post-apiauthrefresh" title="Permanent link">&para;</a></h3>
+<h3 id="post-apiauthrefresh"><code>POST /api/auth/refresh</code><a class="headerlink" href="#post-apiauthrefresh" title="Permanent link">#</a></h3>
 <p>Exchanges a refresh token for new access and refresh tokens.</p>
-<h4 id="request-body_1">Request body<a class="headerlink" href="#request-body_1" title="Permanent link">&para;</a></h4>
+<h4 id="request-body_1">Request body<a class="headerlink" href="#request-body_1" title="Permanent link">#</a></h4>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;refresh_token&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;eyJhbGciOiJIUzI1NiIs...&quot;</span>
 <span class="p">}</span>
 </code></pre></div>
-<h4 id="response_2">Response<a class="headerlink" href="#response_2" title="Permanent link">&para;</a></h4>
+<h4 id="response_2">Response<a class="headerlink" href="#response_2" title="Permanent link">#</a></h4>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;access_token&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;eyJhbGciOiJIUzI1NiIs...&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;refresh_token&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;eyJhbGciOiJIUzI1NiIs...&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;token_type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;bearer&quot;</span>
 <span class="p">}</span>
 </code></pre></div>
-<h4 id="error-responses_1">Error responses<a class="headerlink" href="#error-responses_1" title="Permanent link">&para;</a></h4>
+<h4 id="error-responses_1">Error responses<a class="headerlink" href="#error-responses_1" title="Permanent link">#</a></h4>
 <table>
 <thead>
 <tr>
@@ -4511,36 +5683,36 @@
 </tbody>
 </table>
 <hr />
-<h3 id="post-apiauthverify"><code>POST /api/auth/verify</code><a class="headerlink" href="#post-apiauthverify" title="Permanent link">&para;</a></h3>
+<h3 id="post-apiauthverify"><code>POST /api/auth/verify</code><a class="headerlink" href="#post-apiauthverify" title="Permanent link">#</a></h3>
 <p>Verifies that an access token is valid.</p>
-<h4 id="request-body_2">Request body<a class="headerlink" href="#request-body_2" title="Permanent link">&para;</a></h4>
+<h4 id="request-body_2">Request body<a class="headerlink" href="#request-body_2" title="Permanent link">#</a></h4>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;token&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;eyJhbGciOiJIUzI1NiIs...&quot;</span>
 <span class="p">}</span>
 </code></pre></div>
-<h4 id="response_3">Response<a class="headerlink" href="#response_3" title="Permanent link">&para;</a></h4>
+<h4 id="response_3">Response<a class="headerlink" href="#response_3" title="Permanent link">#</a></h4>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;valid&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;username&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;admin&quot;</span>
 <span class="p">}</span>
 </code></pre></div>
 <hr />
-<h3 id="post-apiauthsetup"><code>POST /api/auth/setup</code><a class="headerlink" href="#post-apiauthsetup" title="Permanent link">&para;</a></h3>
+<h3 id="post-apiauthsetup"><code>POST /api/auth/setup</code><a class="headerlink" href="#post-apiauthsetup" title="Permanent link">#</a></h3>
 <p>Creates the first user account and enables authentication. Only works when no users exist.</p>
-<h4 id="request-body_3">Request body<a class="headerlink" href="#request-body_3" title="Permanent link">&para;</a></h4>
+<h4 id="request-body_3">Request body<a class="headerlink" href="#request-body_3" title="Permanent link">#</a></h4>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;username&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;admin&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;password&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;yourpassword&quot;</span>
 <span class="p">}</span>
 </code></pre></div>
-<h4 id="response_4">Response<a class="headerlink" href="#response_4" title="Permanent link">&para;</a></h4>
+<h4 id="response_4">Response<a class="headerlink" href="#response_4" title="Permanent link">#</a></h4>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;message&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;User created successfully&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;access_token&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;eyJhbGciOiJIUzI1NiIs...&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;refresh_token&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;eyJhbGciOiJIUzI1NiIs...&quot;</span>
 <span class="p">}</span>
 </code></pre></div>
-<h4 id="error-responses_2">Error responses<a class="headerlink" href="#error-responses_2" title="Permanent link">&para;</a></h4>
+<h4 id="error-responses_2">Error responses<a class="headerlink" href="#error-responses_2" title="Permanent link">#</a></h4>
 <table>
 <thead>
 <tr>
@@ -4560,22 +5732,22 @@
 </tbody>
 </table>
 <hr />
-<h3 id="post-apiauthskip-setup"><code>POST /api/auth/skip-setup</code><a class="headerlink" href="#post-apiauthskip-setup" title="Permanent link">&para;</a></h3>
+<h3 id="post-apiauthskip-setup"><code>POST /api/auth/skip-setup</code><a class="headerlink" href="#post-apiauthskip-setup" title="Permanent link">#</a></h3>
 <p>Skips the initial setup wizard, leaving authentication disabled.</p>
-<h4 id="response_5">Response<a class="headerlink" href="#response_5" title="Permanent link">&para;</a></h4>
+<h4 id="response_5">Response<a class="headerlink" href="#response_5" title="Permanent link">#</a></h4>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;message&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Setup skipped, authentication disabled&quot;</span>
 <span class="p">}</span>
 </code></pre></div>
 <hr />
-<h3 id="post-apiauthenable"><code>POST /api/auth/enable</code><a class="headerlink" href="#post-apiauthenable" title="Permanent link">&para;</a></h3>
+<h3 id="post-apiauthenable"><code>POST /api/auth/enable</code><a class="headerlink" href="#post-apiauthenable" title="Permanent link">#</a></h3>
 <p>Enables authentication. Requires at least one user to exist.</p>
-<h4 id="response_6">Response<a class="headerlink" href="#response_6" title="Permanent link">&para;</a></h4>
+<h4 id="response_6">Response<a class="headerlink" href="#response_6" title="Permanent link">#</a></h4>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;message&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Authentication enabled&quot;</span>
 <span class="p">}</span>
 </code></pre></div>
-<h4 id="error-responses_3">Error responses<a class="headerlink" href="#error-responses_3" title="Permanent link">&para;</a></h4>
+<h4 id="error-responses_3">Error responses<a class="headerlink" href="#error-responses_3" title="Permanent link">#</a></h4>
 <table>
 <thead>
 <tr>
@@ -4591,23 +5763,23 @@
 </tbody>
 </table>
 <hr />
-<h3 id="post-apiauthdisable"><code>POST /api/auth/disable</code><a class="headerlink" href="#post-apiauthdisable" title="Permanent link">&para;</a></h3>
+<h3 id="post-apiauthdisable"><code>POST /api/auth/disable</code><a class="headerlink" href="#post-apiauthdisable" title="Permanent link">#</a></h3>
 <p>Disables authentication, allowing unauthenticated access to all endpoints.</p>
 <div class="admonition danger">
 <p class="admonition-title">Security warning</p>
 <p>Disabling authentication exposes all DUMB functionality without any access control.</p>
 </div>
-<h4 id="response_7">Response<a class="headerlink" href="#response_7" title="Permanent link">&para;</a></h4>
+<h4 id="response_7">Response<a class="headerlink" href="#response_7" title="Permanent link">#</a></h4>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;message&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Authentication disabled&quot;</span>
 <span class="p">}</span>
 </code></pre></div>
 <hr />
-<h2 id="user-management-endpoints">User management endpoints<a class="headerlink" href="#user-management-endpoints" title="Permanent link">&para;</a></h2>
+<h2 id="user-management-endpoints">User management endpoints<a class="headerlink" href="#user-management-endpoints" title="Permanent link">#</a></h2>
 <p>These endpoints require authentication when auth is enabled.</p>
-<h3 id="get-apiauthusers"><code>GET /api/auth/users</code><a class="headerlink" href="#get-apiauthusers" title="Permanent link">&para;</a></h3>
+<h3 id="get-apiauthusers"><code>GET /api/auth/users</code><a class="headerlink" href="#get-apiauthusers" title="Permanent link">#</a></h3>
 <p>Lists all user accounts.</p>
-<h4 id="response_8">Response<a class="headerlink" href="#response_8" title="Permanent link">&para;</a></h4>
+<h4 id="response_8">Response<a class="headerlink" href="#response_8" title="Permanent link">#</a></h4>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;users&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
 <span class="w">    </span><span class="p">{</span>
@@ -4622,21 +5794,21 @@
 <span class="p">}</span>
 </code></pre></div>
 <hr />
-<h3 id="post-apiauthusers"><code>POST /api/auth/users</code><a class="headerlink" href="#post-apiauthusers" title="Permanent link">&para;</a></h3>
+<h3 id="post-apiauthusers"><code>POST /api/auth/users</code><a class="headerlink" href="#post-apiauthusers" title="Permanent link">#</a></h3>
 <p>Creates a new user account.</p>
-<h4 id="request-body_4">Request body<a class="headerlink" href="#request-body_4" title="Permanent link">&para;</a></h4>
+<h4 id="request-body_4">Request body<a class="headerlink" href="#request-body_4" title="Permanent link">#</a></h4>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;username&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;newuser&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;password&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;userpassword&quot;</span>
 <span class="p">}</span>
 </code></pre></div>
-<h4 id="response_9">Response<a class="headerlink" href="#response_9" title="Permanent link">&para;</a></h4>
+<h4 id="response_9">Response<a class="headerlink" href="#response_9" title="Permanent link">#</a></h4>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;message&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;User created successfully&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;username&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;newuser&quot;</span>
 <span class="p">}</span>
 </code></pre></div>
-<h4 id="error-responses_4">Error responses<a class="headerlink" href="#error-responses_4" title="Permanent link">&para;</a></h4>
+<h4 id="error-responses_4">Error responses<a class="headerlink" href="#error-responses_4" title="Permanent link">#</a></h4>
 <table>
 <thead>
 <tr>
@@ -4656,9 +5828,9 @@
 </tbody>
 </table>
 <hr />
-<h3 id="put-apiauthusersusername"><code>PUT /api/auth/users/{username}</code><a class="headerlink" href="#put-apiauthusersusername" title="Permanent link">&para;</a></h3>
+<h3 id="put-apiauthusersusername"><code>PUT /api/auth/users/{username}</code><a class="headerlink" href="#put-apiauthusersusername" title="Permanent link">#</a></h3>
 <p>Updates a user account (enable/disable).</p>
-<h4 id="path-parameters">Path parameters<a class="headerlink" href="#path-parameters" title="Permanent link">&para;</a></h4>
+<h4 id="path-parameters">Path parameters<a class="headerlink" href="#path-parameters" title="Permanent link">#</a></h4>
 <table>
 <thead>
 <tr>
@@ -4675,19 +5847,19 @@
 </tr>
 </tbody>
 </table>
-<h4 id="request-body_5">Request body<a class="headerlink" href="#request-body_5" title="Permanent link">&para;</a></h4>
+<h4 id="request-body_5">Request body<a class="headerlink" href="#request-body_5" title="Permanent link">#</a></h4>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;disabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span>
 <span class="p">}</span>
 </code></pre></div>
-<h4 id="response_10">Response<a class="headerlink" href="#response_10" title="Permanent link">&para;</a></h4>
+<h4 id="response_10">Response<a class="headerlink" href="#response_10" title="Permanent link">#</a></h4>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;message&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;User updated successfully&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;username&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;readonly&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;disabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span>
 <span class="p">}</span>
 </code></pre></div>
-<h4 id="error-responses_5">Error responses<a class="headerlink" href="#error-responses_5" title="Permanent link">&para;</a></h4>
+<h4 id="error-responses_5">Error responses<a class="headerlink" href="#error-responses_5" title="Permanent link">#</a></h4>
 <table>
 <thead>
 <tr>
@@ -4707,9 +5879,9 @@
 </tbody>
 </table>
 <hr />
-<h3 id="delete-apiauthusersusername"><code>DELETE /api/auth/users/{username}</code><a class="headerlink" href="#delete-apiauthusersusername" title="Permanent link">&para;</a></h3>
+<h3 id="delete-apiauthusersusername"><code>DELETE /api/auth/users/{username}</code><a class="headerlink" href="#delete-apiauthusersusername" title="Permanent link">#</a></h3>
 <p>Deletes a user account.</p>
-<h4 id="path-parameters_1">Path parameters<a class="headerlink" href="#path-parameters_1" title="Permanent link">&para;</a></h4>
+<h4 id="path-parameters_1">Path parameters<a class="headerlink" href="#path-parameters_1" title="Permanent link">#</a></h4>
 <table>
 <thead>
 <tr>
@@ -4726,12 +5898,12 @@
 </tr>
 </tbody>
 </table>
-<h4 id="response_11">Response<a class="headerlink" href="#response_11" title="Permanent link">&para;</a></h4>
+<h4 id="response_11">Response<a class="headerlink" href="#response_11" title="Permanent link">#</a></h4>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;message&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;User deleted successfully&quot;</span>
 <span class="p">}</span>
 </code></pre></div>
-<h4 id="error-responses_6">Error responses<a class="headerlink" href="#error-responses_6" title="Permanent link">&para;</a></h4>
+<h4 id="error-responses_6">Error responses<a class="headerlink" href="#error-responses_6" title="Permanent link">#</a></h4>
 <table>
 <thead>
 <tr>
@@ -4751,7 +5923,7 @@
 </tbody>
 </table>
 <hr />
-<h2 id="token-structure">Token structure<a class="headerlink" href="#token-structure" title="Permanent link">&para;</a></h2>
+<h2 id="token-structure">Token structure<a class="headerlink" href="#token-structure" title="Permanent link">#</a></h2>
 <p>JWT tokens contain the following claims:</p>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;sub&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;admin&quot;</span><span class="p">,</span>
@@ -4781,7 +5953,7 @@
 </tr>
 </tbody>
 </table>
-<h3 id="token-lifetimes">Token lifetimes<a class="headerlink" href="#token-lifetimes" title="Permanent link">&para;</a></h3>
+<h3 id="token-lifetimes">Token lifetimes<a class="headerlink" href="#token-lifetimes" title="Permanent link">#</a></h3>
 <table>
 <thead>
 <tr>
@@ -4801,18 +5973,18 @@
 </tbody>
 </table>
 <hr />
-<h2 id="using-authentication-with-other-endpoints">Using authentication with other endpoints<a class="headerlink" href="#using-authentication-with-other-endpoints" title="Permanent link">&para;</a></h2>
+<h2 id="using-authentication-with-other-endpoints">Using authentication with other endpoints<a class="headerlink" href="#using-authentication-with-other-endpoints" title="Permanent link">#</a></h2>
 <p>When authentication is enabled, include the access token in the <code>Authorization</code> header:</p>
 <div class="highlight"><pre><span></span><code>curl<span class="w"> </span>-X<span class="w"> </span>GET<span class="w"> </span>http://localhost:8000/api/process/processes<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Authorization: Bearer eyJhbGciOiJIUzI1NiIs...&quot;</span>
 </code></pre></div>
-<h3 id="websocket-authentication">WebSocket authentication<a class="headerlink" href="#websocket-authentication" title="Permanent link">&para;</a></h3>
+<h3 id="websocket-authentication">WebSocket authentication<a class="headerlink" href="#websocket-authentication" title="Permanent link">#</a></h3>
 <p>For WebSocket connections, pass the token as a query parameter:</p>
 <div class="highlight"><pre><span></span><code>ws://localhost:8000/ws/status?token=eyJhbGciOiJIUzI1NiIs...
 </code></pre></div>
 <hr />
-<h2 id="error-handling">Error handling<a class="headerlink" href="#error-handling" title="Permanent link">&para;</a></h2>
-<h3 id="common-error-responses">Common error responses<a class="headerlink" href="#common-error-responses" title="Permanent link">&para;</a></h3>
+<h2 id="error-handling">Error handling<a class="headerlink" href="#error-handling" title="Permanent link">#</a></h2>
+<h3 id="common-error-responses">Common error responses<a class="headerlink" href="#common-error-responses" title="Permanent link">#</a></h3>
 <table>
 <thead>
 <tr>
@@ -4844,7 +6016,7 @@
 </tr>
 </tbody>
 </table>
-<h3 id="token-refresh-flow">Token refresh flow<a class="headerlink" href="#token-refresh-flow" title="Permanent link">&para;</a></h3>
+<h3 id="token-refresh-flow">Token refresh flow<a class="headerlink" href="#token-refresh-flow" title="Permanent link">#</a></h3>
 <p>When receiving a 401 response:</p>
 <ol>
 <li>Send the refresh token to <code>POST /api/auth/refresh</code></li>
@@ -4852,7 +6024,7 @@
 <li>If refresh fails, redirect the user to login</li>
 </ol>
 <hr />
-<h2 id="related-pages">Related pages<a class="headerlink" href="#related-pages" title="Permanent link">&para;</a></h2>
+<h2 id="related-pages">Related pages<a class="headerlink" href="#related-pages" title="Permanent link">#</a></h2>
 <ul>
 <li><a href="../../features/authentication/">Authentication Feature Guide</a></li>
 <li><a href="../websocket/">WebSocket API</a></li>

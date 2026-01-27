@@ -12,7 +12,7 @@
         <meta name="author" content="DUMB Team">
       
       
-        <link rel="canonical" href="https://I-am-PUID-0.github.io/DUMB/services/core/cli-debrid/">
+        <link rel="canonical" href="https://dumbarr.com/services/core/cli-debrid/">
       
       
         <link rel="prev" href="../">
@@ -1719,6 +1719,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Configuration in dumb_config.json">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#key-configuration-fields" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Key Configuration Fields
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1729,6 +1746,34 @@
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="What CLI Debrid Does">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#intelligent-automation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Intelligent Automation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#supported-features" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Supported Features
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -1788,7 +1833,7 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#queues-processing-behind-the-scenes" class="md-nav__link">
+  <a href="#queues--processing-behind-the-scenes" class="md-nav__link">
     <span class="md-ellipsis">
       
         Queues &amp; Processing (Behind the Scenes)
@@ -1810,7 +1855,7 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#branch-version-targeting" class="md-nav__link">
+  <a href="#branch--version-targeting" class="md-nav__link">
     <span class="md-ellipsis">
       
         Branch / Version Targeting
@@ -4362,6 +4407,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Configuration in dumb_config.json">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#key-configuration-fields" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Key Configuration Fields
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -4372,6 +4434,34 @@
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="What CLI Debrid Does">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#intelligent-automation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Intelligent Automation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#supported-features" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Supported Features
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -4431,7 +4521,7 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#queues-processing-behind-the-scenes" class="md-nav__link">
+  <a href="#queues--processing-behind-the-scenes" class="md-nav__link">
     <span class="md-ellipsis">
       
         Queues &amp; Processing (Behind the Scenes)
@@ -4453,7 +4543,7 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#branch-version-targeting" class="md-nav__link">
+  <a href="#branch--version-targeting" class="md-nav__link">
     <span class="md-ellipsis">
       
         Branch / Version Targeting
@@ -4582,10 +4672,10 @@
   
 
 
-<h1 id="cli-debrid-core-service">CLI Debrid (Core Service)<a class="headerlink" href="#cli-debrid-core-service" title="Permanent link">&para;</a></h1>
+<h1 id="cli-debrid-core-service">CLI Debrid (Core Service)<a class="headerlink" href="#cli-debrid-core-service" title="Permanent link">#</a></h1>
 <p><strong>CLI Debrid</strong> is a core content orchestrator in the DUMB ecosystem. It automates media collection and upgrading through Debrid services (e.g. Real-Debrid), working alongside Trakt, Plex, Seerr, and various scrapers. CLI Debrid can either monitor your Plex libraries or generate symlinks for organized media delivery to Plex or similar servers.</p>
 <hr />
-<h2 id="workflow-diagram">Workflow diagram<a class="headerlink" href="#workflow-diagram" title="Permanent link">&para;</a></h2>
+<h2 id="workflow-diagram">Workflow diagram<a class="headerlink" href="#workflow-diagram" title="Permanent link">#</a></h2>
 <pre class="mermaid"><code>%%{ init: { "flowchart": { "curve": "basis" } } }%%
 flowchart TD
     A([Request sources:&lt;br/&gt;Seerr, Trakt,&lt;br/&gt;Plex Watchlist])
@@ -4613,7 +4703,7 @@ flowchart TD
     class e1,e2,e3,e4 animate
 </code></pre>
 <hr />
-<h2 id="service-relationships">Service Relationships<a class="headerlink" href="#service-relationships" title="Permanent link">&para;</a></h2>
+<h2 id="service-relationships">Service Relationships<a class="headerlink" href="#service-relationships" title="Permanent link">#</a></h2>
 <table>
 <thead>
 <tr>
@@ -4641,7 +4731,7 @@ flowchart TD
 </tbody>
 </table>
 <hr />
-<h2 id="configuration-in-dumb_configjson">Configuration in <code>dumb_config.json</code><a class="headerlink" href="#configuration-in-dumb_configjson" title="Permanent link">&para;</a></h2>
+<h2 id="configuration-in-dumb_configjson">Configuration in <code>dumb_config.json</code><a class="headerlink" href="#configuration-in-dumb_configjson" title="Permanent link">#</a></h2>
 <div class="highlight"><pre><span></span><code><span class="nt">&quot;cli_debrid&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">    </span><span class="nt">&quot;enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;process_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;CLI Debrid&quot;</span><span class="p">,</span>
@@ -4678,7 +4768,7 @@ flowchart TD
 <span class="w">    </span><span class="p">}</span>
 <span class="p">},</span>
 </code></pre></div>
-<h3 id="key-configuration-fields">Key Configuration Fields<a class="headerlink" href="#key-configuration-fields" title="Permanent link">&para;</a></h3>
+<h3 id="key-configuration-fields">Key Configuration Fields<a class="headerlink" href="#key-configuration-fields" title="Permanent link">#</a></h3>
 <ul>
 <li><code>enabled</code>: Toggle to run CLI Debrid via DUMB.</li>
 <li><code>process_name</code>: Used for display and logs.</li>
@@ -4690,15 +4780,15 @@ flowchart TD
 <li><code>clear_on_update</code>, <code>exclude_dirs</code>: Clean old files during update while protecting data dirs.</li>
 </ul>
 <hr />
-<h2 id="what-cli-debrid-does">What CLI Debrid Does<a class="headerlink" href="#what-cli-debrid-does" title="Permanent link">&para;</a></h2>
-<h3 id="intelligent-automation">Intelligent Automation<a class="headerlink" href="#intelligent-automation" title="Permanent link">&para;</a></h3>
+<h2 id="what-cli-debrid-does">What CLI Debrid Does<a class="headerlink" href="#what-cli-debrid-does" title="Permanent link">#</a></h2>
+<h3 id="intelligent-automation">Intelligent Automation<a class="headerlink" href="#intelligent-automation" title="Permanent link">#</a></h3>
 <ul>
 <li>Monitors your Plex library or local folder structure (symlinked library)</li>
 <li>Scrapes for content from various sources (Zilean, Jackett, Torrentio, Nyaa, Media Fusion)</li>
 <li>Downloads new or upgraded content using Debrid providers</li>
 <li>Optionally leverages webhook notifications from Seerr or Zurg to trigger updates</li>
 </ul>
-<h3 id="supported-features">Supported Features<a class="headerlink" href="#supported-features" title="Permanent link">&para;</a></h3>
+<h3 id="supported-features">Supported Features<a class="headerlink" href="#supported-features" title="Permanent link">#</a></h3>
 <ul>
 <li>Content Sources: MDBList, Trakt, Seerr</li>
 <li>Upgrading: Queue system for quality upgrades</li>
@@ -4708,7 +4798,7 @@ flowchart TD
 <li>Scraping Tuning: Manual test interface to evaluate scraper priorities</li>
 </ul>
 <hr />
-<h2 id="required-component-cli-battery">Required Component: CLI Battery<a class="headerlink" href="#required-component-cli-battery" title="Permanent link">&para;</a></h2>
+<h2 id="required-component-cli-battery">Required Component: CLI Battery<a class="headerlink" href="#required-component-cli-battery" title="Permanent link">#</a></h2>
 <div class="admonition warning">
 <p class="admonition-title">CLI Battery must be running for CLI Debrid to function.</p>
 </div>
@@ -4739,7 +4829,7 @@ flowchart TD
 </code></pre></div>
 <p>CLI Battery provides local metadata storage and Trakt integration, acting as the "memory" of CLI Debrid.</p>
 <hr />
-<h2 id="optional-utility-phalanx-db">Optional Utility: Phalanx DB<a class="headerlink" href="#optional-utility-phalanx-db" title="Permanent link">&para;</a></h2>
+<h2 id="optional-utility-phalanx-db">Optional Utility: Phalanx DB<a class="headerlink" href="#optional-utility-phalanx-db" title="Permanent link">#</a></h2>
 <div class="highlight"><pre><span></span><code><span class="nt">&quot;phalanx_db&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">    </span><span class="nt">&quot;enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;process_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Phalanx DB&quot;</span><span class="p">,</span>
@@ -4775,7 +4865,7 @@ flowchart TD
 </div>
 <p>Phalanx DB provides distributed metadata storage via Hyperswarm. It is optional but can enhance metadata resilience and syncing.</p>
 <hr />
-<h2 id="mount-considerations">Mount Considerations<a class="headerlink" href="#mount-considerations" title="Permanent link">&para;</a></h2>
+<h2 id="mount-considerations">Mount Considerations<a class="headerlink" href="#mount-considerations" title="Permanent link">#</a></h2>
 <p>CLI Debrid can create symlinks to be used in the media server, or if using the rclone mounts directly in the media server it can monitor the Plex libraries for completed items.</p>
 <p>In both cases, ensure the appropriate path for the rclone or zurg mount is used when adding the <code>Original Files Path</code>.</p>
 <div class="admonition note">
@@ -4793,7 +4883,7 @@ flowchart TD
 <img alt="Symlinked Files Path" src="../../../assets/images/cli_debrid/clid_symlinked_files_path.png" /></p>
 </div>
 <hr />
-<h2 id="plex-media-server-built-in">Plex Media Server Built-in!<a class="headerlink" href="#plex-media-server-built-in" title="Permanent link">&para;</a></h2>
+<h2 id="plex-media-server-built-in">Plex Media Server Built-in!<a class="headerlink" href="#plex-media-server-built-in" title="Permanent link">#</a></h2>
 <p>With <a href="../plex-media-server/">Plex Media Server</a> enabled in DUMB, you can also leverage it with CLI Debrid.</p>
 <p>As shown below, if you select to "Sign in to Plex" during the CLI Debrid onboarding, it will allow you to select the local instance of <a href="../plex-media-server/">Plex Media Server</a>.</p>
 <div class="admonition note">
@@ -4810,10 +4900,10 @@ flowchart TD
 <p><img alt="Plex URL" src="../../../assets/images/cli_debrid/plex_server_url.PNG" /></p>
 </div>
 <hr />
-<h2 id="zilean-built-in">Zilean Built-in!<a class="headerlink" href="#zilean-built-in" title="Permanent link">&para;</a></h2>
+<h2 id="zilean-built-in">Zilean Built-in!<a class="headerlink" href="#zilean-built-in" title="Permanent link">#</a></h2>
 <p>With <a href="../../optional/zilean/">Zilean</a> enabled in DUMB, you can also leverage it with CLI Debrid</p>
 <p><img alt="Add A Scraper" src="../../../assets/images/cli_debrid/clid_add_a_scraper_zilean.png" /></p>
-<h2 id="queues-processing-behind-the-scenes">Queues &amp; Processing (Behind the Scenes)<a class="headerlink" href="#queues-processing-behind-the-scenes" title="Permanent link">&para;</a></h2>
+<h2 id="queues--processing-behind-the-scenes">Queues &amp; Processing (Behind the Scenes)<a class="headerlink" href="#queues--processing-behind-the-scenes" title="Permanent link">#</a></h2>
 <ul>
 <li><strong>Wanted Queue</strong>: Items identified from your lists that need to be downloaded but haven't been processed by the scraper yet. Shows the time the item was last scraped. If within 24 hours of scraping items will remain in the Wanted queue.</li>
 <li><strong>Scraping Queue</strong>: Items actively being searched for download sources (torrents/magnets).</li>
@@ -4843,7 +4933,7 @@ flowchart TD
 </ul>
 <p>All queues are managed on scheduled intervals.</p>
 <hr />
-<h2 id="webhook-support">Webhook Support<a class="headerlink" href="#webhook-support" title="Permanent link">&para;</a></h2>
+<h2 id="webhook-support">Webhook Support<a class="headerlink" href="#webhook-support" title="Permanent link">#</a></h2>
 <p>CLI Debrid can listen for:</p>
 <ul>
 <li><strong>Seerr Webhooks</strong>: Add content when users request it</li>
@@ -4859,7 +4949,7 @@ flowchart TD
 <span class="k">done</span>
 <span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;Webhook update complete.&quot;</span>
 </code></pre></div>
-<h2 id="branch-version-targeting">Branch / Version Targeting<a class="headerlink" href="#branch-version-targeting" title="Permanent link">&para;</a></h2>
+<h2 id="branch--version-targeting">Branch / Version Targeting<a class="headerlink" href="#branch--version-targeting" title="Permanent link">#</a></h2>
 <p>You can control which version or branch is deployed by setting:</p>
 <ul>
 <li><code>branch_enabled: true</code> and specifying a <code>branch</code></li>
@@ -4870,7 +4960,7 @@ flowchart TD
 <p>CLI Debrid dev builds are published as GitHub prereleases. To track dev, enable
 <code>release_version_enabled</code> and set <code>release_version</code> to <code>prerelease</code>.</p>
 </div>
-<div class="tabbed-set tabbed-alternate" data-tabs="1:2"><input checked="checked" id="branch-version-targeting-dev-prerelease" name="__tabbed_1" type="radio" /><input id="branch-version-targeting-stable-latest-release" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="branch-version-targeting-dev-prerelease">Dev (prerelease)</label><label for="branch-version-targeting-stable-latest-release">Stable (latest release)</label></div>
+<div class="tabbed-set tabbed-alternate" data-tabs="1:2"><input checked="checked" id="branch--version-targeting-dev-prerelease" name="__tabbed_1" type="radio" /><input id="branch--version-targeting-stable-latest-release" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="branch--version-targeting-dev-prerelease">Dev (prerelease)</label><label for="branch--version-targeting-stable-latest-release">Stable (latest release)</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
 <div class="highlight"><pre><span></span><code><span class="nt">&quot;cli_debrid&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
@@ -4911,7 +5001,7 @@ flowchart TD
 </div>
 </div>
 <hr />
-<h2 id="access">Access<a class="headerlink" href="#access" title="Permanent link">&para;</a></h2>
+<h2 id="access">Access<a class="headerlink" href="#access" title="Permanent link">#</a></h2>
 <ul>
 <li>
 <p>Navigate to: <code>http://&lt;host&gt;:&lt;port&gt;</code> </p>
@@ -4922,7 +5012,7 @@ flowchart TD
 </ul>
 <hr />
 <hr />
-<h2 id="additional-resources">Additional Resources<a class="headerlink" href="#additional-resources" title="Permanent link">&para;</a></h2>
+<h2 id="additional-resources">Additional Resources<a class="headerlink" href="#additional-resources" title="Permanent link">#</a></h2>
 <ul>
 <li><a href="https://github.com/godver3/cli_debrid">CLI Debrid GitHub</a></li>
 <li><a href="https://github.com/godver3/cli_debrid/tree/main/cli_battery">CLI Battery GitHub</a></li>

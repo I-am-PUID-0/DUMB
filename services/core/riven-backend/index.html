@@ -12,7 +12,7 @@
         <meta name="author" content="DUMB Team">
       
       
-        <link rel="canonical" href="https://I-am-PUID-0.github.io/DUMB/services/core/riven-backend/">
+        <link rel="canonical" href="https://dumbarr.com/services/core/riven-backend/">
       
       
         <link rel="prev" href="../plex-debrid/">
@@ -1948,10 +1948,27 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Configuration Settings in dumb_config.json">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#configuration-key-descriptions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Configuration Key Descriptions
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
-  <a href="#branch-version-targeting" class="md-nav__link">
+  <a href="#branch--version-targeting" class="md-nav__link">
     <span class="md-ellipsis">
       
         Branch / Version Targeting
@@ -1969,6 +1986,23 @@
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="Initial Setup: Riven Backend">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#recommended-setup-areas" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Recommended Setup Areas
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -4263,10 +4297,27 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Configuration Settings in dumb_config.json">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#configuration-key-descriptions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Configuration Key Descriptions
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
-  <a href="#branch-version-targeting" class="md-nav__link">
+  <a href="#branch--version-targeting" class="md-nav__link">
     <span class="md-ellipsis">
       
         Branch / Version Targeting
@@ -4284,6 +4335,23 @@
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="Initial Setup: Riven Backend">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#recommended-setup-areas" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Recommended Setup Areas
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -4406,10 +4474,10 @@
   
 
 
-<h1 id="riven-backend-configuration">Riven Backend Configuration<a class="headerlink" href="#riven-backend-configuration" title="Permanent link">&para;</a></h1>
+<h1 id="riven-backend-configuration">Riven Backend Configuration<a class="headerlink" href="#riven-backend-configuration" title="Permanent link">#</a></h1>
 <p>The <strong>Riven Backend</strong> is the core component responsible for data handling, automation, API integrations, and scraping within the Riven ecosystem. Proper configuration ensures seamless integration with services like Seerr, Plex, and Trakt.</p>
 <hr />
-<h2 id="workflow-diagram">Workflow diagram<a class="headerlink" href="#workflow-diagram" title="Permanent link">&para;</a></h2>
+<h2 id="workflow-diagram">Workflow diagram<a class="headerlink" href="#workflow-diagram" title="Permanent link">#</a></h2>
 <pre class="mermaid"><code>%%{ init: { "flowchart": { "curve": "basis" } } }%%
 flowchart TD
     A([Request sources:&lt;br/&gt;Seerr, Trakt,&lt;br/&gt;Plex Watchlist])
@@ -4436,7 +4504,7 @@ flowchart TD
     classDef animate stroke-dasharray: 9,5,stroke-dashoffset: 900,animation: dash 25s linear infinite;
     class e1,e2,e3,e4 animate
 </code></pre>
-<h2 id="configuration-settings-in-dumb_configjson">Configuration Settings in <code>dumb_config.json</code><a class="headerlink" href="#configuration-settings-in-dumb_configjson" title="Permanent link">&para;</a></h2>
+<h2 id="configuration-settings-in-dumb_configjson">Configuration Settings in <code>dumb_config.json</code><a class="headerlink" href="#configuration-settings-in-dumb_configjson" title="Permanent link">#</a></h2>
 <div class="highlight"><pre><span></span><code><span class="nt">&quot;riven_backend&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">    </span><span class="nt">&quot;enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;process_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Riven Backend&quot;</span><span class="p">,</span>
@@ -4485,7 +4553,7 @@ start flow, updating <code>dumb_config.json</code> accordingly.
 Per-service stop/start/restart does not re-run port conflict resolution, so fix
 conflicts manually before restarting a single service.</p>
 </div>
-<h3 id="configuration-key-descriptions">Configuration Key Descriptions<a class="headerlink" href="#configuration-key-descriptions" title="Permanent link">&para;</a></h3>
+<h3 id="configuration-key-descriptions">Configuration Key Descriptions<a class="headerlink" href="#configuration-key-descriptions" title="Permanent link">#</a></h3>
 <ul>
 <li><strong><code>enabled</code></strong>: Whether to start the Riven Backend service.</li>
 <li><strong><code>process_name</code></strong>: Used in logs and process tracking.</li>
@@ -4512,21 +4580,21 @@ conflicts manually before restarting a single service.</p>
 <li><strong><code>wait_for_dir</code></strong>: Delays startup until the specified directory exists.</li>
 </ul>
 <hr />
-<h2 id="branch-version-targeting">Branch / Version Targeting<a class="headerlink" href="#branch-version-targeting" title="Permanent link">&para;</a></h2>
+<h2 id="branch--version-targeting">Branch / Version Targeting<a class="headerlink" href="#branch--version-targeting" title="Permanent link">#</a></h2>
 <p>You can control which version or branch of the backend is deployed by setting:</p>
 <ul>
 <li><code>branch_enabled: true</code> and specifying a <code>branch</code></li>
 <li>or <code>release_version_enabled: true</code> and specifying a <code>release_version</code></li>
 </ul>
 <hr />
-<h2 id="initial-setup-riven-backend">Initial Setup: Riven Backend<a class="headerlink" href="#initial-setup-riven-backend" title="Permanent link">&para;</a></h2>
+<h2 id="initial-setup-riven-backend">Initial Setup: Riven Backend<a class="headerlink" href="#initial-setup-riven-backend" title="Permanent link">#</a></h2>
 <p>Before Riven Backend can be used, <strong>initial configuration is required</strong>.</p>
 <p>After completing the DUMB onboarding, navigate to the <strong>Riven Frontend</strong> and open the <code>Settings</code> page. The following sections should be reviewed and updated:</p>
 <div class="admonition important">
 <p class="admonition-title">Required Configuration</p>
 <p>At a minimum, <strong>enable at least one Content source</strong> under the <code>Content</code> section. Without this, Riven cannot function.</p>
 </div>
-<h3 id="recommended-setup-areas">Recommended Setup Areas<a class="headerlink" href="#recommended-setup-areas" title="Permanent link">&para;</a></h3>
+<h3 id="recommended-setup-areas">Recommended Setup Areas<a class="headerlink" href="#recommended-setup-areas" title="Permanent link">#</a></h3>
 <ul>
 <li><strong>General</strong> – Adjust base settings like min/max files size, etc.</li>
 <li><strong>Media Server</strong> – Add your Plex, Jellyfin, or Emby server details for library syncing.</li>
@@ -4539,7 +4607,7 @@ conflicts manually before restarting a single service.</p>
 <p>Once complete, Riven will begin processing requests based on the selected sources and configurations.</p>
 </div>
 <hr />
-<h2 id="rivens-environment-variables-in-the-envexample">Riven's Environment Variables in the <code>.env.example</code><a class="headerlink" href="#rivens-environment-variables-in-the-envexample" title="Permanent link">&para;</a></h2>
+<h2 id="rivens-environment-variables-in-the-envexample">Riven's Environment Variables in the <code>.env.example</code><a class="headerlink" href="#rivens-environment-variables-in-the-envexample" title="Permanent link">#</a></h2>
 <p>The <code>.env.example</code> file includes:</p>
 <ul>
 <li><code>RIVEN_FORCE_ENV</code>: Forces env vars to override <code>settings.json</code>.</li>
@@ -4553,7 +4621,7 @@ conflicts manually before restarting a single service.</p>
 <p>Each Riven env can also be set within DUMB, either through the <strong>"env"</strong> section of the "riven_backend" within the <code>dumb_config.json</code>, or buy utilizing methods defined in the <a href="../../../features/configuration/">Configuration</a> section of the docs.</p>
 <p><a href="https://github.com/rivenmedia/riven/blob/main/.env.example">View full example on GitHub</a></p>
 <hr />
-<h2 id="additional-resources">Additional Resources<a class="headerlink" href="#additional-resources" title="Permanent link">&para;</a></h2>
+<h2 id="additional-resources">Additional Resources<a class="headerlink" href="#additional-resources" title="Permanent link">#</a></h2>
 <ul>
 <li><a href="https://rivenmedia.github.io/wiki/">Riven Wiki</a></li>
 <li><a href="https://github.com/rivenmedia/riven">Riven GitHub Repository</a></li>

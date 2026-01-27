@@ -12,7 +12,7 @@
         <meta name="author" content="DUMB Team">
       
       
-        <link rel="canonical" href="https://I-am-PUID-0.github.io/DUMB/deployment/docker/">
+        <link rel="canonical" href="https://dumbarr.com/deployment/docker/">
       
       
         <link rel="prev" href="../">
@@ -2812,6 +2812,56 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Common Docker commands">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#attach-to-the-running-container" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Attach to the running container
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#detach-without-stopping" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Detach without stopping
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#view-logs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        View logs
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#stop-and-remove-the-container" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Stop and remove the container
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -4438,6 +4488,56 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Common Docker commands">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#attach-to-the-running-container" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Attach to the running container
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#detach-without-stopping" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Detach without stopping
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#view-logs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        View logs
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#stop-and-remove-the-container" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Stop and remove the container
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -4530,7 +4630,7 @@
   
 
 
-<h1 id="deploy-with-docker">Deploy with Docker<a class="headerlink" href="#deploy-with-docker" title="Permanent link">&para;</a></h1>
+<h1 id="deploy-with-docker">Deploy with Docker<a class="headerlink" href="#deploy-with-docker" title="Permanent link">#</a></h1>
 <p>This guide assumes you have never used Docker before. It walks through what Docker
 is, how Docker Compose works, how to install Docker on Ubuntu, and how to deploy
 DUMB cleanly with persistent storage.</p>
@@ -4541,7 +4641,7 @@ containers, logs, and volumes. If you want to deploy DUMB with Portainer
 Stacks, follow the <a href="../portainer/">Portainer deployment guide</a> instead.</p>
 </div>
 <hr />
-<h2 id="prerequisites">Prerequisites<a class="headerlink" href="#prerequisites" title="Permanent link">&para;</a></h2>
+<h2 id="prerequisites">Prerequisites<a class="headerlink" href="#prerequisites" title="Permanent link">#</a></h2>
 <p>Before you begin, confirm you have:</p>
 <ul>
 <li>A system running <strong>Ubuntu 20.04 or later</strong></li>
@@ -4560,7 +4660,7 @@ Docker install method in this guide instead.</p>
 <p>If you're on Windows, use the <a href="../wsl/">Windows Setup Guide (Docker/WSL)</a>.</p>
 </div>
 <hr />
-<h2 id="what-docker-and-docker-compose-do">What Docker and Docker Compose do<a class="headerlink" href="#what-docker-and-docker-compose-do" title="Permanent link">&para;</a></h2>
+<h2 id="what-docker-and-docker-compose-do">What Docker and Docker Compose do<a class="headerlink" href="#what-docker-and-docker-compose-do" title="Permanent link">#</a></h2>
 <p>Docker runs applications inside <strong>containers</strong>, which are isolated environments
 that package the app and its dependencies. Docker Compose is a helper tool that
 starts one or more containers using a <code>docker-compose.yml</code> file.</p>
@@ -4572,7 +4672,7 @@ starts one or more containers using a <code>docker-compose.yml</code> file.</p>
 <li>Exposes ports so you can reach the UI and API</li>
 </ul>
 <hr />
-<h2 id="install-docker-official-method">Install Docker (official method)<a class="headerlink" href="#install-docker-official-method" title="Permanent link">&para;</a></h2>
+<h2 id="install-docker-official-method">Install Docker (official method)<a class="headerlink" href="#install-docker-official-method" title="Permanent link">#</a></h2>
 <ol>
 <li>
 <p>Download the official installer:</p>
@@ -4590,7 +4690,7 @@ starts one or more containers using a <code>docker-compose.yml</code> file.</p>
 <p>If the installer reports WSL, follow the <a href="../wsl/">Windows Setup Guide (Docker/WSL)</a>.</p>
 </div>
 <hr />
-<h2 id="install-docker-on-other-linux-distributions">Install Docker on other Linux distributions<a class="headerlink" href="#install-docker-on-other-linux-distributions" title="Permanent link">&para;</a></h2>
+<h2 id="install-docker-on-other-linux-distributions">Install Docker on other Linux distributions<a class="headerlink" href="#install-docker-on-other-linux-distributions" title="Permanent link">#</a></h2>
 <p>If you are not on Ubuntu, use the official Docker Engine instructions for your OS:</p>
 <ul>
 <li><strong>Debian</strong>: <a href="https://docs.docker.com/engine/install/debian/">https://docs.docker.com/engine/install/debian/</a></li>
@@ -4601,7 +4701,7 @@ starts one or more containers using a <code>docker-compose.yml</code> file.</p>
 <p>Use the Docker Engine package (not Snap). Once installed, return to this guide
 and continue from <strong>Confirm Docker and Compose are installed</strong>.</p>
 <hr />
-<h2 id="confirm-docker-and-compose-are-installed">Confirm Docker and Compose are installed<a class="headerlink" href="#confirm-docker-and-compose-are-installed" title="Permanent link">&para;</a></h2>
+<h2 id="confirm-docker-and-compose-are-installed">Confirm Docker and Compose are installed<a class="headerlink" href="#confirm-docker-and-compose-are-installed" title="Permanent link">#</a></h2>
 <ol>
 <li>
 <p>Check the Docker version:</p>
@@ -4619,7 +4719,7 @@ and continue from <strong>Confirm Docker and Compose are installed</strong>.</p>
 Docker<span class="w"> </span>Compose<span class="w"> </span>version<span class="w"> </span>v2.24.2
 </code></pre></div>
 <hr />
-<h2 id="optional-allow-non-root-docker-usage">Optional: allow non-root Docker usage<a class="headerlink" href="#optional-allow-non-root-docker-usage" title="Permanent link">&para;</a></h2>
+<h2 id="optional-allow-non-root-docker-usage">Optional: allow non-root Docker usage<a class="headerlink" href="#optional-allow-non-root-docker-usage" title="Permanent link">#</a></h2>
 <p>By default, Docker commands require <code>sudo</code>. If you want to run Docker without
 <code>sudo</code>, add your user to the <code>docker</code> group.</p>
 <div class="highlight"><pre><span></span><code>sudo<span class="w"> </span>usermod<span class="w"> </span>-aG<span class="w"> </span>docker<span class="w"> </span><span class="nv">$USER</span>
@@ -4627,7 +4727,7 @@ Docker<span class="w"> </span>Compose<span class="w"> </span>version<span class=
 <p>Log out and back in (or reboot) so group membership refreshes.</p>
 <p>If you skip this step, keep using <code>sudo</code> for Docker commands.</p>
 <hr />
-<h2 id="define-the-directory-structure">Define the directory structure<a class="headerlink" href="#define-the-directory-structure" title="Permanent link">&para;</a></h2>
+<h2 id="define-the-directory-structure">Define the directory structure<a class="headerlink" href="#define-the-directory-structure" title="Permanent link">#</a></h2>
 <p>These folders store configs, logs, and data <strong>outside</strong> the container, so they
 survive upgrades and restarts.</p>
 <ol>
@@ -4651,7 +4751,7 @@ mkdir<span class="w"> </span>-p<span class="w"> </span>docker
 directory structure. You will paste the <code>docker-compose.yml</code> into Portainer
 and deploy it from there instead of running <code>docker compose</code> on the host.</p>
 </div>
-<h2 id="download-and-edit-docker-composeyml">Download and edit <code>docker-compose.yml</code><a class="headerlink" href="#download-and-edit-docker-composeyml" title="Permanent link">&para;</a></h2>
+<h2 id="download-and-edit-docker-composeyml">Download and edit <code>docker-compose.yml</code><a class="headerlink" href="#download-and-edit-docker-composeyml" title="Permanent link">#</a></h2>
 <ol>
 <li>
 <p>Download the latest Compose file:</p>
@@ -4679,7 +4779,7 @@ sed<span class="w"> </span>-i<span class="w"> </span><span class="se">\</span>
 <p>Use a region format like <code>America/New_York</code> or <code>Europe/London</code>.</p>
 </div>
 <hr />
-<h2 id="start-dumb-with-docker-compose">Start DUMB with Docker Compose<a class="headerlink" href="#start-dumb-with-docker-compose" title="Permanent link">&para;</a></h2>
+<h2 id="start-dumb-with-docker-compose">Start DUMB with Docker Compose<a class="headerlink" href="#start-dumb-with-docker-compose" title="Permanent link">#</a></h2>
 <p>Run the container in detached mode:</p>
 <div class="highlight"><pre><span></span><code>sudo<span class="w"> </span>docker<span class="w"> </span>compose<span class="w"> </span>up<span class="w"> </span>-d
 </code></pre></div>
@@ -4690,7 +4790,7 @@ sed<span class="w"> </span>-i<span class="w"> </span><span class="se">\</span>
 </code></pre></div>
 <p>The container now runs in the background.</p>
 <hr />
-<h2 id="access-the-ui">Access the UI<a class="headerlink" href="#access-the-ui" title="Permanent link">&para;</a></h2>
+<h2 id="access-the-ui">Access the UI<a class="headerlink" href="#access-the-ui" title="Permanent link">#</a></h2>
 <p>By default:</p>
 <ul>
 <li><strong>DUMB Frontend</strong>: <code>http://&lt;host&gt;:3005</code></li>
@@ -4704,7 +4804,7 @@ sed<span class="w"> </span>-i<span class="w"> </span><span class="se">\</span>
 <li>See <a href="../../reference/ports/">Service ports</a></li>
 </ul>
 <hr />
-<h2 id="expose-ports-for-direct-ui-access">Expose ports for direct UI access<a class="headerlink" href="#expose-ports-for-direct-ui-access" title="Permanent link">&para;</a></h2>
+<h2 id="expose-ports-for-direct-ui-access">Expose ports for direct UI access<a class="headerlink" href="#expose-ports-for-direct-ui-access" title="Permanent link">#</a></h2>
 <p>Docker only exposes ports you explicitly map in your <code>docker-compose.yml</code>.
 If a UI is not reachable, it usually means the port is not mapped.</p>
 <p>Example: expose the DUMB frontend and API.</p>
@@ -4730,24 +4830,24 @@ you can avoid exposing every service port directly.</p>
 sudo<span class="w"> </span>docker<span class="w"> </span>compose<span class="w"> </span>up<span class="w"> </span>-d
 </code></pre></div>
 <hr />
-<h2 id="common-docker-commands">Common Docker commands<a class="headerlink" href="#common-docker-commands" title="Permanent link">&para;</a></h2>
-<h3 id="attach-to-the-running-container">Attach to the running container<a class="headerlink" href="#attach-to-the-running-container" title="Permanent link">&para;</a></h3>
+<h2 id="common-docker-commands">Common Docker commands<a class="headerlink" href="#common-docker-commands" title="Permanent link">#</a></h2>
+<h3 id="attach-to-the-running-container">Attach to the running container<a class="headerlink" href="#attach-to-the-running-container" title="Permanent link">#</a></h3>
 <div class="highlight"><pre><span></span><code>sudo<span class="w"> </span>docker<span class="w"> </span>attach<span class="w"> </span>DUMB
 </code></pre></div>
-<h3 id="detach-without-stopping">Detach without stopping<a class="headerlink" href="#detach-without-stopping" title="Permanent link">&para;</a></h3>
+<h3 id="detach-without-stopping">Detach without stopping<a class="headerlink" href="#detach-without-stopping" title="Permanent link">#</a></h3>
 <p>Press <code>Ctrl + P</code> then <code>Ctrl + Q</code> to detach and leave it running.</p>
 <div class="admonition important">
 <p class="admonition-title">Avoid Ctrl+C</p>
 <p><code>Ctrl+C</code> stops the container if it is attached to your terminal.</p>
 </div>
-<h3 id="view-logs">View logs<a class="headerlink" href="#view-logs" title="Permanent link">&para;</a></h3>
+<h3 id="view-logs">View logs<a class="headerlink" href="#view-logs" title="Permanent link">#</a></h3>
 <div class="highlight"><pre><span></span><code>sudo<span class="w"> </span>docker<span class="w"> </span>logs<span class="w"> </span>-f<span class="w"> </span>DUMB
 </code></pre></div>
-<h3 id="stop-and-remove-the-container">Stop and remove the container<a class="headerlink" href="#stop-and-remove-the-container" title="Permanent link">&para;</a></h3>
+<h3 id="stop-and-remove-the-container">Stop and remove the container<a class="headerlink" href="#stop-and-remove-the-container" title="Permanent link">#</a></h3>
 <div class="highlight"><pre><span></span><code>sudo<span class="w"> </span>docker<span class="w"> </span>compose<span class="w"> </span>down
 </code></pre></div>
 <hr />
-<h2 id="next-steps">Next steps<a class="headerlink" href="#next-steps" title="Permanent link">&para;</a></h2>
+<h2 id="next-steps">Next steps<a class="headerlink" href="#next-steps" title="Permanent link">#</a></h2>
 <ul>
 <li>Continue setup in the <a href="../../services/dumb/dumb-frontend/">DUMB Frontend</a></li>
 <li>Review <a href="../../features/configuration/">Configuration</a></li>
