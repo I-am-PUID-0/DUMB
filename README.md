@@ -2,8 +2,8 @@
   <h1>🎬 Debrid Unlimited Media Bridge 🎬</h1>
   <a href="https://github.com/I-am-PUID-0/DUMB">
     <picture>
-      <source media="(prefers-color-scheme: dark)" srcset="https://i-am-puid-0.github.io/DUMB/assets/images/DUMB.png">
-      <img alt="DUMB" src="https://i-am-puid-0.github.io/DUMB/assets/images/DUMB.png" style="max-width: 100%; height: auto;">
+      <source media="(prefers-color-scheme: dark)" srcset="https://dumbarr.com/assets/images/DUMB.png">
+      <img alt="DUMB" src="https://dumbarr.com/assets/images/DUMB.png" style="max-width: 100%; height: auto;">
     </picture>
   </a>
 </div>
@@ -92,12 +92,12 @@
 | [Riven](https://github.com/rivenmedia/riven)                      | [Riven Media](https://github.com/rivenmedia)                         | [Discord](https://discord.gg/rivenmedia) • [Discussions](https://github.com/orgs/rivenmedia/discussions)                                       | [Sponsor](https://github.com/sponsors/dreulavelle/)                                               |
 | [Sonarr](https://sonarr.tv/)                                      | [Sonarr Team](https://github.com/Sonarr/Sonarr)                      | [Docs](https://wiki.servarr.com/) • [Discord](https://discord.gg/M6BvZn5)                                                                       | [Sponsor](https://opencollective.com/sonarr)                                                     |
 | [Whisparr](https://github.com/Whisparr/Whisparr)                  | [Whisparr Team](https://github.com/Whisparr)                         | [Docs](https://wiki.servarr.com/) • [Discord](https://whisparr.com/discord)                                                                       | [Sponsor](https://opencollective.com/whisparr)                                                   |
-| [Zilean](https://github.com/iPromKnight/zilean)                   | [iPromKnight](https://github.com/iPromKnight)                        | [Docs](https://ipromknight.github.io/zilean/) • [Issues](https://github.com/iPromKnight/zilean/issues)                                         | —                                                                                                   |
+| [Zilean](https://github.com/iPromKnight/zilean)                   | [iPromKnight](https://github.com/iPromKnight)                        | [Docs](https://ipromknight.github.io/zilean/) • [Issues](https://github.com/iPromKnight/zilean/issues)                                         | [Sponsor](https://ko-fi.com/W7W616IBNG)                                                                                                   |
 | [Zurg](https://github.com/debridmediamanager/zurg-testing)        | [yowmamasita](https://github.com/yowmamasita)                        | [Wiki](https://github.com/debridmediamanager/zurg-testing/wiki)                                                                                 | [Sponsor](https://github.com/sponsors/debridmediamanager)                                         |
 
 ## 🌟 Features
 
-See the DUMB [Docs](https://i-am-puid-0.github.io/DUMB/features) for a full list of features and settings.
+See the DUMB [Docs](https://dumbarr.com/features) for a full list of features and settings.
 
 ## 🐳 Docker Hub
 
@@ -211,7 +211,7 @@ See the [DUMB roadmap](https://github.com/users/I-am-PUID-0/projects/7) for a li
 
 DUMB allows for the simultaneous or individual deployment of any of the services
 
-For additional details on deployment, see the [DUMB Docs](https://i-am-puid-0.github.io/DUMB/services/)
+For additional details on deployment, see the [DUMB Docs](https://dumbarr.com/services/)
 
 ## 🌍 Community
 

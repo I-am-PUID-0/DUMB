@@ -155,7 +155,7 @@ Riven Backend Service
 - Automates media collection, symlink creation, and metadata updates.
 - Integrates with Overseerr, Plex, Trakt, and various scraper plugins (e.g. Torrentio, Jackett).
 
-Documentation: https://i-am-puid-0.github.io/DUMB/services/core/riven-backend""",
+Documentation: https://dumbarr.com/services/core/riven-backend""",
     "cli_debrid": """\
 CLI Debrid Service
 - Lightweight, Python‑based downloader and streaming‑link creator.
@@ -163,13 +163,13 @@ CLI Debrid Service
 - Automates media collection, quality upgrades, and webhook‑driven triggers.
 - Requires CLI Battery for metadata and optionally Phalanx DB for decentralized metadata.
 
-Documentation: https://i-am-puid-0.github.io/DUMB/services/core/cli-debrid""",
+Documentation: https://dumbarr.com/services/core/cli-debrid""",
     "plex_debrid": """\
 Plex Debrid Service
 - Not fully implemented yet, but intended for users with an existing Plex Debrid setup.
 - Users will need to copy an existing Plex Debrid settings.json file to `.../plex_debrid` mount directory.
 
-Documentation: https://i-am-puid-0.github.io/DUMB/services/core/plex-debrid""",
+Documentation: https://dumbarr.com/services/core/plex-debrid""",
     "decypharr": """\
 Decypharr Service
 - Implementation of QbitTorrent with Multiple Debrid service support.
@@ -177,7 +177,7 @@ Decypharr Service
 - Provides a WebDAV connection for easy access to media files.
 - Integrates with Rclone for mounting of WebDAV content.
 
-Documentation: https://i-am-puid-0.github.io/DUMB/services/core/decypharr""",
+Documentation: https://dumbarr.com/services/core/decypharr""",
     "nzbdav": """\
 NzbDAV Service
 - Implementation of QbitTorrent with Multiple NZB provider service support.
@@ -195,7 +195,7 @@ Plex Media Server
 
 Recommended to run onboarding for Plex Media Server separately due to claim token timeout of 5 minutes.
 
-Documentation: https://i-am-puid-0.github.io/DUMB/services/core/plex-media-server""",
+Documentation: https://dumbarr.com/services/core/plex-media-server""",
     "jellyfin": """\
 Jellyfin Media Server
 - Open‑source media server software for organizing and streaming your media library.
@@ -203,7 +203,7 @@ Jellyfin Media Server
 - Supports a wide range of media formats and devices.
 - Can be used as an alternative to Plex for users who prefer open‑source solutions.
 
-Documentation: https://i-am-puid-0.github.io/DUMB/services/core/jellyfin""",
+Documentation: https://dumbarr.com/services/core/jellyfin""",
     "emby": """\
 Emby Media Server
 - Media server software for organizing and streaming your media library.
@@ -212,7 +212,7 @@ Emby Media Server
 - Can be used as an alternative to Plex and Jellyfin for users who prefer Emby.
 - By enabling Emby, you confirm that you have read and agree to the Emby Terms of Service: https://emby.media/terms.html
 
-Documentation: https://i-am-puid-0.github.io/DUMB/services/core/emby""",
+Documentation: https://dumbarr.com/services/core/emby""",
     "sonarr": """\
 Sonarr
 - TV series management and automation tool.
@@ -222,7 +222,7 @@ Sonarr
 - Works seamlessly with Radarr, Lidarr, and other media management tools.
 - Supports multiple instances for different user profiles or libraries.
 
-Documentation: https://i-am-puid-0.github.io/DUMB/services/core/sonarr""",
+Documentation: https://dumbarr.com/services/core/sonarr""",
     "radarr": """\
 Radarr
 - Movie management and automation tool.
@@ -232,7 +232,7 @@ Radarr
 - Works seamlessly with Sonarr, Lidarr, and other media management tools.
 - Supports multiple instances for different user profiles or libraries.
 
-Documentation: https://i-am-puid-0.github.io/DUMB/services/core/radarr""",
+Documentation: https://dumbarr.com/services/core/radarr""",
     "lidarr": """\
 Lidarr
 - Music management and automation tool.
@@ -242,7 +242,7 @@ Lidarr
 - Works seamlessly with Sonarr, Radarr, and other media management tools.
 - Supports multiple instances for different user profiles or libraries.
 
-Documentation: https://i-am-puid-0.github.io/DUMB/services/core/lidarr""",
+Documentation: https://dumbarr.com/services/core/lidarr""",
     "bazarr": """\
 Bazarr
 - Subtitle management and automation tool.
@@ -250,7 +250,7 @@ Bazarr
 - Integrates with Sonarr, Radarr, and Lidarr for seamless subtitle management.
 - Supports multiple subtitle providers and languages.
 
-Documentation: https://i-am-puid-0.github.io/DUMB/services/core/bazarr""",
+Documentation: https://dumbarr.com/services/core/bazarr""",
     "prowlarr": """\
 Prowlarr
 - Indexer manager and proxy for Sonarr, Radarr, Lidarr, and other media management tools.
@@ -261,7 +261,7 @@ Prowlarr
 - Supports multiple instances for different user profiles or libraries.
 - Can scrape from Zilean.
 
-Documentation: https://i-am-puid-0.github.io/DUMB/services/core/prowlarr""",
+Documentation: https://dumbarr.com/services/core/prowlarr""",
     "whisparr": """\
 Whisparr
 - Adult content management and automation tool.
@@ -271,7 +271,7 @@ Whisparr
 - Works seamlessly with Sonarr, Radarr, Lidarr, and other media management tools.
 - Supports multiple instances for different user profiles or libraries.
 
-Documentation: https://i-am-puid-0.github.io/DUMB/services/core/whisparr""",
+Documentation: https://dumbarr.com/services/core/whisparr""",
     "seerr": """\
 Seerr
 - Media request management tool for Plex, Jellyfin, and Emby.
@@ -306,28 +306,28 @@ Zilean
 - Can scrape from running Zurg instances or other Zilean peers.
 - Configurable as an indexer in clients like Sonarr/Radarr.
 
-Documentation: https://i-am-puid-0.github.io/DUMB/services/optional/zilean""",
+Documentation: https://dumbarr.com/services/optional/zilean""",
     "pgadmin": """\
 pgAdmin 4
 - Web‑based administration tool for PostgreSQL databases.
 - Pre‑installed and auto‑configured in DUMB for easy inspection, queries, and backups.
 - Supports extensions like system_stats and pgAgent for advanced maintenance.
 
-Documentation: https://i-am-puid-0.github.io/DUMB/services/optional/pgadmin""",
+Documentation: https://dumbarr.com/services/optional/pgadmin""",
     "postgres": """\
 PostgreSQL
 - Core database system for storing metadata and internal configuration.
 - Pre‑installed and initialized on container startup (default port 5432).
 - Manages databases for pgAdmin, Zilean, and Riven by default.
 
-Documentation: https://i-am-puid-0.github.io/DUMB/services/dependent/postgres""",
+Documentation: https://dumbarr.com/services/dependent/postgres""",
     "riven_frontend": """\
 Riven Frontend
 - Web UI for Riven Backend, providing a user‑friendly interface to manage and monitor services.
 - Displays real‑time status of connected services, media libraries, and debrid providers.
 - Allows users to trigger actions like metadata updates, link creation, and more.
 
-Documentation: https://i-am-puid-0.github.io/DUMB/services/optional/riven-frontend""",
+Documentation: https://dumbarr.com/services/optional/riven-frontend""",
     "tautulli": """\
 Tautulli
 - Plex monitoring and analytics tool.
