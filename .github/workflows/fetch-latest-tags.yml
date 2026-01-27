@@ -12,11 +12,11 @@ jobs:
       update_found: ${{ steps.compare_tags.outputs.update_found }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Restore previous tags from cache
         id: cache-latest-tags
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: latest-tags.txt
           key: latest-tags-${{ github.ref_name }}-${{ github.run_id }}

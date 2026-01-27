@@ -26,7 +26,7 @@ jobs:
       REPO_NAME: ${{ steps.setup_env_vars.outputs.REPO_NAME }}
       BRANCH_NAME: ${{ steps.setup_env_vars.outputs.BRANCH_NAME }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Extract version and set environment variables
         id: setup_env_vars        
         run: |
@@ -100,7 +100,7 @@ jobs:
       BRANCH_NAME: ${{ needs.setup.outputs.BRANCH_NAME }}
       PLATFORM: ${{ matrix.arch == 'X64' && 'linux/amd64' || 'linux/arm64' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: docker/setup-buildx-action@v3
       - name: Build base stage (native ${{ env.PLATFORM }})
         uses: docker/build-push-action@v6
@@ -122,7 +122,7 @@ jobs:
       BRANCH_NAME: ${{ needs.setup.outputs.BRANCH_NAME }}
       PLATFORM: ${{ matrix.arch == 'X64' && 'linux/amd64' || 'linux/arm64' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: docker/setup-buildx-action@v3
       - name: Build zilean-builder (native ${{ env.PLATFORM }})
         uses: docker/build-push-action@v6
@@ -147,7 +147,7 @@ jobs:
       BRANCH_NAME: ${{ needs.setup.outputs.BRANCH_NAME }}
       PLATFORM: ${{ matrix.arch == 'X64' && 'linux/amd64' || 'linux/arm64' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: docker/setup-buildx-action@v3
       - name: Build pgadmin-builder (native ${{ env.PLATFORM }})
         uses: docker/build-push-action@v6
@@ -171,7 +171,7 @@ jobs:
       BRANCH_NAME: ${{ needs.setup.outputs.BRANCH_NAME }}
       PLATFORM: ${{ matrix.arch == 'X64' && 'linux/amd64' || 'linux/arm64' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: docker/setup-buildx-action@v3
       - name: Build systemstats-builder (native ${{ env.PLATFORM }})
         uses: docker/build-push-action@v6
@@ -196,7 +196,7 @@ jobs:
       BRANCH_NAME: ${{ needs.setup.outputs.BRANCH_NAME }}
       PLATFORM: ${{ matrix.arch == 'X64' && 'linux/amd64' || 'linux/arm64' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: docker/setup-buildx-action@v3
       - name: Build dumb-frontend-builder (native ${{ env.PLATFORM }})
         uses: docker/build-push-action@v6
@@ -221,7 +221,7 @@ jobs:
       BRANCH_NAME: ${{ needs.setup.outputs.BRANCH_NAME }}
       PLATFORM: ${{ matrix.arch == 'X64' && 'linux/amd64' || 'linux/arm64' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: docker/setup-buildx-action@v3
       - name: Build plex_debrid-builder (native ${{ env.PLATFORM }})
         uses: docker/build-push-action@v6
@@ -246,7 +246,7 @@ jobs:
       BRANCH_NAME: ${{ needs.setup.outputs.BRANCH_NAME }}
       PLATFORM: ${{ matrix.arch == 'X64' && 'linux/amd64' || 'linux/arm64' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: docker/setup-buildx-action@v3
       - name: Build cli_debrid-builder (native ${{ env.PLATFORM }})
         uses: docker/build-push-action@v6
@@ -271,7 +271,7 @@ jobs:
       BRANCH_NAME: ${{ needs.setup.outputs.BRANCH_NAME }}
       PLATFORM: ${{ matrix.arch == 'X64' && 'linux/amd64' || 'linux/arm64' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: docker/setup-buildx-action@v3
       - name: Build requirements-builder (native ${{ env.PLATFORM }})
         uses: docker/build-push-action@v6
@@ -299,7 +299,7 @@ jobs:
     outputs:
       digest: ${{ steps.push.outputs.digest }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Login (Docker Hub)
         uses: docker/login-action@v3
@@ -353,7 +353,7 @@ jobs:
     outputs:
       digest: ${{ steps.push.outputs.digest }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Login (Docker Hub)
         uses: docker/login-action@v3
@@ -406,7 +406,7 @@ jobs:
       DOCKER_USER:      ${{ secrets.DOCKER_USERNAME }}
       DOCKER_PASS:      ${{ secrets.DOCKER_PASSWORD }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Determine Docker tags
         id: determine_tags
@@ -662,7 +662,7 @@ jobs:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Check if Release Exists
         id: check_release
@@ -706,7 +706,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Post announcement to Discord
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
@@ -725,7 +725,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: "Remove 'autorelease: pending' label from all merged PRs"
         env:
