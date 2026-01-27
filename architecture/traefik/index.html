@@ -4354,17 +4354,17 @@
   
 
 
-<h1 id="traefik-proxy">Traefik proxy<a class="headerlink" href="#traefik-proxy" title="Permanent link">#</a></h1>
+<h1 id="traefik-proxy">Traefik proxy<a class="headerlink" href="#traefik-proxy" title="Permanent link">&para;</a></h1>
 <p>Traefik provides optional reverse-proxy routing for service UIs. When enabled, it exposes a single entry point and maps services to path-based routes.</p>
 <hr />
-<h2 id="what-traefik-does-in-dumb">What Traefik does in DUMB<a class="headerlink" href="#what-traefik-does-in-dumb" title="Permanent link">#</a></h2>
+<h2 id="what-traefik-does-in-dumb">What Traefik does in DUMB<a class="headerlink" href="#what-traefik-does-in-dumb" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Builds dynamic routes for enabled services</li>
 <li>Adds path prefixes for UI services (for example <code>/sonarr/</code>, <code>/radarr/</code>)</li>
 <li>Supports embedded iframes in the frontend</li>
 </ul>
 <hr />
-<h2 id="default-access">Default access<a class="headerlink" href="#default-access" title="Permanent link">#</a></h2>
+<h2 id="default-access">Default access<a class="headerlink" href="#default-access" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
@@ -4392,16 +4392,16 @@
 <p>Some services use explicit prefixes (for example Emby/Jellyfin use <code>/web</code>), which Traefik preserves.</p>
 </div>
 <hr />
-<h2 id="how-routes-are-generated">How routes are generated<a class="headerlink" href="#how-routes-are-generated" title="Permanent link">#</a></h2>
+<h2 id="how-routes-are-generated">How routes are generated<a class="headerlink" href="#how-routes-are-generated" title="Permanent link">&para;</a></h2>
 <p>The backend generates Traefik config based on enabled services and their ports. Services with UIs are registered automatically when they are enabled in <code>dumb_config.json</code>.</p>
 <hr />
-<h2 id="security-considerations">Security considerations<a class="headerlink" href="#security-considerations" title="Permanent link">#</a></h2>
+<h2 id="security-considerations">Security considerations<a class="headerlink" href="#security-considerations" title="Permanent link">&para;</a></h2>
 <div class="admonition warning">
 <p class="admonition-title">No built-in auth</p>
 <p>Most service UIs do not require authentication. If you expose Traefik outside your LAN, add authentication and TLS at the proxy layer.</p>
 </div>
 <hr />
-<h2 id="related-pages">Related pages<a class="headerlink" href="#related-pages" title="Permanent link">#</a></h2>
+<h2 id="related-pages">Related pages<a class="headerlink" href="#related-pages" title="Permanent link">&para;</a></h2>
 <ul>
 <li><a href="../../features/embedded-ui/">Embedded UIs</a></li>
 <li><a href="../../reference/ports/">Service ports</a></li>
