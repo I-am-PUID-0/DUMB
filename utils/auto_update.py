@@ -91,7 +91,7 @@ class Update:
 
         return interval
 
-    def auto_update(self, process_name, enable_update):
+    def auto_update(self, process_name, enable_update, force_update_check: bool = False):
         key, instance_name = CONFIG_MANAGER.find_key_for_process(process_name)
         config = CONFIG_MANAGER.get_instance(instance_name, key)
         if not config:
@@ -125,7 +125,8 @@ class Update:
             self.schedule_thread.start()
 
             if (
-                self.process_handler.preinstall_complete
+                not force_update_check
+                and self.process_handler.preinstall_complete
                 and process_name in self.process_handler.preinstalled_processes
             ):
                 self.logger.info(

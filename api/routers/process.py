@@ -508,7 +508,9 @@ async def start_service(
         try:
             auto_update_enabled = service_config.get("auto_update", False)
             process, error = updater.auto_update(
-                process_name, enable_update=auto_update_enabled
+                process_name,
+                enable_update=auto_update_enabled,
+                force_update_check=True,
             )
             if not process:
                 raise Exception(f"Error starting {process_name}: {error}")
@@ -935,6 +937,7 @@ def _reserve_port(
     owner: str,
     logger,
     label: str = "port",
+    allow_in_use_for_owner: bool = False,
 ) -> int | None:
     """
     Reserve a port globally, auto-shifting if it's already used by another owner.
@@ -950,6 +953,9 @@ def _reserve_port(
         )
         used_ports[new_port] = owner
         return new_port
+    if existing_owner and existing_owner == owner and allow_in_use_for_owner:
+        used_ports[desired] = owner
+        return desired
     if not _is_port_available(desired):
         new_port = _find_free_port(desired + 1, set(used_ports.keys()), service_key)
         logger.info(
@@ -972,6 +978,7 @@ def _reserve_config_port(
     owner_suffix: str | None = None,
     label: str | None = None,
     default: int | None = None,
+    allow_in_use_for_owner: bool = False,
 ) -> None:
     """
     Reserve a global port for a config field, updating config if auto-shifted.
@@ -991,6 +998,7 @@ def _reserve_config_port(
         owner=owner,
         logger=logger,
         label=label or field,
+        allow_in_use_for_owner=allow_in_use_for_owner,
     )
     if chosen is None:
         return
@@ -1106,14 +1114,21 @@ def _start_optional_service(
                 CONFIG_MANAGER.save_config()
 
             apply_service_options(inst_cfg, merged_options, logger)
-            _ensure_unique_instance_port(
-                service_key=opt_key,
-                inst_name=inst_name,
-                inst_cfg=inst_cfg,
-                instances=instances,
-                template_config=template_config,
-                logger=logger,
-            )
+            proc = inst_cfg.get("process_name")
+            if not proc:
+                raise HTTPException(
+                    500, detail=f"Process name not defined for '{opt_key}:{inst_name}'."
+                )
+            is_running = api_state.get_status(proc) == "running"
+            if not is_running:
+                _ensure_unique_instance_port(
+                    service_key=opt_key,
+                    inst_name=inst_name,
+                    inst_cfg=inst_cfg,
+                    instances=instances,
+                    template_config=template_config,
+                    logger=logger,
+                )
             _reserve_config_port(
                 opt_key,
                 inst_cfg,
@@ -1122,13 +1137,8 @@ def _start_optional_service(
                 logger,
                 owner_suffix=inst_name,
                 label=f"{inst_name} port",
+                allow_in_use_for_owner=is_running,
             )
-
-            proc = inst_cfg.get("process_name")
-            if not proc:
-                raise HTTPException(
-                    500, detail=f"Process name not defined for '{opt_key}:{inst_name}'."
-                )
             logger.info(f"Starting optional service: {proc}")
             if not wait_for_process_running(api_state, proc):
                 updater.auto_update(
@@ -1142,7 +1152,11 @@ def _start_optional_service(
         CONFIG_MANAGER.save_config()
 
     apply_service_options(opt_cfg, merged_options, logger)
-    _reserve_config_port(opt_key, opt_cfg, "port", used_ports, logger)
+    proc = opt_cfg.get("process_name")
+    is_running = api_state.get_status(proc) == "running" if proc else False
+    _reserve_config_port(
+        opt_key, opt_cfg, "port", used_ports, logger, allow_in_use_for_owner=is_running
+    )
     if opt_key == "nzbdav":
         _reserve_config_port(
             "nzbdav",
@@ -1151,6 +1165,7 @@ def _start_optional_service(
             used_ports,
             logger,
             label="frontend",
+            allow_in_use_for_owner=is_running,
         )
         _reserve_config_port(
             "nzbdav",
@@ -1159,9 +1174,9 @@ def _start_optional_service(
             used_ports,
             logger,
             label="backend",
+            allow_in_use_for_owner=is_running,
         )
 
-    proc = opt_cfg.get("process_name")
     logger.info(f"Starting optional service: {proc}")
     if not wait_for_process_running(api_state, proc):
         updater.auto_update(proc, enable_update=opt_cfg.get("auto_update", False))
@@ -1225,8 +1240,16 @@ def _run_startup(request: UnifiedStartRequest, updater, api_state, logger):
                 service.service_options.get(ident, {}),
                 logger,
             )
-            _reserve_config_port(ident, cfg, "port", used_ports, logger)
             proc_name = cfg["process_name"]
+            is_running = api_state.get_status(proc_name) == "running"
+            _reserve_config_port(
+                ident,
+                cfg,
+                "port",
+                used_ports,
+                logger,
+                allow_in_use_for_owner=is_running,
+            )
             logger.info(f"Starting core service setup: {proc_name}")
             auto_up = cfg.get("auto_update", False)
             if not wait_for_process_running(api_state, proc_name):
@@ -1246,8 +1269,11 @@ def _run_startup(request: UnifiedStartRequest, updater, api_state, logger):
         if not pg.get("enabled"):
             pg["enabled"] = True
             CONFIG_MANAGER.save_config()
-        _reserve_config_port("postgres", pg, "port", used_ports, logger)
         pg_name = pg["process_name"]
+        is_running = api_state.get_status(pg_name) == "running"
+        _reserve_config_port(
+            "postgres", pg, "port", used_ports, logger, allow_in_use_for_owner=is_running
+        )
         logger.info(f"Ensuring '{pg_name}' is running for optional service(s)...")
         if not wait_for_process_running(api_state, pg_name):
             updater.auto_update(pg_name, enable_update=False)
@@ -1718,14 +1744,22 @@ def _run_startup(request: UnifiedStartRequest, updater, api_state, logger):
 
                     apply_service_options(inst_cfg, inst_opts, logger)
 
-                    _ensure_unique_instance_port(
-                        service_key=config_key,
-                        inst_name=inst_name,
-                        inst_cfg=inst_cfg,
-                        instances=instances,
-                        template_config=template_config,
-                        logger=logger,
-                    )
+                    proc_name = inst_cfg.get("process_name")
+                    if not proc_name:
+                        raise HTTPException(
+                            500,
+                            detail=f"Process name not defined for '{config_key}:{inst_name}'",
+                        )
+                    is_running = api_state.get_status(proc_name) == "running"
+                    if not is_running:
+                        _ensure_unique_instance_port(
+                            service_key=config_key,
+                            inst_name=inst_name,
+                            inst_cfg=inst_cfg,
+                            instances=instances,
+                            template_config=template_config,
+                            logger=logger,
+                        )
                     _reserve_config_port(
                         config_key,
                         inst_cfg,
@@ -1734,14 +1768,8 @@ def _run_startup(request: UnifiedStartRequest, updater, api_state, logger):
                         logger,
                         owner_suffix=inst_name,
                         label=f"{inst_name} port",
+                        allow_in_use_for_owner=is_running,
                     )
-
-                    proc_name = inst_cfg.get("process_name")
-                    if not proc_name:
-                        raise HTTPException(
-                            500,
-                            detail=f"Process name not defined for '{config_key}:{inst_name}'",
-                        )
 
                     auto_up = inst_cfg.get("auto_update", False)
                     if not wait_for_process_running(api_state, proc_name):
@@ -1756,7 +1784,16 @@ def _run_startup(request: UnifiedStartRequest, updater, api_state, logger):
                 apply_service_options(
                     core_cfg, core_service.service_options.get(config_key, {}), logger
                 )
-                _reserve_config_port(config_key, core_cfg, "port", used_ports, logger)
+                proc_name = core_cfg["process_name"]
+                is_running = api_state.get_status(proc_name) == "running"
+                _reserve_config_port(
+                    config_key,
+                    core_cfg,
+                    "port",
+                    used_ports,
+                    logger,
+                    allow_in_use_for_owner=is_running,
+                )
                 if config_key == "nzbdav":
                     _reserve_config_port(
                         "nzbdav",
@@ -1765,6 +1802,7 @@ def _run_startup(request: UnifiedStartRequest, updater, api_state, logger):
                         used_ports,
                         logger,
                         label="frontend",
+                        allow_in_use_for_owner=is_running,
                     )
                     _reserve_config_port(
                         "nzbdav",
@@ -1773,8 +1811,8 @@ def _run_startup(request: UnifiedStartRequest, updater, api_state, logger):
                         used_ports,
                         logger,
                         label="backend",
+                        allow_in_use_for_owner=is_running,
                     )
-                proc_name = core_cfg["process_name"]
                 auto_up = core_cfg.get("auto_update", False)
                 if not wait_for_process_running(api_state, proc_name):
                     p, err = updater.auto_update(proc_name, enable_update=auto_up)

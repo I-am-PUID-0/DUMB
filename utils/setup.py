@@ -2703,6 +2703,8 @@ def setup_huntarr(
         os.makedirs(config_root, exist_ok=True)
         log_dir = os.path.join(instance_config_dir, "logs")
         os.makedirs(log_dir, exist_ok=True)
+        backup_dir = os.path.join(config_root, "backups")
+        os.makedirs(backup_dir, exist_ok=True)
         _chown_recursive_if_needed(
             instance_config_dir, CONFIG_MANAGER.get("puid"), CONFIG_MANAGER.get("pgid")
         )
@@ -2711,6 +2713,9 @@ def setup_huntarr(
         )
         _chown_recursive_if_needed(
             log_dir, CONFIG_MANAGER.get("puid"), CONFIG_MANAGER.get("pgid")
+        )
+        _chown_recursive_if_needed(
+            backup_dir, CONFIG_MANAGER.get("puid"), CONFIG_MANAGER.get("pgid")
         )
 
         repo_marker = os.path.join(instance_config_dir, "main.py")
@@ -2811,6 +2816,7 @@ def setup_huntarr(
 
         if not install_only:
             _patch_huntarr_database_paths(instance_config_dir)
+            _patch_huntarr_backup_paths(instance_config_dir)
 
     if not install_only:
         try:
@@ -2856,6 +2862,36 @@ def _patch_huntarr_database_paths(instance_config_dir: str) -> None:
             handle.write(updated)
     except Exception as exc:
         logger.warning("Failed writing Huntarr database.py patch: %s", exc)
+
+
+def _patch_huntarr_backup_paths(instance_config_dir: str) -> None:
+    backup_path = os.path.join(instance_config_dir, "src", "routes", "backup_routes.py")
+    if not os.path.isfile(backup_path):
+        logger.debug("Huntarr backup_routes.py not found at %s", backup_path)
+        return
+
+    try:
+        with open(backup_path, "r") as handle:
+            content = handle.read()
+    except Exception as exc:
+        logger.warning("Failed reading Huntarr backup_routes.py: %s", exc)
+        return
+
+    target_line = '        config_dir = Path("/config")\n'
+    replacement_line = (
+        '        config_dir = Path(os.environ.get("HUNTARR_CONFIG_DIR") or "/config")\n'
+    )
+
+    if target_line not in content:
+        logger.debug("Huntarr backup_routes.py patch not needed or already applied.")
+        return
+
+    updated = content.replace(target_line, replacement_line, 1)
+    try:
+        with open(backup_path, "w") as handle:
+            handle.write(updated)
+    except Exception as exc:
+        logger.warning("Failed writing Huntarr backup_routes.py patch: %s", exc)
 
 
 def setup_jellyfin(install_only: bool = False, configure_only: bool = False):
