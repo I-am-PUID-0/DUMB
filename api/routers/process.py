@@ -20,6 +20,21 @@ class ServiceRequest(BaseModel):
     process_name: str
 
 
+class UpdateCheckRequest(BaseModel):
+    process_name: str
+    force: Optional[bool] = False
+
+
+class UpdateInstallRequest(BaseModel):
+    process_name: str
+    allow_override: Optional[bool] = False
+    target: Optional[str] = None
+
+
+class RescheduleAutoUpdateRequest(BaseModel):
+    process_name: str
+
+
 class CoreServiceConfig(BaseModel):
     name: str
     instance_name: Optional[str] = None
@@ -380,6 +395,8 @@ ALIAS_TO_KEY = {v.lower(): k for k, v in CORE_SERVICE_NAMES.items()} | {
 def fetch_process(
     process_name: str = Query(...),
     logger=Depends(get_logger),
+    api_state=Depends(get_api_state),
+    updater=Depends(get_updater),
     current_user: str = Depends(get_optional_current_user),
 ):
     try:
@@ -396,12 +413,18 @@ def fetch_process(
             instance_name=instance_name,
             key=config_key,
         )
+        update_status = api_state.get_update_status(process_name) if api_state else None
+        supports_manual_update = False
+        if updater:
+            supports_manual_update = updater.supports_manual_update(config_key, config)
 
         return {
             "process_name": process_name,
             "config": config,
             "version": version,
             "config_key": config_key,
+            "update_status": update_status,
+            "supports_manual_update": supports_manual_update,
         }
     except Exception as e:
         logger.error(f"Failed to load process: {e}")
@@ -718,6 +741,85 @@ def service_status(
     details = api_state.get_status_details(process_name, include_health=include_health)
     response = {"process_name": process_name, **details}
     return response
+
+
+@process_router.get("/update-status")
+def update_status(
+    process_name: str = Query(..., description="The name of the process to check"),
+    api_state=Depends(get_api_state),
+    current_user: str = Depends(get_optional_current_user),
+):
+    if not process_name:
+        raise HTTPException(status_code=400, detail="process_name is required")
+    payload = api_state.get_update_status(process_name) if api_state else None
+    return {"process_name": process_name, "update_status": payload}
+
+
+@process_router.post("/update-check")
+async def update_check(
+    request: UpdateCheckRequest,
+    updater=Depends(get_updater),
+    api_state=Depends(get_api_state),
+    current_user: str = Depends(get_optional_current_user),
+):
+    if not request.process_name:
+        raise HTTPException(status_code=400, detail="process_name is required")
+    if not updater:
+        raise HTTPException(status_code=500, detail="Updater not available")
+
+    payload = await run_in_threadpool(
+        updater.manual_update_check, request.process_name, bool(request.force)
+    )
+    if api_state and payload:
+        api_state.set_update_status(request.process_name, payload)
+    return payload
+
+
+@process_router.post("/update-install")
+async def update_install(
+    request: UpdateInstallRequest,
+    updater=Depends(get_updater),
+    api_state=Depends(get_api_state),
+    current_user: str = Depends(get_optional_current_user),
+):
+    if not request.process_name:
+        raise HTTPException(status_code=400, detail="process_name is required")
+    if not updater:
+        raise HTTPException(status_code=500, detail="Updater not available")
+
+    payload = await run_in_threadpool(
+        updater.manual_update_install,
+        request.process_name,
+        bool(request.allow_override),
+        request.target,
+    )
+    if api_state and payload:
+        api_state.set_update_status(request.process_name, payload)
+    return payload
+
+
+@process_router.post("/auto-update/reschedule")
+async def reschedule_auto_update(
+    request: RescheduleAutoUpdateRequest,
+    updater=Depends(get_updater),
+    api_state=Depends(get_api_state),
+    current_user: str = Depends(get_optional_current_user),
+):
+    if not request.process_name:
+        raise HTTPException(status_code=400, detail="process_name is required")
+    if not updater:
+        raise HTTPException(status_code=500, detail="Updater not available")
+
+    success, message = await run_in_threadpool(
+        updater.reschedule_auto_update, request.process_name
+    )
+    payload = {
+        "status": "ok" if success else "error",
+        "message": message,
+    }
+    if api_state:
+        api_state.set_update_status(request.process_name, payload)
+    return payload
 
 
 def wait_for_process_running(
@@ -2106,4 +2208,5 @@ async def get_capabilities(current_user: str = Depends(get_optional_current_user
     return {
         "optional_only_onboarding": True,
         "optional_service_options": True,
+        "manual_update_check": True,
     }

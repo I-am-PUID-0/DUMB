@@ -27,21 +27,585 @@ class Update:
         else:
             self.scheduler = schedule.default_scheduler
 
+    def supports_manual_update(self, key, config):
+        if key in {"bazarr"}:
+            return False
+        if key in {
+            "plex",
+            "jellyfin",
+            "emby",
+            "sonarr",
+            "radarr",
+            "lidarr",
+            "prowlarr",
+            "readarr",
+            "whisparr",
+            "whisparr-v3",
+        }:
+            return True
+        if config and config.get("repo_owner") and config.get("repo_name"):
+            return True
+        return False
+
+    def _get_update_block_reason(self, config):
+        if config.get("pinned_version"):
+            return "pinned_version"
+        if config.get("branch_enabled"):
+            return "branch"
+        if config.get("release_version_enabled"):
+            if not self._release_is_nightly_or_prerelease(config):
+                return "release"
+        return None
+
+    def _safe_record_update_status(self, process_name, payload):
+        try:
+            from utils.dependencies import get_api_state
+
+            api_state = get_api_state()
+            if api_state:
+                api_state.set_update_status(process_name, payload)
+        except Exception:
+            return
+
+    def manual_update_check(self, process_name, force: bool = False):
+        key, instance_name = CONFIG_MANAGER.find_key_for_process(process_name)
+        config = CONFIG_MANAGER.get_instance(instance_name, key)
+        if not config:
+            return {
+                "status": "error",
+                "reason": "config_not_found",
+                "message": f"Configuration for {process_name} not found.",
+            }
+        if not self.supports_manual_update(key, config):
+            return {
+                "status": "unsupported",
+                "reason": "unsupported",
+                "message": f"Manual updates are not supported for {process_name}.",
+            }
+
+        with self.updating:
+            payload = self._manual_update_check_internal(
+                process_name, config, key, instance_name
+            )
+            self._safe_record_update_status(process_name, payload)
+            return payload
+
+    def _manual_update_check_internal(self, process_name, config, key, instance_name):
+        block_reason = self._get_update_block_reason(config)
+        checked_at = int(time.time())
+        auto_update_enabled = bool(config.get("auto_update"))
+        interval_hours = self.auto_update_interval(process_name, config)
+        next_check_at = (
+            int(checked_at + interval_hours * 3600) if auto_update_enabled else None
+        )
+
+        if key == "plex":
+            return self._manual_check_plex(
+                process_name,
+                config,
+                instance_name,
+                block_reason,
+                checked_at,
+                auto_update_enabled,
+                interval_hours,
+                next_check_at,
+            )
+        if key == "jellyfin":
+            return self._manual_check_jellyfin(
+                process_name,
+                config,
+                instance_name,
+                block_reason,
+                checked_at,
+                auto_update_enabled,
+                interval_hours,
+                next_check_at,
+            )
+        if key == "emby":
+            return self._manual_check_emby(
+                process_name,
+                config,
+                instance_name,
+                block_reason,
+                checked_at,
+                auto_update_enabled,
+                interval_hours,
+                next_check_at,
+            )
+        if key in [
+            "sonarr",
+            "radarr",
+            "lidarr",
+            "prowlarr",
+            "readarr",
+            "whisparr",
+            "whisparr-v3",
+        ]:
+            return self._manual_check_arr(
+                process_name,
+                config,
+                key,
+                instance_name,
+                block_reason,
+                checked_at,
+                auto_update_enabled,
+                interval_hours,
+                next_check_at,
+            )
+
+        return self._manual_check_generic_repo(
+            process_name,
+            config,
+            key,
+            instance_name,
+            block_reason,
+            checked_at,
+            auto_update_enabled,
+            interval_hours,
+            next_check_at,
+        )
+
+    def _manual_check_generic_repo(
+        self,
+        process_name,
+        config,
+        key,
+        instance_name,
+        block_reason,
+        checked_at,
+        auto_update_enabled,
+        interval_hours,
+        next_check_at,
+    ):
+        versions = Versions()
+        repo_owner = config.get("repo_owner")
+        repo_name = config.get("repo_name")
+        if not repo_owner or not repo_name:
+            return {
+                "status": "unsupported",
+                "reason": "repo_missing",
+                "message": f"{process_name} missing repo configuration.",
+                "checked_at": checked_at,
+                "auto_update_enabled": auto_update_enabled,
+                "auto_update_interval": interval_hours,
+                "next_check_at": next_check_at,
+            }
+
+        nightly = False
+        prerelease = False
+        if config.get("release_version_enabled"):
+            release_value = (config.get("release_version") or "").lower()
+            if "nightly" in release_value:
+                nightly = True
+            elif "prerelease" in release_value:
+                prerelease = True
+
+        update_needed, update_info = versions.compare_versions(
+            process_name,
+            repo_owner,
+            repo_name,
+            instance_name,
+            key,
+            nightly=nightly,
+            prerelease=prerelease,
+        )
+        if isinstance(update_info, str):
+            return {
+                "status": "error",
+                "reason": "version_check_failed",
+                "message": update_info,
+                "checked_at": checked_at,
+                "auto_update_enabled": auto_update_enabled,
+                "auto_update_interval": interval_hours,
+                "next_check_at": next_check_at,
+            }
+
+        current_version = update_info.get("current_version")
+        latest_version = update_info.get("latest_version")
+        if not update_needed:
+            return {
+                "status": "no_update",
+                "current_version": current_version,
+                "available_version": latest_version,
+                "message": update_info.get("message"),
+                "checked_at": checked_at,
+                "auto_update_enabled": auto_update_enabled,
+                "auto_update_interval": interval_hours,
+                "next_check_at": next_check_at,
+            }
+
+        status = "update_available"
+        if block_reason:
+            status = "blocked"
+
+        return {
+            "status": status,
+            "current_version": current_version,
+            "available_version": latest_version,
+            "reason": block_reason,
+            "message": update_info.get("message"),
+            "checked_at": checked_at,
+            "auto_update_enabled": auto_update_enabled,
+            "auto_update_interval": interval_hours,
+            "next_check_at": next_check_at,
+        }
+
+    def _manual_check_arr(
+        self,
+        process_name,
+        config,
+        key,
+        instance_name,
+        block_reason,
+        checked_at,
+        auto_update_enabled,
+        interval_hours,
+        next_check_at,
+    ):
+        versions = Versions()
+        install_dir = config.get("install_dir")
+        if install_dir:
+            current_version, error = versions.read_arr_version_from_dir(key, install_dir)
+        else:
+            current_version, error = versions.version_check(
+                process_name, instance_name, key
+            )
+        installer = ArrInstaller(key, install_dir=install_dir)
+        latest_version, latest_error = installer.get_latest_version()
+        if not latest_version:
+            return {
+                "status": "error",
+                "reason": "version_check_failed",
+                "message": latest_error or error,
+                "checked_at": checked_at,
+                "auto_update_enabled": auto_update_enabled,
+                "auto_update_interval": interval_hours,
+                "next_check_at": next_check_at,
+            }
+        if current_version == latest_version:
+            return {
+                "status": "no_update",
+                "current_version": current_version,
+                "available_version": latest_version,
+                "checked_at": checked_at,
+                "auto_update_enabled": auto_update_enabled,
+                "auto_update_interval": interval_hours,
+                "next_check_at": next_check_at,
+            }
+
+        status = "update_available"
+        if block_reason:
+            status = "blocked"
+
+        return {
+            "status": status,
+            "current_version": current_version,
+            "available_version": latest_version,
+            "reason": block_reason,
+            "checked_at": checked_at,
+            "auto_update_enabled": auto_update_enabled,
+            "auto_update_interval": interval_hours,
+            "next_check_at": next_check_at,
+        }
+
+    def _manual_check_jellyfin(
+        self,
+        process_name,
+        config,
+        instance_name,
+        block_reason,
+        checked_at,
+        auto_update_enabled,
+        interval_hours,
+        next_check_at,
+    ):
+        versions = Versions()
+        current_version, error = versions.version_check(
+            process_name, instance_name, "jellyfin"
+        )
+        latest_version, latest_error = self.get_jellyfin_latest_version()
+        if not latest_version:
+            return {
+                "status": "error",
+                "reason": "version_check_failed",
+                "message": latest_error or error,
+                "checked_at": checked_at,
+                "auto_update_enabled": auto_update_enabled,
+                "auto_update_interval": interval_hours,
+                "next_check_at": next_check_at,
+            }
+        if current_version == latest_version:
+            return {
+                "status": "no_update",
+                "current_version": current_version,
+                "available_version": latest_version,
+                "checked_at": checked_at,
+                "auto_update_enabled": auto_update_enabled,
+                "auto_update_interval": interval_hours,
+                "next_check_at": next_check_at,
+            }
+
+        status = "update_available"
+        if block_reason:
+            status = "blocked"
+
+        return {
+            "status": status,
+            "current_version": current_version,
+            "available_version": latest_version,
+            "reason": block_reason,
+            "checked_at": checked_at,
+            "auto_update_enabled": auto_update_enabled,
+            "auto_update_interval": interval_hours,
+            "next_check_at": next_check_at,
+        }
+
+    def _manual_check_emby(
+        self,
+        process_name,
+        config,
+        instance_name,
+        block_reason,
+        checked_at,
+        auto_update_enabled,
+        interval_hours,
+        next_check_at,
+    ):
+        versions = Versions()
+        current_version, error = versions.version_check(
+            process_name, instance_name, "emby"
+        )
+        latest_version, latest_error = self.get_emby_latest_version(config)
+        if not latest_version:
+            return {
+                "status": "error",
+                "reason": "version_check_failed",
+                "message": latest_error or error,
+                "checked_at": checked_at,
+                "auto_update_enabled": auto_update_enabled,
+                "auto_update_interval": interval_hours,
+                "next_check_at": next_check_at,
+            }
+        if current_version == latest_version:
+            return {
+                "status": "no_update",
+                "current_version": current_version,
+                "available_version": latest_version,
+                "checked_at": checked_at,
+                "auto_update_enabled": auto_update_enabled,
+                "auto_update_interval": interval_hours,
+                "next_check_at": next_check_at,
+            }
+
+        status = "update_available"
+        if block_reason:
+            status = "blocked"
+
+        return {
+            "status": status,
+            "current_version": current_version,
+            "available_version": latest_version,
+            "reason": block_reason,
+            "checked_at": checked_at,
+            "auto_update_enabled": auto_update_enabled,
+            "auto_update_interval": interval_hours,
+            "next_check_at": next_check_at,
+        }
+
+    def _manual_check_plex(
+        self,
+        process_name,
+        config,
+        instance_name,
+        block_reason,
+        checked_at,
+        auto_update_enabled,
+        interval_hours,
+        next_check_at,
+    ):
+        plex_media_server_dir = config.get(
+            "plex_media_server_dir", "/usr/lib/plexmediaserver"
+        )
+        if not os.path.exists(plex_media_server_dir):
+            return {
+                "status": "not_installed",
+                "message": "Plex Media Server not installed.",
+                "checked_at": checked_at,
+                "auto_update_enabled": auto_update_enabled,
+                "auto_update_interval": interval_hours,
+                "next_check_at": next_check_at,
+            }
+
+        installer = PlexInstaller()
+        versions = Versions()
+        current_version, error = versions.version_check(
+            process_name, instance_name, "plex"
+        )
+        current_version = installer.normalize_version(current_version or "")
+        build = installer.get_architecture()
+        if not build:
+            return {
+                "status": "error",
+                "reason": "unsupported_arch",
+                "message": "Unsupported architecture.",
+                "checked_at": checked_at,
+                "auto_update_enabled": auto_update_enabled,
+                "auto_update_interval": interval_hours,
+                "next_check_at": next_check_at,
+            }
+        try:
+            latest_version, _ = installer.get_download_info(build)
+        except Exception as e:
+            return {
+                "status": "error",
+                "reason": "version_check_failed",
+                "message": str(e),
+                "checked_at": checked_at,
+                "auto_update_enabled": auto_update_enabled,
+                "auto_update_interval": interval_hours,
+                "next_check_at": next_check_at,
+            }
+        latest_version = installer.normalize_version(latest_version or "")
+
+        if current_version == latest_version:
+            return {
+                "status": "no_update",
+                "current_version": current_version,
+                "available_version": latest_version,
+                "checked_at": checked_at,
+                "auto_update_enabled": auto_update_enabled,
+                "auto_update_interval": interval_hours,
+                "next_check_at": next_check_at,
+            }
+
+        status = "update_available"
+        if block_reason:
+            status = "blocked"
+
+        return {
+            "status": status,
+            "current_version": current_version,
+            "available_version": latest_version,
+            "reason": block_reason,
+            "checked_at": checked_at,
+            "auto_update_enabled": auto_update_enabled,
+            "auto_update_interval": interval_hours,
+            "next_check_at": next_check_at,
+        }
+
+    def manual_update_install(self, process_name, allow_override=False, target=None):
+        key, instance_name = CONFIG_MANAGER.find_key_for_process(process_name)
+        config = CONFIG_MANAGER.get_instance(instance_name, key)
+        if not config:
+            return {
+                "status": "error",
+                "reason": "config_not_found",
+                "message": f"Configuration for {process_name} not found.",
+            }
+        if not self.supports_manual_update(key, config):
+            return {
+                "status": "unsupported",
+                "reason": "unsupported",
+                "message": f"Manual updates are not supported for {process_name}.",
+            }
+
+        block_reason = self._get_update_block_reason(config)
+        if block_reason and not allow_override:
+            payload = {
+                "status": "blocked",
+                "reason": block_reason,
+                "message": f"Updates blocked for {process_name}.",
+            }
+            self._safe_record_update_status(process_name, payload)
+            return payload
+
+        original = {
+            "pinned_version": config.get("pinned_version"),
+            "release_version_enabled": config.get("release_version_enabled"),
+            "release_version": config.get("release_version"),
+            "branch_enabled": config.get("branch_enabled"),
+            "branch": config.get("branch"),
+        }
+
+        with self.updating:
+            try:
+                if allow_override:
+                    config["pinned_version"] = ""
+                    config["branch_enabled"] = False
+                    if config.get("release_version_enabled") and not self._release_is_nightly_or_prerelease(config):
+                        config["release_version_enabled"] = False
+                        config["release_version"] = ""
+                if target:
+                    target_value = str(target).lower()
+                    if target_value in {"prerelease", "nightly"}:
+                        config["release_version_enabled"] = True
+                        config["release_version"] = target_value
+
+                success, message = self.update_check(process_name, config, key, instance_name)
+                if not success:
+                    status = "no_update"
+                    if isinstance(message, str) and "Failed" in message:
+                        status = "error"
+                    payload = {
+                        "status": status,
+                        "message": message,
+                    }
+                    self._safe_record_update_status(process_name, payload)
+                    return payload
+
+                payload = {
+                    "status": "updated",
+                    "message": message,
+                }
+                self._safe_record_update_status(process_name, payload)
+                return payload
+            finally:
+                config["pinned_version"] = original.get("pinned_version")
+                config["release_version_enabled"] = original.get("release_version_enabled")
+                config["release_version"] = original.get("release_version")
+                config["branch_enabled"] = original.get("branch_enabled")
+                config["branch"] = original.get("branch")
+
     def update_schedule(self, process_name, config, key, instance_name):
         interval_minutes = int(self.auto_update_interval(process_name, config) * 60)
         self.logger.debug(
             f"Scheduling automatic update check every {interval_minutes} minutes for {process_name}"
         )
 
-        if process_name not in Update._jobs:
-            self.scheduler.every(interval_minutes).minutes.do(
-                self.scheduled_update_check, process_name, config, key, instance_name
-            )
-            Update._jobs[process_name] = True
-            self.logger.debug(
-                f"Scheduled automatic update check for {process_name}, w/ key: {key}, and job ID: {id(self.scheduler.jobs[-1])}"
-            )
+        existing_job = Update._jobs.get(process_name)
+        if existing_job:
+            try:
+                self.scheduler.cancel_job(existing_job)
+            except Exception:
+                pass
+        job = self.scheduler.every(interval_minutes).minutes.do(
+            self.scheduled_update_check, process_name, config, key, instance_name
+        )
+        Update._jobs[process_name] = job
+        self.logger.debug(
+            f"Scheduled automatic update check for {process_name}, w/ key: {key}, and job ID: {id(job)}"
+        )
+        next_check_at = None
+        try:
+            if job and getattr(job, "next_run", None):
+                next_check_at = int(job.next_run.timestamp())
+        except Exception:
+            next_check_at = None
+        if next_check_at is None:
+            next_check_at = int(time.time() + interval_minutes * 60)
+        self._safe_record_update_status(
+            process_name,
+            {
+                "status": "scheduled",
+                "auto_update_enabled": True,
+                "auto_update_interval": self.auto_update_interval(process_name, config),
+                "next_check_at": next_check_at,
+            },
+        )
 
+        self._ensure_scheduler_running(process_name)
+
+    def _ensure_scheduler_running(self, process_name):
         with Update._schedule_thread_lock:
             if Update._schedule_thread_started:
                 self.logger.debug(
@@ -54,14 +618,17 @@ class Update:
                 return
             Update._schedule_thread_started = True
             Update._schedule_thread_count += 1
+            thread = threading.Thread(target=self._run_scheduler_loop, daemon=True)
+            thread.start()
             self.logger.debug(
                 "Scheduler loop started for %s. Active loops: %d, jobs: %d, thread: %s",
                 process_name,
                 Update._schedule_thread_count,
                 len(self.scheduler.jobs),
-                threading.current_thread().name,
+                thread.name,
             )
 
+    def _run_scheduler_loop(self):
         try:
             while not self.process_handler.shutting_down:
                 self.scheduler.run_pending()
@@ -72,12 +639,38 @@ class Update:
                 if Update._schedule_thread_count > 0:
                     Update._schedule_thread_count -= 1
                 self.logger.debug(
-                    "Scheduler loop stopped for %s. Active loops: %d, jobs: %d, thread: %s",
-                    process_name,
+                    "Scheduler loop stopped. Active loops: %d, jobs: %d, thread: %s",
                     Update._schedule_thread_count,
                     len(self.scheduler.jobs),
                     threading.current_thread().name,
                 )
+
+    def reschedule_auto_update(self, process_name):
+        key, instance_name = CONFIG_MANAGER.find_key_for_process(process_name)
+        config = CONFIG_MANAGER.get_instance(instance_name, key)
+        if not config:
+            return False, "Configuration not found"
+        if not config.get("auto_update"):
+            existing_job = Update._jobs.get(process_name)
+            if existing_job:
+                try:
+                    self.scheduler.cancel_job(existing_job)
+                except Exception:
+                    pass
+                Update._jobs.pop(process_name, None)
+            self._safe_record_update_status(
+                process_name,
+                {
+                    "status": "disabled",
+                    "auto_update_enabled": False,
+                    "auto_update_interval": self.auto_update_interval(process_name, config),
+                    "next_check_at": None,
+                },
+            )
+            return True, "Auto-update disabled"
+
+        self.update_schedule(process_name, config, key, instance_name)
+        return True, "Auto-update rescheduled"
 
     def auto_update_interval(self, process_name, config):
         default_interval = 24
@@ -218,6 +811,13 @@ class Update:
     def scheduled_update_check(self, process_name, config, key, instance_name):
         with self.updating:
             self.logger.info(f"Performing scheduled update check for {process_name}")
+            try:
+                payload = self._manual_update_check_internal(
+                    process_name, config, key, instance_name
+                )
+                self._safe_record_update_status(process_name, payload)
+            except Exception:
+                pass
             success, error = self.update_check(process_name, config, key, instance_name)
             if not success:
                 if "No updates available" in error:

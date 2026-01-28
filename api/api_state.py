@@ -1,4 +1,4 @@
-import os, socket, psutil
+import os, socket, psutil, threading, time
 from json import load
 from utils.config_loader import CONFIG_MANAGER
 
@@ -15,6 +15,31 @@ class APIState:
         self._status_cache = self.service_status
         self._status_mtime = self._get_status_mtime()
         self.shutdown_in_progress = set()
+        self._update_cache = {}
+        self._update_cache_lock = threading.Lock()
+
+    def _normalize_process_name(self, value):
+        return str(value or "").replace(" ", "").replace("/ ", "/").strip().lower()
+
+    def set_update_status(self, process_name, payload):
+        if not process_name or not isinstance(payload, dict):
+            return
+        normalized = self._normalize_process_name(process_name)
+        update_payload = {
+            "process_name": process_name,
+            "checked_at": payload.get("checked_at") or int(time.time()),
+            **payload,
+        }
+        with self._update_cache_lock:
+            self._update_cache[normalized] = update_payload
+
+    def get_update_status(self, process_name):
+        normalized = self._normalize_process_name(process_name)
+        with self._update_cache_lock:
+            payload = self._update_cache.get(normalized)
+            if not payload:
+                return None
+            return dict(payload)
 
     def _get_status_mtime(self):
         try:
