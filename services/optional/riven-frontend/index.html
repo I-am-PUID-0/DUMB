@@ -2509,6 +2509,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Configuration Settings in dumb_config.json">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#configuration-key-descriptions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Configuration Key Descriptions
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -2523,7 +2540,7 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#branch-version-targeting" class="md-nav__link">
+  <a href="#branch--version-targeting" class="md-nav__link">
     <span class="md-ellipsis">
       
         Branch / Version Targeting
@@ -4252,6 +4269,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Configuration Settings in dumb_config.json">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#configuration-key-descriptions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Configuration Key Descriptions
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -4266,7 +4300,7 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#branch-version-targeting" class="md-nav__link">
+  <a href="#branch--version-targeting" class="md-nav__link">
     <span class="md-ellipsis">
       
         Branch / Version Targeting
@@ -4406,11 +4440,11 @@
   
 
 
-<h1 id="riven-frontend">Riven Frontend<a class="headerlink" href="#riven-frontend" title="Permanent link">&para;</a></h1>
+<h1 id="riven-frontend">Riven Frontend<a class="headerlink" href="#riven-frontend" title="Permanent link">#</a></h1>
 <p>The <strong>Riven Frontend</strong> is the web-based interface for interacting with the Riven Backend. It allows users to manage settings, content, and integrations from a clean and modern UI.</p>
 <p>DUMB handles automatic installation and updates of the frontend, including versioning and branch targeting. It is served by a lightweight web server and pre-configured to communicate with the backend at startup.</p>
 <hr />
-<h2 id="configuration-settings-in-dumb_configjson">Configuration Settings in <code>dumb_config.json</code><a class="headerlink" href="#configuration-settings-in-dumb_configjson" title="Permanent link">&para;</a></h2>
+<h2 id="configuration-settings-in-dumb_configjson">Configuration Settings in <code>dumb_config.json</code><a class="headerlink" href="#configuration-settings-in-dumb_configjson" title="Permanent link">#</a></h2>
 <div class="highlight"><pre><span></span><code><span class="nt">&quot;riven_frontend&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">    </span><span class="nt">&quot;enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;process_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Riven Frontend&quot;</span><span class="p">,</span>
@@ -4449,7 +4483,7 @@ start flow, updating <code>dumb_config.json</code> accordingly.
 Per-service stop/start/restart does not re-run port conflict resolution, so fix
 conflicts manually before restarting a single service.</p>
 </div>
-<h3 id="configuration-key-descriptions">Configuration Key Descriptions<a class="headerlink" href="#configuration-key-descriptions" title="Permanent link">&para;</a></h3>
+<h3 id="configuration-key-descriptions">Configuration Key Descriptions<a class="headerlink" href="#configuration-key-descriptions" title="Permanent link">#</a></h3>
 <ul>
 <li><strong><code>enabled</code></strong>: Whether to start the Riven Frontend service.</li>
 <li><strong><code>process_name</code></strong>: Used in logs and process tracking.</li>
@@ -4472,17 +4506,17 @@ conflicts manually before restarting a single service.</p>
 <li><strong><code>env</code></strong>: Dictionary of environment variables passed to the process (e.g., <code>PORT</code>, <code>ORIGIN</code>, <code>HOST</code>).</li>
 </ul>
 <hr />
-<h2 id="origin-variable">ORIGIN Variable<a class="headerlink" href="#origin-variable" title="Permanent link">&para;</a></h2>
+<h2 id="origin-variable">ORIGIN Variable<a class="headerlink" href="#origin-variable" title="Permanent link">#</a></h2>
 <p>The <code>ORIGIN</code> key must match the public-facing URL used to access the frontend. It ensures correct behavior for authentication, saving settings, and API communication.</p>
 <hr />
-<h2 id="branch-version-targeting">Branch / Version Targeting<a class="headerlink" href="#branch-version-targeting" title="Permanent link">&para;</a></h2>
+<h2 id="branch--version-targeting">Branch / Version Targeting<a class="headerlink" href="#branch--version-targeting" title="Permanent link">#</a></h2>
 <p>You can control which version or branch of the frontend is deployed by setting:</p>
 <ul>
 <li><code>branch_enabled: true</code> and specifying a <code>branch</code></li>
 <li>or <code>release_version_enabled: true</code> and specifying a <code>release_version</code></li>
 </ul>
 <hr />
-<h2 id="access">Access<a class="headerlink" href="#access" title="Permanent link">&para;</a></h2>
+<h2 id="access">Access<a class="headerlink" href="#access" title="Permanent link">#</a></h2>
 <ul>
 <li>Navigate to: <code>http://&lt;host&gt;:&lt;port&gt;</code> <ul>
 <li>default port <code>3000</code></li>
@@ -4493,14 +4527,14 @@ conflicts manually before restarting a single service.</p>
 <p class="admonition-title"> If using a reverse proxy, ensure the <code>ORIGIN</code> environment variable matches the external URL.</p>
 </div>
 <hr />
-<h2 id="tips">Tips<a class="headerlink" href="#tips" title="Permanent link">&para;</a></h2>
+<h2 id="tips">Tips<a class="headerlink" href="#tips" title="Permanent link">#</a></h2>
 <ul>
 <li>The frontend depends on the backend being reachable at <code>http://&lt;host&gt;:&lt;port&gt;</code> defined in the <code>dumb_config.json</code> for the <a href="../../core/riven-backend/">Riven Backend</a></li>
 <li>Use Docker port mappings if needed to expose the frontend</li>
 <li>Check <code>PORT</code> and <code>ORIGIN</code> values if the UI fails to load</li>
 </ul>
 <hr />
-<h2 id="resources">Resources<a class="headerlink" href="#resources" title="Permanent link">&para;</a></h2>
+<h2 id="resources">Resources<a class="headerlink" href="#resources" title="Permanent link">#</a></h2>
 <ul>
 <li><a href="https://github.com/rivenmedia/riven-frontend">Riven Frontend GitHub</a></li>
 </ul>

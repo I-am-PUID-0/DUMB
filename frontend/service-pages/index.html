@@ -1149,6 +1149,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Auto-restart policy">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#service-overrides" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Service overrides
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1171,6 +1188,34 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Configuration editors">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#edit-dumb-config" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Edit DUMB Config
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#edit-service-config" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Edit Service Config
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1181,6 +1226,23 @@
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="Logs">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#special-log-tabs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Special log tabs
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -4295,6 +4357,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Auto-restart policy">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#service-overrides" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Service overrides
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -4317,6 +4396,34 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Configuration editors">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#edit-dumb-config" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Edit DUMB Config
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#edit-service-config" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Edit Service Config
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -4327,6 +4434,23 @@
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="Logs">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#special-log-tabs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Special log tabs
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -4442,22 +4566,23 @@
   
 
 
-<h1 id="service-pages">Service pages<a class="headerlink" href="#service-pages" title="Permanent link">&para;</a></h1>
+<h1 id="service-pages">Service pages<a class="headerlink" href="#service-pages" title="Permanent link">#</a></h1>
 <p>This page covers the service-level controls exposed in the DUMB Frontend, including
 auto-restart policies, auto-update scheduling, and configuration editors.</p>
 <hr />
-<h2 id="overview">Overview<a class="headerlink" href="#overview" title="Permanent link">&para;</a></h2>
+<h2 id="overview">Overview<a class="headerlink" href="#overview" title="Permanent link">#</a></h2>
 <p>Each service page includes:</p>
 <ul>
 <li>Current status, health, and restart counters</li>
-<li>Start, stop, and restart actions</li>
+<li>Start, stop, and restart actions (except for the API service)</li>
 <li>Configuration editors with validation</li>
 <li>Log viewers (service logs, plus special logs when available)</li>
 <li>Embedded UI tab when supported and enabled</li>
 <li>Per-service auto-restart overrides</li>
+<li>On-demand update checks and auto-update scheduling</li>
 </ul>
 <hr />
-<h2 id="status-and-controls">Status and controls<a class="headerlink" href="#status-and-controls" title="Permanent link">&para;</a></h2>
+<h2 id="status-and-controls">Status and controls<a class="headerlink" href="#status-and-controls" title="Permanent link">#</a></h2>
 <p>The header shows the service name, status dot, and health badge. When auto-restart is
 enabled for a service, you also see restart counters and the last restart reason.</p>
 <p>Action buttons:</p>
@@ -4465,8 +4590,12 @@ enabled for a service, you also see restart counters and the last restart reason
 <li><strong>Start</strong>, <strong>Stop</strong>, <strong>Restart</strong> for the current service</li>
 <li><strong>Auto-restart</strong> opens per-service overrides (if supported)</li>
 </ul>
+<div class="admonition note">
+<p class="admonition-title">API service controls</p>
+<p>The DUMB API service does not show Start/Stop/Restart controls in the UI.</p>
+</div>
 <hr />
-<h2 id="auto-restart-policy">Auto-restart policy<a class="headerlink" href="#auto-restart-policy" title="Permanent link">&para;</a></h2>
+<h2 id="auto-restart-policy">Auto-restart policy<a class="headerlink" href="#auto-restart-policy" title="Permanent link">#</a></h2>
 <p>Configure the global auto-restart behavior:</p>
 <table>
 <thead>
@@ -4495,7 +4624,7 @@ enabled for a service, you also see restart counters and the last restart reason
 </tbody>
 </table>
 <p><img alt="Auto-restart controls" class="shadow" src="../../assets/images/frontend/auto_restart.png" /></p>
-<h3 id="service-overrides">Service overrides<a class="headerlink" href="#service-overrides" title="Permanent link">&para;</a></h3>
+<h3 id="service-overrides">Service overrides<a class="headerlink" href="#service-overrides" title="Permanent link">#</a></h3>
 <p>Service pages can also override auto-restart settings per service:</p>
 <ul>
 <li>Enable/disable auto-restart for the current service</li>
@@ -4503,8 +4632,15 @@ enabled for a service, you also see restart counters and the last restart reason
 <li>Apply in memory or save to file</li>
 </ul>
 <hr />
-<h2 id="auto-update-settings">Auto-update settings<a class="headerlink" href="#auto-update-settings" title="Permanent link">&para;</a></h2>
-<p>Configure automatic service updates:</p>
+<h2 id="auto-update-settings">Auto-update settings<a class="headerlink" href="#auto-update-settings" title="Permanent link">#</a></h2>
+<p>The updates panel lets you check for updates on demand and configure automatic update checks:</p>
+<p>Manual update actions:</p>
+<ul>
+<li><strong>Check for updates</strong> runs a one-time update check even if auto-update is disabled.</li>
+<li><strong>Install update</strong> applies the latest available update when allowed.</li>
+<li><strong>Override + install</strong> appears when a service is pinned to a release/branch and you explicitly choose to bypass the block.</li>
+</ul>
+<p>Automatic update settings:</p>
 <table>
 <thead>
 <tr>
@@ -4521,28 +4657,29 @@ enabled for a service, you also see restart counters and the last restart reason
 <td><strong>Interval</strong></td>
 <td>Hours between update checks</td>
 </tr>
-<tr>
-<td><strong>Clear on Update</strong></td>
-<td>Remove old files when updating</td>
-</tr>
 </tbody>
 </table>
+<p>Notes:</p>
+<ul>
+<li>Saving auto-update settings reschedules the updater immediately (no service restart required).</li>
+<li><strong>Next check</strong> is shown in the panel once auto-update is enabled and scheduled.</li>
+</ul>
 <hr />
-<h2 id="configuration-editors">Configuration editors<a class="headerlink" href="#configuration-editors" title="Permanent link">&para;</a></h2>
+<h2 id="configuration-editors">Configuration editors<a class="headerlink" href="#configuration-editors" title="Permanent link">#</a></h2>
 <p>The frontend includes editors for the main DUMB config and service-specific configs.</p>
-<h3 id="edit-dumb-config">Edit DUMB Config<a class="headerlink" href="#edit-dumb-config" title="Permanent link">&para;</a></h3>
+<h3 id="edit-dumb-config">Edit DUMB Config<a class="headerlink" href="#edit-dumb-config" title="Permanent link">#</a></h3>
 <p>View or edit <code>dumb_config.json</code>. Changes can be saved in memory or written to disk.</p>
 <p>Notes:</p>
 <ul>
 <li>The editor runs schema validation when available.</li>
 <li>Invalid JSON or validation errors block saves until corrected.</li>
 </ul>
-<h3 id="edit-service-config">Edit Service Config<a class="headerlink" href="#edit-service-config" title="Permanent link">&para;</a></h3>
+<h3 id="edit-service-config">Edit Service Config<a class="headerlink" href="#edit-service-config" title="Permanent link">#</a></h3>
 <p><img alt="Edit Service Config" class="shadow" src="../../assets/images/frontend/edit_service_config.png" /></p>
 <p>For services with separate config files, you can open and modify those settings here.
 Service configs should be saved to file.</p>
 <hr />
-<h2 id="logs">Logs<a class="headerlink" href="#logs" title="Permanent link">&para;</a></h2>
+<h2 id="logs">Logs<a class="headerlink" href="#logs" title="Permanent link">#</a></h2>
 <p>Service pages include log viewers when a log file is configured or when the service
 is allowlisted for logs:</p>
 <p><img alt="View service logs" class="shadow" src="../../assets/images/frontend/view_service_logs.png" /></p>
@@ -4553,13 +4690,13 @@ is allowlisted for logs:</p>
 <li>Manual refresh</li>
 <li>Download logs</li>
 </ul>
-<h3 id="special-log-tabs">Special log tabs<a class="headerlink" href="#special-log-tabs" title="Permanent link">&para;</a></h3>
+<h3 id="special-log-tabs">Special log tabs<a class="headerlink" href="#special-log-tabs" title="Permanent link">#</a></h3>
 <ul>
 <li><strong>Traefik Access Logs</strong> appear on the Traefik service page.</li>
 <li><strong>DBRepair Logs</strong> appear on the Plex service page when DBRepair is enabled.</li>
 </ul>
 <hr />
-<h2 id="embedded-ui">Embedded UI<a class="headerlink" href="#embedded-ui" title="Permanent link">&para;</a></h2>
+<h2 id="embedded-ui">Embedded UI<a class="headerlink" href="#embedded-ui" title="Permanent link">#</a></h2>
 <p>When embedded UIs are enabled and the service exposes a UI, a dedicated <strong>Embedded UI</strong>
 tab appears.</p>
 <p>Features:</p>
@@ -4570,11 +4707,11 @@ tab appears.</p>
 </ul>
 <p>NzbDAV uses a trailing slash in its embedded UI path to match its frontend routing.</p>
 <hr />
-<h2 id="default-tab-selection">Default tab selection<a class="headerlink" href="#default-tab-selection" title="Permanent link">&para;</a></h2>
+<h2 id="default-tab-selection">Default tab selection<a class="headerlink" href="#default-tab-selection" title="Permanent link">#</a></h2>
 <p>You can choose a default tab for each service page (for example, always open logs).
 The selection is stored in the UI preferences.</p>
 <hr />
-<h2 id="related-pages">Related pages<a class="headerlink" href="#related-pages" title="Permanent link">&para;</a></h2>
+<h2 id="related-pages">Related pages<a class="headerlink" href="#related-pages" title="Permanent link">#</a></h2>
 <ul>
 <li><a href="../settings/">Settings</a> - Preferences and onboarding controls</li>
 <li><a href="../dashboard/">Dashboard</a> - Service controls and logs</li>
