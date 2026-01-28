@@ -8,9 +8,12 @@ class ConnectionManager:
     def __init__(self):
         self.active_connections: Set[WebSocket] = set()
         self.lock = asyncio.Lock()
+        self.loop = None
 
     async def connect(self, websocket: WebSocket):
         await websocket.accept()
+        if self.loop is None or self.loop.is_closed():
+            self.loop = asyncio.get_running_loop()
         async with self.lock:
             self.active_connections.add(websocket)
 
