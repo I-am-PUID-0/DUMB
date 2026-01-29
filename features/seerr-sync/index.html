@@ -12,13 +12,13 @@
         <meta name="author" content="DUMB Team">
       
       
-        <link rel="canonical" href="https://dumbarr.com/architecture/frontend/">
+        <link rel="canonical" href="https://dumbarr.com/features/seerr-sync/">
       
       
-        <link rel="prev" href="../backend/">
+        <link rel="prev" href="../auto-update/">
       
       
-        <link rel="next" href="../traefik/">
+        <link rel="next" href="../ffprobe-monitor/">
       
       
         
@@ -29,7 +29,7 @@
     
     
       
-        <title>Frontend architecture - Debrid Unlimited Media Bridge</title>
+        <title>Seerr Sync - Debrid Unlimited Media Bridge</title>
       
     
     
@@ -116,7 +116,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#frontend-architecture" class="md-skip">
+        <a href="#seerr-sync" class="md-skip">
           Skip to content
         </a>
       
@@ -160,7 +160,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Frontend architecture
+              Seerr Sync
             
           </span>
         </div>
@@ -268,11 +268,13 @@
   
   
   
+    
+  
   
     
     
-      <li class="md-tabs__item">
-        <a href="../../features/" class="md-tabs__link">
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../" class="md-tabs__link">
           
   
   Features
@@ -306,13 +308,11 @@
   
   
   
-    
-  
   
     
     
-      <li class="md-tabs__item md-tabs__item--active">
-        <a href="../" class="md-tabs__link">
+      <li class="md-tabs__item">
+        <a href="../../architecture/" class="md-tabs__link">
           
   
   Architecture
@@ -543,6 +543,8 @@
       
   
   
+    
+  
   
   
     
@@ -574,22 +576,23 @@
     
     
       
+        
+        
+      
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
       
         
         
-          
-        
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../features/" class="md-nav__link ">
+            <a href="../" class="md-nav__link ">
               
   
   
@@ -609,13 +612,13 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_2" id="__nav_2_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_2" id="__nav_2_label" tabindex="">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_2">
             <span class="md-nav__icon md-icon"></span>
             
@@ -635,7 +638,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/configuration/" class="md-nav__link">
+      <a href="../configuration/" class="md-nav__link">
         
   
   
@@ -665,7 +668,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/usage/" class="md-nav__link">
+      <a href="../usage/" class="md-nav__link">
         
   
   
@@ -695,7 +698,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/authentication/" class="md-nav__link">
+      <a href="../authentication/" class="md-nav__link">
         
   
   
@@ -725,7 +728,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/auto-restart/" class="md-nav__link">
+      <a href="../auto-restart/" class="md-nav__link">
         
   
   
@@ -755,7 +758,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/auto-update/" class="md-nav__link">
+      <a href="../auto-update/" class="md-nav__link">
         
   
   
@@ -782,10 +785,39 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../../features/seerr-sync/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-refresh-ccw" viewBox="0 0 24 24"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 16h5v5"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    Seerr Sync
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -803,6 +835,82 @@
   
 
       </a>
+      
+        
+
+
+<nav class="md-nav md-nav--secondary" aria-label="On this page">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      On this page
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#why-seerr-sync-is-useful" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why Seerr Sync is useful
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#how-it-works" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How it works
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#real-example" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Real example
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#where-its-configured" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Where it’s configured
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#related-pages" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Related pages
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -815,7 +923,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/ffprobe-monitor/" class="md-nav__link">
+      <a href="../ffprobe-monitor/" class="md-nav__link">
         
   
   
@@ -845,7 +953,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/metrics/" class="md-nav__link">
+      <a href="../metrics/" class="md-nav__link">
         
   
   
@@ -875,7 +983,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/embedded-ui/" class="md-nav__link">
+      <a href="../embedded-ui/" class="md-nav__link">
         
   
   
@@ -1147,8 +1255,6 @@
       
   
   
-    
-  
   
   
     
@@ -1168,23 +1274,22 @@
     
     
       
-        
-        
-      
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../" class="md-nav__link ">
+            <a href="../../architecture/" class="md-nav__link ">
               
   
   
@@ -1204,13 +1309,13 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_4" id="__nav_4_label" tabindex="">
+              <label class="md-nav__link " for="__nav_4" id="__nav_4_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_4">
             <span class="md-nav__icon md-icon"></span>
             
@@ -1230,7 +1335,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../backend/" class="md-nav__link">
+      <a href="../../architecture/backend/" class="md-nav__link">
         
   
   
@@ -1257,39 +1362,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-monitor" viewBox="0 0 24 24"><rect width="20" height="14" x="2" y="3" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
-  
-  <span class="md-ellipsis">
-    
-  
-    Frontend
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../../architecture/frontend/" class="md-nav__link">
         
   
   
@@ -1307,82 +1383,6 @@
   
 
       </a>
-      
-        
-
-
-<nav class="md-nav md-nav--secondary" aria-label="On this page">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      On this page
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#key-directories" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Key directories
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#data-flow" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Data flow
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#embedded-service-uis" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Embedded service UIs
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#configuration-ux" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Configuration UX
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#related-pages" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Related pages
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -1395,7 +1395,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../traefik/" class="md-nav__link">
+      <a href="../../architecture/traefik/" class="md-nav__link">
         
   
   
@@ -4285,10 +4285,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#key-directories" class="md-nav__link">
+  <a href="#why-seerr-sync-is-useful" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Key directories
+        Why Seerr Sync is useful
       
     </span>
   </a>
@@ -4296,10 +4296,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#data-flow" class="md-nav__link">
+  <a href="#how-it-works" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Data flow
+        How it works
       
     </span>
   </a>
@@ -4307,10 +4307,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#embedded-service-uis" class="md-nav__link">
+  <a href="#real-example" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Embedded service UIs
+        Real example
       
     </span>
   </a>
@@ -4318,10 +4318,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#configuration-ux" class="md-nav__link">
+  <a href="#where-its-configured" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Configuration UX
+        Where it’s configured
       
     </span>
   </a>
@@ -4385,7 +4385,7 @@
         <a href="../" class="md-path__link">
           
   <span class="md-ellipsis">
-    Architecture
+    Features
   </span>
 
         </a>
@@ -4402,7 +4402,7 @@
                 
                   
   
-    <a href="https://github.com/I-am-PUID-0/DUMB_docs/edit/master/docs/architecture/frontend.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+    <a href="https://github.com/I-am-PUID-0/DUMB_docs/edit/master/docs/features/seerr-sync.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
       
       <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-file-pen" viewBox="0 0 24 24"><path d="M12.659 22H18a2 2 0 0 0 2-2V8a2.4 2.4 0 0 0-.706-1.706l-3.588-3.588A2.4 2.4 0 0 0 14 2H6a2 2 0 0 0-2 2v9.34"/><path d="M14 2v5a1 1 0 0 0 1 1h5M10.378 12.622a1 1 0 0 1 3 3.003L8.36 20.637a2 2 0 0 1-.854.506l-2.867.837a.5.5 0 0 1-.62-.62l.836-2.869a2 2 0 0 1 .506-.853z"/></svg>
     </a>
@@ -4411,87 +4411,56 @@
     
       
     
-    <a href="https://github.com/I-am-PUID-0/DUMB_docs/raw/master/docs/architecture/frontend.md" title="View source of this page" class="md-content__button md-icon">
+    <a href="https://github.com/I-am-PUID-0/DUMB_docs/raw/master/docs/features/seerr-sync.md" title="View source of this page" class="md-content__button md-icon">
       
       <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-file-code-2" viewBox="0 0 24 24"><path d="M4 12.15V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.706.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2h-3.35"/><path d="M14 2v5a1 1 0 0 0 1 1h5M5 16l-3 3 3 3M9 22l3-3-3-3"/></svg>
     </a>
   
 
 
-<h1 id="frontend-architecture">Frontend architecture<a class="headerlink" href="#frontend-architecture" title="Permanent link">&para;</a></h1>
-<p>The DUMB frontend is a Nuxt 4 application that renders the dashboard, service controls, and embedded UIs. It communicates with the DUMB API for configuration, logs, metrics, and service status.</p>
+<h1 id="seerr-sync">Seerr Sync<a class="headerlink" href="#seerr-sync" title="Permanent link">&para;</a></h1>
+<p>Seerr Sync replicates media requests from a <strong>primary</strong> Seerr instance to one or more <strong>subordinate</strong> Seerr instances. It is one‑way: requests originate from the primary and are mirrored to subordinates.</p>
+<p><img alt="Seerr Sync overview" class="shadow" src="../../assets/images/features/seerr_sync.png" /></p>
 <hr />
-<h2 id="key-directories">Key directories<a class="headerlink" href="#key-directories" title="Permanent link">&para;</a></h2>
-<table>
-<thead>
-<tr>
-<th>Path</th>
-<th>Purpose</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>pages/</code></td>
-<td>Route-driven pages (dashboard, settings, onboarding)</td>
-</tr>
-<tr>
-<td><code>components/</code></td>
-<td>Reusable UI components</td>
-</tr>
-<tr>
-<td><code>composables/</code></td>
-<td>Shared logic and API hooks</td>
-</tr>
-<tr>
-<td><code>stores/</code></td>
-<td>Pinia stores for app state</td>
-</tr>
-<tr>
-<td><code>services/</code></td>
-<td>API clients and service abstractions</td>
-</tr>
-<tr>
-<td><code>layouts/</code></td>
-<td>Layout templates</td>
-</tr>
-</tbody>
-</table>
-<hr />
-<h2 id="data-flow">Data flow<a class="headerlink" href="#data-flow" title="Permanent link">&para;</a></h2>
-<pre class="mermaid"><code>%%{ init: { "flowchart": { "curve": "basis" } } }%%
-flowchart LR
-    UI([Pages + components])
-    ST[Pinia stores]
-    API[API client]
-    BE[[DUMB API]]
-    WS[(WebSocket streams)]
-
-    UI ==&gt; ST
-    ST ==&gt; API
-    API ==&gt; BE
-    BE ==&gt; WS
-    WS ==&gt; ST</code></pre>
-<hr />
-<h2 id="embedded-service-uis">Embedded service UIs<a class="headerlink" href="#embedded-service-uis" title="Permanent link">&para;</a></h2>
-<p>The frontend can embed service UIs in iframes when Traefik is enabled, keeping navigation and authentication within the DUMB experience.</p>
-<div class="admonition tip">
-<p class="admonition-title">Traefik paths</p>
-<p>Embedded UIs use Traefik paths like <code>http://&lt;host&gt;/radarr/</code> or <code>http://&lt;host&gt;/sonarr/</code> when proxying is enabled.</p>
-</div>
-<hr />
-<h2 id="configuration-ux">Configuration UX<a class="headerlink" href="#configuration-ux" title="Permanent link">&para;</a></h2>
-<p>Configuration editing is performed in the settings UI, which:</p>
+<h2 id="why-seerr-sync-is-useful">Why Seerr Sync is useful<a class="headerlink" href="#why-seerr-sync-is-useful" title="Permanent link">&para;</a></h2>
+<p>Seerr is typically connected to a single Radarr and Sonarr per quality profile. That works well for a single stack, but becomes limiting when you want <strong>one request to drive multiple independent stacks</strong>.</p>
+<p>Common scenarios Seerr Sync solves:</p>
 <ul>
-<li>Reads service config from the API</li>
-<li>Validates changes client-side where possible</li>
-<li>Submits updates to the backend for persistence</li>
+<li><strong>Multiple download locations</strong><br />
+  Home server, seedbox, or a friend’s server all run their own Arr stack. Seerr can’t drive all of them directly.</li>
+<li><strong>Redundant libraries</strong><br />
+  A primary library on fast storage and a backup library elsewhere should receive the same requests automatically.</li>
+<li><strong>Multi‑household setups</strong><br />
+  Family members in different houses want the same content, but downloads should happen locally to each household.</li>
+</ul>
+<p>Seerr Sync removes the need to duplicate requests or maintain custom scripts.</p>
+<hr />
+<h2 id="how-it-works">How it works<a class="headerlink" href="#how-it-works" title="Permanent link">&para;</a></h2>
+<ol>
+<li><strong>Primary Seerr</strong> is where users make requests.  </li>
+<li><strong>Subordinate Seerrs</strong> mirror those requests and send them to their own Arr stacks.  </li>
+<li><strong>Each subordinate downloads independently</strong>, using its own indexers, download clients, and storage paths.</li>
+</ol>
+<p>The result: <strong>one request → multiple Arr stacks all grab the content</strong>.</p>
+<hr />
+<h2 id="real-example">Real example<a class="headerlink" href="#real-example" title="Permanent link">&para;</a></h2>
+<p>“I have a home server and a seedbox. I want Seerr users to make one request, and have both my home Radarr and my seedbox Radarr grab it. Before this, I had to add things twice or run scripts. Now it just works.”</p>
+<hr />
+<h2 id="where-its-configured">Where it’s configured<a class="headerlink" href="#where-its-configured" title="Permanent link">&para;</a></h2>
+<p>Seerr Sync is configured via the <code>seerr_sync</code> block in <code>dumb_config.json</code> and per‑instance <code>sync_role</code> on Seerr instances. See the <a href="../../services/core/seerr/">Seerr service page</a> for configuration details and validation rules.</p>
+<p>The DUMB Frontend exposes a Seerr Sync panel with:</p>
+<ul>
+<li>Enable + poll interval</li>
+<li>External primary / subordinate editors</li>
+<li>Sync options toggles</li>
+<li>Per‑instance sync role selector</li>
+<li>Status + failed request reporting</li>
 </ul>
 <hr />
 <h2 id="related-pages">Related pages<a class="headerlink" href="#related-pages" title="Permanent link">&para;</a></h2>
 <ul>
-<li><a href="../../frontend/">Frontend overview</a></li>
-<li><a href="../../frontend/dashboard/">Dashboard guide</a></li>
-<li><a href="../../frontend/settings/">Settings guide</a></li>
+<li><a href="../../services/core/seerr/">Seerr service</a></li>
+<li><a href="../../api/seerr-sync/">Seerr Sync API</a></li>
 </ul>
 
 
@@ -4533,7 +4502,7 @@ flowchart LR
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../backend/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Backend">
+          <a href="../auto-update/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Auto-update">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-arrow-left" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7M19 12H5"/></svg>
@@ -4543,20 +4512,20 @@ flowchart LR
                 Previous
               </span>
               <div class="md-ellipsis">
-                Backend
+                Auto-update
               </div>
             </div>
           </a>
         
         
           
-          <a href="../traefik/" class="md-footer__link md-footer__link--next" aria-label="Next: Traefik">
+          <a href="../ffprobe-monitor/" class="md-footer__link md-footer__link--next" aria-label="Next: FFprobe Monitor">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Traefik
+                FFprobe Monitor
               </div>
             </div>
             <div class="md-footer__button md-icon">

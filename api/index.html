@@ -568,6 +568,8 @@
       
         
       
+        
+      
     
     
     
@@ -763,6 +765,36 @@
     
   
     Auto-update
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../features/seerr-sync/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-refresh-ccw" viewBox="0 0 24 24"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 16h5v5"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    Seerr Sync
   
 
     
@@ -2914,6 +2946,8 @@
       
         
       
+        
+      
     
     
     
@@ -3110,6 +3144,36 @@
     
   
     Logs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="seerr-sync/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-refresh-ccw" viewBox="0 0 24 24"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 16h5v5"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    Seerr Sync
   
 
     
@@ -4249,7 +4313,7 @@
   
 
 
-<h1 id="dumb-api">DUMB API<a class="headerlink" href="#dumb-api" title="Permanent link">#</a></h1>
+<h1 id="dumb-api">DUMB API<a class="headerlink" href="#dumb-api" title="Permanent link">&para;</a></h1>
 <p>DUMB includes a built-in REST API and WebSocket server to allow programmatic control of services, logging, and system state.</p>
 <p>The API is enabled and configured using the <code>dumb_config.json</code> under the <code>dumb.api_service</code> section. For example:</p>
 <div class="highlight"><pre><span></span><code><span class="nt">&quot;api_service&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
@@ -4261,7 +4325,7 @@
 <span class="p">}</span>
 </code></pre></div>
 <hr />
-<h2 id="features">Features<a class="headerlink" href="#features" title="Permanent link">#</a></h2>
+<h2 id="features">Features<a class="headerlink" href="#features" title="Permanent link">&para;</a></h2>
 <ul>
 <li><strong>Authentication</strong> - JWT-based user authentication and management</li>
 <li><strong>Health checks</strong> - Container and service health monitoring</li>
@@ -4271,7 +4335,7 @@
 <li><strong>Environment state inspection</strong> - Service and system information</li>
 </ul>
 <hr />
-<h2 id="common-endpoints">Common Endpoints<a class="headerlink" href="#common-endpoints" title="Permanent link">#</a></h2>
+<h2 id="common-endpoints">Common Endpoints<a class="headerlink" href="#common-endpoints" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
@@ -4343,6 +4407,26 @@
 </tr>
 <tr>
 <td>GET</td>
+<td><code>/seerr-sync/status</code></td>
+<td>Seerr Sync summary status</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/seerr-sync/failed</code></td>
+<td>Seerr Sync failed request list</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/seerr-sync/state</code></td>
+<td>Seerr Sync raw state (debug)</td>
+</tr>
+<tr>
+<td>DELETE</td>
+<td><code>/seerr-sync/failed</code></td>
+<td>Clear failed Seerr Sync requests</td>
+</tr>
+<tr>
+<td>GET</td>
 <td><code>/logs</code></td>
 <td>Read service log chunks</td>
 </tr>
@@ -4364,7 +4448,7 @@
 </tbody>
 </table>
 <hr />
-<h2 id="directory-structure">Directory Structure<a class="headerlink" href="#directory-structure" title="Permanent link">#</a></h2>
+<h2 id="directory-structure">Directory Structure<a class="headerlink" href="#directory-structure" title="Permanent link">&para;</a></h2>
 <p>The DUMB API is split into the following modules:</p>
 <table>
 <thead>
@@ -4406,10 +4490,14 @@
 <td><code>process.py</code></td>
 <td>Service control for backend processes (start, stop, restart)</td>
 </tr>
+<tr>
+<td><code>seerr_sync.py</code></td>
+<td>Seerr Sync status and failure endpoints</td>
+</tr>
 </tbody>
 </table>
 <hr />
-<h2 id="api-documentation">API Documentation<a class="headerlink" href="#api-documentation" title="Permanent link">#</a></h2>
+<h2 id="api-documentation">API Documentation<a class="headerlink" href="#api-documentation" title="Permanent link">&para;</a></h2>
 <p>DUMB provides built-in API documentation through two convenient endpoints:</p>
 <ul>
 <li>
@@ -4427,7 +4515,7 @@
 </ul>
 <p>These are helpful for development, debugging, and integrating external systems with DUMB.</p>
 <hr />
-<h2 id="next-steps">Next Steps<a class="headerlink" href="#next-steps" title="Permanent link">#</a></h2>
+<h2 id="next-steps">Next Steps<a class="headerlink" href="#next-steps" title="Permanent link">&para;</a></h2>
 <p>Click on any of the modules in the sidebar to explore endpoint structure, usage examples, and development guidelines for extending the DUMB API:</p>
 <ul>
 <li><a href="auth/">Authentication</a></li>
@@ -4437,6 +4525,7 @@
 <li><a href="logs/">Logs</a></li>
 <li><a href="websocket/">WebSocket</a></li>
 <li><a href="websocket_logs/">WebSocket Logs</a></li>
+<li><a href="seerr-sync/">Seerr Sync</a></li>
 </ul>
 
 

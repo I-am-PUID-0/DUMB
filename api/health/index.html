@@ -568,6 +568,8 @@
       
         
       
+        
+      
     
     
     
@@ -763,6 +765,36 @@
     
   
     Auto-update
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../features/seerr-sync/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-refresh-ccw" viewBox="0 0 24 24"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 16h5v5"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    Seerr Sync
   
 
     
@@ -2914,6 +2946,8 @@
       
         
       
+        
+      
     
     
     
@@ -3083,40 +3117,6 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Endpoint">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#get-health" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        GET /health
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="GET &#x2f;health">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#response" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Response
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
 </li>
       
         <li class="md-nav__item">
@@ -3227,6 +3227,36 @@
     
   
     Logs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../seerr-sync/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-refresh-ccw" viewBox="0 0 24 24"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 16h5v5"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    Seerr Sync
   
 
     
@@ -4241,40 +4271,6 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Endpoint">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#get-health" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        GET /health
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="GET &#x2f;health">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#response" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Response
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
 </li>
       
         <li class="md-nav__item">
@@ -4378,13 +4374,13 @@
   
 
 
-<h1 id="health-check-api">Health Check API<a class="headerlink" href="#health-check-api" title="Permanent link">#</a></h1>
+<h1 id="health-check-api">Health Check API<a class="headerlink" href="#health-check-api" title="Permanent link">&para;</a></h1>
 <p>The <strong>Health Check API</strong> provides a simple mechanism to verify that the DUMB container and core services are operational.</p>
 <hr />
-<h2 id="endpoint">Endpoint<a class="headerlink" href="#endpoint" title="Permanent link">#</a></h2>
-<h3 id="get-health"><code>GET /health</code><a class="headerlink" href="#get-health" title="Permanent link">#</a></h3>
+<h2 id="endpoint">Endpoint<a class="headerlink" href="#endpoint" title="Permanent link">&para;</a></h2>
+<h3 id="get-health"><code>GET /health</code><a class="headerlink" href="#get-health" title="Permanent link">&para;</a></h3>
 <p>Returns a JSON response indicating whether the container is healthy.</p>
-<h4 id="response">Response<a class="headerlink" href="#response" title="Permanent link">#</a></h4>
+<h4 id="response">Response<a class="headerlink" href="#response" title="Permanent link">&para;</a></h4>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;healthy&quot;</span>
 <span class="p">}</span>
@@ -4399,13 +4395,13 @@
 </ul>
 </div>
 <hr />
-<h2 id="implementation">Implementation<a class="headerlink" href="#implementation" title="Permanent link">#</a></h2>
+<h2 id="implementation">Implementation<a class="headerlink" href="#implementation" title="Permanent link">&para;</a></h2>
 <p>This route executes a background health check script in the container:
 <div class="highlight"><pre><span></span><code>/healthcheck.py
 </code></pre></div>
 It runs within the same virtual environment as DUMB and ensures all critical files, paths, and subprocesses are functional.</p>
 <hr />
-<h2 id="related">Related<a class="headerlink" href="#related" title="Permanent link">#</a></h2>
+<h2 id="related">Related<a class="headerlink" href="#related" title="Permanent link">&para;</a></h2>
 <ul>
 <li><a href="../">API Overview</a></li>
 <li><a href="../process/">Process Management</a></li>
