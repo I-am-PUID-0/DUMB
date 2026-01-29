@@ -506,13 +506,19 @@ class WebSocketHandler(logging.Handler):
         try:
             loop = asyncio.get_running_loop()
             asyncio.create_task(self.manager.broadcast(log_message))
-            return
         except RuntimeError:
-            pass
-
-        loop = getattr(self.manager, "loop", None)
-        if loop and not loop.is_closed() and loop.is_running():
-            asyncio.run_coroutine_threadsafe(self.manager.broadcast(log_message), loop)
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            try:
+                loop.run_until_complete(self.manager.broadcast(log_message))
+            finally:
+                pending_tasks = asyncio.all_tasks(loop)
+                for task in pending_tasks:
+                    task.cancel()
+                loop.run_until_complete(
+                    asyncio.gather(*pending_tasks, return_exceptions=True)
+                )
+                loop.close()
 
 
 def get_logger(log_name=None, log_dir=None, websocket_manager=None):
