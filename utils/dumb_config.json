@@ -427,10 +427,30 @@
             }
         }
     },
+    "seerr_sync": {
+        "enabled": false,
+        "poll_interval_seconds": 60,
+        "external_primary": {
+            "enabled": false,
+            "url": "",
+            "api_key": ""
+        },
+        "external_subordinates": [],
+        "options": {
+            "sync_pending": true,
+            "sync_approved": true,
+            "sync_declined": false,
+            "sync_deletes": true,
+            "sync_4k_separately": true,
+            "user_mapping": "admin",
+            "retry_failed_after_hours": 24
+        }
+    },
     "seerr": {
         "instances": {
             "Default": {
                 "enabled": false,
+                "sync_role": "disabled",
                 "core_service": "",
                 "process_name": "Seerr",
                 "repo_owner": "seerr-team",

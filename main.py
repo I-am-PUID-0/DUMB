@@ -12,6 +12,7 @@ from utils.core_services import get_core_services
 from utils.plex_dbrepair import start_plex_dbrepair_worker
 from utils.ffprobe_monitor import start_ffprobe_monitor
 from utils.setup import setup_project
+from utils.seerr_sync import start_seerr_sync_service
 from concurrent.futures import ThreadPoolExecutor, wait, FIRST_COMPLETED, as_completed
 import subprocess, threading, time, tomllib, os, socket, errno, psutil, json, urllib.parse
 
@@ -895,6 +896,9 @@ def main():
     plex_cfg = config.get("plex", {}) or {}
     if plex_cfg.get("dbrepair", {}).get("enabled"):
         start_plex_dbrepair_worker()
+
+    if config.get("seerr_sync", {}).get("enabled"):
+        start_seerr_sync_service()
 
     threading.Event().wait()
 

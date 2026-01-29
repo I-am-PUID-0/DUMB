@@ -1505,6 +1505,102 @@
         "instances"
       ]
     },
+    "seerr_sync": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "poll_interval_seconds": {
+          "type": "integer",
+          "minimum": 10
+        },
+        "external_primary": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "url": {
+              "type": "string"
+            },
+            "api_key": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "enabled",
+            "url",
+            "api_key"
+          ]
+        },
+        "external_subordinates": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "url": {
+                "type": "string"
+              },
+              "api_key": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "url",
+              "api_key"
+            ]
+          }
+        },
+        "options": {
+          "type": "object",
+          "properties": {
+            "sync_pending": {
+              "type": "boolean"
+            },
+            "sync_approved": {
+              "type": "boolean"
+            },
+            "sync_declined": {
+              "type": "boolean"
+            },
+            "sync_deletes": {
+              "type": "boolean"
+            },
+            "sync_4k_separately": {
+              "type": "boolean"
+            },
+            "user_mapping": {
+              "type": "string",
+              "enum": [
+                "admin",
+                "email_match"
+              ]
+            },
+            "retry_failed_after_hours": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "required": [
+            "sync_pending",
+            "sync_approved",
+            "sync_declined",
+            "sync_deletes",
+            "sync_4k_separately",
+            "user_mapping",
+            "retry_failed_after_hours"
+          ]
+        }
+      },
+      "required": [
+        "enabled",
+        "poll_interval_seconds",
+        "external_primary",
+        "external_subordinates",
+        "options"
+      ]
+    },
     "seerr": {
       "type": "object",
       "properties": {
@@ -1516,6 +1612,14 @@
               "properties": {
                 "enabled": {
                   "type": "boolean"
+                },
+                "sync_role": {
+                  "type": "string",
+                  "enum": [
+                    "disabled",
+                    "primary",
+                    "subordinate"
+                  ]
                 },
                 "core_service": {
                   "anyOf": [
@@ -1602,6 +1706,7 @@
               },
               "required": [
                 "enabled",
+                "sync_role",
                 "core_service",
                 "process_name",
                 "repo_owner",
@@ -2815,6 +2920,7 @@
     "plex",
     "tautulli",
     "huntarr",
+    "seerr_sync",
     "seerr",
     "plex_debrid",
     "postgres",
