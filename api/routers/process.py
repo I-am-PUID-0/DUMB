@@ -2209,4 +2209,5 @@ async def get_capabilities(current_user: str = Depends(get_optional_current_user
         "optional_only_onboarding": True,
         "optional_service_options": True,
         "manual_update_check": True,
+        "seerr_sync": True,
     }
