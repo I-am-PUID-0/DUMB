@@ -128,6 +128,7 @@ RUN python3.11 -m venv /venv && \
 ####################################################################################################################################################
 FROM base AS final-stage
 ARG TARGETARCH
+ARG DEV_VERSION
 LABEL name="DUMB" \
       description="Debrid Unlimited Media Bridge" \
       url="https://github.com/I-am-PUID-0/DUMB" \
@@ -153,7 +154,8 @@ RUN sed -i 's/^on_library_update: sh plex_update.sh.*$/# &/' /zurg/config.yml
 COPY . /./
 
 ENV XDG_CONFIG_HOME=/config \
-    TERM=xterm
+    TERM=xterm \
+    DUMB_VERSION=${DEV_VERSION}
 
 WORKDIR /
 

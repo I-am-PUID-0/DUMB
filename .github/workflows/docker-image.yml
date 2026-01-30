@@ -25,8 +25,12 @@ jobs:
       REPO_OWNER_LOWER: ${{ steps.setup_env_vars.outputs.REPO_OWNER_LOWER }}
       REPO_NAME: ${{ steps.setup_env_vars.outputs.REPO_NAME }}
       BRANCH_NAME: ${{ steps.setup_env_vars.outputs.BRANCH_NAME }}
+      DEV_VERSION: ${{ steps.setup_env_vars.outputs.DEV_VERSION }}
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          fetch-tags: true
       - name: Extract version and set environment variables
         id: setup_env_vars        
         run: |
@@ -34,10 +38,21 @@ jobs:
           REPO_OWNER_LOWER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
           REPO_NAME=$(basename "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
           BRANCH_NAME=$(echo "${{ github.ref_name }}" | tr '/' '-')
+          DEV_VERSION=""
+          if [ "${{ github.ref_name }}" = "dev" ]; then
+            LAST_TAG=$(git tag -l --sort=-v:refname | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | head -n 1 || true)
+            if [ -n "$LAST_TAG" ]; then
+              DEV_COUNT=$(git rev-list --count "${LAST_TAG}..HEAD")
+            else
+              DEV_COUNT=$(git rev-list --count HEAD)
+            fi
+            DEV_VERSION="${VERSION}-dev.${DEV_COUNT}"
+          fi
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
           echo "REPO_OWNER_LOWER=$REPO_OWNER_LOWER" >> $GITHUB_OUTPUT
           echo "REPO_NAME=$REPO_NAME" >> $GITHUB_OUTPUT
           echo "BRANCH_NAME=$BRANCH_NAME" >> $GITHUB_OUTPUT
+          echo "DEV_VERSION=$DEV_VERSION" >> $GITHUB_OUTPUT
 
   fetch-latest-tags:
     if: >
@@ -339,6 +354,7 @@ jobs:
             DUMB_FRONTEND_TAG=${{ needs.fetch-latest-tags.outputs.DUMB_FRONTEND_TAG }}
             PLEX_DEBRID_TAG=${{ needs.fetch-latest-tags.outputs.PLEX_DEBRID_TAG }}
             CLI_DEBRID_TAG=${{ needs.fetch-latest-tags.outputs.CLI_DEBRID_TAG }}
+            DEV_VERSION=${{ needs.setup.outputs.DEV_VERSION }}
 
   build-arm64-digest:
     name: Build linux/arm64 → Docker Hub (by digest)
@@ -393,6 +409,7 @@ jobs:
             DUMB_FRONTEND_TAG=${{ needs.fetch-latest-tags.outputs.DUMB_FRONTEND_TAG }}
             PLEX_DEBRID_TAG=${{ needs.fetch-latest-tags.outputs.PLEX_DEBRID_TAG }}
             CLI_DEBRID_TAG=${{ needs.fetch-latest-tags.outputs.CLI_DEBRID_TAG }}
+            DEV_VERSION=${{ needs.setup.outputs.DEV_VERSION }}
 
 
   build-and-push:
@@ -723,6 +740,8 @@ jobs:
     needs: [build-and-push, setup]
     if: github.ref_name == 'dev'
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Checkout code (full history)
         uses: actions/checkout@v6
@@ -733,15 +752,25 @@ jobs:
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
           VERSION: ${{ needs.setup.outputs.VERSION }}
+          DEV_VERSION: ${{ needs.setup.outputs.DEV_VERSION }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -Eeuo pipefail
 
-          # Get latest release tag (if any)
-          if LAST_TAG=$(gh release view --json tagName -q .tagName --repo "${{ github.repository }}" 2>/dev/null); then
-            RANGE="${LAST_TAG}..HEAD"
+          DEV_TAG="dev-build"
+          BASE_LABEL="Changes since last dev build"
+
+          if git rev-parse -q --verify "refs/tags/${DEV_TAG}" >/dev/null; then
+            RANGE="${DEV_TAG}..HEAD"
           else
-            RANGE=""
+            BASE_LABEL=""
+            if LAST_TAG=$(gh release view --json tagName -q .tagName --repo "${{ github.repository }}" 2>/dev/null); then
+              RANGE="${LAST_TAG}..HEAD"
+              BASE_LABEL="Changes since Release ${LAST_TAG}"
+            else
+              RANGE=""
+              BASE_LABEL="Changes since initial commit"
+            fi
           fi
 
           COMMITS=$(git log ${RANGE} --pretty=format:'- %s (%h)')
@@ -749,13 +778,22 @@ jobs:
             COMMITS="- (no new commits since last release)"
           fi
 
-          export COMMITS
-          ANNOUNCEMENT_BODY="$(python -c 'import os; version=os.environ.get("VERSION","dev"); commits=os.environ.get("COMMITS","").strip(); header=f"🧪 **Dev Branch Update** (version `{version}`)\\n"; body=header+commits; max_len=1900; print(body[:max_len-3].rstrip()+"..." if len(body)>max_len else body)')"
+          export COMMITS BASE_LABEL
+          ANNOUNCEMENT_BODY=" <@&1360221114541805578> $(python -c 'import os; version=os.environ.get("DEV_VERSION") or os.environ.get("VERSION","dev"); commits=os.environ.get("COMMITS","").strip(); base=os.environ.get("BASE_LABEL","").strip(); header=f"🧪 **Dev Branch Update** (version `{version}`)\n"; label=(f"{base}\n" if base else ""); body=header+label+commits; max_len=1900; print(body[:max_len-3].rstrip()+"..." if len(body)>max_len else body)')"
 
           ESCAPED_BODY=$(echo "$ANNOUNCEMENT_BODY" | jq -Rsa .)
           curl -H "Content-Type: application/json" \
                -d "{\"content\": $ESCAPED_BODY, \"flags\": 4}" \
                $DISCORD_WEBHOOK_URL
+
+      - name: Update dev build tag
+        if: success()
+        run: |
+          set -Eeuo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -f dev-build
+          git push -f origin dev-build
           
   update-pr-label:
     needs: release

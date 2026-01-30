@@ -18,9 +18,13 @@ import subprocess, threading, time, tomllib, os, socket, errno, psutil, json, ur
 
 
 def log_ascii_art():
-    with open("pyproject.toml", "rb") as file:
-        pyproject = tomllib.load(file)
-        version = pyproject["tool"]["poetry"]["version"]
+    env_version = (os.environ.get("DUMB_VERSION") or "").strip()
+    if env_version:
+        version = env_version
+    else:
+        with open("pyproject.toml", "rb") as file:
+            pyproject = tomllib.load(file)
+            version = pyproject["tool"]["poetry"]["version"]
 
     ascii_art = f"""
                                                                        
