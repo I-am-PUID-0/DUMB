@@ -754,6 +754,7 @@ jobs:
           VERSION: ${{ needs.setup.outputs.VERSION }}
           DEV_VERSION: ${{ needs.setup.outputs.DEV_VERSION }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
         run: |
           set -Eeuo pipefail
 
@@ -773,7 +774,7 @@ jobs:
             fi
           fi
 
-          COMMITS=$(git log ${RANGE} --pretty=format:'- %s (%h)')
+          COMMITS=$(git log ${RANGE} --pretty=format:"- %s ([%h](https://github.com/${REPO}/commit/%H))")
           if [[ -z "${COMMITS}" ]]; then
             COMMITS="- (no new commits since last release)"
           fi

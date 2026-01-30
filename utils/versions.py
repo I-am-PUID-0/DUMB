@@ -62,6 +62,9 @@ class Versions:
     ):
         try:
             if key == "dumb_api_service":
+                env_version = (os.environ.get("DUMB_VERSION") or "").strip()
+                if env_version:
+                    return env_version, None
                 version_path = "/pyproject.toml"
                 is_file = True
             elif key == "dumb_frontend":
