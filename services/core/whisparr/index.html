@@ -2130,6 +2130,34 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Configuration in dumb_config.json">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#key-configuration-fields" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Key Configuration Fields
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#repo-based-installs-and-updates" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Repo-based installs and updates
+      
+    </span>
+  </a>
+  
 </li>
       
         <li class="md-nav__item">
@@ -4316,6 +4344,34 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Configuration in dumb_config.json">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#key-configuration-fields" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Key Configuration Fields
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#repo-based-installs-and-updates" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Repo-based installs and updates
+      
+    </span>
+  </a>
+  
 </li>
       
         <li class="md-nav__item">
@@ -4448,10 +4504,10 @@
   
 
 
-<h1 id="whisparr-core-service">Whisparr (Core Service)<a class="headerlink" href="#whisparr-core-service" title="Permanent link">&para;</a></h1>
+<h1 id="whisparr-core-service">Whisparr (Core Service)<a class="headerlink" href="#whisparr-core-service" title="Permanent link">#</a></h1>
 <p><strong>Whisparr</strong> is an automation tool for managing adult content libraries, similar to Radarr/Sonarr workflows.</p>
 <hr />
-<h2 id="service-relationships">Service Relationships<a class="headerlink" href="#service-relationships" title="Permanent link">&para;</a></h2>
+<h2 id="service-relationships">Service Relationships<a class="headerlink" href="#service-relationships" title="Permanent link">#</a></h2>
 <table>
 <thead>
 <tr>
@@ -4479,7 +4535,7 @@
 </tbody>
 </table>
 <hr />
-<h2 id="configuration-in-dumb_configjson">Configuration in <code>dumb_config.json</code><a class="headerlink" href="#configuration-in-dumb_configjson" title="Permanent link">&para;</a></h2>
+<h2 id="configuration-in-dumb_configjson">Configuration in <code>dumb_config.json</code><a class="headerlink" href="#configuration-in-dumb_configjson" title="Permanent link">#</a></h2>
 <div class="highlight"><pre><span></span><code><span class="nt">&quot;whisparr&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;instances&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">    </span><span class="nt">&quot;Default&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
@@ -4487,6 +4543,13 @@
 <span class="w">      </span><span class="nt">&quot;core_service&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&quot;</span><span class="p">,</span>
 <span class="w">      </span><span class="nt">&quot;use_huntarr&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
 <span class="w">      </span><span class="nt">&quot;process_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Whisparr&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;repo_owner&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Whisparr&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;repo_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Whisparr&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;release_version_enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;release_version&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;latest&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;clear_on_update&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;exclude_dirs&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[],</span>
+<span class="w">      </span><span class="nt">&quot;platforms&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[],</span>
 <span class="w">      </span><span class="nt">&quot;suppress_logging&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
 <span class="w">      </span><span class="nt">&quot;auto_update&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
 <span class="w">      </span><span class="nt">&quot;auto_update_interval&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">24</span><span class="p">,</span>
@@ -4501,16 +4564,29 @@
 <span class="w">  </span><span class="p">}</span>
 <span class="p">}</span>
 </code></pre></div>
-<h3 id="key-configuration-fields">Key Configuration Fields<a class="headerlink" href="#key-configuration-fields" title="Permanent link">&para;</a></h3>
+<h3 id="key-configuration-fields">Key Configuration Fields<a class="headerlink" href="#key-configuration-fields" title="Permanent link">#</a></h3>
 <ul>
 <li><code>core_service</code>: Set to <code>decypharr</code>, <code>nzbdav</code>, or a list of both to enable DUMB integration.</li>
 <li><code>use_huntarr</code>: Opt this instance into Huntarr automation.</li>
 <li><code>port</code>: Web UI port (default <code>6969</code>).</li>
 <li><code>pinned_version</code>: Optional version pin for Whisparr updates.</li>
+<li><code>repo_owner</code> / <code>repo_name</code>: GitHub repo used for releases or branch builds.</li>
+<li><code>release_version_enabled</code> / <code>release_version</code>: Use GitHub releases (e.g., <code>latest</code>, <code>nightly</code>, <code>prerelease</code>, or a tag).</li>
+<li><code>clear_on_update</code>: Clear the install directory before updating.</li>
+<li><code>exclude_dirs</code>: Directories to preserve when clearing.</li>
+<li><code>platforms</code>: Build platforms (auto‑defaults to <code>["dotnet"]</code> when using branches).</li>
 <li><code>config_dir</code>, <code>config_file</code>, <code>log_file</code>: Paths for config and logs.</li>
 </ul>
 <hr />
-<h2 id="integration-with-dumb">Integration with DUMB<a class="headerlink" href="#integration-with-dumb" title="Permanent link">&para;</a></h2>
+<h2 id="repo-based-installs-and-updates">Repo-based installs and updates<a class="headerlink" href="#repo-based-installs-and-updates" title="Permanent link">#</a></h2>
+<p>Whisparr now supports the same repo‑based controls as other DUMB services.</p>
+<ul>
+<li><strong>GitHub releases</strong>: Set <code>release_version_enabled: true</code> with a valid <code>repo_owner</code>/<code>repo_name</code>.</li>
+<li><strong>Default updater</strong>: Leave <code>release_version_enabled: false</code> to use the standard Arr updater.</li>
+</ul>
+<p>GitHub sources take priority when enabled and are <strong>not</strong> a fallback. <code>pinned_version</code> only applies to the traditional Arr updater.</p>
+<hr />
+<h2 id="integration-with-dumb">Integration with DUMB<a class="headerlink" href="#integration-with-dumb" title="Permanent link">#</a></h2>
 <ul>
 <li>For Decypharr integration, set <code>core_service</code> to <code>decypharr</code> and follow the <a href="../decypharr/">Decypharr guide</a>.</li>
 <li>For NzbDAV integration, set <code>core_service</code> to <code>nzbdav</code> and follow the <a href="../nzbdav/">NzbDAV guide</a>.</li>
@@ -4520,12 +4596,12 @@
 <li>See <a href="../../../reference/core-service/">Core Service Routing</a> for how <code>core_service</code> affects automation.</li>
 </ul>
 <hr />
-<h2 id="accessing-the-ui">Accessing the UI<a class="headerlink" href="#accessing-the-ui" title="Permanent link">&para;</a></h2>
+<h2 id="accessing-the-ui">Accessing the UI<a class="headerlink" href="#accessing-the-ui" title="Permanent link">#</a></h2>
 <ul>
 <li>Navigate to: <code>http://&lt;host&gt;:6969</code></li>
 </ul>
 <hr />
-<h2 id="resources">Resources<a class="headerlink" href="#resources" title="Permanent link">&para;</a></h2>
+<h2 id="resources">Resources<a class="headerlink" href="#resources" title="Permanent link">#</a></h2>
 <ul>
 <li><a href="https://whisparr.com/">Whisparr Website</a></li>
 <li><a href="https://github.com/Whisparr/Whisparr">Whisparr GitHub</a></li>

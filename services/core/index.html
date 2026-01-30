@@ -4233,6 +4233,133 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Example Workflows">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#cli-debrid" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CLI Debrid
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#decypharr" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Decypharr
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#plex" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Plex
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#jellyfin" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Jellyfin
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#emby" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Emby
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#nzbdav" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        NzbDAV
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#plex-debrid" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Plex Debrid
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#riven-backend" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Riven Backend
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#seerr" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Seerr
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#huntarr" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Huntarr
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#arrs-sonarrradarrlidarrwhisparr" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Arrs (Sonarr/Radarr/Lidarr/Whisparr)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -4354,10 +4481,10 @@
   
 
 
-<h1 id="core-services">Core Services<a class="headerlink" href="#core-services" title="Permanent link">&para;</a></h1>
+<h1 id="core-services">Core Services<a class="headerlink" href="#core-services" title="Permanent link">#</a></h1>
 <p>Core services in DUMB are essential building blocks that handle media automation, storage, metadata processing, and orchestration. These services often rely on <strong>dependent services</strong> to operate fully and may optionally integrate with additional utilities for enhanced functionality.</p>
 <hr />
-<h2 id="what-are-core-services">What Are Core Services?<a class="headerlink" href="#what-are-core-services" title="Permanent link">&para;</a></h2>
+<h2 id="what-are-core-services">What Are Core Services?<a class="headerlink" href="#what-are-core-services" title="Permanent link">#</a></h2>
 <p>Core services are the services that:</p>
 <ul>
 <li>Drive a major part of the media pipeline (e.g., indexing, downloading, symlinking, organization, hosting, playback, etc. )</li>
@@ -4368,7 +4495,7 @@
 <p>Core services can run side-by-side. DUMB will start dependencies in the correct order.</p>
 </div>
 <hr />
-<h2 id="core-service-index">Core Service Index<a class="headerlink" href="#core-service-index" title="Permanent link">&para;</a></h2>
+<h2 id="core-service-index">Core Service Index<a class="headerlink" href="#core-service-index" title="Permanent link">#</a></h2>
 <table>
 <thead>
 <tr>
@@ -4472,86 +4599,86 @@
 </tbody>
 </table>
 <hr />
-<h2 id="dependency-guidelines">Dependency Guidelines<a class="headerlink" href="#dependency-guidelines" title="Permanent link">&para;</a></h2>
+<h2 id="dependency-guidelines">Dependency Guidelines<a class="headerlink" href="#dependency-guidelines" title="Permanent link">#</a></h2>
 <p>If you enable a core service, be sure to also:</p>
 <ul>
 <li>Review optional integrations to maximize capabilities</li>
 <li>Use the onboarding flow in the DUMB Frontend for auto-detection and guided setup </li>
 </ul>
 <hr />
-<h2 id="example-workflows">Example Workflows<a class="headerlink" href="#example-workflows" title="Permanent link">&para;</a></h2>
-<h3 id="cli-debrid"><a href="cli-debrid/">CLI Debrid</a><a class="headerlink" href="#cli-debrid" title="Permanent link">&para;</a></h3>
+<h2 id="example-workflows">Example Workflows<a class="headerlink" href="#example-workflows" title="Permanent link">#</a></h2>
+<h3 id="cli-debrid"><a href="cli-debrid/">CLI Debrid</a><a class="headerlink" href="#cli-debrid" title="Permanent link">#</a></h3>
 <ul>
 <li><strong>Requires:</strong> <a href="../dependent/cli-battery/">CLI Battery</a>, <a href="../dependent/phalanx-db/">Phalanx DB</a>, <a href="../dependent/rclone/">rclone</a>, and <a href="../dependent/zurg/">Zurg</a></li>
 <li><strong>Optionally Uses:</strong> <a href="../optional/zilean/">Zilean</a> (as a scraper)</li>
 <li><strong>Outputs:</strong> Clean symlinks for Plex/Emby/Jellyfin and/or monitors Plex library for collected media</li>
 </ul>
-<h3 id="decypharr"><a href="decypharr/">Decypharr</a><a class="headerlink" href="#decypharr" title="Permanent link">&para;</a></h3>
+<h3 id="decypharr"><a href="decypharr/">Decypharr</a><a class="headerlink" href="#decypharr" title="Permanent link">#</a></h3>
 <ul>
 <li><strong>Requires:</strong> <a href="../dependent/rclone/">rclone</a></li>
 <li><strong>Optionally Uses:</strong> <a href="../optional/zilean/">Zilean</a> (as a scraper via the arrs)</li>
 <li><strong>Outputs:</strong> Symlinks automatically managed and organized by the arrs (Sonarr/Radarr)</li>
 </ul>
-<h3 id="plex"><a href="plex-media-server/">Plex</a><a class="headerlink" href="#plex" title="Permanent link">&para;</a></h3>
+<h3 id="plex"><a href="plex-media-server/">Plex</a><a class="headerlink" href="#plex" title="Permanent link">#</a></h3>
 <ul>
 <li><strong>Requires:</strong> Content to already exist in <code>/mnt/debrid</code></li>
 <li><strong>Does Not Scrape</strong> or collect — serves media fetched by others</li>
 </ul>
-<h3 id="jellyfin"><a href="jellyfin/">Jellyfin</a><a class="headerlink" href="#jellyfin" title="Permanent link">&para;</a></h3>
+<h3 id="jellyfin"><a href="jellyfin/">Jellyfin</a><a class="headerlink" href="#jellyfin" title="Permanent link">#</a></h3>
 <ul>
 <li><strong>Requires:</strong> Content to already exist in <code>/mnt/debrid</code></li>
 <li><strong>Does Not Scrape</strong> or collect — serves media fetched by others</li>
 </ul>
-<h3 id="emby"><a href="emby/">Emby</a><a class="headerlink" href="#emby" title="Permanent link">&para;</a></h3>
+<h3 id="emby"><a href="emby/">Emby</a><a class="headerlink" href="#emby" title="Permanent link">#</a></h3>
 <ul>
 <li><strong>Requires:</strong> Content to already exist in <code>/mnt/debrid</code></li>
 <li><strong>Does Not Scrape</strong> or collect — serves media fetched by others</li>
 </ul>
-<h3 id="nzbdav"><a href="nzbdav/">NzbDAV</a><a class="headerlink" href="#nzbdav" title="Permanent link">&para;</a></h3>
+<h3 id="nzbdav"><a href="nzbdav/">NzbDAV</a><a class="headerlink" href="#nzbdav" title="Permanent link">#</a></h3>
 <ul>
 <li><strong>Requires:</strong> <a href="../dependent/rclone/">rclone</a></li>
 <li><strong>Optionally Uses:</strong> Sonarr, Radarr, Lidarr, and Whisparr for NZB client integration</li>
 <li><strong>Outputs:</strong> WebDAV mount at <code>/mnt/debrid/nzbdav</code> plus symlink roots for Arrs</li>
 </ul>
-<h3 id="plex-debrid"><a href="plex-debrid/">Plex Debrid</a><a class="headerlink" href="#plex-debrid" title="Permanent link">&para;</a></h3>
+<h3 id="plex-debrid"><a href="plex-debrid/">Plex Debrid</a><a class="headerlink" href="#plex-debrid" title="Permanent link">#</a></h3>
 <ul>
 <li><strong>Requires:</strong> <a href="../dependent/rclone/">rclone</a>, and <a href="../dependent/zurg/">Zurg</a></li>
 <li><strong>Optionally Uses:</strong> <a href="../optional/zilean/">Zilean</a> (as a scraper)</li>
 <li><strong>Outputs:</strong> Raw files from debrid for Plex/Emby/Jellyfin</li>
 </ul>
-<h3 id="riven-backend"><a href="riven-backend/">Riven Backend</a><a class="headerlink" href="#riven-backend" title="Permanent link">&para;</a></h3>
+<h3 id="riven-backend"><a href="riven-backend/">Riven Backend</a><a class="headerlink" href="#riven-backend" title="Permanent link">#</a></h3>
 <ul>
 <li><strong>Requires:</strong> <a href="../dependent/postgres/">PostgreSQL</a>, <a href="../dependent/rclone/">rclone</a>, and <a href="../dependent/zurg/">Zurg</a></li>
 <li><strong>Optionally Uses:</strong> <a href="../optional/zilean/">Zilean</a> (as a scraper)</li>
 <li><strong>Outputs:</strong> Clean symlinks for Plex/Emby/Jellyfin</li>
 </ul>
-<h3 id="seerr"><a href="seerr/">Seerr</a><a class="headerlink" href="#seerr" title="Permanent link">&para;</a></h3>
+<h3 id="seerr"><a href="seerr/">Seerr</a><a class="headerlink" href="#seerr" title="Permanent link">#</a></h3>
 <ul>
 <li><strong>Requires:</strong> Plex, Jellyfin, or Emby for discovery (optional but recommended)</li>
 <li><strong>Optionally Uses:</strong> <a href="sonarr/">Sonarr</a> and <a href="radarr/">Radarr</a> for request fulfillment</li>
 <li><strong>Outputs:</strong> Approved requests that flow into Arr queues</li>
 </ul>
-<h3 id="huntarr"><a href="huntarr/">Huntarr</a><a class="headerlink" href="#huntarr" title="Permanent link">&para;</a></h3>
+<h3 id="huntarr"><a href="huntarr/">Huntarr</a><a class="headerlink" href="#huntarr" title="Permanent link">#</a></h3>
 <ul>
 <li><strong>Requires:</strong> Arr instances with <code>use_huntarr: true</code></li>
 <li><strong>Optionally Filters:</strong> Arr instances by <code>core_service</code></li>
 <li><strong>Outputs:</strong> Periodic backlog searches for missing or upgrade content</li>
 </ul>
-<h3 id="arrs-sonarrradarrlidarrwhisparr">Arrs (Sonarr/Radarr/Lidarr/Whisparr)<a class="headerlink" href="#arrs-sonarrradarrlidarrwhisparr" title="Permanent link">&para;</a></h3>
+<h3 id="arrs-sonarrradarrlidarrwhisparr">Arrs (Sonarr/Radarr/Lidarr/Whisparr)<a class="headerlink" href="#arrs-sonarrradarrlidarrwhisparr" title="Permanent link">#</a></h3>
 <ul>
 <li><strong>Requires:</strong> A download client such as <a href="decypharr/">Decypharr</a> or <a href="nzbdav/">NzbDAV</a></li>
 <li><strong>Optionally Uses:</strong> <a href="prowlarr/">Prowlarr</a> to manage and sync indexers</li>
 <li><strong>Outputs:</strong> Organized media libraries and renamed files for your media servers</li>
 </ul>
 <hr />
-<h2 id="tips">Tips<a class="headerlink" href="#tips" title="Permanent link">&para;</a></h2>
+<h2 id="tips">Tips<a class="headerlink" href="#tips" title="Permanent link">#</a></h2>
 <ul>
 <li>Use <code>process_name</code> in <code>dumb_config.json</code> to identify each service clearly in logs and the UI</li>
 <li>Onboarding will automatically add required dependencies for the Core services selected</li>
 <li>Dependent services will start automatically when their core service is launched</li>
 </ul>
 <hr />
-<h2 id="related-pages">Related Pages<a class="headerlink" href="#related-pages" title="Permanent link">&para;</a></h2>
+<h2 id="related-pages">Related Pages<a class="headerlink" href="#related-pages" title="Permanent link">#</a></h2>
 <ul>
 <li><a href="../dependent/">Dependent Services</a></li>
 <li><a href="../optional/">Optional Services</a></li>
