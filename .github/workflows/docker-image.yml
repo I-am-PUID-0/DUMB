@@ -718,6 +718,44 @@ jobs:
           curl -H "Content-Type: application/json" \
                -d "{\"content\": $ESCAPED_BODY, \"flags\": 4}" \
                $DISCORD_WEBHOOK_URL
+
+  announce-dev:
+    needs: [build-and-push, setup]
+    if: github.ref_name == 'dev'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code (full history)
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+      - name: Post dev announcement to Discord
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          VERSION: ${{ needs.setup.outputs.VERSION }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -Eeuo pipefail
+
+          # Get latest release tag (if any)
+          if LAST_TAG=$(gh release view --json tagName -q .tagName --repo "${{ github.repository }}" 2>/dev/null); then
+            RANGE="${LAST_TAG}..HEAD"
+          else
+            RANGE=""
+          fi
+
+          COMMITS=$(git log ${RANGE} --pretty=format:'- %s (%h)')
+          if [[ -z "${COMMITS}" ]]; then
+            COMMITS="- (no new commits since last release)"
+          fi
+
+          export COMMITS
+          ANNOUNCEMENT_BODY="$(python -c 'import os; version=os.environ.get("VERSION","dev"); commits=os.environ.get("COMMITS","").strip(); header=f"🧪 **Dev Branch Update** (version `{version}`)\\n"; body=header+commits; max_len=1900; print(body[:max_len-3].rstrip()+"..." if len(body)>max_len else body)')"
+
+          ESCAPED_BODY=$(echo "$ANNOUNCEMENT_BODY" | jq -Rsa .)
+          curl -H "Content-Type: application/json" \
+               -d "{\"content\": $ESCAPED_BODY, \"flags\": 4}" \
+               $DISCORD_WEBHOOK_URL
           
   update-pr-label:
     needs: release
