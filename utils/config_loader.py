@@ -1,4 +1,4 @@
-import os, shutil, copy
+import os, shutil, copy, time
 from json import load, dump, JSONDecodeError
 from jsonschema import validate, ValidationError
 from dotenv import load_dotenv, find_dotenv
@@ -267,8 +267,18 @@ class ConfigManager:
             if not section_config:
                 raise ValueError(f"Process {process_name} does not exist in config.")
 
-            with open(self.file_path, "r") as config_file:
-                full_config = load(config_file)
+            full_config = None
+            for attempt in range(3):
+                try:
+                    with open(self.file_path, "r") as config_file:
+                        full_config = load(config_file)
+                    break
+                except JSONDecodeError as e:
+                    if attempt == 2:
+                        raise ValueError(
+                            f"JSON syntax error in {self.file_path}: {e.msg} at line {e.lineno}, column {e.colno}"
+                        )
+                    time.sleep(0.2)
 
             def update_nested_config(data, target_name, updated_config):
                 if isinstance(data, dict):

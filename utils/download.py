@@ -138,6 +138,22 @@ class Downloader:
                 else:
                     architecture = None
 
+            elif key in ["sonarr", "radarr", "lidarr", "prowlarr", "readarr", "whisparr"]:
+                # Arr services use linux-x64, linux-arm64, linux-arm naming convention
+                m = platform.machine().lower()
+                libc_name = platform.libc_ver()[0].lower()
+                is_musl = "musl" in libc_name or os.path.exists("/etc/alpine-release")
+                if m in ("x86_64", "amd64"):
+                    architecture = "linux-musl-x64" if is_musl else "linux-x64"
+                elif m in ("aarch64", "arm64"):
+                    architecture = "linux-musl-arm64" if is_musl else "linux-arm64"
+                elif m in ("armv7l", "armhf"):
+                    architecture = "linux-musl-arm" if is_musl else "linux-arm"
+                else:
+                    architecture = "linux-musl-x64" if is_musl else "linux-x64"
+                # Arr releases extract to a folder named after the app (e.g., "Sonarr")
+                zip_folder_name = key.capitalize()
+
             else:
                 architecture = None
 
@@ -283,6 +299,7 @@ class Downloader:
         if architecture:
             normalized_arch = self.normalize_arch(architecture)
             arch_parts = normalized_arch.split("_")
+            want_musl = "musl" in normalized_arch or "musl" in str(architecture).lower()
             self.logger.debug(
                 f"Normalized architecture: {normalized_arch}, parts: {arch_parts}"
             )
@@ -290,19 +307,33 @@ class Downloader:
                 f"Searching for assets matching architecture: {architecture}"
             )
 
-            for asset in assets:
-                if architecture and architecture in asset["name"]:
-                    self.logger.debug(
-                        f"Assets ID found: {asset['id']} for architecture: {architecture}"
-                    )
-                    self.logger.debug(
-                        f"Browser Download URL: {asset['browser_download_url']}"
-                    )
-                    return asset["browser_download_url"], asset["id"]
+            def _matches_parts(name, parts):
+                return all(part in name for part in parts if part)
 
-                else:
+            alt_parts = []
+            if "x64" in arch_parts:
+                alt_parts = ["linux", "amd64"] if "linux" in arch_parts else ["amd64"]
+            elif "arm64" in arch_parts:
+                alt_parts = ["linux", "aarch64"] if "linux" in arch_parts else ["aarch64"]
+
+            def _scan_assets(mode: str):
+                for asset in assets:
                     name = asset["name"].lower()
                     self.logger.debug(f"Checking asset: {name}")
+                    if mode == "exclude_musl" and "musl" in name:
+                        continue
+                    if mode == "only_musl" and "musl" not in name:
+                        continue
+
+                    if architecture and architecture in asset["name"]:
+                        self.logger.debug(
+                            f"Assets ID found: {asset['id']} for architecture: {architecture}"
+                        )
+                        self.logger.debug(
+                            f"Browser Download URL: {asset['browser_download_url']}"
+                        )
+                        return asset["browser_download_url"], asset["id"]
+
                     if normalized_arch in name:
                         self.logger.debug(
                             f"Assets ID found: {asset['id']} for architecture: {architecture}"
@@ -312,12 +343,56 @@ class Downloader:
                         )
                         return asset["browser_download_url"], asset["id"]
 
+                    if _matches_parts(name, arch_parts):
+                        self.logger.debug(
+                            f"Assets ID found: {asset['id']} for architecture: {architecture}"
+                        )
+                        self.logger.debug(
+                            f"Browser Download URL: {asset['browser_download_url']}"
+                        )
+                        return asset["browser_download_url"], asset["id"]
+
+                    if alt_parts and _matches_parts(name, alt_parts):
+                        self.logger.debug(
+                            f"Assets ID found: {asset['id']} for architecture: {architecture}"
+                        )
+                        self.logger.debug(
+                            f"Browser Download URL: {asset['browser_download_url']}"
+                        )
+                        return asset["browser_download_url"], asset["id"]
+                return None, None
+
+            # First pass: honor musl preference
+            url, asset_id = _scan_assets("only_musl" if want_musl else "exclude_musl")
+            if url:
+                return url, asset_id
+            # Second pass: relax musl constraint
+            url, asset_id = _scan_assets("any")
+            if url:
+                return url, asset_id
+
             if assets:
+                # Prefer a linux asset if linux was requested, instead of arbitrary fallback
+                linux_assets = [
+                    asset
+                    for asset in assets
+                    if "linux" in asset["name"].lower()
+                ]
+                if linux_assets:
+                    asset = linux_assets[0]
+                    self.logger.warning(
+                        "No exact architecture match for %s. Falling back to linux asset: %s",
+                        architecture,
+                        asset["name"],
+                    )
+                    self.logger.debug(f"Download URL: {asset['browser_download_url']}")
+                    return asset["browser_download_url"], asset["id"]
+
                 self.logger.warning(
                     "No matching asset found for architecture: %s. Falling back to the first available asset.",
                     architecture,
                 )
-                self.logger.debug(f"Download URL: {asset['browser_download_url']}")
+                self.logger.debug(f"Download URL: {assets[0]['browser_download_url']}")
                 return assets[0]["browser_download_url"], assets[0]["id"]
 
         zipball_url = release_info.get("zipball_url")

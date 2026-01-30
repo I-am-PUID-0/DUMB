@@ -30,6 +30,20 @@ def _resolve_arr_install_dir(
     key: str, instance_name: str, instance: dict
 ) -> tuple[str, bool]:
     shared_dir = f"/opt/{key}"
+    instance_slug = instance_name.lower().replace(" ", "_")
+    instance_dir = os.path.join(shared_dir, "instances", instance_slug)
+
+    # Use instance-specific directory when using GitHub-based installation
+    # This prevents conflicts when instances use different repos/versions/branches
+    use_github = (
+        instance.get("repo_owner")
+        and instance.get("repo_name")
+        and (instance.get("release_version_enabled") or instance.get("branch_enabled"))
+    )
+    if use_github:
+        return instance_dir, True
+
+    # Use instance-specific directory when pinned_version differs from shared
     pinned_version = (instance.get("pinned_version") or "").strip()
     if not pinned_version:
         return shared_dir, False
@@ -38,8 +52,6 @@ def _resolve_arr_install_dir(
     if shared_version and shared_version == pinned_version:
         return shared_dir, False
 
-    instance_slug = instance_name.lower().replace(" ", "_")
-    instance_dir = os.path.join(shared_dir, "instances", instance_slug)
     return instance_dir, True
 
 
@@ -878,7 +890,7 @@ def _setup_project(
             "whisparr-v3",
         ]:
             if install_phase and not configure_phase:
-                success, error = install_arr_instances(key)
+                success, error = install_arr_instances(key, process_handler=process_handler)
                 if not success:
                     return False, error
             elif configure_phase:
@@ -897,6 +909,7 @@ def _setup_project(
                             instance,
                             process_name,
                             configure_only=True,
+                            process_handler=process_handler,
                         )
                         if not success:
                             return False, error
@@ -919,6 +932,7 @@ def _setup_project(
                             instance,
                             process_name,
                             configure_only=True,
+                            process_handler=process_handler,
                         )
                         if not success:
                             return False, error
@@ -998,59 +1012,599 @@ def ensure_arr_config(
         logger.error(f"[{app_name}] Failed to update existing config.xml: {e}")
 
 
-def _install_arr_binary(key, instance_name, instance, process_name):
+def _build_arr_from_source(process_handler, key, source_dir, binary_path):
+    """
+    Build an arr service from source code using dotnet.
+
+    Args:
+        process_handler: Process handler for running dotnet commands
+        key: Service key (sonarr, radarr, etc.)
+        source_dir: Directory containing the source code
+        binary_path: Expected path to the final binary
+
+    Returns:
+        tuple: (success: bool, error: str or None)
+    """
+    try:
+        import glob as glob_module
+        import json
+
+        app_name = key.capitalize()
+        logger.info(f"Building {app_name} from source in {source_dir}...")
+
+        # Step 1: Handle global.json - remove SDK version pinning to allow any installed SDK
+        global_json_path = os.path.join(source_dir, "global.json")
+        if os.path.exists(global_json_path):
+            try:
+                with open(global_json_path, "r") as f:
+                    global_config = json.load(f)
+
+                # Check if there's an SDK version requirement
+                sdk_version = global_config.get("sdk", {}).get("version")
+                if sdk_version:
+                    logger.info(
+                        f"{app_name} requires SDK {sdk_version}, modifying global.json to allow rollForward..."
+                    )
+                    # Modify to allow rolling forward to newer SDKs
+                    global_config["sdk"]["rollForward"] = "latestMajor"
+                    global_config["sdk"]["allowPrerelease"] = True
+                    with open(global_json_path, "w") as f:
+                        json.dump(global_config, f, indent=2)
+            except Exception as e:
+                logger.warning(f"Failed to modify global.json: {e}")
+                # Try removing it entirely as fallback
+                try:
+                    os.rename(global_json_path, global_json_path + ".bak")
+                    logger.info("Renamed global.json to global.json.bak")
+                except Exception:
+                    pass
+
+        # Step 2: Find the solution file
+        # Strip any git metadata to avoid Microsoft.Build.Tasks.Git repo format errors.
+        removed_git = False
+        for root, dirs, files in os.walk(source_dir):
+            if ".git" in dirs:
+                git_path = os.path.join(root, ".git")
+                try:
+                    shutil.rmtree(git_path)
+                    removed_git = True
+                except Exception as e:
+                    logger.warning("Failed to remove %s: %s", git_path, e)
+                dirs.remove(".git")
+            if ".git" in files:
+                git_file = os.path.join(root, ".git")
+                try:
+                    os.remove(git_file)
+                    removed_git = True
+                except Exception as e:
+                    logger.warning("Failed to remove %s: %s", git_file, e)
+        if removed_git:
+            logger.info("Removed git metadata from source to avoid build metadata errors.")
+
+        sln_patterns = [
+            os.path.join(source_dir, "src", f"{app_name}.sln"),
+            os.path.join(source_dir, "src", "*.sln"),
+            os.path.join(source_dir, f"{app_name}.sln"),
+            os.path.join(source_dir, "*.sln"),
+        ]
+
+        sln_file = None
+        for pattern in sln_patterns:
+            matches = glob_module.glob(pattern)
+            if matches:
+                sln_file = matches[0]
+                break
+
+        if not sln_file:
+            return False, f"Could not find solution file (.sln) in {source_dir}"
+
+        logger.info(f"Found solution file: {sln_file}")
+        sln_dir = os.path.dirname(sln_file)
+
+        # Step 3: Determine the main host project
+        # Arr services typically have their main project in src/NzbDrone.Host or src/{App}.Host
+        host_project_patterns = [
+            os.path.join(sln_dir, "NzbDrone.Host", "*.csproj"),
+            os.path.join(sln_dir, f"{app_name}.Host", "*.csproj"),
+            os.path.join(sln_dir, "Servarr.Host", "*.csproj"),
+        ]
+
+        host_project = None
+        for pattern in host_project_patterns:
+            matches = glob_module.glob(pattern)
+            if matches:
+                host_project = matches[0]
+                break
+
+        # Step 4: Set up environment
+        env = os.environ.copy()
+
+        # Use /tmp for dotnet CLI home to avoid permission issues
+        dotnet_home = os.path.join("/tmp", f"dotnet-{key}")
+        os.makedirs(dotnet_home, exist_ok=True)
+
+        # Pre-create dotnet CLI cache dirs to avoid first-run permission errors
+        dotnet_cli_dir = os.path.join(dotnet_home, ".dotnet")
+        os.makedirs(dotnet_cli_dir, exist_ok=True)
+
+        nuget_packages = os.path.join(dotnet_home, "nuget", "packages")
+        os.makedirs(nuget_packages, exist_ok=True)
+
+        # Ensure runtime user can write to dotnet caches
+        if user_id is not None and group_id is not None:
+            try:
+                os.chmod(dotnet_home, 0o775)
+                os.chmod(dotnet_cli_dir, 0o775)
+                os.chmod(os.path.dirname(nuget_packages), 0o775)
+            except Exception as e:
+                logger.debug("Failed to chmod dotnet cache dirs: %s", e)
+            _chown_recursive_if_needed(dotnet_home, user_id, group_id)
+
+        env["DOTNET_CLI_HOME"] = dotnet_home
+        env["NUGET_PACKAGES"] = nuget_packages
+        env["HOME"] = dotnet_home  # Some dotnet tools check HOME
+        env["DOTNET_NOLOGO"] = "1"
+        env["DOTNET_SKIP_FIRST_TIME_EXPERIENCE"] = "1"
+        # Avoid audit warnings failing restore on branches
+        env["NUGET_DISABLE_AUDIT"] = "1"
+
+        # Ensure writable temp/cache locations
+        temp_dir = os.path.join(source_dir, "_temp")
+        os.makedirs(temp_dir, exist_ok=True)
+        if user_id is not None and group_id is not None:
+            try:
+                os.chmod(temp_dir, 0o775)
+            except Exception as e:
+                logger.debug("Failed to chmod %s: %s", temp_dir, e)
+            _chown_recursive_if_needed(temp_dir, user_id, group_id)
+
+        tmp_root = os.path.join(dotnet_home, "tmp")
+        os.makedirs(tmp_root, exist_ok=True)
+        env["TMPDIR"] = tmp_root
+        env["TEMP"] = tmp_root
+        env["TMP"] = tmp_root
+
+        # Step 5: Run dotnet restore
+        logger.info(f"Running dotnet restore on {sln_file}...")
+        process_handler.start_process(
+            "dotnet_arr_restore",
+            sln_dir,
+            [
+                "dotnet",
+                "restore",
+                sln_file,
+                "/nodeReuse:false",
+                "/p:TreatWarningsAsErrors=false",
+            ],
+            env=env,
+        )
+        process_handler.wait("dotnet_arr_restore")
+        if process_handler.returncode != 0:
+            return False, f"dotnet restore failed for {app_name}"
+
+        # Step 6: Run dotnet publish
+        output_dir = os.path.join(source_dir, "_output", app_name)
+        os.makedirs(output_dir, exist_ok=True)
+
+        publish_target = host_project or sln_file
+        logger.info(f"Running dotnet publish on {publish_target}...")
+
+        # Try to detect target framework from project to avoid NETSDK1129
+        target_framework = None
+        if publish_target and publish_target.endswith(".csproj"):
+            try:
+                with open(publish_target, "r") as f:
+                    project_text = f.read()
+                tf_match = re.search(r"<TargetFramework>([^<]+)</TargetFramework>", project_text)
+                tfs_match = re.search(r"<TargetFrameworks>([^<]+)</TargetFrameworks>", project_text)
+                if tf_match:
+                    target_framework = tf_match.group(1).strip()
+                elif tfs_match:
+                    target_framework = tfs_match.group(1).split(";")[0].strip()
+            except Exception as e:
+                logger.debug("Failed to detect TargetFramework from %s: %s", publish_target, e)
+
+        publish_cmd = [
+            "dotnet", "publish", publish_target,
+            "-c", "Release",
+            "--no-restore",
+            "-o", output_dir,
+            "/nodeReuse:false",
+            "/p:UseSharedCompilation=false",
+            "/p:UseSourceLink=false",
+            "/p:SourceLinkCreate=false",
+            "/p:EnableSourceLink=false",
+            "/p:RepositoryType=none",
+            "/p:RepositoryUrl=",
+            "/p:RepositoryCommit=",
+            "/p:SourceRevisionId=unknown",
+        ]
+        if target_framework:
+            publish_cmd.extend(["-f", target_framework])
+
+        process_handler.start_process(
+            "dotnet_arr_publish",
+            sln_dir,
+            publish_cmd,
+            env=env,
+        )
+        process_handler.wait("dotnet_arr_publish")
+        if process_handler.returncode != 0:
+            return False, f"dotnet publish failed for {app_name}"
+
+        # Step 7: Move built files to expected location
+        expected_bin_dir = os.path.dirname(binary_path)
+        if output_dir != expected_bin_dir:
+            os.makedirs(expected_bin_dir, exist_ok=True)
+            # Copy all files from output to expected location
+            import shutil
+            for item in os.listdir(output_dir):
+                src = os.path.join(output_dir, item)
+                dst = os.path.join(expected_bin_dir, item)
+                if os.path.isdir(src):
+                    if os.path.exists(dst):
+                        shutil.rmtree(dst)
+                    shutil.copytree(src, dst)
+                else:
+                    shutil.copy2(src, dst)
+            logger.info(f"Copied built files to {expected_bin_dir}")
+
+        # Step 8: Verify binary exists
+        if not os.path.exists(binary_path):
+            # Try to find the binary with different name patterns
+            possible_names = [
+                os.path.join(expected_bin_dir, app_name),
+                os.path.join(expected_bin_dir, f"{app_name}.dll"),
+                os.path.join(expected_bin_dir, "NzbDrone"),
+                os.path.join(expected_bin_dir, "NzbDrone.dll"),
+            ]
+            found = False
+            for name in possible_names:
+                if os.path.exists(name):
+                    if name != binary_path and name.endswith(app_name):
+                        # Create symlink or copy
+                        shutil.copy2(name, binary_path)
+                    found = True
+                    break
+
+            if not found:
+                return False, f"Build completed but binary not found at {binary_path}"
+
+        logger.info(f"{app_name} built successfully from source!")
+        return True, None
+
+    except Exception as e:
+        return False, f"Error building {key} from source: {e}"
+
+
+def _find_arr_binary(install_dir: str, key: str) -> str | None:
+    app_name = key.capitalize()
+    candidates = [
+        os.path.join(install_dir, app_name, app_name),
+        os.path.join(install_dir, app_name, f"{app_name}.dll"),
+        os.path.join(install_dir, key, key),
+        os.path.join(install_dir, key, app_name),
+        os.path.join(install_dir, key, f"{key}.dll"),
+        os.path.join(install_dir, key, f"{app_name}.dll"),
+    ]
+    for path in candidates:
+        if os.path.isfile(path):
+            return path
+
+    for root, _, files in os.walk(install_dir):
+        for name in files:
+            if name in {app_name, key, f"{app_name}.dll", f"{key}.dll"}:
+                return os.path.join(root, name)
+    return None
+
+
+def _binary_interpreter_exists(binary_path: str) -> bool:
+    try:
+        result = subprocess.run(
+            ["readelf", "-l", binary_path], capture_output=True, text=True
+        )
+        if result.returncode != 0:
+            return True
+        for line in result.stdout.splitlines():
+            if "Requesting program interpreter" in line:
+                interpreter = line.split(":", 1)[-1].strip().strip("[]")
+                return os.path.exists(interpreter)
+    except Exception:
+        return True
+    return True
+
+
+def _install_arr_binary(key, instance_name, instance, process_name, process_handler=None):
     install_dir, is_instance_dir = _resolve_arr_install_dir(
         key, instance_name, instance
     )
     binary_path = os.path.join(install_dir, key.capitalize(), f"{key.capitalize()}")
     pinned_version = (instance.get("pinned_version") or "").strip()
-    with _get_install_lock(key):
-        if not os.path.exists(binary_path):
-            logger.warning(
-                "%s binary not found in %s. Installing...",
-                key.capitalize(),
-                install_dir,
-            )
-            from utils.arr import ArrInstaller
 
-            installer = ArrInstaller(
-                key, version=pinned_version or "4", install_dir=install_dir
+    release_enabled = instance.get("release_version_enabled")
+    branch_enabled = instance.get("branch_enabled")
+    repo_owner = instance.get("repo_owner")
+    repo_name = instance.get("repo_name")
+    has_repo = repo_owner and repo_name
+
+    # Arr branch builds require source compilation; disable branch installs for arr services
+    if branch_enabled and key in {
+        "sonarr",
+        "radarr",
+        "lidarr",
+        "prowlarr",
+        "readarr",
+        "whisparr",
+        "whisparr-v3",
+    }:
+        logger.warning(
+            "%s has 'branch_enabled' set, but branch builds are disabled for arr services. "
+            "Set 'release_version_enabled' instead.",
+            process_name,
+        )
+        branch_enabled = False
+
+    # Check for conflicting flags - release_version_enabled takes priority
+    if release_enabled and branch_enabled:
+        logger.warning(
+            "%s has both 'release_version_enabled' and 'branch_enabled' set to True. "
+            "Using 'release_version_enabled'. Set only one option to avoid this warning.",
+            process_name,
+        )
+        branch_enabled = False
+
+    # Determine if using a custom fork (non-official repo)
+    official_repos = {
+        "sonarr": ("Sonarr", "Sonarr"),
+        "radarr": ("Radarr", "Radarr"),
+        "lidarr": ("Lidarr", "Lidarr"),
+        "prowlarr": ("Prowlarr", "Prowlarr"),
+        "readarr": ("Readarr", "Readarr"),
+        "whisparr": ("Whisparr", "Whisparr"),
+        "whisparr-v3": ("Whisparr", "Whisparr"),
+    }
+    official_owner, official_name = official_repos.get(key, (None, None))
+    is_custom_fork = has_repo and (repo_owner != official_owner or repo_name != official_name)
+
+    use_github_release = release_enabled and has_repo
+    # For branch_enabled, download source and build with dotnet
+    use_github_branch_build = branch_enabled and has_repo
+
+    with _get_install_lock(key):
+        if use_github_branch_build:
+            # Download source from GitHub branch and build with dotnet
+            branch = instance.get("branch")
+            logger.info(
+                "Installing %s from GitHub branch (%s/%s @ %s) - building from source...",
+                key.capitalize(),
+                repo_owner,
+                repo_name,
+                branch,
             )
-            success, error = installer.install()
+            from utils.download import Downloader
+            downloader = Downloader()
+
+            # Create install_dir if needed
+            os.makedirs(install_dir, exist_ok=True)
+
+            # Download branch source
+            branch_url, zip_folder_name = downloader.get_branch(repo_owner, repo_name, branch)
+            if not branch_url:
+                return False, f"Failed to get branch URL for {branch}", install_dir, binary_path, is_instance_dir
+
+            success, error = downloader.download_and_extract(
+                branch_url,
+                install_dir,
+                zip_folder_name=zip_folder_name,
+                headers=downloader.get_headers(),
+                exclude_dirs=instance.get("exclude_dirs", []),
+            )
             if not success:
                 return False, error, install_dir, binary_path, is_instance_dir
-        elif pinned_version:
-            current_version, _ = versions.read_arr_version_from_dir(key, install_dir)
-            if not current_version:
+
+            # Build from source using dotnet
+            if process_handler:
+                success, error = _build_arr_from_source(
+                    process_handler, key, install_dir, binary_path
+                )
+                if not success:
+                    return False, error, install_dir, binary_path, is_instance_dir
+            else:
                 logger.warning(
-                    "Failed to read %s version for pin check in %s.",
+                    "%s source downloaded but cannot build without process_handler. "
+                    "Service may not start.",
                     key.capitalize(),
-                    install_dir,
                 )
-            elif current_version != pinned_version:
+
+        elif use_github_release:
+            # GitHub release-based installation (like other repo-based services)
+            release_version = instance.get("release_version", "latest")
+            current_version = None
+            if os.path.exists(binary_path):
+                current_version, _ = versions.read_arr_version_from_dir(key, install_dir)
+
+            # Check if we need to install/update
+            need_install = not os.path.exists(binary_path)
+            if not need_install and os.path.exists(binary_path):
+                if not _binary_interpreter_exists(binary_path):
+                    logger.warning(
+                        "%s binary interpreter missing for %s; forcing reinstall.",
+                        key.capitalize(),
+                        binary_path,
+                    )
+                    need_install = True
+            if not need_install and current_version:
+                # Compare versions to see if update needed
+                from utils.download import Downloader
+                downloader = Downloader()
+                from utils.versions import Versions
+
+                nightly = "nightly" in release_version.lower() if release_version else False
+                prerelease = "prerelease" in release_version.lower() if release_version else False
+
+                if release_version.lower() in ("latest", "nightly", "prerelease"):
+                    latest_version, _ = downloader.get_latest_release(
+                        instance.get("repo_owner"),
+                        instance.get("repo_name"),
+                        nightly=nightly,
+                        prerelease=prerelease,
+                    )
+                    normalized_current = Versions._normalize_arr_version(current_version)
+                    normalized_latest = Versions._normalize_arr_version(latest_version)
+                    if latest_version and normalized_current != normalized_latest:
+                        need_install = True
+                        release_version = latest_version
+                else:
+                    normalized_current = Versions._normalize_arr_version(current_version)
+                    normalized_target = Versions._normalize_arr_version(release_version)
+                    if normalized_current != normalized_target:
+                        need_install = True
+
+            if need_install:
                 logger.info(
-                    "%s pinned to %s; installing over %s in %s.",
+                    "Installing %s from GitHub (%s/%s) version %s...",
                     key.capitalize(),
-                    pinned_version,
-                    current_version,
-                    install_dir,
+                    instance.get("repo_owner"),
+                    instance.get("repo_name"),
+                    release_version,
                 )
-                from utils.arr import ArrInstaller
+                from utils.download import Downloader
+                downloader = Downloader()
+
+                # Create install_dir if needed
+                os.makedirs(install_dir, exist_ok=True)
+
+                success, error = downloader.download_release_version(
+                    process_name=process_name,
+                    key=key,
+                    repo_owner=instance.get("repo_owner"),
+                    repo_name=instance.get("repo_name"),
+                    release_version=release_version,
+                    target_dir=install_dir,
+                )
+                if not success:
+                    return False, error, install_dir, binary_path, is_instance_dir
+        else:
+            # Traditional Arr updater installation (uses arr update servers)
+            # This handles: default installs, pinned_version, and branch_enabled with official repos
+            from utils.arr import ArrInstaller
+
+            branch = instance.get("branch")
+            need_install = not os.path.exists(binary_path)
+            if not need_install and os.path.exists(binary_path):
+                if not _binary_interpreter_exists(binary_path):
+                    logger.warning(
+                        "%s binary interpreter missing for %s; forcing reinstall.",
+                        key.capitalize(),
+                        binary_path,
+                    )
+                    need_install = True
+
+            if need_install:
+                if branch_enabled:
+                    logger.info(
+                        "Installing %s from arr update servers (branch: %s)...",
+                        key.capitalize(),
+                        branch,
+                    )
+                else:
+                    logger.warning(
+                        "%s binary not found in %s. Installing...",
+                        key.capitalize(),
+                        install_dir,
+                    )
 
                 installer = ArrInstaller(
-                    key, version=pinned_version or "4", install_dir=install_dir
+                    key,
+                    version=pinned_version or "4",
+                    install_dir=install_dir,
+                    branch=branch,
+                    repo_owner=repo_owner,
+                    repo_name=repo_name,
                 )
                 success, error = installer.install()
                 if not success:
                     return False, error, install_dir, binary_path, is_instance_dir
+            elif branch_enabled:
+                # branch_enabled: check if we need to update to match the specified branch
+                logger.info(
+                    "Checking %s for branch update (branch: %s)...",
+                    key.capitalize(),
+                    branch,
+                )
+                installer = ArrInstaller(
+                    key,
+                    version=pinned_version or "4",
+                    install_dir=install_dir,
+                    branch=branch,
+                    repo_owner=repo_owner,
+                    repo_name=repo_name,
+                )
+                latest_version, _ = installer.get_latest_version()
+                current_version, _ = versions.read_arr_version_from_dir(key, install_dir)
+                if latest_version and current_version != latest_version:
+                    logger.info(
+                        "%s updating from %s to %s (branch: %s)...",
+                        key.capitalize(),
+                        current_version or "unknown",
+                        latest_version,
+                        branch,
+                    )
+                    success, error = installer.install()
+                    if not success:
+                        return False, error, install_dir, binary_path, is_instance_dir
+            elif pinned_version:
+                current_version, _ = versions.read_arr_version_from_dir(key, install_dir)
+                if not current_version:
+                    logger.warning(
+                        "Failed to read %s version for pin check in %s.",
+                        key.capitalize(),
+                        install_dir,
+                    )
+                elif current_version != pinned_version:
+                    logger.info(
+                        "%s pinned to %s; installing over %s in %s.",
+                        key.capitalize(),
+                        pinned_version,
+                        current_version,
+                        install_dir,
+                    )
+                    from utils.arr import ArrInstaller
+
+                    installer = ArrInstaller(
+                        key,
+                        version=pinned_version or "4",
+                        install_dir=install_dir,
+                        branch=instance.get("branch"),
+                        repo_owner=instance.get("repo_owner"),
+                        repo_name=instance.get("repo_name"),
+                    )
+                    success, error = installer.install()
+                    if not success:
+                        return False, error, install_dir, binary_path, is_instance_dir
+
+        if not os.path.exists(binary_path):
+            resolved = _find_arr_binary(install_dir, key)
+            if resolved:
+                binary_path = resolved
+                logger.info("Resolved %s binary to %s", key.capitalize(), binary_path)
+            else:
+                return False, f"{key.capitalize()} binary missing in {install_dir}", install_dir, binary_path, is_instance_dir
+
         if not os.access(binary_path, os.X_OK):
             logger.warning("%s not executable. Fixing permissions...", binary_path)
             os.chmod(binary_path, 0o755)
+
+        # Ensure bundled ffprobe is executable if present (Whisparr/others)
+        ffprobe_path = os.path.join(os.path.dirname(binary_path), "ffprobe")
+        if os.path.isfile(ffprobe_path) and not os.access(ffprobe_path, os.X_OK):
+            logger.warning("ffprobe not executable at %s. Fixing permissions...", ffprobe_path)
+            os.chmod(ffprobe_path, 0o755)
     return True, None, install_dir, binary_path, is_instance_dir
 
 
 def setup_arr_instance(
-    key, instance_name, instance, process_name, install_only=False, configure_only=False
+    key, instance_name, instance, process_name, install_only=False, configure_only=False, process_handler=None
 ):
     if install_only and configure_only:
         return False, "Invalid arr setup phase."
@@ -1058,10 +1612,15 @@ def setup_arr_instance(
         install_dir, _ = _resolve_arr_install_dir(key, instance_name, instance)
         binary_path = os.path.join(install_dir, key.capitalize(), f"{key.capitalize()}")
         if not os.path.exists(binary_path):
-            return False, f"{key.capitalize()} binary missing in {install_dir}."
+            resolved = _find_arr_binary(install_dir, key)
+            if resolved:
+                binary_path = resolved
+                logger.info("Resolved %s binary to %s", key.capitalize(), binary_path)
+            else:
+                return False, f"{key.capitalize()} binary missing in {install_dir}."
     else:
         success, error, install_dir, binary_path, _ = _install_arr_binary(
-            key, instance_name, instance, process_name
+            key, instance_name, instance, process_name, process_handler=process_handler
         )
         if not success:
             return False, error
@@ -1104,7 +1663,7 @@ def setup_arr_instance(
     return True, None
 
 
-def install_arr_instances(key):
+def install_arr_instances(key, process_handler=None):
     instances = CONFIG_MANAGER.get(key, {}).get("instances", {}) or {}
     for instance_name, instance in instances.items():
         if not instance.get("enabled"):
@@ -1116,6 +1675,7 @@ def install_arr_instances(key):
             instance,
             process_name,
             install_only=True,
+            process_handler=process_handler,
         )
         if not success:
             return False, error

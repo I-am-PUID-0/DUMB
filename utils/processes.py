@@ -376,6 +376,8 @@ class ProcessHandler:
                 "setup_env_and_install",
                 "dotnet_env_restore",
                 "dotnet_publish",
+                "dotnet_arr_restore",
+                "dotnet_arr_publish",
                 "go_build",
                 "Plex DBRepair",
                 "dbrepair",

@@ -9,6 +9,17 @@ class Versions:
         self.logger = logger
         self.downloader = Downloader()
 
+    @staticmethod
+    def _normalize_arr_version(version: str | None) -> str | None:
+        if not version:
+            return version
+        value = str(version).strip()
+        if value.startswith("v"):
+            value = value[1:]
+        # Collapse non-digit separators into dots and remove empties
+        parts = re.findall(r"\d+", value)
+        return ".".join(parts) if parts else value
+
     def read_arr_version_from_dir(self, key: str, install_dir: str):
         dll_path = os.path.join(
             install_dir, key.capitalize(), f"{key.capitalize()}.Core.dll"
@@ -31,6 +42,20 @@ class Versions:
                     return match.group(1), None
                 break
         return None, f"{key.capitalize()} version not found in Core.dll"
+
+    def _resolve_arr_install_dir_for_version(self, key: str, instance_name: str | None):
+        if not instance_name:
+            return f"/opt/{key}"
+        instance_slug = instance_name.lower().replace(" ", "_")
+        instance_dir = os.path.join(f"/opt/{key}", "instances", instance_slug)
+        config = CONFIG_MANAGER.get_instance(instance_name, key) if instance_name else None
+        if config:
+            if config.get("install_dir"):
+                return config["install_dir"]
+            if config.get("repo_owner") and config.get("repo_name"):
+                if config.get("release_version_enabled") or config.get("branch_enabled"):
+                    return instance_dir
+        return f"/opt/{key}"
 
     def version_check(
         self, process_name=None, instance_name=None, key=None, version_path=None
@@ -140,27 +165,12 @@ class Versions:
                 "whisparr-v3",
             ):
                 try:
-                    dll_path = (
-                        f"/opt/{key}/{key.capitalize()}/{key.capitalize()}.Core.dll"
+                    if not instance_name and process_name:
+                        _, instance_name = CONFIG_MANAGER.find_key_for_process(process_name)
+                    install_dir = self._resolve_arr_install_dir_for_version(
+                        key, instance_name
                     )
-                    grep_string = f"{key.capitalize()}.Common, Version="
-                    result = subprocess.run(
-                        ["strings", dll_path], capture_output=True, text=True
-                    )
-                    if result.returncode != 0:
-                        return None, f"Failed to run strings on {dll_path}"
-                    matches = [
-                        line
-                        for line in result.stdout.splitlines()
-                        if grep_string in line
-                    ]
-                    if matches:
-                        match = re.search(r"Version=([\d\.]+)", matches[0])
-                        if match:
-                            return match.group(1), None
-                    return None, f"{key.capitalize()} version not found in Core.dll"
-                except FileNotFoundError:
-                    return None, f"{key.capitalize()}.Core.dll not found"
+                    return self.read_arr_version_from_dir(key, install_dir)
                 except Exception as e:
                     return None, f"Error reading {key} version: {e}"
             elif key == "plex":
@@ -393,15 +403,29 @@ class Versions:
                     f"Setting current version to 0.0.0 for {process_name}"
                 )
                 # raise Exception(error)
+            if key in (
+                "sonarr",
+                "radarr",
+                "prowlarr",
+                "lidarr",
+                "readarr",
+                "whisparr",
+                "whisparr-v3",
+            ):
+                normalized_current = self._normalize_arr_version(current_version)
+                normalized_latest = self._normalize_arr_version(latest_release_version)
+            else:
+                normalized_current = current_version
+                normalized_latest = latest_release_version
             if nightly:
-                current_date = ".".join(current_version.split(".")[0:3])
-                latest_date = ".".join(latest_release_version.split(".")[0:3])
+                current_date = ".".join(str(normalized_current).split(".")[0:3])
+                latest_date = ".".join(str(normalized_latest).split(".")[0:3])
                 if current_date == latest_date:
                     return False, {
                         "message": "No updates available (same nightly date)",
                         "current_version": current_version,
                     }
-            if current_version == latest_release_version:
+            if normalized_current == normalized_latest:
                 return False, {
                     "message": "No updates available",
                     "current_version": current_version,

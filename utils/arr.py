@@ -9,6 +9,8 @@ class ArrInstaller:
         version: str = "4",
         branch: str = "main",
         install_dir=None,
+        repo_owner: str = None,
+        repo_name: str = None,
     ):
         self.logger = logger
         self.app_name = app_name.lower()
@@ -16,27 +18,31 @@ class ArrInstaller:
         self.version = version
         self.branch = branch
         self.install_dir = install_dir or f"/opt/{self.app_name}"
+        self.repo_owner = repo_owner
+        self.repo_name = repo_name
 
     def get_download_url(self):
         arch = platform.machine()
-        ## set branch based on app_name: sonarr=main, radarr=master, prowlarr=master, readarr=develop, lidarr=master, whisparr=nightly, whisparr-v3=eros
-        self.branch = (
-            "main"
-            if self.app_name == "sonarr"
-            else (
-                "master"
-                if self.app_name in ["radarr", "prowlarr", "lidarr"]
+        # Use configured branch if provided, otherwise use default branch based on app_name
+        # Default branches: sonarr=main, radarr=master, prowlarr=master, readarr=develop, lidarr=master, whisparr=nightly, whisparr-v3=eros
+        if not self.branch or self.branch == "main":
+            self.branch = (
+                "main"
+                if self.app_name == "sonarr"
                 else (
-                    "develop"
-                    if self.app_name == "readarr"
+                    "master"
+                    if self.app_name in ["radarr", "prowlarr", "lidarr"]
                     else (
-                        "nightly"
-                        if self.app_name == "whisparr"
-                        else "eros" if self.app_name == "whisparr-v3" else "main"
+                        "develop"
+                        if self.app_name == "readarr"
+                        else (
+                            "nightly"
+                            if self.app_name == "whisparr"
+                            else "eros" if self.app_name == "whisparr-v3" else "main"
+                        )
                     )
                 )
             )
-        )
         alt_base_url = f"https://services.{self.app_name}.tv/v1/download/{self.branch}/latest?version={self.version}&os=linux"
         version_query = ""
         if self.version and self.version not in ("3", "4"):
@@ -128,18 +134,23 @@ class ArrInstaller:
         return None, f"Version {self.version} not found in update feed."
 
     def resolve_pinned_github_download_url(self):
-        repo_map = {
-            "radarr": ("Radarr", "Radarr"),
-            "sonarr": ("Sonarr", "Sonarr"),
-            "lidarr": ("Lidarr", "Lidarr"),
-            "prowlarr": ("Prowlarr", "Prowlarr"),
-            "readarr": ("Readarr", "Readarr"),
-            "whisparr": ("Whisparr", "Whisparr"),
-            "whisparr-v3": ("Whisparr", "Whisparr"),
-        }
-        if self.app_name not in repo_map:
-            return None, f"GitHub repo mapping not found for {self.app_name}."
-        owner, repo = repo_map[self.app_name]
+        # Use config-provided repo_owner/repo_name if available
+        if self.repo_owner and self.repo_name:
+            owner, repo = self.repo_owner, self.repo_name
+        else:
+            # Fall back to hardcoded mappings
+            repo_map = {
+                "radarr": ("Radarr", "Radarr"),
+                "sonarr": ("Sonarr", "Sonarr"),
+                "lidarr": ("Lidarr", "Lidarr"),
+                "prowlarr": ("Prowlarr", "Prowlarr"),
+                "readarr": ("Readarr", "Readarr"),
+                "whisparr": ("Whisparr", "Whisparr"),
+                "whisparr-v3": ("Whisparr", "Whisparr"),
+            }
+            if self.app_name not in repo_map:
+                return None, f"GitHub repo mapping not found for {self.app_name}."
+            owner, repo = repo_map[self.app_name]
 
         headers = {"Accept": "application/vnd.github.v3+json"}
         token = os.environ.get("GITHUB_TOKEN") or os.environ.get("GITHUB_API_TOKEN")

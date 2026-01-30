@@ -969,6 +969,18 @@
                 "process_name": {
                   "type": "string"
                 },
+                "repo_owner": {
+                  "type": "string"
+                },
+                "repo_name": {
+                  "type": "string"
+                },
+                "release_version_enabled": {
+                  "type": "boolean"
+                },
+                "release_version": {
+                  "type": "string"
+                },
                 "suppress_logging": {
                   "type": "boolean"
                 },
@@ -977,6 +989,21 @@
                 },
                 "auto_update_interval": {
                   "type": "number"
+                },
+                "clear_on_update": {
+                  "type": "boolean"
+                },
+                "exclude_dirs": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "platforms": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
                 },
                 "pinned_version": {
                   "type": "string"
@@ -1418,12 +1445,6 @@
                 "release_version": {
                   "type": "string"
                 },
-                "branch_enabled": {
-                  "type": "boolean"
-                },
-                "branch": {
-                  "type": "string"
-                },
                 "suppress_logging": {
                   "type": "boolean"
                 },
@@ -1647,12 +1668,6 @@
                   "type": "boolean"
                 },
                 "release_version": {
-                  "type": "string"
-                },
-                "branch_enabled": {
-                  "type": "boolean"
-                },
-                "branch": {
                   "type": "string"
                 },
                 "suppress_logging": {
@@ -1981,6 +1996,18 @@
                 "process_name": {
                   "type": "string"
                 },
+                "repo_owner": {
+                  "type": "string"
+                },
+                "repo_name": {
+                  "type": "string"
+                },
+                "release_version_enabled": {
+                  "type": "boolean"
+                },
+                "release_version": {
+                  "type": "string"
+                },
                 "suppress_logging": {
                   "type": "boolean"
                 },
@@ -1989,6 +2016,21 @@
                 },
                 "auto_update_interval": {
                   "type": "number"
+                },
+                "clear_on_update": {
+                  "type": "boolean"
+                },
+                "exclude_dirs": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "platforms": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
                 },
                 "pinned_version": {
                   "type": "string"
@@ -2064,6 +2106,18 @@
                 "process_name": {
                   "type": "string"
                 },
+                "repo_owner": {
+                  "type": "string"
+                },
+                "repo_name": {
+                  "type": "string"
+                },
+                "release_version_enabled": {
+                  "type": "boolean"
+                },
+                "release_version": {
+                  "type": "string"
+                },
                 "suppress_logging": {
                   "type": "boolean"
                 },
@@ -2072,6 +2126,21 @@
                 },
                 "auto_update_interval": {
                   "type": "number"
+                },
+                "clear_on_update": {
+                  "type": "boolean"
+                },
+                "exclude_dirs": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "platforms": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
                 },
                 "pinned_version": {
                   "type": "string"
@@ -2482,6 +2551,24 @@
                 "process_name": {
                   "type": "string"
                 },
+                "repo_owner": {
+                  "type": "string"
+                },
+                "repo_name": {
+                  "type": "string"
+                },
+                "release_version_enabled": {
+                  "type": "boolean"
+                },
+                "release_version": {
+                  "type": "string"
+                },
+                "branch_enabled": {
+                  "type": "boolean"
+                },
+                "branch": {
+                  "type": "string"
+                },
                 "suppress_logging": {
                   "type": "boolean"
                 },
@@ -2490,6 +2577,21 @@
                 },
                 "auto_update_interval": {
                   "type": "number"
+                },
+                "clear_on_update": {
+                  "type": "boolean"
+                },
+                "exclude_dirs": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "platforms": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
                 },
                 "pinned_version": {
                   "type": "string"
@@ -2567,6 +2669,24 @@
                 "process_name": {
                   "type": "string"
                 },
+                "repo_owner": {
+                  "type": "string"
+                },
+                "repo_name": {
+                  "type": "string"
+                },
+                "release_version_enabled": {
+                  "type": "boolean"
+                },
+                "release_version": {
+                  "type": "string"
+                },
+                "branch_enabled": {
+                  "type": "boolean"
+                },
+                "branch": {
+                  "type": "string"
+                },
                 "suppress_logging": {
                   "type": "boolean"
                 },
@@ -2575,6 +2695,21 @@
                 },
                 "auto_update_interval": {
                   "type": "number"
+                },
+                "clear_on_update": {
+                  "type": "boolean"
+                },
+                "exclude_dirs": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "platforms": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
                 },
                 "pinned_version": {
                   "type": "string"

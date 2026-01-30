@@ -141,6 +141,53 @@ class Update:
             "whisparr",
             "whisparr-v3",
         ]:
+            release_enabled = config.get("release_version_enabled")
+            branch_enabled = config.get("branch_enabled")
+            repo_owner = config.get("repo_owner")
+            repo_name = config.get("repo_name")
+            has_repo = repo_owner and repo_name
+
+            if branch_enabled:
+                self.logger.warning(
+                    "%s has 'branch_enabled' set, but branch builds are disabled for arr services. "
+                    "Set 'release_version_enabled' instead.",
+                    process_name,
+                )
+                branch_enabled = False
+
+            # Check for conflicting flags - release_version_enabled takes priority
+            if release_enabled and branch_enabled:
+                self.logger.warning(
+                    "%s has both 'release_version_enabled' and 'branch_enabled' set. "
+                    "Using 'release_version_enabled'.",
+                    process_name,
+                )
+                branch_enabled = False
+
+            # Determine if using a custom fork
+            official_repos = {
+                "sonarr": ("Sonarr", "Sonarr"),
+                "radarr": ("Radarr", "Radarr"),
+                "lidarr": ("Lidarr", "Lidarr"),
+                "prowlarr": ("Prowlarr", "Prowlarr"),
+                "readarr": ("Readarr", "Readarr"),
+                "whisparr": ("Whisparr", "Whisparr"),
+                "whisparr-v3": ("Whisparr", "Whisparr"),
+            }
+            # Use GitHub for release_version_enabled OR branch_enabled (both need GitHub checks)
+            use_github = has_repo and (release_enabled or branch_enabled)
+            if use_github:
+                return self._manual_check_generic_repo(
+                    process_name,
+                    config,
+                    key,
+                    instance_name,
+                    block_reason,
+                    checked_at,
+                    auto_update_enabled,
+                    interval_hours,
+                    next_check_at,
+                )
             return self._manual_check_arr(
                 process_name,
                 config,
@@ -270,7 +317,13 @@ class Update:
             current_version, error = versions.version_check(
                 process_name, instance_name, key
             )
-        installer = ArrInstaller(key, install_dir=install_dir)
+        installer = ArrInstaller(
+            key,
+            install_dir=install_dir,
+            branch=config.get("branch"),
+            repo_owner=config.get("repo_owner"),
+            repo_name=config.get("repo_name"),
+        )
         latest_version, latest_error = installer.get_latest_version()
         if not latest_version:
             return {
@@ -862,18 +915,47 @@ class Update:
             "whisparr",
             "whisparr-v3",
         ]:
-            pinned_version = config.get("pinned_version")
-            if pinned_version:
-                return self.update_check_pinned_version(
+            release_enabled = config.get("release_version_enabled")
+            branch_enabled = config.get("branch_enabled")
+            repo_owner = config.get("repo_owner")
+            repo_name = config.get("repo_name")
+            has_repo = repo_owner and repo_name
+
+            if branch_enabled:
+                self.logger.warning(
+                    "%s has 'branch_enabled' set, but branch builds are disabled for arr services. "
+                    "Set 'release_version_enabled' instead.",
                     process_name,
-                    config,
-                    key,
-                    instance_name,
-                    pinned_version,
                 )
-            return self.update_check_arr_latest(
-                process_name, config, key, instance_name
-            )
+                branch_enabled = False
+
+            # Check for conflicting flags - release_version_enabled takes priority
+            if release_enabled and branch_enabled:
+                self.logger.warning(
+                    "%s has both 'release_version_enabled' and 'branch_enabled' set. "
+                    "Using 'release_version_enabled'.",
+                    process_name,
+                )
+                branch_enabled = False
+
+            # Use GitHub for release_version_enabled OR branch_enabled (both need GitHub)
+            use_github = has_repo and (release_enabled or branch_enabled)
+            if use_github:
+                # Fall through to the generic repo-based update flow below
+                pass
+            else:
+                pinned_version = config.get("pinned_version")
+                if pinned_version:
+                    return self.update_check_pinned_version(
+                        process_name,
+                        config,
+                        key,
+                        instance_name,
+                        pinned_version,
+                    )
+                return self.update_check_arr_latest(
+                    process_name, config, key, instance_name
+                )
 
         if config.get("release_version_enabled"):
             release_value = (config.get("release_version") or "").lower()
@@ -1098,7 +1180,13 @@ class Update:
             current_version, error = versions.version_check(
                 process_name, instance_name, key
             )
-        installer = ArrInstaller(key, install_dir=install_dir)
+        installer = ArrInstaller(
+            key,
+            install_dir=install_dir,
+            branch=config.get("branch"),
+            repo_owner=config.get("repo_owner"),
+            repo_name=config.get("repo_name"),
+        )
         latest_version, latest_error = installer.get_latest_version()
         if not latest_version:
             return False, f"Failed to get latest {key} version: {latest_error}"
