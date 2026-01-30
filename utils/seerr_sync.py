@@ -13,6 +13,7 @@ import json, os, time, threading, urllib.request, urllib.error
 
 
 _SYNC_STATE_FILE = "/config/seerr_sync_state.json"
+_SYNC_THREAD = None
 
 # Request status constants from Seerr API
 REQUEST_STATUS_PENDING = 1
@@ -729,7 +730,12 @@ def _sync_loop() -> None:
 
 def start_seerr_sync_service() -> None:
     """Start the Seerr sync service in a background thread."""
+    global _SYNC_THREAD
     sync_cfg = CONFIG_MANAGER.get("seerr_sync", {})
+
+    if _SYNC_THREAD and _SYNC_THREAD.is_alive():
+        logger.debug("Seerr sync service already running")
+        return
 
     if not sync_cfg.get("enabled"):
         logger.debug("Seerr sync service disabled")
@@ -743,6 +749,6 @@ def start_seerr_sync_service() -> None:
         logger.error("Seerr sync service not started due to configuration errors")
         return
 
-    thread = threading.Thread(target=_sync_loop, daemon=True, name="seerr-sync")
-    thread.start()
+    _SYNC_THREAD = threading.Thread(target=_sync_loop, daemon=True, name="seerr-sync")
+    _SYNC_THREAD.start()
     logger.info("Seerr sync service started in background")

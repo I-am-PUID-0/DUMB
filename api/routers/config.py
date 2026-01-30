@@ -586,6 +586,14 @@ async def update_config(
     except Exception as exc:
         logger.warning("NzbDAV auto-sync after config update skipped: %s", exc)
 
+    if "seerr_sync" in updates:
+        try:
+            from utils.seerr_sync import start_seerr_sync_service
+
+            start_seerr_sync_service()
+        except Exception as exc:
+            logger.warning("Seerr sync start after config update skipped: %s", exc)
+
     return {"status": "global config updated", "keys": list(updates.keys())}
 
 

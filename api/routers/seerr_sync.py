@@ -2,17 +2,25 @@
 Seerr Sync API Router - Exposes sync status and details.
 """
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, HTTPException
+from pydantic import BaseModel
 from utils.dependencies import get_optional_current_user
 from utils.config_loader import CONFIG_MANAGER
 from utils.global_logger import logger
+from utils.seerr_sync import _join_url, _seerr_req
 import json
 import os
 import time
+import urllib.error
 
 seerr_sync_router = APIRouter()
 
 _SYNC_STATE_FILE = "/config/seerr_sync_state.json"
+
+
+class SeerrSyncTestRequest(BaseModel):
+    url: str
+    api_key: str
 
 
 def _load_sync_state() -> dict:
@@ -143,6 +151,26 @@ async def get_seerr_sync_state(
     """Get full raw sync state (for debugging)."""
     state = _load_sync_state()
     return state
+
+
+@seerr_sync_router.post("/test")
+async def test_seerr_sync_connection(
+    payload: SeerrSyncTestRequest,
+    current_user: str = Depends(get_optional_current_user),
+):
+    """Test connectivity to a Seerr instance with the provided URL and API key."""
+    if not payload.url or not payload.api_key:
+        raise HTTPException(status_code=400, detail="URL and API key are required.")
+
+    test_url = _join_url(payload.url, "/api/v1/status")
+    try:
+        status = _seerr_req(test_url, payload.api_key, method="GET")
+        return {"ok": True, "status": status}
+    except urllib.error.HTTPError as e:
+        detail = f"Seerr responded with HTTP {e.code}"
+        raise HTTPException(status_code=400, detail=detail)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Connection failed: {e}")
 
 
 @seerr_sync_router.delete("/failed")
