@@ -675,13 +675,18 @@ def ensure_zilean_indexer(host: str, token: str, base_url: str, tag_ids: list[in
 
         fields = match.get("fields") or []
         current_base = _get_field(fields, "baseUrl")
+        current_base = (current_base or "").strip()
+        if current_base == base_url:
+            logger.debug("Prowlarr Zilean base URL already set; leaving as-is.")
+            return
         wrong_values = {
             "",
             "https://stremthru.13377001.xyz/v0/torznab",
             "http://stremthru:8080",
         }
-        if current_base and current_base.strip() not in wrong_values:
-            logger.debug("Prowlarr Zilean base URL already set; leaving as-is.")
+        local_prefixes = ("http://127.0.0.1:", "http://localhost:")
+        if current_base and current_base not in wrong_values and not current_base.startswith(local_prefixes):
+            logger.debug("Prowlarr Zilean base URL set by user; leaving as-is.")
             return
         _set_field(fields, "baseUrl", base_url)
         _set_field(fields, "definitionFile", "Custom/zilean")

@@ -616,6 +616,10 @@ def _setup_project(
                     continue
 
                 updated_value = value
+                if key == "zilean" and env_key == "ASPNETCORE_URLS":
+                    port = str(config.get("port", 8182))
+                    if updated_value.startswith("http://+:"):
+                        updated_value = f"http://+:{port}"
                 if key == "zilean" and env_key == "Zilean__Database__ConnectionString":
                     postgres_host = CONFIG_MANAGER.get("postgres").get(
                         "host", "127.0.0.1"
@@ -756,6 +760,22 @@ def _setup_project(
             config_wwwroot_dir = os.path.join(config["config_dir"], "wwwroot")
             if not os.path.exists(config_wwwroot_dir):
                 os.symlink(config_app_wwwroot_dir, config_wwwroot_dir)
+            try:
+                from utils.prowlarr_settings import ensure_custom_indexers
+
+                prowlarr_cfg = CONFIG_MANAGER.get("prowlarr") or {}
+                instances = (prowlarr_cfg.get("instances") or {}) or {}
+                for _, inst in instances.items():
+                    if not isinstance(inst, dict) or not inst.get("enabled"):
+                        continue
+                    config_dir = inst.get("config_dir")
+                    if config_dir:
+                        ensure_custom_indexers(config_dir, int(config.get("port", 8182)))
+            except Exception as exc:
+                logger.warning(
+                    "Failed to sync Prowlarr custom indexers after Zilean update: %s",
+                    exc,
+                )
 
         if configure_phase and key == "rclone":
             success, error = rclone_setup()
