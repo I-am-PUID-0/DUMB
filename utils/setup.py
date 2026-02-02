@@ -620,6 +620,10 @@ def _setup_project(
                     port = str(config.get("port", 8182))
                     if updated_value.startswith("http://+:"):
                         updated_value = f"http://+:{port}"
+                if key == "cli_debrid" and env_key == "CLI_DEBRID_PORT":
+                    updated_value = str(config.get("port", 5000))
+                if key == "cli_battery" and env_key == "CLI_DEBRID_BATTERY_PORT":
+                    updated_value = str(config.get("port", 5001))
                 if key == "zilean" and env_key == "Zilean__Database__ConnectionString":
                     postgres_host = CONFIG_MANAGER.get("postgres").get(
                         "host", "127.0.0.1"
