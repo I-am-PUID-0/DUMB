@@ -611,6 +611,7 @@ def setup_traefik(
         # Keep Traefik writing to a file unless we manage rotation via subprocess logging.
         log_config["filePath"] = os.path.join(log_dir, "traefik.log")
     static_config = {
+        "global": {"checkNewVersion": False},
         "entryPoints": entrypoints,
         "api": {"dashboard": True, "insecure": True},
         "log": log_config,
