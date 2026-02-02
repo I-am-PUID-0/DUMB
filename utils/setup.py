@@ -775,7 +775,9 @@ def _setup_project(
                         continue
                     config_dir = inst.get("config_dir")
                     if config_dir:
-                        ensure_custom_indexers(config_dir, int(config.get("port", 8182)))
+                        ensure_custom_indexers(
+                            config_dir, int(config.get("port", 8182))
+                        )
             except Exception as exc:
                 logger.warning(
                     "Failed to sync Prowlarr custom indexers after Zilean update: %s",
@@ -915,7 +917,9 @@ def _setup_project(
             "whisparr-v3",
         ]:
             if install_phase and not configure_phase:
-                success, error = install_arr_instances(key, process_handler=process_handler)
+                success, error = install_arr_instances(
+                    key, process_handler=process_handler
+                )
                 if not success:
                     return False, error
             elif configure_phase:
@@ -1104,7 +1108,9 @@ def _build_arr_from_source(process_handler, key, source_dir, binary_path):
                 except Exception as e:
                     logger.warning("Failed to remove %s: %s", git_file, e)
         if removed_git:
-            logger.info("Removed git metadata from source to avoid build metadata errors.")
+            logger.info(
+                "Removed git metadata from source to avoid build metadata errors."
+            )
 
         sln_patterns = [
             os.path.join(source_dir, "src", f"{app_name}.sln"),
@@ -1220,20 +1226,30 @@ def _build_arr_from_source(process_handler, key, source_dir, binary_path):
             try:
                 with open(publish_target, "r") as f:
                     project_text = f.read()
-                tf_match = re.search(r"<TargetFramework>([^<]+)</TargetFramework>", project_text)
-                tfs_match = re.search(r"<TargetFrameworks>([^<]+)</TargetFrameworks>", project_text)
+                tf_match = re.search(
+                    r"<TargetFramework>([^<]+)</TargetFramework>", project_text
+                )
+                tfs_match = re.search(
+                    r"<TargetFrameworks>([^<]+)</TargetFrameworks>", project_text
+                )
                 if tf_match:
                     target_framework = tf_match.group(1).strip()
                 elif tfs_match:
                     target_framework = tfs_match.group(1).split(";")[0].strip()
             except Exception as e:
-                logger.debug("Failed to detect TargetFramework from %s: %s", publish_target, e)
+                logger.debug(
+                    "Failed to detect TargetFramework from %s: %s", publish_target, e
+                )
 
         publish_cmd = [
-            "dotnet", "publish", publish_target,
-            "-c", "Release",
+            "dotnet",
+            "publish",
+            publish_target,
+            "-c",
+            "Release",
             "--no-restore",
-            "-o", output_dir,
+            "-o",
+            output_dir,
             "/nodeReuse:false",
             "/p:UseSharedCompilation=false",
             "/p:UseSourceLink=false",
@@ -1263,6 +1279,7 @@ def _build_arr_from_source(process_handler, key, source_dir, binary_path):
             os.makedirs(expected_bin_dir, exist_ok=True)
             # Copy all files from output to expected location
             import shutil
+
             for item in os.listdir(output_dir):
                 src = os.path.join(output_dir, item)
                 dst = os.path.join(expected_bin_dir, item)
@@ -1339,7 +1356,9 @@ def _binary_interpreter_exists(binary_path: str) -> bool:
     return True
 
 
-def _install_arr_binary(key, instance_name, instance, process_name, process_handler=None):
+def _install_arr_binary(
+    key, instance_name, instance, process_name, process_handler=None
+):
     install_dir, is_instance_dir = _resolve_arr_install_dir(
         key, instance_name, instance
     )
@@ -1389,7 +1408,9 @@ def _install_arr_binary(key, instance_name, instance, process_name, process_hand
         "whisparr-v3": ("Whisparr", "Whisparr"),
     }
     official_owner, official_name = official_repos.get(key, (None, None))
-    is_custom_fork = has_repo and (repo_owner != official_owner or repo_name != official_name)
+    is_custom_fork = has_repo and (
+        repo_owner != official_owner or repo_name != official_name
+    )
 
     use_github_release = release_enabled and has_repo
     # For branch_enabled, download source and build with dotnet
@@ -1407,15 +1428,24 @@ def _install_arr_binary(key, instance_name, instance, process_name, process_hand
                 branch,
             )
             from utils.download import Downloader
+
             downloader = Downloader()
 
             # Create install_dir if needed
             os.makedirs(install_dir, exist_ok=True)
 
             # Download branch source
-            branch_url, zip_folder_name = downloader.get_branch(repo_owner, repo_name, branch)
+            branch_url, zip_folder_name = downloader.get_branch(
+                repo_owner, repo_name, branch
+            )
             if not branch_url:
-                return False, f"Failed to get branch URL for {branch}", install_dir, binary_path, is_instance_dir
+                return (
+                    False,
+                    f"Failed to get branch URL for {branch}",
+                    install_dir,
+                    binary_path,
+                    is_instance_dir,
+                )
 
             success, error = downloader.download_and_extract(
                 branch_url,
@@ -1446,7 +1476,9 @@ def _install_arr_binary(key, instance_name, instance, process_name, process_hand
             release_version = instance.get("release_version", "latest")
             current_version = None
             if os.path.exists(binary_path):
-                current_version, _ = versions.read_arr_version_from_dir(key, install_dir)
+                current_version, _ = versions.read_arr_version_from_dir(
+                    key, install_dir
+                )
 
             # Check if we need to install/update
             need_install = not os.path.exists(binary_path)
@@ -1461,11 +1493,18 @@ def _install_arr_binary(key, instance_name, instance, process_name, process_hand
             if not need_install and current_version:
                 # Compare versions to see if update needed
                 from utils.download import Downloader
+
                 downloader = Downloader()
                 from utils.versions import Versions
 
-                nightly = "nightly" in release_version.lower() if release_version else False
-                prerelease = "prerelease" in release_version.lower() if release_version else False
+                nightly = (
+                    "nightly" in release_version.lower() if release_version else False
+                )
+                prerelease = (
+                    "prerelease" in release_version.lower()
+                    if release_version
+                    else False
+                )
 
                 if release_version.lower() in ("latest", "nightly", "prerelease"):
                     latest_version, _ = downloader.get_latest_release(
@@ -1474,13 +1513,17 @@ def _install_arr_binary(key, instance_name, instance, process_name, process_hand
                         nightly=nightly,
                         prerelease=prerelease,
                     )
-                    normalized_current = Versions._normalize_arr_version(current_version)
+                    normalized_current = Versions._normalize_arr_version(
+                        current_version
+                    )
                     normalized_latest = Versions._normalize_arr_version(latest_version)
                     if latest_version and normalized_current != normalized_latest:
                         need_install = True
                         release_version = latest_version
                 else:
-                    normalized_current = Versions._normalize_arr_version(current_version)
+                    normalized_current = Versions._normalize_arr_version(
+                        current_version
+                    )
                     normalized_target = Versions._normalize_arr_version(release_version)
                     if normalized_current != normalized_target:
                         need_install = True
@@ -1494,6 +1537,7 @@ def _install_arr_binary(key, instance_name, instance, process_name, process_hand
                     release_version,
                 )
                 from utils.download import Downloader
+
                 downloader = Downloader()
 
                 # Create install_dir if needed
@@ -1566,7 +1610,9 @@ def _install_arr_binary(key, instance_name, instance, process_name, process_hand
                     repo_name=repo_name,
                 )
                 latest_version, _ = installer.get_latest_version()
-                current_version, _ = versions.read_arr_version_from_dir(key, install_dir)
+                current_version, _ = versions.read_arr_version_from_dir(
+                    key, install_dir
+                )
                 if latest_version and current_version != latest_version:
                     logger.info(
                         "%s updating from %s to %s (branch: %s)...",
@@ -1579,7 +1625,9 @@ def _install_arr_binary(key, instance_name, instance, process_name, process_hand
                     if not success:
                         return False, error, install_dir, binary_path, is_instance_dir
             elif pinned_version:
-                current_version, _ = versions.read_arr_version_from_dir(key, install_dir)
+                current_version, _ = versions.read_arr_version_from_dir(
+                    key, install_dir
+                )
                 if not current_version:
                     logger.warning(
                         "Failed to read %s version for pin check in %s.",
@@ -1614,7 +1662,13 @@ def _install_arr_binary(key, instance_name, instance, process_name, process_hand
                 binary_path = resolved
                 logger.info("Resolved %s binary to %s", key.capitalize(), binary_path)
             else:
-                return False, f"{key.capitalize()} binary missing in {install_dir}", install_dir, binary_path, is_instance_dir
+                return (
+                    False,
+                    f"{key.capitalize()} binary missing in {install_dir}",
+                    install_dir,
+                    binary_path,
+                    is_instance_dir,
+                )
 
         if not os.access(binary_path, os.X_OK):
             logger.warning("%s not executable. Fixing permissions...", binary_path)
@@ -1623,13 +1677,21 @@ def _install_arr_binary(key, instance_name, instance, process_name, process_hand
         # Ensure bundled ffprobe is executable if present (Whisparr/others)
         ffprobe_path = os.path.join(os.path.dirname(binary_path), "ffprobe")
         if os.path.isfile(ffprobe_path) and not os.access(ffprobe_path, os.X_OK):
-            logger.warning("ffprobe not executable at %s. Fixing permissions...", ffprobe_path)
+            logger.warning(
+                "ffprobe not executable at %s. Fixing permissions...", ffprobe_path
+            )
             os.chmod(ffprobe_path, 0o755)
     return True, None, install_dir, binary_path, is_instance_dir
 
 
 def setup_arr_instance(
-    key, instance_name, instance, process_name, install_only=False, configure_only=False, process_handler=None
+    key,
+    instance_name,
+    instance,
+    process_name,
+    install_only=False,
+    configure_only=False,
+    process_handler=None,
 ):
     if install_only and configure_only:
         return False, "Invalid arr setup phase."
@@ -1815,6 +1877,7 @@ def setup_decypharr(install_only: bool = False, configure_only: bool = False):
     logger.info("Starting Decypharr setup...")
 
     try:
+
         def _collect_decypharr_mounts(config_path: str) -> list[str]:
             if not config_path or not os.path.exists(config_path):
                 return []
@@ -1860,9 +1923,7 @@ def setup_decypharr(install_only: bool = False, configure_only: bool = False):
                     logger.info("Successfully unmounted %s.", mount_path)
                 else:
                     error_msg = umount.stderr.strip() or "unknown error"
-                    logger.error(
-                        "Failed to unmount %s: %s", mount_path, error_msg
-                    )
+                    logger.error("Failed to unmount %s: %s", mount_path, error_msg)
             return True, None
 
         if install_only and configure_only:
@@ -4355,8 +4416,8 @@ def rclone_setup():
                         if isinstance(nzbdav_cfg, dict)
                         else {}
                     )
-                    frontend_port = nzbdav_cfg.get("frontend_port", 3000)
-                    url = f"http://127.0.0.1:{frontend_port}/"
+                    backend_port = nzbdav_cfg.get("backend_port", 8080)
+                    url = f"http://127.0.0.1:{backend_port}/"
                     instance["zurg_enabled"] = False
                     instance["decypharr_enabled"] = False
                     instance["zurg_config_file"] = ""
