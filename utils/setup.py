@@ -700,6 +700,7 @@ def _setup_project(
             success, error = dumb_frontend_setup()
             if not success:
                 return False, error
+            CONFIG_MANAGER.save_config(process_name)
 
         if configure_phase and key == "riven_frontend":
             copy_server_config(
