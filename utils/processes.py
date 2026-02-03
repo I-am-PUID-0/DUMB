@@ -426,7 +426,11 @@ class ProcessHandler:
                         if suppress_logging:
                             enable_subprocess_logging = True
                             log_to_main = False
-                if subprocess_file_logger and key == "rclone" and isinstance(command, list):
+                if (
+                    subprocess_file_logger
+                    and key == "rclone"
+                    and isinstance(command, list)
+                ):
                     filtered_command = []
                     skip_next = False
                     for part in command:
@@ -525,6 +529,11 @@ class ProcessHandler:
                     except Exception:
                         stderr_output = ""
 
+                if process.returncode == 0:
+                    self.logger.info(
+                        f"{process_name} completed shortly after start with return code 0"
+                    )
+                    return True, None
                 self.logger.error(
                     f"{process_name} exited shortly after start with return code {process.returncode}"
                 )
