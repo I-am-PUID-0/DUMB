@@ -1,5 +1,49 @@
 # Changelog
 
+## [2.1.0](https://github.com/I-am-PUID-0/DUMB/compare/2.0.0...2.1.0) (2026-02-04)
+
+
+### ✨ Features
+
+* **announce-dev:** add Discord announcement for dev branch updates ([fb6e3c0](https://github.com/I-am-PUID-0/DUMB/commit/fb6e3c066ac56120249687068d541eecaebd26bb))
+* **arrs:** enable GitHub releases for Arr services ([8e720f5](https://github.com/I-am-PUID-0/DUMB/commit/8e720f56440764588ccc6772206ded65b28386f4))
+* **auto_update:** Adds manual update functionality ([fd58a71](https://github.com/I-am-PUID-0/DUMB/commit/fd58a71696b038361793a1b4249b8f213d467ded))
+* **auto-update:** add force update check option to auto_update method ([fbfce8f](https://github.com/I-am-PUID-0/DUMB/commit/fbfce8fa75ed6716cabcaf15882538ed7e6d0c4f))
+* **connection_manager:** initialize event loop if closed during websocket connection ([16a8879](https://github.com/I-am-PUID-0/DUMB/commit/16a88795e2bae492cd1d87e7faff335285f9f79d))
+* **connection_manager:** initialize event loop if closed during websocket connection ([71ff724](https://github.com/I-am-PUID-0/DUMB/commit/71ff7244f4d6f433da5ba065b944989bfc2071d9))
+* **dev:** Implements dev branch versioning and tagging ([9fddaa2](https://github.com/I-am-PUID-0/DUMB/commit/9fddaa248d1f92a94a72971c55bf6192865ad199))
+* Enhances commit message with links to GitHub ([1d4467a](https://github.com/I-am-PUID-0/DUMB/commit/1d4467aefd3db669ea3c3ac2faec12feffc1bb75))
+* **process:** add seerr_sync capability to capabilities response ([cbb2c0e](https://github.com/I-am-PUID-0/DUMB/commit/cbb2c0e76317eac273ab79b07deb5a2867b5486f))
+* **seerr_sync:** adds Seerr sync service ([c525a1b](https://github.com/I-am-PUID-0/DUMB/commit/c525a1b04112f24a983470dd32d2a8f7c01c1369))
+* **seerr_sync:** adds Seerr sync test endpoint ([059c884](https://github.com/I-am-PUID-0/DUMB/commit/059c884c0494bb42cb1d9fd27522212941f3d5dc))
+* **setup:** create backup directory and patch backup_routes.py for Huntarr ([fbfce8f](https://github.com/I-am-PUID-0/DUMB/commit/fbfce8fa75ed6716cabcaf15882538ed7e6d0c4f))
+
+
+### 🐛 Bug Fixes
+
+* **clid:** sets the CLI debrid and battery ports to their correct config values. ([fb6db21](https://github.com/I-am-PUID-0/DUMB/commit/fb6db2157a58168fd88daf96043742f2c08bc960))
+* **dependencies:** remove websocket close calls on authentication errors ([16a8879](https://github.com/I-am-PUID-0/DUMB/commit/16a88795e2bae492cd1d87e7faff335285f9f79d))
+* **dependencies:** remove websocket close calls on authentication errors ([71ff724](https://github.com/I-am-PUID-0/DUMB/commit/71ff7244f4d6f433da5ba065b944989bfc2071d9))
+* **logger:** streamline websocket logging with existing event loop ([16a8879](https://github.com/I-am-PUID-0/DUMB/commit/16a88795e2bae492cd1d87e7faff335285f9f79d))
+* **logger:** streamline websocket logging with existing event loop ([71ff724](https://github.com/I-am-PUID-0/DUMB/commit/71ff7244f4d6f433da5ba065b944989bfc2071d9))
+* **processes:** treat quick success exits as non-errors ([b87c788](https://github.com/I-am-PUID-0/DUMB/commit/b87c78821ebf6c5c6eb2ebefaf96000ddd0b0dfa))
+* **setup:** save configuration after project setup for dumb frontend ([aa26910](https://github.com/I-am-PUID-0/DUMB/commit/aa269108bad976b542097075221a7e26c85814e2))
+* **traefik:** disable version check in global configuration ([68f2a3b](https://github.com/I-am-PUID-0/DUMB/commit/68f2a3bf8816ed39f668643777efd9762ace094c))
+* **zilean:** updates Zilean base URL handling and configuration ([b2dd794](https://github.com/I-am-PUID-0/DUMB/commit/b2dd794c28729fc8b0b652343e2a738b540b007b))
+
+
+### 🤡 Other Changes
+
+* **announce-dev:** update announcement message to use a wrench emoji for dev branch updates ([8727a60](https://github.com/I-am-PUID-0/DUMB/commit/8727a60f1f7f4ff59f9405a13f980f7848a86035))
+* **deps:** updates dependencies ([8ae9383](https://github.com/I-am-PUID-0/DUMB/commit/8ae9383662c127740e10afe38f293a13a7eadd83))
+* **docs:** update documentation links for NzbDAV, Seerr, and Huntarr services ([19b0a51](https://github.com/I-am-PUID-0/DUMB/commit/19b0a5164445976c498330cabcafc1f012d1fd89))
+* **docs:** update documentation links to point to new domain ([1901698](https://github.com/I-am-PUID-0/DUMB/commit/19016986bc97d4cce1b9939a391e3d2c2e2449db))
+
+
+### 🛠️ Refactors
+
+* **nzbdav:** use backend port for rclone WebDAV mount ([c275c71](https://github.com/I-am-PUID-0/DUMB/commit/c275c7118267892244c46780a80384b102ae3b23))
+
 ## [2.0.0](https://github.com/I-am-PUID-0/DUMB/compare/1.7.0...2.0.0) (2026-01-26)
 
 
