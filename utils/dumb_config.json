@@ -1,847 +1,892 @@
 {
-    "puid": 1000,
-    "pgid": 1000,
-    "tz": "",
-    "data_root": "/data",
-    "dumb": {
-        "log_level": "INFO",
-        "log_name": "DUMB",
-        "log_dir": "/log",
-        "log_count": 2,
-        "log_size": "10M",
-        "color_log": true,
-        "plex_token": "",
-        "plex_address": "",
-        "github_token": "",
-        "github_username": "",
-        "onboarding_completed": false,
-        "ui": {
-            "log_timestamp": {
-                "dateOrder": "MDY",
-                "hourFormat": "12",
-                "zeroPad": true
-            }
-        },
-        "auto_restart": {
-            "enabled": false,
-            "restart_on_unhealthy": true,
-            "healthcheck_interval": 30,
-            "unhealthy_threshold": 3,
-            "max_restarts": 3,
-            "window_seconds": 300,
-            "backoff_seconds": [
-                5,
-                15,
-                45,
-                120
-            ],
-            "grace_period_seconds": 30,
-            "services": []
-        },
-        "ffprobe_monitor": {
-            "enabled": true,
-            "interval_sec": 10,
-            "min_process_age_sec": 30,
-            "min_poke_interval_sec": 60,
-            "poke_timeout_sec": 30,
-            "max_pokes_per_cycle": 3,
-            "cache_ttl_sec": 3600,
-            "ffprobe_path": "ffprobe"
-        },
-        "api_service": {
-            "enabled": true,
-            "process_name": "DUMB API",
-            "log_level": "INFO",
-            "host": "127.0.0.1",
-            "port": 8000
-        },
-        "frontend": {
-            "enabled": true,
-            "process_name": "DUMB Frontend",
-            "repo_owner": "nicocapalbo",
-            "repo_name": "dmbdb",
-            "release_version_enabled": false,
-            "release_version": "v1.2.0",
-            "branch_enabled": false,
-            "branch": "main",
-            "suppress_logging": false,
-            "log_level": "INFO",
-            "log_file": "/log/dumb_frontend.log",
-            "origins": [
-                "http://0.0.0.0:3005"
-            ],
-            "host": "0.0.0.0",
-            "port": 3005,
-            "auto_update": false,
-            "auto_update_interval": 24,
-            "clear_on_update": true,
-            "exclude_dirs": [],
-            "platforms": [
-                "pnpm"
-            ],
-            "command": [
-                "node",
-                ".output/server/index.mjs"
-            ],
-            "config_dir": "/dumb/frontend",
-            "env": {}
-        },
-        "metrics": {
-            "system_scope": "auto",
-            "history_enabled": true,
-            "history_interval_sec": 5,
-            "history_retention_days": 7,
-            "history_max_file_mb": 50,
-            "history_max_total_mb": 100,
-            "history_dir": "/config/metrics"
-        }
+  "puid": 1000,
+  "pgid": 1000,
+  "tz": "",
+  "data_root": "/data",
+  "dumb": {
+    "log_level": "INFO",
+    "log_name": "DUMB",
+    "log_dir": "/log",
+    "log_count": 2,
+    "log_size": "10M",
+    "color_log": true,
+    "plex_token": "",
+    "plex_address": "",
+    "github_token": "",
+    "github_username": "",
+    "onboarding_completed": false,
+    "ui": {
+      "log_timestamp": {
+        "dateOrder": "MDY",
+        "hourFormat": "12",
+        "zeroPad": true
+      }
     },
-    "traefik": {
-        "enabled": false,
-        "process_name": "Traefik",
-        "pinned_version": "v3.6.6",
-        "suppress_logging": false,
-        "log_level": "INFO",
-        "log_file": "/log/traefik.log",
-        "access_log_file": "/log/traefik_access.log",
-        "port": 18080,
-        "entrypoints": {
-            "web": {
-                "address": ":18080"
-            }
-        },
-        "command": [
-            "/traefik/traefik",
-            "--configFile=/config/traefik/traefik.yml"
-        ],
-        "config_dir": "/config/traefik",
-        "config_file": "/config/traefik/traefik.yml"
+    "auto_restart": {
+      "enabled": false,
+      "restart_on_unhealthy": true,
+      "healthcheck_interval": 30,
+      "unhealthy_threshold": 3,
+      "max_restarts": 3,
+      "window_seconds": 300,
+      "backoff_seconds": [
+        5,
+        15,
+        45,
+        120
+      ],
+      "grace_period_seconds": 30,
+      "services": []
     },
-    "cli_debrid": {
-        "enabled": false,
-        "process_name": "CLI Debrid",
-        "repo_owner": "godver3",
-        "repo_name": "cli_debrid",
-        "release_version_enabled": false,
-        "release_version": "v0.6.07",
-        "branch_enabled": false,
-        "branch": "main",
-        "suppress_logging": false,
-        "log_level": "INFO",
-        "port": 5000,
-        "auto_update": false,
-        "auto_update_interval": 24,
-        "clear_on_update": true,
-        "exclude_dirs": [
-            "/cli_debrid/data"
-        ],
-        "platforms": [
-            "python"
-        ],
-        "command": [
-            "/cli_debrid/venv/bin/python",
-            "main.py"
-        ],
-        "config_dir": "/cli_debrid",
-        "config_file": "/cli_debrid/data/config/config.json",
-        "log_file": "/cli_debrid/data/logs/debug.log",
-        "env": {
-            "USER_CONFIG": "/cli_debrid/data/config/",
-            "USER_LOGS": "/cli_debrid/data/logs/",
-            "USER_DB_CONTENT": "/cli_debrid/data/db_content/",
-            "CLI_DEBRID_PORT": "{port}"
-        }
+    "ffprobe_monitor": {
+      "enabled": true,
+      "interval_sec": 10,
+      "min_process_age_sec": 30,
+      "min_poke_interval_sec": 60,
+      "poke_timeout_sec": 30,
+      "max_pokes_per_cycle": 3,
+      "cache_ttl_sec": 3600,
+      "ffprobe_path": "ffprobe"
     },
-    "cli_battery": {
-        "enabled": false,
-        "process_name": "CLI Battery",
-        "suppress_logging": false,
-        "log_level": "INFO",
-        "port": 5001,
-        "platforms": [
-            "python"
-        ],
-        "command": [
-            "/cli_debrid/venv/bin/python",
-            "cli_battery/main.py"
-        ],
-        "config_dir": "/cli_debrid",
-        "config_file": "/cli_debrid/data/config/settings.json",
-        "log_file": "/cli_debrid/data/logs/battery_debug.log",
-        "env": {
-            "PYTHONPATH": "/cli_debrid",
-            "USER_CONFIG": "/cli_debrid/data/config/",
-            "USER_LOGS": "/cli_debrid/data/logs/",
-            "USER_DB_CONTENT": "/cli_debrid/data/db_content/",
-            "CLI_DEBRID_BATTERY_PORT": "{port}"
-        }
+    "api_service": {
+      "enabled": true,
+      "process_name": "DUMB API",
+      "log_level": "INFO",
+      "host": "127.0.0.1",
+      "port": 8000
     },
-    "decypharr": {
-        "enabled": false,
-        "process_name": "Decypharr",
-        "repo_owner": "sirrobot01",
-        "repo_name": "decypharr",
-        "release_version_enabled": false,
-        "release_version": "v1.0.0",
-        "branch_enabled": false,
-        "branch": "main",
-        "suppress_logging": false,
-        "log_level": "INFO",
-        "port": 8282,
-        "auto_update": false,
-        "auto_update_interval": 24,
-        "clear_on_update": false,
-        "exclude_dirs": [],
-        "command": [
-            "/decypharr/decypharr",
-            "--config",
-            "/decypharr"
-        ],
-        "config_dir": "/decypharr",
-        "config_file": "/decypharr/config.json",
-        "log_file": "/decypharr/logs/decypharr.log",
-        "env": {},
-        "use_embedded_rclone": true,
-        "api_keys": {}
+    "frontend": {
+      "enabled": true,
+      "process_name": "DUMB Frontend",
+      "repo_owner": "nicocapalbo",
+      "repo_name": "dmbdb",
+      "release_version_enabled": false,
+      "release_version": "v1.2.0",
+      "branch_enabled": false,
+      "branch": "main",
+      "suppress_logging": false,
+      "log_level": "INFO",
+      "log_file": "/log/dumb_frontend.log",
+      "origins": [
+        "http://0.0.0.0:3005"
+      ],
+      "host": "0.0.0.0",
+      "port": 3005,
+      "auto_update": false,
+      "auto_update_interval": 24,
+      "clear_on_update": true,
+      "exclude_dirs": [],
+      "platforms": [
+        "pnpm"
+      ],
+      "command": [
+        "node",
+        ".output/server/index.mjs"
+      ],
+      "config_dir": "/dumb/frontend",
+      "env": {}
     },
-    "nzbdav": {
-        "enabled": false,
-        "process_name": "NzbDAV",
-        "repo_owner": "nzbdav-dev",
-        "repo_name": "nzbdav",
-        "release_version_enabled": false,
-        "release_version": "latest",
-        "branch_enabled": false,
-        "branch": "main",
-        "suppress_logging": false,
-        "log_level": "INFO",
-        "frontend_port": 3000,
-        "backend_port": 8080,
-        "auto_update": false,
-        "auto_update_interval": 24,
-        "clear_on_update": false,
-        "exclude_dirs": [],
-        "platforms": [
-            "pnpm",
-            "dotnet"
-        ],
-        "command": [],
-        "config_dir": "/nzbdav",
-        "log_file": "/log/nzbdav.log",
-        "webdav_password": "",
-        "env": {}
-    },
-    "emby": {
-        "enabled": false,
-        "process_name": "Emby Media Server",
-        "repo_owner": "MediaBrowser",
-        "repo_name": "Emby.Releases",
-        "release_version_enabled": false,
-        "release_version": "4.8.11.0",
-        "use_system_ffmpeg": true,
-        "suppress_logging": false,
-        "log_level": "INFO",
-        "port": 8096,
-        "auto_update": false,
-        "auto_update_interval": 24,
-        "config_dir": "/emby",
-        "config_file": "/emby/config/system.xml",
-        "log_file": "/emby/log/embyserver.txt",
-        "command": [],
-        "env": {}
-    },
-    "jellyfin": {
-        "enabled": false,
-        "process_name": "Jellyfin Media Server",
-        "suppress_logging": false,
-        "auto_update": false,
-        "auto_update_interval": 24,
-        "pinned_version": "",
-        "port": 8096,
-        "config_dir": "/jellyfin",
-        "config_file": "/jellyfin/config/system.xml",
-        "log_file": "/jellyfin/log/jellyfin.log",
-        "command": [],
-        "env": {}
-    },
-    "lidarr": {
-        "instances": {
-            "Default": {
-                "enabled": false,
-                "core_service": "",
-                "use_huntarr": false,
-                "process_name": "Lidarr",
-                "repo_owner": "Lidarr",
-                "repo_name": "Lidarr",
-                "release_version_enabled": false,
-                "release_version": "latest",
-                "suppress_logging": false,
-                "auto_update": false,
-                "auto_update_interval": 24,
-                "clear_on_update": false,
-                "exclude_dirs": [],
-                "platforms": [],
-                "pinned_version": "",
-                "port": 8686,
-                "config_dir": "/lidarr/default",
-                "config_file": "/lidarr/default/config.xml",
-                "log_file": "/lidarr/default/logs/lidarr.txt",
-                "command": [],
-                "env": {}
-            }
-        }
-    },
-    "phalanx_db": {
-        "enabled": false,
-        "process_name": "Phalanx DB",
-        "repo_owner": "godver3",
-        "repo_name": "phalanx_db_hyperswarm",
-        "release_version_enabled": false,
-        "release_version": "v0.50",
-        "branch_enabled": false,
-        "branch": "main",
-        "suppress_logging": false,
-        "log_level": "INFO",
-        "port": 8888,
-        "auto_update": false,
-        "auto_update_interval": 24,
-        "clear_on_update": true,
-        "exclude_dirs": [
-            "/phalanx_db/data"
-        ],
-        "platforms": [
-            "pnpm"
-        ],
-        "command": [
-            "node",
-            "phalanx_db_rest.js"
-        ],
-        "config_dir": "/phalanx_db",
-        "log_file": "/log/phalanx_db.log",
-        "env": {}
-    },
-    "plex": {
-        "enabled": false,
-        "process_name": "Plex Media Server",
-        "suppress_logging": false,
-        "log_level": "INFO",
-        "port": 32400,
-        "auto_update": false,
-        "auto_update_interval": 24,
-        "pinned_version": "",
-        "config_dir": "/plex",
-        "config_file": "/plex/Plex Media Server/Preferences.xml",
-        "log_file": "/plex/Plex Media Server/Logs/Plex Media Server.log",
-        "plex_claim": "",
-        "friendly_name": "DUMB",
-        "dbrepair": {
-            "enabled": false,
-            "run_before_start": false,
-            "interval_minutes": 10080,
-            "idle_check_minutes": 5,
-            "backoff_multiplier": 2.0,
-            "max_backoff_minutes": 60,
-            "max_wait_minutes": 0,
-            "install_dir": "/data/dbrepair",
-            "executable": "DBRepair.sh",
-            "sqlite_path": "/usr/lib/plexmediaserver/Plex SQLite",
-            "databases_path": "/plex/Plex Media Server/Plug-in Support/Databases",
-            "required_args": [],
-            "script_args": [
-                "auto"
-            ],
-            "log_file": "/log/plex_dbrepair.log",
-            "db_path": "/plex/Plex Media Server/Plug-in Support/Databases/com.plexapp.plugins.library.db",
-            "work_dir": "",
-            "command": [],
-            "env": {}
-        },
-        "command": [],
-        "env": {}
-    },
-    "tautulli": {
-        "enabled": false,
-        "process_name": "Tautulli",
-        "repo_owner": "Tautulli",
-        "repo_name": "Tautulli",
-        "release_version_enabled": false,
-        "release_version": "latest",
-        "branch_enabled": false,
-        "branch": "master",
-        "suppress_logging": false,
-        "log_level": "INFO",
-        "port": 8181,
-        "auto_update": false,
-        "auto_update_interval": 24,
-        "clear_on_update": true,
-        "exclude_dirs": [
-            "/tautulli/data"
-        ],
-        "platforms": [
-            "python"
-        ],
-        "command": [
-            "/tautulli/venv/bin/python",
-            "Tautulli.py",
-            "--config",
-            "/tautulli/data/config.ini",
-            "--datadir",
-            "/tautulli/data",
-            "--nolaunch",
-            "--port",
-            "{port}"
-        ],
-        "config_dir": "/tautulli",
-        "config_file": "/tautulli/data/config.ini",
-        "log_file": "/tautulli/data/logs/tautulli.log",
-        "env": {}
-    },
-    "huntarr": {
-        "instances": {
-            "Default": {
-                "enabled": false,
-                "core_service": "",
-                "process_name": "Huntarr",
-                "repo_owner": "plexguide",
-                "repo_name": "Huntarr.io",
-                "release_version_enabled": false,
-                "release_version": "latest",
-                "branch_enabled": false,
-                "branch": "main",
-                "suppress_logging": false,
-                "log_level": "INFO",
-                "port": 9705,
-                "auto_update": false,
-                "auto_update_interval": 24,
-                "clear_on_update": false,
-                "exclude_dirs": [
-                    "/huntarr/default/config"
-                ],
-                "platforms": [
-                    "python"
-                ],
-                "command": [
-                    "/huntarr/default/venv/bin/python",
-                    "main.py"
-                ],
-                "config_dir": "/huntarr/default",
-                "config_file": "/huntarr/default/config/huntarr.db",
-                "log_file": "/huntarr/default/config/logs/huntarr.log",
-                "env": {
-                    "HUNTARR_CONFIG_DIR": "/huntarr/default/config",
-                    "HUNTARR_PORT": "{port}"
-                }
-            }
-        }
-    },
-    "seerr_sync": {
-        "enabled": false,
-        "poll_interval_seconds": 60,
-        "external_primary": {
-            "enabled": false,
-            "url": "",
-            "api_key": ""
-        },
-        "external_subordinates": [],
-        "options": {
-            "sync_pending": true,
-            "sync_approved": true,
-            "sync_declined": false,
-            "sync_deletes": true,
-            "sync_4k_separately": true,
-            "user_mapping": "admin",
-            "retry_failed_after_hours": 24
-        }
-    },
-    "seerr": {
-        "instances": {
-            "Default": {
-                "enabled": false,
-                "sync_role": "disabled",
-                "core_service": "",
-                "process_name": "Seerr",
-                "repo_owner": "seerr-team",
-                "repo_name": "seerr",
-                "release_version_enabled": false,
-                "release_version": "latest",
-                "branch_enabled": false,
-                "branch": "main",
-                "suppress_logging": false,
-                "log_level": "INFO",
-                "port": 5055,
-                "auto_update": false,
-                "auto_update_interval": 24,
-                "clear_on_update": true,
-                "exclude_dirs": [
-                    "/seerr/default/config"
-                ],
-                "platforms": [
-                    "pnpm"
-                ],
-                "command": [
-                    "node",
-                    "dist/index.js"
-                ],
-                "config_dir": "/seerr/default",
-                "config_file": "/seerr/default/config/settings.json",
-                "log_file": "/seerr/default/config/logs/jellyseerr.log",
-                "env": {
-                    "NODE_ENV": "production",
-                    "PORT": "{port}"
-                }
-            }
-        }
-    },
-    "plex_debrid": {
-        "enabled": false,
-        "process_name": "Plex Debrid",
-        "repo_owner": "elfhosted",
-        "repo_name": "plex_debrid",
-        "branch_enabled": false,
-        "branch": "main",
-        "suppress_logging": false,
-        "log_level": "INFO",
-        "auto_update": false,
-        "auto_update_interval": 24,
-        "clear_on_update": true,
-        "exclude_dirs": [
-            "/plex_debrid/config"
-        ],
-        "platforms": [
-            "python"
-        ],
-        "command": [
-            "/plex_debrid/venv/bin/python",
-            "main.py",
-            "-service",
-            "--config-dir",
-            "./config"
-        ],
-        "config_dir": "/plex_debrid",
-        "config_file": "/plex_debrid/config/settings.json",
-        "log_file": "/plex_debrid/config/plex_debrid.log",
-        "env": {}
-    },
-    "postgres": {
-        "enabled": false,
-        "process_name": "PostgreSQL",
-        "suppress_logging": false,
-        "log_level": "INFO",
-        "host": "127.0.0.1",
-        "port": 5432,
-        "databases": [
-            {
-                "name": "postgres",
-                "enabled": true
-            },
-            {
-                "name": "pgadmin",
-                "enabled": true
-            },
-            {
-                "name": "zilean",
-                "enabled": true
-            },
-            {
-                "name": "riven",
-                "enabled": true
-            }
-        ],
-        "config_dir": "/postgres_data",
-        "config_file": "/postgres_data/postgresql.conf",
-        "log_file": "/log/postgres.log",
-        "initdb_args": "--data-checksums",
-        "user": "DUMB",
-        "password": "postgres",
-        "shared_buffers": "128MB",
-        "max_connections": 100,
-        "run_directory": "/run/postgresql",
-        "command": "postgres -D {postgres_config_dir} -c config_file={postgres_config_file}",
-        "env": {}
-    },
-    "pgadmin": {
-        "enabled": false,
-        "process_name": "pgAdmin4",
-        "config_dir": "/pgadmin/data",
-        "config_file": "/pgadmin/data/config_local.py",
-        "log_file": "/pgadmin/data/pgadmin4.log",
-        "port": 5050,
-        "default_server": "0.0.0.0",
-        "setup_email": "DUMB@DUMB.DUMB",
-        "setup_password": "postgres",
-        "command": ""
-    },
-    "prowlarr": {
-        "instances": {
-            "Default": {
-                "enabled": false,
-                "process_name": "Prowlarr",
-                "repo_owner": "Prowlarr",
-                "repo_name": "Prowlarr",
-                "release_version_enabled": false,
-                "release_version": "latest",
-                "suppress_logging": false,
-                "auto_update": false,
-                "auto_update_interval": 24,
-                "clear_on_update": false,
-                "exclude_dirs": [],
-                "platforms": [],
-                "pinned_version": "",
-                "port": 9696,
-                "config_dir": "/prowlarr/default",
-                "config_file": "/prowlarr/default/config.xml",
-                "log_file": "/prowlarr/default/logs/prowlarr.txt",
-                "command": [],
-                "env": {}
-            }
-        }
-    },
-    "rclone": {
-        "instances": {
-            "RealDebrid": {
-                "enabled": false,
-                "core_service": "",
-                "process_name": "rclone w/ RealDebrid",
-                "suppress_logging": false,
-                "log_level": "INFO",
-                "key_type": "RealDebrid",
-                "zurg_enabled": true,
-                "decypharr_enabled": false,
-                "mount_dir": "/mnt/debrid",
-                "mount_name": "rclone_RD",
-                "cache_dir": "/cache",
-                "config_dir": "/config",
-                "config_file": "/config/rclone.config",
-                "log_file": "/log/rclone_w_realdebrid.log",
-                "zurg_config_file": "/zurg/RD/config.yml",
-                "command": [],
-                "api_key": ""
-            }
-        }
-    },
-    "riven_backend": {
-        "enabled": false,
-        "process_name": "Riven Backend",
-        "repo_owner": "rivenmedia",
-        "repo_name": "riven",
-        "release_version_enabled": false,
-        "release_version": "v0.20.1",
-        "branch_enabled": false,
-        "branch": "release-please--branches--main",
-        "suppress_logging": false,
-        "log_level": "INFO",
-        "host": "127.0.0.1",
-        "port": 8080,
-        "auto_update": false,
-        "auto_update_interval": 24,
-        "symlink_library_path": "/mnt/debrid/riven_symlinks",
-        "clear_on_update": true,
-        "exclude_dirs": [
-            "/riven/backend/data"
-        ],
-        "env_copy": {
-            "source": "/riven/backend/data/.env",
-            "destination": "/riven/backend/src/.env"
-        },
-        "platforms": [
-            "python"
-        ],
-        "command": [
-            "/riven/backend/venv/bin/python",
-            "src/main.py",
-            "-p",
-            "{port}"
-        ],
-        "config_dir": "/riven/backend",
-        "config_file": "/riven/backend/data/settings.json",
-        "log_file": "/log/riven_backend.log",
-        "env": {},
-        "wait_for_dir": ""
-    },
-    "riven_frontend": {
-        "enabled": false,
-        "process_name": "Riven Frontend",
-        "repo_owner": "rivenmedia",
-        "repo_name": "riven-frontend",
-        "release_version_enabled": false,
-        "release_version": "v0.17.0",
-        "branch_enabled": false,
-        "branch": "release-please--branches--main",
-        "suppress_logging": false,
-        "log_level": "INFO",
-        "host": "0.0.0.0",
-        "port": 3000,
-        "auto_update": false,
-        "auto_update_interval": 24,
-        "origin": "",
-        "clear_on_update": true,
-        "exclude_dirs": [],
-        "platforms": [
-            "pnpm"
-        ],
-        "command": [
-            "node",
-            "build"
-        ],
-        "config_dir": "/riven/frontend",
-        "log_file": "/log/riven_frontend.log",
-        "env": {}
-    },
-    "radarr": {
-        "instances": {
-            "Default": {
-                "enabled": false,
-                "core_service": "",
-                "use_huntarr": false,
-                "process_name": "Radarr",
-                "repo_owner": "Radarr",
-                "repo_name": "Radarr",
-                "release_version_enabled": false,
-                "release_version": "latest",
-                "suppress_logging": false,
-                "auto_update": false,
-                "auto_update_interval": 24,
-                "clear_on_update": false,
-                "exclude_dirs": [],
-                "platforms": [],
-                "pinned_version": "",
-                "port": 7878,
-                "config_dir": "/radarr/default",
-                "config_file": "/radarr/default/config.xml",
-                "log_file": "/radarr/default/logs/radarr.txt",
-                "command": [],
-                "env": {}
-            }
-        }
-    },
-    "sonarr": {
-        "instances": {
-            "Default": {
-                "enabled": false,
-                "core_service": "",
-                "use_huntarr": false,
-                "process_name": "Sonarr",
-                "repo_owner": "Sonarr",
-                "repo_name": "Sonarr",
-                "release_version_enabled": false,
-                "release_version": "latest",
-                "suppress_logging": false,
-                "auto_update": false,
-                "auto_update_interval": 24,
-                "clear_on_update": false,
-                "exclude_dirs": [],
-                "platforms": [],
-                "pinned_version": "",
-                "port": 8989,
-                "config_dir": "/sonarr/default",
-                "config_file": "/sonarr/default/config.xml",
-                "log_file": "/sonarr/default/logs/sonarr.txt",
-                "command": [],
-                "env": {}
-            }
-        }
-    },
-    "whisparr": {
-        "instances": {
-            "Default": {
-                "enabled": false,
-                "core_service": "",
-                "use_huntarr": false,
-                "process_name": "Whisparr",
-                "repo_owner": "Whisparr",
-                "repo_name": "Whisparr",
-                "release_version_enabled": false,
-                "release_version": "latest",
-                "suppress_logging": false,
-                "auto_update": false,
-                "auto_update_interval": 24,
-                "clear_on_update": false,
-                "exclude_dirs": [],
-                "platforms": [],
-                "pinned_version": "",
-                "port": 6969,
-                "config_dir": "/whisparr/default",
-                "config_file": "/whisparr/default/config.xml",
-                "log_file": "/whisparr/default/logs/whisparr.txt",
-                "command": [],
-                "env": {}
-            }
-        }
-    },
-    "zilean": {
-        "enabled": false,
-        "process_name": "Zilean",
-        "repo_owner": "iPromKnight",
-        "repo_name": "zilean",
-        "release_version_enabled": false,
-        "release_version": "v3.3.0",
-        "branch_enabled": false,
-        "branch": "main",
-        "suppress_logging": false,
-        "log_level": "INFO",
-        "host": "127.0.0.1",
-        "port": 8182,
-        "auto_update": false,
-        "auto_update_interval": 24,
-        "clear_on_update": true,
-        "exclude_dirs": [
-            "/zilean/app/data"
-        ],
-        "env_copy": {
-            "source": "/zilean/app/data/.env",
-            "destination": "/zilean/app/src/.env"
-        },
-        "platforms": [
-            "python",
-            "dotnet"
-        ],
-        "command": [
-            "/zilean/app/zilean-api"
-        ],
-        "config_dir": "/zilean",
-        "config_file": "/zilean/app/data/settings.json",
-        "log_file": "/log/zilean.log",
-        "env": {
-            "DOTNET_RUNNING_IN_CONTAINER": "true",
-            "DOTNET_gcServer": "1",
-            "DOTNET_GCDynamicAdaptationMode": "1",
-            "DOTNET_SYSTEM_GLOBALIZATION_INVARIANT": "false",
-            "PYTHONUNBUFFERED": "1",
-            "ASPNETCORE_URLS": "http://+:{port}",
-            "PYTHONPATH": "/zilean/venv/lib/python3.11/site-packages",
-            "PATH": "/zilean/venv/bin:${PATH}",
-            "ZILEAN_PYTHON_PYLIB": "/usr/local/lib/libpython3.11.so.1.0",
-            "Zilean__Database__ConnectionString": "Host={postgres_host};Port={postgres_port};Database=zilean;Username={postgres_user};Password={postgres_password};Timeout=300;CommandTimeout=3600;"
-        }
-    },
-    "zurg": {
-        "instances": {
-            "RealDebrid": {
-                "enabled": false,
-                "core_service": "",
-                "process_name": "Zurg w/ RealDebrid",
-                "repo_owner": "debridmediamanager",
-                "repo_name": "zurg-testing",
-                "release_version_enabled": false,
-                "release_version": "v0.9.3-final",
-                "suppress_logging": false,
-                "log_level": "INFO",
-                "host": "127.0.0.1",
-                "port": 9090,
-                "auto_update": false,
-                "auto_update_interval": 24,
-                "clear_on_update": false,
-                "exclude_dirs": [
-                    "/zurg/RD"
-                ],
-                "key_type": "RealDebrid",
-                "config_dir": "/zurg/RD",
-                "config_file": "/zurg/RD/config.yml",
-                "command": "/zurg/RD/zurg",
-                "user": "",
-                "password": "",
-                "api_key": ""
-            }
-        }
+    "metrics": {
+      "system_scope": "auto",
+      "history_enabled": true,
+      "history_interval_sec": 5,
+      "history_retention_days": 7,
+      "history_max_file_mb": 50,
+      "history_max_total_mb": 100,
+      "history_dir": "/config/metrics"
     }
+  },
+  "traefik": {
+    "enabled": false,
+    "process_name": "Traefik",
+    "pinned_version": "v3.6.6",
+    "suppress_logging": false,
+    "log_level": "INFO",
+    "log_file": "/log/traefik.log",
+    "access_log_file": "/log/traefik_access.log",
+    "port": 18080,
+    "entrypoints": {
+      "web": {
+        "address": ":18080"
+      }
+    },
+    "command": [
+      "/traefik/traefik",
+      "--configFile=/config/traefik/traefik.yml"
+    ],
+    "config_dir": "/config/traefik",
+    "config_file": "/config/traefik/traefik.yml"
+  },
+  "cli_debrid": {
+    "enabled": false,
+    "process_name": "CLI Debrid",
+    "repo_owner": "godver3",
+    "repo_name": "cli_debrid",
+    "release_version_enabled": false,
+    "release_version": "v0.6.07",
+    "branch_enabled": false,
+    "branch": "main",
+    "suppress_logging": false,
+    "log_level": "INFO",
+    "port": 5000,
+    "auto_update": false,
+    "auto_update_interval": 24,
+    "clear_on_update": true,
+    "exclude_dirs": [
+      "/cli_debrid/data"
+    ],
+    "platforms": [
+      "python"
+    ],
+    "command": [
+      "/cli_debrid/venv/bin/python",
+      "main.py"
+    ],
+    "config_dir": "/cli_debrid",
+    "config_file": "/cli_debrid/data/config/config.json",
+    "log_file": "/cli_debrid/data/logs/debug.log",
+    "env": {
+      "USER_CONFIG": "/cli_debrid/data/config/",
+      "USER_LOGS": "/cli_debrid/data/logs/",
+      "USER_DB_CONTENT": "/cli_debrid/data/db_content/",
+      "CLI_DEBRID_PORT": "{port}"
+    }
+  },
+  "cli_battery": {
+    "enabled": false,
+    "process_name": "CLI Battery",
+    "suppress_logging": false,
+    "log_level": "INFO",
+    "port": 5001,
+    "platforms": [
+      "python"
+    ],
+    "command": [
+      "/cli_debrid/venv/bin/python",
+      "cli_battery/main.py"
+    ],
+    "config_dir": "/cli_debrid",
+    "config_file": "/cli_debrid/data/config/settings.json",
+    "log_file": "/cli_debrid/data/logs/battery_debug.log",
+    "env": {
+      "PYTHONPATH": "/cli_debrid",
+      "USER_CONFIG": "/cli_debrid/data/config/",
+      "USER_LOGS": "/cli_debrid/data/logs/",
+      "USER_DB_CONTENT": "/cli_debrid/data/db_content/",
+      "CLI_DEBRID_BATTERY_PORT": "{port}"
+    }
+  },
+  "decypharr": {
+    "enabled": false,
+    "process_name": "Decypharr",
+    "repo_owner": "sirrobot01",
+    "repo_name": "decypharr",
+    "release_version_enabled": false,
+    "release_version": "v1.0.0",
+    "branch_enabled": false,
+    "branch": "main",
+    "suppress_logging": false,
+    "log_level": "INFO",
+    "port": 8282,
+    "auto_update": false,
+    "auto_update_interval": 24,
+    "clear_on_update": false,
+    "exclude_dirs": [],
+    "command": [
+      "/decypharr/decypharr",
+      "--config",
+      "/decypharr"
+    ],
+    "config_dir": "/decypharr",
+    "config_file": "/decypharr/config.json",
+    "log_file": "/decypharr/logs/decypharr.log",
+    "env": {},
+    "use_embedded_rclone": true,
+    "api_keys": {}
+  },
+  "nzbdav": {
+    "enabled": false,
+    "process_name": "NzbDAV",
+    "repo_owner": "nzbdav-dev",
+    "repo_name": "nzbdav",
+    "release_version_enabled": false,
+    "release_version": "latest",
+    "branch_enabled": false,
+    "branch": "main",
+    "suppress_logging": false,
+    "log_level": "INFO",
+    "frontend_port": 3000,
+    "backend_port": 8080,
+    "auto_update": false,
+    "auto_update_interval": 24,
+    "clear_on_update": false,
+    "exclude_dirs": [],
+    "platforms": [
+      "pnpm",
+      "dotnet"
+    ],
+    "command": [],
+    "config_dir": "/nzbdav",
+    "log_file": "/log/nzbdav.log",
+    "webdav_password": "",
+    "env": {}
+  },
+  "emby": {
+    "enabled": false,
+    "process_name": "Emby Media Server",
+    "repo_owner": "MediaBrowser",
+    "repo_name": "Emby.Releases",
+    "release_version_enabled": false,
+    "release_version": "4.8.11.0",
+    "use_system_ffmpeg": true,
+    "suppress_logging": false,
+    "log_level": "INFO",
+    "port": 8096,
+    "auto_update": false,
+    "auto_update_interval": 24,
+    "config_dir": "/emby",
+    "config_file": "/emby/config/system.xml",
+    "log_file": "/emby/log/embyserver.txt",
+    "command": [],
+    "env": {}
+  },
+  "jellyfin": {
+    "enabled": false,
+    "process_name": "Jellyfin Media Server",
+    "suppress_logging": false,
+    "auto_update": false,
+    "auto_update_interval": 24,
+    "pinned_version": "",
+    "port": 8096,
+    "config_dir": "/jellyfin",
+    "config_file": "/jellyfin/config/system.xml",
+    "log_file": "/jellyfin/log/jellyfin.log",
+    "command": [],
+    "env": {}
+  },
+  "lidarr": {
+    "instances": {
+      "Default": {
+        "enabled": false,
+        "core_service": "",
+        "use_huntarr": false,
+        "process_name": "Lidarr",
+        "repo_owner": "Lidarr",
+        "repo_name": "Lidarr",
+        "release_version_enabled": false,
+        "release_version": "latest",
+        "suppress_logging": false,
+        "auto_update": false,
+        "auto_update_interval": 24,
+        "clear_on_update": false,
+        "exclude_dirs": [],
+        "platforms": [],
+        "pinned_version": "",
+        "port": 8686,
+        "config_dir": "/lidarr/default",
+        "config_file": "/lidarr/default/config.xml",
+        "log_file": "/lidarr/default/logs/lidarr.txt",
+        "command": [],
+        "env": {}
+      }
+    }
+  },
+  "phalanx_db": {
+    "enabled": false,
+    "process_name": "Phalanx DB",
+    "repo_owner": "godver3",
+    "repo_name": "phalanx_db_hyperswarm",
+    "release_version_enabled": false,
+    "release_version": "v0.50",
+    "branch_enabled": false,
+    "branch": "main",
+    "suppress_logging": false,
+    "log_level": "INFO",
+    "port": 8888,
+    "auto_update": false,
+    "auto_update_interval": 24,
+    "clear_on_update": true,
+    "exclude_dirs": [
+      "/phalanx_db/data"
+    ],
+    "platforms": [
+      "pnpm"
+    ],
+    "command": [
+      "node",
+      "phalanx_db_rest.js"
+    ],
+    "config_dir": "/phalanx_db",
+    "log_file": "/log/phalanx_db.log",
+    "env": {}
+  },
+  "plex": {
+    "enabled": false,
+    "process_name": "Plex Media Server",
+    "suppress_logging": false,
+    "log_level": "INFO",
+    "port": 32400,
+    "auto_update": false,
+    "auto_update_interval": 24,
+    "pinned_version": "",
+    "config_dir": "/plex",
+    "config_file": "/plex/Plex Media Server/Preferences.xml",
+    "log_file": "/plex/Plex Media Server/Logs/Plex Media Server.log",
+    "plex_claim": "",
+    "friendly_name": "DUMB",
+    "dbrepair": {
+      "enabled": false,
+      "run_before_start": false,
+      "interval_minutes": 10080,
+      "idle_check_minutes": 5,
+      "backoff_multiplier": 2.0,
+      "max_backoff_minutes": 60,
+      "max_wait_minutes": 0,
+      "install_dir": "/data/dbrepair",
+      "executable": "DBRepair.sh",
+      "sqlite_path": "/usr/lib/plexmediaserver/Plex SQLite",
+      "databases_path": "/plex/Plex Media Server/Plug-in Support/Databases",
+      "required_args": [],
+      "script_args": [
+        "auto"
+      ],
+      "log_file": "/log/plex_dbrepair.log",
+      "db_path": "/plex/Plex Media Server/Plug-in Support/Databases/com.plexapp.plugins.library.db",
+      "work_dir": "",
+      "command": [],
+      "env": {}
+    },
+    "command": [],
+    "env": {}
+  },
+  "tautulli": {
+    "enabled": false,
+    "process_name": "Tautulli",
+    "repo_owner": "Tautulli",
+    "repo_name": "Tautulli",
+    "release_version_enabled": false,
+    "release_version": "latest",
+    "branch_enabled": false,
+    "branch": "master",
+    "suppress_logging": false,
+    "log_level": "INFO",
+    "port": 8181,
+    "auto_update": false,
+    "auto_update_interval": 24,
+    "clear_on_update": true,
+    "exclude_dirs": [
+      "/tautulli/data"
+    ],
+    "platforms": [
+      "python"
+    ],
+    "command": [
+      "/tautulli/venv/bin/python",
+      "Tautulli.py",
+      "--config",
+      "/tautulli/data/config.ini",
+      "--datadir",
+      "/tautulli/data",
+      "--nolaunch",
+      "--port",
+      "{port}"
+    ],
+    "config_dir": "/tautulli",
+    "config_file": "/tautulli/data/config.ini",
+    "log_file": "/tautulli/data/logs/tautulli.log",
+    "env": {}
+  },
+  "huntarr": {
+    "instances": {
+      "Default": {
+        "enabled": false,
+        "core_service": "",
+        "process_name": "Huntarr",
+        "repo_owner": "plexguide",
+        "repo_name": "Huntarr.io",
+        "release_version_enabled": false,
+        "release_version": "latest",
+        "branch_enabled": false,
+        "branch": "main",
+        "suppress_logging": false,
+        "log_level": "INFO",
+        "port": 9705,
+        "auto_update": false,
+        "auto_update_interval": 24,
+        "clear_on_update": false,
+        "exclude_dirs": [
+          "/huntarr/default/config"
+        ],
+        "platforms": [
+          "python"
+        ],
+        "command": [
+          "/huntarr/default/venv/bin/python",
+          "main.py"
+        ],
+        "config_dir": "/huntarr/default",
+        "config_file": "/huntarr/default/config/huntarr.db",
+        "log_file": "/huntarr/default/config/logs/huntarr.log",
+        "env": {
+          "HUNTARR_CONFIG_DIR": "/huntarr/default/config",
+          "HUNTARR_PORT": "{port}"
+        }
+      }
+    }
+  },
+  "seerr_sync": {
+    "enabled": false,
+    "poll_interval_seconds": 60,
+    "external_primary": {
+      "enabled": false,
+      "url": "",
+      "api_key": ""
+    },
+    "external_subordinates": [],
+    "options": {
+      "sync_pending": true,
+      "sync_approved": true,
+      "sync_declined": false,
+      "sync_deletes": true,
+      "sync_4k_separately": true,
+      "user_mapping": "admin",
+      "retry_failed_after_hours": 24
+    }
+  },
+  "profilarr": {
+    "instances": {
+      "Default": {
+        "enabled": false,
+        "core_service": "",
+        "process_name": "Profilarr",
+        "repo_owner": "Dictionarry-Hub",
+        "repo_name": "profilarr",
+        "release_version_enabled": false,
+        "release_version": "latest",
+        "branch_enabled": false,
+        "branch": "main",
+        "suppress_logging": false,
+        "log_level": "INFO",
+        "port": 6868,
+        "auto_update": false,
+        "auto_update_interval": 24,
+        "clear_on_update": true,
+        "exclude_dirs": [
+          "/profilarr/default/config"
+        ],
+        "platforms": [
+          "python",
+          "pnpm"
+        ],
+        "command": [
+          "/profilarr/default/backend/venv/bin/gunicorn",
+          "--chdir",
+          "/profilarr/default/backend",
+          "--bind",
+          "0.0.0.0:{port}",
+          "--timeout",
+          "600",
+          "app.main:create_app()"
+        ],
+        "config_dir": "/profilarr/default",
+        "log_file": "/profilarr/default/config/log/profilarr.log",
+        "env": {
+          "PROFILARR_CONFIG_DIR": "/profilarr/default/config",
+          "FLASK_ENV": "production",
+          "PYTHONPATH": "/profilarr/default/backend"
+        }
+      }
+    }
+  },
+  "seerr": {
+    "instances": {
+      "Default": {
+        "enabled": false,
+        "sync_role": "disabled",
+        "core_service": "",
+        "process_name": "Seerr",
+        "repo_owner": "seerr-team",
+        "repo_name": "seerr",
+        "release_version_enabled": false,
+        "release_version": "latest",
+        "branch_enabled": false,
+        "branch": "main",
+        "suppress_logging": false,
+        "log_level": "INFO",
+        "port": 5055,
+        "auto_update": false,
+        "auto_update_interval": 24,
+        "clear_on_update": true,
+        "exclude_dirs": [
+          "/seerr/default/config"
+        ],
+        "platforms": [
+          "pnpm"
+        ],
+        "command": [
+          "node",
+          "dist/index.js"
+        ],
+        "config_dir": "/seerr/default",
+        "config_file": "/seerr/default/config/settings.json",
+        "log_file": "/seerr/default/config/logs/jellyseerr.log",
+        "env": {
+          "NODE_ENV": "production",
+          "PORT": "{port}"
+        }
+      }
+    }
+  },
+  "plex_debrid": {
+    "enabled": false,
+    "process_name": "Plex Debrid",
+    "repo_owner": "elfhosted",
+    "repo_name": "plex_debrid",
+    "branch_enabled": false,
+    "branch": "main",
+    "suppress_logging": false,
+    "log_level": "INFO",
+    "auto_update": false,
+    "auto_update_interval": 24,
+    "clear_on_update": true,
+    "exclude_dirs": [
+      "/plex_debrid/config"
+    ],
+    "platforms": [
+      "python"
+    ],
+    "command": [
+      "/plex_debrid/venv/bin/python",
+      "main.py",
+      "-service",
+      "--config-dir",
+      "./config"
+    ],
+    "config_dir": "/plex_debrid",
+    "config_file": "/plex_debrid/config/settings.json",
+    "log_file": "/plex_debrid/config/plex_debrid.log",
+    "env": {}
+  },
+  "postgres": {
+    "enabled": false,
+    "process_name": "PostgreSQL",
+    "suppress_logging": false,
+    "log_level": "INFO",
+    "host": "127.0.0.1",
+    "port": 5432,
+    "databases": [
+      {
+        "name": "postgres",
+        "enabled": true
+      },
+      {
+        "name": "pgadmin",
+        "enabled": true
+      },
+      {
+        "name": "zilean",
+        "enabled": true
+      },
+      {
+        "name": "riven",
+        "enabled": true
+      }
+    ],
+    "config_dir": "/postgres_data",
+    "config_file": "/postgres_data/postgresql.conf",
+    "log_file": "/log/postgres.log",
+    "initdb_args": "--data-checksums",
+    "user": "DUMB",
+    "password": "postgres",
+    "shared_buffers": "128MB",
+    "max_connections": 100,
+    "run_directory": "/run/postgresql",
+    "command": "postgres -D {postgres_config_dir} -c config_file={postgres_config_file}",
+    "env": {}
+  },
+  "pgadmin": {
+    "enabled": false,
+    "process_name": "pgAdmin4",
+    "config_dir": "/pgadmin/data",
+    "config_file": "/pgadmin/data/config_local.py",
+    "log_file": "/pgadmin/data/pgadmin4.log",
+    "port": 5050,
+    "default_server": "0.0.0.0",
+    "setup_email": "DUMB@DUMB.DUMB",
+    "setup_password": "postgres",
+    "command": ""
+  },
+  "prowlarr": {
+    "instances": {
+      "Default": {
+        "enabled": false,
+        "process_name": "Prowlarr",
+        "repo_owner": "Prowlarr",
+        "repo_name": "Prowlarr",
+        "release_version_enabled": false,
+        "release_version": "latest",
+        "suppress_logging": false,
+        "auto_update": false,
+        "auto_update_interval": 24,
+        "clear_on_update": false,
+        "exclude_dirs": [],
+        "platforms": [],
+        "pinned_version": "",
+        "port": 9696,
+        "config_dir": "/prowlarr/default",
+        "config_file": "/prowlarr/default/config.xml",
+        "log_file": "/prowlarr/default/logs/prowlarr.txt",
+        "command": [],
+        "env": {}
+      }
+    }
+  },
+  "rclone": {
+    "instances": {
+      "RealDebrid": {
+        "enabled": false,
+        "core_service": "",
+        "process_name": "rclone w/ RealDebrid",
+        "suppress_logging": false,
+        "log_level": "INFO",
+        "key_type": "RealDebrid",
+        "zurg_enabled": true,
+        "decypharr_enabled": false,
+        "mount_dir": "/mnt/debrid",
+        "mount_name": "rclone_RD",
+        "cache_dir": "/cache",
+        "config_dir": "/config",
+        "config_file": "/config/rclone.config",
+        "log_file": "/log/rclone_w_realdebrid.log",
+        "zurg_config_file": "/zurg/RD/config.yml",
+        "command": [],
+        "api_key": ""
+      }
+    }
+  },
+  "riven_backend": {
+    "enabled": false,
+    "process_name": "Riven Backend",
+    "repo_owner": "rivenmedia",
+    "repo_name": "riven",
+    "release_version_enabled": false,
+    "release_version": "v0.20.1",
+    "branch_enabled": false,
+    "branch": "release-please--branches--main",
+    "suppress_logging": false,
+    "log_level": "INFO",
+    "host": "127.0.0.1",
+    "port": 8080,
+    "auto_update": false,
+    "auto_update_interval": 24,
+    "symlink_library_path": "/mnt/debrid/riven_symlinks",
+    "clear_on_update": true,
+    "exclude_dirs": [
+      "/riven/backend/data"
+    ],
+    "env_copy": {
+      "source": "/riven/backend/data/.env",
+      "destination": "/riven/backend/src/.env"
+    },
+    "platforms": [
+      "python"
+    ],
+    "command": [
+      "/riven/backend/venv/bin/python",
+      "src/main.py",
+      "-p",
+      "{port}"
+    ],
+    "config_dir": "/riven/backend",
+    "config_file": "/riven/backend/data/settings.json",
+    "log_file": "/log/riven_backend.log",
+    "env": {},
+    "wait_for_dir": ""
+  },
+  "riven_frontend": {
+    "enabled": false,
+    "process_name": "Riven Frontend",
+    "repo_owner": "rivenmedia",
+    "repo_name": "riven-frontend",
+    "release_version_enabled": false,
+    "release_version": "v0.17.0",
+    "branch_enabled": false,
+    "branch": "release-please--branches--main",
+    "suppress_logging": false,
+    "log_level": "INFO",
+    "host": "0.0.0.0",
+    "port": 3000,
+    "auto_update": false,
+    "auto_update_interval": 24,
+    "origin": "",
+    "clear_on_update": true,
+    "exclude_dirs": [],
+    "platforms": [
+      "pnpm"
+    ],
+    "command": [
+      "node",
+      "build"
+    ],
+    "config_dir": "/riven/frontend",
+    "log_file": "/log/riven_frontend.log",
+    "env": {}
+  },
+  "radarr": {
+    "instances": {
+      "Default": {
+        "enabled": false,
+        "core_service": "",
+        "use_huntarr": false,
+        "process_name": "Radarr",
+        "repo_owner": "Radarr",
+        "repo_name": "Radarr",
+        "release_version_enabled": false,
+        "release_version": "latest",
+        "suppress_logging": false,
+        "auto_update": false,
+        "auto_update_interval": 24,
+        "clear_on_update": false,
+        "exclude_dirs": [],
+        "platforms": [],
+        "pinned_version": "",
+        "port": 7878,
+        "config_dir": "/radarr/default",
+        "config_file": "/radarr/default/config.xml",
+        "log_file": "/radarr/default/logs/radarr.txt",
+        "command": [],
+        "env": {}
+      }
+    }
+  },
+  "sonarr": {
+    "instances": {
+      "Default": {
+        "enabled": false,
+        "core_service": "",
+        "use_huntarr": false,
+        "process_name": "Sonarr",
+        "repo_owner": "Sonarr",
+        "repo_name": "Sonarr",
+        "release_version_enabled": false,
+        "release_version": "latest",
+        "suppress_logging": false,
+        "auto_update": false,
+        "auto_update_interval": 24,
+        "clear_on_update": false,
+        "exclude_dirs": [],
+        "platforms": [],
+        "pinned_version": "",
+        "port": 8989,
+        "config_dir": "/sonarr/default",
+        "config_file": "/sonarr/default/config.xml",
+        "log_file": "/sonarr/default/logs/sonarr.txt",
+        "command": [],
+        "env": {}
+      }
+    }
+  },
+  "whisparr": {
+    "instances": {
+      "Default": {
+        "enabled": false,
+        "core_service": "",
+        "use_huntarr": false,
+        "process_name": "Whisparr",
+        "repo_owner": "Whisparr",
+        "repo_name": "Whisparr",
+        "release_version_enabled": false,
+        "release_version": "latest",
+        "suppress_logging": false,
+        "auto_update": false,
+        "auto_update_interval": 24,
+        "clear_on_update": false,
+        "exclude_dirs": [],
+        "platforms": [],
+        "pinned_version": "",
+        "port": 6969,
+        "config_dir": "/whisparr/default",
+        "config_file": "/whisparr/default/config.xml",
+        "log_file": "/whisparr/default/logs/whisparr.txt",
+        "command": [],
+        "env": {}
+      }
+    }
+  },
+  "zilean": {
+    "enabled": false,
+    "process_name": "Zilean",
+    "repo_owner": "iPromKnight",
+    "repo_name": "zilean",
+    "release_version_enabled": false,
+    "release_version": "v3.3.0",
+    "branch_enabled": false,
+    "branch": "main",
+    "suppress_logging": false,
+    "log_level": "INFO",
+    "host": "127.0.0.1",
+    "port": 8182,
+    "auto_update": false,
+    "auto_update_interval": 24,
+    "clear_on_update": true,
+    "exclude_dirs": [
+      "/zilean/app/data"
+    ],
+    "env_copy": {
+      "source": "/zilean/app/data/.env",
+      "destination": "/zilean/app/src/.env"
+    },
+    "platforms": [
+      "python",
+      "dotnet"
+    ],
+    "command": [
+      "/zilean/app/zilean-api"
+    ],
+    "config_dir": "/zilean",
+    "config_file": "/zilean/app/data/settings.json",
+    "log_file": "/log/zilean.log",
+    "env": {
+      "DOTNET_RUNNING_IN_CONTAINER": "true",
+      "DOTNET_gcServer": "1",
+      "DOTNET_GCDynamicAdaptationMode": "1",
+      "DOTNET_SYSTEM_GLOBALIZATION_INVARIANT": "false",
+      "PYTHONUNBUFFERED": "1",
+      "ASPNETCORE_URLS": "http://+:{port}",
+      "PYTHONPATH": "/zilean/venv/lib/python3.11/site-packages",
+      "PATH": "/zilean/venv/bin:${PATH}",
+      "ZILEAN_PYTHON_PYLIB": "/usr/local/lib/libpython3.11.so.1.0",
+      "Zilean__Database__ConnectionString": "Host={postgres_host};Port={postgres_port};Database=zilean;Username={postgres_user};Password={postgres_password};Timeout=300;CommandTimeout=3600;"
+    }
+  },
+  "zurg": {
+    "instances": {
+      "RealDebrid": {
+        "enabled": false,
+        "core_service": "",
+        "process_name": "Zurg w/ RealDebrid",
+        "repo_owner": "debridmediamanager",
+        "repo_name": "zurg-testing",
+        "release_version_enabled": false,
+        "release_version": "v0.9.3-final",
+        "suppress_logging": false,
+        "log_level": "INFO",
+        "host": "127.0.0.1",
+        "port": 9090,
+        "auto_update": false,
+        "auto_update_interval": 24,
+        "clear_on_update": false,
+        "exclude_dirs": [
+          "/zurg/RD"
+        ],
+        "key_type": "RealDebrid",
+        "config_dir": "/zurg/RD",
+        "config_file": "/zurg/RD/config.yml",
+        "command": "/zurg/RD/zurg",
+        "user": "",
+        "password": "",
+        "api_key": ""
+      }
+    }
+  }
 }

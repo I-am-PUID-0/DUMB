@@ -73,6 +73,7 @@ STATIC_URLS_BY_KEY = {
     "whisparr-v3": "https://whisparr.com",
     "tautulli": "https://tautulli.com",
     "seerr": "https://github.com/seerr-team/seerr",
+    "profilarr": "https://github.com/Dictionarry-Hub/profilarr",
     "traefik": "https://traefik.io/",
     "huntarr": "https://plexguide.github.io/Huntarr.io/",
 }
@@ -102,6 +103,7 @@ SPONSORSHIP_URLS_BY_KEY = {
     "zurg": "https://github.com/sponsors/debridmediamanager",
     "tautulli": "https://tautulli.com/#donate",
     "seerr": "https://opencollective.com/seerr",
+    "profilarr": "https://github.com/sponsors/Dictionarry-Hub",
     "traefik": "https://github.com/sponsors/traefik",
     "huntarr": "https://plexguide.github.io/Huntarr.io/donate.html",
     "zilean": "https://ko-fi.com/W7W616IBNG",
@@ -120,6 +122,7 @@ DEFAULT_SERVICE_PORTS = {
     "tautulli": 8181,
     "seerr": 5055,
     "huntarr": 9705,
+    "profilarr": 6868,
 }
 ## Future support for restricting service port ranges
 SERVICE_PORT_RANGES = {
@@ -145,6 +148,7 @@ CORE_SERVICE_DEPENDENCIES = {
     "whisparr": [],
     "seerr": [],
     "huntarr": [],
+    "profilarr": [],
 }
 
 CORE_SERVICE_NAMES = {
@@ -162,6 +166,7 @@ CORE_SERVICE_NAMES = {
     "whisparr": "Whisparr",
     "seerr": "Seerr",
     "huntarr": "Huntarr",
+    "profilarr": "Profilarr",
 }
 
 CORE_SERVICE_DESCRIPTIONS = {
@@ -201,6 +206,13 @@ NzbDAV Service
 - Integrates with Rclone for mounting of WebDAV content.
 
 Documentation: https://dumbarr.com/services/core/nzbdav/""",
+    "profilarr": """\
+Profilarr
+- Profile and custom format management for Sonarr and Radarr.
+- Syncs and version-controls quality profiles, custom formats, and media management settings.
+- Useful for keeping multiple Arr stacks aligned across libraries or households.
+
+Documentation: https://dumbarr.com/services/core/profilarr""",
     "plex": """\
 Plex Media Server
 - Official Plex server for organizing, streaming, and sharing your media library.

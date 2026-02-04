@@ -405,6 +405,7 @@ class ProcessHandler:
                 "riven_frontend",
                 "phalanx_db",
                 "postgres",
+                "profilarr",
             }:
                 log_file = config.get("log_file")
                 if log_file:

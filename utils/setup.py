@@ -7,9 +7,8 @@ from utils.plex import PlexInstaller
 from utils.traefik_setup import setup_traefik
 from utils.user_management import chown_recursive, chown_single
 import xml.etree.ElementTree as ET
-import os, shutil, random, subprocess, re, glob, secrets, shlex, time, urllib.parse, base64, threading
+import os, shutil, random, subprocess, re, glob, secrets, shlex, time, urllib.parse, base64, threading, sys
 
-# import yaml, platform, tarfile, tempfile, urllib.request
 
 user_id = CONFIG_MANAGER.get("puid")
 group_id = CONFIG_MANAGER.get("pgid")
@@ -821,6 +820,14 @@ def _setup_project(
                 return False, error
         if key == "seerr":
             success, error = setup_seerr(
+                process_handler,
+                install_only=install_phase and not configure_phase,
+                configure_only=configure_phase and not install_phase,
+            )
+            if not success:
+                return False, error
+        if key == "profilarr":
+            success, error = setup_profilarr(
                 process_handler,
                 install_only=install_phase and not configure_phase,
                 configure_only=configure_phase and not install_phase,
@@ -3272,6 +3279,341 @@ def setup_seerr(
     return True, None
 
 
+def _ensure_profilarr_config_override(config_path: str) -> None:
+    try:
+        with open(config_path, "r") as file:
+            content = file.read()
+    except OSError:
+        return
+
+    if "PROFILARR_CONFIG_DIR" in content:
+        return
+
+    updated = content.replace(
+        "CONFIG_DIR = '/config'",
+        "CONFIG_DIR = os.getenv('PROFILARR_CONFIG_DIR', '/config')",
+    )
+
+    if updated == content:
+        return
+
+    try:
+        with open(config_path, "w") as file:
+            file.write(updated)
+        logger.info("Patched Profilarr config to support PROFILARR_CONFIG_DIR.")
+    except OSError:
+        return
+
+
+def _sync_profilarr_static(
+    frontend_dir: str, backend_dir: str
+) -> tuple[bool, str | None]:
+    dist_dir = os.path.join(frontend_dir, "dist")
+    static_dir = os.path.join(backend_dir, "app", "static")
+    if not os.path.isdir(dist_dir):
+        return False, f"Profilarr frontend build output not found at {dist_dir}"
+    try:
+        if os.path.isdir(static_dir):
+            shutil.rmtree(static_dir)
+        shutil.copytree(dist_dir, static_dir)
+        return True, None
+    except Exception as exc:
+        return False, f"Failed to sync Profilarr static assets: {exc}"
+
+
+def _patch_profilarr_requirements(backend_dir: str) -> None:
+    req_path = os.path.join(backend_dir, "requirements.txt")
+    if not os.path.isfile(req_path):
+        return
+
+    # Profilarr pins PyYAML==5.4.1, which fails to build on Python 3.11+.
+    if sys.version_info < (3, 11):
+        return
+
+    try:
+        with open(req_path, "r") as file:
+            content = file.read()
+    except OSError:
+        return
+
+    if "PyYAML==5.4.1" not in content:
+        return
+
+    updated = content.replace("PyYAML==5.4.1", "PyYAML==6.0.1")
+    if updated == content:
+        return
+
+    try:
+        with open(req_path, "w") as file:
+            file.write(updated)
+        logger.info("Patched Profilarr requirements.txt to use PyYAML==6.0.1.")
+    except OSError:
+        return
+
+
+def setup_profilarr(
+    process_handler, install_only: bool = False, configure_only: bool = False
+):
+    config = CONFIG_MANAGER.get("profilarr", {})
+    if not config:
+        return False, "Profilarr configuration not found."
+
+    instances = config.get("instances", {})
+    if not instances:
+        logger.info("No Profilarr instances configured.")
+        return True, None
+
+    if install_only and configure_only:
+        return False, "Invalid Profilarr setup phase."
+
+    for instance_name, instance in instances.items():
+        if not instance.get("enabled", False):
+            logger.debug("Skipping disabled Profilarr instance: %s", instance_name)
+            continue
+
+        instance_config_dir = (
+            instance.get("config_dir") or f"/profilarr/{instance_name.lower()}"
+        )
+        instance["config_dir"] = instance_config_dir
+        path_changed = False
+
+        def _rewrite_profilarr_path(value):
+            if isinstance(value, str) and value.startswith("/profilarr/default"):
+                return value.replace("/profilarr/default", instance_config_dir, 1)
+            return value
+
+        exclude_dirs = instance.get("exclude_dirs", [])
+        if exclude_dirs:
+            rewritten = [_rewrite_profilarr_path(path) for path in exclude_dirs]
+            if rewritten != exclude_dirs:
+                instance["exclude_dirs"] = rewritten
+                path_changed = True
+
+        log_file = instance.get("log_file")
+        new_log_file = _rewrite_profilarr_path(log_file)
+        if new_log_file != log_file:
+            instance["log_file"] = new_log_file
+            path_changed = True
+
+        command = instance.get("command", [])
+        port_value = str(instance.get("port", 6868))
+        backend_dir = os.path.join(instance_config_dir, "backend")
+        frontend_dir = os.path.join(instance_config_dir, "frontend")
+        if isinstance(command, list):
+            updated_command = []
+            for arg in command:
+                if isinstance(arg, str):
+                    arg = _rewrite_profilarr_path(arg).replace("{port}", port_value)
+                    if arg == "backend.app.main:create_app()":
+                        arg = "app.main:create_app()"
+                updated_command.append(arg)
+            if updated_command != command:
+                instance["command"] = updated_command
+                path_changed = True
+            command = instance.get("command", updated_command)
+            if "--chdir" not in command:
+                command.insert(1, backend_dir)
+                command.insert(1, "--chdir")
+                instance["command"] = command
+                path_changed = True
+        elif isinstance(command, str):
+            updated_command = _rewrite_profilarr_path(command).replace(
+                "{port}", port_value
+            )
+            if updated_command != command:
+                instance["command"] = updated_command
+                path_changed = True
+            if "backend.app.main:create_app()" in updated_command:
+                instance["command"] = instance["command"].replace(
+                    "backend.app.main:create_app()", "app.main:create_app()"
+                )
+                updated_command = instance["command"]
+                path_changed = True
+            if "--chdir" not in updated_command:
+                instance["command"] = f"{instance['command']} --chdir {backend_dir}"
+                path_changed = True
+
+        instance_env = instance.get("env", {}) or {}
+        env_changed = False
+        config_root = os.path.join(instance_config_dir, "config")
+
+        if instance_env.get("PROFILARR_CONFIG_DIR") != config_root:
+            instance_env["PROFILARR_CONFIG_DIR"] = config_root
+            env_changed = True
+        if instance_env.get("PYTHONPATH") != backend_dir:
+            instance_env["PYTHONPATH"] = backend_dir
+            env_changed = True
+        if instance_env.get("FLASK_ENV") is None:
+            instance_env["FLASK_ENV"] = "production"
+            env_changed = True
+        instance["env"] = instance_env
+
+        if not install_only and (env_changed or path_changed):
+            CONFIG_MANAGER.save_config(instance.get("process_name"))
+
+        os.makedirs(instance_config_dir, exist_ok=True)
+        os.makedirs(config_root, exist_ok=True)
+        log_dir = os.path.join(config_root, "log")
+        os.makedirs(log_dir, exist_ok=True)
+        _chown_recursive_if_needed(
+            instance_config_dir, CONFIG_MANAGER.get("puid"), CONFIG_MANAGER.get("pgid")
+        )
+        _chown_recursive_if_needed(
+            config_root, CONFIG_MANAGER.get("puid"), CONFIG_MANAGER.get("pgid")
+        )
+        _chown_recursive_if_needed(
+            log_dir, CONFIG_MANAGER.get("puid"), CONFIG_MANAGER.get("pgid")
+        )
+
+        repo_marker = os.path.join(instance_config_dir, "backend", "app", "main.py")
+        needs_download = not os.path.isfile(repo_marker)
+        if needs_download and configure_only:
+            return False, f"Profilarr instance {instance_name} not installed."
+        if install_only and not needs_download:
+            gunicorn_bin = os.path.join(backend_dir, "venv", "bin", "gunicorn")
+            dist_dir = os.path.join(frontend_dir, "dist")
+            if os.path.isfile(gunicorn_bin) and os.path.isdir(dist_dir):
+                logger.info(
+                    "Profilarr instance %s already installed. Skipping install phase.",
+                    instance_name,
+                )
+                continue
+
+        if needs_download:
+            logger.warning(
+                "Profilarr instance %s not found at %s. Downloading...",
+                instance_name,
+                repo_marker,
+            )
+            exclude_dirs = None
+            if instance.get("clear_on_update"):
+                exclude_dirs = instance.get("exclude_dirs", [])
+                success, error = clear_directory(instance_config_dir, exclude_dirs)
+                if not success:
+                    return False, f"Failed to clear directory: {error}"
+
+            if instance.get("branch_enabled"):
+                branch = instance.get("branch", "main")
+                branch_url, zip_folder_name = downloader.get_branch(
+                    instance.get("repo_owner"),
+                    instance.get("repo_name"),
+                    branch,
+                )
+                if not branch_url:
+                    return False, f"Failed to fetch branch {branch}"
+                success, error = downloader.download_and_extract(
+                    branch_url,
+                    instance_config_dir,
+                    zip_folder_name=zip_folder_name,
+                    exclude_dirs=exclude_dirs,
+                )
+                if not success:
+                    return False, f"Failed to download Profilarr branch: {error}"
+                versions.version_write(
+                    instance.get("process_name"),
+                    key="profilarr",
+                    version_path=os.path.join(instance_config_dir, "version.txt"),
+                    version=f"branch:{branch}",
+                )
+            else:
+                release_version = instance.get("release_version", "latest")
+                version_to_write = release_version
+                if release_version.lower() == "latest":
+                    latest_version, latest_error = downloader.get_latest_release(
+                        instance.get("repo_owner"),
+                        instance.get("repo_name"),
+                        nightly=False,
+                    )
+                    if latest_version:
+                        version_to_write = latest_version
+                    else:
+                        logger.warning(
+                            "Failed to resolve latest Profilarr version: %s",
+                            latest_error,
+                        )
+                success, error = downloader.download_release_version(
+                    process_name=instance.get("process_name"),
+                    key="profilarr",
+                    repo_owner=instance.get("repo_owner"),
+                    repo_name=instance.get("repo_name"),
+                    release_version=release_version,
+                    target_dir=instance_config_dir,
+                    zip_folder_name=f"{instance.get('repo_owner')}-{instance.get('repo_name')}",
+                    exclude_dirs=exclude_dirs,
+                )
+                if not success:
+                    return False, f"Failed to download Profilarr release: {error}"
+                versions.version_write(
+                    instance.get("process_name"),
+                    key="profilarr",
+                    version_path=os.path.join(instance_config_dir, "version.txt"),
+                    version=version_to_write,
+                )
+
+            _chown_recursive_if_needed(
+                instance_config_dir,
+                CONFIG_MANAGER.get("puid"),
+                CONFIG_MANAGER.get("pgid"),
+            )
+
+        config_py = os.path.join(backend_dir, "app", "config", "config.py")
+        _ensure_profilarr_config_override(config_py)
+        _patch_profilarr_requirements(backend_dir)
+
+        # Ensure gunicorn path points to the backend venv
+        command = instance.get("command")
+        expected_gunicorn = os.path.join(backend_dir, "venv", "bin", "gunicorn")
+        if isinstance(command, list):
+            if (
+                command
+                and isinstance(command[0], str)
+                and command[0] != expected_gunicorn
+            ):
+                if command[0].endswith("/venv/bin/gunicorn"):
+                    command[0] = expected_gunicorn
+                    instance["command"] = command
+                    CONFIG_MANAGER.save_config(instance.get("process_name"))
+        elif isinstance(command, str):
+            if "/venv/bin/gunicorn" in command and expected_gunicorn not in command:
+                instance["command"] = command.replace(
+                    command.split()[0], expected_gunicorn, 1
+                )
+                CONFIG_MANAGER.save_config(instance.get("process_name"))
+
+        if instance.get("platforms") and not configure_only:
+            success, error = setup_environment(
+                process_handler,
+                "profilarr",
+                instance.get("platforms"),
+                instance_config_dir,
+                platform_dirs={"python": backend_dir, "pnpm": frontend_dir},
+            )
+            if not success:
+                return (
+                    False,
+                    f"Failed to set up environment for Profilarr instance {instance_name}: {error}",
+                )
+            success, error = _sync_profilarr_static(frontend_dir, backend_dir)
+            if not success:
+                return False, error
+            _chown_recursive_if_needed(
+                backend_dir, CONFIG_MANAGER.get("puid"), CONFIG_MANAGER.get("pgid")
+            )
+            static_dir = os.path.join(backend_dir, "app", "static")
+            if os.path.isdir(static_dir):
+                _chown_recursive_if_needed(
+                    static_dir,
+                    CONFIG_MANAGER.get("puid"),
+                    CONFIG_MANAGER.get("pgid"),
+                )
+
+        if install_only:
+            continue
+
+    logger.info("Profilarr setup complete.")
+    return True, None
+
+
 def setup_huntarr(
     process_handler, install_only: bool = False, configure_only: bool = False
 ):
@@ -5081,9 +5423,12 @@ def setup_pnpm_environment(process_handler, config_dir):
                     logger.debug("Failed to remove pnpm tmp path %s: %s", path, e)
 
         for attempt in range(5):
-            pnpm_cmd = ["pnpm", "install"]
+            pnpm_cmd = ["pnpm", "install", "--force"]
             if use_corepack_pnpm:
-                pnpm_cmd = ["corepack", "pnpm", "install"]
+                pnpm_cmd = ["corepack", "pnpm", "install", "--force"]
+            env = env or {}
+            env.setdefault("PNPM_YES", "1")
+            env.setdefault("CI", "1")
             process_handler.start_process("pnpm_install", config_dir, pnpm_cmd, env=env)
             process_handler.wait("pnpm_install")
             if process_handler.returncode == 0:

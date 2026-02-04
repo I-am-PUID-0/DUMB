@@ -183,6 +183,7 @@ def migrate_symlinks():
                 ("/whisparr", os.path.join(data_root, "whisparr")),
                 ("/traefik", os.path.join(data_root, "traefik")),
                 ("/huntarr", os.path.join(data_root, "huntarr")),
+                ("/profilarr", os.path.join(data_root, "profilarr")),
             ]
 
             for original_path, data_path in symlink_map:

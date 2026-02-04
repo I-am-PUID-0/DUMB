@@ -100,6 +100,14 @@ class Versions:
                     config.get("config_dir", "/seerr/default"), "version.txt"
                 )
                 is_file = True
+            elif key == "profilarr":
+                config = CONFIG_MANAGER.get_instance(instance_name, key)
+                if not config:
+                    raise ValueError(f"Configuration for {process_name} not found.")
+                version_path = os.path.join(
+                    config.get("config_dir", "/profilarr/default"), "version.txt"
+                )
+                is_file = True
             elif key == "riven_frontend":
                 version_path = "/riven/frontend/version.txt"
                 is_file = True
@@ -274,6 +282,7 @@ class Versions:
             if is_file:
                 try:
                     with open(version_path, "r") as f:
+                        version = None
                         if key == "dumb_frontend":
                             try:
                                 data = json.load(f)
@@ -311,6 +320,7 @@ class Versions:
                             or key == "tautulli"
                             or key == "huntarr"
                             or key == "seerr"
+                            or key == "profilarr"
                             or key == "emby"
                         ):
                             version = f.read().strip()
@@ -363,6 +373,10 @@ class Versions:
                     f.write(version)
             elif key == "seerr":
                 version_path = version_path or "/seerr/default/version.txt"
+                with open(version_path, "w") as f:
+                    f.write(version)
+            elif key == "profilarr":
+                version_path = version_path or "/profilarr/default/version.txt"
                 with open(version_path, "w") as f:
                     f.write(version)
             elif key == "emby":

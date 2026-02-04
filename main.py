@@ -667,6 +667,18 @@ def _build_dependency_map(config_manager) -> dict[str, set[str]]:
     if prowlarr_deps:
         deps["prowlarr"] = prowlarr_deps
 
+    profilarr_deps = set()
+    if _service_has_enabled_instance(config_manager.get("sonarr", {})):
+        profilarr_deps.add("sonarr")
+    if _service_has_enabled_instance(config_manager.get("radarr", {})):
+        profilarr_deps.add("radarr")
+    if _service_has_enabled_instance(config_manager.get("lidarr", {})):
+        profilarr_deps.add("lidarr")
+    if _service_has_enabled_instance(config_manager.get("whisparr", {})):
+        profilarr_deps.add("whisparr")
+    if profilarr_deps:
+        deps["profilarr"] = profilarr_deps
+
     huntarr_deps = set()
     if _service_has_huntarr_instance(config_manager.get("sonarr", {})):
         huntarr_deps.add("sonarr")
@@ -847,6 +859,7 @@ def main():
             "whisparr",
             "prowlarr",
             "huntarr",
+            "profilarr",
             "decypharr",
             "nzbdav",
             "rclone",

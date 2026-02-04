@@ -832,9 +832,26 @@ class Update:
             return self.start_process(process_name, config, key, instance_name)
         else:
             self.logger.info(f"Automatic update disabled for {process_name}")
-            success, error = setup_project(self.process_handler, process_name)
+            if (
+                self.process_handler.preinstall_complete
+                and process_name in self.process_handler.preinstalled_processes
+            ):
+                success, setup_error = configure_project(
+                    self.process_handler, process_name
+                )
+                if not success:
+                    self.logger.warning(
+                        "Configure-only setup failed for %s (%s). Falling back to full setup.",
+                        process_name,
+                        setup_error,
+                    )
+                    success, setup_error = setup_project(
+                        self.process_handler, process_name
+                    )
+            else:
+                success, setup_error = setup_project(self.process_handler, process_name)
             if not success:
-                return None, error
+                return None, setup_error
 
             return self.start_process(process_name, config, key, instance_name)
 
