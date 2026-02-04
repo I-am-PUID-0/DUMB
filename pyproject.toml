@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "DUMB"
-version = "2.0.0"
+version = "2.1.0"
 description = "Debrid Unlimited Media Bridge (DUMB) is an all-in-one, containerized platform for managing and automating media workflows using premium debrid services like Real-Debrid."
 authors = ["I-am-PUID-0 <36779668+I-am-PUID-0@users.noreply.github.com>"]
 readme = "README.md"
