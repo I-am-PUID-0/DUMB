@@ -268,6 +268,8 @@ def start_configured_process(config_obj, updater, key_name, exit_on_error=True):
                             error,
                         )
                     any_enabled = True
+            if key_name in {"profilarr", "sonarr", "radarr"}:
+                _run_profilarr_sync_retries(key_name)
             if not any_enabled:
                 logger.debug(f"No enabled instances found in {key_name}. Skipping.")
         elif config_obj.get("enabled"):
@@ -276,6 +278,8 @@ def start_configured_process(config_obj, updater, key_name, exit_on_error=True):
             success, error = updater.auto_update(process_name, auto)
             if not success and error:
                 logger.error("Startup for %s failed: %s", process_name, error)
+            if key_name in {"profilarr", "sonarr", "radarr"}:
+                _run_profilarr_sync_retries(key_name)
         else:
             logger.debug(f"{key_name} is disabled. Skipping process start.")
     except Exception as e:
@@ -329,6 +333,30 @@ def _enable_huntarr_if_needed(config_manager) -> None:
     if isinstance(first, dict):
         first["enabled"] = True
         config_manager.save_config()
+
+
+def _run_profilarr_sync_retries(start_key: str) -> None:
+    try:
+        from utils.profilarr_settings import (
+            any_arr_uses_profilarr,
+            patch_profilarr_config,
+        )
+
+        if start_key != "profilarr" and not any_arr_uses_profilarr():
+            return
+        ok, err = patch_profilarr_config()
+        if not ok and err:
+            logger.warning("Profilarr config sync failed: %s", err)
+        if start_key in {"sonarr", "radarr"}:
+            for attempt in range(2):
+                time.sleep(10)
+                ok, err = patch_profilarr_config()
+                if ok:
+                    break
+                if err:
+                    logger.warning("Profilarr config retry %s failed: %s", attempt + 1, err)
+    except Exception as exc:
+        logger.warning("Profilarr config sync skipped: %s", exc)
 
 
 def _read_decypharr_mount_path(decypharr_cfg: dict) -> str | None:

@@ -3607,6 +3607,24 @@ def setup_profilarr(
                     CONFIG_MANAGER.get("pgid"),
                 )
 
+        if not install_only:
+            try:
+                from utils.profilarr_settings import sync_profilarr_arr_configs
+
+                success, error = sync_profilarr_arr_configs(instance)
+                if not success and error:
+                    logger.warning(
+                        "Profilarr auto-link failed for %s: %s",
+                        instance_name,
+                        error,
+                    )
+            except Exception as exc:
+                logger.warning(
+                    "Profilarr auto-link raised an exception for %s: %s",
+                    instance_name,
+                    exc,
+                )
+
         if install_only:
             continue
 

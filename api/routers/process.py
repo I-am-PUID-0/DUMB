@@ -393,6 +393,7 @@ SERVICE_OPTION_DESCRIPTIONS = {
     "origin": "CORS origin for the service",
     "use_embedded_rclone": "If true, uses the embedded rclone for Decypharr. (Recommended)",
     "use_huntarr": "If true, auto-configures Huntarr for this Arr instance.",
+    "use_profilarr": "If true, auto-configures Profilarr for this Arr instance.",
     "core_service": "Specifies which core service(s) this service applies to; e.g., decypharr, nzbdav, both (decypharr,nzbdav), or none (blank).",
     "webdav_password": "Password for accessing the NzbDAV WebDAV service. Leave blank to auto-generate.",
 }
@@ -588,6 +589,35 @@ async def start_service(
                             logger.warning("Huntarr config sync failed: %s", err)
                 except Exception as e:
                     logger.warning("Huntarr config sync skipped: %s", e)
+            if key in [
+                "profilarr",
+                "sonarr",
+                "radarr",
+            ]:
+                try:
+                    from utils.profilarr_settings import (
+                        any_arr_uses_profilarr,
+                        patch_profilarr_config,
+                    )
+
+                    if key == "profilarr" or any_arr_uses_profilarr():
+                        ok, err = patch_profilarr_config()
+                        if not ok and err:
+                            logger.warning("Profilarr config sync failed: %s", err)
+                        if key in ["sonarr", "radarr"]:
+                            for attempt in range(2):
+                                time.sleep(10)
+                                ok, err = patch_profilarr_config()
+                                if ok:
+                                    break
+                                if err:
+                                    logger.warning(
+                                        "Profilarr config retry %s failed: %s",
+                                        attempt + 1,
+                                        err,
+                                    )
+                except Exception as e:
+                    logger.warning("Profilarr config sync skipped: %s", e)
             return {
                 "status": "Service started successfully",
                 "process_name": process_name,
@@ -720,6 +750,35 @@ async def restart_service(
                             logger.warning("Huntarr config sync failed: %s", err)
                 except Exception as e:
                     logger.warning("Huntarr config sync skipped: %s", e)
+            if key in [
+                "profilarr",
+                "sonarr",
+                "radarr",
+            ]:
+                try:
+                    from utils.profilarr_settings import (
+                        any_arr_uses_profilarr,
+                        patch_profilarr_config,
+                    )
+
+                    if key == "profilarr" or any_arr_uses_profilarr():
+                        ok, err = patch_profilarr_config()
+                        if not ok and err:
+                            logger.warning("Profilarr config sync failed: %s", err)
+                        if key in ["sonarr", "radarr"]:
+                            for attempt in range(2):
+                                time.sleep(10)
+                                ok, err = patch_profilarr_config()
+                                if ok:
+                                    break
+                                if err:
+                                    logger.warning(
+                                        "Profilarr config retry %s failed: %s",
+                                        attempt + 1,
+                                        err,
+                                    )
+                except Exception as e:
+                    logger.warning("Profilarr config sync skipped: %s", e)
 
             status = api_state.get_status(process_name)
             if status != "running":
@@ -1386,7 +1445,12 @@ def _run_startup(request: UnifiedStartRequest, updater, api_state, logger):
         pg_name = pg["process_name"]
         is_running = api_state.get_status(pg_name) == "running"
         _reserve_config_port(
-            "postgres", pg, "port", used_ports, logger, allow_in_use_for_owner=is_running
+            "postgres",
+            pg,
+            "port",
+            used_ports,
+            logger,
+            allow_in_use_for_owner=is_running,
         )
         logger.info(f"Ensuring '{pg_name}' is running for optional service(s)...")
         if not wait_for_process_running(api_state, pg_name):
@@ -2009,6 +2073,26 @@ def _run_startup(request: UnifiedStartRequest, updater, api_state, logger):
                     logger.warning("Huntarr config sync failed: %s", err)
     except Exception as exc:
         logger.warning("Huntarr auto-config skipped: %s", exc)
+
+    try:
+        from utils.profilarr_settings import (
+            any_arr_uses_profilarr,
+            patch_profilarr_config,
+        )
+
+        if any_arr_uses_profilarr():
+            ok, err = patch_profilarr_config()
+            if not ok and err:
+                logger.warning("Profilarr config sync failed: %s", err)
+            for attempt in range(2):
+                time.sleep(10)
+                ok, err = patch_profilarr_config()
+                if ok:
+                    break
+                if err:
+                    logger.warning("Profilarr config retry %s failed: %s", attempt + 1, err)
+    except Exception as exc:
+        logger.warning("Profilarr auto-config skipped: %s", exc)
 
     # Final persist & reload to ensure in-memory matches on-disk
     CONFIG_MANAGER.save_config()

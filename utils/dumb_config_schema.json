@@ -2226,6 +2226,11 @@
                 "use_huntarr": {
                   "type": "boolean"
                 },
+                "use_profilarr": {
+                  "type": "boolean",
+                  "default": false,
+                  "description": "If true, DUMB will auto-link this Arr instance to Profilarr when Profilarr core_service matches."
+                },
                 "process_name": {
                   "type": "string"
                 },
@@ -2291,6 +2296,7 @@
                 "enabled",
                 "core_service",
                 "use_huntarr",
+                "use_profilarr",
                 "process_name",
                 "suppress_logging",
                 "auto_update",
@@ -2671,6 +2677,11 @@
                 "use_huntarr": {
                   "type": "boolean"
                 },
+                "use_profilarr": {
+                  "type": "boolean",
+                  "default": false,
+                  "description": "If true, DUMB will auto-link this Arr instance to Profilarr when Profilarr core_service matches."
+                },
                 "process_name": {
                   "type": "string"
                 },
@@ -2742,6 +2753,7 @@
                 "enabled",
                 "core_service",
                 "use_huntarr",
+                "use_profilarr",
                 "process_name",
                 "suppress_logging",
                 "auto_update",
