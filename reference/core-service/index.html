@@ -1582,6 +1582,8 @@
       
         
       
+        
+      
     
     
     
@@ -2077,6 +2079,36 @@
     
   
     Huntarr
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/core/profilarr/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-sliders" viewBox="0 0 24 24"><path d="M10 8h4M12 21v-9M12 8V3M17 16h4M19 12V3M19 21v-5M3 14h4M5 10V3M5 21v-7"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    Profilarr
   
 
     
@@ -4485,6 +4517,10 @@ still allowing multiple instances of the same Arr service.</p>
 <td>Filters which Arr instances are sent to Huntarr.</td>
 </tr>
 <tr>
+<td>Profilarr instances</td>
+<td>Filters which Arr instances are auto-linked to Profilarr.</td>
+</tr>
+<tr>
 <td>rclone/zurg instances</td>
 <td>Labels the instance for the workflow it supports.</td>
 </tr>
@@ -4501,6 +4537,7 @@ flowchart TD
     PROWLARR[Prowlarr apps + tags]
     IDX[Tagged indexers]
     HUNTARR[Huntarr instance]
+    PROFILARR[Profilarr instance]
 
     ARR ==&gt; CS
     CS -- decypharr --&gt; DEC
@@ -4509,7 +4546,8 @@ flowchart TD
     NZB ==&gt; PROWLARR
     PROWLARR ==&gt; IDX
     IDX ==&gt; ARR
-    CS ==&gt; HUNTARR</code></pre>
+    CS ==&gt; HUNTARR
+    CS ==&gt; PROFILARR</code></pre>
 <hr />
 <h2 id="supported-values">Supported values<a class="headerlink" href="#supported-values" title="Permanent link">&para;</a></h2>
 <p>Use one or more of the core workflow keys:</p>
@@ -4552,6 +4590,11 @@ root folder base at <code>/mnt/debrid/combined_symlinks/&lt;slug&gt;</code> for 
 <ul>
 <li>Sends Arr instances whose core services overlap the Huntarr instance.</li>
 </ul>
+<p>When <code>core_service</code> is set on a Profilarr instance, DUMB:</p>
+<ul>
+<li>Auto-links only Arr instances whose core services overlap the Profilarr instance.</li>
+<li>Seeds profile/custom format/regex/media-management sync for those Arr instances (when <code>use_profilarr</code> is enabled on the Arr).</li>
+</ul>
 <hr />
 <h2 id="example-split-debrid-and-usenet-workflows">Example: split Debrid and Usenet workflows<a class="headerlink" href="#example-split-debrid-and-usenet-workflows" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="nt">&quot;radarr&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
@@ -4560,12 +4603,14 @@ root folder base at <code>/mnt/debrid/combined_symlinks/&lt;slug&gt;</code> for 
 <span class="w">      </span><span class="nt">&quot;enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
 <span class="w">      </span><span class="nt">&quot;core_service&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;decypharr&quot;</span><span class="p">,</span>
 <span class="w">      </span><span class="nt">&quot;use_huntarr&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;use_profilarr&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
 <span class="w">      </span><span class="nt">&quot;port&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">7878</span>
 <span class="w">    </span><span class="p">},</span>
 <span class="w">    </span><span class="nt">&quot;Usenet&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">      </span><span class="nt">&quot;enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
 <span class="w">      </span><span class="nt">&quot;core_service&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;nzbdav&quot;</span><span class="p">,</span>
 <span class="w">      </span><span class="nt">&quot;use_huntarr&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;use_profilarr&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
 <span class="w">      </span><span class="nt">&quot;port&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">7879</span>
 <span class="w">    </span><span class="p">}</span>
 <span class="w">  </span><span class="p">}</span>
@@ -4576,13 +4621,15 @@ root folder base at <code>/mnt/debrid/combined_symlinks/&lt;slug&gt;</code> for 
 <li>The Debrid Radarr instance syncs with Decypharr and Debrid indexers.</li>
 <li>The Usenet Radarr instance syncs with NzbDAV and Usenet indexers.</li>
 <li>Huntarr only receives the Debrid instance because <code>use_huntarr</code> is set there.</li>
+<li>Profilarr only links the Debrid instance because <code>use_profilarr</code> is set there.</li>
 </ul>
 <h2 id="example-combine-workflows-on-one-arr-instance">Example: combine workflows on one Arr instance<a class="headerlink" href="#example-combine-workflows-on-one-arr-instance" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="nt">&quot;sonarr&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;instances&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">    </span><span class="nt">&quot;Combined&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">      </span><span class="nt">&quot;core_service&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;decypharr&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;nzbdav&quot;</span><span class="p">],</span>
-<span class="w">      </span><span class="nt">&quot;use_huntarr&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span>
+<span class="w">      </span><span class="nt">&quot;use_huntarr&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;use_profilarr&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span>
 <span class="w">    </span><span class="p">}</span>
 <span class="w">  </span><span class="p">}</span>
 <span class="p">}</span>
