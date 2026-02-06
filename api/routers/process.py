@@ -391,7 +391,8 @@ SERVICE_OPTION_DESCRIPTIONS = {
     "setup_email": "Email address pgAdmin4 login.",
     "setup_password": "Password for pgAdmin4 login.",
     "origin": "CORS origin for the service",
-    "use_embedded_rclone": "If true, uses the embedded rclone for Decypharr. (Recommended)",
+    "mount_type": "Decypharr mount type: dfs, rclone, external_rclone, or none.",
+    "mount_path": "Decypharr mount path for DFS or rclone mounts.",
     "use_huntarr": "If true, auto-configures Huntarr for this Arr instance.",
     "use_profilarr": "If true, auto-configures Profilarr for this Arr instance.",
     "core_service": "Specifies which core service(s) this service applies to; e.g., decypharr, nzbdav, both (decypharr,nzbdav), or none (blank).",
@@ -1559,19 +1560,52 @@ def _run_startup(request: UnifiedStartRequest, updater, api_state, logger):
                 effective_opts.update(so[instance_name])
 
             # Fall back to persisted config if the flag isn't in service_options
-            use_embedded = bool(
+            branch_name = (
                 effective_opts.get(
-                    "use_embedded_rclone",
-                    (config.get(config_key, {}) or {}).get(
-                        "use_embedded_rclone", False
-                    ),
+                    "branch",
+                    (config.get(config_key, {}) or {}).get("branch"),
                 )
+                or ""
             )
+            beta_enabled = str(branch_name).strip().lower() == "beta"
+            mount_type = (
+                effective_opts.get(
+                    "mount_type",
+                    (config.get(config_key, {}) or {}).get("mount_type"),
+                )
+                or ""
+            )
+            mount_type = str(mount_type).strip().lower()
+            if beta_enabled and not mount_type:
+                mount_type = "dfs"
+            if not mount_type and not beta_enabled:
+                mount_type = "rclone"
+
+            if config_key == "decypharr" and beta_enabled:
+                # Beta builds use branch deployments; default to beta unless overridden
+                desired_branch = effective_opts.get("branch") or "beta"
+                cfg = config.get(config_key, {}) or {}
+                updated = False
+                if not cfg.get("branch_enabled"):
+                    cfg["branch_enabled"] = True
+                    updated = True
+                if (cfg.get("branch") or "").strip() != desired_branch:
+                    cfg["branch"] = desired_branch
+                    updated = True
+                if cfg.get("release_version_enabled"):
+                    cfg["release_version_enabled"] = False
+                    updated = True
+                if cfg.get("mount_type") != mount_type:
+                    cfg["mount_type"] = mount_type
+                    updated = True
+                if updated:
+                    config[config_key] = cfg
+                    CONFIG_MANAGER.save_config()
 
             # If decypharr uses embedded rclone, drop rclone from deps *now*
-            if config_key == "decypharr" and use_embedded:
+            if config_key == "decypharr" and mount_type in ("rclone", "dfs", "none", ""):
                 logger.debug(
-                    "Decypharr is using embedded rclone; removing 'rclone' from dependencies."
+                    "Decypharr does not require DUMB rclone; removing 'rclone' from dependencies."
                 )
                 dependencies = [d for d in dependencies if d != "rclone"]
                 # Ensure api_keys map exists in decypharr config

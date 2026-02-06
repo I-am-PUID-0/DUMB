@@ -5,6 +5,8 @@ import os, subprocess, json, re, requests, shlex
 
 
 class Versions:
+    _latest_release_cache = {}
+
     def __init__(self):
         self.logger = logger
         self.downloader = Downloader()
@@ -19,6 +21,36 @@ class Versions:
         # Collapse non-digit separators into dots and remove empties
         parts = re.findall(r"\d+", value)
         return ".".join(parts) if parts else value
+
+    @staticmethod
+    def _parse_version_tuple(version: str | None) -> tuple | None:
+        if not version:
+            return None
+        value = str(version).strip()
+        if value.startswith("v"):
+            value = value[1:]
+        parts = re.findall(r"\d+", value)
+        if not parts:
+            return None
+        return tuple(int(p) for p in parts)
+
+    def is_latest_release_gt(self, repo_owner: str, repo_name: str, base_version: str):
+        cache_key = f"{repo_owner}/{repo_name}"
+        if cache_key in self._latest_release_cache:
+            latest_tag = self._latest_release_cache[cache_key]
+        else:
+            latest_tag, error = self.downloader.get_latest_release(
+                repo_owner, repo_name, nightly=False, prerelease=False
+            )
+            if not latest_tag:
+                return False, None, error or "Failed to fetch latest release tag"
+            self._latest_release_cache[cache_key] = latest_tag
+
+        latest_tuple = self._parse_version_tuple(latest_tag)
+        base_tuple = self._parse_version_tuple(base_version)
+        if not latest_tuple or not base_tuple:
+            return False, latest_tag, "Invalid version format for comparison"
+        return latest_tuple > base_tuple, latest_tag, None
 
     def read_arr_version_from_dir(self, key: str, install_dir: str):
         dll_path = os.path.join(

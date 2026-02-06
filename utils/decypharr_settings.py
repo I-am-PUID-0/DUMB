@@ -1,6 +1,7 @@
 from utils.global_logger import logger
 from utils.config_loader import CONFIG_MANAGER
 from utils.core_services import get_core_services, has_core_service
+from utils.versions import Versions
 from collections import OrderedDict
 import os, json, time
 import threading
@@ -179,6 +180,32 @@ def _normalize_path(p: str) -> str:
     return os.path.normpath((p or "").rstrip("/"))
 
 
+def _debrid_key(entry: dict) -> str:
+    if not isinstance(entry, dict):
+        return ""
+    return (entry.get("provider") or entry.get("name") or "").strip().lower()
+
+
+def _has_usenet_providers(config_data: dict) -> bool:
+    try:
+        providers = (config_data.get("usenet") or {}).get("providers") or []
+        return bool([p for p in providers if isinstance(p, dict) and p.get("host")])
+    except Exception:
+        return False
+
+
+def _read_decypharr_api_token(config_dir: str) -> str:
+    auth_path = os.path.join(config_dir or "/decypharr", "auth.json")
+    try:
+        if not os.path.exists(auth_path):
+            return ""
+        with open(auth_path, "r") as handle:
+            data = json.load(handle)
+        return (data.get("api_token") or "").strip()
+    except Exception:
+        return ""
+
+
 def _arr_url(host: str, api_version: str, path: str) -> str:
     return _join(host, f"/api/{api_version}/{path.lstrip('/')}")
 
@@ -328,6 +355,19 @@ def _get_qbt_schema(host: str, key: str, api_version: str = "v3"):
         if "qbit" in impl or "qbit" in name:
             return item
     return schemas[0] if schemas else None
+
+
+def _get_sab_schema(host: str, key: str, api_version: str = "v3"):
+    schemas = (
+        _arr_req(_arr_url(host, api_version, "downloadclient/schema"), key, "GET")
+        or []
+    )
+    for item in schemas:
+        impl = (item.get("implementation") or "").lower()
+        name = (item.get("implementationName") or "").lower()
+        if "sab" in impl or "sab" in name:
+            return item
+    return None
 
 
 def _build_fields_from_schema(schema: dict, overrides: dict) -> list:
@@ -526,6 +566,115 @@ def ensure_decypharr_download_client(
     return True, client_id
 
 
+def ensure_decypharr_sabnzbd_client(
+    arr_host: str,
+    arr_api_key: str,
+    decypharr_port: int,
+    api_token: str,
+    service: str,
+    name: str = "decypharr-usenet",
+    category_map: Optional[dict] = None,
+    category: Optional[str] = None,
+    test_before_save: bool = False,
+    api_version: str = "v3",
+) -> Tuple[bool, Optional[int]]:
+    """Create or update a Sabnzbd client named `decypharr-usenet` that points to Decypharr."""
+
+    def _set_field(fields_list, field_name: str, value) -> bool:
+        for f in fields_list or []:
+            if (f.get("name") or "").lower() == field_name.lower():
+                f["value"] = value
+                return True
+        return False
+
+    service = (service or "").lower()
+    effective_category = (category or "").strip() or (category_map or {}).get(
+        service, service
+    )
+
+    schema = _get_sab_schema(arr_host, arr_api_key, api_version=api_version)
+    if not schema:
+        raise RuntimeError("Could not fetch Sabnzbd schema from Arr")
+
+    fields_schema = schema.get("fields") or []
+    schema_names = {str(f.get("name") or "").lower() for f in fields_schema}
+
+    overrides = {
+        "host": "127.0.0.1",
+        "port": int(decypharr_port),
+        "useSsl": False,
+        "urlBase": "",
+        "apiKey": api_token,
+    }
+
+    for key, value in overrides.items():
+        if key.lower() in schema_names:
+            overrides[key] = value
+
+    # Try common category field names
+    for key in ["category", "nzbcategory"]:
+        if key in schema_names:
+            overrides[key] = effective_category
+
+    fields = _build_fields_from_schema(schema, overrides)
+    _set_field(fields, "category", effective_category)
+    _set_field(fields, "nzbCategory", effective_category)
+
+    desired = {
+        "name": name,
+        "enable": True,
+        "protocol": "usenet",
+        "priority": 1,
+        "removeCompletedDownloads": True,
+        "removeFailedDownloads": True,
+        "implementation": schema.get("implementation"),
+        "implementationName": schema.get("implementationName"),
+        "configContract": schema.get("configContract"),
+        "infoLink": schema.get("infoLink"),
+        "tags": [],
+        "fields": fields,
+    }
+
+    if test_before_save:
+        _arr_req(
+            _arr_url(arr_host, api_version, "downloadclient/test"),
+            arr_api_key,
+            "POST",
+            desired,
+        )
+
+    existing = (
+        _arr_req(_arr_url(arr_host, api_version, "downloadclient"), arr_api_key, "GET")
+        or []
+    )
+    match = next(
+        (c for c in existing if (c.get("name") or "").lower() == name.lower()), None
+    )
+
+    if match:
+        client_id = match.get("id")
+        put_body = desired.copy()
+        put_body["id"] = client_id
+        _arr_req(
+            _arr_url(arr_host, api_version, f"downloadclient/{client_id}"),
+            arr_api_key,
+            "PUT",
+            put_body,
+        )
+        return True, client_id
+
+    created = (
+        _arr_req(
+            _arr_url(arr_host, api_version, "downloadclient"),
+            arr_api_key,
+            "POST",
+            desired,
+        )
+        or {}
+    )
+    return True, created.get("id")
+
+
 # ---------------------------------------------------------------------------
 # Resilience helpers (wait + retries)
 # ---------------------------------------------------------------------------
@@ -652,9 +801,52 @@ def patch_decypharr_config():
         desired_port = str(decypharr_config.get("port", 8282))
         user_id = CONFIG_MANAGER.get("puid")
         group_id = CONFIG_MANAGER.get("pgid")
+        branch_name = (decypharr_config.get("branch") or "").strip().lower()
+        beta_enabled = branch_name == "beta"
+        versions = Versions()
+        supports_stable_features = False
+        latest_release = None
+        try:
+            repo_owner = decypharr_config.get("repo_owner", "sirrobot01")
+            repo_name = decypharr_config.get("repo_name", "decypharr")
+            supports_stable_features, latest_release, _ = versions.is_latest_release_gt(
+                repo_owner, repo_name, "1.1.6"
+            )
+        except Exception as e:
+            logger.debug("Decypharr release check failed: %s", e)
+        features_enabled = beta_enabled or supports_stable_features
+        mount_type = (decypharr_config.get("mount_type") or "").strip().lower()
+        if features_enabled and not mount_type:
+            mount_type = "dfs"
+        if not mount_type and not features_enabled:
+            # Legacy default when mount_type is unset
+            mount_type = "rclone"
+        mount_path = (decypharr_config.get("mount_path") or "/mnt/debrid/decypharr").strip()
+        logger.info(
+            "Decypharr config patch: path=%s beta=%s stable=%s latest=%s mount_type=%s mount_path=%s",
+            config_path,
+            beta_enabled,
+            supports_stable_features,
+            latest_release or "unknown",
+            mount_type or "(empty)",
+            mount_path,
+        )
+        if features_enabled:
+            cfg_updated = False
+            if not decypharr_config.get("branch_enabled"):
+                decypharr_config["branch_enabled"] = True
+                cfg_updated = True
+            if (decypharr_config.get("branch") or "").strip() != "beta":
+                decypharr_config["branch"] = "beta"
+                cfg_updated = True
+            if decypharr_config.get("release_version_enabled"):
+                decypharr_config["release_version_enabled"] = False
+                cfg_updated = True
+            if cfg_updated:
+                CONFIG_MANAGER.save_config()
 
         # Embedded rclone toggle + api_keys map (provider -> api_key)
-        use_embedded = bool(decypharr_config.get("use_embedded_rclone", False))
+        use_embedded = mount_type == "rclone"
         api_keys_map = {
             (k or "").strip().lower(): (v or "").strip()
             for k, v in (decypharr_config.get("api_keys") or {}).items()
@@ -664,7 +856,7 @@ def patch_decypharr_config():
         # Default embedded rclone block (merged with any existing)
         default_embedded_rclone = {
             "enabled": True,
-            "mount_path": "/mnt/debrid/decypharr",
+            "mount_path": mount_path,
             "vfs_cache_mode": "off",
             "vfs_cache_max_age": "1h",
             "vfs_cache_poll_interval": "1m",
@@ -716,7 +908,7 @@ def patch_decypharr_config():
             updated = True
 
         # Ensure embedded rclone block when enabled (merge defaults without clobbering)
-        if use_embedded:
+        if use_embedded or (features_enabled and mount_type == "rclone"):
             embedded_rc = config_data.get("rclone", {})
             merged_rc = {**default_embedded_rclone, **(embedded_rc or {})}
             if embedded_rc != merged_rc:
@@ -726,98 +918,269 @@ def patch_decypharr_config():
                 )
                 updated = True
 
+        # Feature mount config (DFS / rclone / external)
+        if features_enabled:
+            if "mount" in config_data:
+                logger.info(
+                    "Decypharr config patch: mount key present (type=%s keys=%s)",
+                    type(config_data.get("mount")).__name__,
+                    list((config_data.get("mount") or {}).keys()),
+                )
+            else:
+                logger.info("Decypharr config patch: mount key missing in config")
+            mount_block = config_data.get("mount") or {}
+            desired_type = mount_type or (mount_block.get("type") or "dfs")
+            desired_mount_path = mount_path
+            if mount_block.get("type") != desired_type:
+                mount_block["type"] = desired_type
+                updated = True
+            if mount_block.get("mount_path") != desired_mount_path:
+                mount_block["mount_path"] = desired_mount_path
+                updated = True
+            if desired_type == "dfs":
+                dfs_cfg = decypharr_config.get("dfs") or {}
+                dfs_defaults = {
+                    "cache_dir": "/decypharr/cache/dfs",
+                    "chunk_size": "10MB",
+                    "disk_cache_size": "50GB",
+                    "cache_expiry": "24h",
+                    "cache_cleanup_interval": "1h",
+                    "daemon_timeout": "30m",
+                    "uid": int(user_id) if user_id is not None else 0,
+                    "gid": int(group_id) if group_id is not None else 0,
+                    "umask": "022",
+                    "allow_other": True,
+                    "default_permissions": True,
+                }
+                merged_dfs = {**dfs_defaults, **(mount_block.get("dfs") or {}), **dfs_cfg}
+                if mount_block.get("dfs") != merged_dfs:
+                    mount_block["dfs"] = merged_dfs
+                    updated = True
+            elif desired_type == "rclone":
+                embedded_rc = config_data.get("rclone", {})
+                merged_rc = {**default_embedded_rclone, **(embedded_rc or {})}
+                if mount_block.get("rclone") != merged_rc:
+                    mount_block["rclone"] = merged_rc
+                    updated = True
+            elif desired_type == "external_rclone":
+                rc_inst = debrid_instances[0] if debrid_instances else None
+                rc_url = _safe_extract_rc_url(rc_inst, "http://127.0.0.1:5572")
+                external_rc = mount_block.get("external_rclone") or {}
+                desired_external = {
+                    "rc_url": rc_url,
+                    "rc_username": external_rc.get("rc_username", ""),
+                    "rc_password": external_rc.get("rc_password", ""),
+                }
+                if external_rc != desired_external:
+                    mount_block["external_rclone"] = desired_external
+                    updated = True
+            config_data["mount"] = mount_block
+            if not config_data.get("download_folder"):
+                config_data["download_folder"] = "/mnt/debrid/decypharr_downloads"
+                updated = True
+
         # Bootstrap defaults if config is minimal
         if "debrids" not in config_data and "usenet" not in config_data:
             logger.info(
                 "Default Decypharr config detected. Patching extended settings..."
             )
 
-            # Prepare debrids list
-            config_data["debrids"] = []
-
-            if use_embedded:
-                # Create debrids from api_keys_map (embedded path)
-                mount_root = config_data.get("rclone", {}).get(
-                    "mount_path", default_embedded_rclone["mount_path"]
-                )
+            if features_enabled:
+                config_data["debrids"] = []
                 for name_lc, api_key in api_keys_map.items():
-                    folder = _provider_folder(name_lc, mount_root) + "/"
                     config_data["debrids"].append(
                         {
+                            "provider": name_lc,
                             "name": name_lc,
                             "api_key": api_key,
                             "download_api_keys": [api_key],
-                            "folder": folder,
                             "rate_limit": "250/minute",
-                            "use_webdav": True,
-                            "torrents_refresh_interval": "15s",
-                            "download_links_refresh_interval": "40m",
-                            "workers": 50,
+                            "torrents_refresh_interval": "10m",
+                            "download_links_refresh_interval": "5m",
+                            "workers": 4000,
                             "auto_expire_links_after": "3d",
-                            "folder_naming": "original_no_ext",
-                            "rc_url": "",  # embedded rclone -> no external RC needed
                         }
                     )
+
+                # Mount configuration (features)
+                mount_block = {
+                    "type": mount_type or "dfs",
+                    "mount_path": mount_path,
+                }
+                if mount_block["type"] == "dfs":
+                    dfs_cfg = decypharr_config.get("dfs") or {}
+                    dfs_defaults = {
+                        "cache_dir": "/decypharr/cache/dfs",
+                        "chunk_size": "10MB",
+                        "disk_cache_size": "50GB",
+                        "cache_expiry": "24h",
+                        "cache_cleanup_interval": "1h",
+                        "daemon_timeout": "30m",
+                        "uid": int(user_id) if user_id is not None else 0,
+                        "gid": int(group_id) if group_id is not None else 0,
+                        "umask": "022",
+                        "allow_other": True,
+                        "default_permissions": True,
+                    }
+                    mount_block["dfs"] = {**dfs_defaults, **dfs_cfg}
+                elif mount_block["type"] == "rclone":
+                    embedded_rc = config_data.get("rclone", {})
+                    merged_rc = {**default_embedded_rclone, **(embedded_rc or {})}
+                    mount_block["rclone"] = merged_rc
+
+                config_data["mount"] = mount_block
+                config_data["download_folder"] = "/mnt/debrid/decypharr_downloads"
             else:
-                # NON-embedded: derive debrids from rclone instances tied to decypharr
-                for inst in debrid_instances:
-                    name = (inst.get("key_type", "unknown") or "unknown").lower()
-                    api_key = inst.get("api_key", "")
-                    rc_url = _safe_extract_rc_url(inst, "http://127.0.0.1:5572")
+                # Legacy (non-beta) defaults
+                config_data["debrids"] = []
 
-                    # Legacy per-provider default folders
-                    if name == "realdebrid":
-                        folder = "/mnt/debrid/decypharr_realdebrid/__all__"
-                    elif name == "torbox":
-                        folder = "/mnt/debrid/decypharr_torbox/torrents"
-                    elif name == "alldebrid":
-                        folder = "/mnt/debrid/decypharr_alldebrid/torrents/"
-                    elif name == "debridlink":
-                        folder = "/mnt/debrid/decypharr_debridlink/torrents/"
-                    else:
-                        folder = "/mnt/debrid/decypharr_other"
-
-                    config_data["debrids"].append(
-                        {
-                            "name": name,
-                            "api_key": api_key,
-                            "download_api_keys": [api_key] if api_key else [],
-                            "folder": folder,
-                            "rate_limit": "250/minute",
-                            "use_webdav": True,
-                            "torrents_refresh_interval": "15s",
-                            "download_links_refresh_interval": "40m",
-                            "workers": 50,
-                            "auto_expire_links_after": "3d",
-                            "folder_naming": "original_no_ext",
-                            "rc_url": rc_url,
-                        }
+                if use_embedded:
+                    mount_root = config_data.get("rclone", {}).get(
+                        "mount_path", default_embedded_rclone["mount_path"]
                     )
+                    for name_lc, api_key in api_keys_map.items():
+                        folder = _provider_folder(name_lc, mount_root) + "/"
+                        config_data["debrids"].append(
+                            {
+                                "name": name_lc,
+                                "api_key": api_key,
+                                "download_api_keys": [api_key],
+                                "folder": folder,
+                                "rate_limit": "250/minute",
+                                "use_webdav": True,
+                                "torrents_refresh_interval": "15s",
+                                "download_links_refresh_interval": "40m",
+                                "workers": 50,
+                                "auto_expire_links_after": "3d",
+                                "folder_naming": "original_no_ext",
+                                "rc_url": "",  # embedded rclone -> no external RC needed
+                            }
+                        )
+                else:
+                    for inst in debrid_instances:
+                        name = (inst.get("key_type", "unknown") or "unknown").lower()
+                        api_key = inst.get("api_key", "")
+                        rc_url = _safe_extract_rc_url(inst, "http://127.0.0.1:5572")
 
-            # Basic download paths
-            config_data["qbittorrent"] = {
-                "download_folder": "/mnt/debrid/decypharr_downloads"
-            }
-            config_data["sabnzbd"] = {
-                "download_folder": "/mnt/debrid/decypharr_downloads"
-            }
-            config_data["usenet"] = {
-                "mount_folder": "/mnt/debrid/decypharr_usenet/__all__",
-                "chunks": 15,
-                "rc_url": usenet_rc_url,
-            }
+                        if name == "realdebrid":
+                            folder = "/mnt/debrid/decypharr_realdebrid/__all__"
+                        elif name == "torbox":
+                            folder = "/mnt/debrid/decypharr_torbox/torrents"
+                        elif name == "alldebrid":
+                            folder = "/mnt/debrid/decypharr_alldebrid/torrents/"
+                        elif name == "debridlink":
+                            folder = "/mnt/debrid/decypharr_debridlink/torrents/"
+                        else:
+                            folder = "/mnt/debrid/decypharr_other"
+
+                        config_data["debrids"].append(
+                            {
+                                "name": name,
+                                "api_key": api_key,
+                                "download_api_keys": [api_key] if api_key else [],
+                                "folder": folder,
+                                "rate_limit": "250/minute",
+                                "use_webdav": True,
+                                "torrents_refresh_interval": "15s",
+                                "download_links_refresh_interval": "40m",
+                                "workers": 50,
+                                "auto_expire_links_after": "3d",
+                                "folder_naming": "original_no_ext",
+                                "rc_url": rc_url,
+                            }
+                        )
+
+                config_data["qbittorrent"] = {
+                    "download_folder": "/mnt/debrid/decypharr_downloads"
+                }
+                config_data["sabnzbd"] = {
+                    "download_folder": "/mnt/debrid/decypharr_downloads"
+                }
+                config_data["usenet"] = {
+                    "mount_folder": "/mnt/debrid/decypharr_usenet/__all__",
+                    "chunks": 15,
+                    "rc_url": usenet_rc_url,
+                }
             updated = True
 
-        # Embedded mode: synchronize/merge debrids[] from api_keys_map (idempotent)
-        if use_embedded:
+        # Feature mode: synchronize/merge debrids[] from api_keys_map (idempotent)
+        if features_enabled:
             if not isinstance(config_data.get("debrids"), list):
                 config_data["debrids"] = []
 
-            mount_root = config_data.get("rclone", {}).get(
-                "mount_path", default_embedded_rclone["mount_path"]
+            existing = {
+                _debrid_key(d): d
+                for d in config_data["debrids"]
+                if isinstance(d, dict)
+            }
+
+            changed = False
+            for name_lc, api_key in api_keys_map.items():
+                d = existing.get(name_lc)
+                if not d:
+                    d = {
+                        "provider": name_lc,
+                        "name": name_lc,
+                        "api_key": api_key,
+                        "download_api_keys": [api_key],
+                        "rate_limit": "250/minute",
+                        "torrents_refresh_interval": "10m",
+                        "download_links_refresh_interval": "5m",
+                        "workers": 4000,
+                        "auto_expire_links_after": "3d",
+                    }
+                    config_data["debrids"].append(d)
+                    existing[name_lc] = d
+                    changed = True
+                else:
+                    if d.get("provider") != name_lc:
+                        d["provider"] = name_lc
+                        changed = True
+                    if d.get("name") != name_lc:
+                        d["name"] = name_lc
+                        changed = True
+                    if d.get("api_key") != api_key:
+                        d["api_key"] = api_key
+                        changed = True
+                    dl_keys = set(d.get("download_api_keys") or [])
+                    if api_key and api_key not in dl_keys:
+                        dl_keys.add(api_key)
+                        d["download_api_keys"] = list(dl_keys)
+                        changed = True
+                    if not d.get("rate_limit"):
+                        d["rate_limit"] = "250/minute"
+                        changed = True
+                    if not d.get("torrents_refresh_interval"):
+                        d["torrents_refresh_interval"] = "10m"
+                        changed = True
+                    if not d.get("download_links_refresh_interval"):
+                        d["download_links_refresh_interval"] = "5m"
+                        changed = True
+                    if not d.get("workers"):
+                        d["workers"] = 4000
+                        changed = True
+                    if not d.get("auto_expire_links_after"):
+                        d["auto_expire_links_after"] = "3d"
+                        changed = True
+
+            if changed:
+                logger.info("Synchronized Decypharr debrids from feature api_keys map")
+                updated = True
+
+        # Embedded mode: synchronize/merge debrids[] from api_keys_map (idempotent)
+        elif use_embedded:
+            if not isinstance(config_data.get("debrids"), list):
+                config_data["debrids"] = []
+
+            mount_root = (
+                mount_path
+                if beta_enabled
+                else config_data.get("rclone", {}).get(
+                    "mount_path", default_embedded_rclone["mount_path"]
+                )
             )
             existing = {
-                (d.get("name", "").lower()): d
+                _debrid_key(d): d
                 for d in config_data["debrids"]
                 if isinstance(d, dict)
             }
@@ -828,6 +1191,7 @@ def patch_decypharr_config():
                 d = existing.get(name_lc)
                 if not d:
                     d = {
+                        "provider": name_lc,
                         "name": name_lc,
                         "api_key": api_key,
                         "download_api_keys": [api_key],
@@ -845,6 +1209,9 @@ def patch_decypharr_config():
                     existing[name_lc] = d
                     changed = True
                 else:
+                    if d.get("provider") != name_lc:
+                        d["provider"] = name_lc
+                        changed = True
                     if d.get("api_key") != api_key:
                         d["api_key"] = api_key
                         changed = True
@@ -859,7 +1226,7 @@ def patch_decypharr_config():
                     if d.get("use_webdav") is not True:
                         d["use_webdav"] = True
                         changed = True
-                    if d.get("rc_url") != "http://127.0.0.1:5572":
+                    if not beta_enabled and d.get("rc_url") != "http://127.0.0.1:5572":
                         d["rc_url"] = "http://127.0.0.1:5572"
                         changed = True
 
@@ -870,7 +1237,7 @@ def patch_decypharr_config():
             # Final safety pass to ensure folder layout even if user edited manually
             changed = False
             for d in config_data["debrids"]:
-                name_lc = (d.get("name") or "unknown").lower()
+                name_lc = _debrid_key(d) or "unknown"
                 desired_folder = _provider_folder(name_lc, mount_root) + "/"
                 if d.get("folder") != desired_folder:
                     d["folder"] = desired_folder
@@ -968,6 +1335,10 @@ def patch_decypharr_config():
         try:
             arrs = desired_arrs or []
             decypharr_port = int(decypharr_config.get("port", 8282))
+            usenet_enabled = _has_usenet_providers(config_data)
+            api_token = _read_decypharr_api_token(
+                decypharr_config.get("config_dir", "/decypharr")
+            )
             if not _wait_for_decypharr(
                 "127.0.0.1", decypharr_port, timeout_s=10, interval_s=1.0
             ):
@@ -977,42 +1348,68 @@ def patch_decypharr_config():
                     decypharr_port,
                 )
                 _schedule_decypharr_retry()
-                return updated, None
-            for entry in arrs:
-                svc = (entry.get("name") or "").split(":", 1)[0].lower()
-                host = entry.get("host")
-                token = entry.get("token")
-                api_version = "v1" if svc == "lidarr" else "v3"
-                if not _wait_for_arr(
-                    host, token, timeout_s=60, interval_s=2.0, api_version=api_version
-                ):
-                    logger.warning(
-                        f"Arr not up yet, skipping download client ensure for {host}"
-                    )
-                    continue
-                try:
-                    _with_retries(
-                        ensure_decypharr_download_client,
-                        arr_host=host,
-                        arr_api_key=token,
-                        decypharr_port=decypharr_port,
-                        service=svc,
-                        name="decypharr",
-                        category=entry.get("name"),
-                        category_map={
-                            "radarr": "radarr",
-                            "sonarr": "sonarr",
-                            "lidarr": "lidarr",
-                            "whisparr": "whisparr",
-                        },
-                        test_before_save=False,
-                        api_version=api_version,
-                        attempts=3,
-                    )
-                except Exception as e:
-                    logger.warning(
-                        f"Download client ensure failed after retries for {host}: {e}"
-                    )
+            else:
+                for entry in arrs:
+                    svc = (entry.get("name") or "").split(":", 1)[0].lower()
+                    host = entry.get("host")
+                    token = entry.get("token")
+                    api_version = "v1" if svc == "lidarr" else "v3"
+                    if not _wait_for_arr(
+                        host, token, timeout_s=60, interval_s=2.0, api_version=api_version
+                    ):
+                        logger.warning(
+                            f"Arr not up yet, skipping download client ensure for {host}"
+                        )
+                        continue
+                    try:
+                        _with_retries(
+                            ensure_decypharr_download_client,
+                            arr_host=host,
+                            arr_api_key=token,
+                            decypharr_port=decypharr_port,
+                            service=svc,
+                            name="decypharr",
+                            category=entry.get("name"),
+                            category_map={
+                                "radarr": "radarr",
+                                "sonarr": "sonarr",
+                                "lidarr": "lidarr",
+                                "whisparr": "whisparr",
+                            },
+                            test_before_save=False,
+                            api_version=api_version,
+                            attempts=3,
+                        )
+                        if usenet_enabled:
+                            if not api_token:
+                                logger.warning(
+                                    "Decypharr API token missing; skipping Sabnzbd client for %s",
+                                    host,
+                                )
+                            else:
+                                _with_retries(
+                                    ensure_decypharr_sabnzbd_client,
+                                    arr_host=host,
+                                    arr_api_key=token,
+                                    decypharr_port=decypharr_port,
+                                    api_token=api_token,
+                                    service=svc,
+                                    name="decypharr-usenet",
+                                    category=entry.get("name"),
+                                    category_map={
+                                        "radarr": "radarr",
+                                        "sonarr": "sonarr",
+                                        "lidarr": "lidarr",
+                                        "whisparr": "whisparr",
+                                    },
+                                    test_before_save=False,
+                                    api_version=api_version,
+                                    attempts=3,
+                                )
+                    except Exception as e:
+                        logger.warning(
+                            f"Download client ensure failed after retries for {host}: {e}"
+                        )
         except Exception as e:
             logger.warning(f"Failed to ensure Decypharr download client on Arr: {e}")
 
@@ -1022,39 +1419,95 @@ def patch_decypharr_config():
         final_config["port"] = config_data.get("port", "8282")
         final_config["log_level"] = config_data.get("log_level", "INFO")
 
-        # Include debrids when:
-        #   - any non-usenet rclone instances exist, OR
-        #   - embedded mode is enabled and we have debrids configured
-        has_non_usenet_instances = any(
-            (inst.get("key_type") or "").lower() != "usenet"
-            for inst in rclone_instances.values()
-        )
-        if has_non_usenet_instances or (use_embedded and config_data.get("debrids")):
-            final_config["debrids"] = config_data.get("debrids", [])
-            final_config["qbittorrent"] = config_data.get("qbittorrent", {})
+        if features_enabled:
+            # Ensure a mount block is always present for feature configs
+            mount_block = config_data.get("mount") or {}
+            if not mount_block:
+                mount_block = {
+                    "type": mount_type or "dfs",
+                    "mount_path": mount_path,
+                }
+                if mount_block["type"] == "dfs":
+                    dfs_cfg = decypharr_config.get("dfs") or {}
+                    dfs_defaults = {
+                        "cache_dir": "/decypharr/cache/dfs",
+                        "chunk_size": "10MB",
+                        "disk_cache_size": "50GB",
+                        "cache_expiry": "24h",
+                        "cache_cleanup_interval": "1h",
+                        "daemon_timeout": "30m",
+                        "uid": int(user_id) if user_id is not None else 0,
+                        "gid": int(group_id) if group_id is not None else 0,
+                        "umask": "022",
+                        "allow_other": True,
+                        "default_permissions": True,
+                    }
+                    mount_block["dfs"] = {**dfs_defaults, **dfs_cfg}
+                elif mount_block["type"] == "rclone":
+                    embedded_rc = config_data.get("rclone", {})
+                    merged_rc = {**default_embedded_rclone, **(embedded_rc or {})}
+                    mount_block["rclone"] = merged_rc
+                elif mount_block["type"] == "external_rclone":
+                    rc_inst = debrid_instances[0] if debrid_instances else None
+                    rc_url = _safe_extract_rc_url(rc_inst, "http://127.0.0.1:5572")
+                    mount_block["external_rclone"] = {
+                        "rc_url": rc_url,
+                        "rc_username": "",
+                        "rc_password": "",
+                    }
+                config_data["mount"] = mount_block
+                updated = True
+                logger.info("Injected missing feature mount block into Decypharr config")
 
-        # Usenet remains gated by presence of usenet instances
-        if any(
-            (inst.get("key_type") or "").lower() == "usenet"
-            for inst in rclone_instances.values()
-        ):
-            final_config["sabnzbd"] = config_data.get("sabnzbd", {})
-            final_config["usenet"] = config_data.get("usenet", {})
+            if config_data.get("download_folder"):
+                final_config["download_folder"] = config_data["download_folder"]
+            if "debrids" in config_data:
+                final_config["debrids"] = config_data.get("debrids", [])
+            if config_data.get("mount"):
+                final_config["mount"] = config_data.get("mount", {})
+            logger.info(
+                "Decypharr config patch: final_config mount present=%s",
+                "mount" in final_config,
+            )
+            if config_data.get("arrs"):
+                final_config["arrs"] = config_data["arrs"]
+            final_config["repair"] = config_data.get("repair", {})
+            if config_data.get("usenet"):
+                final_config["usenet"] = config_data.get("usenet", {})
+            final_config["allowed_file_types"] = config_data.get("allowed_file_types", [])
+        else:
+            # Include debrids when:
+            #   - any non-usenet rclone instances exist, OR
+            #   - embedded mode is enabled and we have debrids configured
+            has_non_usenet_instances = any(
+                (inst.get("key_type") or "").lower() != "usenet"
+                for inst in rclone_instances.values()
+            )
+            if has_non_usenet_instances or (use_embedded and config_data.get("debrids")):
+                final_config["debrids"] = config_data.get("debrids", [])
+                final_config["qbittorrent"] = config_data.get("qbittorrent", {})
 
-        # Pass-throughs
-        if config_data.get("arrs"):
-            final_config["arrs"] = config_data["arrs"]
-        final_config["repair"] = config_data.get("repair", {})
-        final_config["webdav"] = config_data.get("webdav", {})
-        if "rclone" in config_data:
-            final_config["rclone"] = config_data["rclone"]
-        final_config["allowed_file_types"] = config_data.get("allowed_file_types", [])
-        # final_config["use_auth"] = config_data.get("use_auth", True)
+            if any(
+                (inst.get("key_type") or "").lower() == "usenet"
+                for inst in rclone_instances.values()
+            ):
+                final_config["sabnzbd"] = config_data.get("sabnzbd", {})
+                final_config["usenet"] = config_data.get("usenet", {})
+
+            if config_data.get("arrs"):
+                final_config["arrs"] = config_data["arrs"]
+            final_config["repair"] = config_data.get("repair", {})
+            final_config["webdav"] = config_data.get("webdav", {})
+            if "rclone" in config_data:
+                final_config["rclone"] = config_data["rclone"]
+            final_config["allowed_file_types"] = config_data.get("allowed_file_types", [])
+            # final_config["use_auth"] = config_data.get("use_auth", True)
 
         # ----- Preserve any extra keys Decypharr/user added -----
         known_keys = set(final_config.keys())
+        skip_keys = {"rclone", "qbittorrent", "sabnzbd"} if features_enabled else set()
         for k, v in config_data.items():
-            if k not in known_keys:
+            if k not in known_keys and k not in skip_keys:
                 final_config[k] = v
 
         # Persist if changed

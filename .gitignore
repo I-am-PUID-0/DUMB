@@ -379,6 +379,7 @@ FodyWeavers.xsd
 settings.json
 /plex
 /decypharr
+/mnt
 
 # OS generated files
 .DS_Store

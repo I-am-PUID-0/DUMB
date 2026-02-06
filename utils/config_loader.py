@@ -105,6 +105,26 @@ class ConfigManager:
 
             existing_config = self._load_config()
 
+            # Migrate legacy Decypharr embedded toggle to mount_type before merge/prune
+            dec_cfg = existing_config.get("decypharr")
+            if isinstance(dec_cfg, dict):
+                mount_type_val = str(dec_cfg.get("mount_type", "") or "").strip()
+                if not mount_type_val and "use_embedded_rclone" in dec_cfg:
+                    dec_cfg["mount_type"] = (
+                        "rclone"
+                        if dec_cfg.get("use_embedded_rclone")
+                        else "external_rclone"
+                    )
+                if "use_embedded_rclone" in dec_cfg:
+                    del dec_cfg["use_embedded_rclone"]
+                existing_config["decypharr"] = dec_cfg
+
+                # If mount_type is still empty on existing configs, don't inject defaults
+                if not str(dec_cfg.get("mount_type", "") or "").strip():
+                    if isinstance(default_config.get("decypharr"), dict):
+                        default_config["decypharr"].pop("mount_type", None)
+                        default_config["decypharr"].pop("dfs", None)
+
             merged_config = self._merge_configs(
                 copy.deepcopy(existing_config), default_config
             )

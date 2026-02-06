@@ -1897,12 +1897,20 @@ def setup_decypharr(install_only: bool = False, configure_only: bool = False):
                 logger.debug("Failed to read Decypharr config for mounts: %s", e)
                 return []
 
+            mounts = set()
+            mount_cfg = data.get("mount") or {}
+            mount_type = (mount_cfg.get("type") or "").strip().lower()
+            if mount_type == "dfs":
+                mount_path = mount_cfg.get("mount_path")
+                if isinstance(mount_path, str) and mount_path.strip():
+                    mounts.add(mount_path.strip())
+                    return sorted(mounts)
+
             rclone_cfg = data.get("rclone") or {}
             mount_base = rclone_cfg.get("mount_path") or "/mnt/debrid/decypharr"
             if not isinstance(mount_base, str) or not mount_base.strip():
                 mount_base = "/mnt/debrid/decypharr"
 
-            mounts = set()
             for debrid in data.get("debrids") or []:
                 if not isinstance(debrid, dict):
                     continue
@@ -1939,7 +1947,13 @@ def setup_decypharr(install_only: bool = False, configure_only: bool = False):
         decypharr_config_file = config.get("config_file")
         decypharr_binary_file = "decypharr"
         binary_path = os.path.join(decypharr_config_dir, decypharr_binary_file)
-        decypharr_embedded_rclone = config.get("use_embedded_rclone", False)
+        decypharr_mount_type = (config.get("mount_type") or "").strip().lower()
+        if not decypharr_mount_type:
+            if (config.get("branch") or "").strip().lower() == "beta":
+                decypharr_mount_type = "dfs"
+            else:
+                decypharr_mount_type = "rclone"
+        decypharr_embedded_rclone = decypharr_mount_type == "rclone"
         if not os.path.exists(decypharr_config_dir):
             logger.debug(
                 f"Creating Decypharr config directory at {decypharr_config_dir}"
@@ -1947,10 +1961,32 @@ def setup_decypharr(install_only: bool = False, configure_only: bool = False):
             os.makedirs(decypharr_config_dir, exist_ok=True)
         chown_single(decypharr_config_dir, user_id, group_id)
 
-        if decypharr_embedded_rclone and decypharr_config_file:
+        if (decypharr_embedded_rclone or decypharr_mount_type == "dfs") and decypharr_config_file:
             _unmount_decypharr_mounts(decypharr_config_file)
 
-        if not configure_only and not os.path.isfile(binary_path):
+        force_release_install = False
+        if not config.get("branch_enabled"):
+            version_path = os.path.join(decypharr_config_dir, "version.txt")
+            marker_path = os.path.join(decypharr_config_dir, ".dumb_branch_build")
+            if os.path.exists(marker_path):
+                force_release_install = True
+                logger.info(
+                    "Decypharr branch build marker detected but branch is disabled; reinstalling release."
+                )
+            elif os.path.exists(version_path):
+                try:
+                    with open(version_path, "r") as handle:
+                        installed_version = (handle.read() or "").strip()
+                    if installed_version.startswith("3.0.0"):
+                        force_release_install = True
+                        logger.info(
+                            "Decypharr branch build detected (%s) but branch is disabled; reinstalling release.",
+                            installed_version,
+                        )
+                except Exception as e:
+                    logger.debug("Failed to read Decypharr version.txt: %s", e)
+
+        if not configure_only and (not os.path.isfile(binary_path) or force_release_install):
             logger.warning(
                 f"Decypharr project not found at {decypharr_config_dir}. Downloading..."
             )
@@ -1984,7 +2020,7 @@ def setup_decypharr(install_only: bool = False, configure_only: bool = False):
             logger.debug(f"Marked {binary_path} as executable")
         elif configure_only:
             return False, f"Decypharr binary missing at {binary_path}."
-        if decypharr_embedded_rclone:
+        if decypharr_embedded_rclone or decypharr_mount_type == "dfs":
             success, error = fuse_config()
             if not success:
                 return False, error
@@ -2536,6 +2572,16 @@ def build_decypharr_dev(process_handler, config):
             if process_handler.returncode == 0:
                 break
             logger.warning(f"Decypharr build failed (attempt {attempt + 1}/3)")
+
+        version_path = os.path.join(config_dir, "version.txt")
+        marker_path = os.path.join(config_dir, ".dumb_branch_build")
+        try:
+            with open(version_path, "w") as handle:
+                handle.write(f"{version}-{branch}" if branch else version)
+            with open(marker_path, "w") as handle:
+                handle.write(branch or "branch")
+        except Exception as e:
+            logger.debug("Failed to write Decypharr branch markers: %s", e)
 
         logger.info("Decypharr development environment built successfully.")
         return True, None

@@ -360,14 +360,17 @@ def _run_profilarr_sync_retries(start_key: str) -> None:
 
 
 def _read_decypharr_mount_path(decypharr_cfg: dict) -> str | None:
-    if not decypharr_cfg.get("use_embedded_rclone"):
+    mount_type = (decypharr_cfg.get("mount_type") or "").strip().lower()
+    if mount_type not in {"rclone", "dfs"}:
         return None
     config_file = decypharr_cfg.get("config_file")
     if config_file and os.path.exists(config_file):
         try:
             with open(config_file, "r") as handle:
                 data = json.load(handle)
-            mount_path = (data.get("rclone") or {}).get("mount_path")
+            mount_path = (data.get("mount") or {}).get("mount_path")
+            if not mount_path:
+                mount_path = (data.get("rclone") or {}).get("mount_path")
             if isinstance(mount_path, str) and mount_path.strip():
                 return mount_path
         except Exception as e:
@@ -395,7 +398,8 @@ def _extract_decypharr_debrid_mount(
 
 
 def _collect_decypharr_mount_paths(decypharr_cfg: dict) -> list[str]:
-    if not decypharr_cfg.get("use_embedded_rclone"):
+    mount_type = (decypharr_cfg.get("mount_type") or "").strip().lower()
+    if mount_type not in {"rclone", "dfs"}:
         return []
     config_file = decypharr_cfg.get("config_file")
     if not config_file or not os.path.exists(config_file):
@@ -407,7 +411,9 @@ def _collect_decypharr_mount_paths(decypharr_cfg: dict) -> list[str]:
         logger.debug("Failed to read Decypharr config: %s", e)
         return []
 
-    mount_base = (data.get("rclone") or {}).get("mount_path")
+    mount_base = (data.get("mount") or {}).get("mount_path")
+    if not mount_base:
+        mount_base = (data.get("rclone") or {}).get("mount_path")
     if not isinstance(mount_base, str):
         mount_base = None
     mounts = set()
@@ -435,7 +441,8 @@ def _collect_mount_paths(config_manager) -> list[str]:
             mount_paths.add(os.path.join(mount_dir, mount_name))
 
     decypharr_cfg = config_manager.get("decypharr", {}) or {}
-    if decypharr_cfg.get("enabled") and decypharr_cfg.get("use_embedded_rclone"):
+    mount_type = (decypharr_cfg.get("mount_type") or "").strip().lower()
+    if decypharr_cfg.get("enabled") and mount_type in {"rclone", "dfs"}:
         decypharr_mounts = _collect_decypharr_mount_paths(decypharr_cfg)
         if decypharr_mounts:
             mount_paths.update(decypharr_mounts)
