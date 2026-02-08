@@ -411,11 +411,16 @@ def _collect_decypharr_mount_paths(decypharr_cfg: dict) -> list[str]:
         logger.debug("Failed to read Decypharr config: %s", e)
         return []
 
-    mount_base = (data.get("mount") or {}).get("mount_path")
+    mount_block = data.get("mount") if isinstance(data.get("mount"), dict) else {}
+    has_mount_block = bool(mount_block)
+    mount_base = mount_block.get("mount_path")
     if not mount_base:
         mount_base = (data.get("rclone") or {}).get("mount_path")
     if not isinstance(mount_base, str):
         mount_base = None
+    if has_mount_block:
+        return [mount_base] if mount_base else []
+
     mounts = set()
     for debrid in data.get("debrids") or []:
         if not isinstance(debrid, dict):
