@@ -386,6 +386,7 @@ SERVICE_OPTION_DESCRIPTIONS = {
     "backend_port": "TCP port the NzbDAV backend will listen on.",
     "auto_update": "Automatically check for new versions",
     "auto_update_interval": "Hours between automatic update checks.",
+    "auto_update_start_time": "24-hour start time for the auto-update schedule (HH:MM).",
     "plex_claim": "Token used to claim the Plex Media Server. https://www.plex.tv/claim",
     "friendly_name": "A user-friendly name for the Plex Media Server.",
     "setup_email": "Email address pgAdmin4 login.",
@@ -2340,4 +2341,5 @@ async def get_capabilities(current_user: str = Depends(get_optional_current_user
         "optional_service_options": True,
         "manual_update_check": True,
         "seerr_sync": True,
+        "auto_update_start_time": True,
     }

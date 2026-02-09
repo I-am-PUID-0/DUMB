@@ -6,12 +6,14 @@ from utils.plex import PlexInstaller
 from utils.arr import ArrInstaller
 from utils.jellyfin import JellyfinInstaller
 from utils.config_loader import CONFIG_MANAGER
+from datetime import datetime
 import threading, time, os, schedule, requests, subprocess
 
 
 class Update:
     _scheduler_initialized = False
     _jobs = {}
+    _next_check_at = {}
     _schedule_thread_started = False
     _schedule_thread_count = 0
     _schedule_thread_lock = threading.Lock()
@@ -95,8 +97,11 @@ class Update:
         checked_at = int(time.time())
         auto_update_enabled = bool(config.get("auto_update"))
         interval_hours = self.auto_update_interval(process_name, config)
+        start_time = self.auto_update_start_time(process_name, config)
         next_check_at = (
-            int(checked_at + interval_hours * 3600) if auto_update_enabled else None
+            self._calculate_next_check_at(process_name, config, checked_at)
+            if auto_update_enabled
+            else None
         )
 
         if key == "plex":
@@ -108,6 +113,7 @@ class Update:
                 checked_at,
                 auto_update_enabled,
                 interval_hours,
+                start_time,
                 next_check_at,
             )
         if key == "jellyfin":
@@ -119,6 +125,7 @@ class Update:
                 checked_at,
                 auto_update_enabled,
                 interval_hours,
+                start_time,
                 next_check_at,
             )
         if key == "emby":
@@ -130,6 +137,7 @@ class Update:
                 checked_at,
                 auto_update_enabled,
                 interval_hours,
+                start_time,
                 next_check_at,
             )
         if key in [
@@ -186,6 +194,7 @@ class Update:
                     checked_at,
                     auto_update_enabled,
                     interval_hours,
+                    start_time,
                     next_check_at,
                 )
             return self._manual_check_arr(
@@ -197,6 +206,7 @@ class Update:
                 checked_at,
                 auto_update_enabled,
                 interval_hours,
+                start_time,
                 next_check_at,
             )
 
@@ -209,6 +219,7 @@ class Update:
             checked_at,
             auto_update_enabled,
             interval_hours,
+            start_time,
             next_check_at,
         )
 
@@ -222,6 +233,7 @@ class Update:
         checked_at,
         auto_update_enabled,
         interval_hours,
+        start_time,
         next_check_at,
     ):
         versions = Versions()
@@ -235,6 +247,7 @@ class Update:
                 "checked_at": checked_at,
                 "auto_update_enabled": auto_update_enabled,
                 "auto_update_interval": interval_hours,
+                "auto_update_start_time": start_time,
                 "next_check_at": next_check_at,
             }
 
@@ -264,6 +277,7 @@ class Update:
                 "checked_at": checked_at,
                 "auto_update_enabled": auto_update_enabled,
                 "auto_update_interval": interval_hours,
+                "auto_update_start_time": start_time,
                 "next_check_at": next_check_at,
             }
 
@@ -278,6 +292,7 @@ class Update:
                 "checked_at": checked_at,
                 "auto_update_enabled": auto_update_enabled,
                 "auto_update_interval": interval_hours,
+                "auto_update_start_time": start_time,
                 "next_check_at": next_check_at,
             }
 
@@ -294,6 +309,7 @@ class Update:
             "checked_at": checked_at,
             "auto_update_enabled": auto_update_enabled,
             "auto_update_interval": interval_hours,
+            "auto_update_start_time": start_time,
             "next_check_at": next_check_at,
         }
 
@@ -307,6 +323,7 @@ class Update:
         checked_at,
         auto_update_enabled,
         interval_hours,
+        start_time,
         next_check_at,
     ):
         versions = Versions()
@@ -333,6 +350,7 @@ class Update:
                 "checked_at": checked_at,
                 "auto_update_enabled": auto_update_enabled,
                 "auto_update_interval": interval_hours,
+                "auto_update_start_time": start_time,
                 "next_check_at": next_check_at,
             }
         if current_version == latest_version:
@@ -343,6 +361,7 @@ class Update:
                 "checked_at": checked_at,
                 "auto_update_enabled": auto_update_enabled,
                 "auto_update_interval": interval_hours,
+                "auto_update_start_time": start_time,
                 "next_check_at": next_check_at,
             }
 
@@ -358,6 +377,7 @@ class Update:
             "checked_at": checked_at,
             "auto_update_enabled": auto_update_enabled,
             "auto_update_interval": interval_hours,
+            "auto_update_start_time": start_time,
             "next_check_at": next_check_at,
         }
 
@@ -370,6 +390,7 @@ class Update:
         checked_at,
         auto_update_enabled,
         interval_hours,
+        start_time,
         next_check_at,
     ):
         versions = Versions()
@@ -385,6 +406,7 @@ class Update:
                 "checked_at": checked_at,
                 "auto_update_enabled": auto_update_enabled,
                 "auto_update_interval": interval_hours,
+                "auto_update_start_time": start_time,
                 "next_check_at": next_check_at,
             }
         if current_version == latest_version:
@@ -395,6 +417,7 @@ class Update:
                 "checked_at": checked_at,
                 "auto_update_enabled": auto_update_enabled,
                 "auto_update_interval": interval_hours,
+                "auto_update_start_time": start_time,
                 "next_check_at": next_check_at,
             }
 
@@ -410,6 +433,7 @@ class Update:
             "checked_at": checked_at,
             "auto_update_enabled": auto_update_enabled,
             "auto_update_interval": interval_hours,
+            "auto_update_start_time": start_time,
             "next_check_at": next_check_at,
         }
 
@@ -422,6 +446,7 @@ class Update:
         checked_at,
         auto_update_enabled,
         interval_hours,
+        start_time,
         next_check_at,
     ):
         versions = Versions()
@@ -437,6 +462,7 @@ class Update:
                 "checked_at": checked_at,
                 "auto_update_enabled": auto_update_enabled,
                 "auto_update_interval": interval_hours,
+                "auto_update_start_time": start_time,
                 "next_check_at": next_check_at,
             }
         if current_version == latest_version:
@@ -447,6 +473,7 @@ class Update:
                 "checked_at": checked_at,
                 "auto_update_enabled": auto_update_enabled,
                 "auto_update_interval": interval_hours,
+                "auto_update_start_time": start_time,
                 "next_check_at": next_check_at,
             }
 
@@ -462,6 +489,7 @@ class Update:
             "checked_at": checked_at,
             "auto_update_enabled": auto_update_enabled,
             "auto_update_interval": interval_hours,
+            "auto_update_start_time": start_time,
             "next_check_at": next_check_at,
         }
 
@@ -474,6 +502,7 @@ class Update:
         checked_at,
         auto_update_enabled,
         interval_hours,
+        start_time,
         next_check_at,
     ):
         plex_media_server_dir = config.get(
@@ -486,6 +515,7 @@ class Update:
                 "checked_at": checked_at,
                 "auto_update_enabled": auto_update_enabled,
                 "auto_update_interval": interval_hours,
+                "auto_update_start_time": start_time,
                 "next_check_at": next_check_at,
             }
 
@@ -504,6 +534,7 @@ class Update:
                 "checked_at": checked_at,
                 "auto_update_enabled": auto_update_enabled,
                 "auto_update_interval": interval_hours,
+                "auto_update_start_time": start_time,
                 "next_check_at": next_check_at,
             }
         try:
@@ -516,6 +547,7 @@ class Update:
                 "checked_at": checked_at,
                 "auto_update_enabled": auto_update_enabled,
                 "auto_update_interval": interval_hours,
+                "auto_update_start_time": start_time,
                 "next_check_at": next_check_at,
             }
         latest_version = installer.normalize_version(latest_version or "")
@@ -528,6 +560,7 @@ class Update:
                 "checked_at": checked_at,
                 "auto_update_enabled": auto_update_enabled,
                 "auto_update_interval": interval_hours,
+                "auto_update_start_time": start_time,
                 "next_check_at": next_check_at,
             }
 
@@ -543,6 +576,7 @@ class Update:
             "checked_at": checked_at,
             "auto_update_enabled": auto_update_enabled,
             "auto_update_interval": interval_hours,
+            "auto_update_start_time": start_time,
             "next_check_at": next_check_at,
         }
 
@@ -621,8 +655,9 @@ class Update:
 
     def update_schedule(self, process_name, config, key, instance_name):
         interval_minutes = int(self.auto_update_interval(process_name, config) * 60)
+        start_time = self.auto_update_start_time(process_name, config)
         self.logger.debug(
-            f"Scheduling automatic update check every {interval_minutes} minutes for {process_name}"
+            f"Scheduling automatic update check every {interval_minutes} minutes for {process_name} (start time: {start_time})"
         )
 
         existing_job = Update._jobs.get(process_name)
@@ -631,27 +666,22 @@ class Update:
                 self.scheduler.cancel_job(existing_job)
             except Exception:
                 pass
-        job = self.scheduler.every(interval_minutes).minutes.do(
-            self.scheduled_update_check, process_name, config, key, instance_name
+        next_check_at = self._calculate_next_check_at(process_name, config)
+        Update._next_check_at[process_name] = next_check_at
+        job = self.scheduler.every(1).minutes.do(
+            self._run_scheduled_update_if_due, process_name, config, key, instance_name
         )
         Update._jobs[process_name] = job
         self.logger.debug(
             f"Scheduled automatic update check for {process_name}, w/ key: {key}, and job ID: {id(job)}"
         )
-        next_check_at = None
-        try:
-            if job and getattr(job, "next_run", None):
-                next_check_at = int(job.next_run.timestamp())
-        except Exception:
-            next_check_at = None
-        if next_check_at is None:
-            next_check_at = int(time.time() + interval_minutes * 60)
         self._safe_record_update_status(
             process_name,
             {
                 "status": "scheduled",
                 "auto_update_enabled": True,
                 "auto_update_interval": self.auto_update_interval(process_name, config),
+                "auto_update_start_time": start_time,
                 "next_check_at": next_check_at,
             },
         )
@@ -711,12 +741,16 @@ class Update:
                 except Exception:
                     pass
                 Update._jobs.pop(process_name, None)
+            Update._next_check_at.pop(process_name, None)
             self._safe_record_update_status(
                 process_name,
                 {
                     "status": "disabled",
                     "auto_update_enabled": False,
                     "auto_update_interval": self.auto_update_interval(process_name, config),
+                    "auto_update_start_time": self.auto_update_start_time(
+                        process_name, config
+                    ),
                     "next_check_at": None,
                 },
             )
@@ -736,6 +770,69 @@ class Update:
             interval = default_interval
 
         return interval
+
+    def auto_update_start_time(self, process_name, config):
+        default_start_time = "04:00"
+        try:
+            raw_value = str(config.get("auto_update_start_time", default_start_time))
+            normalized = raw_value.strip()
+            datetime.strptime(normalized, "%H:%M")
+            return normalized
+        except Exception:
+            self.logger.warning(
+                "Invalid auto_update_start_time for %s. Falling back to %s",
+                process_name,
+                default_start_time,
+            )
+            return default_start_time
+
+    def _calculate_next_check_at(self, process_name, config, now_ts=None):
+        if now_ts is None:
+            now_ts = int(time.time())
+        interval_seconds = max(60, int(self.auto_update_interval(process_name, config) * 3600))
+        start_time = self.auto_update_start_time(process_name, config)
+        hour, minute = [int(part) for part in start_time.split(":", 1)]
+        now_dt = datetime.fromtimestamp(now_ts)
+        anchor_dt = now_dt.replace(hour=hour, minute=minute, second=0, microsecond=0)
+        anchor_ts = int(anchor_dt.timestamp())
+
+        if now_ts <= anchor_ts:
+            return anchor_ts
+
+        elapsed = now_ts - anchor_ts
+        intervals_elapsed = (elapsed + interval_seconds - 1) // interval_seconds
+        return anchor_ts + intervals_elapsed * interval_seconds
+
+    def _run_scheduled_update_if_due(self, process_name, config, key, instance_name):
+        latest_config = CONFIG_MANAGER.get_instance(instance_name, key)
+        if not latest_config:
+            return
+        if not latest_config.get("auto_update"):
+            return
+
+        now_ts = int(time.time())
+        due_at = Update._next_check_at.get(process_name)
+        if due_at is None:
+            due_at = self._calculate_next_check_at(process_name, latest_config, now_ts)
+            Update._next_check_at[process_name] = due_at
+        if now_ts < due_at:
+            return
+
+        next_due_at = self._calculate_next_check_at(process_name, latest_config, now_ts + 1)
+        Update._next_check_at[process_name] = next_due_at
+        self.scheduled_update_check(process_name, latest_config, key, instance_name)
+        self._safe_record_update_status(
+            process_name,
+            {
+                "status": "scheduled",
+                "auto_update_enabled": True,
+                "auto_update_interval": self.auto_update_interval(process_name, latest_config),
+                "auto_update_start_time": self.auto_update_start_time(
+                    process_name, latest_config
+                ),
+                "next_check_at": next_due_at,
+            },
+        )
 
     def auto_update(self, process_name, enable_update, force_update_check: bool = False):
         key, instance_name = CONFIG_MANAGER.find_key_for_process(process_name)

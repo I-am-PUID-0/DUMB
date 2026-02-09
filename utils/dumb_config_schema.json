@@ -272,6 +272,10 @@
             "auto_update_interval": {
               "type": "number"
             },
+            "auto_update_start_time": {
+              "type": "string",
+              "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+            },
             "clear_on_update": {
               "type": "boolean"
             },
@@ -317,6 +321,7 @@
             "port",
             "auto_update",
             "auto_update_interval",
+            "auto_update_start_time",
             "clear_on_update",
             "exclude_dirs",
             "platforms",
@@ -482,6 +487,10 @@
         "auto_update_interval": {
           "type": "number"
         },
+        "auto_update_start_time": {
+          "type": "string",
+          "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+        },
         "clear_on_update": {
           "type": "boolean"
         },
@@ -530,6 +539,7 @@
         "port",
         "auto_update",
         "auto_update_interval",
+        "auto_update_start_time",
         "clear_on_update",
         "exclude_dirs",
         "platforms",
@@ -639,6 +649,10 @@
         "auto_update_interval": {
           "type": "number"
         },
+        "auto_update_start_time": {
+          "type": "string",
+          "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+        },
         "clear_on_update": {
           "type": "boolean"
         },
@@ -681,17 +695,39 @@
         "dfs": {
           "type": "object",
           "properties": {
-            "cache_dir": { "type": "string" },
-            "chunk_size": { "type": "string" },
-            "disk_cache_size": { "type": "string" },
-            "cache_expiry": { "type": "string" },
-            "cache_cleanup_interval": { "type": "string" },
-            "daemon_timeout": { "type": "string" },
-            "uid": { "type": "integer" },
-            "gid": { "type": "integer" },
-            "umask": { "type": "string" },
-            "allow_other": { "type": "boolean" },
-            "default_permissions": { "type": "boolean" }
+            "cache_dir": {
+              "type": "string"
+            },
+            "chunk_size": {
+              "type": "string"
+            },
+            "disk_cache_size": {
+              "type": "string"
+            },
+            "cache_expiry": {
+              "type": "string"
+            },
+            "cache_cleanup_interval": {
+              "type": "string"
+            },
+            "daemon_timeout": {
+              "type": "string"
+            },
+            "uid": {
+              "type": "integer"
+            },
+            "gid": {
+              "type": "integer"
+            },
+            "umask": {
+              "type": "string"
+            },
+            "allow_other": {
+              "type": "boolean"
+            },
+            "default_permissions": {
+              "type": "boolean"
+            }
           }
         },
         "api_keys": {
@@ -712,6 +748,7 @@
         "port",
         "auto_update",
         "auto_update_interval",
+        "auto_update_start_time",
         "clear_on_update",
         "exclude_dirs",
         "command",
@@ -770,6 +807,10 @@
         "auto_update_interval": {
           "type": "number"
         },
+        "auto_update_start_time": {
+          "type": "string",
+          "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+        },
         "clear_on_update": {
           "type": "boolean"
         },
@@ -819,6 +860,7 @@
         "backend_port",
         "auto_update",
         "auto_update_interval",
+        "auto_update_start_time",
         "clear_on_update",
         "exclude_dirs",
         "platforms",
@@ -868,6 +910,10 @@
         "auto_update_interval": {
           "type": "number"
         },
+        "auto_update_start_time": {
+          "type": "string",
+          "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+        },
         "config_dir": {
           "type": "string"
         },
@@ -900,6 +946,7 @@
         "port",
         "auto_update",
         "auto_update_interval",
+        "auto_update_start_time",
         "config_dir",
         "config_file",
         "log_file",
@@ -924,6 +971,10 @@
         },
         "auto_update_interval": {
           "type": "number"
+        },
+        "auto_update_start_time": {
+          "type": "string",
+          "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
         },
         "pinned_version": {
           "type": "string"
@@ -956,6 +1007,7 @@
         "suppress_logging",
         "auto_update",
         "auto_update_interval",
+        "auto_update_start_time",
         "pinned_version",
         "port",
         "config_dir",
@@ -1017,6 +1069,10 @@
                 "auto_update_interval": {
                   "type": "number"
                 },
+                "auto_update_start_time": {
+                  "type": "string",
+                  "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+                },
                 "clear_on_update": {
                   "type": "boolean"
                 },
@@ -1062,6 +1118,7 @@
                 "suppress_logging",
                 "auto_update",
                 "auto_update_interval",
+                "auto_update_start_time",
                 "pinned_version",
                 "port",
                 "config_dir",
@@ -1119,6 +1176,10 @@
         "auto_update_interval": {
           "type": "number"
         },
+        "auto_update_start_time": {
+          "type": "string",
+          "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+        },
         "clear_on_update": {
           "type": "boolean"
         },
@@ -1164,6 +1225,7 @@
         "port",
         "auto_update",
         "auto_update_interval",
+        "auto_update_start_time",
         "clear_on_update",
         "exclude_dirs",
         "platforms",
@@ -1196,6 +1258,10 @@
         },
         "auto_update_interval": {
           "type": "number"
+        },
+        "auto_update_start_time": {
+          "type": "string",
+          "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
         },
         "pinned_version": {
           "type": "string"
@@ -1321,6 +1387,7 @@
         "port",
         "auto_update",
         "auto_update_interval",
+        "auto_update_start_time",
         "pinned_version",
         "config_dir",
         "config_file",
@@ -1374,6 +1441,10 @@
         "auto_update_interval": {
           "type": "number"
         },
+        "auto_update_start_time": {
+          "type": "string",
+          "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+        },
         "clear_on_update": {
           "type": "boolean"
         },
@@ -1422,6 +1493,7 @@
         "port",
         "auto_update",
         "auto_update_interval",
+        "auto_update_start_time",
         "clear_on_update",
         "exclude_dirs",
         "platforms",
@@ -1487,6 +1559,10 @@
                 "auto_update_interval": {
                   "type": "number"
                 },
+                "auto_update_start_time": {
+                  "type": "string",
+                  "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+                },
                 "clear_on_update": {
                   "type": "boolean"
                 },
@@ -1536,6 +1612,7 @@
                 "port",
                 "auto_update",
                 "auto_update_interval",
+                "auto_update_start_time",
                 "clear_on_update",
                 "exclude_dirs",
                 "platforms",
@@ -1710,6 +1787,10 @@
                 "auto_update_interval": {
                   "type": "number"
                 },
+                "auto_update_start_time": {
+                  "type": "string",
+                  "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+                },
                 "clear_on_update": {
                   "type": "boolean"
                 },
@@ -1756,6 +1837,7 @@
                 "port",
                 "auto_update",
                 "auto_update_interval",
+                "auto_update_start_time",
                 "clear_on_update",
                 "exclude_dirs",
                 "platforms",
@@ -1835,6 +1917,10 @@
                 "auto_update_interval": {
                   "type": "number"
                 },
+                "auto_update_start_time": {
+                  "type": "string",
+                  "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+                },
                 "clear_on_update": {
                   "type": "boolean"
                 },
@@ -1885,6 +1971,7 @@
                 "port",
                 "auto_update",
                 "auto_update_interval",
+                "auto_update_start_time",
                 "clear_on_update",
                 "exclude_dirs",
                 "platforms",
@@ -1935,6 +2022,10 @@
         "auto_update_interval": {
           "type": "number"
         },
+        "auto_update_start_time": {
+          "type": "string",
+          "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+        },
         "clear_on_update": {
           "type": "boolean"
         },
@@ -1980,6 +2071,7 @@
         "log_level",
         "auto_update",
         "auto_update_interval",
+        "auto_update_start_time",
         "clear_on_update",
         "exclude_dirs",
         "platforms",
@@ -2167,6 +2259,10 @@
                 "auto_update_interval": {
                   "type": "number"
                 },
+                "auto_update_start_time": {
+                  "type": "string",
+                  "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+                },
                 "clear_on_update": {
                   "type": "boolean"
                 },
@@ -2210,6 +2306,7 @@
                 "suppress_logging",
                 "auto_update",
                 "auto_update_interval",
+                "auto_update_start_time",
                 "pinned_version",
                 "port",
                 "config_dir",
@@ -2282,6 +2379,10 @@
                 "auto_update_interval": {
                   "type": "number"
                 },
+                "auto_update_start_time": {
+                  "type": "string",
+                  "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+                },
                 "clear_on_update": {
                   "type": "boolean"
                 },
@@ -2328,6 +2429,7 @@
                 "suppress_logging",
                 "auto_update",
                 "auto_update_interval",
+                "auto_update_start_time",
                 "pinned_version",
                 "port",
                 "config_dir",
@@ -2489,6 +2591,10 @@
         "auto_update_interval": {
           "type": "number"
         },
+        "auto_update_start_time": {
+          "type": "string",
+          "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+        },
         "symlink_library_path": {
           "type": "string"
         },
@@ -2559,6 +2665,7 @@
         "port",
         "auto_update",
         "auto_update_interval",
+        "auto_update_start_time",
         "symlink_library_path",
         "clear_on_update",
         "exclude_dirs",
@@ -2617,6 +2724,10 @@
         "auto_update_interval": {
           "type": "number"
         },
+        "auto_update_start_time": {
+          "type": "string",
+          "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+        },
         "origin": {
           "type": "string"
         },
@@ -2666,6 +2777,7 @@
         "port",
         "auto_update",
         "auto_update_interval",
+        "auto_update_start_time",
         "origin",
         "clear_on_update",
         "exclude_dirs",
@@ -2739,6 +2851,10 @@
                 "auto_update_interval": {
                   "type": "number"
                 },
+                "auto_update_start_time": {
+                  "type": "string",
+                  "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+                },
                 "clear_on_update": {
                   "type": "boolean"
                 },
@@ -2785,6 +2901,7 @@
                 "suppress_logging",
                 "auto_update",
                 "auto_update_interval",
+                "auto_update_start_time",
                 "pinned_version",
                 "port",
                 "config_dir",
@@ -2858,6 +2975,10 @@
                 "auto_update_interval": {
                   "type": "number"
                 },
+                "auto_update_start_time": {
+                  "type": "string",
+                  "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+                },
                 "clear_on_update": {
                   "type": "boolean"
                 },
@@ -2903,6 +3024,7 @@
                 "suppress_logging",
                 "auto_update",
                 "auto_update_interval",
+                "auto_update_start_time",
                 "pinned_version",
                 "port",
                 "config_dir",
@@ -2962,6 +3084,10 @@
         },
         "auto_update_interval": {
           "type": "number"
+        },
+        "auto_update_start_time": {
+          "type": "string",
+          "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
         },
         "clear_on_update": {
           "type": "boolean"
@@ -3071,6 +3197,7 @@
         "port",
         "auto_update",
         "auto_update_interval",
+        "auto_update_start_time",
         "clear_on_update",
         "exclude_dirs",
         "env_copy",
@@ -3134,6 +3261,10 @@
                 "auto_update_interval": {
                   "type": "number"
                 },
+                "auto_update_start_time": {
+                  "type": "string",
+                  "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+                },
                 "clear_on_update": {
                   "type": "boolean"
                 },
@@ -3180,6 +3311,7 @@
                 "log_level",
                 "auto_update",
                 "auto_update_interval",
+                "auto_update_start_time",
                 "clear_on_update",
                 "exclude_dirs",
                 "key_type",

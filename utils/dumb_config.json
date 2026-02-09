@@ -74,6 +74,7 @@
       "port": 3005,
       "auto_update": false,
       "auto_update_interval": 24,
+      "auto_update_start_time": "04:00",
       "clear_on_update": true,
       "exclude_dirs": [],
       "platforms": [
@@ -131,6 +132,7 @@
     "port": 5000,
     "auto_update": false,
     "auto_update_interval": 24,
+    "auto_update_start_time": "04:00",
     "clear_on_update": true,
     "exclude_dirs": [
       "/cli_debrid/data"
@@ -190,6 +192,7 @@
     "port": 8282,
     "auto_update": false,
     "auto_update_interval": 24,
+    "auto_update_start_time": "04:00",
     "clear_on_update": false,
     "exclude_dirs": [],
     "command": [
@@ -231,6 +234,7 @@
     "backend_port": 8080,
     "auto_update": false,
     "auto_update_interval": 24,
+    "auto_update_start_time": "04:00",
     "clear_on_update": false,
     "exclude_dirs": [],
     "platforms": [
@@ -256,6 +260,7 @@
     "port": 8096,
     "auto_update": false,
     "auto_update_interval": 24,
+    "auto_update_start_time": "04:00",
     "config_dir": "/emby",
     "config_file": "/emby/config/system.xml",
     "log_file": "/emby/log/embyserver.txt",
@@ -268,6 +273,7 @@
     "suppress_logging": false,
     "auto_update": false,
     "auto_update_interval": 24,
+    "auto_update_start_time": "04:00",
     "pinned_version": "",
     "port": 8096,
     "config_dir": "/jellyfin",
@@ -290,6 +296,7 @@
         "suppress_logging": false,
         "auto_update": false,
         "auto_update_interval": 24,
+        "auto_update_start_time": "04:00",
         "clear_on_update": false,
         "exclude_dirs": [],
         "platforms": [],
@@ -317,6 +324,7 @@
     "port": 8888,
     "auto_update": false,
     "auto_update_interval": 24,
+    "auto_update_start_time": "04:00",
     "clear_on_update": true,
     "exclude_dirs": [
       "/phalanx_db/data"
@@ -340,6 +348,7 @@
     "port": 32400,
     "auto_update": false,
     "auto_update_interval": 24,
+    "auto_update_start_time": "04:00",
     "pinned_version": "",
     "config_dir": "/plex",
     "config_file": "/plex/Plex Media Server/Preferences.xml",
@@ -385,6 +394,7 @@
     "port": 8181,
     "auto_update": false,
     "auto_update_interval": 24,
+    "auto_update_start_time": "04:00",
     "clear_on_update": true,
     "exclude_dirs": [
       "/tautulli/data"
@@ -425,6 +435,7 @@
         "port": 9705,
         "auto_update": false,
         "auto_update_interval": 24,
+        "auto_update_start_time": "04:00",
         "clear_on_update": false,
         "exclude_dirs": [
           "/huntarr/default/config"
@@ -482,6 +493,7 @@
         "port": 6868,
         "auto_update": false,
         "auto_update_interval": 24,
+        "auto_update_start_time": "04:00",
         "clear_on_update": true,
         "exclude_dirs": [
           "/profilarr/default/config"
@@ -528,6 +540,7 @@
         "port": 5055,
         "auto_update": false,
         "auto_update_interval": 24,
+        "auto_update_start_time": "04:00",
         "clear_on_update": true,
         "exclude_dirs": [
           "/seerr/default/config"
@@ -560,6 +573,7 @@
     "log_level": "INFO",
     "auto_update": false,
     "auto_update_interval": 24,
+    "auto_update_start_time": "04:00",
     "clear_on_update": true,
     "exclude_dirs": [
       "/plex_debrid/config"
@@ -640,6 +654,7 @@
         "suppress_logging": false,
         "auto_update": false,
         "auto_update_interval": 24,
+        "auto_update_start_time": "04:00",
         "clear_on_update": false,
         "exclude_dirs": [],
         "platforms": [],
@@ -691,6 +706,7 @@
     "port": 8080,
     "auto_update": false,
     "auto_update_interval": 24,
+    "auto_update_start_time": "04:00",
     "symlink_library_path": "/mnt/debrid/riven_symlinks",
     "clear_on_update": true,
     "exclude_dirs": [
@@ -730,6 +746,7 @@
     "port": 3000,
     "auto_update": false,
     "auto_update_interval": 24,
+    "auto_update_start_time": "04:00",
     "origin": "",
     "clear_on_update": true,
     "exclude_dirs": [],
@@ -759,6 +776,7 @@
         "suppress_logging": false,
         "auto_update": false,
         "auto_update_interval": 24,
+        "auto_update_start_time": "04:00",
         "clear_on_update": false,
         "exclude_dirs": [],
         "platforms": [],
@@ -787,6 +805,7 @@
         "suppress_logging": false,
         "auto_update": false,
         "auto_update_interval": 24,
+        "auto_update_start_time": "04:00",
         "clear_on_update": false,
         "exclude_dirs": [],
         "platforms": [],
@@ -814,6 +833,7 @@
         "suppress_logging": false,
         "auto_update": false,
         "auto_update_interval": 24,
+        "auto_update_start_time": "04:00",
         "clear_on_update": false,
         "exclude_dirs": [],
         "platforms": [],
@@ -842,6 +862,7 @@
     "port": 8182,
     "auto_update": false,
     "auto_update_interval": 24,
+    "auto_update_start_time": "04:00",
     "clear_on_update": true,
     "exclude_dirs": [
       "/zilean/app/data"
@@ -889,6 +910,7 @@
         "port": 9090,
         "auto_update": false,
         "auto_update_interval": 24,
+        "auto_update_start_time": "04:00",
         "clear_on_update": false,
         "exclude_dirs": [
           "/zurg/RD"
