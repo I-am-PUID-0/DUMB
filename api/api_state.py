@@ -1,4 +1,4 @@
-import os, socket, psutil, threading, time
+import os, socket, psutil, threading, time, uuid
 from json import load
 from utils.config_loader import CONFIG_MANAGER
 
@@ -17,6 +17,10 @@ class APIState:
         self.shutdown_in_progress = set()
         self._update_cache = {}
         self._update_cache_lock = threading.Lock()
+        self._symlink_backup_cache = {}
+        self._symlink_backup_cache_lock = threading.Lock()
+        self._symlink_job_cache = {}
+        self._symlink_job_cache_lock = threading.Lock()
 
     def _normalize_process_name(self, value):
         return str(value or "").replace(" ", "").replace("/ ", "/").strip().lower()
@@ -37,6 +41,92 @@ class APIState:
         normalized = self._normalize_process_name(process_name)
         with self._update_cache_lock:
             payload = self._update_cache.get(normalized)
+            if not payload:
+                return None
+            return dict(payload)
+
+    def set_symlink_backup_status(self, process_name, payload):
+        if not process_name or not isinstance(payload, dict):
+            return
+        normalized = self._normalize_process_name(process_name)
+        status_payload = {
+            "process_name": process_name,
+            "checked_at": payload.get("checked_at") or int(time.time()),
+            **payload,
+        }
+        with self._symlink_backup_cache_lock:
+            self._symlink_backup_cache[normalized] = status_payload
+
+    def get_symlink_backup_status(self, process_name):
+        normalized = self._normalize_process_name(process_name)
+        with self._symlink_backup_cache_lock:
+            payload = self._symlink_backup_cache.get(normalized)
+            if not payload:
+                return None
+            return dict(payload)
+
+    def _cleanup_symlink_jobs(self):
+        max_jobs = 500
+        now_ts = int(time.time())
+        cutoff_ts = now_ts - 86400
+        keys_to_remove = []
+        for job_id, payload in self._symlink_job_cache.items():
+            if not isinstance(payload, dict):
+                keys_to_remove.append(job_id)
+                continue
+            status = str(payload.get("status") or "").strip().lower()
+            updated_at = int(payload.get("updated_at") or 0)
+            if status in {"completed", "error"} and updated_at and updated_at < cutoff_ts:
+                keys_to_remove.append(job_id)
+        for job_id in keys_to_remove:
+            self._symlink_job_cache.pop(job_id, None)
+
+        if len(self._symlink_job_cache) <= max_jobs:
+            return
+        sorted_jobs = sorted(
+            self._symlink_job_cache.items(),
+            key=lambda item: int((item[1] or {}).get("updated_at") or 0),
+            reverse=True,
+        )
+        retained = dict(sorted_jobs[:max_jobs])
+        self._symlink_job_cache = retained
+
+    def create_symlink_job(self, process_name, operation, metadata=None):
+        now_ts = int(time.time())
+        job_id = uuid.uuid4().hex
+        payload = {
+            "job_id": job_id,
+            "process_name": process_name,
+            "operation": str(operation or "").strip() or "unknown",
+            "status": "queued",
+            "created_at": now_ts,
+            "updated_at": now_ts,
+            "metadata": metadata if isinstance(metadata, dict) else {},
+            "result": None,
+            "error": None,
+        }
+        with self._symlink_job_cache_lock:
+            self._cleanup_symlink_jobs()
+            self._symlink_job_cache[job_id] = payload
+        return dict(payload)
+
+    def update_symlink_job(self, job_id, updates):
+        if not job_id or not isinstance(updates, dict):
+            return None
+        with self._symlink_job_cache_lock:
+            payload = self._symlink_job_cache.get(job_id)
+            if not payload:
+                return None
+            payload.update(updates)
+            payload["updated_at"] = int(time.time())
+            self._symlink_job_cache[job_id] = payload
+            return dict(payload)
+
+    def get_symlink_job(self, job_id):
+        if not job_id:
+            return None
+        with self._symlink_job_cache_lock:
+            payload = self._symlink_job_cache.get(job_id)
             if not payload:
                 return None
             return dict(payload)

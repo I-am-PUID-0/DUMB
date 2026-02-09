@@ -13,7 +13,7 @@ from utils.config_loader import CONFIG_MANAGER, find_service_config
 from utils.setup import setup_project
 from utils.core_services import has_core_service
 from utils.versions import Versions
-import json, copy, time, glob, re, socket, errno, psutil
+import json, copy, time, glob, re, socket, errno, psutil, os, threading
 
 
 class ServiceRequest(BaseModel):
@@ -33,6 +33,45 @@ class UpdateInstallRequest(BaseModel):
 
 class RescheduleAutoUpdateRequest(BaseModel):
     process_name: str
+
+
+class RescheduleSymlinkBackupRequest(BaseModel):
+    process_name: str
+
+
+class SymlinkRewriteRule(BaseModel):
+    from_prefix: str
+    to_prefix: str
+
+
+class SymlinkRootMigration(BaseModel):
+    from_root: str
+    to_root: str
+
+
+class SymlinkRepairRequest(BaseModel):
+    roots: Optional[List[str]] = None
+    rewrite_rules: Optional[List[SymlinkRewriteRule]] = None
+    root_migrations: Optional[List[SymlinkRootMigration]] = None
+    presets: Optional[List[str]] = None
+    dry_run: Optional[bool] = True
+    include_broken: Optional[bool] = True
+    backup_path: Optional[str] = None
+    overwrite_existing: Optional[bool] = False
+    copy_instead_of_move: Optional[bool] = False
+
+
+class SymlinkManifestBackupRequest(BaseModel):
+    roots: Optional[List[str]] = None
+    backup_path: str
+    include_broken: Optional[bool] = True
+
+
+class SymlinkManifestRestoreRequest(BaseModel):
+    manifest_path: str
+    dry_run: Optional[bool] = True
+    overwrite_existing: Optional[bool] = False
+    restore_broken: Optional[bool] = True
 
 
 class CoreServiceConfig(BaseModel):
@@ -387,6 +426,13 @@ SERVICE_OPTION_DESCRIPTIONS = {
     "auto_update": "Automatically check for new versions",
     "auto_update_interval": "Hours between automatic update checks.",
     "auto_update_start_time": "24-hour start time for the auto-update schedule (HH:MM).",
+    "symlink_backup_enabled": "Enable scheduled standalone symlink snapshot backups for this service.",
+    "symlink_backup_interval": "Hours between scheduled symlink snapshot backups.",
+    "symlink_backup_start_time": "24-hour start time for the symlink-backup schedule (HH:MM).",
+    "symlink_backup_path": "Backup manifest destination template. Supports {timestamp}, {date}, {time}, {process_name}, {process_slug}.",
+    "symlink_backup_include_broken": "Include symlink entries whose targets currently do not exist in scheduled backups.",
+    "symlink_backup_roots": "Optional roots list (array or comma/newline text) to scope scheduled symlink backups.",
+    "symlink_backup_retention_count": "Number of scheduled backup manifests to retain per service template (0 disables pruning).",
     "plex_claim": "Token used to claim the Plex Media Server. https://www.plex.tv/claim",
     "friendly_name": "A user-friendly name for the Plex Media Server.",
     "setup_email": "Email address pgAdmin4 login.",
@@ -429,6 +475,9 @@ def fetch_process(
             key=config_key,
         )
         update_status = api_state.get_update_status(process_name) if api_state else None
+        symlink_backup_status = (
+            api_state.get_symlink_backup_status(process_name) if api_state else None
+        )
         supports_manual_update = False
         if updater:
             supports_manual_update = updater.supports_manual_update(config_key, config)
@@ -439,6 +488,7 @@ def fetch_process(
             "version": version,
             "config_key": config_key,
             "update_status": update_status,
+            "symlink_backup_status": symlink_backup_status,
             "supports_manual_update": supports_manual_update,
         }
     except Exception as e:
@@ -892,6 +942,243 @@ async def reschedule_auto_update(
     return payload
 
 
+@process_router.get("/symlink-backup-status")
+def symlink_backup_status(
+    process_name: str = Query(..., description="The name of the process to check"),
+    api_state=Depends(get_api_state),
+    current_user: str = Depends(get_optional_current_user),
+):
+    if not process_name:
+        raise HTTPException(status_code=400, detail="process_name is required")
+    payload = api_state.get_symlink_backup_status(process_name) if api_state else None
+    return {"process_name": process_name, "symlink_backup_status": payload}
+
+
+@process_router.get("/symlink-backup-manifests")
+def symlink_backup_manifests(
+    process_name: str = Query(..., description="The name of the process to check"),
+    current_user: str = Depends(get_optional_current_user),
+):
+    if not process_name:
+        raise HTTPException(status_code=400, detail="process_name is required")
+    config = find_service_config(CONFIG_MANAGER.config, process_name)
+    if not config:
+        raise HTTPException(status_code=404, detail="Process not found")
+
+    template = str(config.get("symlink_backup_path") or "").strip()
+    pattern = _symlink_manifest_glob_pattern(process_name, template)
+    matches = []
+    for path in glob.glob(pattern):
+        if not os.path.isfile(path):
+            continue
+        try:
+            stat = os.stat(path)
+            matches.append(
+                {
+                    "path": path,
+                    "size_bytes": int(stat.st_size),
+                    "modified_at": int(stat.st_mtime),
+                }
+            )
+        except OSError:
+            continue
+
+    matches.sort(key=lambda item: item.get("modified_at", 0), reverse=True)
+    return {
+        "process_name": process_name,
+        "pattern": pattern,
+        "manifests": matches[:200],
+        "count": len(matches),
+    }
+
+
+@process_router.post("/symlink-backup/reschedule")
+async def reschedule_symlink_backup(
+    request: RescheduleSymlinkBackupRequest,
+    updater=Depends(get_updater),
+    current_user: str = Depends(get_optional_current_user),
+):
+    if not request.process_name:
+        raise HTTPException(status_code=400, detail="process_name is required")
+    if not updater:
+        raise HTTPException(status_code=500, detail="Updater not available")
+
+    success, message = await run_in_threadpool(
+        updater.reschedule_symlink_backup, request.process_name
+    )
+    payload = {
+        "status": "ok" if success else "error",
+        "message": message,
+    }
+    return payload
+
+
+@process_router.post("/symlink-repair")
+async def symlink_repair(
+    request: SymlinkRepairRequest,
+    current_user: str = Depends(get_optional_current_user),
+):
+    from utils.symlink_repair import repair_symlinks
+
+    rules_payload = (
+        [rule.model_dump() for rule in request.rewrite_rules]
+        if request.rewrite_rules
+        else []
+    )
+    root_migrations_payload = (
+        [migration.model_dump() for migration in request.root_migrations]
+        if request.root_migrations
+        else []
+    )
+    if not rules_payload and not request.presets and not root_migrations_payload:
+        raise HTTPException(
+            status_code=400,
+            detail="Provide at least one rewrite rule, root migration, or preset.",
+        )
+
+    try:
+        report = await run_in_threadpool(
+            repair_symlinks,
+            request.roots,
+            rules_payload,
+            bool(request.dry_run),
+            bool(request.include_broken),
+            request.backup_path,
+            request.presets,
+            root_migrations_payload,
+            bool(request.overwrite_existing),
+            bool(request.copy_instead_of_move),
+        )
+        return report
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Symlink repair failed: {e}")
+
+
+@process_router.post("/symlink-manifest/backup")
+async def symlink_manifest_backup(
+    request: SymlinkManifestBackupRequest,
+    current_user: str = Depends(get_optional_current_user),
+):
+    from utils.symlink_repair import backup_symlink_manifest
+
+    try:
+        report = await run_in_threadpool(
+            backup_symlink_manifest,
+            request.roots,
+            request.backup_path,
+            bool(request.include_broken),
+        )
+        return report
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Symlink manifest backup failed: {e}"
+        )
+
+
+@process_router.post("/symlink-manifest/backup-async")
+async def symlink_manifest_backup_async(
+    request: SymlinkManifestBackupRequest,
+    api_state=Depends(get_api_state),
+    current_user: str = Depends(get_optional_current_user),
+):
+    from utils.symlink_repair import backup_symlink_manifest
+
+    if not api_state:
+        raise HTTPException(status_code=500, detail="API state unavailable")
+
+    process_name = str(request.backup_path or "symlink-manifest").strip()
+    job_payload = api_state.create_symlink_job(
+        process_name=process_name,
+        operation="symlink_manifest_backup",
+        metadata={
+            "backup_path": request.backup_path,
+            "include_broken": bool(request.include_broken),
+            "roots": request.roots or [],
+        },
+    )
+    job_id = job_payload["job_id"]
+
+    def run_job():
+        api_state.update_symlink_job(
+            job_id,
+            {
+                "status": "running",
+                "started_at": int(time.time()),
+            },
+        )
+        try:
+            report = backup_symlink_manifest(
+                request.roots,
+                request.backup_path,
+                bool(request.include_broken),
+            )
+            api_state.update_symlink_job(
+                job_id,
+                {
+                    "status": "completed",
+                    "finished_at": int(time.time()),
+                    "result": report,
+                    "error": None,
+                },
+            )
+        except Exception as e:
+            api_state.update_symlink_job(
+                job_id,
+                {
+                    "status": "error",
+                    "finished_at": int(time.time()),
+                    "error": {"message": str(e)},
+                },
+            )
+
+    thread = threading.Thread(target=run_job, daemon=True)
+    thread.start()
+
+    return {
+        "status": "queued",
+        "job_id": job_id,
+        "operation": "symlink_manifest_backup",
+    }
+
+
+@process_router.get("/symlink-job-status")
+def symlink_job_status(
+    job_id: str = Query(..., description="Symlink job ID"),
+    api_state=Depends(get_api_state),
+    current_user: str = Depends(get_optional_current_user),
+):
+    if not job_id:
+        raise HTTPException(status_code=400, detail="job_id is required")
+    if not api_state:
+        raise HTTPException(status_code=500, detail="API state unavailable")
+    payload = api_state.get_symlink_job(job_id)
+    if not payload:
+        raise HTTPException(status_code=404, detail="Symlink job not found")
+    return payload
+
+
+@process_router.post("/symlink-manifest/restore")
+async def symlink_manifest_restore(
+    request: SymlinkManifestRestoreRequest,
+    current_user: str = Depends(get_optional_current_user),
+):
+    from utils.symlink_repair import restore_symlink_manifest
+
+    try:
+        report = await run_in_threadpool(
+            restore_symlink_manifest,
+            request.manifest_path,
+            bool(request.dry_run),
+            bool(request.overwrite_existing),
+            bool(request.restore_broken),
+        )
+        return report
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Symlink manifest restore failed: {e}"
+        )
+
+
 def wait_for_process_running(
     api_state, process_name: str, timeout: int = 15, interval: float = 0.5
 ):
@@ -922,6 +1209,28 @@ def apply_service_options(config_block, options: dict, logger):
 def normalize_identifier(identifier: str) -> str:
     ident = identifier.strip().lower()
     return ALIAS_TO_KEY.get(ident, ident)
+
+
+def _normalize_process_slug(value: str) -> str:
+    slug = "".join(ch.lower() if ch.isalnum() else "-" for ch in str(value or ""))
+    slug = slug.strip("-")
+    return slug or "service"
+
+
+def _symlink_manifest_glob_pattern(process_name: str, template: str) -> str:
+    pattern = str(template or "").strip()
+    if not pattern:
+        pattern = "/config/symlink-repair/snapshots/{process_slug}-{timestamp}.json"
+    replacements = {
+        "{timestamp}": "*",
+        "{date}": "*",
+        "{time}": "*",
+        "{process_name}": process_name,
+        "{process_slug}": _normalize_process_slug(process_name),
+    }
+    for token, value in replacements.items():
+        pattern = pattern.replace(token, value)
+    return pattern
 
 
 def normalize_instance_name(instance_name: str) -> tuple[str, str]:
@@ -1601,7 +1910,12 @@ def _run_startup(request: UnifiedStartRequest, updater, api_state, logger):
                     CONFIG_MANAGER.save_config()
 
             # If decypharr uses embedded rclone, drop rclone from deps *now*
-            if config_key == "decypharr" and mount_type in ("rclone", "dfs", "none", ""):
+            if config_key == "decypharr" and mount_type in (
+                "rclone",
+                "dfs",
+                "none",
+                "",
+            ):
                 logger.debug(
                     "Decypharr does not require DUMB rclone; removing 'rclone' from dependencies."
                 )
@@ -2122,7 +2436,9 @@ def _run_startup(request: UnifiedStartRequest, updater, api_state, logger):
                 if ok:
                     break
                 if err:
-                    logger.warning("Profilarr config retry %s failed: %s", attempt + 1, err)
+                    logger.warning(
+                        "Profilarr config retry %s failed: %s", attempt + 1, err
+                    )
     except Exception as exc:
         logger.warning("Profilarr auto-config skipped: %s", exc)
 
@@ -2339,4 +2655,11 @@ async def get_capabilities(current_user: str = Depends(get_optional_current_user
         "manual_update_check": True,
         "seerr_sync": True,
         "auto_update_start_time": True,
+        "symlink_repair": True,
+        "symlink_manifest_backup": True,
+        "symlink_manifest_backup_async": True,
+        "symlink_job_status": True,
+        "symlink_manifest_restore": True,
+        "symlink_backup_schedule": True,
+        "symlink_backup_manifest_list": True,
     }

@@ -7,6 +7,7 @@ from utils.arr import ArrInstaller
 from utils.jellyfin import JellyfinInstaller
 from utils.config_loader import CONFIG_MANAGER
 from datetime import datetime
+from glob import glob
 import threading, time, os, schedule, requests, subprocess
 
 
@@ -14,6 +15,8 @@ class Update:
     _scheduler_initialized = False
     _jobs = {}
     _next_check_at = {}
+    _symlink_backup_jobs = {}
+    _symlink_backup_next_at = {}
     _schedule_thread_started = False
     _schedule_thread_count = 0
     _schedule_thread_lock = threading.Lock()
@@ -68,6 +71,155 @@ class Update:
                 api_state.set_update_status(process_name, payload)
         except Exception:
             return
+
+    def _safe_record_symlink_backup_status(self, process_name, payload):
+        try:
+            from utils.dependencies import get_api_state
+
+            api_state = get_api_state()
+            if api_state:
+                api_state.set_symlink_backup_status(process_name, payload)
+        except Exception:
+            return
+
+    def supports_symlink_backup(self, key):
+        return key in {"decypharr", "nzbdav", "cli_debrid", "riven_backend"}
+
+    def symlink_backup_enabled(self, process_name, config, key):
+        if not self.supports_symlink_backup(key):
+            return False
+        return bool(config.get("symlink_backup_enabled", False))
+
+    def symlink_backup_interval(self, process_name, config):
+        default_interval = 24
+        try:
+            interval = int(config.get("symlink_backup_interval", default_interval))
+        except Exception as e:
+            self.logger.error(
+                f"Failed to retrieve symlink_backup_interval for {process_name}: {e}"
+            )
+            interval = default_interval
+        return max(1, interval)
+
+    def symlink_backup_start_time(self, process_name, config):
+        default_start_time = "04:00"
+        try:
+            raw_value = str(config.get("symlink_backup_start_time", default_start_time))
+            normalized = raw_value.strip()
+            datetime.strptime(normalized, "%H:%M")
+            return normalized
+        except Exception:
+            self.logger.warning(
+                "Invalid symlink_backup_start_time for %s. Falling back to %s",
+                process_name,
+                default_start_time,
+            )
+            return default_start_time
+
+    def symlink_backup_path(self, process_name, config):
+        process_slug = self._normalize_process_slug(process_name)
+        default_path = (
+            f"/config/symlink-repair/snapshots/{process_slug}-{{timestamp}}.json"
+        )
+        value = str(config.get("symlink_backup_path", default_path) or "").strip()
+        return value or default_path
+
+    def symlink_backup_include_broken(self, config):
+        return bool(config.get("symlink_backup_include_broken", True))
+
+    def symlink_backup_roots(self, config):
+        raw = config.get("symlink_backup_roots")
+        if isinstance(raw, list):
+            roots = [str(v).strip() for v in raw if str(v).strip()]
+            return roots or None
+        if isinstance(raw, str):
+            roots = [
+                entry.strip()
+                for entry in raw.replace(",", "\n").split("\n")
+                if entry.strip()
+            ]
+            return roots or None
+        return None
+
+    def symlink_backup_retention_count(self, process_name, config):
+        default_count = 1
+        try:
+            count = int(config.get("symlink_backup_retention_count", default_count))
+        except Exception as e:
+            self.logger.error(
+                f"Failed to retrieve symlink_backup_retention_count for {process_name}: {e}"
+            )
+            count = default_count
+        return max(0, count)
+
+    def _normalize_process_slug(self, process_name):
+        return (
+            "".join(
+                ch.lower() if ch.isalnum() else "-" for ch in str(process_name or "")
+            ).strip("-")
+            or "service"
+        )
+
+    def _symlink_manifest_glob_pattern(self, process_name, template):
+        raw_template = str(template or "").strip()
+        if not raw_template:
+            raw_template = f"/config/symlink-repair/snapshots/{self._normalize_process_slug(process_name)}-{{timestamp}}.json"
+        replacements = {
+            "{timestamp}": "*",
+            "{date}": "*",
+            "{time}": "*",
+            "{process_name}": str(process_name or ""),
+            "{process_slug}": self._normalize_process_slug(process_name),
+        }
+        pattern = raw_template
+        for token, value in replacements.items():
+            pattern = pattern.replace(token, value)
+        return pattern
+
+    def _prune_symlink_backup_manifests(
+        self, process_name, path_template, retention_count
+    ):
+        keep_count = max(0, int(retention_count))
+        if keep_count <= 0:
+            return {"pruned": 0, "kept": 0, "errors": []}
+
+        pattern = self._symlink_manifest_glob_pattern(process_name, path_template)
+        manifest_candidates = []
+        errors = []
+        for path in glob(pattern):
+            if not os.path.isfile(path):
+                continue
+            try:
+                mtime = int(os.path.getmtime(path))
+            except Exception:
+                mtime = 0
+            manifest_candidates.append((path, mtime))
+
+        manifest_candidates.sort(key=lambda item: item[1], reverse=True)
+        stale = manifest_candidates[keep_count:]
+        pruned = 0
+        for stale_path, _ in stale:
+            try:
+                os.remove(stale_path)
+                pruned += 1
+            except Exception as e:
+                errors.append({"path": stale_path, "error": str(e)})
+
+        return {"pruned": pruned, "kept": keep_count, "errors": errors}
+
+    def _resolve_symlink_backup_path(self, process_name, path_template, run_ts):
+        dt = datetime.utcfromtimestamp(run_ts)
+        replacements = {
+            "{timestamp}": dt.strftime("%Y%m%dT%H%M%SZ"),
+            "{date}": dt.strftime("%Y%m%d"),
+            "{time}": dt.strftime("%H%M%S"),
+            "{process_name}": str(process_name or ""),
+            "{process_slug}": self._normalize_process_slug(process_name),
+        }
+        resolved = str(path_template or "").strip()
+        for token, value in replacements.items():
+            resolved = resolved.replace(token, value)
+        return resolved
 
     def manual_update_check(self, process_name, force: bool = False):
         key, instance_name = CONFIG_MANAGER.find_key_for_process(process_name)
@@ -329,7 +481,9 @@ class Update:
         versions = Versions()
         install_dir = config.get("install_dir")
         if install_dir:
-            current_version, error = versions.read_arr_version_from_dir(key, install_dir)
+            current_version, error = versions.read_arr_version_from_dir(
+                key, install_dir
+            )
         else:
             current_version, error = versions.version_check(
                 process_name, instance_name, key
@@ -619,7 +773,9 @@ class Update:
                 if allow_override:
                     config["pinned_version"] = ""
                     config["branch_enabled"] = False
-                    if config.get("release_version_enabled") and not self._release_is_nightly_or_prerelease(config):
+                    if config.get(
+                        "release_version_enabled"
+                    ) and not self._release_is_nightly_or_prerelease(config):
                         config["release_version_enabled"] = False
                         config["release_version"] = ""
                 if target:
@@ -628,7 +784,9 @@ class Update:
                         config["release_version_enabled"] = True
                         config["release_version"] = target_value
 
-                success, message = self.update_check(process_name, config, key, instance_name)
+                success, message = self.update_check(
+                    process_name, config, key, instance_name
+                )
                 if not success:
                     status = "no_update"
                     if isinstance(message, str) and "Failed" in message:
@@ -648,7 +806,9 @@ class Update:
                 return payload
             finally:
                 config["pinned_version"] = original.get("pinned_version")
-                config["release_version_enabled"] = original.get("release_version_enabled")
+                config["release_version_enabled"] = original.get(
+                    "release_version_enabled"
+                )
                 config["release_version"] = original.get("release_version")
                 config["branch_enabled"] = original.get("branch_enabled")
                 config["branch"] = original.get("branch")
@@ -747,7 +907,9 @@ class Update:
                 {
                     "status": "disabled",
                     "auto_update_enabled": False,
-                    "auto_update_interval": self.auto_update_interval(process_name, config),
+                    "auto_update_interval": self.auto_update_interval(
+                        process_name, config
+                    ),
                     "auto_update_start_time": self.auto_update_start_time(
                         process_name, config
                     ),
@@ -758,6 +920,203 @@ class Update:
 
         self.update_schedule(process_name, config, key, instance_name)
         return True, "Auto-update rescheduled"
+
+    def _cancel_symlink_backup_job(self, process_name):
+        existing_job = Update._symlink_backup_jobs.get(process_name)
+        if existing_job:
+            try:
+                self.scheduler.cancel_job(existing_job)
+            except Exception:
+                pass
+            Update._symlink_backup_jobs.pop(process_name, None)
+        Update._symlink_backup_next_at.pop(process_name, None)
+
+    def schedule_symlink_backup(self, process_name, config, key, instance_name):
+        if not self.supports_symlink_backup(key):
+            return
+        self._cancel_symlink_backup_job(process_name)
+        interval_hours = self.symlink_backup_interval(process_name, config)
+        start_time = self.symlink_backup_start_time(process_name, config)
+        retention_count = self.symlink_backup_retention_count(process_name, config)
+        next_backup_at = self._calculate_next_run_at(interval_hours, start_time)
+        Update._symlink_backup_next_at[process_name] = next_backup_at
+        job = self.scheduler.every(1).minutes.do(
+            self._run_scheduled_symlink_backup_if_due, process_name, key, instance_name
+        )
+        Update._symlink_backup_jobs[process_name] = job
+        self._safe_record_symlink_backup_status(
+            process_name,
+            {
+                "status": "scheduled",
+                "symlink_backup_enabled": True,
+                "symlink_backup_interval": interval_hours,
+                "symlink_backup_start_time": start_time,
+                "symlink_backup_path": self.symlink_backup_path(process_name, config),
+                "symlink_backup_include_broken": self.symlink_backup_include_broken(
+                    config
+                ),
+                "symlink_backup_roots": self.symlink_backup_roots(config),
+                "symlink_backup_retention_count": retention_count,
+                "next_backup_at": next_backup_at,
+            },
+        )
+        self.logger.debug(
+            "Scheduled symlink backup for %s every %s hours (start time: %s, next: %s).",
+            process_name,
+            interval_hours,
+            start_time,
+            next_backup_at,
+        )
+        self._ensure_scheduler_running(process_name)
+
+    def _run_scheduled_symlink_backup_if_due(self, process_name, key, instance_name):
+        latest_config = CONFIG_MANAGER.get_instance(instance_name, key)
+        if not latest_config:
+            return
+        if not self.symlink_backup_enabled(process_name, latest_config, key):
+            return
+
+        now_ts = int(time.time())
+        due_at = Update._symlink_backup_next_at.get(process_name)
+        if due_at is None:
+            due_at = self._calculate_next_symlink_backup_at(
+                process_name, latest_config, now_ts
+            )
+            Update._symlink_backup_next_at[process_name] = due_at
+        if now_ts < due_at:
+            return
+
+        next_due_at = self._calculate_next_symlink_backup_at(
+            process_name, latest_config, now_ts + 1
+        )
+        Update._symlink_backup_next_at[process_name] = next_due_at
+        self._run_symlink_backup(
+            process_name, latest_config, key, instance_name, now_ts, next_due_at
+        )
+
+    def _run_symlink_backup(
+        self, process_name, config, key, instance_name, run_ts=None, next_backup_at=None
+    ):
+        if run_ts is None:
+            run_ts = int(time.time())
+        from utils.symlink_repair import backup_symlink_manifest
+
+        path_template = self.symlink_backup_path(process_name, config)
+        backup_path = self._resolve_symlink_backup_path(
+            process_name, path_template, run_ts
+        )
+        include_broken = self.symlink_backup_include_broken(config)
+        roots = self.symlink_backup_roots(config)
+        interval_hours = self.symlink_backup_interval(process_name, config)
+        start_time = self.symlink_backup_start_time(process_name, config)
+        retention_count = self.symlink_backup_retention_count(process_name, config)
+        if next_backup_at is None:
+            next_backup_at = self._calculate_next_symlink_backup_at(
+                process_name, config, run_ts + 1
+            )
+            Update._symlink_backup_next_at[process_name] = next_backup_at
+
+        try:
+            report = backup_symlink_manifest(
+                roots=roots,
+                backup_path=backup_path,
+                include_broken=include_broken,
+            )
+            prune_report = self._prune_symlink_backup_manifests(
+                process_name=process_name,
+                path_template=path_template,
+                retention_count=retention_count,
+            )
+            payload = {
+                "status": "completed",
+                "message": "Symlink backup completed.",
+                "symlink_backup_enabled": True,
+                "symlink_backup_interval": interval_hours,
+                "symlink_backup_start_time": start_time,
+                "symlink_backup_path": path_template,
+                "symlink_backup_include_broken": include_broken,
+                "symlink_backup_roots": roots,
+                "symlink_backup_retention_count": retention_count,
+                "next_backup_at": next_backup_at,
+                "last_backup_at": run_ts,
+                "last_backup_manifest": report.get("backup_manifest"),
+                "scanned_symlinks": report.get("scanned_symlinks"),
+                "recorded_entries": report.get("recorded_entries"),
+                "pruned_backups": prune_report.get("pruned"),
+                "retention_errors": prune_report.get("errors"),
+                "errors": report.get("errors"),
+            }
+            self._safe_record_symlink_backup_status(process_name, payload)
+        except Exception as e:
+            self.logger.error(
+                "Scheduled symlink backup failed for %s: %s", process_name, e
+            )
+            self._safe_record_symlink_backup_status(
+                process_name,
+                {
+                    "status": "error",
+                    "message": str(e),
+                    "symlink_backup_enabled": True,
+                    "symlink_backup_interval": interval_hours,
+                    "symlink_backup_start_time": start_time,
+                    "symlink_backup_path": path_template,
+                    "symlink_backup_include_broken": include_broken,
+                    "symlink_backup_roots": roots,
+                    "symlink_backup_retention_count": retention_count,
+                    "next_backup_at": next_backup_at,
+                    "last_backup_at": run_ts,
+                },
+            )
+
+    def reschedule_symlink_backup(self, process_name):
+        key, instance_name = CONFIG_MANAGER.find_key_for_process(process_name)
+        config = CONFIG_MANAGER.get_instance(instance_name, key)
+        if not config:
+            return False, "Configuration not found"
+
+        if not self.supports_symlink_backup(key):
+            self._cancel_symlink_backup_job(process_name)
+            self._safe_record_symlink_backup_status(
+                process_name,
+                {
+                    "status": "unsupported",
+                    "message": "Symlink backup scheduling is not supported for this service.",
+                    "symlink_backup_enabled": False,
+                    "next_backup_at": None,
+                },
+            )
+            return False, "Symlink backup scheduling not supported for this service"
+
+        if not self.symlink_backup_enabled(process_name, config, key):
+            self._cancel_symlink_backup_job(process_name)
+            self._safe_record_symlink_backup_status(
+                process_name,
+                {
+                    "status": "disabled",
+                    "symlink_backup_enabled": False,
+                    "symlink_backup_interval": self.symlink_backup_interval(
+                        process_name, config
+                    ),
+                    "symlink_backup_start_time": self.symlink_backup_start_time(
+                        process_name, config
+                    ),
+                    "symlink_backup_path": self.symlink_backup_path(
+                        process_name, config
+                    ),
+                    "symlink_backup_include_broken": self.symlink_backup_include_broken(
+                        config
+                    ),
+                    "symlink_backup_roots": self.symlink_backup_roots(config),
+                    "symlink_backup_retention_count": self.symlink_backup_retention_count(
+                        process_name, config
+                    ),
+                    "next_backup_at": None,
+                },
+            )
+            return True, "Symlink backup schedule disabled"
+
+        self.schedule_symlink_backup(process_name, config, key, instance_name)
+        return True, "Symlink backup schedule rescheduled"
 
     def auto_update_interval(self, process_name, config):
         default_interval = 24
@@ -786,11 +1145,10 @@ class Update:
             )
             return default_start_time
 
-    def _calculate_next_check_at(self, process_name, config, now_ts=None):
+    def _calculate_next_run_at(self, interval_hours, start_time, now_ts=None):
         if now_ts is None:
             now_ts = int(time.time())
-        interval_seconds = max(60, int(self.auto_update_interval(process_name, config) * 3600))
-        start_time = self.auto_update_start_time(process_name, config)
+        interval_seconds = max(60, int(interval_hours * 3600))
         hour, minute = [int(part) for part in start_time.split(":", 1)]
         now_dt = datetime.fromtimestamp(now_ts)
         anchor_dt = now_dt.replace(hour=hour, minute=minute, second=0, microsecond=0)
@@ -802,6 +1160,16 @@ class Update:
         elapsed = now_ts - anchor_ts
         intervals_elapsed = (elapsed + interval_seconds - 1) // interval_seconds
         return anchor_ts + intervals_elapsed * interval_seconds
+
+    def _calculate_next_check_at(self, process_name, config, now_ts=None):
+        interval_hours = self.auto_update_interval(process_name, config)
+        start_time = self.auto_update_start_time(process_name, config)
+        return self._calculate_next_run_at(interval_hours, start_time, now_ts)
+
+    def _calculate_next_symlink_backup_at(self, process_name, config, now_ts=None):
+        interval_hours = self.symlink_backup_interval(process_name, config)
+        start_time = self.symlink_backup_start_time(process_name, config)
+        return self._calculate_next_run_at(interval_hours, start_time, now_ts)
 
     def _run_scheduled_update_if_due(self, process_name, config, key, instance_name):
         latest_config = CONFIG_MANAGER.get_instance(instance_name, key)
@@ -818,7 +1186,9 @@ class Update:
         if now_ts < due_at:
             return
 
-        next_due_at = self._calculate_next_check_at(process_name, latest_config, now_ts + 1)
+        next_due_at = self._calculate_next_check_at(
+            process_name, latest_config, now_ts + 1
+        )
         Update._next_check_at[process_name] = next_due_at
         self.scheduled_update_check(process_name, latest_config, key, instance_name)
         self._safe_record_update_status(
@@ -826,7 +1196,9 @@ class Update:
             {
                 "status": "scheduled",
                 "auto_update_enabled": True,
-                "auto_update_interval": self.auto_update_interval(process_name, latest_config),
+                "auto_update_interval": self.auto_update_interval(
+                    process_name, latest_config
+                ),
                 "auto_update_start_time": self.auto_update_start_time(
                     process_name, latest_config
                 ),
@@ -834,11 +1206,19 @@ class Update:
             },
         )
 
-    def auto_update(self, process_name, enable_update, force_update_check: bool = False):
+    def auto_update(
+        self, process_name, enable_update, force_update_check: bool = False
+    ):
         key, instance_name = CONFIG_MANAGER.find_key_for_process(process_name)
         config = CONFIG_MANAGER.get_instance(instance_name, key)
         if not config:
             return None, f"Configuration for {process_name} not found."
+        try:
+            self.reschedule_symlink_backup(process_name)
+        except Exception as e:
+            self.logger.warning(
+                "Failed to reschedule symlink backup for %s: %s", process_name, e
+            )
 
         if (
             config.get("pinned_version")
