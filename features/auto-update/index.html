@@ -4688,6 +4688,7 @@ flowchart TD
 <span class="w">  </span><span class="nt">&quot;service_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">    </span><span class="nt">&quot;enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;auto_update&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;auto_update_start_time&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;04:00&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;auto_update_interval&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">24</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;release_version_enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;release_version&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;latest&quot;</span><span class="p">,</span>
@@ -4715,6 +4716,12 @@ flowchart TD
 <td>boolean</td>
 <td><code>false</code></td>
 <td>Enable automatic updates for this service</td>
+</tr>
+<tr>
+<td><code>auto_update_start_time</code></td>
+<td>string</td>
+<td><code>"04:00"</code></td>
+<td>24-hour schedule anchor time (<code>HH:MM</code>)</td>
 </tr>
 <tr>
 <td><code>auto_update_interval</code></td>
@@ -4778,6 +4785,7 @@ The only exception is when <code>release_version</code> is <code>nightly</code> 
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;frontend&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">    </span><span class="nt">&quot;auto_update&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;auto_update_start_time&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;04:00&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;auto_update_interval&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">24</span>
 <span class="w">  </span><span class="p">}</span>
 <span class="p">}</span>
@@ -4847,7 +4855,7 @@ Scheduled auto-update checks are disabled when <code>branch_enabled</code> is tr
 </div>
 <hr />
 <h2 id="update-intervals">Update intervals<a class="headerlink" href="#update-intervals" title="Permanent link">&para;</a></h2>
-<p>The <code>auto_update_interval</code> setting controls how often DUMB checks for updates:</p>
+<p>The <code>auto_update_start_time</code> and <code>auto_update_interval</code> settings control update cadence:</p>
 <table>
 <thead>
 <tr>
@@ -4877,10 +4885,12 @@ Scheduled auto-update checks are disabled when <code>branch_enabled</code> is tr
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;frontend&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">    </span><span class="nt">&quot;auto_update&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;auto_update_start_time&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;04:00&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;auto_update_interval&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">24</span>
 <span class="w">  </span><span class="p">}</span>
 <span class="p">}</span>
 </code></pre></div>
+<p>With this example, checks run once per day at 04:00. If you set <code>auto_update_interval</code> to another value (for example <code>12</code>), checks run every 12 hours anchored from the configured start time.</p>
 <hr />
 <h2 id="preserving-data-during-updates">Preserving data during updates<a class="headerlink" href="#preserving-data-during-updates" title="Permanent link">&para;</a></h2>
 <h3 id="clear-on-update">Clear on update<a class="headerlink" href="#clear-on-update" title="Permanent link">&para;</a></h3>

@@ -4732,6 +4732,70 @@ See <a href="../../../reference/core-service/">Core Service Routing</a> for how 
 </tbody>
 </table>
 <p>When embedded mode is enabled, DUMB builds a default <code>rclone</code> block and synchronizes <code>debrids</code> entries from the <code>api_keys</code> map. It also ensures provider folders match the embedded mount layout under <code>/mnt/debrid/decypharr</code>.</p>
+<h3 id="beta-features-dfs-usenet">Beta Features: DFS + Usenet<a class="headerlink" href="#beta-features-dfs-usenet" title="Permanent link">&para;</a></h3>
+<p>Decypharr beta introduces a new mount system (DFS) and native Usenet support.
+To use beta builds in DUMB, set:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">&quot;decypharr&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;branch_enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;branch&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;beta&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;mount_type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;dfs&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;mount_path&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/mnt/debrid/decypharr&quot;</span>
+<span class="p">}</span>
+</code></pre></div>
+<p><strong>Mount types (beta)</strong></p>
+<table>
+<thead>
+<tr>
+<th>Mount Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>dfs</code></td>
+<td>Decypharr File System (recommended for streaming)</td>
+</tr>
+<tr>
+<td><code>rclone</code></td>
+<td>Embedded rclone managed by Decypharr</td>
+</tr>
+<tr>
+<td><code>external_rclone</code></td>
+<td>External RC endpoint (manual)</td>
+</tr>
+<tr>
+<td><code>none</code></td>
+<td>No mount (API/WebDAV only)</td>
+</tr>
+</tbody>
+</table>
+<p>DFS tuning lives under <code>decypharr.dfs</code> in <code>dumb_config.json</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">&quot;dfs&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;cache_dir&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/decypharr/cache/dfs&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;chunk_size&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;10MB&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;disk_cache_size&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;50GB&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;cache_expiry&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;24h&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;cache_cleanup_interval&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;1h&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;daemon_timeout&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;30m&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;uid&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1000</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;gid&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1000</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;umask&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;022&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;allow_other&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;default_permissions&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span>
+<span class="p">}</span>
+</code></pre></div>
+<p><strong>Usenet (beta)</strong></p>
+<p>Decypharr beta connects directly to NNTP providers (no Sabnzbd container needed).
+Configure Usenet inside the Decypharr UI or <code>config.json</code>. DUMB does not manage
+Usenet provider credentials.</p>
+<p>To wire Arrs to Usenet, add a <strong>Sabnzbd</strong> download client in Sonarr/Radarr:</p>
+<ul>
+<li>Host: <code>http://decypharr:8282</code></li>
+<li>API Key: Decypharr API token (Settings → Auth)</li>
+<li>Category: <code>sonarr</code> / <code>radarr</code></li>
+</ul>
+<p>You can keep the normal Decypharr (qBittorrent) client for torrents and add the
+Sabnzbd client for NZBs.</p>
 <h4 id="embedded-provider-keys">Embedded provider keys<a class="headerlink" href="#embedded-provider-keys" title="Permanent link">&para;</a></h4>
 <p>Use <code>api_keys</code> to define provider credentials:</p>
 <div class="highlight"><pre><span></span><code><span class="nt">&quot;api_keys&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
