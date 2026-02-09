@@ -697,12 +697,9 @@ async def restart_service(
                 )
 
             if process_name in process_handler.setup_tracker:
+                # Let updater.auto_update() own setup/start flow to avoid duplicate
+                # setup/install passes during restart.
                 process_handler.setup_tracker.remove(process_name)
-                success, error = setup_project(process_handler, process_name)
-                if not success:
-                    raise HTTPException(
-                        status_code=500, detail=f"Failed to setup project: {error}"
-                    )
 
             auto_update_enabled = service_config.get("auto_update", False)
             process, error = updater.auto_update(
