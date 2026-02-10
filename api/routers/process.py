@@ -62,12 +62,14 @@ class SymlinkRepairRequest(BaseModel):
 
 
 class SymlinkManifestBackupRequest(BaseModel):
+    process_name: Optional[str] = None
     roots: Optional[List[str]] = None
     backup_path: str
     include_broken: Optional[bool] = True
 
 
 class SymlinkManifestRestoreRequest(BaseModel):
+    process_name: Optional[str] = None
     manifest_path: str
     dry_run: Optional[bool] = True
     overwrite_existing: Optional[bool] = False
@@ -992,6 +994,59 @@ def symlink_backup_manifests(
     }
 
 
+@process_router.get("/symlink-manifest-files")
+def symlink_manifest_files(
+    manifest_path: Optional[str] = Query(
+        "/config/symlink-repair/snapshots/latest.json",
+        description="Manifest path used to resolve directory for listing",
+    ),
+    current_user: str = Depends(get_optional_current_user),
+):
+    raw_path = str(manifest_path or "").strip()
+    if not raw_path:
+        raw_path = "/config/symlink-repair/snapshots/latest.json"
+    directory = os.path.dirname(raw_path) or "."
+
+    entries = []
+    try:
+        for name in os.listdir(directory):
+            path = os.path.join(directory, name)
+            if not os.path.isfile(path):
+                continue
+            try:
+                stat = os.stat(path)
+                entries.append(
+                    {
+                        "path": path,
+                        "name": name,
+                        "size_bytes": int(stat.st_size),
+                        "modified_at": int(stat.st_mtime),
+                    }
+                )
+            except OSError:
+                continue
+    except FileNotFoundError:
+        return {
+            "directory": directory,
+            "manifest_path": raw_path,
+            "files": [],
+            "count": 0,
+        }
+    except OSError as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to list manifest files in '{directory}': {e}",
+        )
+
+    entries.sort(key=lambda item: item.get("modified_at", 0), reverse=True)
+    return {
+        "directory": directory,
+        "manifest_path": raw_path,
+        "files": entries[:500],
+        "count": len(entries),
+    }
+
+
 @process_router.post("/symlink-backup/reschedule")
 async def reschedule_symlink_backup(
     request: RescheduleSymlinkBackupRequest,
@@ -1086,7 +1141,7 @@ async def symlink_manifest_backup_async(
     if not api_state:
         raise HTTPException(status_code=500, detail="API state unavailable")
 
-    process_name = str(request.backup_path or "symlink-manifest").strip()
+    process_name = str(request.process_name or "symlink-manifest").strip()
     job_payload = api_state.create_symlink_job(
         process_name=process_name,
         operation="symlink_manifest_backup",
@@ -1104,13 +1159,29 @@ async def symlink_manifest_backup_async(
             {
                 "status": "running",
                 "started_at": int(time.time()),
+                "progress": {
+                    "stage": "collecting",
+                    "processed_symlinks": 0,
+                    "total_symlinks": None,
+                    "recorded_entries": 0,
+                    "errors": 0,
+                },
             },
         )
         try:
+            def progress_callback(payload):
+                api_state.update_symlink_job(
+                    job_id,
+                    {
+                        "progress": payload,
+                    },
+                )
+
             report = backup_symlink_manifest(
                 request.roots,
                 request.backup_path,
                 bool(request.include_broken),
+                progress_callback,
             )
             api_state.update_symlink_job(
                 job_id,
@@ -1157,6 +1228,26 @@ def symlink_job_status(
     return payload
 
 
+@process_router.get("/symlink-job-latest")
+def symlink_job_latest(
+    process_name: str = Query(..., description="Service process name"),
+    operation: Optional[str] = Query(
+        "symlink_manifest_backup", description="Symlink job operation"
+    ),
+    active_only: bool = Query(
+        True, description="If true, return only queued/running jobs"
+    ),
+    api_state=Depends(get_api_state),
+    current_user: str = Depends(get_optional_current_user),
+):
+    if not process_name:
+        raise HTTPException(status_code=400, detail="process_name is required")
+    if not api_state:
+        raise HTTPException(status_code=500, detail="API state unavailable")
+    payload = api_state.get_latest_symlink_job(process_name, operation, active_only)
+    return {"job": payload}
+
+
 @process_router.post("/symlink-manifest/restore")
 async def symlink_manifest_restore(
     request: SymlinkManifestRestoreRequest,
@@ -1177,6 +1268,90 @@ async def symlink_manifest_restore(
         raise HTTPException(
             status_code=500, detail=f"Symlink manifest restore failed: {e}"
         )
+
+
+@process_router.post("/symlink-manifest/restore-async")
+async def symlink_manifest_restore_async(
+    request: SymlinkManifestRestoreRequest,
+    api_state=Depends(get_api_state),
+    current_user: str = Depends(get_optional_current_user),
+):
+    from utils.symlink_repair import restore_symlink_manifest
+
+    if not api_state:
+        raise HTTPException(status_code=500, detail="API state unavailable")
+
+    process_name = str(request.process_name or request.manifest_path or "symlink-manifest").strip()
+    job_payload = api_state.create_symlink_job(
+        process_name=process_name,
+        operation="symlink_manifest_restore",
+        metadata={
+            "manifest_path": request.manifest_path,
+            "dry_run": bool(request.dry_run),
+            "overwrite_existing": bool(request.overwrite_existing),
+            "restore_broken": bool(request.restore_broken),
+        },
+    )
+    job_id = job_payload["job_id"]
+
+    def run_job():
+        api_state.update_symlink_job(
+            job_id,
+            {
+                "status": "running",
+                "started_at": int(time.time()),
+                "progress": {
+                    "stage": "processing",
+                    "processed_entries": 0,
+                    "total_entries": None,
+                    "restored": 0,
+                    "errors": 0,
+                },
+            },
+        )
+        try:
+            def progress_callback(payload):
+                api_state.update_symlink_job(
+                    job_id,
+                    {
+                        "progress": payload,
+                    },
+                )
+
+            report = restore_symlink_manifest(
+                request.manifest_path,
+                bool(request.dry_run),
+                bool(request.overwrite_existing),
+                bool(request.restore_broken),
+                progress_callback,
+            )
+            api_state.update_symlink_job(
+                job_id,
+                {
+                    "status": "completed",
+                    "finished_at": int(time.time()),
+                    "result": report,
+                    "error": None,
+                },
+            )
+        except Exception as e:
+            api_state.update_symlink_job(
+                job_id,
+                {
+                    "status": "error",
+                    "finished_at": int(time.time()),
+                    "error": {"message": str(e)},
+                },
+            )
+
+    thread = threading.Thread(target=run_job, daemon=True)
+    thread.start()
+
+    return {
+        "status": "queued",
+        "job_id": job_id,
+        "operation": "symlink_manifest_restore",
+    }
 
 
 def wait_for_process_running(
@@ -2659,7 +2834,10 @@ async def get_capabilities(current_user: str = Depends(get_optional_current_user
         "symlink_manifest_backup": True,
         "symlink_manifest_backup_async": True,
         "symlink_job_status": True,
+        "symlink_job_latest": True,
         "symlink_manifest_restore": True,
+        "symlink_manifest_restore_async": True,
         "symlink_backup_schedule": True,
         "symlink_backup_manifest_list": True,
+        "symlink_manifest_file_list": True,
     }

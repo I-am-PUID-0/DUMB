@@ -528,8 +528,22 @@ async def update_config(
                 detail=f"Validation error in merged config at '{loc}': {e.message}",
             )
 
+        allowed_schema_keys = set((instance_schema.get("properties") or {}).keys())
+        allowed_dynamic_keys = {
+            "symlink_backup_enabled",
+            "symlink_backup_interval",
+            "symlink_backup_start_time",
+            "symlink_backup_path",
+            "symlink_backup_include_broken",
+            "symlink_backup_retention_count",
+            "symlink_backup_roots",
+        }
         for key, value in updates.items():
-            if key in service_config:
+            if (
+                key in service_config
+                or key in allowed_schema_keys
+                or key in allowed_dynamic_keys
+            ):
                 service_config[key] = value
             else:
                 logger.error(f"Invalid configuration key for {process_name}: {key}")

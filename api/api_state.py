@@ -131,6 +131,34 @@ class APIState:
                 return None
             return dict(payload)
 
+    def get_latest_symlink_job(
+        self,
+        process_name: str,
+        operation: str | None = None,
+        active_only: bool = True,
+    ):
+        normalized_process = self._normalize_process_name(process_name)
+        operation_filter = str(operation or "").strip().lower()
+        active_statuses = {"queued", "running"}
+        with self._symlink_job_cache_lock:
+            candidates = []
+            for payload in self._symlink_job_cache.values():
+                if not isinstance(payload, dict):
+                    continue
+                if self._normalize_process_name(payload.get("process_name")) != normalized_process:
+                    continue
+                op = str(payload.get("operation") or "").strip().lower()
+                if operation_filter and op != operation_filter:
+                    continue
+                status = str(payload.get("status") or "").strip().lower()
+                if active_only and status not in active_statuses:
+                    continue
+                candidates.append(payload)
+            if not candidates:
+                return None
+            candidates.sort(key=lambda item: int(item.get("updated_at") or 0), reverse=True)
+            return dict(candidates[0])
+
     def _get_status_mtime(self):
         try:
             return os.path.getmtime(self.status_file_path)

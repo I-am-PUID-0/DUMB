@@ -3,7 +3,7 @@ from utils.config_loader import CONFIG_MANAGER
 from utils.global_logger import logger
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any
+from typing import Any, Callable
 import json, os
 
 
@@ -317,6 +317,7 @@ def backup_symlink_manifest(
     roots: list[str] | None,
     backup_path: str,
     include_broken: bool = True,
+    progress_callback: Callable[[dict[str, Any]], None] | None = None,
 ) -> dict[str, Any]:
     destination = (backup_path or "").strip()
     if not destination:
@@ -324,10 +325,26 @@ def backup_symlink_manifest(
 
     resolved_roots = roots or default_symlink_roots()
     symlink_paths, missing_roots = _collect_symlink_paths(resolved_roots)
+    total_symlinks = len(symlink_paths)
+
+    if progress_callback:
+        try:
+            progress_callback(
+                {
+                    "stage": "processing",
+                    "processed_symlinks": 0,
+                    "total_symlinks": total_symlinks,
+                    "recorded_entries": 0,
+                    "errors": 0,
+                }
+            )
+        except Exception:
+            pass
     entries: list[dict[str, Any]] = []
     errors: list[dict[str, str]] = []
     skipped_broken = 0
 
+    processed_symlinks = 0
     for link_path in symlink_paths:
         try:
             target = os.readlink(link_path)
@@ -344,6 +361,23 @@ def backup_symlink_manifest(
             )
         except Exception as e:
             errors.append({"link_path": link_path, "error": str(e)})
+        finally:
+            processed_symlinks += 1
+            if progress_callback and (
+                processed_symlinks % 2000 == 0 or processed_symlinks == total_symlinks
+            ):
+                try:
+                    progress_callback(
+                        {
+                            "stage": "processing",
+                            "processed_symlinks": processed_symlinks,
+                            "total_symlinks": total_symlinks,
+                            "recorded_entries": len(entries),
+                            "errors": len(errors),
+                        }
+                    )
+                except Exception:
+                    pass
 
     manifest = {
         "manifest_type": "symlink_snapshot",
@@ -374,6 +408,19 @@ def backup_symlink_manifest(
         len(errors),
         destination,
     )
+    if progress_callback:
+        try:
+            progress_callback(
+                {
+                    "stage": "completed",
+                    "processed_symlinks": report["scanned_symlinks"],
+                    "total_symlinks": report["scanned_symlinks"],
+                    "recorded_entries": report["recorded_entries"],
+                    "errors": len(errors),
+                }
+            )
+        except Exception:
+            pass
     return report
 
 
@@ -382,6 +429,7 @@ def restore_symlink_manifest(
     dry_run: bool = True,
     overwrite_existing: bool = False,
     restore_broken: bool = True,
+    progress_callback: Callable[[dict[str, Any]], None] | None = None,
 ) -> dict[str, Any]:
     source = (manifest_path or "").strip()
     if not source:
@@ -410,6 +458,21 @@ def restore_symlink_manifest(
         "errors": [],
     }
 
+    if progress_callback:
+        try:
+            progress_callback(
+                {
+                    "stage": "processing",
+                    "processed_entries": 0,
+                    "total_entries": report["total_entries"],
+                    "restored": 0,
+                    "errors": 0,
+                }
+            )
+        except Exception:
+            pass
+
+    processed_entries = 0
     for entry in entries:
         link_path = (
             (entry.get("link_path") or "").strip() if isinstance(entry, dict) else ""
@@ -450,6 +513,24 @@ def restore_symlink_manifest(
             report["restored"] += 1
         except Exception as e:
             report["errors"].append({"link_path": link_path, "error": str(e)})
+        finally:
+            processed_entries += 1
+            if progress_callback and (
+                processed_entries % 2000 == 0
+                or processed_entries == report["total_entries"]
+            ):
+                try:
+                    progress_callback(
+                        {
+                            "stage": "processing",
+                            "processed_entries": processed_entries,
+                            "total_entries": report["total_entries"],
+                            "restored": report["restored"],
+                            "errors": len(report["errors"]),
+                        }
+                    )
+                except Exception:
+                    pass
 
     logger.info(
         "Symlink manifest restore completed: dry_run=%s entries=%s restored=%s errors=%s source=%s",
@@ -459,4 +540,17 @@ def restore_symlink_manifest(
         len(report["errors"]),
         source,
     )
+    if progress_callback:
+        try:
+            progress_callback(
+                {
+                    "stage": "completed",
+                    "processed_entries": report["total_entries"],
+                    "total_entries": report["total_entries"],
+                    "restored": report["restored"],
+                    "errors": len(report["errors"]),
+                }
+            )
+        except Exception:
+            pass
     return report

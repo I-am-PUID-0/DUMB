@@ -133,6 +133,15 @@
     "auto_update": false,
     "auto_update_interval": 24,
     "auto_update_start_time": "04:00",
+    "symlink_backup_enabled": false,
+    "symlink_backup_interval": 168,
+    "symlink_backup_start_time": "04:00",
+    "symlink_backup_path": "/config/symlink-repair/snapshots/cli-debrid-{timestamp}.json",
+    "symlink_backup_include_broken": true,
+    "symlink_backup_retention_count": 1,
+    "symlink_backup_roots": [
+      "/mnt/debrid/clid_symlinks"
+    ],
     "clear_on_update": true,
     "exclude_dirs": [
       "/cli_debrid/data"
@@ -193,6 +202,15 @@
     "auto_update": false,
     "auto_update_interval": 24,
     "auto_update_start_time": "04:00",
+    "symlink_backup_enabled": false,
+    "symlink_backup_interval": 168,
+    "symlink_backup_start_time": "04:00",
+    "symlink_backup_path": "/config/symlink-repair/snapshots/decypharr-{timestamp}.json",
+    "symlink_backup_include_broken": true,
+    "symlink_backup_retention_count": 1,
+    "symlink_backup_roots": [
+      "/mnt/debrid/decypharr_symlinks"
+    ],
     "clear_on_update": false,
     "exclude_dirs": [],
     "command": [
@@ -235,6 +253,15 @@
     "auto_update": false,
     "auto_update_interval": 24,
     "auto_update_start_time": "04:00",
+    "symlink_backup_enabled": false,
+    "symlink_backup_interval": 168,
+    "symlink_backup_start_time": "04:00",
+    "symlink_backup_path": "/config/symlink-repair/snapshots/nzbdav-{timestamp}.json",
+    "symlink_backup_include_broken": true,
+    "symlink_backup_retention_count": 1,
+    "symlink_backup_roots": [
+      "/mnt/debrid/nzbdav-symlinks"
+    ],
     "clear_on_update": false,
     "exclude_dirs": [],
     "platforms": [
@@ -707,6 +734,15 @@
     "auto_update": false,
     "auto_update_interval": 24,
     "auto_update_start_time": "04:00",
+    "symlink_backup_enabled": false,
+    "symlink_backup_interval": 168,
+    "symlink_backup_start_time": "04:00",
+    "symlink_backup_path": "/config/symlink-repair/snapshots/riven-backend-{timestamp}.json",
+    "symlink_backup_include_broken": true,
+    "symlink_backup_retention_count": 1,
+    "symlink_backup_roots": [
+      "/mnt/debrid/riven_symlinks"
+    ],
     "symlink_library_path": "/mnt/debrid/riven_symlinks",
     "clear_on_update": true,
     "exclude_dirs": [

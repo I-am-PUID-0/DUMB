@@ -91,7 +91,7 @@ class Update:
         return bool(config.get("symlink_backup_enabled", False))
 
     def symlink_backup_interval(self, process_name, config):
-        default_interval = 24
+        default_interval = 168
         try:
             interval = int(config.get("symlink_backup_interval", default_interval))
         except Exception as e:

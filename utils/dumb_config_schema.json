@@ -491,6 +491,39 @@
           "type": "string",
           "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
         },
+        "symlink_backup_enabled": {
+          "type": "boolean"
+        },
+        "symlink_backup_interval": {
+          "type": "number"
+        },
+        "symlink_backup_start_time": {
+          "type": "string",
+          "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+        },
+        "symlink_backup_path": {
+          "type": "string"
+        },
+        "symlink_backup_include_broken": {
+          "type": "boolean"
+        },
+        "symlink_backup_retention_count": {
+          "type": "number",
+          "minimum": 0
+        },
+        "symlink_backup_roots": {
+          "anyOf": [
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            {
+              "type": "string"
+            }
+          ]
+        },
         "clear_on_update": {
           "type": "boolean"
         },
@@ -653,6 +686,39 @@
           "type": "string",
           "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
         },
+        "symlink_backup_enabled": {
+          "type": "boolean"
+        },
+        "symlink_backup_interval": {
+          "type": "number"
+        },
+        "symlink_backup_start_time": {
+          "type": "string",
+          "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+        },
+        "symlink_backup_path": {
+          "type": "string"
+        },
+        "symlink_backup_include_broken": {
+          "type": "boolean"
+        },
+        "symlink_backup_retention_count": {
+          "type": "number",
+          "minimum": 0
+        },
+        "symlink_backup_roots": {
+          "anyOf": [
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            {
+              "type": "string"
+            }
+          ]
+        },
         "clear_on_update": {
           "type": "boolean"
         },
@@ -810,6 +876,39 @@
         "auto_update_start_time": {
           "type": "string",
           "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+        },
+        "symlink_backup_enabled": {
+          "type": "boolean"
+        },
+        "symlink_backup_interval": {
+          "type": "number"
+        },
+        "symlink_backup_start_time": {
+          "type": "string",
+          "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+        },
+        "symlink_backup_path": {
+          "type": "string"
+        },
+        "symlink_backup_include_broken": {
+          "type": "boolean"
+        },
+        "symlink_backup_retention_count": {
+          "type": "number",
+          "minimum": 0
+        },
+        "symlink_backup_roots": {
+          "anyOf": [
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            {
+              "type": "string"
+            }
+          ]
         },
         "clear_on_update": {
           "type": "boolean"
@@ -2594,6 +2693,39 @@
         "auto_update_start_time": {
           "type": "string",
           "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+        },
+        "symlink_backup_enabled": {
+          "type": "boolean"
+        },
+        "symlink_backup_interval": {
+          "type": "number"
+        },
+        "symlink_backup_start_time": {
+          "type": "string",
+          "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+        },
+        "symlink_backup_path": {
+          "type": "string"
+        },
+        "symlink_backup_include_broken": {
+          "type": "boolean"
+        },
+        "symlink_backup_retention_count": {
+          "type": "number",
+          "minimum": 0
+        },
+        "symlink_backup_roots": {
+          "anyOf": [
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            {
+              "type": "string"
+            }
+          ]
         },
         "symlink_library_path": {
           "type": "string"
