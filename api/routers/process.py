@@ -50,6 +50,7 @@ class SymlinkRootMigration(BaseModel):
 
 
 class SymlinkRepairRequest(BaseModel):
+    process_name: Optional[str] = None
     roots: Optional[List[str]] = None
     rewrite_rules: Optional[List[SymlinkRewriteRule]] = None
     root_migrations: Optional[List[SymlinkRootMigration]] = None
@@ -1107,6 +1108,119 @@ async def symlink_repair(
         return report
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Symlink repair failed: {e}")
+
+
+@process_router.post("/symlink-repair-async")
+async def symlink_repair_async(
+    request: SymlinkRepairRequest,
+    api_state=Depends(get_api_state),
+    current_user: str = Depends(get_optional_current_user),
+):
+    from utils.symlink_repair import repair_symlinks
+
+    if not api_state:
+        raise HTTPException(status_code=500, detail="API state unavailable")
+
+    rules_payload = (
+        [rule.model_dump() for rule in request.rewrite_rules]
+        if request.rewrite_rules
+        else []
+    )
+    root_migrations_payload = (
+        [migration.model_dump() for migration in request.root_migrations]
+        if request.root_migrations
+        else []
+    )
+    if not rules_payload and not request.presets and not root_migrations_payload:
+        raise HTTPException(
+            status_code=400,
+            detail="Provide at least one rewrite rule, root migration, or preset.",
+        )
+
+    process_name = str(request.process_name or "symlink-repair").strip()
+    job_payload = api_state.create_symlink_job(
+        process_name=process_name,
+        operation="symlink_repair",
+        metadata={
+            "dry_run": bool(request.dry_run),
+            "include_broken": bool(request.include_broken),
+            "backup_path": request.backup_path,
+            "presets": request.presets or [],
+            "rewrite_rules": rules_payload,
+            "root_migrations": root_migrations_payload,
+            "overwrite_existing": bool(request.overwrite_existing),
+            "copy_instead_of_move": bool(request.copy_instead_of_move),
+            "roots": request.roots or [],
+        },
+    )
+    job_id = job_payload["job_id"]
+
+    def run_job():
+        api_state.update_symlink_job(
+            job_id,
+            {
+                "status": "running",
+                "started_at": int(time.time()),
+                "progress": {
+                    "stage": "collecting",
+                    "processed_items": 0,
+                    "total_items": None,
+                    "changed": 0,
+                    "moved": 0,
+                    "copied": 0,
+                    "errors": 0,
+                },
+            },
+        )
+        try:
+
+            def progress_callback(payload):
+                api_state.update_symlink_job(
+                    job_id,
+                    {
+                        "progress": payload,
+                    },
+                )
+
+            report = repair_symlinks(
+                request.roots,
+                rules_payload,
+                bool(request.dry_run),
+                bool(request.include_broken),
+                request.backup_path,
+                request.presets,
+                root_migrations_payload,
+                bool(request.overwrite_existing),
+                bool(request.copy_instead_of_move),
+                progress_callback,
+            )
+            api_state.update_symlink_job(
+                job_id,
+                {
+                    "status": "completed",
+                    "finished_at": int(time.time()),
+                    "result": report,
+                    "error": None,
+                },
+            )
+        except Exception as e:
+            api_state.update_symlink_job(
+                job_id,
+                {
+                    "status": "error",
+                    "finished_at": int(time.time()),
+                    "error": {"message": str(e)},
+                },
+            )
+
+    thread = threading.Thread(target=run_job, daemon=True)
+    thread.start()
+
+    return {
+        "status": "queued",
+        "job_id": job_id,
+        "operation": "symlink_repair",
+    }
 
 
 @process_router.post("/symlink-manifest/backup")
@@ -2831,6 +2945,7 @@ async def get_capabilities(current_user: str = Depends(get_optional_current_user
         "seerr_sync": True,
         "auto_update_start_time": True,
         "symlink_repair": True,
+        "symlink_repair_async": True,
         "symlink_manifest_backup": True,
         "symlink_manifest_backup_async": True,
         "symlink_job_status": True,

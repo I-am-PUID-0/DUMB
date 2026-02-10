@@ -150,6 +150,7 @@ def repair_symlinks(
     root_migrations: list[dict[str, Any]] | None = None,
     overwrite_existing: bool = False,
     copy_instead_of_move: bool = False,
+    progress_callback: Callable[[dict[str, Any]], None] | None = None,
 ) -> dict[str, Any]:
     resolved_roots = roots or default_symlink_roots()
     rules = preset_rewrite_rules(presets)
@@ -172,6 +173,7 @@ def repair_symlinks(
 
     symlink_paths, missing_roots = _collect_symlink_paths(resolved_roots)
     root_moves, missing_migration_roots = _collect_root_migration_moves(migrations)
+    total_items = len(symlink_paths) + len(root_moves)
     report: dict[str, Any] = {
         "dry_run": dry_run,
         "roots": resolved_roots,
@@ -198,7 +200,24 @@ def repair_symlinks(
         "backup_manifest": None,
     }
 
+    if progress_callback:
+        try:
+            progress_callback(
+                {
+                    "stage": "processing",
+                    "processed_items": 0,
+                    "total_items": total_items,
+                    "changed": 0,
+                    "moved": 0,
+                    "copied": 0,
+                    "errors": 0,
+                }
+            )
+        except Exception:
+            pass
+
     changes_for_backup: list[dict[str, str]] = []
+    processed_items = 0
     for link_path in symlink_paths:
         try:
             old_target = os.readlink(link_path)
@@ -233,6 +252,25 @@ def repair_symlinks(
             report["changed"] += 1
         except Exception as e:
             report["errors"].append({"link_path": link_path, "error": str(e)})
+        finally:
+            processed_items += 1
+            if progress_callback and (
+                processed_items % 2000 == 0 or processed_items == total_items
+            ):
+                try:
+                    progress_callback(
+                        {
+                            "stage": "processing",
+                            "processed_items": processed_items,
+                            "total_items": total_items,
+                            "changed": report["changed"],
+                            "moved": report["moved"],
+                            "copied": report["copied"],
+                            "errors": len(report["errors"]),
+                        }
+                    )
+                except Exception:
+                    pass
 
     # Root migration moves symlink entries between root trees (e.g., individual -> combined)
     for move in root_moves:
@@ -289,6 +327,25 @@ def repair_symlinks(
                     "error": str(e),
                 }
             )
+        finally:
+            processed_items += 1
+            if progress_callback and (
+                processed_items % 2000 == 0 or processed_items == total_items
+            ):
+                try:
+                    progress_callback(
+                        {
+                            "stage": "processing",
+                            "processed_items": processed_items,
+                            "total_items": total_items,
+                            "changed": report["changed"],
+                            "moved": report["moved"],
+                            "copied": report["copied"],
+                            "errors": len(report["errors"]),
+                        }
+                    )
+                except Exception:
+                    pass
 
     if not dry_run and backup_path and changes_for_backup:
         _ensure_parent_dir(backup_path)
@@ -310,6 +367,21 @@ def repair_symlinks(
         report["copied"],
         len(report["errors"]),
     )
+    if progress_callback:
+        try:
+            progress_callback(
+                {
+                    "stage": "completed",
+                    "processed_items": total_items,
+                    "total_items": total_items,
+                    "changed": report["changed"],
+                    "moved": report["moved"],
+                    "copied": report["copied"],
+                    "errors": len(report["errors"]),
+                }
+            )
+        except Exception:
+            pass
     return report
 
 
