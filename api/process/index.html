@@ -570,6 +570,8 @@
       
         
       
+        
+      
     
     
     
@@ -765,6 +767,36 @@
     
   
     Auto-update
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../features/symlinks/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-link" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    Symlink Operations
   
 
     
@@ -4599,15 +4631,158 @@ flowchart TD
 <h3 id="get-processoptional-services"><code>GET /process/optional-services</code><a class="headerlink" href="#get-processoptional-services" title="Permanent link">&para;</a></h3>
 <p>Returns optional services. You can pass <code>core_service</code> and <code>optional_services</code> query params to tailor the list.</p>
 <hr />
-<h3 id="get-processcapabilities"><code>GET /process/capabilities</code><a class="headerlink" href="#get-processcapabilities" title="Permanent link">&para;</a></h3>
-<p>Returns backend capabilities and feature flags. Used by the frontend to determine available features.</p>
+<h3 id="post-processsymlink-repair"><code>POST /process/symlink-repair</code><a class="headerlink" href="#post-processsymlink-repair" title="Permanent link">&para;</a></h3>
+<p>Runs symlink target rewrites for service symlink trees (Decypharr, NzbDAV, CLI Debrid, Riven).</p>
+<p>Use this endpoint when mount paths change and existing symlink targets need to be rewritten.</p>
+<h4 id="request-body_3">Request Body:<a class="headerlink" href="#request-body_3" title="Permanent link">&para;</a></h4>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;dry_run&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;include_broken&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;presets&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;decypharr_beta_consolidated&quot;</span><span class="p">],</span>
+<span class="w">  </span><span class="nt">&quot;roots&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;/mnt/debrid/decypharr_symlinks&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;/mnt/debrid/clid_symlinks&quot;</span><span class="p">],</span>
+<span class="w">  </span><span class="nt">&quot;root_migrations&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">&quot;from_root&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/mnt/debrid/decypharr_symlinks&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;to_root&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/mnt/debrid/combined_symlinks&quot;</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">],</span>
+<span class="w">  </span><span class="nt">&quot;overwrite_existing&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;copy_instead_of_move&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;rewrite_rules&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">&quot;from_prefix&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/mnt/debrid/old&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;to_prefix&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/mnt/debrid/new&quot;</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">],</span>
+<span class="w">  </span><span class="nt">&quot;backup_path&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/config/symlink-repair/manifest.json&quot;</span>
+<span class="p">}</span>
+</code></pre></div>
+<h4 id="behavior">Behavior<a class="headerlink" href="#behavior" title="Permanent link">&para;</a></h4>
+<ul>
+<li><code>dry_run: true</code> scans and reports without changing symlinks.</li>
+<li><code>dry_run: false</code> rewrites matching symlinks in place.</li>
+<li>Provide at least one of: <code>presets</code>, <code>rewrite_rules</code>, <code>root_migrations</code>.</li>
+<li><code>root_migrations</code> moves symlink entries from one symlink tree to another while
+  preserving relative paths. This is intended for individual-root to combined-root migrations.</li>
+<li><code>overwrite_existing</code> controls behavior when a destination symlink already exists during root migration.</li>
+<li><code>copy_instead_of_move</code> (root migration mode) creates destination symlinks and keeps source symlinks in place.</li>
+<li>If <code>roots</code> is omitted, backend defaults are used:
+  <code>/mnt/debrid/decypharr_symlinks</code>, <code>/mnt/debrid/nzbdav-symlinks</code>,
+  <code>/mnt/debrid/combined_symlinks</code>, <code>/mnt/debrid/clid_symlinks</code>, and
+  <code>riven_backend.symlink_library_path</code> when configured.</li>
+<li><code>backup_path</code> is written only for non-dry-run operations with changes.</li>
+</ul>
 <h4 id="example-response_5">Example Response:<a class="headerlink" href="#example-response_5" title="Permanent link">&para;</a></h4>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
-<span class="w">  </span><span class="nt">&quot;service_ui_supported&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;optional_only_onboarding&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;metrics_history&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;auto_restart&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;multi_instance&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span>
+<span class="w">  </span><span class="nt">&quot;dry_run&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;scanned_symlinks&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">2451</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;changed&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">312</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;moved&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">120</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;copied&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;skipped_unchanged&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">2139</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;errors&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[],</span>
+<span class="w">  </span><span class="nt">&quot;changes&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[]</span>
+<span class="p">}</span>
+</code></pre></div>
+<h3 id="post-processsymlink-manifestbackup"><code>POST /process/symlink-manifest/backup</code><a class="headerlink" href="#post-processsymlink-manifestbackup" title="Permanent link">&para;</a></h3>
+<p>Creates a standalone snapshot manifest of symlink entries for later restore.</p>
+<h4 id="request-body_4">Request Body:<a class="headerlink" href="#request-body_4" title="Permanent link">&para;</a></h4>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;backup_path&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/config/symlink-repair/snapshots/latest.json&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;roots&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;/mnt/debrid/decypharr_symlinks&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;/mnt/debrid/clid_symlinks&quot;</span><span class="p">],</span>
+<span class="w">  </span><span class="nt">&quot;include_broken&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span>
+<span class="p">}</span>
+</code></pre></div>
+<h4 id="behavior_1">Behavior<a class="headerlink" href="#behavior_1" title="Permanent link">&para;</a></h4>
+<ul>
+<li>Writes a manifest containing <code>link_path</code> + <code>target</code> entries.</li>
+<li>If <code>roots</code> is omitted, backend default symlink roots are used.</li>
+<li>Used by the internal DUMB scheduler when <code>symlink_backup_enabled</code> is set on supported services.</li>
+<li>Scheduled runs can prune older manifests when <code>symlink_backup_retention_count</code> is greater than <code>0</code>.</li>
+</ul>
+<h3 id="post-processsymlink-manifestbackup-async"><code>POST /process/symlink-manifest/backup-async</code><a class="headerlink" href="#post-processsymlink-manifestbackup-async" title="Permanent link">&para;</a></h3>
+<p>Queues a standalone snapshot backup as a background job and returns immediately.</p>
+<h4 id="response-example">Response (example)<a class="headerlink" href="#response-example" title="Permanent link">&para;</a></h4>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;queued&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;job_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;8e9fd0fbe88d4a6fbb2f3f77b2a3f8c1&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;operation&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;symlink_manifest_backup&quot;</span>
+<span class="p">}</span>
+</code></pre></div>
+<h3 id="get-processsymlink-job-status"><code>GET /process/symlink-job-status</code><a class="headerlink" href="#get-processsymlink-job-status" title="Permanent link">&para;</a></h3>
+<p>Returns status/result for background symlink jobs.</p>
+<h4 id="query-params">Query Params<a class="headerlink" href="#query-params" title="Permanent link">&para;</a></h4>
+<ul>
+<li><code>job_id</code> (required)</li>
+</ul>
+<h4 id="response-fields">Response fields<a class="headerlink" href="#response-fields" title="Permanent link">&para;</a></h4>
+<ul>
+<li><code>status</code>: <code>queued</code>, <code>running</code>, <code>completed</code>, or <code>error</code></li>
+<li><code>result</code>: operation payload when completed</li>
+<li><code>error</code>: error payload when failed</li>
+<li><code>created_at</code>, <code>updated_at</code>, <code>started_at</code>, <code>finished_at</code> timestamps (when available)</li>
+</ul>
+<h3 id="get-processsymlink-job-latest"><code>GET /process/symlink-job-latest</code><a class="headerlink" href="#get-processsymlink-job-latest" title="Permanent link">&para;</a></h3>
+<p>Returns the latest symlink job for a process/operation (optionally only active jobs).</p>
+<h4 id="query-params_1">Query Params<a class="headerlink" href="#query-params_1" title="Permanent link">&para;</a></h4>
+<ul>
+<li><code>process_name</code> (required)</li>
+<li><code>operation</code> (optional, default <code>symlink_manifest_backup</code>)</li>
+<li><code>active_only</code> (optional, default <code>true</code>)</li>
+</ul>
+<h3 id="post-processsymlink-manifestrestore"><code>POST /process/symlink-manifest/restore</code><a class="headerlink" href="#post-processsymlink-manifestrestore" title="Permanent link">&para;</a></h3>
+<p>Restores symlinks from a previously generated snapshot manifest.</p>
+<h4 id="request-body_5">Request Body:<a class="headerlink" href="#request-body_5" title="Permanent link">&para;</a></h4>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;manifest_path&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/config/symlink-repair/snapshots/latest.json&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;dry_run&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;overwrite_existing&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;restore_broken&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span>
+<span class="p">}</span>
+</code></pre></div>
+<h4 id="behavior_2">Behavior<a class="headerlink" href="#behavior_2" title="Permanent link">&para;</a></h4>
+<ul>
+<li><code>dry_run: true</code> previews restore actions without writing.</li>
+<li><code>overwrite_existing</code> controls whether existing paths are replaced.</li>
+<li><code>restore_broken</code> controls whether entries with currently missing targets are restored.</li>
+</ul>
+<h3 id="post-processsymlink-manifestrestore-async"><code>POST /process/symlink-manifest/restore-async</code><a class="headerlink" href="#post-processsymlink-manifestrestore-async" title="Permanent link">&para;</a></h3>
+<p>Queues restore as a background job and returns immediately.</p>
+<p>Use <code>GET /process/symlink-job-status</code> (or <code>/process/symlink-job-latest</code>) to track completion.</p>
+<h3 id="get-processsymlink-backup-status"><code>GET /process/symlink-backup-status</code><a class="headerlink" href="#get-processsymlink-backup-status" title="Permanent link">&para;</a></h3>
+<p>Returns current symlink-backup scheduler state for a service.</p>
+<h3 id="get-processsymlink-backup-manifests"><code>GET /process/symlink-backup-manifests</code><a class="headerlink" href="#get-processsymlink-backup-manifests" title="Permanent link">&para;</a></h3>
+<p>Lists backup manifests that match the current service <code>symlink_backup_path</code> template.</p>
+<h3 id="get-processsymlink-manifest-files"><code>GET /process/symlink-manifest-files</code><a class="headerlink" href="#get-processsymlink-manifest-files" title="Permanent link">&para;</a></h3>
+<p>Lists files from the directory of a provided <code>manifest_path</code> (defaults to <code>/config/symlink-repair/snapshots/latest.json</code> directory).</p>
+<p>Use this to populate manifest pickers in the Snapshot tab for quick restore/overwrite selection.</p>
+<h3 id="post-processsymlink-backupreschedule"><code>POST /process/symlink-backup/reschedule</code><a class="headerlink" href="#post-processsymlink-backupreschedule" title="Permanent link">&para;</a></h3>
+<p>Rebuilds symlink-backup schedule state from current service config.</p>
+<h4 id="request-body_6">Request Body:<a class="headerlink" href="#request-body_6" title="Permanent link">&para;</a></h4>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;process_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Decypharr&quot;</span>
+<span class="p">}</span>
+</code></pre></div>
+<hr />
+<h3 id="get-processcapabilities"><code>GET /process/capabilities</code><a class="headerlink" href="#get-processcapabilities" title="Permanent link">&para;</a></h3>
+<p>Returns backend capabilities and feature flags. Used by the frontend to determine available features.</p>
+<h4 id="example-response_6">Example Response:<a class="headerlink" href="#example-response_6" title="Permanent link">&para;</a></h4>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;optional_only_onboarding&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;optional_service_options&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;manual_update_check&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;seerr_sync&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;auto_update_start_time&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;symlink_repair&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;symlink_manifest_backup&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;symlink_manifest_backup_async&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;symlink_job_status&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;symlink_job_latest&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;symlink_manifest_restore&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;symlink_manifest_restore_async&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;symlink_backup_schedule&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;symlink_backup_manifest_list&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;symlink_manifest_file_list&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span>
 <span class="p">}</span>
 </code></pre></div>
 <table>
@@ -4619,24 +4794,64 @@ flowchart TD
 </thead>
 <tbody>
 <tr>
-<td><code>service_ui_supported</code></td>
-<td>Whether embedded service UIs via Traefik are available</td>
-</tr>
-<tr>
 <td><code>optional_only_onboarding</code></td>
 <td>Whether onboarding can skip core service selection</td>
 </tr>
 <tr>
-<td><code>metrics_history</code></td>
-<td>Whether historical metrics are collected</td>
+<td><code>optional_service_options</code></td>
+<td>Whether optional service options are exposed for onboarding</td>
 </tr>
 <tr>
-<td><code>auto_restart</code></td>
-<td>Whether auto-restart functionality is enabled</td>
+<td><code>manual_update_check</code></td>
+<td>Whether manual update check/install routes are available</td>
 </tr>
 <tr>
-<td><code>multi_instance</code></td>
-<td>Whether services support multiple instances</td>
+<td><code>seerr_sync</code></td>
+<td>Whether Seerr sync feature routes are available</td>
+</tr>
+<tr>
+<td><code>auto_update_start_time</code></td>
+<td>Whether anchored auto-update start time is supported</td>
+</tr>
+<tr>
+<td><code>symlink_repair</code></td>
+<td>Whether <code>/process/symlink-repair</code> is available</td>
+</tr>
+<tr>
+<td><code>symlink_manifest_backup</code></td>
+<td>Whether <code>/process/symlink-manifest/backup</code> is available</td>
+</tr>
+<tr>
+<td><code>symlink_manifest_backup_async</code></td>
+<td>Whether <code>/process/symlink-manifest/backup-async</code> is available</td>
+</tr>
+<tr>
+<td><code>symlink_job_status</code></td>
+<td>Whether <code>/process/symlink-job-status</code> is available</td>
+</tr>
+<tr>
+<td><code>symlink_job_latest</code></td>
+<td>Whether <code>/process/symlink-job-latest</code> is available</td>
+</tr>
+<tr>
+<td><code>symlink_manifest_restore</code></td>
+<td>Whether <code>/process/symlink-manifest/restore</code> is available</td>
+</tr>
+<tr>
+<td><code>symlink_manifest_restore_async</code></td>
+<td>Whether <code>/process/symlink-manifest/restore-async</code> is available</td>
+</tr>
+<tr>
+<td><code>symlink_backup_schedule</code></td>
+<td>Whether scheduled symlink backup status/reschedule routes are available</td>
+</tr>
+<tr>
+<td><code>symlink_backup_manifest_list</code></td>
+<td>Whether <code>/process/symlink-backup-manifests</code> is available</td>
+</tr>
+<tr>
+<td><code>symlink_manifest_file_list</code></td>
+<td>Whether <code>/process/symlink-manifest-files</code> is available</td>
 </tr>
 </tbody>
 </table>

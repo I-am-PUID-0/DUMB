@@ -570,6 +570,8 @@
       
         
       
+        
+      
     
     
     
@@ -765,6 +767,36 @@
     
   
     Auto-update
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../features/symlinks/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-link" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    Symlink Operations
   
 
     
@@ -4689,6 +4721,44 @@ flowchart TD
 <li>Populates Debrid providers and folders when embedded rclone is enabled</li>
 <li>Uses per-instance category labels when creating Arr download client entries</li>
 </ul>
+<h3 id="symlink-repair-and-migration">Symlink repair and migration<a class="headerlink" href="#symlink-repair-and-migration" title="Permanent link">&para;</a></h3>
+<p>For the complete DUMB symlink guide (UI option behavior, root scope, backup/restore, schedule, retention, and migration playbooks), see <a href="../../../features/symlinks/">Symlink Operations</a>.</p>
+<p>If mount layouts change (for example provider-path changes between Decypharr modes), use
+<code>POST /api/process/symlink-repair</code> to rewrite existing symlink targets instead of manually relinking.</p>
+<p>Common Decypharr migration:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;dry_run&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;presets&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;decypharr_beta_consolidated&quot;</span><span class="p">]</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>Apply changes:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;dry_run&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;presets&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;decypharr_beta_consolidated&quot;</span><span class="p">],</span>
+<span class="w">  </span><span class="nt">&quot;backup_path&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/config/symlink-repair/decypharr-manifest.json&quot;</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>When Arr <code>core_service</code> changes from Decypharr-only to combined Decypharr+NzbDAV, root folders move
+from <code>/mnt/debrid/decypharr_symlinks/&lt;slug&gt;</code> to <code>/mnt/debrid/combined_symlinks/&lt;slug&gt;</code>.
+Use root migration mode:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;dry_run&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;root_migrations&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">&quot;from_root&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/mnt/debrid/decypharr_symlinks&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;to_root&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/mnt/debrid/combined_symlinks&quot;</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">],</span>
+<span class="w">  </span><span class="nt">&quot;backup_path&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/config/symlink-repair/decypharr-combined-manifest.json&quot;</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>To clone entries into the new root while keeping the old root intact (for staged imports),
+set <code>"copy_instead_of_move": true</code>.</p>
+<p>For periodic safety snapshots, set service config keys <code>symlink_backup_enabled</code>,
+<code>symlink_backup_interval</code>, <code>symlink_backup_start_time</code>, and <code>symlink_backup_path</code>
+to let DUMB run internal scheduled snapshots. You can also run/manual restore via
+<code>POST /api/process/symlink-manifest/backup</code> and <code>POST /api/process/symlink-manifest/restore</code>.
+Set <code>symlink_backup_retention_count</code> to keep only the newest N scheduled manifests (<code>0</code> disables pruning).</p>
 <div class="admonition info">
 <p class="admonition-title">Startup timing</p>
 <p>If the Decypharr UI is not reachable yet, DUMB retries the download-client setup shortly after startup.</p>

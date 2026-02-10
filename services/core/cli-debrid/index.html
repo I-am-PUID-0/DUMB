@@ -570,6 +570,8 @@
       
         
       
+        
+      
     
     
     
@@ -765,6 +767,36 @@
     
   
     Auto-update
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../features/symlinks/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-link" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    Symlink Operations
   
 
     
@@ -4888,6 +4920,42 @@ flowchart TD
 <p><img alt="File Collection Management" src="../../../assets/images/cli_debrid/clid_file_collection_management.png" />
 <img alt="Symlinked Files Path" src="../../../assets/images/cli_debrid/clid_symlinked_files_path.png" /></p>
 </div>
+<h3 id="symlink-repair-and-migration">Symlink repair and migration<a class="headerlink" href="#symlink-repair-and-migration" title="Permanent link">&para;</a></h3>
+<p>For the complete DUMB symlink guide (UI option behavior, root scope, backup/restore, schedule, retention, and migration playbooks), see <a href="../../../features/symlinks/">Symlink Operations</a>.</p>
+<p>For CLI Debrid symlink libraries (commonly <code>/mnt/debrid/clid_symlinks</code>), DUMB exposes
+<code>POST /api/process/symlink-repair</code> to rewrite symlink targets after mount-path changes.</p>
+<p>Example custom rewrite for CLI Debrid:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;dry_run&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;roots&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;/mnt/debrid/clid_symlinks&quot;</span><span class="p">],</span>
+<span class="w">  </span><span class="nt">&quot;rewrite_rules&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">&quot;from_prefix&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/mnt/debrid/clid_old&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;to_prefix&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/mnt/debrid/clid&quot;</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">]</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>Set <code>"dry_run": false</code> to apply and optionally set <code>backup_path</code> for a manifest.</p>
+<p>If you need to move the symlink tree itself (not just rewrite targets), use <code>root_migrations</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;dry_run&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;root_migrations&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">&quot;from_root&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/mnt/debrid/clid_symlinks_old&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;to_root&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/mnt/debrid/clid_symlinks&quot;</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">]</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>If you want to populate another service symlink tree without removing CLI Debrid entries
+(for example <code>/mnt/debrid/clid_symlinks</code> to <code>/mnt/debrid/decypharr_symlinks</code>), include
+<code>"copy_instead_of_move": true</code> in the same request.</p>
+<p>For recurring backups of existing symlink libraries, use service config keys
+<code>symlink_backup_enabled</code>, <code>symlink_backup_interval</code>, <code>symlink_backup_start_time</code>,
+and <code>symlink_backup_path</code> to enable DUMB’s internal scheduler. Keep generated manifests for
+<code>POST /api/process/symlink-manifest/restore</code> recovery runs.
+Use <code>symlink_backup_retention_count</code> to keep only the newest N scheduled manifests (<code>0</code> keeps all).</p>
 <hr />
 <h2 id="plex-media-server-built-in">Plex Media Server Built-in!<a class="headerlink" href="#plex-media-server-built-in" title="Permanent link">&para;</a></h2>
 <p>With <a href="../plex-media-server/">Plex Media Server</a> enabled in DUMB, you can also leverage it with CLI Debrid.</p>
