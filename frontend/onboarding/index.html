@@ -4599,6 +4599,7 @@
 <p>The wizard walks you through:</p>
 <ol>
 <li>Selecting core services (orchestrators and related tools)</li>
+<li>Running preflight health/readiness checks</li>
 <li>Configuring debrid service credentials (when applicable)</li>
 <li>Choosing optional services</li>
 <li>Customizing service-specific options</li>
@@ -4610,17 +4611,19 @@
 flowchart TD
     A([App start&lt;br/&gt;or launch onboarding])
     B{Onboarding Required?}
-    C[Onboarding Wizard]
-    D[Apply Configuration]
-    E[Run Setup + Start Services]
-    F([Dashboard])
+    C[Core Service Selection]
+    D[Preflight Checks]
+    E[Apply Configuration]
+    F[Run Setup + Start Services]
+    G([Dashboard])
 
     A ==&gt; B
-    B -- No --&gt; F
+    B -- No --&gt; G
     B -- Yes --&gt; C
     C ==&gt; D
     D ==&gt; E
-    E ==&gt; F</code></pre>
+    E ==&gt; F
+    F ==&gt; G</code></pre>
 <hr />
 <h2 id="when-to-use-onboarding">When to use onboarding<a class="headerlink" href="#when-to-use-onboarding" title="Permanent link">&para;</a></h2>
 <p>The onboarding wizard runs automatically when:</p>
@@ -4684,7 +4687,18 @@ flowchart TD
 </ul>
 </div>
 <hr />
-<h3 id="step-2-configure-debrid-service">Step 2: Configure debrid service<a class="headerlink" href="#step-2-configure-debrid-service" title="Permanent link">&para;</a></h3>
+<h3 id="step-2-preflight-checks">Step 2: Preflight checks<a class="headerlink" href="#step-2-preflight-checks" title="Permanent link">&para;</a></h3>
+<p>The wizard verifies key backend readiness signals before proceeding:</p>
+<ul>
+<li>DUMB API health endpoint response</li>
+<li>Backend capabilities endpoint availability</li>
+<li>Core service catalog loading</li>
+<li>Existing mount/symlink path configuration visibility</li>
+<li>Embedded UI endpoint availability</li>
+</ul>
+<p>Blocking check failures must be resolved before moving to the next step.</p>
+<hr />
+<h3 id="step-3-configure-debrid-service">Step 3: Configure debrid service<a class="headerlink" href="#step-3-configure-debrid-service" title="Permanent link">&para;</a></h3>
 <p>For each debrid-capable core service, provide your debrid credentials:</p>
 <table>
 <thead>
@@ -4713,7 +4727,7 @@ flowchart TD
 </ul>
 </div>
 <hr />
-<h3 id="step-3-select-optional-services">Step 3: Select optional services<a class="headerlink" href="#step-3-select-optional-services" title="Permanent link">&para;</a></h3>
+<h3 id="step-4-select-optional-services">Step 4: Select optional services<a class="headerlink" href="#step-4-select-optional-services" title="Permanent link">&para;</a></h3>
 <p>Choose additional services to enable:</p>
 <table>
 <thead>
@@ -4735,7 +4749,7 @@ flowchart TD
 </table>
 <p>Optional services are filtered based on your core services and automatically configured with appropriate connections.</p>
 <hr />
-<h3 id="step-4-service-specific-options">Step 4: Service-specific options<a class="headerlink" href="#step-4-service-specific-options" title="Permanent link">&para;</a></h3>
+<h3 id="step-5-service-specific-options">Step 5: Service-specific options<a class="headerlink" href="#step-5-service-specific-options" title="Permanent link">&para;</a></h3>
 <p>Configure additional settings for selected services:</p>
 <p><strong>Example options:</strong></p>
 <ul>
@@ -4751,14 +4765,14 @@ flowchart TD
 own options (including <code>core_service</code> routing).</p>
 </div>
 <hr />
-<h3 id="step-5-enable-embedded-uis">Step 5: Enable embedded UIs<a class="headerlink" href="#step-5-enable-embedded-uis" title="Permanent link">&para;</a></h3>
+<h3 id="step-6-enable-embedded-uis">Step 6: Enable embedded UIs<a class="headerlink" href="#step-6-enable-embedded-uis" title="Permanent link">&para;</a></h3>
 <p>If your backend supports embedded service UIs, you'll be asked:</p>
 <blockquote>
 <p>Would you like to enable embedded service UIs?</p>
 </blockquote>
 <p>When enabled, you can access service web interfaces directly within the DUMB frontend using embedded tabs, direct link buttons, and split view.</p>
 <hr />
-<h3 id="step-6-review-configuration">Step 6: Review configuration<a class="headerlink" href="#step-6-review-configuration" title="Permanent link">&para;</a></h3>
+<h3 id="step-7-review-configuration">Step 7: Review configuration<a class="headerlink" href="#step-7-review-configuration" title="Permanent link">&para;</a></h3>
 <p>Review your complete configuration before applying:</p>
 <ul>
 <li>Core services selected</li>
@@ -4771,7 +4785,7 @@ own options (including <code>core_service</code> routing).</p>
 <p>Review carefully - the wizard will start services immediately after confirmation.</p>
 </div>
 <hr />
-<h3 id="step-7-live-setup-logs">Step 7: Live setup logs<a class="headerlink" href="#step-7-live-setup-logs" title="Permanent link">&para;</a></h3>
+<h3 id="step-8-live-setup-logs">Step 8: Live setup logs<a class="headerlink" href="#step-8-live-setup-logs" title="Permanent link">&para;</a></h3>
 <p>Watch the setup progress in real-time:</p>
 <ul>
 <li>Service initialization</li>
@@ -4781,7 +4795,7 @@ own options (including <code>core_service</code> routing).</p>
 </ul>
 <p>The log viewer shows output from all services being started.</p>
 <hr />
-<h3 id="step-8-success-or-error">Step 8: Success or error<a class="headerlink" href="#step-8-success-or-error" title="Permanent link">&para;</a></h3>
+<h3 id="step-9-success-or-error">Step 9: Success or error<a class="headerlink" href="#step-9-success-or-error" title="Permanent link">&para;</a></h3>
 <p><strong>Success</strong>: All services started successfully. You'll be redirected to the dashboard.</p>
 <p><strong>Error</strong>: If any service failed to start, you'll see:</p>
 <ul>

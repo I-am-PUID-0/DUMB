@@ -4494,6 +4494,15 @@ flowchart TD
 <ul>
 <li><code>process_name</code> (string)</li>
 </ul>
+<h4 id="optional-query-parameter">Optional Query Parameter:<a class="headerlink" href="#optional-query-parameter" title="Permanent link">&para;</a></h4>
+<ul>
+<li><code>scope</code> (string): <code>runtime</code> (default) or <code>all</code><ul>
+<li><code>runtime</code> returns runtime/configured hard dependencies</li>
+<li><code>all</code> additionally includes soft linkage edges (for example optional Zilean integrations)</li>
+</ul>
+</li>
+<li>response includes <code>parallel_groups</code> metadata to describe concurrent prerequisite/dependent stages around the selected service</li>
+</ul>
 <h4 id="example-response_1">Example Response:<a class="headerlink" href="#example-response_1" title="Permanent link">&para;</a></h4>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;process_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;rclone w/ RealDebrid&quot;</span><span class="p">,</span>
@@ -4628,6 +4637,40 @@ flowchart TD
 <h3 id="get-processcore-services"><code>GET /process/core-services</code><a class="headerlink" href="#get-processcore-services" title="Permanent link">&para;</a></h3>
 <p>Returns the available core services, their dependencies, and default service options (used by onboarding).</p>
 <hr />
+<h3 id="get-processdependency-graph"><code>GET /process/dependency-graph</code><a class="headerlink" href="#get-processdependency-graph" title="Permanent link">&para;</a></h3>
+<p>Returns backend-resolved dependency relationships for a specific process, including:</p>
+<ul>
+<li>static core dependencies (with instance-scoped matching for <code>rclone</code>/<code>zurg</code>)</li>
+<li>inferred links from <code>core_service</code>/<code>core_services</code></li>
+<li>inferred links from <code>wait_for_url</code>/<code>wait_for_dir</code> entries (including localhost port matching)</li>
+<li>inferred links from <code>wait_for_mounts</code> by matching required mount paths to provider service mount points</li>
+<li>rclone provider links (<code>zurg_enabled</code>, <code>decypharr_enabled</code>, <code>key_type=nzbdav</code>) to reflect WebDAV provider dependencies directly</li>
+<li>non-core hard dependency map for service-specific startup requirements (for example <code>riven_frontend -&gt; riven_backend</code>, <code>zilean -&gt; postgres</code>)</li>
+<li>per-process status state used by the frontend dependency graph panel</li>
+<li><code>dependency_truth_table</code> describing dependency signals and whether each is treated as hard dependency vs linkage</li>
+</ul>
+<h4 id="required-query-parameter_1">Required Query Parameter:<a class="headerlink" href="#required-query-parameter_1" title="Permanent link">&para;</a></h4>
+<ul>
+<li><code>process_name</code> (string)</li>
+</ul>
+<h4 id="example-response-shape">Example Response (shape):<a class="headerlink" href="#example-response-shape" title="Permanent link">&para;</a></h4>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;process_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Seerr Main&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;config_key&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;seerr&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;context&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;mode&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;core&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;key&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;seerr&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;core&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;key&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;seerr&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Seerr&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;dependencies&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[]</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="p">},</span>
+<span class="w">  </span><span class="nt">&quot;scope&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;runtime&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;startup_order&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span><span class="w"> </span><span class="nt">&quot;key&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;seerr&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;label&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Seerr&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;state&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;running&quot;</span><span class="w"> </span><span class="p">}],</span>
+<span class="w">  </span><span class="nt">&quot;dependency_rows&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[],</span>
+<span class="w">  </span><span class="nt">&quot;dependent_rows&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[],</span>
+<span class="w">  </span><span class="nt">&quot;linked_outgoing_rows&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span><span class="w"> </span><span class="nt">&quot;process_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Plex Media Server&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;key&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;plex&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;label&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Plex Media Server&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;state&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;running&quot;</span><span class="w"> </span><span class="p">}],</span>
+<span class="w">  </span><span class="nt">&quot;linked_incoming_rows&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[],</span>
+<span class="w">  </span><span class="nt">&quot;nodes&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span><span class="w"> </span><span class="nt">&quot;id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Seerr Main&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;process_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Seerr Main&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;key&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;seerr&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;label&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Seerr Main&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;state&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;running&quot;</span><span class="w"> </span><span class="p">}],</span>
+<span class="w">  </span><span class="nt">&quot;edges&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span><span class="w"> </span><span class="nt">&quot;source&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Seerr Main&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;target&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Plex Media Server&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;signals&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;wait_for_url&quot;</span><span class="p">],</span><span class="w"> </span><span class="nt">&quot;strength&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;hard_runtime&quot;</span><span class="w"> </span><span class="p">}],</span>
+<span class="w">  </span><span class="nt">&quot;parallel_groups&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span><span class="w"> </span><span class="nt">&quot;id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;pre_core&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;label&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Parallel prerequisites&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;parallel&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;members&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;PostgreSQL&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;Rclone w/ Riven&quot;</span><span class="p">]</span><span class="w"> </span><span class="p">}],</span>
+<span class="w">  </span><span class="nt">&quot;updated_at&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2026-02-11T18:45:00Z&quot;</span>
+<span class="p">}</span>
+</code></pre></div>
+<hr />
 <h3 id="get-processoptional-services"><code>GET /process/optional-services</code><a class="headerlink" href="#get-processoptional-services" title="Permanent link">&para;</a></h3>
 <p>Returns optional services. You can pass <code>core_service</code> and <code>optional_services</code> query params to tailor the list.</p>
 <hr />
@@ -4661,6 +4704,7 @@ flowchart TD
 <ul>
 <li><code>dry_run: true</code> scans and reports without changing symlinks.</li>
 <li><code>dry_run: false</code> rewrites matching symlinks in place.</li>
+<li><code>process_name</code> is optional but recommended for async runs/job lookup.</li>
 <li>Provide at least one of: <code>presets</code>, <code>rewrite_rules</code>, <code>root_migrations</code>.</li>
 <li><code>root_migrations</code> moves symlink entries from one symlink tree to another while
   preserving relative paths. This is intended for individual-root to combined-root migrations.</li>
@@ -4684,6 +4728,16 @@ flowchart TD
 <span class="w">  </span><span class="nt">&quot;changes&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[]</span>
 <span class="p">}</span>
 </code></pre></div>
+<h3 id="post-processsymlink-repair-async"><code>POST /process/symlink-repair-async</code><a class="headerlink" href="#post-processsymlink-repair-async" title="Permanent link">&para;</a></h3>
+<p>Queues symlink repair as a background job and returns immediately.</p>
+<p>Use <code>GET /process/symlink-job-status</code> (or <code>/process/symlink-job-latest</code>) to track completion.</p>
+<h4 id="response-example">Response (example)<a class="headerlink" href="#response-example" title="Permanent link">&para;</a></h4>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;queued&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;job_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;76d1a3bd35f84e3fab0cc39f81246849&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;operation&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;symlink_repair&quot;</span>
+<span class="p">}</span>
+</code></pre></div>
 <h3 id="post-processsymlink-manifestbackup"><code>POST /process/symlink-manifest/backup</code><a class="headerlink" href="#post-processsymlink-manifestbackup" title="Permanent link">&para;</a></h3>
 <p>Creates a standalone snapshot manifest of symlink entries for later restore.</p>
 <h4 id="request-body_4">Request Body:<a class="headerlink" href="#request-body_4" title="Permanent link">&para;</a></h4>
@@ -4702,7 +4756,7 @@ flowchart TD
 </ul>
 <h3 id="post-processsymlink-manifestbackup-async"><code>POST /process/symlink-manifest/backup-async</code><a class="headerlink" href="#post-processsymlink-manifestbackup-async" title="Permanent link">&para;</a></h3>
 <p>Queues a standalone snapshot backup as a background job and returns immediately.</p>
-<h4 id="response-example">Response (example)<a class="headerlink" href="#response-example" title="Permanent link">&para;</a></h4>
+<h4 id="response-example_1">Response (example)<a class="headerlink" href="#response-example_1" title="Permanent link">&para;</a></h4>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;queued&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;job_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;8e9fd0fbe88d4a6fbb2f3f77b2a3f8c1&quot;</span><span class="p">,</span>
@@ -4746,6 +4800,21 @@ flowchart TD
 <li><code>overwrite_existing</code> controls whether existing paths are replaced.</li>
 <li><code>restore_broken</code> controls whether entries with currently missing targets are restored.</li>
 </ul>
+<h3 id="get-processsymlink-manifestcompare"><code>GET /process/symlink-manifest/compare</code><a class="headerlink" href="#get-processsymlink-manifestcompare" title="Permanent link">&para;</a></h3>
+<p>Compares a snapshot manifest against current filesystem state and returns projected restore outcomes.</p>
+<h4 id="query-params_2">Query Params<a class="headerlink" href="#query-params_2" title="Permanent link">&para;</a></h4>
+<ul>
+<li><code>manifest_path</code> (required)</li>
+<li><code>overwrite_existing</code> (optional, default <code>false</code>)</li>
+<li><code>restore_broken</code> (optional, default <code>true</code>)</li>
+<li><code>sample_limit</code> (optional, default <code>50</code>, max <code>200</code>)</li>
+</ul>
+<h4 id="behavior_3">Behavior<a class="headerlink" href="#behavior_3" title="Permanent link">&para;</a></h4>
+<ul>
+<li>Uses the same overwrite/missing-target rules as restore.</li>
+<li>Returns projected counts (<code>projected_restored</code>, skipped categories, errors).</li>
+<li>Returns <code>sample_changes</code> with representative actions (<code>create</code>, <code>overwrite</code>, <code>skip_*</code>) for quick review before apply.</li>
+</ul>
 <h3 id="post-processsymlink-manifestrestore-async"><code>POST /process/symlink-manifest/restore-async</code><a class="headerlink" href="#post-processsymlink-manifestrestore-async" title="Permanent link">&para;</a></h3>
 <p>Queues restore as a background job and returns immediately.</p>
 <p>Use <code>GET /process/symlink-job-status</code> (or <code>/process/symlink-job-latest</code>) to track completion.</p>
@@ -4774,12 +4843,14 @@ flowchart TD
 <span class="w">  </span><span class="nt">&quot;seerr_sync&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;auto_update_start_time&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;symlink_repair&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;symlink_repair_async&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;symlink_manifest_backup&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;symlink_manifest_backup_async&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;symlink_job_status&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;symlink_job_latest&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;symlink_manifest_restore&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;symlink_manifest_restore_async&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;symlink_manifest_compare&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;symlink_backup_schedule&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;symlink_backup_manifest_list&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;symlink_manifest_file_list&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span>
@@ -4818,6 +4889,10 @@ flowchart TD
 <td>Whether <code>/process/symlink-repair</code> is available</td>
 </tr>
 <tr>
+<td><code>symlink_repair_async</code></td>
+<td>Whether <code>/process/symlink-repair-async</code> is available</td>
+</tr>
+<tr>
 <td><code>symlink_manifest_backup</code></td>
 <td>Whether <code>/process/symlink-manifest/backup</code> is available</td>
 </tr>
@@ -4840,6 +4915,10 @@ flowchart TD
 <tr>
 <td><code>symlink_manifest_restore_async</code></td>
 <td>Whether <code>/process/symlink-manifest/restore-async</code> is available</td>
+</tr>
+<tr>
+<td><code>symlink_manifest_compare</code></td>
+<td>Whether <code>/process/symlink-manifest/compare</code> is available</td>
 </tr>
 <tr>
 <td><code>symlink_backup_schedule</code></td>

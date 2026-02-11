@@ -4756,12 +4756,26 @@
 <h2 id="dumb-symlink-tools">DUMB symlink tools<a class="headerlink" href="#dumb-symlink-tools" title="Permanent link">&para;</a></h2>
 <p>DUMB provides three categories of symlink operations:</p>
 <ol>
-<li>Repair/migration (<code>POST /api/process/symlink-repair</code>)</li>
-<li>Standalone snapshot backup/restore (<code>POST /api/process/symlink-manifest/backup</code>, <code>POST /api/process/symlink-manifest/restore</code>)</li>
+<li>Repair/migration (<code>POST /api/process/symlink-repair</code>)<ul>
+<li>Async apply mode:<ul>
+<li><code>POST /api/process/symlink-repair-async</code></li>
+<li><code>GET /api/process/symlink-job-status</code></li>
+<li><code>GET /api/process/symlink-job-latest</code></li>
+</ul>
+</li>
+</ul>
+</li>
+<li>Standalone snapshot backup/restore (<code>POST /api/process/symlink-manifest/backup</code>, <code>POST /api/process/symlink-manifest/restore</code>)<ul>
+<li>Compare/preview mode:<ul>
+<li><code>GET /api/process/symlink-manifest/compare</code></li>
+</ul>
+</li>
 <li>Async backup/restore modes:<ul>
 <li><code>POST /api/process/symlink-manifest/backup-async</code></li>
 <li><code>POST /api/process/symlink-manifest/restore-async</code></li>
 <li><code>GET /api/process/symlink-job-status</code></li>
+</ul>
+</li>
 </ul>
 </li>
 <li>Scheduled snapshot backup and restore selection (<code>/api/process/symlink-backup-*</code>)</li>
@@ -4841,6 +4855,7 @@
 <ul>
 <li><code>Manifest path</code> now includes a dropdown picker of existing snapshot files (same directory scan behavior as scheduled restore), plus a <code>Custom path</code> option.</li>
 <li><code>Manifest path</code> remains fully editable when <code>Custom path</code> is selected.</li>
+<li>Restore flow includes <strong>Preview changes</strong> to compare the selected manifest against current symlinks using current restore options (<code>overwrite_existing</code>, <code>restore_broken</code>).</li>
 <li>Backup root scope defaults to <code>Current service root</code> on the active service page.</li>
 <li>Managed default manifest path now follows snapshot root selection:<ul>
 <li>current/specific root =&gt; <code>/config/symlink-repair/snapshots/{service}.json</code></li>

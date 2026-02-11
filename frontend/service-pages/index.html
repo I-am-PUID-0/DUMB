@@ -1205,6 +1205,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#dependency-graph-view" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Dependency graph view
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#auto-restart-policy" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1275,6 +1286,17 @@
     <span class="md-ellipsis">
       
         Default tab selection
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#sidebar-operator-qol" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sidebar operator QoL
       
     </span>
   </a>
@@ -4426,6 +4448,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#dependency-graph-view" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Dependency graph view
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#auto-restart-policy" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4496,6 +4529,17 @@
     <span class="md-ellipsis">
       
         Default tab selection
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#sidebar-operator-qol" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sidebar operator QoL
       
     </span>
   </a>
@@ -4604,9 +4648,12 @@ auto-restart policies, auto-update scheduling, and configuration editors.</p>
 <li>Configuration editors with validation</li>
 <li>Log viewers (service logs, plus special logs when available)</li>
 <li>Embedded UI tab when supported and enabled</li>
+<li>Dependency graph view for core/dependency startup relationships</li>
 <li>Per-service auto-restart overrides</li>
 <li>On-demand update checks and auto-update scheduling</li>
 <li>Seerr Sync controls when viewing a Seerr instance</li>
+<li>Symlink Job Center (for symlink-capable services) with active jobs, recent history, retry, and failure clearing</li>
+<li>Sidebar operator QoL controls (quick filters, saved views, compact mode, and command palette)</li>
 </ul>
 <hr />
 <h2 id="status-and-controls">Status and controls<a class="headerlink" href="#status-and-controls" title="Permanent link">&para;</a></h2>
@@ -4621,6 +4668,30 @@ enabled for a service, you also see restart counters and the last restart reason
 <p class="admonition-title">API service controls</p>
 <p>The DUMB API service does not show Start/Stop/Restart controls in the UI.</p>
 </div>
+<hr />
+<h2 id="dependency-graph-view">Dependency graph view<a class="headerlink" href="#dependency-graph-view" title="Permanent link">&para;</a></h2>
+<p>On the <strong>DUMB Config</strong> tab, use the <strong>Dependencies</strong> action to open a pop-out dependency graph panel that:</p>
+<ul>
+<li>Shows dependency startup order for the current service context</li>
+<li>Highlights missing/stopped dependencies</li>
+<li>Provides remediation suggestions</li>
+<li>Offers one-click <strong>Fix now</strong> actions to start available dependency processes</li>
+<li>Includes a contextual <strong>Why this matters</strong> callout with a deep link back to this section</li>
+</ul>
+<p>Notes:</p>
+<ul>
+<li>For multi-instance dependency services (for example <code>rclone</code>, <code>zurg</code>), the graph now scopes dependencies to instances linked to the current core service via <code>core_service</code>/<code>core_services</code>.</li>
+<li>If no linked dependency instance exists, the panel reports that mapping gap instead of treating an unrelated instance as valid.</li>
+<li>The panel also infers links from service config relationships (<code>core_service</code>, <code>core_services</code>, <code>wait_for_url</code>, <code>wait_for_dir</code>) so non-core services (for example Seerr, Tautulli, Arr instances tied to Decypharr/NzbDAV) can show real dependency edges.</li>
+<li>Dependency resolution now runs on the backend (<code>GET /api/process/dependency-graph</code>) so startup ordering and dependency edges are aligned with backend process/config semantics.</li>
+<li>The dependency pop-out includes a backend-provided truth table showing which signals are treated as hard dependencies (<code>core map</code>, <code>core_service</code>, <code>wait_for_url</code>, <code>wait_for_dir</code>, <code>wait_for_mounts</code>) versus simple linkage context.</li>
+<li>The dependency pop-out supports scope selection:</li>
+<li><code>Runtime</code>: hard runtime/configured dependencies</li>
+<li><code>All</code>: includes soft linkage edges (for example optional integrations)</li>
+<li>The <code>Flow</code> view renders a Mermaid dependency graph (with edge strength styling) and also shows directed edge details plus Mermaid source text for troubleshooting.</li>
+<li>The <code>Flow</code> view also lists backend <code>parallel_groups</code> to make concurrent prerequisite stages explicit (for example Riven startup prerequisites in parallel before backend start).</li>
+</ul>
+<p>For dependency services (for example <code>zurg</code>/<code>rclone</code>), the panel also shows which core services currently depend on them.</p>
 <hr />
 <h2 id="auto-restart-policy">Auto-restart policy<a class="headerlink" href="#auto-restart-policy" title="Permanent link">&para;</a></h2>
 <p>Configure the global auto-restart behavior:</p>
@@ -4650,6 +4721,7 @@ enabled for a service, you also see restart counters and the last restart reason
 </tr>
 </tbody>
 </table>
+<p>The auto-restart modal includes a contextual <strong>Why this matters</strong> callout linking to this section.</p>
 <p><img alt="Auto-restart controls" class="shadow" src="../../assets/images/frontend/auto_restart.png" /></p>
 <h3 id="service-overrides">Service overrides<a class="headerlink" href="#service-overrides" title="Permanent link">&para;</a></h3>
 <p>Service pages can also override auto-restart settings per service:</p>
@@ -4661,6 +4733,7 @@ enabled for a service, you also see restart counters and the last restart reason
 <hr />
 <h2 id="auto-update-settings">Auto-update settings<a class="headerlink" href="#auto-update-settings" title="Permanent link">&para;</a></h2>
 <p>The updates panel lets you check for updates on demand and configure automatic update checks:</p>
+<p>The panel includes a contextual <strong>Why this matters</strong> callout linking to this section.</p>
 <p>Manual update actions:</p>
 <ul>
 <li><strong>Check for updates</strong> runs a one-time update check even if auto-update is disabled.</li>
@@ -4704,6 +4777,7 @@ enabled for a service, you also see restart counters and the last restart reason
 <li>Select the per-instance <code>sync_role</code> (disabled/primary/subordinate)</li>
 <li>Test external primary/subordinate connections before saving</li>
 <li>View sync status and failed requests</li>
+<li>Review a contextual <strong>Why this matters</strong> callout linking to this section</li>
 </ul>
 <p>API keys are hidden by default and can be revealed when needed.</p>
 <p>Failed request lists are shown in a scrollable panel so large queues don’t expand the page.</p>
@@ -4716,6 +4790,9 @@ enabled for a service, you also see restart counters and the last restart reason
 <ul>
 <li>The editor runs schema validation when available.</li>
 <li>Invalid JSON or validation errors block saves until corrected.</li>
+<li>Validation errors now include inline "Why invalid" guidance (for example missing required fields, wrong types, unknown keys).</li>
+<li>A live config diff preview shows added/changed/removed paths before apply/save.</li>
+<li>Risk-tagged config changes (for example command/env/path/network/restart/update/credential fields) require an explicit acknowledgement checkbox before apply/save.</li>
 </ul>
 <h3 id="edit-service-config">Edit Service Config<a class="headerlink" href="#edit-service-config" title="Permanent link">&para;</a></h3>
 <p><img alt="Edit Service Config" class="shadow" src="../../assets/images/frontend/edit_service_config.png" /></p>
@@ -4753,6 +4830,19 @@ tab appears.</p>
 <h2 id="default-tab-selection">Default tab selection<a class="headerlink" href="#default-tab-selection" title="Permanent link">&para;</a></h2>
 <p>You can choose a default tab for each service page (for example, always open logs).
 The selection is stored in the UI preferences.</p>
+<hr />
+<h2 id="sidebar-operator-qol">Sidebar operator QoL<a class="headerlink" href="#sidebar-operator-qol" title="Permanent link">&para;</a></h2>
+<p>The services sidebar includes faster navigation controls for large stacks:</p>
+<ul>
+<li><strong>Quick filters</strong> for <code>All</code>, <code>Running</code>, <code>Stopped</code>, and <code>Unhealthy</code> services</li>
+<li><strong>Search filter</strong> for process name/config key matching</li>
+<li><strong>Saved views</strong> to store and re-apply filter/search/toggle combinations</li>
+<li><strong>Compact mode</strong> to reduce service-row density in the sidebar</li>
+<li><strong>Command palette</strong> (<code>Ctrl/Cmd + K</code>) to jump directly to service pages</li>
+<li><strong>Assignable service shortcuts</strong> configured from command-palette results by entering shortcut-capture mode and pressing the combo</li>
+<li><strong>Collapsible Sidebar tools</strong> section to keep controls hidden when not needed</li>
+</ul>
+<p>These controls are persisted in <code>dumb_config.json</code> under <code>dumb.ui.sidebar</code> (with local state used as a fallback during initial load) and are intended for power-user workflows across many services.</p>
 <hr />
 <h2 id="related-pages">Related pages<a class="headerlink" href="#related-pages" title="Permanent link">&para;</a></h2>
 <ul>
