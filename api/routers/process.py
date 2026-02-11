@@ -1384,6 +1384,37 @@ async def symlink_manifest_restore(
         )
 
 
+@process_router.get("/symlink-manifest/compare")
+async def symlink_manifest_compare(
+    manifest_path: str = Query(..., description="Snapshot manifest path to compare"),
+    overwrite_existing: bool = Query(
+        False, description="If true, preview assumes existing paths can be overwritten"
+    ),
+    restore_broken: bool = Query(
+        True, description="If false, preview skips entries with missing targets"
+    ),
+    sample_limit: int = Query(
+        50, ge=0, le=200, description="Maximum sample entries to return"
+    ),
+    current_user: str = Depends(get_optional_current_user),
+):
+    from utils.symlink_repair import preview_symlink_manifest_restore
+
+    try:
+        report = await run_in_threadpool(
+            preview_symlink_manifest_restore,
+            manifest_path,
+            bool(overwrite_existing),
+            bool(restore_broken),
+            int(sample_limit),
+        )
+        return report
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Symlink manifest compare failed: {e}"
+        )
+
+
 @process_router.post("/symlink-manifest/restore-async")
 async def symlink_manifest_restore_async(
     request: SymlinkManifestRestoreRequest,
@@ -2952,6 +2983,7 @@ async def get_capabilities(current_user: str = Depends(get_optional_current_user
         "symlink_job_latest": True,
         "symlink_manifest_restore": True,
         "symlink_manifest_restore_async": True,
+        "symlink_manifest_compare": True,
         "symlink_backup_schedule": True,
         "symlink_backup_manifest_list": True,
         "symlink_manifest_file_list": True,

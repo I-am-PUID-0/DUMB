@@ -626,3 +626,130 @@ def restore_symlink_manifest(
         except Exception:
             pass
     return report
+
+
+def preview_symlink_manifest_restore(
+    manifest_path: str,
+    overwrite_existing: bool = False,
+    restore_broken: bool = True,
+    sample_limit: int = 50,
+) -> dict[str, Any]:
+    source = (manifest_path or "").strip()
+    if not source:
+        raise ValueError("manifest_path is required.")
+    if not os.path.exists(source):
+        raise ValueError(f"Manifest does not exist: {source}")
+
+    with open(source, "r", encoding="utf-8") as handle:
+        manifest = json.load(handle)
+    entries = manifest.get("entries")
+    if not isinstance(entries, list):
+        raise ValueError("Invalid manifest format: entries list is required.")
+
+    report = {
+        "manifest_path": source,
+        "manifest_created_at": manifest.get("created_at"),
+        "overwrite_existing": bool(overwrite_existing),
+        "restore_broken": bool(restore_broken),
+        "sample_limit": int(sample_limit),
+        "total_entries": len(entries),
+        "projected_restored": 0,
+        "projected_skipped_existing": 0,
+        "projected_skipped_unchanged": 0,
+        "projected_skipped_invalid_entries": 0,
+        "projected_skipped_nonexistent_target": 0,
+        "projected_errors": 0,
+        "sample_changes": [],
+        "errors": [],
+    }
+
+    normalized_sample_limit = max(0, int(sample_limit))
+    for entry in entries:
+        link_path = (
+            (entry.get("link_path") or "").strip() if isinstance(entry, dict) else ""
+        )
+        target = (entry.get("target") or "").strip() if isinstance(entry, dict) else ""
+        if not link_path or not target:
+            report["projected_skipped_invalid_entries"] += 1
+            continue
+
+        try:
+            target_exists = _target_exists(link_path, target)
+            if not restore_broken and not target_exists:
+                report["projected_skipped_nonexistent_target"] += 1
+                if len(report["sample_changes"]) < normalized_sample_limit:
+                    report["sample_changes"].append(
+                        {
+                            "action": "skip_missing_target",
+                            "link_path": link_path,
+                            "target": target,
+                        }
+                    )
+                continue
+
+            if os.path.lexists(link_path):
+                if os.path.islink(link_path):
+                    current_target = os.readlink(link_path)
+                    if current_target == target:
+                        report["projected_skipped_unchanged"] += 1
+                        if len(report["sample_changes"]) < normalized_sample_limit:
+                            report["sample_changes"].append(
+                                {
+                                    "action": "skip_unchanged",
+                                    "link_path": link_path,
+                                    "target": target,
+                                }
+                            )
+                        continue
+                else:
+                    current_target = None
+
+                if not overwrite_existing:
+                    report["projected_skipped_existing"] += 1
+                    if len(report["sample_changes"]) < normalized_sample_limit:
+                        report["sample_changes"].append(
+                            {
+                                "action": "skip_existing",
+                                "link_path": link_path,
+                                "target": target,
+                                "current_target": current_target,
+                            }
+                        )
+                    continue
+
+                report["projected_restored"] += 1
+                if len(report["sample_changes"]) < normalized_sample_limit:
+                    report["sample_changes"].append(
+                        {
+                            "action": "overwrite",
+                            "link_path": link_path,
+                            "target": target,
+                            "current_target": current_target,
+                        }
+                    )
+                continue
+
+            report["projected_restored"] += 1
+            if len(report["sample_changes"]) < normalized_sample_limit:
+                report["sample_changes"].append(
+                    {
+                        "action": "create",
+                        "link_path": link_path,
+                        "target": target,
+                    }
+                )
+        except Exception as e:
+            report["projected_errors"] += 1
+            report["errors"].append({"link_path": link_path, "error": str(e)})
+
+    logger.info(
+        "Symlink manifest preview completed: entries=%s projected_restored=%s skipped_existing=%s skipped_unchanged=%s skipped_missing_target=%s errors=%s source=%s",
+        report["total_entries"],
+        report["projected_restored"],
+        report["projected_skipped_existing"],
+        report["projected_skipped_unchanged"],
+        report["projected_skipped_nonexistent_target"],
+        report["projected_errors"],
+        source,
+    )
+    return report
