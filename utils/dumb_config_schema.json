@@ -65,6 +65,35 @@
                   "type": "boolean"
                 }
               }
+            },
+            "sidebar": {
+              "type": "object",
+              "properties": {
+                "show_all_services": {
+                  "type": "boolean"
+                },
+                "compact_mode": {
+                  "type": "boolean"
+                },
+                "tools_open": {
+                  "type": "boolean"
+                },
+                "quick_filter": {
+                  "type": "string"
+                },
+                "service_search": {
+                  "type": "string"
+                },
+                "saved_views": {
+                  "type": "array"
+                },
+                "active_saved_view_id": {
+                  "type": "string"
+                },
+                "service_shortcuts": {
+                  "type": "object"
+                }
+              }
             }
           }
         },
