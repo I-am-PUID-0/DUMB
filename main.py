@@ -412,14 +412,18 @@ def _collect_decypharr_mount_paths(decypharr_cfg: dict) -> list[str]:
         return []
 
     mount_block = data.get("mount") if isinstance(data.get("mount"), dict) else {}
-    has_mount_block = bool(mount_block)
+    mount_mode = (mount_block.get("type") or "").strip().lower()
     mount_base = mount_block.get("mount_path")
     if not mount_base:
         mount_base = (data.get("rclone") or {}).get("mount_path")
     if not isinstance(mount_base, str):
         mount_base = None
-    if has_mount_block:
+    # New consolidated config uses top-level "mount" with a single mount_path
+    # for both DFS and rclone modes.
+    if mount_mode in {"dfs", "rclone"}:
         return [mount_base] if mount_base else []
+    if mount_mode in {"external_rclone", "none"}:
+        return []
 
     mounts = set()
     for debrid in data.get("debrids") or []:
@@ -429,8 +433,17 @@ def _collect_decypharr_mount_paths(decypharr_cfg: dict) -> list[str]:
         mount_path = _extract_decypharr_debrid_mount(folder, mount_base)
         if mount_path:
             mounts.add(mount_path)
-        elif mount_base and debrid.get("name"):
-            mounts.add(os.path.join(mount_base, str(debrid["name"])))
+        elif mount_base:
+            debrid_name = debrid.get("name") or debrid.get("provider")
+            if debrid_name:
+                mounts.add(os.path.join(mount_base, str(debrid_name)))
+
+    # For legacy non-consolidated mounts, infer provider paths from api_keys if
+    # debrids[] has not been materialized yet.
+    if not mounts and mount_base:
+        for provider_name in (decypharr_cfg.get("api_keys") or {}).keys():
+            if provider_name:
+                mounts.add(os.path.join(mount_base, str(provider_name)))
     return sorted(mounts)
 
 

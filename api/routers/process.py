@@ -95,6 +95,94 @@ class UnifiedStartRequest(BaseModel):
 
 process_router = APIRouter()
 versions = Versions()
+DEPENDENCY_INSTANCE_SCOPED_KEYS = {"rclone", "zurg"}
+DEPENDENCY_TRUTH_TABLE = [
+    {
+        "signal": "core_service_map",
+        "classification": "hard",
+        "strength": "hard_runtime",
+        "description": "Static core-service dependency map used by backend startup ordering.",
+    },
+    {
+        "signal": "core_service_fields",
+        "classification": "hard",
+        "strength": "hard_configured",
+        "description": "Instance-level linkage from core_service/core_services fields.",
+    },
+    {
+        "signal": "wait_for_url",
+        "classification": "hard",
+        "strength": "hard_runtime",
+        "description": "Process start blocks until required URLs respond.",
+    },
+    {
+        "signal": "wait_for_dir",
+        "classification": "hard",
+        "strength": "hard_runtime",
+        "description": "Process start blocks until required directory path exists.",
+    },
+    {
+        "signal": "wait_for_mounts",
+        "classification": "hard",
+        "strength": "hard_runtime",
+        "description": "Process start blocks until required mount paths are mounted.",
+    },
+    {
+        "signal": "rclone_provider_zurg",
+        "classification": "hard",
+        "strength": "hard_runtime",
+        "description": "Rclone instance is configured to use a Zurg WebDAV provider.",
+    },
+    {
+        "signal": "rclone_provider_decypharr",
+        "classification": "hard",
+        "strength": "hard_runtime",
+        "description": "Rclone instance is configured to use Decypharr as provider.",
+    },
+    {
+        "signal": "rclone_provider_nzbdav",
+        "classification": "hard",
+        "strength": "hard_runtime",
+        "description": "Rclone instance is configured to use NzbDAV as provider.",
+    },
+    {
+        "signal": "zilean_optional_integration",
+        "classification": "linkage",
+        "strength": "soft_linkage",
+        "description": "Service can integrate with Zilean based on config/workflow, but startup is not hard-blocked.",
+    },
+    {
+        "signal": "non_core_dependency_map",
+        "classification": "hard",
+        "strength": "hard_runtime",
+        "description": "Static dependency linkage for non-core services that still require ordered startup.",
+    },
+]
+DEPENDENCY_SIGNAL_STRENGTH = {
+    "core_service_map": "hard_runtime",
+    "core_service_fields": "hard_configured",
+    "wait_for_url": "hard_runtime",
+    "wait_for_dir": "hard_runtime",
+    "wait_for_mounts": "hard_runtime",
+    "rclone_provider_zurg": "hard_runtime",
+    "rclone_provider_decypharr": "hard_runtime",
+    "rclone_provider_nzbdav": "hard_runtime",
+    "zilean_optional_integration": "soft_linkage",
+    "non_core_dependency_map": "hard_runtime",
+}
+ZILEAN_OPTIONAL_LINK_KEYS = {
+    "sonarr",
+    "radarr",
+    "lidarr",
+    "whisparr",
+    "prowlarr",
+    "riven_backend",
+    "cli_debrid",
+}
+NON_CORE_HARD_DEPENDENCIES = {
+    "riven_frontend": ["riven_backend"],
+    "zilean": ["postgres"],
+}
 
 STATIC_URLS_BY_KEY = {
     "rclone": "https://rclone.org",
@@ -504,52 +592,700 @@ def fetch_processes(
     logger=Depends(get_logger), current_user: str = Depends(get_optional_current_user)
 ):
     try:
-        processes = []
-        config = CONFIG_MANAGER.config
-
-        def find_processes(data, parent_key=""):
-            if isinstance(data, dict):
-                for key, value in data.items():
-                    if isinstance(value, dict) and "process_name" in value:
-                        process_name = value.get("process_name")
-                        enabled = value.get("enabled", False)
-                        display_name = f"{parent_key} {key}".strip()
-                        config_key, instance_name = CONFIG_MANAGER.find_key_for_process(
-                            process_name
-                        )
-                        version, _ = versions.version_check(
-                            process_name=value.get("process_name"),
-                            instance_name=instance_name,
-                            key=config_key,
-                        )
-                        repo_owner = value.get("repo_owner")
-                        repo_name = value.get("repo_name")
-                        if repo_owner and repo_name:
-                            repo_url = f"https://github.com/{repo_owner}/{repo_name}"
-                        else:
-                            repo_url = STATIC_URLS_BY_KEY.get(config_key)
-                        sponsorship_url = SPONSORSHIP_URLS_BY_KEY.get(config_key)
-                        processes.append(
-                            {
-                                "name": display_name,
-                                "process_name": process_name,
-                                "enabled": enabled,
-                                "config": value,
-                                "version": version,
-                                "key": key,
-                                "config_key": config_key,
-                                "repo_url": repo_url,
-                                "sponsorship_url": sponsorship_url,
-                            }
-                        )
-                    elif isinstance(value, dict):
-                        find_processes(value, parent_key=f"{parent_key} {key}".strip())
-
-        find_processes(config)
-        return {"processes": processes}
+        return {"processes": _collect_process_entries()}
     except Exception as e:
         logger.error(f"Failed to load processes: {e}")
         raise HTTPException(status_code=500, detail="Failed to load processes")
+
+
+@process_router.get("/dependency-graph")
+def dependency_graph(
+    process_name: str = Query(..., description="The process name to analyze"),
+    scope: str = Query(
+        "runtime",
+        description="Graph detail scope: runtime (hard runtime + hard configured) or all (includes soft linkage).",
+    ),
+    api_state=Depends(get_api_state),
+    logger=Depends(get_logger),
+    current_user: str = Depends(get_optional_current_user),
+):
+    try:
+        target_name = str(process_name or "").strip()
+        if not target_name:
+            raise HTTPException(status_code=400, detail="process_name is required")
+        scope_mode = str(scope or "runtime").strip().lower()
+        if scope_mode not in {"runtime", "all"}:
+            raise HTTPException(
+                status_code=400, detail="scope must be 'runtime' or 'all'"
+            )
+
+        processes = _collect_process_entries()
+        by_process_name: dict[str, dict] = {}
+        by_config_key: dict[str, list[dict]] = {}
+        port_to_entries: dict[int, list[dict]] = {}
+        mount_to_entries: dict[str, list[dict]] = {}
+        status_by_process: dict[str, str] = {}
+
+        for entry in processes:
+            proc_name = str(entry.get("process_name") or "").strip()
+            if not proc_name:
+                continue
+            normalized_proc = _normalize_dep_token(proc_name)
+            if normalized_proc:
+                by_process_name[normalized_proc] = entry
+
+            config_key = _normalize_dep_token(entry.get("config_key") or "")
+            if config_key:
+                by_config_key.setdefault(config_key, []).append(entry)
+
+            status_by_process[proc_name] = (
+                str(api_state.get_status(proc_name) if api_state else "unknown").lower()
+            )
+            for port in _dep_process_ports(entry):
+                port_to_entries.setdefault(port, []).append(entry)
+            for mount_path in _dep_process_mount_points(entry):
+                mount_to_entries.setdefault(mount_path, []).append(entry)
+
+        target = by_process_name.get(_normalize_dep_token(target_name))
+        if not target:
+            raise HTTPException(status_code=404, detail="Process not found")
+
+        target_proc_name = str(target.get("process_name") or "")
+        target_key = _normalize_dep_token(target.get("config_key") or "")
+        target_config = target.get("config") if isinstance(target.get("config"), dict) else {}
+        target_core_refs = _dep_extract_refs_from_config(target_config)
+        target_primary_core = target_core_refs[0] if target_core_refs else ""
+        core_entry = {
+            "key": target_key,
+            "name": CORE_SERVICE_NAMES.get(target_key) or target.get("name") or target_proc_name,
+            "dependencies": CORE_SERVICE_DEPENDENCIES.get(target_key, []),
+        }
+
+        def resolve_ref_entries(refs: list[str], source_core_refs: list[str]) -> list[dict]:
+            resolved: list[dict] = []
+            seen: set[str] = set()
+            core_ref_set = {
+                _normalize_dep_token(entry) for entry in (source_core_refs or []) if entry
+            }
+
+            def add_entry(entry: dict):
+                proc_name = str(entry.get("process_name") or "")
+                if not proc_name or proc_name in seen:
+                    return
+                seen.add(proc_name)
+                resolved.append(entry)
+
+            for ref in refs:
+                normalized_ref = _normalize_dep_token(ref)
+                if not normalized_ref:
+                    continue
+                if normalized_ref in by_process_name:
+                    add_entry(by_process_name[normalized_ref])
+                    continue
+                group = by_config_key.get(normalized_ref, [])
+                if normalized_ref in DEPENDENCY_INSTANCE_SCOPED_KEYS and core_ref_set:
+                    group = [
+                        entry
+                        for entry in group
+                        if any(
+                            _normalize_dep_token(core_ref) in core_ref_set
+                            for core_ref in _dep_extract_refs_from_config(entry.get("config") or {})
+                        )
+                    ]
+                for entry in group:
+                    add_entry(entry)
+
+            return resolved
+
+        def resolve_rclone_provider_entries(
+            process_entry: dict,
+            process_config: dict,
+            primary_core_key: str = "",
+        ) -> list[tuple[dict, str]]:
+            if _normalize_dep_token(process_entry.get("config_key") or "") != "rclone":
+                return []
+
+            results: list[tuple[dict, str]] = []
+            seen: set[tuple[str, str]] = set()
+
+            def add_by_key(dep_key: str, reason: str, scoped: bool = False):
+                normalized_key = _normalize_dep_token(dep_key)
+                if not normalized_key:
+                    return
+                entries = list(by_config_key.get(normalized_key, []))
+                if scoped and primary_core_key:
+                    entries = [
+                        entry
+                        for entry in entries
+                        if has_core_service(entry.get("config") or {}, primary_core_key)
+                    ]
+                for entry in entries:
+                    proc_name = str(entry.get("process_name") or "")
+                    marker = (proc_name, reason)
+                    if not proc_name or marker in seen:
+                        continue
+                    seen.add(marker)
+                    results.append((entry, reason))
+
+            if bool(process_config.get("zurg_enabled")):
+                add_by_key("zurg", "rclone_provider_zurg", scoped=True)
+            if bool(process_config.get("decypharr_enabled")):
+                add_by_key("decypharr", "rclone_provider_decypharr")
+            if _normalize_dep_token(process_config.get("key_type") or "") == "nzbdav":
+                add_by_key("nzbdav", "rclone_provider_nzbdav")
+
+            return results
+
+        source_core_refs = sorted(
+            set(_dep_extract_refs_from_config(target_config) + [target_key])
+        )
+
+        outgoing_core_entries = resolve_ref_entries(source_core_refs, source_core_refs)
+        outgoing_wait_url_entries = resolve_ref_entries(
+            _dep_extract_wait_refs(target_config.get("wait_for_url")), source_core_refs
+        )
+        outgoing_wait_dir_entries = resolve_ref_entries(
+            _dep_extract_wait_refs(target_config.get("wait_for_dir")), source_core_refs
+        )
+        outgoing_reasons: dict[str, set[str]] = {}
+        incoming_reasons: dict[str, set[str]] = {}
+        outgoing_map: dict[str, dict] = {}
+
+        def add_outgoing(entry: dict, reason: str):
+            proc_name = str(entry.get("process_name") or "")
+            if not proc_name or proc_name == target_proc_name:
+                return
+            outgoing_reasons.setdefault(proc_name, set()).add(reason)
+            outgoing_map[proc_name] = entry
+
+        def add_incoming(entry: dict, reason: str):
+            proc_name = str(entry.get("process_name") or "")
+            if not proc_name or proc_name == target_proc_name:
+                return
+            incoming_reasons.setdefault(proc_name, set()).add(reason)
+            incoming_map[proc_name] = entry
+
+        for entry in outgoing_core_entries:
+            add_outgoing(entry, "core_service_fields")
+        for entry in outgoing_wait_url_entries:
+            add_outgoing(entry, "wait_for_url")
+        for entry in outgoing_wait_dir_entries:
+            add_outgoing(entry, "wait_for_dir")
+        for port in _dep_extract_wait_ports(target_config.get("wait_for_url")):
+            for candidate in port_to_entries.get(port, []):
+                add_outgoing(candidate, "wait_for_url")
+
+        for raw_mount in target_config.get("wait_for_mounts") or []:
+            wait_mount = _dep_norm_path(raw_mount)
+            if not wait_mount:
+                continue
+            for mount_path, candidates in mount_to_entries.items():
+                if not mount_path:
+                    continue
+                if wait_mount == mount_path or wait_mount.startswith(mount_path + "/"):
+                    for candidate in candidates:
+                        add_outgoing(candidate, "wait_for_mounts")
+                elif mount_path.startswith(wait_mount + "/"):
+                    for candidate in candidates:
+                        add_outgoing(candidate, "wait_for_mounts")
+        for wait_dir in _dep_extract_wait_dirs(target_config.get("wait_for_dir")):
+            for mount_path, candidates in mount_to_entries.items():
+                if not mount_path:
+                    continue
+                if wait_dir == mount_path or wait_dir.startswith(mount_path + "/"):
+                    for candidate in candidates:
+                        add_outgoing(candidate, "wait_for_dir")
+                elif mount_path.startswith(wait_dir + "/"):
+                    for candidate in candidates:
+                        add_outgoing(candidate, "wait_for_dir")
+        for provider_entry, provider_reason in resolve_rclone_provider_entries(
+            target, target_config, target_primary_core
+        ):
+            add_outgoing(provider_entry, provider_reason)
+        for dep_key in NON_CORE_HARD_DEPENDENCIES.get(target_key, []):
+            for dep_entry in by_config_key.get(_normalize_dep_token(dep_key), []):
+                add_outgoing(dep_entry, "non_core_dependency_map")
+
+        target_ports = set(_dep_process_ports(target))
+        target_mounts = set(_dep_process_mount_points(target))
+        incoming_map: dict[str, dict] = {}
+        for candidate in processes:
+            candidate_name = str(candidate.get("process_name") or "")
+            if not candidate_name or candidate_name == target_proc_name:
+                continue
+            candidate_cfg = (
+                candidate.get("config")
+                if isinstance(candidate.get("config"), dict)
+                else {}
+            )
+            candidate_core_refs = sorted(
+                set(
+                    _dep_extract_refs_from_config(candidate_cfg)
+                    + [_normalize_dep_token(candidate.get("config_key") or "")]
+                )
+            )
+            linked_core = resolve_ref_entries(candidate_core_refs, candidate_core_refs)
+            if any(
+                str(entry.get("process_name") or "") == target_proc_name
+                for entry in linked_core
+            ):
+                add_incoming(candidate, "core_service_fields")
+                continue
+            linked_wait_url = resolve_ref_entries(
+                _dep_extract_wait_refs(candidate_cfg.get("wait_for_url")),
+                candidate_core_refs,
+            )
+            if any(
+                str(entry.get("process_name") or "") == target_proc_name
+                for entry in linked_wait_url
+            ):
+                add_incoming(candidate, "wait_for_url")
+                continue
+            linked_wait_dir = resolve_ref_entries(
+                _dep_extract_wait_refs(candidate_cfg.get("wait_for_dir")),
+                candidate_core_refs,
+            )
+            if any(
+                str(entry.get("process_name") or "") == target_proc_name
+                for entry in linked_wait_dir
+            ):
+                add_incoming(candidate, "wait_for_dir")
+                continue
+            wait_ports = _dep_extract_wait_ports(candidate_cfg.get("wait_for_url"))
+            if target_ports and any(port in target_ports for port in wait_ports):
+                add_incoming(candidate, "wait_for_url")
+                continue
+            for raw_mount in candidate_cfg.get("wait_for_mounts") or []:
+                wait_mount = _dep_norm_path(raw_mount)
+                if not wait_mount:
+                    continue
+                if any(
+                    wait_mount == mount_path
+                    or wait_mount.startswith(mount_path + "/")
+                    or mount_path.startswith(wait_mount + "/")
+                    for mount_path in target_mounts
+                ):
+                    add_incoming(candidate, "wait_for_mounts")
+                    break
+            wait_dirs = _dep_extract_wait_dirs(candidate_cfg.get("wait_for_dir"))
+            if wait_dirs and any(
+                any(
+                    wait_dir == mount_path
+                    or wait_dir.startswith(mount_path + "/")
+                    or mount_path.startswith(wait_dir + "/")
+                    for mount_path in target_mounts
+                )
+                for wait_dir in wait_dirs
+            ):
+                add_incoming(candidate, "wait_for_dir")
+                continue
+            for provider_entry, provider_reason in resolve_rclone_provider_entries(
+                candidate, candidate_cfg, (_dep_extract_refs_from_config(candidate_cfg) or [""])[0]
+            ):
+                if str(provider_entry.get("process_name") or "") == target_proc_name:
+                    add_incoming(candidate, provider_reason)
+                    break
+            candidate_key = _normalize_dep_token(candidate.get("config_key") or "")
+            if target_key in [
+                _normalize_dep_token(dep)
+                for dep in NON_CORE_HARD_DEPENDENCIES.get(candidate_key, [])
+            ]:
+                add_incoming(candidate, "non_core_dependency_map")
+                continue
+
+        def entry_to_row(entry: dict, reasons: set[str] | None = None) -> dict:
+            proc_name = str(entry.get("process_name") or "")
+            key = _normalize_dep_token(entry.get("config_key") or "")
+            state = _dep_state_for_entries([entry], status_by_process)
+            reason_list = sorted(list(reasons or []))
+            strengths = {
+                DEPENDENCY_SIGNAL_STRENGTH.get(reason, "hard_configured")
+                for reason in reason_list
+            }
+            row_strength = (
+                "hard_runtime"
+                if "hard_runtime" in strengths
+                else "hard_configured"
+                if "hard_configured" in strengths
+                else "soft_linkage"
+            )
+            hard = row_strength in {"hard_runtime", "hard_configured"}
+            return {
+                "process_name": proc_name,
+                "key": key,
+                "label": entry.get("name") or proc_name or key,
+                "state": state,
+                "signals": reason_list,
+                "classification": "hard" if hard else "linkage",
+                "strength": row_strength,
+            }
+
+        context_mode = "core" if target_key in CORE_SERVICE_DEPENDENCIES else "dependency"
+        static_dependencies = CORE_SERVICE_DEPENDENCIES.get(target_key, [])
+        if target_key == "decypharr":
+            branch_name = _normalize_dep_token(target_config.get("branch") or "")
+            mount_type = _normalize_dep_token(target_config.get("mount_type") or "")
+            if not mount_type:
+                mount_type = "dfs" if branch_name == "beta" else "rclone"
+            if mount_type in {"rclone", "dfs", "none"}:
+                static_dependencies = [dep for dep in static_dependencies if dep != "rclone"]
+
+        dependency_rows = []
+        for dep_key in static_dependencies:
+            dep_norm = _normalize_dep_token(dep_key)
+            dep_entries = list(by_config_key.get(dep_norm, []))
+            if dep_norm in DEPENDENCY_INSTANCE_SCOPED_KEYS:
+                dep_entries = [
+                    entry
+                    for entry in dep_entries
+                    if has_core_service(entry.get("config") or {}, target_key)
+                ]
+            dep_entries = [entry for entry in dep_entries if isinstance(entry, dict)]
+            state = _dep_state_for_entries(dep_entries, status_by_process)
+            starter = None
+            if dep_entries:
+                sorted_entries = sorted(
+                    dep_entries, key=lambda entry: int(bool(entry.get("enabled"))), reverse=True
+                )
+                starter = sorted_entries[0]
+            dependency_rows.append(
+                {
+                    "key": dep_norm,
+                    "label": CORE_SERVICE_NAMES.get(dep_norm)
+                    or (dep_entries[0].get("name") if dep_entries else dep_norm),
+                    "state": state,
+                    "process_count": len(dep_entries),
+                    "scoped": dep_norm in DEPENDENCY_INSTANCE_SCOPED_KEYS,
+                    "starter_process_name": starter.get("process_name") if starter else None,
+                    "signals": ["core_service_map"],
+                    "classification": "hard",
+                    "strength": "hard_runtime",
+                }
+            )
+
+        dependent_rows = []
+        dependent_keys = [
+            core_key
+            for core_key, deps in CORE_SERVICE_DEPENDENCIES.items()
+            if target_key in [_normalize_dep_token(dep) for dep in deps]
+        ]
+        if target_key in DEPENDENCY_INSTANCE_SCOPED_KEYS:
+            attached_cores = {
+                ref for ref in _dep_extract_refs_from_config(target_config) if ref
+            }
+            if attached_cores:
+                dependent_keys = [key for key in dependent_keys if key in attached_cores]
+
+        for core_key in sorted(set(dependent_keys)):
+            core_entries = by_config_key.get(core_key, [])
+            core_state = _dep_state_for_entries(core_entries, status_by_process)
+            core_deps = [
+                _normalize_dep_token(dep)
+                for dep in CORE_SERVICE_DEPENDENCIES.get(core_key, [])
+            ]
+            missing = []
+            for dep in core_deps:
+                dep_entries = by_config_key.get(dep, [])
+                if dep in DEPENDENCY_INSTANCE_SCOPED_KEYS:
+                    dep_entries = [
+                        entry
+                        for entry in dep_entries
+                        if has_core_service(entry.get("config") or {}, core_key)
+                    ]
+                if _dep_state_for_entries(dep_entries, status_by_process) != "running":
+                    missing.append(dep)
+            dependent_rows.append(
+                {
+                    "key": core_key,
+                    "label": CORE_SERVICE_NAMES.get(core_key, core_key),
+                    "state": core_state,
+                    "missing_deps": missing,
+                    "signals": ["core_service_map"],
+                    "classification": "hard",
+                    "strength": "hard_runtime",
+                }
+            )
+
+        startup_order = []
+        if context_mode == "core":
+            for dep in static_dependencies:
+                dep_key = _normalize_dep_token(dep)
+                dep_entries = by_config_key.get(dep_key, [])
+                if dep_key in DEPENDENCY_INSTANCE_SCOPED_KEYS:
+                    dep_entries = [
+                        entry
+                        for entry in dep_entries
+                        if has_core_service(entry.get("config") or {}, target_key)
+                    ]
+                startup_order.append(
+                    {
+                        "key": dep_key,
+                        "label": CORE_SERVICE_NAMES.get(dep_key, dep_key),
+                        "state": _dep_state_for_entries(dep_entries, status_by_process),
+                        "signals": ["core_service_map"],
+                        "classification": "hard",
+                        "strength": "hard_runtime",
+                    }
+                )
+            startup_order.append(
+                {
+                    "key": target_key,
+                    "label": CORE_SERVICE_NAMES.get(target_key, target_proc_name),
+                    "state": _dep_state_for_entries([target], status_by_process),
+                    "signals": ["core_service_map"],
+                    "classification": "hard",
+                    "strength": "hard_runtime",
+                }
+            )
+        elif context_mode == "dependency":
+            startup_order.append(
+                {
+                    "key": target_key,
+                    "label": target.get("name") or target_proc_name,
+                    "state": _dep_state_for_entries([target], status_by_process),
+                    "strength": "hard_configured",
+                }
+            )
+            for row in dependent_rows:
+                startup_order.append(
+                    {
+                        "key": row["key"],
+                        "label": row["label"],
+                        "state": row["state"],
+                        "signals": ["core_service_map"],
+                        "classification": "hard",
+                        "strength": "hard_runtime",
+                    }
+                )
+
+        linked_outgoing_rows = [
+            entry_to_row(
+                entry, outgoing_reasons.get(str(entry.get("process_name") or ""), set())
+            )
+            for entry in outgoing_map.values()
+        ]
+        linked_incoming_rows = [
+            entry_to_row(
+                entry, incoming_reasons.get(str(entry.get("process_name") or ""), set())
+            )
+            for entry in incoming_map.values()
+        ]
+
+        if scope_mode == "all":
+            if target_key == "zilean":
+                for candidate in processes:
+                    candidate_key = _normalize_dep_token(candidate.get("config_key") or "")
+                    if candidate_key in ZILEAN_OPTIONAL_LINK_KEYS:
+                        name = str(candidate.get("process_name") or "")
+                        if not any(row.get("process_name") == name for row in linked_incoming_rows):
+                            linked_incoming_rows.append(
+                                {
+                                    "process_name": name,
+                                    "key": candidate_key,
+                                    "label": candidate.get("name") or name or candidate_key,
+                                    "state": _dep_state_for_entries([candidate], status_by_process),
+                                    "signals": ["zilean_optional_integration"],
+                                    "classification": "linkage",
+                                    "strength": "soft_linkage",
+                                }
+                            )
+            if target_key in ZILEAN_OPTIONAL_LINK_KEYS:
+                zilean_entries = by_config_key.get("zilean", [])
+                for entry in zilean_entries:
+                    name = str(entry.get("process_name") or "")
+                    if not any(row.get("process_name") == name for row in linked_outgoing_rows):
+                        linked_outgoing_rows.append(
+                            {
+                                "process_name": name,
+                                "key": "zilean",
+                                "label": entry.get("name") or name or "zilean",
+                                "state": _dep_state_for_entries([entry], status_by_process),
+                                "signals": ["zilean_optional_integration"],
+                                "classification": "linkage",
+                                "strength": "soft_linkage",
+                            }
+                        )
+
+        nodes_map: dict[str, dict] = {}
+
+        def ensure_node(
+            process_name_value: str,
+            key_value: str = "",
+            label_value: str = "",
+            state_value: str = "",
+        ):
+            process_label = str(process_name_value or "").strip()
+            if not process_label:
+                return
+            if process_label in nodes_map:
+                return
+            normalized_key = _normalize_dep_token(key_value)
+            display = (
+                str(label_value).strip()
+                or CORE_SERVICE_NAMES.get(normalized_key)
+                or process_label
+            )
+            state = state_value or status_by_process.get(process_label) or "unknown"
+            nodes_map[process_label] = {
+                "id": process_label,
+                "process_name": process_label,
+                "key": normalized_key,
+                "label": display,
+                "state": _normalize_dep_token(state) or "unknown",
+            }
+
+        ensure_node(
+            target_proc_name,
+            target_key,
+            target.get("name") or CORE_SERVICE_NAMES.get(target_key) or target_proc_name,
+            status_by_process.get(target_proc_name) or "unknown",
+        )
+        for row in dependency_rows:
+            starter_name = str(row.get("starter_process_name") or "")
+            if not starter_name:
+                continue
+            ensure_node(
+                starter_name,
+                row.get("key") or "",
+                row.get("label") or starter_name,
+                status_by_process.get(starter_name) or "unknown",
+            )
+        for row in linked_outgoing_rows + linked_incoming_rows:
+            ensure_node(
+                row.get("process_name") or "",
+                row.get("key") or "",
+                row.get("label") or "",
+                row.get("state") or "",
+            )
+
+        edges = []
+
+        def add_edge(source: str, target_name_value: str, signals: list[str]):
+            source_name = str(source or "").strip()
+            target_name_clean = str(target_name_value or "").strip()
+            if not source_name or not target_name_clean:
+                return
+            strengths = {
+                DEPENDENCY_SIGNAL_STRENGTH.get(signal, "hard_configured")
+                for signal in signals
+            }
+            strength = (
+                "hard_runtime"
+                if "hard_runtime" in strengths
+                else "hard_configured"
+                if "hard_configured" in strengths
+                else "soft_linkage"
+            )
+            if scope_mode == "runtime" and strength == "soft_linkage":
+                return
+            edges.append(
+                {
+                    "source": source_name,
+                    "target": target_name_clean,
+                    "signals": sorted(set(signals)),
+                    "strength": strength,
+                    "classification": "hard"
+                    if strength in {"hard_runtime", "hard_configured"}
+                    else "linkage",
+                }
+            )
+
+        # Edge direction is dependency -> dependent.
+        for row in linked_outgoing_rows:
+            add_edge(row.get("process_name"), target_proc_name, row.get("signals") or [])
+        for row in linked_incoming_rows:
+            add_edge(target_proc_name, row.get("process_name"), row.get("signals") or [])
+        for row in dependency_rows:
+            starter_name = str(row.get("starter_process_name") or "")
+            if starter_name:
+                add_edge(starter_name, target_proc_name, row.get("signals") or ["core_service_map"])
+
+        parallel_groups = []
+        pre_members = []
+        core_members = [target_proc_name] if target_proc_name else []
+        post_members = []
+
+        pre_from_static = [
+            str(row.get("starter_process_name") or "").strip()
+            for row in dependency_rows
+            if str(row.get("starter_process_name") or "").strip()
+        ]
+        pre_from_links = [
+            str(row.get("process_name") or "").strip()
+            for row in linked_outgoing_rows
+            if str(row.get("strength") or "") in {"hard_runtime", "hard_configured"}
+        ]
+        pre_members = sorted(set([m for m in pre_from_static + pre_from_links if m and m != target_proc_name]))
+
+        post_members = sorted(
+            set(
+                [
+                    str(row.get("process_name") or "").strip()
+                    for row in linked_incoming_rows
+                    if str(row.get("process_name") or "").strip()
+                ]
+            )
+        )
+
+        if pre_members:
+            parallel_groups.append(
+                {
+                    "id": "pre_core",
+                    "label": "Parallel prerequisites",
+                    "type": "parallel",
+                    "members": pre_members,
+                }
+            )
+        if core_members:
+            parallel_groups.append(
+                {
+                    "id": "core_target",
+                    "label": "Core target",
+                    "type": "serial",
+                    "members": core_members,
+                }
+            )
+        if post_members:
+            parallel_groups.append(
+                {
+                    "id": "post_core",
+                    "label": "Dependents",
+                    "type": "parallel",
+                    "members": post_members,
+                }
+            )
+
+        return {
+            "process_name": target_proc_name,
+            "config_key": target_key,
+            "scope": scope_mode,
+            "context": {"mode": context_mode, "key": target_key, "core": core_entry},
+            "core_services": [
+                {
+                    "name": CORE_SERVICE_NAMES.get(key, key),
+                    "key": key,
+                    "dependencies": deps,
+                }
+                for key, deps in CORE_SERVICE_DEPENDENCIES.items()
+            ],
+            "processes": processes,
+            "statuses": status_by_process,
+            "startup_order": startup_order,
+            "dependency_rows": dependency_rows,
+            "dependent_rows": dependent_rows,
+            "linked_outgoing_rows": linked_outgoing_rows,
+            "linked_incoming_rows": linked_incoming_rows,
+            "nodes": sorted(nodes_map.values(), key=lambda node: node.get("label") or ""),
+            "edges": edges,
+            "parallel_groups": parallel_groups,
+            "dependency_truth_table": DEPENDENCY_TRUTH_TABLE,
+            "updated_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        }
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error("Failed to build dependency graph: %s", exc)
+        raise HTTPException(status_code=500, detail="Failed to build dependency graph")
 
 
 @process_router.post("/start-service")
@@ -1729,6 +2465,243 @@ def _is_port_available(port: int) -> bool:
         if result is False:
             return False
     return True
+
+
+def _normalize_dep_token(value: Any) -> str:
+    token = str(value or "").strip().lower()
+    if not token:
+        return ""
+    return normalize_identifier(token)
+
+
+def _dep_state_for_entries(entries: list[dict], status_by_process: dict[str, str]) -> str:
+    if not entries:
+        return "missing"
+    has_running = any(
+        str(status_by_process.get(str(entry.get("process_name")), "")).lower()
+        == "running"
+        for entry in entries
+    )
+    if has_running:
+        return "running"
+    has_enabled = any(entry.get("enabled", False) for entry in entries)
+    if has_enabled:
+        return "stopped"
+    return "disabled"
+
+
+def _dep_process_ports(process_entry: dict) -> list[int]:
+    config = process_entry.get("config") if isinstance(process_entry, dict) else {}
+    if not isinstance(config, dict):
+        return []
+    ports = []
+    for key in (
+        "port",
+        "frontend_port",
+        "backend_port",
+        "web_port",
+        "ui_port",
+        "http_port",
+        "https_port",
+        "external_port",
+    ):
+        value = config.get(key)
+        if isinstance(value, int) and value > 0:
+            ports.append(value)
+    if isinstance(config.get("ports"), list):
+        for value in config.get("ports", []):
+            if isinstance(value, int) and value > 0:
+                ports.append(value)
+    return sorted(set(ports))
+
+
+def _dep_is_local_host(host: str) -> bool:
+    normalized = str(host or "").strip().lower()
+    return normalized in {"127.0.0.1", "localhost", "0.0.0.0", "::1"}
+
+
+def _dep_norm_path(path: str) -> str:
+    value = os.path.normpath(str(path or "").strip())
+    if value == ".":
+        return ""
+    return value.rstrip("/") or "/"
+
+
+def _dep_extract_refs_from_config(config: dict) -> list[str]:
+    refs: list[str] = []
+
+    def add_value(value: Any):
+        if value is None:
+            return
+        if isinstance(value, str):
+            parts = [_normalize_dep_token(entry) for entry in value.split(",")]
+            refs.extend([entry for entry in parts if entry])
+            return
+        if isinstance(value, list):
+            for item in value:
+                add_value(item)
+
+    if not isinstance(config, dict):
+        return refs
+    add_value(config.get("core_services"))
+    add_value(config.get("core_service"))
+    return sorted(set(refs))
+
+
+def _dep_extract_wait_refs(wait_entries: Any) -> list[str]:
+    refs: list[str] = []
+
+    def add_value(value: Any):
+        if value is None:
+            return
+        if isinstance(value, str):
+            parts = [_normalize_dep_token(entry) for entry in value.split(",")]
+            refs.extend([entry for entry in parts if entry])
+            return
+        if isinstance(value, list):
+            for item in value:
+                add_value(item)
+
+    if not isinstance(wait_entries, list):
+        return refs
+    for entry in wait_entries:
+        if not isinstance(entry, dict):
+            continue
+        add_value(entry.get("core_service"))
+        add_value(entry.get("core_services"))
+        add_value(entry.get("service"))
+        add_value(entry.get("process_name"))
+        raw_url = str(entry.get("url") or "").strip()
+        if not raw_url:
+            continue
+        try:
+            parsed = re.match(r"^[a-zA-Z]+://", raw_url)
+            if not parsed:
+                continue
+            from urllib.parse import urlparse, unquote
+
+            parsed_url = urlparse(raw_url)
+            host = str(parsed_url.hostname or "").strip().lower()
+            if host and not _dep_is_local_host(host):
+                add_value(host)
+            path_match = re.match(r"^/ui/([^/]+)", parsed_url.path or "", re.I)
+            if path_match:
+                add_value(unquote(path_match.group(1)))
+        except Exception:
+            continue
+    return sorted(set(refs))
+
+
+def _dep_extract_wait_ports(wait_entries: Any) -> list[int]:
+    ports: list[int] = []
+    if not isinstance(wait_entries, list):
+        return ports
+    for entry in wait_entries:
+        if not isinstance(entry, dict):
+            continue
+        raw_url = str(entry.get("url") or "").strip()
+        if not raw_url:
+            continue
+        try:
+            from urllib.parse import urlparse
+
+            parsed_url = urlparse(raw_url)
+            if not _dep_is_local_host(parsed_url.hostname or ""):
+                continue
+            if parsed_url.port and int(parsed_url.port) > 0:
+                ports.append(int(parsed_url.port))
+        except Exception:
+            continue
+    return sorted(set(ports))
+
+
+def _dep_extract_wait_dirs(wait_value: Any) -> list[str]:
+    paths: list[str] = []
+
+    def add_value(value: Any):
+        if value is None:
+            return
+        if isinstance(value, str):
+            normalized = _dep_norm_path(value)
+            if normalized:
+                paths.append(normalized)
+            return
+        if isinstance(value, list):
+            for item in value:
+                add_value(item)
+            return
+        if isinstance(value, dict):
+            for key in ("path", "dir", "directory", "value"):
+                if key in value:
+                    add_value(value.get(key))
+
+    add_value(wait_value)
+    return sorted(set([path for path in paths if path]))
+
+
+def _collect_process_entries() -> list[dict]:
+    processes: list[dict] = []
+    config = CONFIG_MANAGER.config
+
+    def find_processes(data, parent_key=""):
+        if not isinstance(data, dict):
+            return
+        for key, value in data.items():
+            if isinstance(value, dict) and "process_name" in value:
+                process_name = value.get("process_name")
+                enabled = value.get("enabled", False)
+                display_name = f"{parent_key} {key}".strip()
+                config_key, instance_name = CONFIG_MANAGER.find_key_for_process(
+                    process_name
+                )
+                version, _ = versions.version_check(
+                    process_name=value.get("process_name"),
+                    instance_name=instance_name,
+                    key=config_key,
+                )
+                repo_owner = value.get("repo_owner")
+                repo_name = value.get("repo_name")
+                if repo_owner and repo_name:
+                    repo_url = f"https://github.com/{repo_owner}/{repo_name}"
+                else:
+                    repo_url = STATIC_URLS_BY_KEY.get(config_key)
+                sponsorship_url = SPONSORSHIP_URLS_BY_KEY.get(config_key)
+                processes.append(
+                    {
+                        "name": display_name,
+                        "process_name": process_name,
+                        "enabled": enabled,
+                        "config": value,
+                        "version": version,
+                        "key": key,
+                        "config_key": config_key,
+                        "repo_url": repo_url,
+                        "sponsorship_url": sponsorship_url,
+                    }
+                )
+            elif isinstance(value, dict):
+                find_processes(value, parent_key=f"{parent_key} {key}".strip())
+
+    find_processes(config)
+    return processes
+
+
+def _dep_process_mount_points(process_entry: dict) -> list[str]:
+    config = process_entry.get("config") if isinstance(process_entry, dict) else {}
+    if not isinstance(config, dict):
+        return []
+    points: list[str] = []
+
+    mount_path = _dep_norm_path(config.get("mount_path") or "")
+    if mount_path:
+        points.append(mount_path)
+
+    mount_dir = _dep_norm_path(config.get("mount_dir") or "")
+    mount_name = str(config.get("mount_name") or "").strip().strip("/")
+    if mount_dir and mount_name:
+        points.append(_dep_norm_path(os.path.join(mount_dir, mount_name)))
+
+    return sorted(set([point for point in points if point]))
 
 
 def _reserve_port(
