@@ -1,5 +1,36 @@
 # Changelog
 
+## [2.2.0](https://github.com/I-am-PUID-0/DUMB/compare/2.1.0...2.2.0) (2026-02-12)
+
+
+### ✨ Features
+
+* adds frontend build fingerprinting to Decypharr ([d5d923f](https://github.com/I-am-PUID-0/DUMB/commit/d5d923f9f4633ae67f1a54a42c610c53cc9b1563))
+* **api:** adds a new endpoint for visualizing service dependencies ([dcc4ab9](https://github.com/I-am-PUID-0/DUMB/commit/dcc4ab93c57970f729b95be569715c026703d6de))
+* **auto-update:** Introduce auto-update start time ([b9133a5](https://github.com/I-am-PUID-0/DUMB/commit/b9133a54f8d5749f8734cc92c96b1cc15faa5d64))
+* **decypharr:** Introduces mount type selection and DFS support ([f18886b](https://github.com/I-am-PUID-0/DUMB/commit/f18886b6da8b47079e64e323cae70c91086feb8f))
+* **dependency_graph:** Implements conditional dependency mapping ([f32e35a](https://github.com/I-am-PUID-0/DUMB/commit/f32e35a54c5cf352f7f6328ed41aae20c9e7a6d7))
+* **geek mode:** expands geek mode and process start time ([9910c8e](https://github.com/I-am-PUID-0/DUMB/commit/9910c8edbc2dfb6c4301bfb6c862d49f675ba635))
+* **profilarr:** adds core_service support for Profilarr ([d05eb20](https://github.com/I-am-PUID-0/DUMB/commit/d05eb204c9f82a7553100defdb42e7696a89e556))
+* **profilarr:** adds Profilarr service ([99b91a6](https://github.com/I-am-PUID-0/DUMB/commit/99b91a6ba10887fde3d4cf1ebcbe3f0f0b60df40))
+* **symlinks:** adds symlink manifest management endpoints and enhances the symlink utility ([644a67b](https://github.com/I-am-PUID-0/DUMB/commit/644a67bd3d6da823cfd0890459d344907583fde9))
+* **symlinks:** adds symlink manifest preview endpoint ([451e04e](https://github.com/I-am-PUID-0/DUMB/commit/451e04ee3a8ab3ddb244ac27f4d734d770b35cf9))
+* **symlinks:** alpha (do not use yet) implementation of scheduled symlink backups and repair endpoints ([4656a40](https://github.com/I-am-PUID-0/DUMB/commit/4656a404abac239a8dd5050e35d480f49bce5df6))
+* **symlinks:** Implements asynchronous symlink repair endpoint ([3f09aea](https://github.com/I-am-PUID-0/DUMB/commit/3f09aea7608f123bec3b6b1af5652677348aada6))
+* **ui:** adds sidebar config options ([73b7f9e](https://github.com/I-am-PUID-0/DUMB/commit/73b7f9e637c573c39ba6fefdff00aa7695a81a4e))
+
+
+### 🐛 Bug Fixes
+
+* **decypharr:** consolidate Decypharr mount path logic and prioritize explicit configuration. ([c3ec1ab](https://github.com/I-am-PUID-0/DUMB/commit/c3ec1ab87bca323def44af4d5afd73d728a2b5b6))
+* **decypharr:** enhance mount path handling in configuration for beta consolidated mounts ([ea9ee13](https://github.com/I-am-PUID-0/DUMB/commit/ea9ee13381b58d080206c562f3d831f638fa8f4f))
+* **process:** prevent duplicate setup during service restart by delegating to updater ([b6a73c3](https://github.com/I-am-PUID-0/DUMB/commit/b6a73c3c4296d480cab01138b41314ed968b8e92))
+
+
+### 🤡 Other Changes
+
+* **deps:** updates poetry.lock with the latest dependency versions ([1f33a87](https://github.com/I-am-PUID-0/DUMB/commit/1f33a879e58e012ed5b2af2c01b9ae0a3d93b74a))
+
 ## [2.1.0](https://github.com/I-am-PUID-0/DUMB/compare/2.0.0...2.1.0) (2026-02-04)
 
 
