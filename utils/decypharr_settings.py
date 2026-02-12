@@ -211,8 +211,12 @@ def _arr_url(host: str, api_version: str, path: str) -> str:
 
 
 def _get_lidarr_rootfolder_payload(host: str, token: str, path: str) -> Optional[dict]:
-    quality_profiles = _arr_req(_arr_url(host, "v1", "qualityprofile"), token, "GET") or []
-    meta_profiles = _arr_req(_arr_url(host, "v1", "metadataprofile"), token, "GET") or []
+    quality_profiles = (
+        _arr_req(_arr_url(host, "v1", "qualityprofile"), token, "GET") or []
+    )
+    meta_profiles = (
+        _arr_req(_arr_url(host, "v1", "metadataprofile"), token, "GET") or []
+    )
     if not meta_profiles:
         meta_profiles = (
             _arr_req(_arr_url(host, "v1", "metadata/profile"), token, "GET") or []
@@ -316,10 +320,7 @@ def _ensure_arr_permissions(
             return False
         _arr_req(url, token, "PUT", desired)
         verify = _arr_req(url, token, "GET") or {}
-        if (
-            isinstance(verify, dict)
-            and verify.get(perms_key) != desired.get(perms_key)
-        ):
+        if isinstance(verify, dict) and verify.get(perms_key) != desired.get(perms_key):
             logger.warning(
                 "Arr permissions update did not persist on %s: %s=%s",
                 host,
@@ -346,8 +347,7 @@ def _ensure_arr_permissions(
 
 def _get_qbt_schema(host: str, key: str, api_version: str = "v3"):
     schemas = (
-        _arr_req(_arr_url(host, api_version, "downloadclient/schema"), key, "GET")
-        or []
+        _arr_req(_arr_url(host, api_version, "downloadclient/schema"), key, "GET") or []
     )
     for item in schemas:
         impl = (item.get("implementation") or "").lower()
@@ -359,8 +359,7 @@ def _get_qbt_schema(host: str, key: str, api_version: str = "v3"):
 
 def _get_sab_schema(host: str, key: str, api_version: str = "v3"):
     schemas = (
-        _arr_req(_arr_url(host, api_version, "downloadclient/schema"), key, "GET")
-        or []
+        _arr_req(_arr_url(host, api_version, "downloadclient/schema"), key, "GET") or []
     )
     for item in schemas:
         impl = (item.get("implementation") or "").lower()
@@ -530,9 +529,7 @@ def ensure_decypharr_download_client(
             )
 
     existing = (
-        _arr_req(
-            _arr_url(arr_host, api_version, "downloadclient"), arr_api_key, "GET"
-        )
+        _arr_req(_arr_url(arr_host, api_version, "downloadclient"), arr_api_key, "GET")
         or []
     )
     match = next(
@@ -802,7 +799,9 @@ def patch_decypharr_config():
         user_id = CONFIG_MANAGER.get("puid")
         group_id = CONFIG_MANAGER.get("pgid")
         branch_name = (decypharr_config.get("branch") or "").strip().lower()
-        beta_enabled = branch_name == "beta"
+        beta_enabled = branch_name == "beta" and decypharr_config.get(
+            "branch_enabled", False
+        )
         versions = Versions()
         supports_stable_features = False
         latest_release = None
@@ -810,18 +809,20 @@ def patch_decypharr_config():
             repo_owner = decypharr_config.get("repo_owner", "sirrobot01")
             repo_name = decypharr_config.get("repo_name", "decypharr")
             supports_stable_features, latest_release, _ = versions.is_latest_release_gt(
-                repo_owner, repo_name, "1.1.6"
+                repo_owner, repo_name, "v1.1.6"
             )
         except Exception as e:
             logger.debug("Decypharr release check failed: %s", e)
-        features_enabled = beta_enabled or supports_stable_features
+        features_enabled = beta_enabled or not supports_stable_features
         mount_type = (decypharr_config.get("mount_type") or "").strip().lower()
         if features_enabled and not mount_type:
             mount_type = "dfs"
         if not mount_type and not features_enabled:
             # Legacy default when mount_type is unset
             mount_type = "rclone"
-        mount_path = (decypharr_config.get("mount_path") or "/mnt/debrid/decypharr").strip()
+        mount_path = (
+            decypharr_config.get("mount_path") or "/mnt/debrid/decypharr"
+        ).strip()
         logger.info(
             "Decypharr config patch: path=%s beta=%s stable=%s latest=%s mount_type=%s mount_path=%s",
             config_path,
@@ -937,26 +938,7 @@ def patch_decypharr_config():
             if mount_block.get("mount_path") != desired_mount_path:
                 mount_block["mount_path"] = desired_mount_path
                 updated = True
-            if desired_type == "dfs":
-                dfs_cfg = decypharr_config.get("dfs") or {}
-                dfs_defaults = {
-                    "cache_dir": "/decypharr/cache/dfs",
-                    "chunk_size": "10MB",
-                    "disk_cache_size": "50GB",
-                    "cache_expiry": "24h",
-                    "cache_cleanup_interval": "1h",
-                    "daemon_timeout": "30m",
-                    "uid": int(user_id) if user_id is not None else 0,
-                    "gid": int(group_id) if group_id is not None else 0,
-                    "umask": "022",
-                    "allow_other": True,
-                    "default_permissions": True,
-                }
-                merged_dfs = {**dfs_defaults, **(mount_block.get("dfs") or {}), **dfs_cfg}
-                if mount_block.get("dfs") != merged_dfs:
-                    mount_block["dfs"] = merged_dfs
-                    updated = True
-            elif desired_type == "rclone":
+            if desired_type == "rclone":
                 embedded_rc = config_data.get("rclone", {})
                 merged_rc = {**default_embedded_rclone, **(embedded_rc or {})}
                 if mount_block.get("rclone") != merged_rc:
@@ -1007,23 +989,7 @@ def patch_decypharr_config():
                     "type": mount_type or "dfs",
                     "mount_path": mount_path,
                 }
-                if mount_block["type"] == "dfs":
-                    dfs_cfg = decypharr_config.get("dfs") or {}
-                    dfs_defaults = {
-                        "cache_dir": "/decypharr/cache/dfs",
-                        "chunk_size": "10MB",
-                        "disk_cache_size": "50GB",
-                        "cache_expiry": "24h",
-                        "cache_cleanup_interval": "1h",
-                        "daemon_timeout": "30m",
-                        "uid": int(user_id) if user_id is not None else 0,
-                        "gid": int(group_id) if group_id is not None else 0,
-                        "umask": "022",
-                        "allow_other": True,
-                        "default_permissions": True,
-                    }
-                    mount_block["dfs"] = {**dfs_defaults, **dfs_cfg}
-                elif mount_block["type"] == "rclone":
+                if mount_block["type"] == "rclone":
                     embedded_rc = config_data.get("rclone", {})
                     merged_rc = {**default_embedded_rclone, **(embedded_rc or {})}
                     mount_block["rclone"] = merged_rc
@@ -1096,11 +1062,6 @@ def patch_decypharr_config():
                 config_data["sabnzbd"] = {
                     "download_folder": "/mnt/debrid/decypharr_downloads"
                 }
-                config_data["usenet"] = {
-                    "mount_folder": "/mnt/debrid/decypharr_usenet/__all__",
-                    "chunks": 15,
-                    "rc_url": usenet_rc_url,
-                }
             updated = True
 
         # Feature mode: synchronize/merge debrids[] from api_keys_map (idempotent)
@@ -1109,9 +1070,7 @@ def patch_decypharr_config():
                 config_data["debrids"] = []
 
             existing = {
-                _debrid_key(d): d
-                for d in config_data["debrids"]
-                if isinstance(d, dict)
+                _debrid_key(d): d for d in config_data["debrids"] if isinstance(d, dict)
             }
 
             changed = False
@@ -1180,9 +1139,7 @@ def patch_decypharr_config():
                 )
             )
             existing = {
-                _debrid_key(d): d
-                for d in config_data["debrids"]
-                if isinstance(d, dict)
+                _debrid_key(d): d for d in config_data["debrids"] if isinstance(d, dict)
             }
 
             changed = False
@@ -1263,12 +1220,14 @@ def patch_decypharr_config():
         try:
             arrs = desired_arrs or []
             for entry in arrs:
-                name_label = (entry.get("name") or "")
+                name_label = entry.get("name") or ""
                 svc, _, instance_name = name_label.partition(":")
                 svc = svc.strip().lower()
                 instance_name = instance_name.strip()
                 core_services = _instance_core_services(svc, instance_name)
-                use_combined = "decypharr" in core_services and "nzbdav" in core_services
+                use_combined = (
+                    "decypharr" in core_services and "nzbdav" in core_services
+                )
                 base_root = (
                     "/mnt/debrid/combined_symlinks"
                     if use_combined
@@ -1281,9 +1240,9 @@ def patch_decypharr_config():
                     base_root,
                     use_combined,
                 )
-                instance_slug = _slugify_category(f"{svc}-{instance_name}") or _slugify_category(
-                    svc
-                )
+                instance_slug = _slugify_category(
+                    f"{svc}-{instance_name}"
+                ) or _slugify_category(svc)
                 root_path = f"{base_root}/{instance_slug}"
                 root_paths.append(root_path)
                 try:
@@ -1355,7 +1314,11 @@ def patch_decypharr_config():
                     token = entry.get("token")
                     api_version = "v1" if svc == "lidarr" else "v3"
                     if not _wait_for_arr(
-                        host, token, timeout_s=60, interval_s=2.0, api_version=api_version
+                        host,
+                        token,
+                        timeout_s=60,
+                        interval_s=2.0,
+                        api_version=api_version,
                     ):
                         logger.warning(
                             f"Arr not up yet, skipping download client ensure for {host}"
@@ -1427,23 +1390,7 @@ def patch_decypharr_config():
                     "type": mount_type or "dfs",
                     "mount_path": mount_path,
                 }
-                if mount_block["type"] == "dfs":
-                    dfs_cfg = decypharr_config.get("dfs") or {}
-                    dfs_defaults = {
-                        "cache_dir": "/decypharr/cache/dfs",
-                        "chunk_size": "10MB",
-                        "disk_cache_size": "50GB",
-                        "cache_expiry": "24h",
-                        "cache_cleanup_interval": "1h",
-                        "daemon_timeout": "30m",
-                        "uid": int(user_id) if user_id is not None else 0,
-                        "gid": int(group_id) if group_id is not None else 0,
-                        "umask": "022",
-                        "allow_other": True,
-                        "default_permissions": True,
-                    }
-                    mount_block["dfs"] = {**dfs_defaults, **dfs_cfg}
-                elif mount_block["type"] == "rclone":
+                if mount_block["type"] == "rclone":
                     embedded_rc = config_data.get("rclone", {})
                     merged_rc = {**default_embedded_rclone, **(embedded_rc or {})}
                     mount_block["rclone"] = merged_rc
@@ -1457,7 +1404,9 @@ def patch_decypharr_config():
                     }
                 config_data["mount"] = mount_block
                 updated = True
-                logger.info("Injected missing feature mount block into Decypharr config")
+                logger.info(
+                    "Injected missing feature mount block into Decypharr config"
+                )
 
             if config_data.get("download_folder"):
                 final_config["download_folder"] = config_data["download_folder"]
@@ -1474,7 +1423,9 @@ def patch_decypharr_config():
             final_config["repair"] = config_data.get("repair", {})
             if config_data.get("usenet"):
                 final_config["usenet"] = config_data.get("usenet", {})
-            final_config["allowed_file_types"] = config_data.get("allowed_file_types", [])
+            final_config["allowed_file_types"] = config_data.get(
+                "allowed_file_types", []
+            )
         else:
             # Include debrids when:
             #   - any non-usenet rclone instances exist, OR
@@ -1483,7 +1434,9 @@ def patch_decypharr_config():
                 (inst.get("key_type") or "").lower() != "usenet"
                 for inst in rclone_instances.values()
             )
-            if has_non_usenet_instances or (use_embedded and config_data.get("debrids")):
+            if has_non_usenet_instances or (
+                use_embedded and config_data.get("debrids")
+            ):
                 final_config["debrids"] = config_data.get("debrids", [])
                 final_config["qbittorrent"] = config_data.get("qbittorrent", {})
 
@@ -1500,7 +1453,9 @@ def patch_decypharr_config():
             final_config["webdav"] = config_data.get("webdav", {})
             if "rclone" in config_data:
                 final_config["rclone"] = config_data["rclone"]
-            final_config["allowed_file_types"] = config_data.get("allowed_file_types", [])
+            final_config["allowed_file_types"] = config_data.get(
+                "allowed_file_types", []
+            )
             # final_config["use_auth"] = config_data.get("use_auth", True)
 
         # ----- Preserve any extra keys Decypharr/user added -----

@@ -787,44 +787,6 @@
         "mount_path": {
           "type": "string"
         },
-        "dfs": {
-          "type": "object",
-          "properties": {
-            "cache_dir": {
-              "type": "string"
-            },
-            "chunk_size": {
-              "type": "string"
-            },
-            "disk_cache_size": {
-              "type": "string"
-            },
-            "cache_expiry": {
-              "type": "string"
-            },
-            "cache_cleanup_interval": {
-              "type": "string"
-            },
-            "daemon_timeout": {
-              "type": "string"
-            },
-            "uid": {
-              "type": "integer"
-            },
-            "gid": {
-              "type": "integer"
-            },
-            "umask": {
-              "type": "string"
-            },
-            "allow_other": {
-              "type": "boolean"
-            },
-            "default_permissions": {
-              "type": "boolean"
-            }
-          }
-        },
         "api_keys": {
           "type": "object"
         }
@@ -853,7 +815,6 @@
         "env",
         "mount_type",
         "mount_path",
-        "dfs",
         "api_keys"
       ]
     },

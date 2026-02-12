@@ -129,7 +129,8 @@ async def get_websocket_current_user(websocket: WebSocket) -> Optional[str]:
     WebSocket authentication dependency.
     Checks for token in query parameters (?token=xxx).
     Returns username if authenticated, None if auth is disabled.
-    Closes WebSocket connection if auth is enabled but token is invalid.
+    Raises WebSocketException if auth is enabled but token is invalid.
+    Starlette/FastAPI will send the close frame for the websocket exception.
     """
     from utils.auth_config import AuthConfigManager
     from utils.auth import decode_token
@@ -143,20 +144,16 @@ async def get_websocket_current_user(websocket: WebSocket) -> Optional[str]:
     # Auth is enabled, check for token in query params
     token = websocket.query_params.get("token")
     if not token:
-        await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Authentication required")
         raise WebSocketException(code=status.WS_1008_POLICY_VIOLATION, reason="Authentication required")
 
     payload = decode_token(token)
 
     if not payload or payload.type != "access":
-        await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Invalid or expired token")
         raise WebSocketException(code=status.WS_1008_POLICY_VIOLATION, reason="Invalid or expired token")
 
     # Verify user still exists and is not disabled
     user = auth_config.get_user(payload.sub)
     if not user or user.disabled:
-        await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="User account is disabled")
         raise WebSocketException(code=status.WS_1008_POLICY_VIOLATION, reason="User account is disabled")
 
     return payload.sub
-

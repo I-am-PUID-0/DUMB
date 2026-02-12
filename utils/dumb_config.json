@@ -234,17 +234,6 @@
     "env": {},
     "mount_type": "dfs",
     "mount_path": "/mnt/debrid/decypharr",
-    "dfs": {
-      "cache_dir": "/cache/dfs",
-      "chunk_size": "10MB",
-      "disk_cache_size": "50GB",
-      "cache_expiry": "24h",
-      "cache_cleanup_interval": "1h",
-      "daemon_timeout": "30m",
-      "umask": "022",
-      "allow_other": true,
-      "default_permissions": true
-    },
     "api_keys": {}
   },
   "nzbdav": {

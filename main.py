@@ -401,6 +401,8 @@ def _collect_decypharr_mount_paths(decypharr_cfg: dict) -> list[str]:
     mount_type = (decypharr_cfg.get("mount_type") or "").strip().lower()
     if mount_type not in {"rclone", "dfs"}:
         return []
+    branch_name = (decypharr_cfg.get("branch") or "").strip().lower()
+    beta_branch_requested = bool(decypharr_cfg.get("branch_enabled")) and branch_name == "beta"
     config_file = decypharr_cfg.get("config_file")
     if not config_file or not os.path.exists(config_file):
         return []
@@ -412,21 +414,39 @@ def _collect_decypharr_mount_paths(decypharr_cfg: dict) -> list[str]:
         return []
 
     mount_block = data.get("mount") if isinstance(data.get("mount"), dict) else {}
+    debrids = data.get("debrids") or []
     mount_mode = (mount_block.get("type") or "").strip().lower()
     mount_base = mount_block.get("mount_path")
     if not mount_base:
         mount_base = (data.get("rclone") or {}).get("mount_path")
     if not isinstance(mount_base, str):
         mount_base = None
+    if not mount_base:
+        cfg_mount_base = decypharr_cfg.get("mount_path")
+        if isinstance(cfg_mount_base, str) and cfg_mount_base.strip():
+            mount_base = cfg_mount_base.strip()
+        else:
+            mount_base = "/mnt/debrid/decypharr"
+    if beta_branch_requested:
+        return [mount_base]
     # New consolidated config uses top-level "mount" with a single mount_path
-    # for both DFS and rclone modes.
-    if mount_mode in {"dfs", "rclone"}:
+    # for both DFS and rclone modes. Legacy/stable configs may still carry a
+    # stale top-level mount block while provider-specific debrid folders are the
+    # true source for mount waits, so only treat it as consolidated when those
+    # folder paths are not present.
+    has_legacy_debrid_folders = any(
+        isinstance(debrid, dict)
+        and isinstance(debrid.get("folder"), str)
+        and debrid.get("folder").strip()
+        for debrid in debrids
+    )
+    if mount_mode in {"dfs", "rclone"} and not has_legacy_debrid_folders:
         return [mount_base] if mount_base else []
     if mount_mode in {"external_rclone", "none"}:
         return []
 
     mounts = set()
-    for debrid in data.get("debrids") or []:
+    for debrid in debrids:
         if not isinstance(debrid, dict):
             continue
         folder = debrid.get("folder")

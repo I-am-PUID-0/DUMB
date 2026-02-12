@@ -50,7 +50,7 @@ class Versions:
         base_tuple = self._parse_version_tuple(base_version)
         if not latest_tuple or not base_tuple:
             return False, latest_tag, "Invalid version format for comparison"
-        return latest_tuple > base_tuple, latest_tag, None
+        return latest_tuple == base_tuple, latest_tag, None
 
     def read_arr_version_from_dir(self, key: str, install_dir: str):
         dll_path = os.path.join(
@@ -80,12 +80,16 @@ class Versions:
             return f"/opt/{key}"
         instance_slug = instance_name.lower().replace(" ", "_")
         instance_dir = os.path.join(f"/opt/{key}", "instances", instance_slug)
-        config = CONFIG_MANAGER.get_instance(instance_name, key) if instance_name else None
+        config = (
+            CONFIG_MANAGER.get_instance(instance_name, key) if instance_name else None
+        )
         if config:
             if config.get("install_dir"):
                 return config["install_dir"]
             if config.get("repo_owner") and config.get("repo_name"):
-                if config.get("release_version_enabled") or config.get("branch_enabled"):
+                if config.get("release_version_enabled") or config.get(
+                    "branch_enabled"
+                ):
                     return instance_dir
         return f"/opt/{key}"
 
@@ -209,7 +213,9 @@ class Versions:
             ):
                 try:
                     if not instance_name and process_name:
-                        _, instance_name = CONFIG_MANAGER.find_key_for_process(process_name)
+                        _, instance_name = CONFIG_MANAGER.find_key_for_process(
+                            process_name
+                        )
                     install_dir = self._resolve_arr_install_dir_for_version(
                         key, instance_name
                     )
