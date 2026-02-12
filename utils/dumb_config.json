@@ -29,7 +29,8 @@
         "service_search": "",
         "saved_views": [],
         "active_saved_view_id": "",
-        "service_shortcuts": {}
+        "service_shortcuts": {},
+        "geek_mode": false
       }
     },
     "auto_restart": {

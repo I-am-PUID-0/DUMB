@@ -253,7 +253,7 @@ class MetricsCollector:
         mount_paths = self._collect_mount_paths()
         for pid, info in list(self.process_handler.processes.items()):
             process_name = info.get("name")
-            entry = {"name": process_name, "pid": pid}
+            entry = {"name": process_name, "pid": pid, "start_time": info.get("start_time")}
             proc = self._get_process(pid)
             if proc:
                 entry.update(self._collect_process_metrics(proc))
