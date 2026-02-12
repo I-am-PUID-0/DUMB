@@ -7,7 +7,7 @@ from utils.plex import PlexInstaller
 from utils.traefik_setup import setup_traefik
 from utils.user_management import chown_recursive, chown_single
 import xml.etree.ElementTree as ET
-import os, shutil, random, subprocess, re, glob, secrets, shlex, time, urllib.parse, base64, threading, sys
+import os, shutil, random, subprocess, re, glob, secrets, shlex, time, urllib.parse, base64, threading, sys, hashlib
 
 
 user_id = CONFIG_MANAGER.get("puid")
@@ -269,6 +269,14 @@ def setup_branch_version(process_handler, config, process_name, key):
         exclude_dirs = None
         if config.get("clear_on_update"):
             exclude_dirs = config.get("exclude_dirs", [])
+            if key == "decypharr":
+                preserve_paths = [
+                    os.path.join(target_dir, "pkg", "server", "assets", "build"),
+                    os.path.join(target_dir, ".dumb_frontend_build_fingerprint"),
+                ]
+                for preserve_path in preserve_paths:
+                    if preserve_path not in exclude_dirs:
+                        exclude_dirs.append(preserve_path)
             success, error = clear_directory(target_dir, exclude_dirs)
             if not success:
                 return False, f"Failed to clear directory: {error}"
@@ -1961,7 +1969,9 @@ def setup_decypharr(install_only: bool = False, configure_only: bool = False):
             os.makedirs(decypharr_config_dir, exist_ok=True)
         chown_single(decypharr_config_dir, user_id, group_id)
 
-        if (decypharr_embedded_rclone or decypharr_mount_type == "dfs") and decypharr_config_file:
+        if (
+            decypharr_embedded_rclone or decypharr_mount_type == "dfs"
+        ) and decypharr_config_file:
             _unmount_decypharr_mounts(decypharr_config_file)
 
         force_release_install = False
@@ -1986,7 +1996,9 @@ def setup_decypharr(install_only: bool = False, configure_only: bool = False):
                 except Exception as e:
                     logger.debug("Failed to read Decypharr version.txt: %s", e)
 
-        if not configure_only and (not os.path.isfile(binary_path) or force_release_install):
+        if not configure_only and (
+            not os.path.isfile(binary_path) or force_release_install
+        ):
             logger.warning(
                 f"Decypharr project not found at {decypharr_config_dir}. Downloading..."
             )
@@ -5521,7 +5533,104 @@ def setup_pnpm_environment(process_handler, config_dir):
                 scripts = package_data.get("scripts", {}) or {}
                 build_script = scripts.get("build")
 
+        def _hash_file(path: str) -> str:
+            if not os.path.isfile(path):
+                return ""
+            digest = hashlib.sha256()
+            with open(path, "rb") as handle:
+                while True:
+                    chunk = handle.read(1024 * 1024)
+                    if not chunk:
+                        break
+                    digest.update(chunk)
+            return digest.hexdigest()
+
+        def _hash_tree(root: str, ignore_dirs=None) -> str:
+            if not os.path.isdir(root):
+                return ""
+            ignore_dirs = set(ignore_dirs or [])
+            digest = hashlib.sha256()
+            for current_root, dirs, files in os.walk(root):
+                dirs[:] = sorted(
+                    d for d in dirs if d not in ignore_dirs and not d.startswith(".")
+                )
+                rel_root = os.path.relpath(current_root, root)
+                digest.update(rel_root.encode("utf-8", errors="ignore"))
+                for filename in sorted(files):
+                    file_path = os.path.join(current_root, filename)
+                    rel_path = os.path.relpath(file_path, root)
+                    digest.update(rel_path.encode("utf-8", errors="ignore"))
+                    digest.update(
+                        _hash_file(file_path).encode("utf-8", errors="ignore")
+                    )
+            return digest.hexdigest()
+
+        def _frontend_outputs_exist() -> bool:
+            css_output = os.path.join(
+                config_dir, "pkg", "server", "assets", "build", "css", "styles.css"
+            )
+            js_output_dir = os.path.join(
+                config_dir, "pkg", "server", "assets", "build", "js"
+            )
+            if not os.path.isfile(css_output):
+                return False
+            if not os.path.isdir(js_output_dir):
+                return False
+            return any(name.endswith(".js") for name in os.listdir(js_output_dir))
+
+        def _frontend_fingerprint() -> str:
+            package_json = os.path.join(config_dir, "package.json")
+            lockfile = os.path.join(config_dir, "pnpm-lock.yaml")
+            assets_dir = os.path.join(config_dir, "pkg", "server", "assets")
+            minify_script = os.path.join(config_dir, "scripts", "minify-js.js")
+            if not os.path.isfile(package_json):
+                return ""
+            digest = hashlib.sha256()
+            digest.update(_hash_file(package_json).encode("utf-8", errors="ignore"))
+            digest.update(_hash_file(lockfile).encode("utf-8", errors="ignore"))
+            digest.update(
+                _hash_tree(assets_dir, ignore_dirs={"build"}).encode(
+                    "utf-8", errors="ignore"
+                )
+            )
+            digest.update(_hash_file(minify_script).encode("utf-8", errors="ignore"))
+            return digest.hexdigest()
+
+        build_fingerprint_path = os.path.join(
+            config_dir, ".dumb_frontend_build_fingerprint"
+        )
+        current_fingerprint = _frontend_fingerprint()
+        should_skip_build = False
+        build_skip_reason = "fingerprint_unavailable"
+        outputs_exist = _frontend_outputs_exist()
+        if not current_fingerprint:
+            build_skip_reason = "fingerprint_unavailable"
+        elif not outputs_exist:
+            build_skip_reason = "outputs_missing"
+        elif current_fingerprint and outputs_exist:
+            try:
+                if os.path.isfile(build_fingerprint_path):
+                    with open(build_fingerprint_path, "r") as handle:
+                        previous_fingerprint = (handle.read() or "").strip()
+                    if previous_fingerprint == current_fingerprint:
+                        should_skip_build = True
+                        build_skip_reason = "inputs_unchanged"
+                    else:
+                        build_skip_reason = "fingerprint_changed"
+                else:
+                    build_skip_reason = "fingerprint_missing"
+            except Exception as e:
+                logger.debug("Failed reading frontend build fingerprint: %s", e)
+                build_skip_reason = "fingerprint_read_error"
+
         if build_script:
+            logger.info(
+                "Frontend build decision: skip=%s reason=%s",
+                should_skip_build,
+                build_skip_reason,
+            )
+
+        if build_script and not should_skip_build:
             logger.info("Build script found. Running pnpm build...")
             if use_corepack_pnpm and "pnpm " in build_script:
                 script_names = []
@@ -5573,6 +5682,14 @@ def setup_pnpm_environment(process_handler, config_dir):
                 process_handler.wait("pnpm_build")
                 if process_handler.returncode != 0:
                     return False, f"Error during pnpm build: {process_handler.stderr}"
+            if current_fingerprint:
+                try:
+                    with open(build_fingerprint_path, "w") as handle:
+                        handle.write(current_fingerprint)
+                except Exception as e:
+                    logger.debug("Failed writing frontend build fingerprint: %s", e)
+        elif build_script and should_skip_build:
+            logger.info("Build script found. pnpm build skipped by fingerprint guard.")
         else:
             logger.info(f"No build script found. Skipping pnpm build step.")
 
