@@ -2466,23 +2466,6 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Configuration in dumb_config.json">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#configuration-key-descriptions" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Configuration Key Descriptions
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
 </li>
       
         <li class="md-nav__item">
@@ -4397,23 +4380,6 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Configuration in dumb_config.json">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#configuration-key-descriptions" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Configuration Key Descriptions
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
 </li>
       
         <li class="md-nav__item">
@@ -4546,14 +4512,14 @@
   
 
 
-<h1 id="zurg">Zurg<a class="headerlink" href="#zurg" title="Permanent link">#</a></h1>
+<h1 id="zurg">Zurg<a class="headerlink" href="#zurg" title="Permanent link">&para;</a></h1>
 <p>Zurg is the debrid content fetcher that powers file discovery and caching for DUMB. It mounts content made available by debrid services like Real-Debrid and exposes them over WebDAV for rclone to access. Zurg is designed to run quietly in the background and can be configured to run multiple instances.</p>
 <div class="admonition info">
 <p class="admonition-title">Current Debrid Support</p>
 <p>As of this posting, <strong>Zurg only supports Real-Debrid</strong>. Additional debrid services may be supported in future updates.</p>
 </div>
 <hr />
-<h2 id="zurg-repositories">Zurg Repositories<a class="headerlink" href="#zurg-repositories" title="Permanent link">#</a></h2>
+<h2 id="zurg-repositories">Zurg Repositories<a class="headerlink" href="#zurg-repositories" title="Permanent link">&para;</a></h2>
 <p>There are <strong>two official Zurg repositories</strong>:</p>
 <ul>
 <li><strong><a href="https://github.com/debridmediamanager/zurg-testing"><code>zurg-testing</code></a></strong> – The <strong>default</strong> public repo used by DUMB. It contains stable builds accessible to all users.</li>
@@ -4564,7 +4530,7 @@
 <p>See <a href="../../../features/configuration.md/#-integration-tokens--credentials">Integration Tokens &amp; Credentials</a> section for details on setting up the <code>DMB_GITHUB_TOKEN</code>.</p>
 </div>
 <hr />
-<h2 id="configuration-in-dumb_configjson">Configuration in <code>dumb_config.json</code><a class="headerlink" href="#configuration-in-dumb_configjson" title="Permanent link">#</a></h2>
+<h2 id="configuration-in-dumb_configjson">Configuration in <code>dumb_config.json</code><a class="headerlink" href="#configuration-in-dumb_configjson" title="Permanent link">&para;</a></h2>
 <p>Zurg is configured using the <code>instances</code> model to support multiple debrid services (e.g., RealDebrid, AllDebrid, Premiumize).</p>
 <div class="highlight"><pre><span></span><code><span class="nt">&quot;zurg&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;instances&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
@@ -4595,7 +4561,7 @@
 <span class="w">  </span><span class="p">}</span>
 <span class="p">}</span>
 </code></pre></div>
-<h3 id="configuration-key-descriptions">Configuration Key Descriptions<a class="headerlink" href="#configuration-key-descriptions" title="Permanent link">#</a></h3>
+<h3 id="configuration-key-descriptions">Configuration Key Descriptions<a class="headerlink" href="#configuration-key-descriptions" title="Permanent link">&para;</a></h3>
 <ul>
 <li><strong><code>enabled</code></strong>: Whether to start the Zurg instance.</li>
 <li><strong><code>process_name</code></strong>: Label used for log files and process display.</li>
@@ -4615,13 +4581,13 @@
 <li><strong><code>api_key</code></strong>: Debrid API key (used by Zurg for account authentication).</li>
 </ul>
 <hr />
-<h2 id="version-targeting">Version Targeting<a class="headerlink" href="#version-targeting" title="Permanent link">#</a></h2>
+<h2 id="version-targeting">Version Targeting<a class="headerlink" href="#version-targeting" title="Permanent link">&para;</a></h2>
 <p>You can control which version of Zurg is deployed by setting:</p>
 <ul>
 <li><code>release_version_enabled: true</code> and specifying a <code>release_version</code></li>
 </ul>
 <hr />
-<h2 id="adding-multiple-zurg-instances">Adding Multiple Zurg Instances<a class="headerlink" href="#adding-multiple-zurg-instances" title="Permanent link">#</a></h2>
+<h2 id="adding-multiple-zurg-instances">Adding Multiple Zurg Instances<a class="headerlink" href="#adding-multiple-zurg-instances" title="Permanent link">&para;</a></h2>
 <p>You can define additional instances in the same <code>zurg.instances</code> block by copying the structure and:</p>
 <ul>
 <li>Each <code>instance name</code> is <strong>unique</strong></li>
@@ -4694,7 +4660,7 @@
 </ul>
 </div>
 <hr />
-<h2 id="resources">Resources<a class="headerlink" href="#resources" title="Permanent link">#</a></h2>
+<h2 id="resources">Resources<a class="headerlink" href="#resources" title="Permanent link">&para;</a></h2>
 <ul>
 <li><a href="https://github.com/debridmediamanager/zurg-testing">Zurg Testing (default repo)</a></li>
 <li><a href="https://github.com/debridmediamanager/zurg">Zurg (premium repo)</a></li>

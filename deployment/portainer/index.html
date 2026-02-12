@@ -2901,67 +2901,6 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Step-by-step deployment">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#1-log-into-portainer" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        1. Log into Portainer
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#2-navigate-to-stacks" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        2. Navigate to Stacks
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#3-click-add-stack" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3. Click "Add Stack"
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#4-configure-the-stack" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        4. Configure the stack
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#5-deploy-the-stack" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        5. Deploy the stack
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
 </li>
       
         <li class="md-nav__item">
@@ -4610,67 +4549,6 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Step-by-step deployment">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#1-log-into-portainer" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        1. Log into Portainer
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#2-navigate-to-stacks" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        2. Navigate to Stacks
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#3-click-add-stack" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3. Click "Add Stack"
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#4-configure-the-stack" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        4. Configure the stack
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#5-deploy-the-stack" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        5. Deploy the stack
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
 </li>
       
         <li class="md-nav__item">
@@ -4820,12 +4698,12 @@
 
   <h1>Deploy with Portainer</h1>
 
-<h2 id="deploying-dumb-with-portainer">Deploying DUMB with Portainer<a class="headerlink" href="#deploying-dumb-with-portainer" title="Permanent link">#</a></h2>
+<h2 id="deploying-dumb-with-portainer">Deploying DUMB with Portainer<a class="headerlink" href="#deploying-dumb-with-portainer" title="Permanent link">&para;</a></h2>
 <p>Portainer provides a user-friendly web interface for managing Docker containers
 and stacks. This guide walks you through deploying <strong>Debrid Unlimited Media
 Bridge (DUMB)</strong> using Portainer's stack deployment feature.</p>
 <hr />
-<h2 id="prerequisites">Prerequisites<a class="headerlink" href="#prerequisites" title="Permanent link">#</a></h2>
+<h2 id="prerequisites">Prerequisites<a class="headerlink" href="#prerequisites" title="Permanent link">&para;</a></h2>
 <p>Before you begin:</p>
 <ul>
 <li>Docker must be installed and running</li>
@@ -4840,11 +4718,11 @@ volume mounts, and socket permissions required by DUMB. Use the official
 Docker install method instead.</p>
 </div>
 <hr />
-<h2 id="install-docker-if-needed">Install Docker (if needed)<a class="headerlink" href="#install-docker-if-needed" title="Permanent link">#</a></h2>
+<h2 id="install-docker-if-needed">Install Docker (if needed)<a class="headerlink" href="#install-docker-if-needed" title="Permanent link">&para;</a></h2>
 <p>If Docker is not installed yet, follow the <a href="../docker/">Docker deployment guide</a>
 up through <strong>Confirm Docker and Compose are installed</strong>.</p>
 <hr />
-<h2 id="install-portainer-quick-start">Install Portainer (quick start)<a class="headerlink" href="#install-portainer-quick-start" title="Permanent link">#</a></h2>
+<h2 id="install-portainer-quick-start">Install Portainer (quick start)<a class="headerlink" href="#install-portainer-quick-start" title="Permanent link">&para;</a></h2>
 <p>Use this if Portainer is not installed yet. It runs Portainer as a container.</p>
 <div class="highlight"><pre><span></span><code>docker<span class="w"> </span>volume<span class="w"> </span>create<span class="w"> </span>portainer_data
 docker<span class="w"> </span>run<span class="w"> </span>-d<span class="w"> </span><span class="se">\</span>
@@ -4858,7 +4736,7 @@ docker<span class="w"> </span>run<span class="w"> </span>-d<span class="w"> </sp
 </code></pre></div>
 <p>Then open <code>https://&lt;host&gt;:9443</code> and complete the setup wizard.</p>
 <hr />
-<h2 id="prepare-the-directory-structure">Prepare the directory structure<a class="headerlink" href="#prepare-the-directory-structure" title="Permanent link">#</a></h2>
+<h2 id="prepare-the-directory-structure">Prepare the directory structure<a class="headerlink" href="#prepare-the-directory-structure" title="Permanent link">&para;</a></h2>
 <p>Create folders for persistent config, logs, data, and mounts:</p>
 <div class="highlight"><pre><span></span><code>mkdir<span class="w"> </span>-p<span class="w"> </span>/home/<span class="nv">$USER</span>/docker/DUMB/config<span class="w"> </span>/home/<span class="nv">$USER</span>/docker/DUMB/log<span class="w"> </span>/home/<span class="nv">$USER</span>/docker/DUMB/data<span class="w"> </span>/home/<span class="nv">$USER</span>/docker/DUMB/mnt/debrid
 </code></pre></div>
@@ -4868,12 +4746,12 @@ docker<span class="w"> </span>run<span class="w"> </span>-d<span class="w"> </sp
 as <code>/home/&lt;user&gt;/docker/DUMB</code>.</p>
 </div>
 <hr />
-<h2 id="where-to-get-the-compose-file">Where to get the Compose file<a class="headerlink" href="#where-to-get-the-compose-file" title="Permanent link">#</a></h2>
+<h2 id="where-to-get-the-compose-file">Where to get the Compose file<a class="headerlink" href="#where-to-get-the-compose-file" title="Permanent link">&para;</a></h2>
 <p>Pull the latest Compose file from GitHub:</p>
 <div class="highlight"><pre><span></span><code>curl<span class="w"> </span>-O<span class="w"> </span>https://raw.githubusercontent.com/I-am-PUID-0/DUMB/master/docker-compose.yml
 </code></pre></div>
 <hr />
-<h2 id="edit-paths-and-environment-variables">Edit paths and environment variables<a class="headerlink" href="#edit-paths-and-environment-variables" title="Permanent link">#</a></h2>
+<h2 id="edit-paths-and-environment-variables">Edit paths and environment variables<a class="headerlink" href="#edit-paths-and-environment-variables" title="Permanent link">&para;</a></h2>
 <p>Update the Compose file before pasting it into Portainer:</p>
 <ul>
 <li>Replace <code>/home/username/docker/DUMB</code> with your actual path (for example <code>/home/&lt;user&gt;/docker/DUMB</code>).</li>
@@ -4896,24 +4774,24 @@ sed<span class="w"> </span>-i<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>docker-compose.yml
 </code></pre></div>
 <hr />
-<h2 id="copy-the-compose-content-for-portainer">Copy the Compose content for Portainer<a class="headerlink" href="#copy-the-compose-content-for-portainer" title="Permanent link">#</a></h2>
+<h2 id="copy-the-compose-content-for-portainer">Copy the Compose content for Portainer<a class="headerlink" href="#copy-the-compose-content-for-portainer" title="Permanent link">&para;</a></h2>
 <p>Print the file and copy it into Portainer’s <strong>Web editor</strong>:</p>
 <div class="highlight"><pre><span></span><code>cat<span class="w"> </span>docker-compose.yml
 </code></pre></div>
 <hr />
-<h2 id="step-by-step-deployment">Step-by-step deployment<a class="headerlink" href="#step-by-step-deployment" title="Permanent link">#</a></h2>
-<h3 id="1-log-into-portainer">1. Log into Portainer<a class="headerlink" href="#1-log-into-portainer" title="Permanent link">#</a></h3>
+<h2 id="step-by-step-deployment">Step-by-step deployment<a class="headerlink" href="#step-by-step-deployment" title="Permanent link">&para;</a></h2>
+<h3 id="1-log-into-portainer">1. Log into Portainer<a class="headerlink" href="#1-log-into-portainer" title="Permanent link">&para;</a></h3>
 <p>Navigate to your Portainer instance (e.g., <code>http://localhost:9000</code>, or <code>https://localhost:9443</code>) and log in.</p>
 <hr />
-<h3 id="2-navigate-to-stacks">2. Navigate to Stacks<a class="headerlink" href="#2-navigate-to-stacks" title="Permanent link">#</a></h3>
+<h3 id="2-navigate-to-stacks">2. Navigate to Stacks<a class="headerlink" href="#2-navigate-to-stacks" title="Permanent link">&para;</a></h3>
 <p>Click on <strong>Stacks</strong> in the left sidebar.</p>
 <p><img alt="Stacks Sidebar" src="../../assets/images/portainer/stacks.PNG" /></p>
 <hr />
-<h3 id="3-click-add-stack">3. Click "Add Stack"<a class="headerlink" href="#3-click-add-stack" title="Permanent link">#</a></h3>
+<h3 id="3-click-add-stack">3. Click "Add Stack"<a class="headerlink" href="#3-click-add-stack" title="Permanent link">&para;</a></h3>
 <p>Click the <strong>+ Add stack</strong> button at the top-right.</p>
 <p><img alt="Add Stack" src="../../assets/images/portainer/add_stack.PNG" /></p>
 <hr />
-<h3 id="4-configure-the-stack">4. Configure the stack<a class="headerlink" href="#4-configure-the-stack" title="Permanent link">#</a></h3>
+<h3 id="4-configure-the-stack">4. Configure the stack<a class="headerlink" href="#4-configure-the-stack" title="Permanent link">&para;</a></h3>
 <p>Enter the following:</p>
 <ul>
 <li><strong>Name</strong>: <code>dumb</code></li>
@@ -4922,15 +4800,15 @@ sed<span class="w"> </span>-i<span class="w"> </span><span class="se">\</span>
 </ul>
 <p><img alt="Create Stack" src="../../assets/images/portainer/create_stack.PNG" /></p>
 <hr />
-<h3 id="5-deploy-the-stack">5. Deploy the stack<a class="headerlink" href="#5-deploy-the-stack" title="Permanent link">#</a></h3>
+<h3 id="5-deploy-the-stack">5. Deploy the stack<a class="headerlink" href="#5-deploy-the-stack" title="Permanent link">&para;</a></h3>
 <p>Click <strong>Deploy the stack</strong> to launch DUMB.</p>
 <p><img alt="Deploy the Stack" src="../../assets/images/portainer/deploy_the_stack.PNG" /></p>
 <hr />
-<h2 id="thats-it">That’s it!<a class="headerlink" href="#thats-it" title="Permanent link">#</a></h2>
+<h2 id="thats-it">That’s it!<a class="headerlink" href="#thats-it" title="Permanent link">&para;</a></h2>
 <p>Once deployed, DUMB will initialize and make its services available at their respective ports (e.g., DUMB Frontend at <code>:3005</code>, API at <code>:8000</code>, etc.).</p>
 <p>You can now manage DUMB entirely through the <strong><a href="../../services/dumb/dumb-frontend/">DUMB Frontend</a></strong>, or explore the <a href="../../features/configuration/">Configuration</a> docs to adjust settings as needed.</p>
 <hr />
-<h2 id="expose-ports-direct-access">Expose ports (direct access)<a class="headerlink" href="#expose-ports-direct-access" title="Permanent link">#</a></h2>
+<h2 id="expose-ports-direct-access">Expose ports (direct access)<a class="headerlink" href="#expose-ports-direct-access" title="Permanent link">&para;</a></h2>
 <p>Portainer only exposes the ports listed in your Compose file. If a UI is not
 reachable, confirm the port mapping exists in the stack.</p>
 <p>Example:</p>
@@ -4946,7 +4824,7 @@ reachable, confirm the port mapping exists in the stack.</p>
 you can avoid exposing every service port directly.</p>
 </div>
 <hr />
-<h2 id="viewing-logs-for-dumb">Viewing Logs for DUMB<a class="headerlink" href="#viewing-logs-for-dumb" title="Permanent link">#</a></h2>
+<h2 id="viewing-logs-for-dumb">Viewing Logs for DUMB<a class="headerlink" href="#viewing-logs-for-dumb" title="Permanent link">&para;</a></h2>
 <p>Once your stack is deployed, you can view logs for the DUMB container:</p>
 <ol>
 <li>Navigate to <strong>Containers</strong> from the left sidebar.</li>
@@ -4958,7 +4836,7 @@ you can avoid exposing every service port directly.</p>
 <p class="admonition-title">This is helpful for debugging service startup or checking configuration issues.</p>
 </div>
 <hr />
-<h2 id="attach-to-the-container">Attach to the Container<a class="headerlink" href="#attach-to-the-container" title="Permanent link">#</a></h2>
+<h2 id="attach-to-the-container">Attach to the Container<a class="headerlink" href="#attach-to-the-container" title="Permanent link">&para;</a></h2>
 <p>To view live output or run interactive commands:</p>
 <ol>
 <li>From the <strong>Containers</strong> page, click on the <strong>DUMB</strong> container.</li>
@@ -4969,7 +4847,7 @@ you can avoid exposing every service port directly.</p>
 <p class="admonition-title">Use this for tasks like inspecting running processes, modifying configs, or testing tools inside the container.</p>
 </div>
 <hr />
-<h2 id="console-access">Console Access<a class="headerlink" href="#console-access" title="Permanent link">#</a></h2>
+<h2 id="console-access">Console Access<a class="headerlink" href="#console-access" title="Permanent link">&para;</a></h2>
 <p>You can also use the <strong>Console</strong> option to access the container shell:</p>
 <ol>
 <li>From the <strong>Containers</strong> tab, click on <strong>DUMB</strong>.</li>
@@ -4981,7 +4859,7 @@ you can avoid exposing every service port directly.</p>
 <p class="admonition-title">Great for quick inspection or administrative tasks inside the container.</p>
 </div>
 <hr />
-<h2 id="update-the-stack">Update the stack<a class="headerlink" href="#update-the-stack" title="Permanent link">#</a></h2>
+<h2 id="update-the-stack">Update the stack<a class="headerlink" href="#update-the-stack" title="Permanent link">&para;</a></h2>
 <p>To update DUMB:</p>
 <ol>
 <li>Open <strong>Stacks</strong></li>

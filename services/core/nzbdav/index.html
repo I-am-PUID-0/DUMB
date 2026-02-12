@@ -1856,34 +1856,6 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Configuration in dumb_config.json">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#key-configuration-fields" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Key Configuration Fields
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#environment-variables" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Environment Variables
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
 </li>
       
         <li class="md-nav__item">
@@ -1894,56 +1866,6 @@
       
     </span>
   </a>
-  
-    <nav class="md-nav" aria-label="Integration with DUMB">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#arr-core_service-setting" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Arr core_service setting
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#1-rclone-webdav-mount" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        1. rclone WebDAV Mount
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#2-arr-integration-sonarrradarr" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        2. Arr Integration (Sonarr/Radarr)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#category-mapping" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Category mapping
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
@@ -4513,34 +4435,6 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Configuration in dumb_config.json">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#key-configuration-fields" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Key Configuration Fields
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#environment-variables" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Environment Variables
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
 </li>
       
         <li class="md-nav__item">
@@ -4551,56 +4445,6 @@
       
     </span>
   </a>
-  
-    <nav class="md-nav" aria-label="Integration with DUMB">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#arr-core_service-setting" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Arr core_service setting
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#1-rclone-webdav-mount" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        1. rclone WebDAV Mount
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#2-arr-integration-sonarrradarr" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        2. Arr Integration (Sonarr/Radarr)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#category-mapping" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Category mapping
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
@@ -4734,10 +4578,10 @@
   
 
 
-<h1 id="nzbdav-core-service">NzbDAV (Core Service)<a class="headerlink" href="#nzbdav-core-service" title="Permanent link">#</a></h1>
+<h1 id="nzbdav-core-service">NzbDAV (Core Service)<a class="headerlink" href="#nzbdav-core-service" title="Permanent link">&para;</a></h1>
 <p><strong>NzbDAV</strong> is a combined backend + frontend WebDAV service for <strong>Usenet</strong> workflows. In DUMB it runs as a single service that exposes a Web UI, a WebDAV endpoint for browsing/serving content, and a backend API used for automation.</p>
 <hr />
-<h2 id="workflow-diagram">Workflow diagram<a class="headerlink" href="#workflow-diagram" title="Permanent link">#</a></h2>
+<h2 id="workflow-diagram">Workflow diagram<a class="headerlink" href="#workflow-diagram" title="Permanent link">&para;</a></h2>
 <pre class="mermaid"><code>%%{ init: { "flowchart": { "curve": "basis" } } }%%
 flowchart TD
     A([Request Sources:&lt;br/&gt;Seerr, Trakt,&lt;br/&gt;Plex Watchlist,&lt;br/&gt;Huntarr])
@@ -4775,7 +4619,7 @@ flowchart TD
     classDef animate stroke-dasharray: 9,5,stroke-dashoffset: 900,animation: dash 25s linear infinite;
     class e1,e2,e3,e4,e5 animate</code></pre>
 <hr />
-<h2 id="service-relationships">Service Relationships<a class="headerlink" href="#service-relationships" title="Permanent link">#</a></h2>
+<h2 id="service-relationships">Service Relationships<a class="headerlink" href="#service-relationships" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
@@ -4803,7 +4647,7 @@ flowchart TD
 </tbody>
 </table>
 <hr />
-<h2 id="what-nzbdav-provides">What NzbDAV provides<a class="headerlink" href="#what-nzbdav-provides" title="Permanent link">#</a></h2>
+<h2 id="what-nzbdav-provides">What NzbDAV provides<a class="headerlink" href="#what-nzbdav-provides" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
@@ -4831,7 +4675,7 @@ flowchart TD
 <p>rclone and Arr download clients point at the WebDAV endpoint on the frontend port.</p>
 </div>
 <hr />
-<h2 id="configuration-in-dumb_configjson">Configuration in <code>dumb_config.json</code><a class="headerlink" href="#configuration-in-dumb_configjson" title="Permanent link">#</a></h2>
+<h2 id="configuration-in-dumb_configjson">Configuration in <code>dumb_config.json</code><a class="headerlink" href="#configuration-in-dumb_configjson" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="nt">&quot;nzbdav&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">    </span><span class="nt">&quot;enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;process_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;NzbDAV&quot;</span><span class="p">,</span>
@@ -4860,7 +4704,7 @@ flowchart TD
 <span class="w">    </span><span class="nt">&quot;env&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{}</span>
 <span class="p">},</span>
 </code></pre></div>
-<h3 id="key-configuration-fields">Key Configuration Fields<a class="headerlink" href="#key-configuration-fields" title="Permanent link">#</a></h3>
+<h3 id="key-configuration-fields">Key Configuration Fields<a class="headerlink" href="#key-configuration-fields" title="Permanent link">&para;</a></h3>
 <ul>
 <li><code>enabled</code>: Toggle to run NzbDAV via DUMB.</li>
 <li><code>frontend_port</code>: Port for the Web UI and WebDAV endpoint.</li>
@@ -4875,7 +4719,7 @@ flowchart TD
 <p>If <code>webdav_password</code> is blank, DUMB generates one at startup and stores it in the config.
 Change the password before exposing NzbDAV outside your trusted network.</p>
 </div>
-<h3 id="environment-variables">Environment Variables<a class="headerlink" href="#environment-variables" title="Permanent link">#</a></h3>
+<h3 id="environment-variables">Environment Variables<a class="headerlink" href="#environment-variables" title="Permanent link">&para;</a></h3>
 <ul>
 <li><code>LOG_LEVEL</code>: Logging level for NzbDAV (defaults to <code>INFO</code>).</li>
 <li><code>WEBDAV_USER</code>: Override the WebDAV username (defaults to <code>admin</code>).</li>
@@ -4891,7 +4735,7 @@ Change the password before exposing NzbDAV outside your trusted network.</p>
 <p><code>FRONTEND_BACKEND_API_KEY</code> grants backend access. Treat it like a secret and avoid committing it to source control.</p>
 </div>
 <hr />
-<h2 id="integration-with-dumb">Integration with DUMB<a class="headerlink" href="#integration-with-dumb" title="Permanent link">#</a></h2>
+<h2 id="integration-with-dumb">Integration with DUMB<a class="headerlink" href="#integration-with-dumb" title="Permanent link">&para;</a></h2>
 <p>When NzbDAV starts, DUMB performs several automation steps:</p>
 <ul>
 <li>Syncs Arr instance details into the NzbDAV database</li>
@@ -4905,7 +4749,7 @@ Change the password before exposing NzbDAV outside your trusted network.</p>
 <p class="admonition-title">Startup timing</p>
 <p>If the NzbDAV backend is not reachable yet, DUMB retries the download-client setup shortly after startup.</p>
 </div>
-<h3 id="arr-core_service-setting">Arr <code>core_service</code> setting<a class="headerlink" href="#arr-core_service-setting" title="Permanent link">#</a></h3>
+<h3 id="arr-core_service-setting">Arr <code>core_service</code> setting<a class="headerlink" href="#arr-core_service-setting" title="Permanent link">&para;</a></h3>
 <p>For Sonarr/Radarr/Lidarr/Whisparr instances you want wired to NzbDAV, set
 <code>core_service</code> to <code>nzbdav</code> or include it in a list:</p>
 <div class="highlight"><pre><span></span><code><span class="nt">&quot;core_service&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;nzbdav&quot;</span>
@@ -4914,7 +4758,7 @@ Change the password before exposing NzbDAV outside your trusted network.</p>
 </code></pre></div>
 <p>This tells DUMB to auto-configure Arr integration around NzbDAV’s WebDAV and download-client workflows.
 See <a href="../../../reference/core-service/">Core Service Routing</a> for how <code>core_service</code> affects automation.</p>
-<h3 id="1-rclone-webdav-mount">1. rclone WebDAV Mount<a class="headerlink" href="#1-rclone-webdav-mount" title="Permanent link">#</a></h3>
+<h3 id="1-rclone-webdav-mount">1. rclone WebDAV Mount<a class="headerlink" href="#1-rclone-webdav-mount" title="Permanent link">&para;</a></h3>
 <p>Create a dedicated rclone instance for NzbDAV and point it at the WebDAV endpoint:</p>
 <div class="highlight"><pre><span></span><code><span class="nt">&quot;rclone&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;instances&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
@@ -4948,7 +4792,7 @@ See <a href="../../../reference/core-service/">Core Service Routing</a> for how 
 <p>Default rclone mount path (if not overridden) is:</p>
 <div class="highlight"><pre><span></span><code>/mnt/debrid/nzbdav
 </code></pre></div>
-<h3 id="2-arr-integration-sonarrradarr">2. Arr Integration (Sonarr/Radarr)<a class="headerlink" href="#2-arr-integration-sonarrradarr" title="Permanent link">#</a></h3>
+<h3 id="2-arr-integration-sonarrradarr">2. Arr Integration (Sonarr/Radarr)<a class="headerlink" href="#2-arr-integration-sonarrradarr" title="Permanent link">&para;</a></h3>
 <p>Set <code>core_service</code> to <code>nzbdav</code> (or include <code>nzbdav</code> in a list) for the Sonarr and
 Radarr instances you want wired to NzbDAV:</p>
 <div class="highlight"><pre><span></span><code><span class="nt">&quot;sonarr&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
@@ -4988,7 +4832,7 @@ base switches to <code>/mnt/debrid/combined_symlinks/&lt;category&gt;</code>.
 Manual setup is only needed when <code>core_service</code> is blank or you want to override
 the combined workflow wiring.</p>
 </div>
-<h3 id="category-mapping">Category mapping<a class="headerlink" href="#category-mapping" title="Permanent link">#</a></h3>
+<h3 id="category-mapping">Category mapping<a class="headerlink" href="#category-mapping" title="Permanent link">&para;</a></h3>
 <p>By default, DUMB maps Arr types to categories:</p>
 <table>
 <thead>
@@ -5018,7 +4862,7 @@ the combined workflow wiring.</p>
 </table>
 <p>Instance names are slugified into categories if present (for example, <code>Radarr 4K</code> becomes <code>radarr-4k</code>).</p>
 <hr />
-<h2 id="accessing-the-ui">Accessing the UI<a class="headerlink" href="#accessing-the-ui" title="Permanent link">#</a></h2>
+<h2 id="accessing-the-ui">Accessing the UI<a class="headerlink" href="#accessing-the-ui" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Navigate to: <code>http://&lt;host&gt;:&lt;frontend_port&gt;</code> (default port <code>3000</code>)</li>
 <li>WebDAV endpoint: <code>http://&lt;host&gt;:&lt;frontend_port&gt;/</code></li>
@@ -5032,7 +4876,7 @@ Per-service stop/start/restart does not re-run port conflict resolution, so fix
 conflicts manually before restarting a single service.</p>
 </div>
 <hr />
-<h2 id="troubleshooting-tips">Troubleshooting Tips<a class="headerlink" href="#troubleshooting-tips" title="Permanent link">#</a></h2>
+<h2 id="troubleshooting-tips">Troubleshooting Tips<a class="headerlink" href="#troubleshooting-tips" title="Permanent link">&para;</a></h2>
 <div class="admonition warning">
 <p class="admonition-title">Permission changes</p>
 <p>DUMB updates Arr media-management permissions to enable chmod operations (folder <code>777</code>, file <code>666</code>).
@@ -5045,7 +4889,7 @@ If you manage permissions manually, review these settings after integration.</p>
 <li>Check <code>/log</code> for NzbDAV startup errors, and ensure <code>frontend_port</code>/<code>backend_port</code> are not already in use.</li>
 </ul>
 <hr />
-<h2 id="resources">Resources<a class="headerlink" href="#resources" title="Permanent link">#</a></h2>
+<h2 id="resources">Resources<a class="headerlink" href="#resources" title="Permanent link">&para;</a></h2>
 <ul>
 <li><a href="https://github.com/nzbdav-dev/nzbdav">NzbDAV GitHub</a></li>
 </ul>
