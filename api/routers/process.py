@@ -12,6 +12,7 @@ from utils.dependencies import (
 from utils.config_loader import CONFIG_MANAGER, find_service_config
 from utils.setup import setup_project
 from utils.core_services import has_core_service
+from utils.dependency_map import build_conditional_dependency_map, filter_conditional_deps_for_instance
 from utils.versions import Versions
 import json, copy, time, glob, re, socket, errno, psutil, os, threading
 
@@ -157,6 +158,18 @@ DEPENDENCY_TRUTH_TABLE = [
         "strength": "hard_runtime",
         "description": "Static dependency linkage for non-core services that still require ordered startup.",
     },
+    {
+        "signal": "conditional_startup_map",
+        "classification": "hard",
+        "strength": "hard_runtime",
+        "description": "Config-conditional startup dependency (e.g., tautulli\u2192plex when plex is enabled, prowlarr\u2192sonarr when sonarr is enabled).",
+    },
+    {
+        "signal": "documented_integration",
+        "classification": "linkage",
+        "strength": "soft_linkage",
+        "description": "Documented service integration (e.g., Seerr routes requests to Sonarr/Radarr) that is not startup-blocking.",
+    },
 ]
 DEPENDENCY_SIGNAL_STRENGTH = {
     "core_service_map": "hard_runtime",
@@ -169,6 +182,8 @@ DEPENDENCY_SIGNAL_STRENGTH = {
     "rclone_provider_nzbdav": "hard_runtime",
     "zilean_optional_integration": "soft_linkage",
     "non_core_dependency_map": "hard_runtime",
+    "conditional_startup_map": "hard_runtime",
+    "documented_integration": "soft_linkage",
 }
 ZILEAN_OPTIONAL_LINK_KEYS = {
     "sonarr",
@@ -182,6 +197,10 @@ ZILEAN_OPTIONAL_LINK_KEYS = {
 NON_CORE_HARD_DEPENDENCIES = {
     "riven_frontend": ["riven_backend"],
     "zilean": ["postgres"],
+    "pgadmin": ["postgres"],
+}
+DOCUMENTED_INTEGRATION_LINKS = {
+    "seerr": ["sonarr", "radarr"],
 }
 
 STATIC_URLS_BY_KEY = {
@@ -297,6 +316,20 @@ CORE_SERVICE_NAMES = {
     "seerr": "Seerr",
     "huntarr": "Huntarr",
     "profilarr": "Profilarr",
+    "bazarr": "Bazarr",
+    "tautulli": "Tautulli",
+    "pgadmin": "pgAdmin",
+    "riven_frontend": "Riven Frontend",
+    "zilean": "Zilean",
+    "postgres": "PostgreSQL",
+    "rclone": "rclone",
+    "zurg": "Zurg",
+    "traefik": "Traefik",
+    "dumb_api_service": "DUMB API",
+    "dumb_frontend": "DUMB Frontend",
+    "cli_battery": "CLI Battery",
+    "phalanx_db": "Phalanx DB",
+    "plex_debrid": "Plex Debrid",
 }
 
 CORE_SERVICE_DESCRIPTIONS = {
@@ -620,6 +653,9 @@ def dependency_graph(
             )
 
         processes = _collect_process_entries()
+        conditional_deps = build_conditional_dependency_map(
+            lambda key: CONFIG_MANAGER.config.get(key, {})
+        )
         by_process_name: dict[str, dict] = {}
         by_config_key: dict[str, list[dict]] = {}
         port_to_entries: dict[int, list[dict]] = {}
@@ -653,6 +689,9 @@ def dependency_graph(
         target_proc_name = str(target.get("process_name") or "")
         target_key = _normalize_dep_token(target.get("config_key") or "")
         target_config = target.get("config") if isinstance(target.get("config"), dict) else {}
+        instance_conditional_deps = filter_conditional_deps_for_instance(
+            conditional_deps, target_key, target_config
+        )
         target_core_refs = _dep_extract_refs_from_config(target_config)
         target_primary_core = target_core_refs[0] if target_core_refs else ""
         core_entry = {
@@ -805,6 +844,17 @@ def dependency_graph(
         for dep_key in NON_CORE_HARD_DEPENDENCIES.get(target_key, []):
             for dep_entry in by_config_key.get(_normalize_dep_token(dep_key), []):
                 add_outgoing(dep_entry, "non_core_dependency_map")
+        for dep_key in instance_conditional_deps.get(target_key, set()):
+            dep_norm = _normalize_dep_token(dep_key)
+            for dep_entry in by_config_key.get(dep_norm, []):
+                # For instance-scoped deps, only annotate entries already
+                # detected by specific signals — conditional_startup_map is
+                # service-level and cannot distinguish individual instances.
+                if dep_norm in DEPENDENCY_INSTANCE_SCOPED_KEYS:
+                    entry_name = str(dep_entry.get("process_name") or "")
+                    if entry_name not in outgoing_map:
+                        continue
+                add_outgoing(dep_entry, "conditional_startup_map")
 
         target_ports = set(_dep_process_ports(target))
         target_mounts = set(_dep_process_mount_points(target))
@@ -892,6 +942,16 @@ def dependency_graph(
             ]:
                 add_incoming(candidate, "non_core_dependency_map")
                 continue
+            candidate_instance_deps = filter_conditional_deps_for_instance(
+                conditional_deps, candidate_key, candidate_cfg
+            )
+            candidate_conditional_deps = candidate_instance_deps.get(candidate_key, set())
+            if target_key in {_normalize_dep_token(dep) for dep in candidate_conditional_deps}:
+                # For instance-scoped targets, only annotate candidates already
+                # detected — conditional_startup_map cannot distinguish instances.
+                if target_key not in DEPENDENCY_INSTANCE_SCOPED_KEYS or candidate_name in incoming_map:
+                    add_incoming(candidate, "conditional_startup_map")
+                continue
 
         def entry_to_row(entry: dict, reasons: set[str] | None = None) -> dict:
             proc_name = str(entry.get("process_name") or "")
@@ -920,7 +980,14 @@ def dependency_graph(
                 "strength": row_strength,
             }
 
-        context_mode = "core" if target_key in CORE_SERVICE_DEPENDENCIES else "dependency"
+        has_core_deps = target_key in CORE_SERVICE_DEPENDENCIES
+        has_non_core_deps = target_key in NON_CORE_HARD_DEPENDENCIES
+        has_conditional_deps = target_key in instance_conditional_deps
+        context_mode = (
+            "core"
+            if (has_core_deps or has_non_core_deps or has_conditional_deps)
+            else "dependency"
+        )
         static_dependencies = CORE_SERVICE_DEPENDENCIES.get(target_key, [])
         if target_key == "decypharr":
             branch_name = _normalize_dep_token(target_config.get("branch") or "")
@@ -958,6 +1025,81 @@ def dependency_graph(
                     "scoped": dep_norm in DEPENDENCY_INSTANCE_SCOPED_KEYS,
                     "starter_process_name": starter.get("process_name") if starter else None,
                     "signals": ["core_service_map"],
+                    "classification": "hard",
+                    "strength": "hard_runtime",
+                }
+            )
+
+        existing_dep_keys = {row["key"] for row in dependency_rows}
+        for dep_key in sorted(instance_conditional_deps.get(target_key, set())):
+            dep_norm = _normalize_dep_token(dep_key)
+            if dep_norm in existing_dep_keys:
+                continue
+            dep_entries = [
+                entry
+                for entry in by_config_key.get(dep_norm, [])
+                if isinstance(entry, dict)
+            ]
+            # For instance-scoped deps, narrow to entries that specific
+            # signals already associated with this target instance.
+            if dep_norm in DEPENDENCY_INSTANCE_SCOPED_KEYS:
+                dep_entries = [
+                    e for e in dep_entries
+                    if str(e.get("process_name") or "") in outgoing_map
+                ]
+                if not dep_entries:
+                    continue
+            state = _dep_state_for_entries(dep_entries, status_by_process)
+            starter = None
+            if dep_entries:
+                sorted_entries = sorted(
+                    dep_entries,
+                    key=lambda entry: int(bool(entry.get("enabled"))),
+                    reverse=True,
+                )
+                starter = sorted_entries[0]
+            dependency_rows.append(
+                {
+                    "key": dep_norm,
+                    "label": CORE_SERVICE_NAMES.get(dep_norm)
+                    or (dep_entries[0].get("name") if dep_entries else dep_norm),
+                    "state": state,
+                    "process_count": len(dep_entries),
+                    "scoped": dep_norm in DEPENDENCY_INSTANCE_SCOPED_KEYS,
+                    "starter_process_name": starter.get("process_name") if starter else None,
+                    "signals": ["conditional_startup_map"],
+                    "classification": "hard",
+                    "strength": "hard_runtime",
+                }
+            )
+        for dep_key in NON_CORE_HARD_DEPENDENCIES.get(target_key, []):
+            dep_norm = _normalize_dep_token(dep_key)
+            if dep_norm in existing_dep_keys or dep_norm in {row["key"] for row in dependency_rows}:
+                continue
+            dep_entries = [
+                entry
+                for entry in by_config_key.get(dep_norm, [])
+                if isinstance(entry, dict)
+            ]
+            state = _dep_state_for_entries(dep_entries, status_by_process)
+            starter = None
+            if dep_entries:
+                sorted_entries = sorted(
+                    dep_entries,
+                    key=lambda entry: int(bool(entry.get("enabled"))),
+                    reverse=True,
+                )
+                starter = sorted_entries[0]
+            dependency_rows.append(
+                {
+                    "key": dep_norm,
+                    "label": CORE_SERVICE_NAMES.get(dep_norm)
+                    or (dep_entries[0].get("name") if dep_entries else dep_norm),
+                    "state": state,
+                    "process_count": len(dep_entries),
+                    "scoped": dep_norm in DEPENDENCY_INSTANCE_SCOPED_KEYS,
+                    "starter_process_name": starter.get("process_name") if starter else None,
+                    "signals": ["non_core_dependency_map"],
                     "classification": "hard",
                     "strength": "hard_runtime",
                 }
@@ -1006,10 +1148,82 @@ def dependency_graph(
                 }
             )
 
+        existing_dependent_keys = {row["key"] for row in dependent_rows}
+        for svc_key, svc_deps in conditional_deps.items():
+            if target_key not in {_normalize_dep_token(d) for d in svc_deps}:
+                continue
+            if svc_key in existing_dependent_keys:
+                continue
+            svc_entries = by_config_key.get(svc_key, [])
+            # Instance-filter: for multi-instance services, only include
+            # entries whose individual config actually depends on the target.
+            if svc_key in DEPENDENCY_INSTANCE_SCOPED_KEYS:
+                svc_entries = [
+                    entry for entry in svc_entries
+                    if target_key in {
+                        _normalize_dep_token(d)
+                        for d in filter_conditional_deps_for_instance(
+                            conditional_deps, svc_key,
+                            entry.get("config") if isinstance(entry.get("config"), dict) else {},
+                        ).get(svc_key, set())
+                    }
+                ]
+                if not svc_entries:
+                    continue
+            # When the target is instance-scoped, further narrow to entries
+            # that specific signals already associated with this instance.
+            if target_key in DEPENDENCY_INSTANCE_SCOPED_KEYS:
+                svc_entries = [
+                    entry for entry in svc_entries
+                    if str(entry.get("process_name") or "") in incoming_map
+                ]
+                if not svc_entries:
+                    continue
+            svc_state = _dep_state_for_entries(svc_entries, status_by_process)
+            # For instance-scoped services, compute deps from filtered entries
+            if svc_key in DEPENDENCY_INSTANCE_SCOPED_KEYS:
+                filtered_cond_deps: set[str] = set()
+                for entry in svc_entries:
+                    entry_cfg = entry.get("config") if isinstance(entry.get("config"), dict) else {}
+                    filtered_cond_deps |= filter_conditional_deps_for_instance(
+                        conditional_deps, svc_key, entry_cfg
+                    ).get(svc_key, set())
+            else:
+                filtered_cond_deps = conditional_deps.get(svc_key, set())
+            all_deps_for_svc = {
+                _normalize_dep_token(d)
+                for d in (
+                    list(CORE_SERVICE_DEPENDENCIES.get(svc_key, []))
+                    + list(filtered_cond_deps)
+                    + list(NON_CORE_HARD_DEPENDENCIES.get(svc_key, []))
+                )
+            }
+            missing = [
+                dep
+                for dep in sorted(all_deps_for_svc)
+                if _dep_state_for_entries(by_config_key.get(dep, []), status_by_process)
+                != "running"
+            ]
+            dependent_rows.append(
+                {
+                    "key": svc_key,
+                    "label": CORE_SERVICE_NAMES.get(svc_key, svc_key),
+                    "state": svc_state,
+                    "missing_deps": missing,
+                    "signals": ["conditional_startup_map"],
+                    "classification": "hard",
+                    "strength": "hard_runtime",
+                }
+            )
+
         startup_order = []
         if context_mode == "core":
+            seen_startup_keys = set()
             for dep in static_dependencies:
                 dep_key = _normalize_dep_token(dep)
+                if dep_key in seen_startup_keys:
+                    continue
+                seen_startup_keys.add(dep_key)
                 dep_entries = by_config_key.get(dep_key, [])
                 if dep_key in DEPENDENCY_INSTANCE_SCOPED_KEYS:
                     dep_entries = [
@@ -1023,6 +1237,38 @@ def dependency_graph(
                         "label": CORE_SERVICE_NAMES.get(dep_key, dep_key),
                         "state": _dep_state_for_entries(dep_entries, status_by_process),
                         "signals": ["core_service_map"],
+                        "classification": "hard",
+                        "strength": "hard_runtime",
+                    }
+                )
+            for dep_key in sorted(instance_conditional_deps.get(target_key, set())):
+                dep_norm = _normalize_dep_token(dep_key)
+                if dep_norm in seen_startup_keys:
+                    continue
+                seen_startup_keys.add(dep_norm)
+                dep_entries = by_config_key.get(dep_norm, [])
+                startup_order.append(
+                    {
+                        "key": dep_norm,
+                        "label": CORE_SERVICE_NAMES.get(dep_norm, dep_norm),
+                        "state": _dep_state_for_entries(dep_entries, status_by_process),
+                        "signals": ["conditional_startup_map"],
+                        "classification": "hard",
+                        "strength": "hard_runtime",
+                    }
+                )
+            for dep_key in NON_CORE_HARD_DEPENDENCIES.get(target_key, []):
+                dep_norm = _normalize_dep_token(dep_key)
+                if dep_norm in seen_startup_keys:
+                    continue
+                seen_startup_keys.add(dep_norm)
+                dep_entries = by_config_key.get(dep_norm, [])
+                startup_order.append(
+                    {
+                        "key": dep_norm,
+                        "label": CORE_SERVICE_NAMES.get(dep_norm, dep_norm),
+                        "state": _dep_state_for_entries(dep_entries, status_by_process),
+                        "signals": ["non_core_dependency_map"],
                         "classification": "hard",
                         "strength": "hard_runtime",
                     }
@@ -1105,6 +1351,40 @@ def dependency_graph(
                                 "strength": "soft_linkage",
                             }
                         )
+            doc_links = DOCUMENTED_INTEGRATION_LINKS.get(target_key, [])
+            for link_key in doc_links:
+                link_norm = _normalize_dep_token(link_key)
+                for entry in by_config_key.get(link_norm, []):
+                    name = str(entry.get("process_name") or "")
+                    if not any(row.get("process_name") == name for row in linked_outgoing_rows):
+                        linked_outgoing_rows.append(
+                            {
+                                "process_name": name,
+                                "key": link_norm,
+                                "label": entry.get("name") or name or link_key,
+                                "state": _dep_state_for_entries([entry], status_by_process),
+                                "signals": ["documented_integration"],
+                                "classification": "linkage",
+                                "strength": "soft_linkage",
+                            }
+                        )
+            for source_key, link_targets in DOCUMENTED_INTEGRATION_LINKS.items():
+                if target_key not in [_normalize_dep_token(t) for t in link_targets]:
+                    continue
+                for entry in by_config_key.get(_normalize_dep_token(source_key), []):
+                    name = str(entry.get("process_name") or "")
+                    if not any(row.get("process_name") == name for row in linked_incoming_rows):
+                        linked_incoming_rows.append(
+                            {
+                                "process_name": name,
+                                "key": _normalize_dep_token(source_key),
+                                "label": entry.get("name") or name or source_key,
+                                "state": _dep_state_for_entries([entry], status_by_process),
+                                "signals": ["documented_integration"],
+                                "classification": "linkage",
+                                "strength": "soft_linkage",
+                            }
+                        )
 
         nodes_map: dict[str, dict] = {}
 
@@ -1140,9 +1420,17 @@ def dependency_graph(
             target.get("name") or CORE_SERVICE_NAMES.get(target_key) or target_proc_name,
             status_by_process.get(target_proc_name) or "unknown",
         )
+        linked_outgoing_keys = {
+            _normalize_dep_token(row.get("key") or "")
+            for row in linked_outgoing_rows
+            if row.get("key")
+        }
         for row in dependency_rows:
             starter_name = str(row.get("starter_process_name") or "")
             if not starter_name:
+                continue
+            dep_key = _normalize_dep_token(row.get("key") or "")
+            if dep_key in linked_outgoing_keys:
                 continue
             ensure_node(
                 starter_name,
@@ -1197,8 +1485,12 @@ def dependency_graph(
             add_edge(target_proc_name, row.get("process_name"), row.get("signals") or [])
         for row in dependency_rows:
             starter_name = str(row.get("starter_process_name") or "")
-            if starter_name:
-                add_edge(starter_name, target_proc_name, row.get("signals") or ["core_service_map"])
+            if not starter_name:
+                continue
+            dep_key = _normalize_dep_token(row.get("key") or "")
+            if dep_key in linked_outgoing_keys:
+                continue
+            add_edge(starter_name, target_proc_name, row.get("signals") or ["core_service_map"])
 
         parallel_groups = []
         pre_members = []
@@ -1209,6 +1501,7 @@ def dependency_graph(
             str(row.get("starter_process_name") or "").strip()
             for row in dependency_rows
             if str(row.get("starter_process_name") or "").strip()
+            and _normalize_dep_token(row.get("key") or "") not in linked_outgoing_keys
         ]
         pre_from_links = [
             str(row.get("process_name") or "").strip()

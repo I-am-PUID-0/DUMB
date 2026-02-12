@@ -7,8 +7,8 @@ from utils.metrics_history import MetricsHistoryWriter
 from utils.processes import ProcessHandler
 from utils.auto_update import Update
 from utils.dependencies import initialize_dependencies
-from utils.core_services import has_core_service
-from utils.core_services import get_core_services
+from utils.core_services import get_core_services, has_core_service
+from utils.dependency_map import build_conditional_dependency_map
 from utils.plex_dbrepair import start_plex_dbrepair_worker
 from utils.ffprobe_monitor import start_ffprobe_monitor
 from utils.setup import setup_project
@@ -354,7 +354,9 @@ def _run_profilarr_sync_retries(start_key: str) -> None:
                 if ok:
                     break
                 if err:
-                    logger.warning("Profilarr config retry %s failed: %s", attempt + 1, err)
+                    logger.warning(
+                        "Profilarr config retry %s failed: %s", attempt + 1, err
+                    )
     except Exception as exc:
         logger.warning("Profilarr config sync skipped: %s", exc)
 
@@ -402,7 +404,9 @@ def _collect_decypharr_mount_paths(decypharr_cfg: dict) -> list[str]:
     if mount_type not in {"rclone", "dfs"}:
         return []
     branch_name = (decypharr_cfg.get("branch") or "").strip().lower()
-    beta_branch_requested = bool(decypharr_cfg.get("branch_enabled")) and branch_name == "beta"
+    beta_branch_requested = (
+        bool(decypharr_cfg.get("branch_enabled")) and branch_name == "beta"
+    )
     config_file = decypharr_cfg.get("config_file")
     if not config_file or not os.path.exists(config_file):
         return []
@@ -713,73 +717,7 @@ def _preinstall_enabled_services(process_handler, config_manager) -> None:
 
 
 def _build_dependency_map(config_manager) -> dict[str, set[str]]:
-    deps = {
-        "riven_backend": {"postgres"},
-        "riven_frontend": {"riven_backend"},
-        "zilean": {"postgres"},
-        "pgadmin": {"postgres"},
-    }
-
-    if _service_has_enabled_instance(config_manager.get("plex", {})):
-        deps["tautulli"] = {"plex"}
-        deps.setdefault("seerr", set()).add("plex")
-    if _service_has_enabled_instance(config_manager.get("jellyfin", {})):
-        deps.setdefault("seerr", set()).add("jellyfin")
-    if _service_has_enabled_instance(config_manager.get("emby", {})):
-        deps.setdefault("seerr", set()).add("emby")
-
-    prowlarr_deps = set()
-    if _service_has_enabled_instance(config_manager.get("sonarr", {})):
-        prowlarr_deps.add("sonarr")
-    if _service_has_enabled_instance(config_manager.get("radarr", {})):
-        prowlarr_deps.add("radarr")
-    if _service_has_enabled_instance(config_manager.get("lidarr", {})):
-        prowlarr_deps.add("lidarr")
-    if _service_has_enabled_instance(config_manager.get("whisparr", {})):
-        prowlarr_deps.add("whisparr")
-    if prowlarr_deps:
-        deps["prowlarr"] = prowlarr_deps
-
-    profilarr_deps = set()
-    if _service_has_enabled_instance(config_manager.get("sonarr", {})):
-        profilarr_deps.add("sonarr")
-    if _service_has_enabled_instance(config_manager.get("radarr", {})):
-        profilarr_deps.add("radarr")
-    if _service_has_enabled_instance(config_manager.get("lidarr", {})):
-        profilarr_deps.add("lidarr")
-    if _service_has_enabled_instance(config_manager.get("whisparr", {})):
-        profilarr_deps.add("whisparr")
-    if profilarr_deps:
-        deps["profilarr"] = profilarr_deps
-
-    huntarr_deps = set()
-    if _service_has_huntarr_instance(config_manager.get("sonarr", {})):
-        huntarr_deps.add("sonarr")
-    if _service_has_huntarr_instance(config_manager.get("radarr", {})):
-        huntarr_deps.add("radarr")
-    if _service_has_huntarr_instance(config_manager.get("lidarr", {})):
-        huntarr_deps.add("lidarr")
-    if _service_has_huntarr_instance(config_manager.get("whisparr", {})):
-        huntarr_deps.add("whisparr")
-    if huntarr_deps:
-        deps["huntarr"] = huntarr_deps
-
-    rclone_deps = set()
-    rclone_instances = config_manager.get("rclone", {}).get("instances", {}) or {}
-    for instance in rclone_instances.values():
-        if not isinstance(instance, dict) or not instance.get("enabled"):
-            continue
-        if instance.get("zurg_enabled"):
-            rclone_deps.add("zurg")
-        if instance.get("decypharr_enabled"):
-            rclone_deps.add("decypharr")
-        key_type = (instance.get("key_type") or "").lower()
-        if key_type == "nzbdav" or has_core_service(instance, "nzbdav"):
-            rclone_deps.add("nzbdav")
-    if rclone_deps:
-        deps["rclone"] = rclone_deps
-
-    return deps
+    return build_conditional_dependency_map(lambda key: config_manager.get(key, {}))
 
 
 def _start_processes_with_dependencies(
