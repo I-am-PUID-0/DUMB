@@ -2134,6 +2134,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Configuration in dumb_config.json">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#key-configuration-fields" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Key Configuration Fields
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -2155,6 +2172,56 @@
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="Integration with DUMB">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#automated-arr-sync" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Automated Arr sync
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#core-service-tags" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Core-service tags
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#indexer-routing-via-tags" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Indexer routing via tags
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#custom-indexer-sync-decypharr" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Custom indexer sync (Decypharr)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -4391,6 +4458,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Configuration in dumb_config.json">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#key-configuration-fields" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Key Configuration Fields
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -4412,6 +4496,56 @@
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="Integration with DUMB">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#automated-arr-sync" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Automated Arr sync
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#core-service-tags" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Core-service tags
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#indexer-routing-via-tags" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Indexer routing via tags
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#custom-indexer-sync-decypharr" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Custom indexer sync (Decypharr)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -4534,10 +4668,10 @@
   
 
 
-<h1 id="prowlarr-core-service">Prowlarr (Core Service)<a class="headerlink" href="#prowlarr-core-service" title="Permanent link">&para;</a></h1>
+<h1 id="prowlarr-core-service">Prowlarr (Core Service)<a class="headerlink" href="#prowlarr-core-service" title="Permanent link">#</a></h1>
 <p><strong>Prowlarr</strong> is an indexer manager for the Arr ecosystem. It centralizes indexer configuration and syncs them to Sonarr, Radarr, Lidarr, and Whisparr.</p>
 <hr />
-<h2 id="service-relationships">Service Relationships<a class="headerlink" href="#service-relationships" title="Permanent link">&para;</a></h2>
+<h2 id="service-relationships">Service Relationships<a class="headerlink" href="#service-relationships" title="Permanent link">#</a></h2>
 <table>
 <thead>
 <tr>
@@ -4565,7 +4699,7 @@
 </tbody>
 </table>
 <hr />
-<h2 id="configuration-in-dumb_configjson">Configuration in <code>dumb_config.json</code><a class="headerlink" href="#configuration-in-dumb_configjson" title="Permanent link">&para;</a></h2>
+<h2 id="configuration-in-dumb_configjson">Configuration in <code>dumb_config.json</code><a class="headerlink" href="#configuration-in-dumb_configjson" title="Permanent link">#</a></h2>
 <div class="highlight"><pre><span></span><code><span class="nt">&quot;prowlarr&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;instances&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">    </span><span class="nt">&quot;Default&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
@@ -4592,7 +4726,7 @@
 <span class="w">  </span><span class="p">}</span>
 <span class="p">}</span>
 </code></pre></div>
-<h3 id="key-configuration-fields">Key Configuration Fields<a class="headerlink" href="#key-configuration-fields" title="Permanent link">&para;</a></h3>
+<h3 id="key-configuration-fields">Key Configuration Fields<a class="headerlink" href="#key-configuration-fields" title="Permanent link">#</a></h3>
 <ul>
 <li><code>port</code>: Web UI port (default <code>9696</code>).</li>
 <li><code>pinned_version</code>: Optional version pin for Prowlarr updates.</li>
@@ -4604,7 +4738,7 @@
 <li><code>config_dir</code>, <code>config_file</code>, <code>log_file</code>: Paths for config and logs.</li>
 </ul>
 <hr />
-<h2 id="repo-based-installs-and-updates">Repo-based installs and updates<a class="headerlink" href="#repo-based-installs-and-updates" title="Permanent link">&para;</a></h2>
+<h2 id="repo-based-installs-and-updates">Repo-based installs and updates<a class="headerlink" href="#repo-based-installs-and-updates" title="Permanent link">#</a></h2>
 <p>Prowlarr now supports the same repo‑based controls as other DUMB services.</p>
 <ul>
 <li><strong>GitHub releases</strong>: Set <code>release_version_enabled: true</code> with a valid <code>repo_owner</code>/<code>repo_name</code>.</li>
@@ -4612,12 +4746,12 @@
 </ul>
 <p>GitHub sources take priority when enabled and are <strong>not</strong> a fallback. <code>pinned_version</code> only applies to the traditional Arr updater.</p>
 <hr />
-<h2 id="integration-with-dumb">Integration with DUMB<a class="headerlink" href="#integration-with-dumb" title="Permanent link">&para;</a></h2>
+<h2 id="integration-with-dumb">Integration with DUMB<a class="headerlink" href="#integration-with-dumb" title="Permanent link">#</a></h2>
 <ul>
 <li>Connect Prowlarr to Sonarr/Radarr/Lidarr/Whisparr via their API keys and base URLs.</li>
 <li>Prowlarr can share indexers across all Arr instances to keep setups consistent.</li>
 </ul>
-<h3 id="automated-arr-sync">Automated Arr sync<a class="headerlink" href="#automated-arr-sync" title="Permanent link">&para;</a></h3>
+<h3 id="automated-arr-sync">Automated Arr sync<a class="headerlink" href="#automated-arr-sync" title="Permanent link">#</a></h3>
 <p>DUMB can auto-configure Prowlarr applications for enabled Arr instances. It reads each Arr API key from the Arr <code>config_file</code>, waits for the services to come up, and creates the matching Prowlarr app entries (full sync). Apps are created using the Arr <code>process_name</code>.</p>
 <p>Requirements:</p>
 <ul>
@@ -4625,7 +4759,7 @@
 <li>Arr instances are enabled with a valid <code>port</code> and readable <code>config_file</code>.</li>
 <li>Prowlarr API key is available in its <code>config_file</code>.</li>
 </ul>
-<h3 id="core-service-tags">Core-service tags<a class="headerlink" href="#core-service-tags" title="Permanent link">&para;</a></h3>
+<h3 id="core-service-tags">Core-service tags<a class="headerlink" href="#core-service-tags" title="Permanent link">#</a></h3>
 <p>DUMB tags Prowlarr application entries when the Arr instance has <code>core_service</code>
 set (single value or list):</p>
 <table>
@@ -4647,12 +4781,12 @@ set (single value or list):</p>
 </tbody>
 </table>
 <p>These tags are created automatically if they do not exist.</p>
-<h3 id="indexer-routing-via-tags">Indexer routing via tags<a class="headerlink" href="#indexer-routing-via-tags" title="Permanent link">&para;</a></h3>
+<h3 id="indexer-routing-via-tags">Indexer routing via tags<a class="headerlink" href="#indexer-routing-via-tags" title="Permanent link">#</a></h3>
 <p>Prowlarr uses tags to decide which indexers sync into which Arr apps. DUMB links each Arr app
 to the tag matching its core service(s), so Decypharr and NzbDAV indexers stay separated.</p>
 <p>When you add custom indexers in Prowlarr, make sure the correct tag is applied so they sync to
 the intended Arr apps.</p>
-<h3 id="custom-indexer-sync-decypharr">Custom indexer sync (Decypharr)<a class="headerlink" href="#custom-indexer-sync-decypharr" title="Permanent link">&para;</a></h3>
+<h3 id="custom-indexer-sync-decypharr">Custom indexer sync (Decypharr)<a class="headerlink" href="#custom-indexer-sync-decypharr" title="Permanent link">#</a></h3>
 <p>When Decypharr is enabled, DUMB also syncs custom indexer definitions and creates indexers:</p>
 <ul>
 <li><strong>Zilean</strong> (Torznab) with a base URL that prefers the local Zilean instance when enabled, and
@@ -4665,12 +4799,12 @@ the intended Arr apps.</p>
 <code>&lt;prowlarr_config_dir&gt;/Definitions/Custom</code> (or <code>&lt;prowlarr_config_dir&gt;/indexer/Definitions/Custom</code> when present).</p>
 <p>Other custom indexers in the definition repository are available to add manually in Prowlarr.</p>
 <hr />
-<h2 id="accessing-the-ui">Accessing the UI<a class="headerlink" href="#accessing-the-ui" title="Permanent link">&para;</a></h2>
+<h2 id="accessing-the-ui">Accessing the UI<a class="headerlink" href="#accessing-the-ui" title="Permanent link">#</a></h2>
 <ul>
 <li>Navigate to: <code>http://&lt;host&gt;:9696</code></li>
 </ul>
 <hr />
-<h2 id="resources">Resources<a class="headerlink" href="#resources" title="Permanent link">&para;</a></h2>
+<h2 id="resources">Resources<a class="headerlink" href="#resources" title="Permanent link">#</a></h2>
 <ul>
 <li><a href="https://prowlarr.com/">Prowlarr Website</a></li>
 <li><a href="https://github.com/Prowlarr/Prowlarr">Prowlarr GitHub</a></li>
