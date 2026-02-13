@@ -300,6 +300,9 @@ CORE_SERVICE_DEPENDENCIES = {
     "profilarr": [],
 }
 
+# Temporarily hide not-ready services from onboarding core selection.
+ONBOARDING_HIDDEN_CORE_SERVICES = {"bazarr"}
+
 CORE_SERVICE_NAMES = {
     "plex": "Plex Media Server",
     "jellyfin": "Jellyfin Media Server",
@@ -4054,6 +4057,8 @@ async def get_core_services(
 
     core_services = []
     for key, display_name in CORE_SERVICE_NAMES.items():
+        if key in ONBOARDING_HIDDEN_CORE_SERVICES:
+            continue
         desc = CORE_SERVICE_DESCRIPTIONS.get(key, "No description available")
         providers = CORE_SERVICE_DEBRID_PROVIDERS.get(key, [])
         if providers:

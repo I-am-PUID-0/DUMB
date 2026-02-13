@@ -405,7 +405,10 @@ def _is_application_current(existing: dict, desired: dict) -> bool:
     for key in ("enable", "syncLevel", "implementation", "configContract"):
         if (existing.get(key) or "") != (desired.get(key) or ""):
             return False
-    if sorted(existing.get("tags") or []) != sorted(desired.get("tags") or []):
+    # Keep user-managed tags intact: only require DUMB-managed tags to be present.
+    existing_tags = {int(tag) for tag in (existing.get("tags") or []) if isinstance(tag, int)}
+    required_tags = {int(tag) for tag in (desired.get("tags") or []) if isinstance(tag, int)}
+    if not required_tags.issubset(existing_tags):
         return False
     existing_fields = {
         (f.get("name") or "").lower(): f.get("value")
@@ -803,6 +806,10 @@ def _apply_application(host: str, token: str, desired: dict, match: Optional[dic
     if match:
         app_id = match.get("id")
         put_body = desired.copy()
+        existing_tags = [tag for tag in (match.get("tags") or []) if isinstance(tag, int)]
+        desired_tags = [tag for tag in (desired.get("tags") or []) if isinstance(tag, int)]
+        # Preserve user-defined tags while ensuring managed tags are present.
+        put_body["tags"] = sorted(set(existing_tags + desired_tags))
         put_body["id"] = app_id
         _prowlarr_req(
             _join(host, f"/api/v1/applications/{app_id}"),

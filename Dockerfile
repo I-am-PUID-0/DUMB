@@ -121,7 +121,9 @@ COPY pyproject.toml poetry.lock ./
 RUN python3.11 -m venv /venv && \
     . /venv/bin/activate && \
     pip install --upgrade pip && pip install poetry && \
-    poetry config virtualenvs.create false && poetry install --no-root
+    poetry config virtualenvs.create false && poetry install --no-root && \
+    # Ensure working crypto stack in /venv so PyJWT never falls back to broken system bindings.
+    pip install --upgrade --force-reinstall "cffi>=1.16,<3.0" "cryptography>=42.0,<47.0"
 
 ####################################################################################################################################################
 # Stage 8: final-stage
