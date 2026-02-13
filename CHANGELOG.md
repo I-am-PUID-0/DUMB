@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.3.0](https://github.com/I-am-PUID-0/DUMB/compare/2.2.1...2.3.0) (2026-02-13)
+
+
+### ✨ Features
+
+* **config:** Implements deep merge for config updates ([4a39f2e](https://github.com/I-am-PUID-0/DUMB/commit/4a39f2e2c25ebca2db5e365a5eb04e9531357eb7))
+
 ## [2.2.1](https://github.com/I-am-PUID-0/DUMB/compare/2.2.0...2.2.1) (2026-02-13)
 
 
