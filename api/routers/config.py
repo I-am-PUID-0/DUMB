@@ -119,6 +119,16 @@ def find_service_config(config, service_name, parent_path=""):
     return None, None
 
 
+def _deep_merge_dict(target: Dict[str, Any], updates: Dict[str, Any]) -> Dict[str, Any]:
+    for key, value in updates.items():
+        existing = target.get(key)
+        if isinstance(existing, dict) and isinstance(value, dict):
+            _deep_merge_dict(existing, value)
+        else:
+            target[key] = value
+    return target
+
+
 def load_config_file(config_path):
     yaml = YAML(typ="rt")
     raw_config = None
@@ -579,12 +589,7 @@ async def update_config(
 
     logger.info("Performing global config update (deep merge)")
 
-    for key, value in updates.items():
-        existing = CONFIG_MANAGER.config.get(key)
-        if isinstance(value, dict) and isinstance(existing, dict):
-            existing.update(value)
-        else:
-            CONFIG_MANAGER.config[key] = value
+    _deep_merge_dict(CONFIG_MANAGER.config, updates)
 
     CONFIG_MANAGER.save_config()
     try:

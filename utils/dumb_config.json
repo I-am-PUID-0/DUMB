@@ -27,6 +27,7 @@
         "tools_open": false,
         "quick_filter": "all",
         "service_search": "",
+        "service_order": [],
         "saved_views": [],
         "active_saved_view_id": "",
         "service_shortcuts": {},

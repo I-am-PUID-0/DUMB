@@ -84,6 +84,9 @@
                 "service_search": {
                   "type": "string"
                 },
+                "service_order": {
+                  "type": "array"
+                },
                 "saved_views": {
                   "type": "array"
                 },
