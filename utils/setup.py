@@ -8,7 +8,7 @@ from utils.traefik_setup import setup_traefik
 from utils.user_management import chown_recursive, chown_single
 from utils.apt_lock import run_locked
 import xml.etree.ElementTree as ET
-import os, shutil, random, subprocess, re, glob, secrets, shlex, time, urllib.parse, base64, threading, sys, hashlib, json
+import os, shutil, random, subprocess, re, glob, secrets, shlex, time, urllib.parse, base64, threading, sys, hashlib, json, requests
 
 
 user_id = CONFIG_MANAGER.get("puid")
@@ -5323,6 +5323,75 @@ def setup_python_environment(process_handler, key, config_dir):
 
             return True, None
 
+        def _bootstrap_venv_pip(python_exec: str):
+            pip_check = subprocess.run(
+                [python_exec, "-m", "pip", "--version"],
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+            if pip_check.returncode == 0:
+                return True, None
+
+            ensurepip_result = subprocess.run(
+                [python_exec, "-m", "ensurepip", "--upgrade", "--default-pip"],
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+            if ensurepip_result.returncode == 0:
+                pip_check = subprocess.run(
+                    [python_exec, "-m", "pip", "--version"],
+                    check=False,
+                    capture_output=True,
+                    text=True,
+                )
+                if pip_check.returncode == 0:
+                    return True, None
+
+            get_pip_url = "https://bootstrap.pypa.io/get-pip.py"
+            get_pip_script = f"/tmp/get-pip-{os.getpid()}.py"
+            try:
+                response = requests.get(get_pip_url, timeout=30)
+                if response.status_code != 200:
+                    return (
+                        False,
+                        f"Failed downloading get-pip.py (status {response.status_code}).",
+                    )
+                with open(get_pip_script, "wb") as handle:
+                    handle.write(response.content)
+                run_result = subprocess.run(
+                    [python_exec, get_pip_script],
+                    check=False,
+                    capture_output=True,
+                    text=True,
+                )
+                if run_result.returncode != 0:
+                    details = (
+                        (run_result.stderr or "").strip()
+                        or (run_result.stdout or "").strip()
+                        or "unknown error"
+                    )
+                    return False, f"get-pip bootstrap failed: {details}"
+            except Exception as e:
+                return False, f"Failed to bootstrap pip in venv: {e}"
+            finally:
+                try:
+                    if os.path.exists(get_pip_script):
+                        os.remove(get_pip_script)
+                except Exception:
+                    pass
+
+            pip_check = subprocess.run(
+                [python_exec, "-m", "pip", "--version"],
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+            if pip_check.returncode != 0:
+                return False, "pip is still unavailable after bootstrap."
+            return True, None
+
         def _ensure_riven_branch_system_dependencies():
             if not _is_riven_branch_mode():
                 return True, None
@@ -5511,9 +5580,32 @@ def setup_python_environment(process_handler, key, config_dir):
         if venv_setup_error:
             return False, venv_setup_error
 
+        venv_bootstrapped_without_pip = False
         success, error = _run_setup_process(
             "python_env_setup", venv_setup_cmd
         )
+        if (
+            not success
+            and _is_riven_branch_mode()
+            and isinstance(error, str)
+            and (
+                "ensurepip" in error.lower()
+                or "returned non-zero exit status 1" in error.lower()
+            )
+        ):
+            logger.warning(
+                "python_env_setup failed during ensurepip; retrying venv creation without pip for Riven branch mode."
+            )
+            python_binary = (
+                venv_setup_cmd[0]
+                if isinstance(venv_setup_cmd, list) and venv_setup_cmd
+                else "python3.13"
+            )
+            retry_cmd = [python_binary, "-m", "venv", "--clear", "--without-pip", "venv"]
+            success, error = _run_setup_process("python_env_setup", retry_cmd)
+            if success:
+                venv_bootstrapped_without_pip = True
+
         if not success:
             return False, f"Error creating Python virtual environment: {error}"
 
@@ -5523,6 +5615,11 @@ def setup_python_environment(process_handler, key, config_dir):
         pip_executable = os.path.abspath(f"{venv_path}/bin/pip")
         base_env = os.environ.copy()
         base_env["PIP_CACHE_DIR"] = pip_cache
+
+        if _is_riven_branch_mode() and venv_bootstrapped_without_pip:
+            success, error = _bootstrap_venv_pip(python_executable)
+            if not success:
+                return False, f"Error bootstrapping pip for Python venv: {error}"
 
         if requirements_file is not None:
             install_cmd = f"{pip_executable} install -r {requirements_file}"
