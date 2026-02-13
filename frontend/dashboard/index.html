@@ -1170,6 +1170,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#tile-reordering" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tile reordering
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#system-alerts" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4481,6 +4492,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#tile-reordering" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tile reordering
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#system-alerts" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4728,6 +4750,24 @@ of service-page controls (config editors, logs, auto-restart overrides, and embe
 </ul>
 <p><img alt="Disabled services toggle" class="shadow" src="../../assets/images/frontend/disabled_services.png" /></p>
 <hr />
+<h2 id="tile-reordering">Tile reordering<a class="headerlink" href="#tile-reordering" title="Permanent link">&para;</a></h2>
+<p>You can reorder dashboard service tiles with drag-and-drop.</p>
+<ul>
+<li>Drag a tile (or use the drag handle) to move it</li>
+<li>Other tiles shift in real time while you drag</li>
+<li>The same order is applied to the Services list in the sidebar</li>
+</ul>
+<p>Order is persisted in <code>dumb_config.json</code> under:</p>
+<ul>
+<li><code>dumb.ui.sidebar.service_order</code></li>
+</ul>
+<h3 id="mobile-and-touch-behavior">Mobile and touch behavior<a class="headerlink" href="#mobile-and-touch-behavior" title="Permanent link">&para;</a></h3>
+<p>On mobile, touch reordering is protected by a lock toggle to prevent accidental tile moves while scrolling:</p>
+<ul>
+<li><strong>Reorder Off</strong> (default): touch scrolling only, no tile movement</li>
+<li><strong>Reorder On</strong>: drag-handle touch reordering is enabled</li>
+</ul>
+<hr />
 <h2 id="system-alerts">System alerts<a class="headerlink" href="#system-alerts" title="Permanent link">&para;</a></h2>
 <p>When system resources are critically high, alerts appear at the top of the dashboard:</p>
 <table>
@@ -4762,6 +4802,7 @@ of service-page controls (config editors, logs, auto-restart overrides, and embe
 <li><strong>Metrics</strong> - System monitoring</li>
 <li><strong>Onboarding</strong> - Re-run setup wizard</li>
 </ul>
+<p>The Services section follows the same persisted <code>service_order</code> used by dashboard tiles.</p>
 <hr />
 <h2 id="related-pages">Related pages<a class="headerlink" href="#related-pages" title="Permanent link">&para;</a></h2>
 <ul>

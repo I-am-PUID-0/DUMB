@@ -4921,6 +4921,11 @@ The selection is stored in the UI preferences.</p>
 <li><strong>Collapsible Sidebar tools</strong> section to keep controls hidden when not needed</li>
 </ul>
 <p>These controls are persisted in <code>dumb_config.json</code> under <code>dumb.ui.sidebar</code> (with local state used as a fallback during initial load) and are intended for power-user workflows across many services.</p>
+<p>The same sidebar preference block also includes persisted dashboard tile ordering at:</p>
+<ul>
+<li><code>dumb.ui.sidebar.service_order</code></li>
+</ul>
+<p>Tile order is written from dashboard drag-and-drop actions and then consumed by both the dashboard and the sidebar service list.</p>
 <hr />
 <h2 id="related-pages">Related pages<a class="headerlink" href="#related-pages" title="Permanent link">&para;</a></h2>
 <ul>
