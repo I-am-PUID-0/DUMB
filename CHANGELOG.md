@@ -1,5 +1,19 @@
 # Changelog
 
+## [2.2.1](https://github.com/I-am-PUID-0/DUMB/compare/2.2.0...2.2.1) (2026-02-13)
+
+
+### 🐛 Bug Fixes
+
+* **dev:** Upgrades cffi and cryptography to ensure a working crypto stack. ([4bcf962](https://github.com/I-am-PUID-0/DUMB/commit/4bcf96285ddf45a0f2e00aac18005baa56359de7))
+* **prowlarr:** Preserves user-defined tags in Prowlarr application settings while ensuring managed tags are present. This prevents the system from removing tags manually added by the user. ([4bcf962](https://github.com/I-am-PUID-0/DUMB/commit/4bcf96285ddf45a0f2e00aac18005baa56359de7))
+
+
+### 🤡 Other Changes
+
+* **deps:** update fastapi and platformdirs versions to 0.129.0 and 4.7.0 respectively ([b259a48](https://github.com/I-am-PUID-0/DUMB/commit/b259a48cf1ad840adfa6b9434a504b3cfe4415e0))
+* **deps:** update packaging and websockets version constraints in pyproject.toml ([e9c95f0](https://github.com/I-am-PUID-0/DUMB/commit/e9c95f08ae98327a006f889bafe34d2a287668ec))
+
 ## [2.2.0](https://github.com/I-am-PUID-0/DUMB/compare/2.1.0...2.2.0) (2026-02-12)
 
 
