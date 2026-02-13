@@ -300,6 +300,30 @@ CORE_SERVICE_DEPENDENCIES = {
     "profilarr": [],
 }
 
+
+def _effective_core_dependencies(
+    core_key: str, config_obj: Optional[Dict[str, Any]] = None
+) -> List[str]:
+    deps = list(CORE_SERVICE_DEPENDENCIES.get(core_key, []))
+    cfg = (
+        config_obj
+        if isinstance(config_obj, dict)
+        else (CONFIG_MANAGER.config.get(core_key, {}) or {})
+    )
+
+    if core_key == "decypharr":
+        branch_name = _normalize_dep_token(cfg.get("branch") or "")
+        mount_type = _normalize_dep_token(cfg.get("mount_type") or "")
+        if not mount_type:
+            mount_type = "dfs" if branch_name == "beta" else "rclone"
+        if mount_type in {"rclone", "dfs", "none"}:
+            deps = [dep for dep in deps if dep != "rclone"]
+
+    if core_key == "riven_backend" and bool(cfg.get("branch_enabled")):
+        deps = [dep for dep in deps if dep not in {"zurg", "rclone"}]
+
+    return deps
+
 # Temporarily hide not-ready services from onboarding core selection.
 ONBOARDING_HIDDEN_CORE_SERVICES = {"bazarr"}
 
@@ -700,7 +724,7 @@ def dependency_graph(
         core_entry = {
             "key": target_key,
             "name": CORE_SERVICE_NAMES.get(target_key) or target.get("name") or target_proc_name,
-            "dependencies": CORE_SERVICE_DEPENDENCIES.get(target_key, []),
+            "dependencies": _effective_core_dependencies(target_key, target_config),
         }
 
         def resolve_ref_entries(refs: list[str], source_core_refs: list[str]) -> list[dict]:
@@ -991,14 +1015,7 @@ def dependency_graph(
             if (has_core_deps or has_non_core_deps or has_conditional_deps)
             else "dependency"
         )
-        static_dependencies = CORE_SERVICE_DEPENDENCIES.get(target_key, [])
-        if target_key == "decypharr":
-            branch_name = _normalize_dep_token(target_config.get("branch") or "")
-            mount_type = _normalize_dep_token(target_config.get("mount_type") or "")
-            if not mount_type:
-                mount_type = "dfs" if branch_name == "beta" else "rclone"
-            if mount_type in {"rclone", "dfs", "none"}:
-                static_dependencies = [dep for dep in static_dependencies if dep != "rclone"]
+        static_dependencies = _effective_core_dependencies(target_key, target_config)
 
         dependency_rows = []
         for dep_key in static_dependencies:
@@ -1111,8 +1128,14 @@ def dependency_graph(
         dependent_rows = []
         dependent_keys = [
             core_key
-            for core_key, deps in CORE_SERVICE_DEPENDENCIES.items()
-            if target_key in [_normalize_dep_token(dep) for dep in deps]
+            for core_key in CORE_SERVICE_DEPENDENCIES.keys()
+            if target_key
+            in [
+                _normalize_dep_token(dep)
+                for dep in _effective_core_dependencies(
+                    core_key, CONFIG_MANAGER.config.get(core_key, {}) or {}
+                )
+            ]
         ]
         if target_key in DEPENDENCY_INSTANCE_SCOPED_KEYS:
             attached_cores = {
@@ -1124,9 +1147,14 @@ def dependency_graph(
         for core_key in sorted(set(dependent_keys)):
             core_entries = by_config_key.get(core_key, [])
             core_state = _dep_state_for_entries(core_entries, status_by_process)
+            core_cfg = (
+                core_entries[0].get("config")
+                if core_entries and isinstance(core_entries[0].get("config"), dict)
+                else (CONFIG_MANAGER.config.get(core_key, {}) or {})
+            )
             core_deps = [
                 _normalize_dep_token(dep)
-                for dep in CORE_SERVICE_DEPENDENCIES.get(core_key, [])
+                for dep in _effective_core_dependencies(core_key, core_cfg)
             ]
             missing = []
             for dep in core_deps:
@@ -1196,7 +1224,11 @@ def dependency_graph(
             all_deps_for_svc = {
                 _normalize_dep_token(d)
                 for d in (
-                    list(CORE_SERVICE_DEPENDENCIES.get(svc_key, []))
+                    list(
+                        _effective_core_dependencies(
+                            svc_key, CONFIG_MANAGER.config.get(svc_key, {}) or {}
+                        )
+                    )
                     + list(filtered_cond_deps)
                     + list(NON_CORE_HARD_DEPENDENCIES.get(svc_key, []))
                 )
@@ -1560,9 +1592,11 @@ def dependency_graph(
                 {
                     "name": CORE_SERVICE_NAMES.get(key, key),
                     "key": key,
-                    "dependencies": deps,
+                    "dependencies": _effective_core_dependencies(
+                        key, CONFIG_MANAGER.config.get(key, {}) or {}
+                    ),
                 }
-                for key, deps in CORE_SERVICE_DEPENDENCIES.items()
+                for key in CORE_SERVICE_DEPENDENCIES.keys()
             ],
             "processes": processes,
             "statuses": status_by_process,
@@ -3436,7 +3470,9 @@ def _run_startup(request: UnifiedStartRequest, updater, api_state, logger):
             # Validate core service
             if config_key not in CORE_SERVICE_DEPENDENCIES:
                 raise HTTPException(400, detail=f"{process_name} is not a core service")
-            dependencies = CORE_SERVICE_DEPENDENCIES[config_key]
+            dependencies = _effective_core_dependencies(
+                config_key, config.get(config_key, {}) or {}
+            )
 
             # ---- Determine effective options for this core service BEFORE deps ----
             # don't mutate config here; just compute the effective value by peeking
@@ -4093,7 +4129,7 @@ async def get_core_services(
             }
 
         # Dependencies (keep your current behavior)
-        for dep in CORE_SERVICE_DEPENDENCIES.get(key, []):
+        for dep in _effective_core_dependencies(key, core_block):
             if dep in ("zurg", "rclone"):
                 instances = default_conf.get(dep, {}).get("instances", {})
                 inst_cfg = next(
@@ -4128,7 +4164,7 @@ async def get_core_services(
             {
                 "name": display_name,
                 "key": key,
-                "dependencies": CORE_SERVICE_DEPENDENCIES.get(key, []),
+                "dependencies": _effective_core_dependencies(key, core_block),
                 "description": desc,
                 "debrid_providers": providers,
                 "service_options": svc_opts,
@@ -4160,7 +4196,13 @@ async def get_optional_services(
     )
 
     core_deps = (
-        set(CORE_SERVICE_DEPENDENCIES.get(core_service, [])) if core_service else set()
+        set(
+            _effective_core_dependencies(
+                core_service, CONFIG_MANAGER.config.get(core_service, {}) or {}
+            )
+        )
+        if core_service
+        else set()
     )
     picked = set(optional_services)
 

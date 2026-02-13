@@ -530,6 +530,11 @@ class ProcessHandler:
                     except Exception:
                         stderr_output = ""
 
+                # Preserve immediate-exit details so callers can surface useful setup errors.
+                self.returncode = process.returncode
+                self.stdout = stdout_output
+                self.stderr = stderr_output
+
                 if process.returncode == 0:
                     self.logger.info(
                         f"{process_name} completed shortly after start with return code 0"

@@ -6,8 +6,9 @@ from utils.versions import Versions
 from utils.plex import PlexInstaller
 from utils.traefik_setup import setup_traefik
 from utils.user_management import chown_recursive, chown_single
+from utils.apt_lock import run_locked
 import xml.etree.ElementTree as ET
-import os, shutil, random, subprocess, re, glob, secrets, shlex, time, urllib.parse, base64, threading, sys, hashlib
+import os, shutil, random, subprocess, re, glob, secrets, shlex, time, urllib.parse, base64, threading, sys, hashlib, json
 
 
 user_id = CONFIG_MANAGER.get("puid")
@@ -244,6 +245,71 @@ def setup_release_version(process_handler, config, process_name, key):
 
 
 def setup_branch_version(process_handler, config, process_name, key):
+    def _branch_state_path(target_dir: str, service_key: str) -> str:
+        state_dir = "/config/.dumb_branch_state"
+        os.makedirs(state_dir, exist_ok=True)
+        return os.path.join(state_dir, f"{service_key}.json")
+
+    def _legacy_branch_state_path(target_dir: str) -> str:
+        return os.path.join(target_dir, ".dumb_branch_state.json")
+
+    def _read_branch_state(target_dir: str, service_key: str) -> dict:
+        for state_path in (
+            _branch_state_path(target_dir, service_key),
+            _legacy_branch_state_path(target_dir),
+        ):
+            if not os.path.isfile(state_path):
+                continue
+            try:
+                with open(state_path, "r") as f:
+                    data = json.load(f)
+                if isinstance(data, dict):
+                    return data
+            except Exception as e:
+                logger.debug("Failed reading branch state at %s: %s", state_path, e)
+        return {}
+
+    def _write_branch_state(target_dir: str, service_key: str, state: dict):
+        state_path = _branch_state_path(target_dir, service_key)
+        try:
+            with open(state_path, "w") as f:
+                json.dump(state, f, indent=2)
+            chown_single(os.path.dirname(state_path), user_id, group_id)
+            chown_single(state_path, user_id, group_id)
+        except Exception as e:
+            logger.debug("Failed writing branch state at %s: %s", state_path, e)
+
+    def _fetch_branch_head_sha(repo_owner: str, repo_name: str, branch: str):
+        try:
+            headers = downloader.get_headers()
+            branch_ref = urllib.parse.quote(str(branch or "").strip(), safe="")
+            api_url = (
+                f"https://api.github.com/repos/{repo_owner}/{repo_name}/commits/{branch_ref}"
+            )
+            response = downloader.fetch_with_retries(api_url, headers)
+            if response and response.status_code == 200:
+                data = response.json() if hasattr(response, "json") else {}
+                sha = (data or {}).get("sha")
+                if sha:
+                    return sha, None
+            status = response.status_code if response is not None else "no_response"
+            return None, f"Unable to resolve branch head sha (status: {status})"
+        except Exception as e:
+            return None, f"Error resolving branch head sha: {e}"
+
+    def _has_riven_runtime_artifacts(target_dir: str, service_key: str) -> bool:
+        if service_key == "riven_backend":
+            return (
+                os.path.isfile(os.path.join(target_dir, "pyproject.toml"))
+                and os.path.isfile(os.path.join(target_dir, "venv", "bin", "python"))
+            )
+        if service_key == "riven_frontend":
+            build_path = os.path.join(target_dir, "build")
+            return os.path.isfile(os.path.join(target_dir, "package.json")) and (
+                os.path.isfile(build_path) or os.path.isdir(build_path)
+            )
+        return False
+
     if key in [
         "bazarr",
         "sonarr",
@@ -265,6 +331,33 @@ def setup_branch_version(process_handler, config, process_name, key):
         )
         if not branch_url:
             return False, f"Failed to fetch branch {config['branch']}"
+
+        if key in {"riven_backend", "riven_frontend"}:
+            current_sha, sha_error = _fetch_branch_head_sha(
+                config["repo_owner"], config["repo_name"], config["branch"]
+            )
+            if current_sha:
+                previous_state = _read_branch_state(target_dir, key)
+                if (
+                    previous_state.get("repo_owner") == config["repo_owner"]
+                    and previous_state.get("repo_name") == config["repo_name"]
+                    and previous_state.get("branch") == config["branch"]
+                    and previous_state.get("commit_sha") == current_sha
+                    and _has_riven_runtime_artifacts(target_dir, key)
+                ):
+                    logger.info(
+                        "Branch '%s' unchanged for %s (%s); skipping reinstall/setup.",
+                        config["branch"],
+                        process_name,
+                        current_sha[:8],
+                    )
+                    return True, None
+            elif sha_error:
+                logger.debug(
+                    "Branch head SHA lookup failed for %s: %s. Continuing with install.",
+                    process_name,
+                    sha_error,
+                )
 
         exclude_dirs = None
         if config.get("clear_on_update"):
@@ -293,6 +386,23 @@ def setup_branch_version(process_handler, config, process_name, key):
         success, error = additional_setup(process_handler, process_name, config, key)
         if not success:
             return False, error
+
+        if key in {"riven_backend", "riven_frontend"}:
+            current_sha, _ = _fetch_branch_head_sha(
+                config["repo_owner"], config["repo_name"], config["branch"]
+            )
+            if current_sha:
+                _write_branch_state(
+                    target_dir,
+                    key,
+                    {
+                        "repo_owner": config["repo_owner"],
+                        "repo_name": config["repo_name"],
+                        "branch": config["branch"],
+                        "commit_sha": current_sha,
+                        "updated_at": int(time.time()),
+                    },
+                )
 
     return True, None
 
@@ -733,6 +843,10 @@ def _setup_project(
             )
             config["env"] = existing_env
         if configure_phase and key == "riven_backend":
+            success, error = fuse_config()
+            if not success:
+                return False, f"Failed to configure FUSE for Riven Backend: {error}"
+
             port = str(config.get("port", 8080))
             command = config.get("command", [])
             if not isinstance(command, list):
@@ -5173,6 +5287,194 @@ def copy_server_config(source, destination):
 
 def setup_python_environment(process_handler, key, config_dir):
     try:
+        def _is_riven_branch_mode():
+            if key != "riven_backend":
+                return False
+            riven_cfg = CONFIG_MANAGER.get("riven_backend") or {}
+            return bool(riven_cfg.get("branch_enabled"))
+
+        def _format_process_error(prefix):
+            details = []
+            if process_handler.stderr:
+                details.append(process_handler.stderr.strip())
+            if process_handler.stdout:
+                details.append(process_handler.stdout.strip())
+            if details:
+                return f"{prefix}: {' | '.join([d for d in details if d])}"
+            return prefix
+
+        def _run_setup_process(name, command, env=None, suppress_logging=False):
+            success, error = process_handler.start_process(
+                name,
+                config_dir,
+                command,
+                None,
+                suppress_logging,
+                env=env,
+            )
+            if not success:
+                return False, _format_process_error(error or f"{name} failed")
+
+            process_handler.wait(name)
+            if process_handler.returncode != 0:
+                return False, _format_process_error(
+                    f"{name} failed with return code {process_handler.returncode}"
+                )
+
+            return True, None
+
+        def _ensure_riven_branch_system_dependencies():
+            if not _is_riven_branch_mode():
+                return True, None
+
+            has_pkg_config = bool(shutil.which("pkg-config"))
+            has_fuse3_pc = False
+            if has_pkg_config:
+                try:
+                    has_fuse3_pc = (
+                        subprocess.run(
+                            ["pkg-config", "--exists", "fuse3"],
+                            check=False,
+                            capture_output=True,
+                        ).returncode
+                        == 0
+                    )
+                except Exception:
+                    has_fuse3_pc = False
+            has_compiler = bool(shutil.which("gcc"))
+
+            if has_pkg_config and has_fuse3_pc and has_compiler:
+                return True, None
+
+            logger.info(
+                "Riven Backend branch install requires FUSE3 build deps; attempting to install system packages."
+            )
+            apt_prefix = ["apt"] if os.geteuid() == 0 else ["sudo", "apt"]
+            packages = [
+                "pkg-config",
+                "libfuse3-dev",
+                "build-essential",
+                "python3.13-dev",
+            ]
+            try:
+                run_locked(
+                    apt_prefix + ["update"],
+                    check=True,
+                    capture_output=True,
+                    text=True,
+                )
+                run_locked(
+                    apt_prefix + ["install", "-y"] + packages,
+                    check=True,
+                    capture_output=True,
+                    text=True,
+                )
+            except FileNotFoundError as exc:
+                return (
+                    False,
+                    f"Unable to install Riven system dependencies automatically ({exc}). Install: {' '.join(packages)}",
+                )
+            except subprocess.CalledProcessError as exc:
+                stderr = (exc.stderr or "").strip()
+                stdout = (exc.stdout or "").strip()
+                details = stderr or stdout or str(exc)
+                return (
+                    False,
+                    f"Failed to install Riven system dependencies ({' '.join(packages)}): {details}",
+                )
+
+            if not shutil.which("pkg-config"):
+                return False, "pkg-config not found after dependency install."
+            try:
+                fuse_ok = (
+                    subprocess.run(
+                        ["pkg-config", "--exists", "fuse3"],
+                        check=False,
+                        capture_output=True,
+                    ).returncode
+                    == 0
+                )
+            except Exception:
+                fuse_ok = False
+            if not fuse_ok:
+                return False, "fuse3 pkg-config metadata not found after dependency install."
+
+            return True, None
+
+        def _resolve_python_venv_command():
+            if key != "riven_backend":
+                return ["python", "-m", "venv", "venv"], None
+
+            if not _is_riven_branch_mode():
+                return ["python", "-m", "venv", "venv"], None
+
+            preferred_python = "python3.13"
+            if shutil.which(preferred_python):
+                existing_venv_python = os.path.join(config_dir, "venv", "bin", "python")
+                if os.path.exists(existing_venv_python):
+                    existing_ver = ""
+                    try:
+                        existing_ver = (
+                            subprocess.check_output(
+                                [
+                                    existing_venv_python,
+                                    "-c",
+                                    "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')",
+                                ],
+                                text=True,
+                            )
+                            .strip()
+                        )
+                    except Exception:
+                        existing_ver = ""
+
+                    if existing_ver != "3.13":
+                        logger.info(
+                            "Existing Riven Backend venv uses Python %s; recreating with python3.13.",
+                            existing_ver or "unknown",
+                        )
+                        return [preferred_python, "-m", "venv", "--clear", "venv"], None
+
+                return [preferred_python, "-m", "venv", "venv"], None
+
+            logger.info(
+                "Riven Backend branch install requires Python ~=3.13.0; attempting to install python3.13."
+            )
+            apt_prefix = ["apt"] if os.geteuid() == 0 else ["sudo", "apt"]
+            try:
+                run_locked(
+                    apt_prefix + ["update"],
+                    check=True,
+                    capture_output=True,
+                    text=True,
+                )
+                run_locked(
+                    apt_prefix + ["install", "-y", "python3.13", "python3.13-venv"],
+                    check=True,
+                    capture_output=True,
+                    text=True,
+                )
+            except FileNotFoundError as exc:
+                return (
+                    None,
+                    f"Unable to install python3.13 automatically ({exc}). Install python3.13/python3.13-venv and retry.",
+                )
+            except subprocess.CalledProcessError as exc:
+                stderr = (exc.stderr or "").strip()
+                stdout = (exc.stdout or "").strip()
+                details = stderr or stdout or str(exc)
+                return (
+                    None,
+                    f"Failed to install python3.13 for Riven Backend branch setup: {details}",
+                )
+
+            if not shutil.which(preferred_python):
+                return (
+                    None,
+                    "python3.13 installation completed but executable was not found in PATH.",
+                )
+
+            return [preferred_python, "-m", "venv", "--clear", "venv"], None
 
         requirements_file = (
             os.path.join(config_dir, "requirements.txt")
@@ -5201,16 +5503,20 @@ def setup_python_environment(process_handler, key, config_dir):
         chown_single(pip_cache, user_id, group_id)
         chown_single(poetry_cache, user_id, group_id)
 
-        process_handler.start_process(
-            "python_env_setup", config_dir, ["python", "-m", "venv", "venv"]
-        )
-        process_handler.wait("python_env_setup")
+        success, error = _ensure_riven_branch_system_dependencies()
+        if not success:
+            return False, error
 
-        if process_handler.returncode != 0:
-            return (
-                False,
-                f"Error creating Python virtual environment: {process_handler.stderr}",
-            )
+        venv_setup_cmd, venv_setup_error = _resolve_python_venv_command()
+        if venv_setup_error:
+            return False, venv_setup_error
+
+        success, error = _run_setup_process(
+            "python_env_setup", venv_setup_cmd
+        )
+        if not success:
+            return False, f"Error creating Python virtual environment: {error}"
+
         logger.debug(f"venv_path: {venv_path} for {key}")
         python_executable = os.path.abspath(f"{venv_path}/bin/python")
         poetry_executable = os.path.abspath(f"{venv_path}/bin/poetry")
@@ -5221,16 +5527,13 @@ def setup_python_environment(process_handler, key, config_dir):
         if requirements_file is not None:
             install_cmd = f"{pip_executable} install -r {requirements_file}"
             logger.debug(f"Installing requirements from {requirements_file} for {key}")
-            process_handler.start_process(
+            success, error = _run_setup_process(
                 "install_requirements",
-                config_dir,
                 ["/bin/bash", "-c", install_cmd],
                 env=base_env,
             )
-            process_handler.wait("install_requirements")
-
-            if process_handler.returncode != 0:
-                return False, f"Error installing requirements: {process_handler.stderr}"
+            if not success:
+                return False, f"Error installing requirements: {error}"
 
             logger.info(f"Installed requirements from {requirements_file}")
 
@@ -5246,18 +5549,14 @@ def setup_python_environment(process_handler, key, config_dir):
                 cache_root, "pypoetry", "virtualenvs"
             )
 
-            process_handler.start_process(
+            success, error = _run_setup_process(
                 "install_poetry",
-                config_dir,
                 [python_executable, "-m", "pip", "install", "poetry"],
-                None,
-                False,
+                suppress_logging=False,
                 env=env,
             )
-            process_handler.wait("install_poetry")
-
-            if process_handler.returncode != 0:
-                return False, f"Error installing Poetry: {process_handler.stderr}"
+            if not success:
+                return False, f"Error installing Poetry: {error}"
 
             success, error = _maybe_patch_riven_plexapi_dependency(
                 process_handler, key, config_dir, poetry_executable, env
@@ -5265,18 +5564,24 @@ def setup_python_environment(process_handler, key, config_dir):
             if not success:
                 return False, error
 
-            process_handler.start_process(
+            success, error = _run_setup_process(
                 "poetry_install",
-                config_dir,
                 [poetry_executable, "install", "--no-root", "--without", "dev"],
-                None,
-                False,
+                suppress_logging=False,
                 env=env,
             )
-            process_handler.wait("poetry_install")
-
-            if process_handler.returncode != 0:
-                return False, f"Error installing dependencies with Poetry"
+            if not success:
+                if (
+                    key == "riven_backend"
+                    and process_handler.stderr
+                    and "Current Python version" in process_handler.stderr
+                    and "is not allowed by the project" in process_handler.stderr
+                ):
+                    return (
+                        False,
+                        f"Riven Backend requires a newer Python runtime for this branch. {error}",
+                    )
+                return False, f"Error installing dependencies with Poetry: {error}"
 
             logger.info(f"Poetry environment setup complete at {venv_path}")
 
@@ -5359,33 +5664,56 @@ def setup_dotnet_environment(
 def vite_modifications(config_dir):
     try:
         vite_config_path = os.path.join(config_dir, "vite.config.ts")
-        with open(vite_config_path, "r") as file:
-            lines = file.readlines()
-        build_section_exists = any("build:" in line for line in lines)
-        if not build_section_exists:
-            for i, line in enumerate(lines):
-                if line.strip().startswith("export default defineConfig({"):
-                    lines.insert(i + 1, "    build: {\n        minify: false\n    },\n")
-                    break
-        with open(vite_config_path, "w") as file:
-            file.writelines(lines)
-        logger.debug("vite.config.ts modified to disable minification")
+        if os.path.isfile(vite_config_path):
+            with open(vite_config_path, "r") as file:
+                lines = file.readlines()
+            build_section_exists = any("build:" in line for line in lines)
+            if not build_section_exists:
+                for i, line in enumerate(lines):
+                    if line.strip().startswith("export default defineConfig({"):
+                        lines.insert(
+                            i + 1, "    build: {\n        minify: false\n    },\n"
+                        )
+                        break
+            with open(vite_config_path, "w") as file:
+                file.writelines(lines)
+            logger.debug("vite.config.ts modified to disable minification")
+        else:
+            logger.info(
+                "vite.config.ts not found at %s; skipping vite minify patch.",
+                vite_config_path,
+            )
+
         about_page_path = os.path.join(
             config_dir, "src", "routes", "settings", "about", "+page.server.ts"
         )
-        with open(about_page_path, "r") as file:
-            about_page_lines = file.readlines()
-        for i, line in enumerate(about_page_lines):
-            if "versionFilePath: string = '/riven/version.txt';" in line:
-                about_page_lines[i] = line.replace(
-                    "/riven/version.txt", "/riven/frontend/version.txt"
-                )
+        if os.path.isfile(about_page_path):
+            with open(about_page_path, "r") as file:
+                about_page_lines = file.readlines()
+            modified_version_path = False
+            for i, line in enumerate(about_page_lines):
+                if "versionFilePath: string = '/riven/version.txt';" in line:
+                    about_page_lines[i] = line.replace(
+                        "/riven/version.txt", "/riven/frontend/version.txt"
+                    )
+                    modified_version_path = True
+                    logger.debug(
+                        "Modified versionFilePath in +page.server.ts to point to /riven/frontend/version.txt"
+                    )
+                    break
+            if modified_version_path:
+                with open(about_page_path, "w") as file:
+                    file.writelines(about_page_lines)
+            else:
                 logger.debug(
-                    f"Modified versionFilePath in +page.ts to point to /riven/frontend/version.txt"
+                    "No versionFilePath override needed in %s; leaving file unchanged.",
+                    about_page_path,
                 )
-                break
-        with open(about_page_path, "w") as file:
-            file.writelines(about_page_lines)
+        else:
+            logger.info(
+                "Riven about page server file not found at %s; skipping versionFilePath patch.",
+                about_page_path,
+            )
         return True, None
 
     except Exception as e:

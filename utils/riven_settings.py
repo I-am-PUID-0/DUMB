@@ -21,6 +21,7 @@ def parse_config_keys(config):
     config_keys = {
         "DOWNLOADERS_REAL_DEBRID_API_KEY": None,
         "DOWNLOADERS_ALL_DEBRID_API_KEY": None,
+        "DOWNLOADERS_DEBRID_LINK_API_KEY": None,
         "DOWNLOADERS_TORBOX_API_KEY": None,
         "SYMLINK_RCLONE_PATH": None,
     }
@@ -31,6 +32,8 @@ def parse_config_keys(config):
     key_map = {
         "realdebrid": "DOWNLOADERS_REAL_DEBRID_API_KEY",
         "alldebrid": "DOWNLOADERS_ALL_DEBRID_API_KEY",
+        "debrid link": "DOWNLOADERS_DEBRID_LINK_API_KEY",
+        "debridlink": "DOWNLOADERS_DEBRID_LINK_API_KEY",
         "torbox": "DOWNLOADERS_TORBOX_API_KEY",
     }
 
@@ -155,8 +158,19 @@ def set_env_variables():
     keys = parse_config_keys(CONFIG_MANAGER.config)
     real_debrid_api_key = keys.get("DOWNLOADERS_REAL_DEBRID_API_KEY")
     all_debrid_api_key = keys.get("DOWNLOADERS_ALL_DEBRID_API_KEY")
+    debrid_link_api_key = keys.get("DOWNLOADERS_DEBRID_LINK_API_KEY")
     torbox_api_key = keys.get("DOWNLOADERS_TORBOX_API_KEY")
     symlink_rclone_path = keys.get("SYMLINK_RCLONE_PATH")
+    riven_branch_enabled = bool(riven_backend_config.get("branch_enabled"))
+    # Branch-enabled Riven mounts and serves its own VFS directly.
+    riven_library_path = (
+        "/mnt/debrid/riven"
+        if riven_branch_enabled
+        else (riven_backend_config.get("symlink_library_path") or symlink_rclone_path)
+    )
+    riven_mount_path = (
+        "/mnt/debrid/riven" if riven_branch_enabled else symlink_rclone_path
+    )
 
     def set_env(key, value, default=None):
         try:
@@ -183,6 +197,7 @@ def set_env_variables():
     env_vars = {
         "RIVEN_DOWNLOADERS_REAL_DEBRID_API_KEY": real_debrid_api_key,
         "RIVEN_DOWNLOADERS_ALL_DEBRID_API_KEY": all_debrid_api_key,
+        "RIVEN_DOWNLOADERS_DEBRID_LINK_API_KEY": debrid_link_api_key,
         "RIVEN_DOWNLOADERS_TORBOX_API_KEY": torbox_api_key,
         "RIVEN_UPDATERS_PLEX_URL": (
             None
@@ -192,8 +207,12 @@ def set_env_variables():
         "RIVEN_UPDATERS_PLEX_TOKEN": (
             None if not dumb_config.get("plex_token") else dumb_config.get("plex_token")
         ),
-        "RIVEN_SYMLINK_RCLONE_PATH": symlink_rclone_path,
-        "RIVEN_SYMLINK_LIBRARY_PATH": riven_backend_config.get("symlink_library_path"),
+        # New Riven settings schema paths.
+        "RIVEN_FILESYSTEM_MOUNT_PATH": riven_mount_path,
+        "RIVEN_UPDATERS_LIBRARY_PATH": riven_library_path,
+        # Legacy schema paths (kept for backward compatibility).
+        "RIVEN_SYMLINK_RCLONE_PATH": riven_mount_path,
+        "RIVEN_SYMLINK_LIBRARY_PATH": riven_library_path,
         "BACKEND_URL": f"http://{riven_backend_config.get('host')}:{riven_backend_config.get('port')}",
         "RIVEN_DATABASE_URL": f"postgres://{postgres_config.get('user')}:{postgres_config.get('password')}@{postgres_config.get('host')}:{postgres_port}/riven",
         "RIVEN_DATABASE_HOST": f"postgresql+psycopg2://{postgres_config.get('user')}:{postgres_config.get('password')}@{postgres_config.get('host')}:{postgres_port}/riven",
@@ -230,6 +249,7 @@ def get_backend_urls():
     return {
         "settings_url": settings_url,
         "set_url": f"{settings_url}/set",
+        "set_all_url": f"{settings_url}/set/all",
         "save_url": f"{settings_url}/save",
         "get_all": f"{settings_url}/get/all",
     }
@@ -386,12 +406,45 @@ def load_settings():
             return
 
         set_url = urls["set_url"]
+        set_all_url = urls["set_all_url"]
         save_url = urls["save_url"]
         max_retries = 10
         for attempt in range(max_retries):
             try:
-                response = requests.post(set_url, json=payload, headers=headers)
-                if response.status_code == 200:
+                update_ok = False
+
+                # Newer Riven API shape (branch builds): /settings/set/all with nested object.
+                if updated_settings:
+                    response = requests.post(
+                        set_all_url, json=updated_settings, headers=headers
+                    )
+                    if response.status_code == 200:
+                        update_ok = True
+                    elif response.status_code in (404, 405, 422):
+                        logger.info(
+                            "Riven set/all endpoint unavailable or incompatible (status %s); falling back to legacy set endpoint.",
+                            response.status_code,
+                        )
+                    else:
+                        logger.error(
+                            "Failed to set settings via set/all: status %s, response: %s",
+                            response.status_code,
+                            response.text,
+                        )
+
+                # Legacy Riven API shape: /settings/set with [{key, value}, ...] payload.
+                if not update_ok:
+                    response = requests.post(set_url, json=payload, headers=headers)
+                    if response.status_code == 200:
+                        update_ok = True
+                    else:
+                        logger.error(
+                            "Failed to set settings via legacy set endpoint: status %s, response: %s",
+                            response.status_code,
+                            response.text,
+                        )
+
+                if update_ok:
                     save_response = requests.post(save_url, headers=headers)
                     if save_response.status_code == 200:
                         logger.info("Settings saved successfully.")
@@ -399,7 +452,7 @@ def load_settings():
                         logger.error(f"Failed to save settings: {save_response.text}")
                     break
                 else:
-                    logger.error(f"Failed to set settings: {response.text}")
+                    logger.error("Failed to set settings on attempt %s.", attempt + 1)
             except requests.ConnectionError as e:
                 logger.error(f"Error loading Riven settings: {e}")
                 if attempt < max_retries - 1:
