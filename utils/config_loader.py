@@ -47,7 +47,7 @@ class ConfigManager:
                 os.fchmod(fd, st.st_mode & 0o777)
                 if hasattr(os, "fchown"):
                     os.fchown(fd, st.st_uid, st.st_gid)
-            except (FileNotFoundError, PermissionError):
+            except OSError:
                 pass
             with os.fdopen(fd, "w") as tmp_file:
                 dump(data, tmp_file, indent=4)
