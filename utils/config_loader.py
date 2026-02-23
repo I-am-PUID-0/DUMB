@@ -35,10 +35,20 @@ class ConfigManager:
         Writes to a temp file in the same directory, then calls os.replace()
         which maps to a single rename(2) syscall that cannot be interrupted.
         The previous file remains intact until the rename succeeds.
+
+        Preserves the original file's mode and ownership (when permitted) so
+        permissions don't silently degrade to mkstemp's default 0o600 over time.
         """
         dir_name = os.path.dirname(self.file_path)
         fd, tmp_path = tempfile.mkstemp(dir=dir_name, suffix=".tmp")
         try:
+            try:
+                st = os.stat(self.file_path)
+                os.fchmod(fd, st.st_mode & 0o777)
+                if hasattr(os, "fchown"):
+                    os.fchown(fd, st.st_uid, st.st_gid)
+            except (FileNotFoundError, PermissionError):
+                pass
             with os.fdopen(fd, "w") as tmp_file:
                 dump(data, tmp_file, indent=4)
             os.replace(tmp_path, self.file_path)
