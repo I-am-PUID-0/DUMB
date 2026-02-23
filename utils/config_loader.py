@@ -1,4 +1,4 @@
-import os, shutil, copy, time
+import os, shutil, copy, time, tempfile
 from json import load, dump, JSONDecodeError
 from jsonschema import validate, ValidationError
 from dotenv import load_dotenv, find_dotenv
@@ -28,6 +28,26 @@ class ConfigManager:
         # self.update_config_with_top_level_defaults()
         self.schema = self._load_schema()
         self.config = self._load_and_validate_config()
+
+    def _atomic_write(self, data):
+        """Write config atomically to prevent corruption on crash or kill signal.
+
+        Writes to a temp file in the same directory, then calls os.replace()
+        which maps to a single rename(2) syscall that cannot be interrupted.
+        The previous file remains intact until the rename succeeds.
+        """
+        dir_name = os.path.dirname(self.file_path)
+        fd, tmp_path = tempfile.mkstemp(dir=dir_name, suffix=".tmp")
+        try:
+            with os.fdopen(fd, "w") as tmp_file:
+                dump(data, tmp_file, indent=4)
+            os.replace(tmp_path, self.file_path)
+        except Exception:
+            try:
+                os.unlink(tmp_path)
+            except OSError:
+                pass
+            raise
 
     def _load_schema(self):
         with open(self.schema_path, "r") as schema_file:
@@ -93,8 +113,7 @@ class ConfigManager:
                     updated_config[key] = existing_config[key]
 
             if updated:
-                with open(self.file_path, "w") as config_file:
-                    dump(updated_config, config_file, indent=4)
+                self._atomic_write(updated_config)
         except Exception as e:
             raise ValueError(f"Error during update_config_with_top_level_defaults: {e}")
 
@@ -134,8 +153,7 @@ class ConfigManager:
             if pruned_config != existing_config:
                 backup_path = self.file_path + ".bak"
                 shutil.copyfile(self.file_path, backup_path)
-                with open(self.file_path, "w") as config_file:
-                    dump(pruned_config, config_file, indent=4)
+                self._atomic_write(pruned_config)
 
             self.config = pruned_config
         except Exception as e:
@@ -317,12 +335,10 @@ class ConfigManager:
             if not update_nested_config(full_config, process_name, section_config):
                 raise ValueError(f"Failed to locate process {process_name} in file.")
 
-            with open(self.file_path, "w") as config_file:
-                dump(full_config, config_file, indent=4)
+            self._atomic_write(full_config)
         else:
             ConfigManager.fix_null_strings(self.config, self.schema)
-            with open(self.file_path, "w") as config_file:
-                dump(self.config, config_file, indent=4)
+            self._atomic_write(self.config)
 
     def get(self, key, section=None, normalize_case=False):
         value = (
