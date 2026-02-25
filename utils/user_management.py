@@ -256,6 +256,7 @@ def create_system_user(username="DUMB"):
         zurg_dir = "/zurg"
         log_dir = config.get("dumb").get("log_dir")
         config_dir = "/config"
+        debrid_mount_base_dir = "/mnt/debrid"
         riven_dir = "/riven/backend/data"
         zilean_dir = "/zilean/app/data"
         plex_debrid_dir = "/plex_debrid/config"
@@ -266,6 +267,23 @@ def create_system_user(username="DUMB"):
 
         chown_start = time.time()
         os.chown(zurg_dir, user_id, group_id)
+        os.makedirs(debrid_mount_base_dir, exist_ok=True)
+        debrid_stat = os.stat(debrid_mount_base_dir)
+        if debrid_stat.st_uid != user_id or debrid_stat.st_gid != group_id:
+            logger.debug(
+                "Changing ownership of %s to %s:%s",
+                debrid_mount_base_dir,
+                user_id,
+                group_id,
+            )
+            os.chown(debrid_mount_base_dir, user_id, group_id)
+        else:
+            logger.debug(
+                "Directory %s is already owned by %s:%s",
+                debrid_mount_base_dir,
+                user_id,
+                group_id,
+            )
         chown_recursive(log_dir, user_id, group_id)
         chown_recursive(config_dir, user_id, group_id)
         chown_recursive(riven_dir, user_id, group_id)
