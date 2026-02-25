@@ -785,7 +785,11 @@ def _setup_project(
             if os.path.exists(version_path):
                 try:
                     with open(version_path, "r") as f:
-                        env.setdefault("NZBDAV_VERSION", f.read().strip())
+                        version_value = f.read().strip()
+                        if version_value:
+                            env["NZBDAV_VERSION"] = version_value
+                        else:
+                            env.pop("NZBDAV_VERSION", None)
                 except OSError:
                     logger.warning(
                         "Failed to read NzbDAV version file at %s", version_path
