@@ -1166,6 +1166,43 @@ class Update:
         start_time = self.auto_update_start_time(process_name, config)
         return self._calculate_next_run_at(interval_hours, start_time, now_ts)
 
+    def _should_run_install_phase_for_preinstalled(
+        self, process_name, key, instance_name, config
+    ):
+        try:
+            versions = Versions()
+            current_version, _ = versions.version_check(process_name, instance_name, key)
+            current_version = (current_version or "").strip()
+        except Exception:
+            current_version = ""
+
+        if config.get("branch_enabled"):
+            branch_name = (config.get("branch") or "main").strip() or "main"
+            # NzbDAV branch installs persist as "branch-sha" (or fallback "branch-<name>").
+            if key == "nzbdav":
+                if current_version.startswith(f"{branch_name}-"):
+                    return False
+                if current_version == f"branch-{branch_name}":
+                    return False
+                return True
+            # For other branch-enabled services, prefer install phase so branch source is applied.
+            return True
+
+        if config.get("release_version_enabled"):
+            requested_release = (config.get("release_version") or "").strip()
+            requested_lower = requested_release.lower()
+            if not requested_release:
+                return True
+            if requested_lower in {"latest", "prerelease"} or "nightly" in requested_lower:
+                return False
+            return current_version != requested_release
+
+        pinned_version = (config.get("pinned_version") or "").strip()
+        if pinned_version:
+            return current_version != pinned_version
+
+        return False
+
     def _calculate_next_symlink_backup_at(self, process_name, config, now_ts=None):
         interval_hours = self.symlink_backup_interval(process_name, config)
         start_time = self.symlink_backup_start_time(process_name, config)
@@ -1257,9 +1294,21 @@ class Update:
                     process_name,
                 )
                 if self.process_handler.preinstall_complete:
-                    success, setup_error = configure_project(
-                        self.process_handler, process_name
+                    run_install_phase = self._should_run_install_phase_for_preinstalled(
+                        process_name, key, instance_name, config
                     )
+                    if run_install_phase:
+                        self.logger.info(
+                            "Preinstalled %s requires install phase to apply branch/release/pinned source settings.",
+                            process_name,
+                        )
+                        success, setup_error = setup_project(
+                            self.process_handler, process_name
+                        )
+                    else:
+                        success, setup_error = configure_project(
+                            self.process_handler, process_name
+                        )
                     if not success:
                         self.logger.warning(
                             "Configure-only setup failed for %s (%s). Falling back to full setup.",
@@ -1313,9 +1362,21 @@ class Update:
                 self.process_handler.preinstall_complete
                 and process_name in self.process_handler.preinstalled_processes
             ):
-                success, setup_error = configure_project(
-                    self.process_handler, process_name
+                run_install_phase = self._should_run_install_phase_for_preinstalled(
+                    process_name, key, instance_name, config
                 )
+                if run_install_phase:
+                    self.logger.info(
+                        "Preinstalled %s requires install phase to apply branch/release/pinned source settings.",
+                        process_name,
+                    )
+                    success, setup_error = setup_project(
+                        self.process_handler, process_name
+                    )
+                else:
+                    success, setup_error = configure_project(
+                        self.process_handler, process_name
+                    )
                 if not success:
                     self.logger.warning(
                         "Configure-only setup failed for %s (%s). Falling back to full setup.",

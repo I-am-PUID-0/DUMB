@@ -167,6 +167,21 @@ def _update_postgres_url(
     return urllib.parse.urlunparse(updated)
 
 
+def _prepare_nzbdav_source_tree(target_dir: str) -> tuple[bool, str | None]:
+    # Prevent stale source files from mixed branch/release extracts.
+    cleanup_targets = ["backend", "frontend", "app"]
+    try:
+        for entry in cleanup_targets:
+            path = os.path.join(target_dir, entry)
+            if os.path.isdir(path):
+                shutil.rmtree(path)
+            elif os.path.isfile(path):
+                os.remove(path)
+        return True, None
+    except Exception as e:
+        return False, f"Failed preparing NzbDAV source tree at {target_dir}: {e}"
+
+
 def setup_release_version(process_handler, config, process_name, key):
     if key == "plex_debrid":
         return False, "Release version not supported for plex_debrid."
@@ -194,6 +209,11 @@ def setup_release_version(process_handler, config, process_name, key):
             return False, f"Failed to clear directory: {error}"
     else:
         exclude_dirs = None
+
+    if key == "nzbdav":
+        success, error = _prepare_nzbdav_source_tree(target_dir)
+        if not success:
+            return False, error
 
     success, error = downloader.download_release_version(
         process_name=process_name,
@@ -392,6 +412,11 @@ def setup_branch_version(process_handler, config, process_name, key):
             if not success:
                 return False, f"Failed to clear directory: {error}"
 
+        if key == "nzbdav":
+            success, error = _prepare_nzbdav_source_tree(target_dir)
+            if not success:
+                return False, error
+
         success, error = downloader.download_and_extract(
             branch_url,
             target_dir,
@@ -400,6 +425,29 @@ def setup_branch_version(process_handler, config, process_name, key):
         )
         if not success:
             return False, f"Failed to download branch: {error}"
+
+        if key == "nzbdav":
+            branch_name = (config.get("branch") or "main").strip() or "main"
+            branch_sha, branch_sha_error = _fetch_branch_head_sha(
+                config["repo_owner"], config["repo_name"], branch_name
+            )
+            if branch_sha:
+                branch_version = f"{branch_name}-{branch_sha[:8]}"
+            else:
+                if branch_sha_error:
+                    logger.debug(
+                        "Failed to resolve branch SHA for %s: %s",
+                        process_name,
+                        branch_sha_error,
+                    )
+                branch_version = f"branch-{branch_name}"
+
+            versions.version_write(
+                process_name=config.get("process_name") or process_name,
+                key="nzbdav",
+                version_path=os.path.join(target_dir, "version.txt"),
+                version=branch_version,
+            )
 
         success, error = additional_setup(process_handler, process_name, config, key)
         if not success:
@@ -2283,8 +2331,19 @@ def setup_nzbdav(
                 )
 
         needs_patch = _nzbdav_resource_patch_needed(backend_project_path)
-        build_needed = needs_patch
-        backend_command, _ = _nzbdav_build_command(backend_output_dir)
+        uses_internal_nzb_models = _nzbdav_uses_internal_nzb_models(
+            backend_project_path
+        )
+        needs_namespace_patch = uses_internal_nzb_models and _nzbdav_namespace_patch_needed(
+            backend_project_path
+        )
+        needs_main_api_patch = uses_internal_nzb_models and _nzbdav_main_api_patch_needed(
+            backend_project_path
+        )
+        build_needed = needs_patch or needs_namespace_patch or needs_main_api_patch
+        backend_command, _ = _nzbdav_build_command(
+            backend_output_dir, dotnet_dir=os.path.dirname(backend_project_path)
+        )
         if not backend_command or not os.path.isdir(backend_output_dir):
             build_needed = True
         else:
@@ -2300,7 +2359,9 @@ def setup_nzbdav(
             return False, "NzbDAV build output missing during configure phase."
 
         if not install_only:
-            backend_command, error = _nzbdav_build_command(backend_output_dir)
+            backend_command, error = _nzbdav_build_command(
+                backend_output_dir, dotnet_dir=os.path.dirname(backend_project_path)
+            )
             if not backend_command:
                 return False, error
             frontend_dir = _find_nzbdav_frontend_dir(nzbdav_config_dir, config)
@@ -2353,6 +2414,19 @@ def setup_nzbdav_build(process_handler, config):
     patched, patch_error = _patch_nzbdav_embedded_resource_util(backend_project_path)
     if not patched and patch_error:
         logger.warning("NzbDAV resource patch skipped: %s", patch_error)
+    uses_internal_nzb_models = _nzbdav_uses_internal_nzb_models(backend_project_path)
+    if uses_internal_nzb_models and _nzbdav_namespace_patch_needed(backend_project_path):
+        namespace_patched, namespace_patch_error = _patch_nzbdav_namespace_imports(
+            backend_project_path
+        )
+        if not namespace_patched and namespace_patch_error:
+            logger.warning("NzbDAV namespace patch skipped: %s", namespace_patch_error)
+    if uses_internal_nzb_models and _nzbdav_main_api_patch_needed(backend_project_path):
+        api_patched, api_patch_error = _patch_nzbdav_main_api_compat(
+            backend_project_path
+        )
+        if not api_patched and api_patch_error:
+            logger.warning("NzbDAV main API patch skipped: %s", api_patch_error)
 
     platforms = ["dotnet"]
     if frontend_dir:
@@ -2550,6 +2624,163 @@ def _patch_nzbdav_embedded_resource_util(backend_project_path):
     return True, None
 
 
+def _patch_nzbdav_namespace_imports(backend_project_path):
+    backend_dir = os.path.dirname(backend_project_path)
+    replacements = [
+        os.path.join(backend_dir, "Extensions", "NzbDocumentExtensions.cs"),
+        os.path.join(backend_dir, "Extensions", "NzbFileExtensions.cs"),
+    ]
+
+    for file_path in replacements:
+        if not os.path.isfile(file_path):
+            continue
+        try:
+            with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
+                contents = f.read()
+        except OSError as e:
+            return False, f"Failed to read {file_path}: {e}"
+
+        if "using Usenet.Nzb;" not in contents:
+            continue
+
+        contents = contents.replace("using Usenet.Nzb;", "using NzbWebDAV.Models.Nzb;")
+        try:
+            with open(file_path, "w", encoding="utf-8") as f:
+                f.write(contents)
+        except OSError as e:
+            return False, f"Failed to write {file_path}: {e}"
+
+    return True, None
+
+
+def _patch_nzbdav_main_api_compat(backend_project_path):
+    backend_dir = os.path.dirname(backend_project_path)
+    doc_ext_path = os.path.join(backend_dir, "Extensions", "NzbDocumentExtensions.cs")
+    file_ext_path = os.path.join(backend_dir, "Extensions", "NzbFileExtensions.cs")
+    blacklist_path = os.path.join(
+        backend_dir, "Queue", "PostProcessors", "BlacklistedExtensionPostProcessor.cs"
+    )
+
+    if os.path.isfile(doc_ext_path):
+        doc_ext_contents = """using NzbWebDAV.Models.Nzb;
+
+namespace NzbWebDAV.Extensions;
+
+public static class NzbDocumentExtensions
+{
+    public static string? GetMetadataName(this NzbDocument nzbDocument)
+    {
+        return nzbDocument.Metadata.TryGetValue("name", out var name)
+            ? name
+            : null;
+    }
+
+    public static string GetShortCode(this NzbDocument nzbDocument)
+    {
+        return nzbDocument.GetHashCode().ToString("x8");
+    }
+}
+"""
+        try:
+            with open(doc_ext_path, "w", encoding="utf-8") as f:
+                f.write(doc_ext_contents)
+        except OSError as e:
+            return False, f"Failed to write {doc_ext_path}: {e}"
+
+    if os.path.isfile(file_ext_path):
+        file_ext_contents = """using System.Text.RegularExpressions;
+using NzbWebDAV.Models.Nzb;
+
+namespace NzbWebDAV.Extensions;
+
+public static class NzbFileExtensions
+{
+    public static string[] GetSegmentIds(this NzbFile file)
+    {
+        return file.Segments
+            .Select(x => x.MessageId)
+            .ToArray();
+    }
+
+    public static string[] GetOrderedSegmentIds(this NzbFile file)
+    {
+        // NzbSegment no longer exposes an explicit sequence number.
+        return file.Segments
+            .Select(x => x.MessageId)
+            .ToArray();
+    }
+
+    public static long GetTotalYencodedSize(this NzbFile file)
+    {
+        return file.Segments
+            .Select(x => x.Bytes)
+            .Sum();
+    }
+
+    public static string GetSubjectFileName(this NzbFile file)
+    {
+        return GetFirstValidNonEmptyFilename(
+            () => TryParseSubjectFilename1(file),
+            () => TryParseSubjectFilename2(file)
+        );
+    }
+
+    private static string TryParseSubjectFilename1(this NzbFile file)
+    {
+        // The most common format is when filename appears in double quotes
+        // example: `[1/8] - "file.mkv" yEnc 12345 (1/54321)`
+        var match = Regex.Match(file.Subject, "\\\"(.*)\\\"");
+        return match.Success ? match.Groups[1].Value : "";
+    }
+
+    private static string TryParseSubjectFilename2(this NzbFile file)
+    {
+        // Otherwise, use sabnzbd's regex
+        // https://github.com/sabnzbd/sabnzbd/blob/b6b0d10367fd4960bad73edd1d3812cafa7fc002/sabnzbd/nzbstuff.py#L106
+        var match = Regex.Match(file.Subject,
+            @"\\b([\\w\\-+()' .,]+(?:\\[[\\w\\-\\/+()' .,]*][\\w\\-+()' .,]*)*\\.[A-Za-z0-9]{2,4})\\b");
+        return match.Success ? match.Groups[1].Value : "";
+    }
+
+    private static string GetFirstValidNonEmptyFilename(params Func<string>[] funcs)
+    {
+        return funcs
+            .Select(x => x.Invoke())
+            .Where(x => x == Path.GetFileName(x))
+            .FirstOrDefault(x => x != "") ?? "";
+    }
+}
+"""
+        try:
+            with open(file_ext_path, "w", encoding="utf-8") as f:
+                f.write(file_ext_contents)
+        except OSError as e:
+            return False, f"Failed to write {file_ext_path}: {e}"
+
+    if os.path.isfile(blacklist_path):
+        try:
+            with open(blacklist_path, "r", encoding="utf-8", errors="ignore") as f:
+                blacklist_contents = f.read()
+        except OSError as e:
+            return False, f"Failed to read {blacklist_path}: {e}"
+
+        blacklist_contents = blacklist_contents.replace(
+            "var blacklistedExtensions = configManager.GetBlacklistedExtensions();",
+            """var blacklistedExtensions = configManager.GetBlocklistedFiles()
+            .Select(x => x.Trim().ToLower())
+            .Select(x => x.StartsWith("*.") ? x[1..] : x)
+            .Where(x => x.StartsWith("."))
+            .ToHashSet();""",
+        )
+        try:
+            with open(blacklist_path, "w", encoding="utf-8") as f:
+                f.write(blacklist_contents)
+        except OSError as e:
+            return False, f"Failed to write {blacklist_path}: {e}"
+
+    return True, None
+
+
 def _nzbdav_resource_patch_needed(backend_project_path):
     util_path = os.path.join(
         os.path.dirname(backend_project_path), "Utils", "EmbeddedResourceUtil.cs"
@@ -2567,6 +2798,70 @@ def _nzbdav_resource_patch_needed(backend_project_path):
         "AppContext.BaseDirectory" not in contents
         or "GetExecutingAssembly" not in contents
     )
+
+
+def _nzbdav_uses_internal_nzb_models(backend_project_path):
+    backend_dir = os.path.dirname(backend_project_path)
+    model_dir = os.path.join(backend_dir, "Models", "Nzb")
+    required_files = (
+        "NzbDocument.cs",
+        "NzbFile.cs",
+        "NzbSegment.cs",
+    )
+    return all(os.path.isfile(os.path.join(model_dir, name)) for name in required_files)
+
+
+def _nzbdav_namespace_patch_needed(backend_project_path):
+    backend_dir = os.path.dirname(backend_project_path)
+    candidates = [
+        os.path.join(backend_dir, "Extensions", "NzbDocumentExtensions.cs"),
+        os.path.join(backend_dir, "Extensions", "NzbFileExtensions.cs"),
+    ]
+    for file_path in candidates:
+        if not os.path.isfile(file_path):
+            continue
+        try:
+            with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
+                contents = f.read()
+        except OSError:
+            continue
+        if "using Usenet.Nzb;" in contents:
+            return True
+    return False
+
+
+def _nzbdav_main_api_patch_needed(backend_project_path):
+    backend_dir = os.path.dirname(backend_project_path)
+    checks = [
+        (
+            os.path.join(backend_dir, "Extensions", "NzbDocumentExtensions.cs"),
+            ["MetaData"],
+        ),
+        (
+            os.path.join(backend_dir, "Extensions", "NzbFileExtensions.cs"),
+            ["MessageId.Value", ".Number", ".Size"],
+        ),
+        (
+            os.path.join(
+                backend_dir,
+                "Queue",
+                "PostProcessors",
+                "BlacklistedExtensionPostProcessor.cs",
+            ),
+            ["GetBlacklistedExtensions("],
+        ),
+    ]
+    for file_path, needles in checks:
+        if not os.path.isfile(file_path):
+            continue
+        try:
+            with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
+                contents = f.read()
+        except OSError:
+            continue
+        if any(needle in contents for needle in needles):
+            return True
+    return False
 
 
 def _write_nzbdav_start_script(config_dir, backend_command, frontend_dir, backend_port):
@@ -2683,25 +2978,64 @@ def _find_nzbdav_frontend_build_dir(frontend_dir, config):
     return None
 
 
-def _nzbdav_build_command(backend_output_dir):
+def _nzbdav_build_command(backend_output_dir, dotnet_dir=None):
     if not os.path.isdir(backend_output_dir):
         return None, f"NzbDAV output directory not found: {backend_output_dir}"
 
     binaries = []
     dlls = []
+    preferred_dll = None
+    runtimeconfig_dll = None
     for entry in os.listdir(backend_output_dir):
         path = os.path.join(backend_output_dir, entry)
         if not os.path.isfile(path):
             continue
         if entry.endswith(".dll"):
             dlls.append(path)
+            base_name = os.path.splitext(entry)[0]
+            if base_name.lower() == "nzbwebdav":
+                preferred_dll = path
+            runtimeconfig_path = os.path.join(
+                backend_output_dir, f"{base_name}.runtimeconfig.json"
+            )
+            if runtimeconfig_dll is None and os.path.isfile(runtimeconfig_path):
+                runtimeconfig_dll = path
         elif os.access(path, os.X_OK) and "." not in entry:
             binaries.append(path)
 
+    dotnet_candidates = []
+    if dotnet_dir:
+        dotnet_candidates.extend(
+            [
+                os.path.join(dotnet_dir, ".dotnet-sdk", "dotnet"),
+                os.path.join(dotnet_dir, ".dotnet", "dotnet"),
+            ]
+        )
+    dotnet_candidates.extend(
+        [
+            os.path.join(
+                os.path.dirname(backend_output_dir), "backend", ".dotnet-sdk", "dotnet"
+            ),
+            os.path.join(
+                os.path.dirname(backend_output_dir), ".dotnet-sdk", "dotnet"
+            ),
+            os.path.join(os.path.dirname(backend_output_dir), ".dotnet", "dotnet"),
+        ]
+    )
+    local_dotnet_cmd = next(
+        (candidate for candidate in dotnet_candidates if os.path.isfile(candidate)),
+        None,
+    )
+
+    selected_dll = preferred_dll or runtimeconfig_dll or (dlls[0] if dlls else None)
+
+    # Prefer local dotnet + DLL to avoid launching host binaries against older system runtimes.
+    if selected_dll and local_dotnet_cmd:
+        return [local_dotnet_cmd, selected_dll], None
     if binaries:
         return [binaries[0]], None
-    if dlls:
-        return ["dotnet", dlls[0]], None
+    if selected_dll:
+        return ["dotnet", selected_dll], None
 
     return None, "NzbDAV publish output did not include an executable or DLL."
 
@@ -5723,6 +6057,175 @@ def setup_python_environment(process_handler, key, config_dir):
         return False, f"Error during Python environment setup: {e}"
 
 
+def _extract_target_frameworks(project_file_path):
+    frameworks = []
+    if not project_file_path or not os.path.isfile(project_file_path):
+        return frameworks
+    try:
+        with open(project_file_path, "r", encoding="utf-8", errors="ignore") as f:
+            content = f.read()
+    except Exception as e:
+        logger.debug("Failed reading project file %s: %s", project_file_path, e)
+        return frameworks
+
+    single_matches = re.findall(r"<TargetFramework>([^<]+)</TargetFramework>", content)
+    multi_matches = re.findall(
+        r"<TargetFrameworks>([^<]+)</TargetFrameworks>", content
+    )
+    frameworks.extend(single_matches)
+    for raw in multi_matches:
+        frameworks.extend(raw.split(";"))
+    return [fw.strip() for fw in frameworks if fw and fw.strip()]
+
+
+def _target_framework_major(target_framework):
+    if not target_framework:
+        return None
+    tf = str(target_framework).strip().lower()
+    match = re.match(r"net(\d+)(?:\.\d+)?", tf)
+    if not match:
+        return None
+    try:
+        return int(match.group(1))
+    except Exception:
+        return None
+
+
+def _required_dotnet_sdk_major(project_paths=None, restore_project_path=None):
+    project_paths = project_paths or []
+    project_files = []
+
+    for path in project_paths:
+        if not path:
+            continue
+        if os.path.isfile(path) and path.endswith(".csproj"):
+            project_files.append(path)
+        elif os.path.isdir(path):
+            for root, _dirs, files in os.walk(path):
+                for file_name in files:
+                    if file_name.endswith(".csproj"):
+                        project_files.append(os.path.join(root, file_name))
+                break
+
+    if (
+        restore_project_path
+        and os.path.isfile(restore_project_path)
+        and restore_project_path.endswith(".csproj")
+    ):
+        project_files.append(restore_project_path)
+
+    required_major = None
+    for project_file in project_files:
+        for framework in _extract_target_frameworks(project_file):
+            major = _target_framework_major(framework)
+            if major is None:
+                continue
+            required_major = (
+                major if required_major is None else max(required_major, major)
+            )
+    return required_major
+
+
+def _dotnet_sdk_major(dotnet_cmd, env):
+    try:
+        result = subprocess.run(
+            [dotnet_cmd, "--version"],
+            capture_output=True,
+            text=True,
+            env=env,
+            check=False,
+            timeout=30,
+        )
+        version = (result.stdout or "").strip()
+        if result.returncode != 0 or not version:
+            return None
+        match = re.match(r"(\d+)\.", version)
+        if not match:
+            return None
+        return int(match.group(1))
+    except Exception as e:
+        logger.debug("Failed to query dotnet version from %s: %s", dotnet_cmd, e)
+        return None
+
+
+def _ensure_local_dotnet_sdk(config_dir, env, required_major):
+    install_root = os.path.join(config_dir, ".dotnet-sdk")
+    script_path = os.path.join(install_root, "dotnet-install.sh")
+    dotnet_cmd = os.path.join(install_root, "dotnet")
+
+    os.makedirs(install_root, exist_ok=True)
+    chown_single(install_root, user_id, group_id)
+
+    existing_major = (
+        _dotnet_sdk_major(dotnet_cmd, env) if os.path.isfile(dotnet_cmd) else None
+    )
+    if existing_major is not None and existing_major >= required_major:
+        env["DOTNET_ROOT"] = install_root
+        env["PATH"] = f"{install_root}:{env.get('PATH', '')}"
+        env["DUMB_DOTNET_BIN"] = dotnet_cmd
+        return True, None, dotnet_cmd
+
+    try:
+        response = requests.get("https://dot.net/v1/dotnet-install.sh", timeout=30)
+        response.raise_for_status()
+        with open(script_path, "w", encoding="utf-8") as f:
+            f.write(response.text)
+        os.chmod(script_path, 0o755)
+        chown_single(script_path, user_id, group_id)
+    except Exception as e:
+        return (
+            False,
+            f"Failed downloading dotnet-install.sh for SDK {required_major}: {e}",
+            None,
+        )
+
+    install_cmd = [
+        "bash",
+        script_path,
+        "--channel",
+        f"{required_major}.0",
+        "--install-dir",
+        install_root,
+        "--no-path",
+    ]
+    process = subprocess.run(
+        install_cmd,
+        capture_output=True,
+        text=True,
+        env=env,
+        check=False,
+    )
+    if process.returncode != 0:
+        preview_cmd = install_cmd + ["--quality", "preview"]
+        process = subprocess.run(
+            preview_cmd,
+            capture_output=True,
+            text=True,
+            env=env,
+            check=False,
+        )
+    if process.returncode != 0:
+        stderr_tail = (process.stderr or "").strip().splitlines()[-1:] or [""]
+        return (
+            False,
+            f"Failed installing .NET SDK {required_major} locally: {' '.join(stderr_tail).strip()}",
+            None,
+        )
+
+    installed_major = _dotnet_sdk_major(dotnet_cmd, env)
+    if installed_major is None or installed_major < required_major:
+        return (
+            False,
+            f"Installed local dotnet does not satisfy required SDK {required_major}.",
+            None,
+        )
+
+    env["DOTNET_ROOT"] = install_root
+    env["PATH"] = f"{install_root}:{env.get('PATH', '')}"
+    env["DUMB_DOTNET_BIN"] = dotnet_cmd
+    return True, None, dotnet_cmd
+
+
 def setup_dotnet_environment(
     process_handler,
     key,
@@ -5735,16 +6238,34 @@ def setup_dotnet_environment(
     try:
         logger.info(f"Setting up .NET environment in {config_dir}")
         env = (env or os.environ.copy()).copy()
+        dotnet_cmd = env.get("DUMB_DOTNET_BIN") or "dotnet"
         nuget_packages = os.path.join(config_dir, ".nuget", "packages")
         os.makedirs(nuget_packages, exist_ok=True)
         chown_single(os.path.join(config_dir, ".nuget"), user_id, group_id)
         chown_single(nuget_packages, user_id, group_id)
         env.setdefault("NUGET_PACKAGES", nuget_packages)
         restore_target = restore_project_path or config_dir
+        required_major = _required_dotnet_sdk_major(project_paths, restore_target)
+        current_major = _dotnet_sdk_major(dotnet_cmd, env)
+        if required_major is not None and (
+            current_major is None or current_major < required_major
+        ):
+            logger.info(
+                "Detected target framework requiring .NET SDK %s (current SDK: %s). Installing local SDK.",
+                required_major,
+                current_major if current_major is not None else "unknown",
+            )
+            success, error, local_dotnet_cmd = _ensure_local_dotnet_sdk(
+                config_dir, env, required_major
+            )
+            if not success:
+                return False, error
+            dotnet_cmd = local_dotnet_cmd
+
         process_handler.start_process(
             "dotnet_env_restore",
             config_dir,
-            ["dotnet", "restore", restore_target, "/nodeReuse:false"],
+            [dotnet_cmd, "restore", restore_target, "/nodeReuse:false"],
             env=env,
         )
         process_handler.wait("dotnet_env_restore")
@@ -5765,7 +6286,7 @@ def setup_dotnet_environment(
                     "dotnet_publish",
                     config_dir,
                     [
-                        "dotnet",
+                        dotnet_cmd,
                         "publish",
                         project_path,
                         "-c",
