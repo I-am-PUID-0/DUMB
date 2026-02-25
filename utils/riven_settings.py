@@ -2,7 +2,7 @@ from utils.global_logger import logger
 from utils.config_loader import CONFIG_MANAGER
 from utils.core_services import has_core_service
 from json import load, dump, JSONDecodeError
-import os, time, re, requests
+import os, time, re, requests, urllib.parse
 
 
 dumb_config = CONFIG_MANAGER.config.get("dumb")
@@ -15,6 +15,20 @@ zilean_config = CONFIG_MANAGER.config.get("zilean")
 SENSITIVE_KEY_PATTERN = re.compile(
     r"API|TOKEN|URL|HOST|PASSWORD|KEY|SECRET|USERNAME", re.IGNORECASE
 )
+
+
+def _sanitize_credential(value):
+    if not isinstance(value, str):
+        return value
+    normalized = value.strip()
+    decoded = urllib.parse.unquote(normalized)
+    if (
+        len(decoded) >= 2
+        and decoded[0] == decoded[-1]
+        and decoded[0] in {"'", '"'}
+    ):
+        return decoded[1:-1]
+    return decoded
 
 
 def parse_config_keys(config):
@@ -193,6 +207,10 @@ def set_env_variables():
         )
 
     postgres_port = postgres_config.get("port", 5432)
+    postgres_user = _sanitize_credential(str(postgres_config.get("user", "DUMB")))
+    postgres_password = _sanitize_credential(
+        str(postgres_config.get("password", "postgres"))
+    )
 
     env_vars = {
         "RIVEN_DOWNLOADERS_REAL_DEBRID_API_KEY": real_debrid_api_key,
@@ -214,8 +232,8 @@ def set_env_variables():
         "RIVEN_SYMLINK_RCLONE_PATH": riven_mount_path,
         "RIVEN_SYMLINK_LIBRARY_PATH": riven_library_path,
         "BACKEND_URL": f"http://{riven_backend_config.get('host')}:{riven_backend_config.get('port')}",
-        "RIVEN_DATABASE_URL": f"postgres://{postgres_config.get('user')}:{postgres_config.get('password')}@{postgres_config.get('host')}:{postgres_port}/riven",
-        "RIVEN_DATABASE_HOST": f"postgresql+psycopg2://{postgres_config.get('user')}:{postgres_config.get('password')}@{postgres_config.get('host')}:{postgres_port}/riven",
+        "RIVEN_DATABASE_URL": f"postgres://{postgres_user}:{postgres_password}@{postgres_config.get('host')}:{postgres_port}/riven",
+        "RIVEN_DATABASE_HOST": f"postgresql+psycopg2://{postgres_user}:{postgres_password}@{postgres_config.get('host')}:{postgres_port}/riven",
     }
 
     default_env_vars = {}

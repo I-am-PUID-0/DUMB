@@ -84,6 +84,8 @@ def _update_zilean_connection_string(
 ) -> str:
     if not isinstance(conn, str) or not conn:
         return conn
+    postgres_user = _sanitize_credential(str(postgres_user))
+    postgres_password = _sanitize_credential(str(postgres_password))
 
     trailing_semicolon = conn.endswith(";")
     parts = []
@@ -126,6 +128,20 @@ def _update_zilean_connection_string(
     return rebuilt
 
 
+def _sanitize_credential(value: str) -> str:
+    if not isinstance(value, str):
+        return value
+    normalized = value.strip()
+    decoded = urllib.parse.unquote(normalized)
+    if (
+        len(decoded) >= 2
+        and decoded[0] == decoded[-1]
+        and decoded[0] in {"'", '"'}
+    ):
+        return decoded[1:-1]
+    return decoded
+
+
 def _update_postgres_url(
     conn: str,
     postgres_host: str,
@@ -144,6 +160,8 @@ def _update_postgres_url(
     if parsed.scheme not in ("postgres", "postgresql", "postgresql+psycopg2"):
         return conn
 
+    postgres_user = _sanitize_credential(str(postgres_user))
+    postgres_password = _sanitize_credential(str(postgres_password))
     netloc = f"{postgres_user}:{postgres_password}@{postgres_host}:{postgres_port}"
     updated = parsed._replace(netloc=netloc)
     return urllib.parse.urlunparse(updated)
@@ -746,9 +764,15 @@ def _setup_project(
                         "host", "127.0.0.1"
                     )
                     postgres_port = CONFIG_MANAGER.get("postgres").get("port", 5432)
-                    postgres_user = CONFIG_MANAGER.get("postgres").get("user", "DUMB")
-                    postgres_password = CONFIG_MANAGER.get("postgres").get(
+                    postgres_user = _sanitize_credential(
+                        str(CONFIG_MANAGER.get("postgres").get("user", "DUMB"))
+                    )
+                    postgres_password = _sanitize_credential(
+                        str(
+                            CONFIG_MANAGER.get("postgres").get(
                         "password", "postgres"
+                            )
+                        )
                     )
                     updated_value = _update_zilean_connection_string(
                         updated_value,
@@ -765,9 +789,15 @@ def _setup_project(
                         "host", "127.0.0.1"
                     )
                     postgres_port = CONFIG_MANAGER.get("postgres").get("port", 5432)
-                    postgres_user = CONFIG_MANAGER.get("postgres").get("user", "DUMB")
-                    postgres_password = CONFIG_MANAGER.get("postgres").get(
+                    postgres_user = _sanitize_credential(
+                        str(CONFIG_MANAGER.get("postgres").get("user", "DUMB"))
+                    )
+                    postgres_password = _sanitize_credential(
+                        str(
+                            CONFIG_MANAGER.get("postgres").get(
                         "password", "postgres"
+                            )
+                        )
                     )
                     updated_value = _update_postgres_url(
                         updated_value,
@@ -787,11 +817,15 @@ def _setup_project(
                             "host", "127.0.0.1"
                         )
                         postgres_port = CONFIG_MANAGER.get("postgres").get("port", 5432)
-                        postgres_user = CONFIG_MANAGER.get("postgres").get(
-                            "user", "DUMB"
+                        postgres_user = _sanitize_credential(
+                            str(CONFIG_MANAGER.get("postgres").get("user", "DUMB"))
                         )
-                        postgres_password = CONFIG_MANAGER.get("postgres").get(
-                            "password", "postgres"
+                        postgres_password = _sanitize_credential(
+                            str(
+                                CONFIG_MANAGER.get("postgres").get(
+                                    "password", "postgres"
+                                )
+                            )
                         )
                         updated_value = (
                             updated_value.replace("{postgres_host}", postgres_host)
