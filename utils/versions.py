@@ -62,8 +62,8 @@ class Versions:
             result = subprocess.run(
                 ["strings", dll_path], capture_output=True, text=True
             )
-        except Exception as exc:
-            return None, f"Failed to read {dll_path}: {exc}"
+        except Exception:
+            return None, f"Failed to read {dll_path}"
         if result.returncode != 0:
             return None, f"strings failed for {dll_path}: {result.stderr.strip()}"
         grep_string = f"{key.capitalize()}.Common, Version="
@@ -220,8 +220,8 @@ class Versions:
                         key, instance_name
                     )
                     return self.read_arr_version_from_dir(key, install_dir)
-                except Exception as e:
-                    return None, f"Error reading {key} version: {e}"
+                except Exception:
+                    return None, f"Error reading {key} version"
             elif key == "plex":
                 try:
                     result = subprocess.run(
