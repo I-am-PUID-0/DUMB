@@ -4,6 +4,9 @@ on:
   pull_request:
     branches: [ dev, master ]
 
+permissions:
+  contents: read
+
 jobs:
   build:
     name: Conventional Commits

@@ -46,12 +46,16 @@ def _build_arr_entries(core_services: list[str]) -> list[dict]:
             except Exception:
                 port = None
             if not port:
-                logger.warning("Profilarr auto-link: missing port for %s %s", svc_name, inst_key)
+                logger.warning(
+                    "Profilarr auto-link: missing port for %s %s", svc_name, inst_key
+                )
                 continue
 
             api_key = _parse_arr_api_key(inst.get("config_file", ""))
             if not api_key:
-                logger.warning("Profilarr auto-link: missing API key for %s %s", svc_name, inst_key)
+                logger.warning(
+                    "Profilarr auto-link: missing API key for %s %s", svc_name, inst_key
+                )
                 continue
 
             entry = {
@@ -60,7 +64,11 @@ def _build_arr_entries(core_services: list[str]) -> list[dict]:
                 "tags": [
                     "dumb:auto",
                     svc_name.capitalize(),
-                    *([f"core_service:{cs}" for cs in core_services] if core_services else []),
+                    *(
+                        [f"core_service:{cs}" for cs in core_services]
+                        if core_services
+                        else []
+                    ),
                 ],
                 "arr_server": f"http://127.0.0.1:{port}",
                 "api_key": api_key,
@@ -136,8 +144,7 @@ def _filter_repo_items_by_type(repo_items: dict, arr_type: str) -> dict:
         for key in ("profiles", "customFormats", "regexPatterns", "mediaManagement")
     ):
         logger.warning(
-            "Profilarr repo items not tagged for %s; skipping auto sync seed for this app.",
-            arr_type,
+            "Profilarr repo items not tagged for this app; skipping auto sync seed."
         )
     return filtered
 
@@ -254,7 +261,13 @@ def _run_initial_sync(backend_dir: str, config_root: str, arr_ids: list[int]) ->
     )
 
     try:
-        result = subprocess.run([python_bin, "-c", snippet], env=env, check=False, capture_output=True, text=True)
+        result = subprocess.run(
+            [python_bin, "-c", snippet],
+            env=env,
+            check=False,
+            capture_output=True,
+            text=True,
+        )
         if result.stdout:
             logger.debug("Profilarr initial sync output: %s", result.stdout.strip())
         if result.stderr:
@@ -270,11 +283,17 @@ def sync_profilarr_arr_configs(profilarr_instance: dict) -> tuple[bool, str | No
 
     core_services = get_core_services(profilarr_instance)
     if not core_services:
-        logger.info("Profilarr core_service is blank; skipping auto-link (manual mode).")
+        logger.info(
+            "Profilarr core_service is blank; skipping auto-link (manual mode)."
+        )
         return True, None
 
-    config_root = os.path.join(profilarr_instance.get("config_dir", "/profilarr/default"), "config")
-    backend_dir = os.path.join(profilarr_instance.get("config_dir", "/profilarr/default"), "backend")
+    config_root = os.path.join(
+        profilarr_instance.get("config_dir", "/profilarr/default"), "config"
+    )
+    backend_dir = os.path.join(
+        profilarr_instance.get("config_dir", "/profilarr/default"), "backend"
+    )
     repo_path = os.path.join(config_root, "db")
     user_id = CONFIG_MANAGER.get("puid")
     group_id = CONFIG_MANAGER.get("pgid")
@@ -307,9 +326,7 @@ def sync_profilarr_arr_configs(profilarr_instance: dict) -> tuple[bool, str | No
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
 
-        existing = cursor.execute(
-            "SELECT id, name, tags FROM arr_config"
-        ).fetchall()
+        existing = cursor.execute("SELECT id, name, tags FROM arr_config").fetchall()
         managed = {
             row["name"]
             for row in existing
@@ -326,7 +343,7 @@ def sync_profilarr_arr_configs(profilarr_instance: dict) -> tuple[bool, str | No
                 (entry["name"],),
             ).fetchone()
             if row:
-                logger.debug("Profilarr auto-link updating arr_config for %s", entry["name"])
+                logger.debug("Profilarr auto-link updating arr_config entry.")
                 entry_repo_data = _filter_repo_items_by_type(repo_data, entry["type"])
                 entry_repo_data_json = json.dumps(entry_repo_data)
                 existing_sync = cursor.execute(
@@ -368,7 +385,7 @@ def sync_profilarr_arr_configs(profilarr_instance: dict) -> tuple[bool, str | No
                     ),
                 )
             else:
-                logger.info("Profilarr auto-link creating arr_config for %s", entry["name"])
+                logger.info("Profilarr auto-link creating arr_config entry.")
                 entry_repo_data = _filter_repo_items_by_type(repo_data, entry["type"])
                 entry["data_to_sync"] = json.dumps(entry_repo_data)
                 cursor.execute(
@@ -410,7 +427,9 @@ def sync_profilarr_arr_configs(profilarr_instance: dict) -> tuple[bool, str | No
     return True, None
 
 
-def _ensure_repo_ownership(repo_path: str, user_id: int | None, group_id: int | None) -> None:
+def _ensure_repo_ownership(
+    repo_path: str, user_id: int | None, group_id: int | None
+) -> None:
     if not repo_path or user_id is None or group_id is None:
         return
     try:
@@ -437,7 +456,9 @@ def _ensure_repo_ownership(repo_path: str, user_id: int | None, group_id: int | 
         logger.warning("Profilarr repo chown failed for %s: %s", repo_path, err)
 
 
-def _ensure_config_ownership(config_root: str, user_id: int | None, group_id: int | None) -> None:
+def _ensure_config_ownership(
+    config_root: str, user_id: int | None, group_id: int | None
+) -> None:
     if not config_root or user_id is None or group_id is None:
         return
     db_path = os.path.join(config_root, "profilarr.db")

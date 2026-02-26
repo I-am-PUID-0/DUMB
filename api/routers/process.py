@@ -12,7 +12,10 @@ from utils.dependencies import (
 from utils.config_loader import CONFIG_MANAGER, find_service_config
 from utils.setup import setup_project
 from utils.core_services import has_core_service
-from utils.dependency_map import build_conditional_dependency_map, filter_conditional_deps_for_instance
+from utils.dependency_map import (
+    build_conditional_dependency_map,
+    filter_conditional_deps_for_instance,
+)
 from utils.versions import Versions
 import json, copy, time, glob, re, socket, errno, psutil, os, threading
 
@@ -96,6 +99,7 @@ class UnifiedStartRequest(BaseModel):
 
 process_router = APIRouter()
 versions = Versions()
+SYMLINK_SNAPSHOT_ROOT = "/config/symlink-repair/snapshots"
 DEPENDENCY_INSTANCE_SCOPED_KEYS = {"rclone", "zurg"}
 DEPENDENCY_TRUTH_TABLE = [
     {
@@ -323,6 +327,7 @@ def _effective_core_dependencies(
         deps = [dep for dep in deps if dep not in {"zurg", "rclone"}]
 
     return deps
+
 
 # Temporarily hide not-ready services from onboarding core selection.
 ONBOARDING_HIDDEN_CORE_SERVICES = {"bazarr"}
@@ -701,9 +706,9 @@ def dependency_graph(
             if config_key:
                 by_config_key.setdefault(config_key, []).append(entry)
 
-            status_by_process[proc_name] = (
-                str(api_state.get_status(proc_name) if api_state else "unknown").lower()
-            )
+            status_by_process[proc_name] = str(
+                api_state.get_status(proc_name) if api_state else "unknown"
+            ).lower()
             for port in _dep_process_ports(entry):
                 port_to_entries.setdefault(port, []).append(entry)
             for mount_path in _dep_process_mount_points(entry):
@@ -715,7 +720,9 @@ def dependency_graph(
 
         target_proc_name = str(target.get("process_name") or "")
         target_key = _normalize_dep_token(target.get("config_key") or "")
-        target_config = target.get("config") if isinstance(target.get("config"), dict) else {}
+        target_config = (
+            target.get("config") if isinstance(target.get("config"), dict) else {}
+        )
         instance_conditional_deps = filter_conditional_deps_for_instance(
             conditional_deps, target_key, target_config
         )
@@ -723,15 +730,21 @@ def dependency_graph(
         target_primary_core = target_core_refs[0] if target_core_refs else ""
         core_entry = {
             "key": target_key,
-            "name": CORE_SERVICE_NAMES.get(target_key) or target.get("name") or target_proc_name,
+            "name": CORE_SERVICE_NAMES.get(target_key)
+            or target.get("name")
+            or target_proc_name,
             "dependencies": _effective_core_dependencies(target_key, target_config),
         }
 
-        def resolve_ref_entries(refs: list[str], source_core_refs: list[str]) -> list[dict]:
+        def resolve_ref_entries(
+            refs: list[str], source_core_refs: list[str]
+        ) -> list[dict]:
             resolved: list[dict] = []
             seen: set[str] = set()
             core_ref_set = {
-                _normalize_dep_token(entry) for entry in (source_core_refs or []) if entry
+                _normalize_dep_token(entry)
+                for entry in (source_core_refs or [])
+                if entry
             }
 
             def add_entry(entry: dict):
@@ -755,7 +768,9 @@ def dependency_graph(
                         for entry in group
                         if any(
                             _normalize_dep_token(core_ref) in core_ref_set
-                            for core_ref in _dep_extract_refs_from_config(entry.get("config") or {})
+                            for core_ref in _dep_extract_refs_from_config(
+                                entry.get("config") or {}
+                            )
                         )
                     ]
                 for entry in group:
@@ -957,7 +972,9 @@ def dependency_graph(
                 add_incoming(candidate, "wait_for_dir")
                 continue
             for provider_entry, provider_reason in resolve_rclone_provider_entries(
-                candidate, candidate_cfg, (_dep_extract_refs_from_config(candidate_cfg) or [""])[0]
+                candidate,
+                candidate_cfg,
+                (_dep_extract_refs_from_config(candidate_cfg) or [""])[0],
             ):
                 if str(provider_entry.get("process_name") or "") == target_proc_name:
                     add_incoming(candidate, provider_reason)
@@ -972,11 +989,18 @@ def dependency_graph(
             candidate_instance_deps = filter_conditional_deps_for_instance(
                 conditional_deps, candidate_key, candidate_cfg
             )
-            candidate_conditional_deps = candidate_instance_deps.get(candidate_key, set())
-            if target_key in {_normalize_dep_token(dep) for dep in candidate_conditional_deps}:
+            candidate_conditional_deps = candidate_instance_deps.get(
+                candidate_key, set()
+            )
+            if target_key in {
+                _normalize_dep_token(dep) for dep in candidate_conditional_deps
+            }:
                 # For instance-scoped targets, only annotate candidates already
                 # detected — conditional_startup_map cannot distinguish instances.
-                if target_key not in DEPENDENCY_INSTANCE_SCOPED_KEYS or candidate_name in incoming_map:
+                if (
+                    target_key not in DEPENDENCY_INSTANCE_SCOPED_KEYS
+                    or candidate_name in incoming_map
+                ):
                     add_incoming(candidate, "conditional_startup_map")
                 continue
 
@@ -992,9 +1016,11 @@ def dependency_graph(
             row_strength = (
                 "hard_runtime"
                 if "hard_runtime" in strengths
-                else "hard_configured"
-                if "hard_configured" in strengths
-                else "soft_linkage"
+                else (
+                    "hard_configured"
+                    if "hard_configured" in strengths
+                    else "soft_linkage"
+                )
             )
             hard = row_strength in {"hard_runtime", "hard_configured"}
             return {
@@ -1032,7 +1058,9 @@ def dependency_graph(
             starter = None
             if dep_entries:
                 sorted_entries = sorted(
-                    dep_entries, key=lambda entry: int(bool(entry.get("enabled"))), reverse=True
+                    dep_entries,
+                    key=lambda entry: int(bool(entry.get("enabled"))),
+                    reverse=True,
                 )
                 starter = sorted_entries[0]
             dependency_rows.append(
@@ -1043,7 +1071,9 @@ def dependency_graph(
                     "state": state,
                     "process_count": len(dep_entries),
                     "scoped": dep_norm in DEPENDENCY_INSTANCE_SCOPED_KEYS,
-                    "starter_process_name": starter.get("process_name") if starter else None,
+                    "starter_process_name": (
+                        starter.get("process_name") if starter else None
+                    ),
                     "signals": ["core_service_map"],
                     "classification": "hard",
                     "strength": "hard_runtime",
@@ -1064,7 +1094,8 @@ def dependency_graph(
             # signals already associated with this target instance.
             if dep_norm in DEPENDENCY_INSTANCE_SCOPED_KEYS:
                 dep_entries = [
-                    e for e in dep_entries
+                    e
+                    for e in dep_entries
                     if str(e.get("process_name") or "") in outgoing_map
                 ]
                 if not dep_entries:
@@ -1086,7 +1117,9 @@ def dependency_graph(
                     "state": state,
                     "process_count": len(dep_entries),
                     "scoped": dep_norm in DEPENDENCY_INSTANCE_SCOPED_KEYS,
-                    "starter_process_name": starter.get("process_name") if starter else None,
+                    "starter_process_name": (
+                        starter.get("process_name") if starter else None
+                    ),
                     "signals": ["conditional_startup_map"],
                     "classification": "hard",
                     "strength": "hard_runtime",
@@ -1094,7 +1127,9 @@ def dependency_graph(
             )
         for dep_key in NON_CORE_HARD_DEPENDENCIES.get(target_key, []):
             dep_norm = _normalize_dep_token(dep_key)
-            if dep_norm in existing_dep_keys or dep_norm in {row["key"] for row in dependency_rows}:
+            if dep_norm in existing_dep_keys or dep_norm in {
+                row["key"] for row in dependency_rows
+            }:
                 continue
             dep_entries = [
                 entry
@@ -1118,7 +1153,9 @@ def dependency_graph(
                     "state": state,
                     "process_count": len(dep_entries),
                     "scoped": dep_norm in DEPENDENCY_INSTANCE_SCOPED_KEYS,
-                    "starter_process_name": starter.get("process_name") if starter else None,
+                    "starter_process_name": (
+                        starter.get("process_name") if starter else None
+                    ),
                     "signals": ["non_core_dependency_map"],
                     "classification": "hard",
                     "strength": "hard_runtime",
@@ -1142,7 +1179,9 @@ def dependency_graph(
                 ref for ref in _dep_extract_refs_from_config(target_config) if ref
             }
             if attached_cores:
-                dependent_keys = [key for key in dependent_keys if key in attached_cores]
+                dependent_keys = [
+                    key for key in dependent_keys if key in attached_cores
+                ]
 
         for core_key in sorted(set(dependent_keys)):
             core_entries = by_config_key.get(core_key, [])
@@ -1190,12 +1229,19 @@ def dependency_graph(
             # entries whose individual config actually depends on the target.
             if svc_key in DEPENDENCY_INSTANCE_SCOPED_KEYS:
                 svc_entries = [
-                    entry for entry in svc_entries
-                    if target_key in {
+                    entry
+                    for entry in svc_entries
+                    if target_key
+                    in {
                         _normalize_dep_token(d)
                         for d in filter_conditional_deps_for_instance(
-                            conditional_deps, svc_key,
-                            entry.get("config") if isinstance(entry.get("config"), dict) else {},
+                            conditional_deps,
+                            svc_key,
+                            (
+                                entry.get("config")
+                                if isinstance(entry.get("config"), dict)
+                                else {}
+                            ),
                         ).get(svc_key, set())
                     }
                 ]
@@ -1205,7 +1251,8 @@ def dependency_graph(
             # that specific signals already associated with this instance.
             if target_key in DEPENDENCY_INSTANCE_SCOPED_KEYS:
                 svc_entries = [
-                    entry for entry in svc_entries
+                    entry
+                    for entry in svc_entries
                     if str(entry.get("process_name") or "") in incoming_map
                 ]
                 if not svc_entries:
@@ -1215,7 +1262,11 @@ def dependency_graph(
             if svc_key in DEPENDENCY_INSTANCE_SCOPED_KEYS:
                 filtered_cond_deps: set[str] = set()
                 for entry in svc_entries:
-                    entry_cfg = entry.get("config") if isinstance(entry.get("config"), dict) else {}
+                    entry_cfg = (
+                        entry.get("config")
+                        if isinstance(entry.get("config"), dict)
+                        else {}
+                    )
                     filtered_cond_deps |= filter_conditional_deps_for_instance(
                         conditional_deps, svc_key, entry_cfg
                     ).get(svc_key, set())
@@ -1355,16 +1406,25 @@ def dependency_graph(
         if scope_mode == "all":
             if target_key == "zilean":
                 for candidate in processes:
-                    candidate_key = _normalize_dep_token(candidate.get("config_key") or "")
+                    candidate_key = _normalize_dep_token(
+                        candidate.get("config_key") or ""
+                    )
                     if candidate_key in ZILEAN_OPTIONAL_LINK_KEYS:
                         name = str(candidate.get("process_name") or "")
-                        if not any(row.get("process_name") == name for row in linked_incoming_rows):
+                        if not any(
+                            row.get("process_name") == name
+                            for row in linked_incoming_rows
+                        ):
                             linked_incoming_rows.append(
                                 {
                                     "process_name": name,
                                     "key": candidate_key,
-                                    "label": candidate.get("name") or name or candidate_key,
-                                    "state": _dep_state_for_entries([candidate], status_by_process),
+                                    "label": candidate.get("name")
+                                    or name
+                                    or candidate_key,
+                                    "state": _dep_state_for_entries(
+                                        [candidate], status_by_process
+                                    ),
                                     "signals": ["zilean_optional_integration"],
                                     "classification": "linkage",
                                     "strength": "soft_linkage",
@@ -1374,13 +1434,17 @@ def dependency_graph(
                 zilean_entries = by_config_key.get("zilean", [])
                 for entry in zilean_entries:
                     name = str(entry.get("process_name") or "")
-                    if not any(row.get("process_name") == name for row in linked_outgoing_rows):
+                    if not any(
+                        row.get("process_name") == name for row in linked_outgoing_rows
+                    ):
                         linked_outgoing_rows.append(
                             {
                                 "process_name": name,
                                 "key": "zilean",
                                 "label": entry.get("name") or name or "zilean",
-                                "state": _dep_state_for_entries([entry], status_by_process),
+                                "state": _dep_state_for_entries(
+                                    [entry], status_by_process
+                                ),
                                 "signals": ["zilean_optional_integration"],
                                 "classification": "linkage",
                                 "strength": "soft_linkage",
@@ -1391,13 +1455,17 @@ def dependency_graph(
                 link_norm = _normalize_dep_token(link_key)
                 for entry in by_config_key.get(link_norm, []):
                     name = str(entry.get("process_name") or "")
-                    if not any(row.get("process_name") == name for row in linked_outgoing_rows):
+                    if not any(
+                        row.get("process_name") == name for row in linked_outgoing_rows
+                    ):
                         linked_outgoing_rows.append(
                             {
                                 "process_name": name,
                                 "key": link_norm,
                                 "label": entry.get("name") or name or link_key,
-                                "state": _dep_state_for_entries([entry], status_by_process),
+                                "state": _dep_state_for_entries(
+                                    [entry], status_by_process
+                                ),
                                 "signals": ["documented_integration"],
                                 "classification": "linkage",
                                 "strength": "soft_linkage",
@@ -1408,13 +1476,17 @@ def dependency_graph(
                     continue
                 for entry in by_config_key.get(_normalize_dep_token(source_key), []):
                     name = str(entry.get("process_name") or "")
-                    if not any(row.get("process_name") == name for row in linked_incoming_rows):
+                    if not any(
+                        row.get("process_name") == name for row in linked_incoming_rows
+                    ):
                         linked_incoming_rows.append(
                             {
                                 "process_name": name,
                                 "key": _normalize_dep_token(source_key),
                                 "label": entry.get("name") or name or source_key,
-                                "state": _dep_state_for_entries([entry], status_by_process),
+                                "state": _dep_state_for_entries(
+                                    [entry], status_by_process
+                                ),
                                 "signals": ["documented_integration"],
                                 "classification": "linkage",
                                 "strength": "soft_linkage",
@@ -1452,7 +1524,9 @@ def dependency_graph(
         ensure_node(
             target_proc_name,
             target_key,
-            target.get("name") or CORE_SERVICE_NAMES.get(target_key) or target_proc_name,
+            target.get("name")
+            or CORE_SERVICE_NAMES.get(target_key)
+            or target_proc_name,
             status_by_process.get(target_proc_name) or "unknown",
         )
         linked_outgoing_keys = {
@@ -1495,9 +1569,11 @@ def dependency_graph(
             strength = (
                 "hard_runtime"
                 if "hard_runtime" in strengths
-                else "hard_configured"
-                if "hard_configured" in strengths
-                else "soft_linkage"
+                else (
+                    "hard_configured"
+                    if "hard_configured" in strengths
+                    else "soft_linkage"
+                )
             )
             if scope_mode == "runtime" and strength == "soft_linkage":
                 return
@@ -1507,17 +1583,23 @@ def dependency_graph(
                     "target": target_name_clean,
                     "signals": sorted(set(signals)),
                     "strength": strength,
-                    "classification": "hard"
-                    if strength in {"hard_runtime", "hard_configured"}
-                    else "linkage",
+                    "classification": (
+                        "hard"
+                        if strength in {"hard_runtime", "hard_configured"}
+                        else "linkage"
+                    ),
                 }
             )
 
         # Edge direction is dependency -> dependent.
         for row in linked_outgoing_rows:
-            add_edge(row.get("process_name"), target_proc_name, row.get("signals") or [])
+            add_edge(
+                row.get("process_name"), target_proc_name, row.get("signals") or []
+            )
         for row in linked_incoming_rows:
-            add_edge(target_proc_name, row.get("process_name"), row.get("signals") or [])
+            add_edge(
+                target_proc_name, row.get("process_name"), row.get("signals") or []
+            )
         for row in dependency_rows:
             starter_name = str(row.get("starter_process_name") or "")
             if not starter_name:
@@ -1525,7 +1607,11 @@ def dependency_graph(
             dep_key = _normalize_dep_token(row.get("key") or "")
             if dep_key in linked_outgoing_keys:
                 continue
-            add_edge(starter_name, target_proc_name, row.get("signals") or ["core_service_map"])
+            add_edge(
+                starter_name,
+                target_proc_name,
+                row.get("signals") or ["core_service_map"],
+            )
 
         parallel_groups = []
         pre_members = []
@@ -1543,7 +1629,15 @@ def dependency_graph(
             for row in linked_outgoing_rows
             if str(row.get("strength") or "") in {"hard_runtime", "hard_configured"}
         ]
-        pre_members = sorted(set([m for m in pre_from_static + pre_from_links if m and m != target_proc_name]))
+        pre_members = sorted(
+            set(
+                [
+                    m
+                    for m in pre_from_static + pre_from_links
+                    if m and m != target_proc_name
+                ]
+            )
+        )
 
         post_members = sorted(
             set(
@@ -1605,7 +1699,9 @@ def dependency_graph(
             "dependent_rows": dependent_rows,
             "linked_outgoing_rows": linked_outgoing_rows,
             "linked_incoming_rows": linked_incoming_rows,
-            "nodes": sorted(nodes_map.values(), key=lambda node: node.get("label") or ""),
+            "nodes": sorted(
+                nodes_map.values(), key=lambda node: node.get("label") or ""
+            ),
             "edges": edges,
             "parallel_groups": parallel_groups,
             "dependency_truth_table": DEPENDENCY_TRUTH_TABLE,
@@ -2036,15 +2132,19 @@ def symlink_backup_manifests(
 
     template = str(config.get("symlink_backup_path") or "").strip()
     pattern = _symlink_manifest_glob_pattern(process_name, template)
+    pattern_dir = os.path.dirname(os.path.normpath(pattern)) or SYMLINK_SNAPSHOT_ROOT
     matches = []
     for path in glob.glob(pattern):
-        if not os.path.isfile(path):
+        if not _is_path_within(pattern_dir, path):
+            continue
+        resolved_path = os.path.realpath(path)
+        if not os.path.isfile(resolved_path):
             continue
         try:
-            stat = os.stat(path)
+            stat = os.stat(resolved_path)
             matches.append(
                 {
-                    "path": path,
+                    "path": resolved_path,
                     "size_bytes": int(stat.st_size),
                     "modified_at": int(stat.st_mtime),
                 }
@@ -2069,22 +2169,23 @@ def symlink_manifest_files(
     ),
     current_user: str = Depends(get_optional_current_user),
 ):
-    raw_path = str(manifest_path or "").strip()
-    if not raw_path:
-        raw_path = "/config/symlink-repair/snapshots/latest.json"
-    directory = os.path.dirname(raw_path) or "."
+    raw_path = _resolve_snapshot_manifest_path(manifest_path or "")
+    directory = os.path.dirname(raw_path) or SYMLINK_SNAPSHOT_ROOT
 
     entries = []
     try:
         for name in os.listdir(directory):
             path = os.path.join(directory, name)
-            if not os.path.isfile(path):
+            if not _is_path_within(directory, path):
+                continue
+            resolved_path = os.path.realpath(path)
+            if not os.path.isfile(resolved_path):
                 continue
             try:
-                stat = os.stat(path)
+                stat = os.stat(resolved_path)
                 entries.append(
                     {
-                        "path": path,
+                        "path": resolved_path,
                         "name": name,
                         "size_bytes": int(stat.st_size),
                         "modified_at": int(stat.st_mtime),
@@ -2349,6 +2450,7 @@ async def symlink_manifest_backup_async(
             },
         )
         try:
+
             def progress_callback(payload):
                 api_state.update_symlink_job(
                     job_id,
@@ -2492,7 +2594,9 @@ async def symlink_manifest_restore_async(
     if not api_state:
         raise HTTPException(status_code=500, detail="API state unavailable")
 
-    process_name = str(request.process_name or request.manifest_path or "symlink-manifest").strip()
+    process_name = str(
+        request.process_name or request.manifest_path or "symlink-manifest"
+    ).strip()
     job_payload = api_state.create_symlink_job(
         process_name=process_name,
         operation="symlink_manifest_restore",
@@ -2521,6 +2625,7 @@ async def symlink_manifest_restore_async(
             },
         )
         try:
+
             def progress_callback(payload):
                 api_state.update_symlink_job(
                     job_id,
@@ -2607,16 +2712,41 @@ def _symlink_manifest_glob_pattern(process_name: str, template: str) -> str:
     pattern = str(template or "").strip()
     if not pattern:
         pattern = "/config/symlink-repair/snapshots/{process_slug}-{timestamp}.json"
+    safe_process_name = _normalize_process_slug(process_name)
     replacements = {
         "{timestamp}": "*",
         "{date}": "*",
         "{time}": "*",
-        "{process_name}": process_name,
-        "{process_slug}": _normalize_process_slug(process_name),
+        "{process_name}": safe_process_name,
+        "{process_slug}": safe_process_name,
     }
     for token, value in replacements.items():
         pattern = pattern.replace(token, value)
     return pattern
+
+
+def _is_path_within(base_path: str, candidate_path: str) -> bool:
+    try:
+        base_real = os.path.realpath(base_path)
+        candidate_real = os.path.realpath(candidate_path)
+        return os.path.commonpath([base_real, candidate_real]) == base_real
+    except Exception:
+        return False
+
+
+def _resolve_snapshot_manifest_path(value: str) -> str:
+    raw = str(value or "").strip()
+    if not raw:
+        raw = os.path.join(SYMLINK_SNAPSHOT_ROOT, "latest.json")
+    if not os.path.isabs(raw):
+        raw = os.path.join(SYMLINK_SNAPSHOT_ROOT, raw)
+    normalized = os.path.normpath(raw)
+    if not _is_path_within(SYMLINK_SNAPSHOT_ROOT, normalized):
+        raise HTTPException(
+            status_code=400,
+            detail=f"manifest_path must stay within {SYMLINK_SNAPSHOT_ROOT}",
+        )
+    return normalized
 
 
 def normalize_instance_name(instance_name: str) -> tuple[str, str]:
@@ -2804,7 +2934,9 @@ def _normalize_dep_token(value: Any) -> str:
     return normalize_identifier(token)
 
 
-def _dep_state_for_entries(entries: list[dict], status_by_process: dict[str, str]) -> str:
+def _dep_state_for_entries(
+    entries: list[dict], status_by_process: dict[str, str]
+) -> str:
     if not entries:
         return "missing"
     has_running = any(

@@ -17,6 +17,9 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: false
 
+permissions:
+  contents: read
+
 jobs:
   setup:
     runs-on: ubuntu-latest
@@ -415,6 +418,9 @@ jobs:
   build-and-push:
     needs: [setup, fetch-latest-tags, build-amd64-digest, build-arm64-digest]
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
     env:
       REPO_NAME:        ${{ needs.setup.outputs.REPO_NAME }}
       REPO_OWNER_LOWER: ${{ needs.setup.outputs.REPO_OWNER_LOWER }}
@@ -672,6 +678,8 @@ jobs:
     needs: [setup, build-and-push]
     if: github.ref_name == 'master'
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     outputs:
       release_exists: ${{ steps.check_release.outputs.release_exists }}
     env:
@@ -800,6 +808,9 @@ jobs:
     needs: release
     if: needs.release.outputs.release_exists == 'false' && github.ref_name == 'master'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6

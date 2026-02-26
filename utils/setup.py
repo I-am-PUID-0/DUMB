@@ -5051,16 +5051,24 @@ def update_port(config_file_path, instance_port):
                 file.write(line)
 
 
-def update_token(config_file_path, token):
+def _ensure_secret_file_permissions(config_file_path):
+    try:
+        os.chmod(config_file_path, 0o600)
+    except Exception as e:
+        logger.debug(f"Failed to apply secret file permissions on {config_file_path}: {e}")
+
+
+def update_token(config_file_path, api_key_value):
     logger.debug(f"Updating token in {config_file_path}")
     with open(config_file_path, "r") as file:
         lines = file.readlines()
     with open(config_file_path, "w") as file:
         for line in lines:
             if line.strip().startswith("token:"):
-                file.write(f"token: {token}\n")
+                file.write(f"token: {api_key_value}\n")
             else:
                 file.write(line)
+    _ensure_secret_file_permissions(config_file_path)
 
 
 def update_creds(config_file_path, username, password):
@@ -5080,6 +5088,7 @@ def update_creds(config_file_path, username, password):
                     file.write(f"password: {password}\n")
                 else:
                     file.write(line)
+        _ensure_secret_file_permissions(config_file_path)
     else:
         logger.debug(f"Removing credentials in {config_file_path}")
         with open(config_file_path, "r") as file:
@@ -5096,6 +5105,7 @@ def update_creds(config_file_path, username, password):
                     file.write("# password: <password>\n")
                 else:
                     file.write(line)
+        _ensure_secret_file_permissions(config_file_path)
 
 
 def get_port_from_config(config_file_path):

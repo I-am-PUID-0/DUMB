@@ -3,6 +3,10 @@ name: Clear All Caches
 on:
   workflow_dispatch:
 
+permissions:
+  actions: write
+  contents: read
+
 jobs:
   clear-caches:
     runs-on: ubuntu-latest

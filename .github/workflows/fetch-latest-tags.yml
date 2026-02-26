@@ -5,6 +5,10 @@ on:
     - cron: "0 */3 * * *"
   workflow_dispatch:
 
+permissions:
+  actions: write
+  contents: read
+
 jobs:
   check-latest-tags:
     runs-on: ubuntu-latest
