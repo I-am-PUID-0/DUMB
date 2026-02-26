@@ -2131,13 +2131,12 @@ def symlink_backup_manifests(
         raise HTTPException(status_code=404, detail="Process not found")
 
     template = str(config.get("symlink_backup_path") or "").strip()
-    pattern = _symlink_manifest_glob_pattern(process_name, template)
-    pattern_dir = os.path.dirname(os.path.normpath(pattern)) or SYMLINK_SNAPSHOT_ROOT
+    pattern = _snapshot_filename_glob(process_name, template)
     matches = []
     for path in glob.glob(pattern):
-        if not _is_path_within(pattern_dir, path):
-            continue
         resolved_path = os.path.realpath(path)
+        if not _is_path_within(SYMLINK_SNAPSHOT_ROOT, resolved_path):
+            continue
         if not os.path.isfile(resolved_path):
             continue
         try:
@@ -2170,15 +2169,15 @@ def symlink_manifest_files(
     current_user: str = Depends(get_optional_current_user),
 ):
     raw_path = _resolve_snapshot_manifest_path(manifest_path or "")
-    directory = os.path.dirname(raw_path) or SYMLINK_SNAPSHOT_ROOT
+    directory = SYMLINK_SNAPSHOT_ROOT
 
     entries = []
     try:
         for name in os.listdir(directory):
             path = os.path.join(directory, name)
-            if not _is_path_within(directory, path):
-                continue
             resolved_path = os.path.realpath(path)
+            if not _is_path_within(SYMLINK_SNAPSHOT_ROOT, resolved_path):
+                continue
             if not os.path.isfile(resolved_path):
                 continue
             try:
@@ -2723,6 +2722,16 @@ def _symlink_manifest_glob_pattern(process_name: str, template: str) -> str:
     for token, value in replacements.items():
         pattern = pattern.replace(token, value)
     return pattern
+
+
+def _snapshot_filename_glob(process_name: str, template: str) -> str:
+    raw_template = str(template or "").strip()
+    if not raw_template:
+        raw_template = "{process_slug}-{timestamp}.json"
+    filename_template = os.path.basename(raw_template) or "{process_slug}-{timestamp}.json"
+    filename_pattern = _symlink_manifest_glob_pattern(process_name, filename_template)
+    safe_filename_pattern = os.path.basename(filename_pattern)
+    return os.path.join(SYMLINK_SNAPSHOT_ROOT, safe_filename_pattern)
 
 
 def _is_path_within(base_path: str, candidate_path: str) -> bool:
