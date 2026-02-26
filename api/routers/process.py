@@ -100,6 +100,11 @@ class UnifiedStartRequest(BaseModel):
 process_router = APIRouter()
 versions = Versions()
 SYMLINK_SNAPSHOT_ROOT = "/config/symlink-repair/snapshots"
+STACKTRACE_MARKERS = (
+    "Traceback (most recent call last)",
+    "File \"",
+    "line ",
+)
 DEPENDENCY_INSTANCE_SCOPED_KEYS = {"rclone", "zurg"}
 DEPENDENCY_TRUTH_TABLE = [
     {
@@ -638,15 +643,17 @@ def fetch_process(
         if updater:
             supports_manual_update = updater.supports_manual_update(config_key, config)
 
-        return {
-            "process_name": process_name,
-            "config": config,
-            "version": version,
-            "config_key": config_key,
-            "update_status": update_status,
-            "symlink_backup_status": symlink_backup_status,
-            "supports_manual_update": supports_manual_update,
-        }
+        return _sanitize_stacktrace_payload(
+            {
+                "process_name": process_name,
+                "config": config,
+                "version": version,
+                "config_key": config_key,
+                "update_status": update_status,
+                "symlink_backup_status": symlink_backup_status,
+                "supports_manual_update": supports_manual_update,
+            }
+        )
     except Exception:
         logger.exception("Failed to load process")
         raise HTTPException(status_code=500, detail="Failed to load process") from None
@@ -657,7 +664,7 @@ def fetch_processes(
     logger=Depends(get_logger), current_user: str = Depends(get_optional_current_user)
 ):
     try:
-        return {"processes": _collect_process_entries()}
+        return _sanitize_stacktrace_payload({"processes": _collect_process_entries()})
     except Exception:
         logger.exception("Failed to load processes")
         raise HTTPException(status_code=500, detail="Failed to load processes") from None
@@ -1677,36 +1684,38 @@ def dependency_graph(
                 }
             )
 
-        return {
-            "process_name": target_proc_name,
-            "config_key": target_key,
-            "scope": scope_mode,
-            "context": {"mode": context_mode, "key": target_key, "core": core_entry},
-            "core_services": [
-                {
-                    "name": CORE_SERVICE_NAMES.get(key, key),
-                    "key": key,
-                    "dependencies": _effective_core_dependencies(
-                        key, CONFIG_MANAGER.config.get(key, {}) or {}
-                    ),
-                }
-                for key in CORE_SERVICE_DEPENDENCIES.keys()
-            ],
-            "processes": processes,
-            "statuses": status_by_process,
-            "startup_order": startup_order,
-            "dependency_rows": dependency_rows,
-            "dependent_rows": dependent_rows,
-            "linked_outgoing_rows": linked_outgoing_rows,
-            "linked_incoming_rows": linked_incoming_rows,
-            "nodes": sorted(
-                nodes_map.values(), key=lambda node: node.get("label") or ""
-            ),
-            "edges": edges,
-            "parallel_groups": parallel_groups,
-            "dependency_truth_table": DEPENDENCY_TRUTH_TABLE,
-            "updated_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-        }
+        return _sanitize_stacktrace_payload(
+            {
+                "process_name": target_proc_name,
+                "config_key": target_key,
+                "scope": scope_mode,
+                "context": {"mode": context_mode, "key": target_key, "core": core_entry},
+                "core_services": [
+                    {
+                        "name": CORE_SERVICE_NAMES.get(key, key),
+                        "key": key,
+                        "dependencies": _effective_core_dependencies(
+                            key, CONFIG_MANAGER.config.get(key, {}) or {}
+                        ),
+                    }
+                    for key in CORE_SERVICE_DEPENDENCIES.keys()
+                ],
+                "processes": processes,
+                "statuses": status_by_process,
+                "startup_order": startup_order,
+                "dependency_rows": dependency_rows,
+                "dependent_rows": dependent_rows,
+                "linked_outgoing_rows": linked_outgoing_rows,
+                "linked_incoming_rows": linked_incoming_rows,
+                "nodes": sorted(
+                    nodes_map.values(), key=lambda node: node.get("label") or ""
+                ),
+                "edges": edges,
+                "parallel_groups": parallel_groups,
+                "dependency_truth_table": DEPENDENCY_TRUTH_TABLE,
+                "updated_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+            }
+        )
     except HTTPException:
         raise
     except Exception:
@@ -2764,6 +2773,26 @@ def _resolve_snapshot_manifest_path(value: str) -> str:
             detail=f"manifest_path must stay within {SYMLINK_SNAPSHOT_ROOT}",
         )
     return normalized
+
+
+def _sanitize_stacktrace_payload(value: Any) -> Any:
+    if isinstance(value, dict):
+        cleaned: dict[str, Any] = {}
+        for key, item in value.items():
+            key_lc = str(key or "").lower()
+            if key_lc in {"traceback", "stacktrace", "stack_trace", "stack"}:
+                cleaned[key] = "Internal error"
+                continue
+            cleaned[key] = _sanitize_stacktrace_payload(item)
+        return cleaned
+    if isinstance(value, list):
+        return [_sanitize_stacktrace_payload(item) for item in value]
+    if isinstance(value, tuple):
+        return tuple(_sanitize_stacktrace_payload(item) for item in value)
+    if isinstance(value, str):
+        if any(marker in value for marker in STACKTRACE_MARKERS):
+            return "Internal error"
+    return value
 
 
 def normalize_instance_name(instance_name: str) -> tuple[str, str]:
