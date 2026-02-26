@@ -1,7 +1,13 @@
 from utils.global_logger import logger
 from utils.logger import format_time
 from utils.versions import Versions
-from utils.setup import setup_project, setup_release_version, configure_project
+from utils.download import Downloader
+from utils.setup import (
+    setup_project,
+    setup_release_version,
+    setup_branch_version,
+    configure_project,
+)
 from utils.plex import PlexInstaller
 from utils.arr import ArrInstaller
 from utils.jellyfin import JellyfinInstaller
@@ -25,12 +31,32 @@ class Update:
         self.process_handler = process_handler
         self.logger = process_handler.logger
         self.updating = threading.Lock()
+        self.downloader = Downloader()
 
         if not Update._scheduler_initialized:
             self.scheduler = schedule.Scheduler()
             Update._scheduler_initialized = True
         else:
             self.scheduler = schedule.default_scheduler
+
+    def _fetch_branch_head_sha(self, repo_owner: str, repo_name: str, branch: str):
+        try:
+            branch_ref = requests.utils.quote(str(branch or "").strip(), safe="")
+            api_url = (
+                f"https://api.github.com/repos/{repo_owner}/{repo_name}/commits/{branch_ref}"
+            )
+            response = self.downloader.fetch_with_retries(
+                api_url, self.downloader.get_headers()
+            )
+            if response and response.status_code == 200:
+                data = response.json() if hasattr(response, "json") else {}
+                sha = (data or {}).get("sha")
+                if sha:
+                    return sha, None
+            status = response.status_code if response is not None else "no_response"
+            return None, f"Unable to resolve branch head sha (status: {status})"
+        except Exception as e:
+            return None, f"Error resolving branch head sha: {e}"
 
     def supports_manual_update(self, key, config):
         if key in {"bazarr"}:
@@ -396,6 +422,72 @@ class Update:
                 "status": "unsupported",
                 "reason": "repo_missing",
                 "message": f"{process_name} missing repo configuration.",
+                "checked_at": checked_at,
+                "auto_update_enabled": auto_update_enabled,
+                "auto_update_interval": interval_hours,
+                "auto_update_start_time": start_time,
+                "next_check_at": next_check_at,
+            }
+
+        branch_enabled = bool(config.get("branch_enabled")) and key in {
+            "decypharr",
+            "nzbdav",
+        }
+        if branch_enabled:
+            current_version, current_error = versions.version_check(
+                process_name, instance_name, key
+            )
+            if not current_version:
+                return {
+                    "status": "error",
+                    "reason": "version_check_failed",
+                    "message": current_error,
+                    "checked_at": checked_at,
+                    "auto_update_enabled": auto_update_enabled,
+                    "auto_update_interval": interval_hours,
+                    "auto_update_start_time": start_time,
+                    "next_check_at": next_check_at,
+                }
+            branch_name = (config.get("branch") or "main").strip() or "main"
+            head_sha, head_error = self._fetch_branch_head_sha(
+                repo_owner, repo_name, branch_name
+            )
+            if not head_sha:
+                return {
+                    "status": "error",
+                    "reason": "version_check_failed",
+                    "message": head_error or "Failed to resolve branch head SHA.",
+                    "checked_at": checked_at,
+                    "auto_update_enabled": auto_update_enabled,
+                    "auto_update_interval": interval_hours,
+                    "auto_update_start_time": start_time,
+                    "next_check_at": next_check_at,
+                }
+
+            available_version = f"{branch_name}-{head_sha[:8]}"
+            if current_version == available_version:
+                return {
+                    "status": "no_update",
+                    "current_version": current_version,
+                    "available_version": available_version,
+                    "message": "No updates available",
+                    "checked_at": checked_at,
+                    "auto_update_enabled": auto_update_enabled,
+                    "auto_update_interval": interval_hours,
+                    "auto_update_start_time": start_time,
+                    "next_check_at": next_check_at,
+                }
+
+            status = "update_available"
+            if block_reason:
+                status = "blocked"
+
+            return {
+                "status": status,
+                "current_version": current_version,
+                "available_version": available_version,
+                "reason": block_reason,
+                "message": "Branch update available",
                 "checked_at": checked_at,
                 "auto_update_enabled": auto_update_enabled,
                 "auto_update_interval": interval_hours,
@@ -1176,10 +1268,41 @@ class Update:
         except Exception:
             current_version = ""
 
-        if config.get("branch_enabled"):
+        if config.get("branch_enabled") and key in {"decypharr", "nzbdav"}:
             branch_name = (config.get("branch") or "main").strip() or "main"
-            # NzbDAV branch installs persist as "branch-sha" (or fallback "branch-<name>").
+            # Decypharr branch builds persist as "<branch>-<short_sha>" in version.txt.
+            if key == "decypharr":
+                head_sha, head_err = self._fetch_branch_head_sha(
+                    config.get("repo_owner"), config.get("repo_name"), branch_name
+                )
+                if head_sha:
+                    expected = f"{branch_name}-{head_sha[:8]}"
+                    if current_version == expected:
+                        return False
+                    return True
+                if head_err:
+                    self.logger.debug(
+                        "Decypharr branch SHA lookup failed for preinstall check: %s",
+                        head_err,
+                    )
+                if current_version.startswith(f"{branch_name}-"):
+                    return False
+                return True
+            # NzbDAV branch installs persist as "<branch>-<short_sha>" (or fallback "branch-<name>").
             if key == "nzbdav":
+                head_sha, head_err = self._fetch_branch_head_sha(
+                    config.get("repo_owner"), config.get("repo_name"), branch_name
+                )
+                if head_sha:
+                    expected = f"{branch_name}-{head_sha[:8]}"
+                    if current_version == expected:
+                        return False
+                    return True
+                if head_err:
+                    self.logger.debug(
+                        "NzbDAV branch SHA lookup failed for preinstall check: %s",
+                        head_err,
+                    )
                 if current_version.startswith(f"{branch_name}-"):
                     return False
                 if current_version == f"branch-{branch_name}":
@@ -1511,6 +1634,59 @@ class Update:
                 return self.update_check_arr_latest(
                     process_name, config, key, instance_name
                 )
+
+        if config.get("branch_enabled"):
+            repo_owner = config.get("repo_owner")
+            repo_name = config.get("repo_name")
+            if not repo_owner or not repo_name:
+                return False, f"{process_name} missing repo configuration."
+
+            branch_name = (config.get("branch") or "main").strip() or "main"
+            head_sha, head_error = self._fetch_branch_head_sha(
+                repo_owner, repo_name, branch_name
+            )
+            if not head_sha:
+                return False, head_error or "Failed to resolve branch head SHA."
+
+            versions = Versions()
+            current_version, version_error = versions.version_check(
+                process_name, instance_name, key
+            )
+            if not current_version:
+                return False, version_error or "Failed to read current version."
+
+            target_version = f"{branch_name}-{head_sha[:8]}"
+            if current_version == target_version:
+                return False, f"No updates available for {process_name}."
+
+            self.logger.info(
+                "Updating %s branch %s from %s to %s.",
+                process_name,
+                branch_name,
+                current_version,
+                target_version,
+            )
+            if process_name in self.process_handler.process_names:
+                self.stop_process(process_name)
+            with self.process_handler.setup_tracker_lock:
+                if process_name in self.process_handler.setup_tracker:
+                    self.process_handler.setup_tracker.remove(process_name)
+
+            success, error = setup_branch_version(
+                self.process_handler, config, process_name, key
+            )
+            if not success:
+                return (
+                    False,
+                    f"Failed to update {process_name} to {target_version}: {error}",
+                )
+            success, error = setup_project(self.process_handler, process_name)
+            if not success:
+                return (
+                    False,
+                    f"Failed to complete setup for {process_name}: {error}",
+                )
+            return self.start_process(process_name, config, key, instance_name)
 
         if config.get("release_version_enabled"):
             release_value = (config.get("release_version") or "").lower()

@@ -182,6 +182,64 @@ def _prepare_nzbdav_source_tree(target_dir: str) -> tuple[bool, str | None]:
         return False, f"Failed preparing NzbDAV source tree at {target_dir}: {e}"
 
 
+def _prepare_decypharr_source_tree(target_dir: str) -> tuple[bool, str | None]:
+    """
+    Remove Decypharr source/build artifacts before extracting new branch/release
+    content so deleted upstream files do not linger and break Go builds.
+    Keep runtime state (config/auth/logs/downloads) intact.
+    """
+    cleanup_targets = [
+        "cmd",
+        "docs",
+        "internal",
+        "pkg",
+        "scripts",
+        "testdata",
+        "node_modules",
+        "main.go",
+        "go.mod",
+        "go.sum",
+        "package.json",
+        "package-lock.json",
+        "pnpm-lock.yaml",
+        "tailwind.config.js",
+        "Dockerfile",
+        "README.md",
+        "LICENSE",
+        ".dumb_frontend_build_fingerprint",
+    ]
+    try:
+        for entry in cleanup_targets:
+            path = os.path.join(target_dir, entry)
+            if os.path.isdir(path):
+                shutil.rmtree(path)
+            elif os.path.isfile(path):
+                os.remove(path)
+        return True, None
+    except Exception as e:
+        return False, f"Failed preparing Decypharr source tree at {target_dir}: {e}"
+
+
+def _fetch_github_branch_head_sha(
+    repo_owner: str, repo_name: str, branch: str
+) -> tuple[str | None, str | None]:
+    try:
+        branch_ref = urllib.parse.quote(str(branch or "").strip(), safe="")
+        api_url = (
+            f"https://api.github.com/repos/{repo_owner}/{repo_name}/commits/{branch_ref}"
+        )
+        response = downloader.fetch_with_retries(api_url, downloader.get_headers())
+        if response and response.status_code == 200:
+            data = response.json() if hasattr(response, "json") else {}
+            sha = (data or {}).get("sha")
+            if sha:
+                return sha, None
+        status = response.status_code if response is not None else "no_response"
+        return None, f"Unable to resolve branch head sha (status: {status})"
+    except Exception as e:
+        return None, f"Error resolving branch head sha: {e}"
+
+
 def setup_release_version(process_handler, config, process_name, key):
     if key == "plex_debrid":
         return False, "Release version not supported for plex_debrid."
@@ -212,6 +270,10 @@ def setup_release_version(process_handler, config, process_name, key):
 
     if key == "nzbdav":
         success, error = _prepare_nzbdav_source_tree(target_dir)
+        if not success:
+            return False, error
+    elif key == "decypharr":
+        success, error = _prepare_decypharr_source_tree(target_dir)
         if not success:
             return False, error
 
@@ -335,7 +397,7 @@ def setup_branch_version(process_handler, config, process_name, key):
         except Exception as e:
             return None, f"Error resolving branch head sha: {e}"
 
-    def _has_riven_runtime_artifacts(target_dir: str, service_key: str) -> bool:
+    def _has_branch_runtime_artifacts(target_dir: str, service_key: str) -> bool:
         if service_key == "riven_backend":
             return (
                 os.path.isfile(os.path.join(target_dir, "pyproject.toml"))
@@ -346,6 +408,21 @@ def setup_branch_version(process_handler, config, process_name, key):
             return os.path.isfile(os.path.join(target_dir, "package.json")) and (
                 os.path.isfile(build_path) or os.path.isdir(build_path)
             )
+        if service_key == "decypharr":
+            return os.path.isfile(os.path.join(target_dir, "decypharr")) and os.path.isfile(
+                os.path.join(target_dir, "version.txt")
+            )
+        if service_key == "nzbdav":
+            backend_output_dir = config.get("backend_output_dir") or os.path.join(
+                target_dir, "app"
+            )
+            has_output = False
+            try:
+                if os.path.isdir(backend_output_dir):
+                    has_output = any(os.scandir(backend_output_dir))
+            except Exception:
+                has_output = False
+            return has_output and os.path.isfile(os.path.join(target_dir, "version.txt"))
         return False
 
     if key in [
@@ -370,7 +447,7 @@ def setup_branch_version(process_handler, config, process_name, key):
         if not branch_url:
             return False, f"Failed to fetch branch {config['branch']}"
 
-        if key in {"riven_backend", "riven_frontend"}:
+        if key in {"riven_backend", "riven_frontend", "decypharr", "nzbdav"}:
             current_sha, sha_error = _fetch_branch_head_sha(
                 config["repo_owner"], config["repo_name"], config["branch"]
             )
@@ -381,7 +458,7 @@ def setup_branch_version(process_handler, config, process_name, key):
                     and previous_state.get("repo_name") == config["repo_name"]
                     and previous_state.get("branch") == config["branch"]
                     and previous_state.get("commit_sha") == current_sha
-                    and _has_riven_runtime_artifacts(target_dir, key)
+                    and _has_branch_runtime_artifacts(target_dir, key)
                 ):
                     logger.info(
                         "Branch '%s' unchanged for %s (%s); skipping reinstall/setup.",
@@ -414,6 +491,10 @@ def setup_branch_version(process_handler, config, process_name, key):
 
         if key == "nzbdav":
             success, error = _prepare_nzbdav_source_tree(target_dir)
+            if not success:
+                return False, error
+        elif key == "decypharr":
+            success, error = _prepare_decypharr_source_tree(target_dir)
             if not success:
                 return False, error
 
@@ -453,7 +534,7 @@ def setup_branch_version(process_handler, config, process_name, key):
         if not success:
             return False, error
 
-        if key in {"riven_backend", "riven_frontend"}:
+        if key in {"riven_backend", "riven_frontend", "decypharr", "nzbdav"}:
             current_sha, _ = _fetch_branch_head_sha(
                 config["repo_owner"], config["repo_name"], config["branch"]
             )
@@ -2187,7 +2268,10 @@ def setup_decypharr(install_only: bool = False, configure_only: bool = False):
                 try:
                     with open(version_path, "r") as handle:
                         installed_version = (handle.read() or "").strip()
-                    if installed_version.startswith("3.0.0"):
+                    is_branch_marker = bool(
+                        re.match(r"^[A-Za-z0-9._/-]+-[0-9a-fA-F]{7,}$", installed_version)
+                    )
+                    if installed_version.startswith("3.0.0") or is_branch_marker:
                         force_release_install = True
                         logger.info(
                             "Decypharr branch build detected (%s) but branch is disabled; reinstalling release.",
@@ -3053,31 +3137,55 @@ def build_decypharr_dev(process_handler, config):
         success, error = setup_pnpm_environment(process_handler, config_dir)
         if not success:
             return False, f"Failed to set up pnpm environment: {error}"
-        branch = config.get("branch")
-        version = "3.0.0"  # Default version until it can be determined dynamically
+        branch = (config.get("branch") or "").strip() or "beta"
+        version = "3.0.0"  # Runtime semantic version for beta branch builds
+        branch_sha = None
+        if config.get("repo_owner") and config.get("repo_name") and branch:
+            branch_sha, sha_error = _fetch_github_branch_head_sha(
+                config.get("repo_owner"),
+                config.get("repo_name"),
+                branch,
+            )
+            if sha_error:
+                logger.debug("Decypharr branch SHA lookup failed: %s", sha_error)
+        channel = f"{branch}-{branch_sha[:8]}" if branch_sha else branch
         command = [
             "go",
             "build",
             "-ldflags",
-            f"-X github.com/sirrobot01/decypharr/pkg/version.Version={version} -X github.com/sirrobot01/decypharr/pkg/version.Channel={branch}",
+            f"-X github.com/sirrobot01/decypharr/pkg/version.Version={version} -X github.com/sirrobot01/decypharr/pkg/version.Channel={channel}",
             "-o",
             "decypharr",
             ".",
         ]
+        go_build_error = ""
+        go_build_success = False
         for attempt in range(3):
             process_handler.start_process("go_build", config_dir, command)
             process_handler.wait("go_build")
             if process_handler.returncode == 0:
+                go_build_success = True
                 break
+            go_build_error = (
+                (process_handler.stderr or "").strip()
+                or (process_handler.stdout or "").strip()
+            )
             logger.warning(f"Decypharr build failed (attempt {attempt + 1}/3)")
+
+        if not go_build_success:
+            return (
+                False,
+                f"Failed to build Decypharr binary after 3 attempts: {go_build_error}",
+            )
 
         version_path = os.path.join(config_dir, "version.txt")
         marker_path = os.path.join(config_dir, ".dumb_branch_build")
+        branch_version = channel
         try:
             with open(version_path, "w") as handle:
-                handle.write(f"{version}-{branch}" if branch else version)
+                handle.write(branch_version)
             with open(marker_path, "w") as handle:
-                handle.write(branch or "branch")
+                handle.write(branch_version)
         except Exception as e:
             logger.debug("Failed to write Decypharr branch markers: %s", e)
 

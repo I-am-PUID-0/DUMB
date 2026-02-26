@@ -870,6 +870,54 @@ def patch_decypharr_config():
             "dir_cache_time": "5m",
         }
 
+        def _merged_embedded_rclone(existing_mount_rclone=None):
+            """
+            Build embedded rclone defaults with compatibility layering:
+            defaults <- legacy top-level rclone <- feature mount.rclone.
+            Feature mount.rclone is authoritative so user UI edits persist.
+            """
+            legacy_rclone = (
+                config_data.get("rclone", {})
+                if isinstance(config_data.get("rclone"), dict)
+                else {}
+            )
+            mount_rclone = (
+                existing_mount_rclone if isinstance(existing_mount_rclone, dict) else {}
+            )
+            return {**default_embedded_rclone, **legacy_rclone, **mount_rclone}
+
+        def _merged_dfs_settings(existing_mount_dfs=None):
+            """
+            Ensure DFS settings exist on first run so beta DFS can start without
+            waiting for a manual UI save. Existing mount.dfs values stay authoritative.
+            """
+            dfs_defaults = {
+                "cache_expiry": "24h",
+                "cache_dir": "/cache/dfs",
+                "disk_cache_size": "50GB",
+                "cache_cleanup_interval": "1h",
+                "chunk_size": "10MB",
+                "read_ahead_size": "128MB",
+                "daemon_timeout": "30m",
+                "umask": "022",
+                "allow_other": True,
+                "default_permissions": True,
+            }
+            if user_id is not None:
+                dfs_defaults["uid"] = int(user_id)
+            if group_id is not None:
+                dfs_defaults["gid"] = int(group_id)
+
+            cfg_dfs = (
+                decypharr_config.get("dfs", {})
+                if isinstance(decypharr_config.get("dfs"), dict)
+                else {}
+            )
+            mount_dfs = (
+                existing_mount_dfs if isinstance(existing_mount_dfs, dict) else {}
+            )
+            return {**dfs_defaults, **cfg_dfs, **mount_dfs}
+
         # Discover rclone instances (legacy path for NON-embedded mode)
         rclone_instances = (CONFIG_MANAGER.get("rclone") or {}).get(
             "instances", {}
@@ -908,8 +956,9 @@ def patch_decypharr_config():
             logger.info(f"Decypharr port set to {desired_port}")
             updated = True
 
-        # Ensure embedded rclone block when enabled (merge defaults without clobbering)
-        if use_embedded or (features_enabled and mount_type == "rclone"):
+        # Legacy-style top-level rclone block (stable/non-feature configs only).
+        # Feature configs should use mount.rclone and avoid rewriting top-level rclone.
+        if use_embedded and not features_enabled:
             embedded_rc = config_data.get("rclone", {})
             merged_rc = {**default_embedded_rclone, **(embedded_rc or {})}
             if embedded_rc != merged_rc:
@@ -939,10 +988,14 @@ def patch_decypharr_config():
                 mount_block["mount_path"] = desired_mount_path
                 updated = True
             if desired_type == "rclone":
-                embedded_rc = config_data.get("rclone", {})
-                merged_rc = {**default_embedded_rclone, **(embedded_rc or {})}
+                merged_rc = _merged_embedded_rclone(mount_block.get("rclone"))
                 if mount_block.get("rclone") != merged_rc:
                     mount_block["rclone"] = merged_rc
+                    updated = True
+            elif desired_type == "dfs":
+                merged_dfs = _merged_dfs_settings(mount_block.get("dfs"))
+                if mount_block.get("dfs") != merged_dfs:
+                    mount_block["dfs"] = merged_dfs
                     updated = True
             elif desired_type == "external_rclone":
                 rc_inst = debrid_instances[0] if debrid_instances else None
@@ -990,9 +1043,10 @@ def patch_decypharr_config():
                     "mount_path": mount_path,
                 }
                 if mount_block["type"] == "rclone":
-                    embedded_rc = config_data.get("rclone", {})
-                    merged_rc = {**default_embedded_rclone, **(embedded_rc or {})}
+                    merged_rc = _merged_embedded_rclone()
                     mount_block["rclone"] = merged_rc
+                elif mount_block["type"] == "dfs":
+                    mount_block["dfs"] = _merged_dfs_settings()
 
                 config_data["mount"] = mount_block
                 config_data["download_folder"] = "/mnt/debrid/decypharr_downloads"
@@ -1391,9 +1445,10 @@ def patch_decypharr_config():
                     "mount_path": mount_path,
                 }
                 if mount_block["type"] == "rclone":
-                    embedded_rc = config_data.get("rclone", {})
-                    merged_rc = {**default_embedded_rclone, **(embedded_rc or {})}
+                    merged_rc = _merged_embedded_rclone()
                     mount_block["rclone"] = merged_rc
+                elif mount_block["type"] == "dfs":
+                    mount_block["dfs"] = _merged_dfs_settings()
                 elif mount_block["type"] == "external_rclone":
                     rc_inst = debrid_instances[0] if debrid_instances else None
                     rc_url = _safe_extract_rc_url(rc_inst, "http://127.0.0.1:5572")
@@ -1486,6 +1541,15 @@ def patch_decypharr_config():
                     "mount_path", default_embedded_rclone["mount_path"]
                 )
             )
+        if features_enabled:
+            mount_cfg = config_data.get("mount") or {}
+            if mount_cfg.get("mount_path"):
+                required_dirs.append(mount_cfg.get("mount_path"))
+            if (mount_cfg.get("type") or "").strip().lower() == "dfs":
+                dfs_cfg = mount_cfg.get("dfs") or {}
+                cache_dir = (dfs_cfg.get("cache_dir") or "").strip()
+                if cache_dir:
+                    required_dirs.append(cache_dir)
 
         for dir_path in required_dirs:
             try:
@@ -1494,6 +1558,16 @@ def patch_decypharr_config():
                     logger.info(f"Created directory: {dir_path}")
                 if user_id is not None and group_id is not None:
                     os.chown(dir_path, int(user_id), int(group_id))
+            except OSError as e:
+                # FUSE-backed mountpoints may not support chown/chmod operations.
+                if getattr(e, "errno", None) in (1, 30, 95):
+                    logger.debug(
+                        "Skipping ownership update for %s: %s", dir_path, e
+                    )
+                    continue
+                logger.warning(
+                    f"Failed to ensure ownership or creation of {dir_path}: {e}"
+                )
             except Exception as e:
                 logger.warning(
                     f"Failed to ensure ownership or creation of {dir_path}: {e}"
