@@ -643,7 +643,7 @@ def fetch_process(
         if updater:
             supports_manual_update = updater.supports_manual_update(config_key, config)
 
-        return _sanitize_stacktrace_payload(
+        return _safe_api_response(
             {
                 "process_name": process_name,
                 "config": config,
@@ -664,7 +664,7 @@ def fetch_processes(
     logger=Depends(get_logger), current_user: str = Depends(get_optional_current_user)
 ):
     try:
-        return _sanitize_stacktrace_payload({"processes": _collect_process_entries()})
+        return _safe_api_response({"processes": _collect_process_entries()})
     except Exception:
         logger.exception("Failed to load processes")
         raise HTTPException(status_code=500, detail="Failed to load processes") from None
@@ -1684,7 +1684,7 @@ def dependency_graph(
                 }
             )
 
-        return _sanitize_stacktrace_payload(
+        return _safe_api_response(
             {
                 "process_name": target_proc_name,
                 "config_key": target_key,
@@ -2793,6 +2793,14 @@ def _sanitize_stacktrace_payload(value: Any) -> Any:
         if any(marker in value for marker in STACKTRACE_MARKERS):
             return "Internal error"
     return value
+
+
+def _safe_api_response(value: Any) -> Any:
+    sanitized = _sanitize_stacktrace_payload(value)
+    try:
+        return json.loads(json.dumps(sanitized, default=str))
+    except Exception:
+        return sanitized
 
 
 def normalize_instance_name(instance_name: str) -> tuple[str, str]:
