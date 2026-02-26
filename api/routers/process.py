@@ -17,7 +17,7 @@ from utils.dependency_map import (
     filter_conditional_deps_for_instance,
 )
 from utils.versions import Versions
-import json, copy, time, glob, re, socket, errno, psutil, os, threading
+import json, copy, time, glob, re, socket, errno, psutil, os, threading, fnmatch
 
 
 class ServiceRequest(BaseModel):
@@ -647,9 +647,9 @@ def fetch_process(
             "symlink_backup_status": symlink_backup_status,
             "supports_manual_update": supports_manual_update,
         }
-    except Exception as e:
-        logger.error(f"Failed to load process: {e}")
-        raise HTTPException(status_code=500, detail="Failed to load process")
+    except Exception:
+        logger.exception("Failed to load process")
+        raise HTTPException(status_code=500, detail="Failed to load process") from None
 
 
 @process_router.get("/processes")
@@ -658,9 +658,9 @@ def fetch_processes(
 ):
     try:
         return {"processes": _collect_process_entries()}
-    except Exception as e:
-        logger.error(f"Failed to load processes: {e}")
-        raise HTTPException(status_code=500, detail="Failed to load processes")
+    except Exception:
+        logger.exception("Failed to load processes")
+        raise HTTPException(status_code=500, detail="Failed to load processes") from None
 
 
 @process_router.get("/dependency-graph")
@@ -1709,9 +1709,11 @@ def dependency_graph(
         }
     except HTTPException:
         raise
-    except Exception as exc:
-        logger.error("Failed to build dependency graph: %s", exc)
-        raise HTTPException(status_code=500, detail="Failed to build dependency graph")
+    except Exception:
+        logger.exception("Failed to build dependency graph")
+        raise HTTPException(
+            status_code=500, detail="Failed to build dependency graph"
+        ) from None
 
 
 @process_router.post("/start-service")
@@ -2132,8 +2134,14 @@ def symlink_backup_manifests(
 
     template = str(config.get("symlink_backup_path") or "").strip()
     pattern = _snapshot_filename_glob(process_name, template)
+    filename_pattern = os.path.basename(pattern)
     matches = []
-    for path in glob.glob(pattern):
+    for name in os.listdir(SYMLINK_SNAPSHOT_ROOT):
+        if not fnmatch.fnmatch(name, filename_pattern):
+            continue
+        if not re.match(r"^[A-Za-z0-9._-]+$", name):
+            continue
+        path = os.path.join(SYMLINK_SNAPSHOT_ROOT, name)
         resolved_path = os.path.realpath(path)
         if not _is_path_within(SYMLINK_SNAPSHOT_ROOT, resolved_path):
             continue

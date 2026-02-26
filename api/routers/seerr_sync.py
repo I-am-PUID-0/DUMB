@@ -169,8 +169,9 @@ async def test_seerr_sync_connection(
     except urllib.error.HTTPError as e:
         detail = f"Seerr responded with HTTP {e.code}"
         raise HTTPException(status_code=400, detail=detail)
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Connection failed: {e}")
+    except Exception:
+        logger.exception("Seerr sync connection test failed")
+        raise HTTPException(status_code=400, detail="Connection failed") from None
 
 
 @seerr_sync_router.delete("/failed")
@@ -202,6 +203,8 @@ async def clear_failed_requests(
         with open(_SYNC_STATE_FILE, "w") as f:
             json.dump(state, f, indent=2)
         return {"message": f"Cleared {cleared} failed request(s)", "cleared": cleared}
-    except Exception as e:
-        logger.error("Failed to save sync state: %s", e)
-        return {"error": str(e), "cleared": 0}
+    except Exception:
+        logger.exception("Failed to save sync state")
+        raise HTTPException(
+            status_code=500, detail="Failed to clear failed requests"
+        ) from None
