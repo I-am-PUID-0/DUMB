@@ -13,10 +13,10 @@ jobs:
       pull-requests: write
 
     steps:
-      - name: Checkout master
+      - name: Checkout dev
         uses: actions/checkout@v6
         with:
-          ref: master
+          ref: dev
           fetch-depth: 0
 
       - name: Set up Git
@@ -40,7 +40,7 @@ jobs:
 
       - name: Create integration branch
         run: |
-          git checkout -B test-all-dependabot origin/master
+          git checkout -B test-all-dependabot origin/dev
 
       - name: Merge all Dependabot PRs
         env:
