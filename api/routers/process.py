@@ -654,9 +654,8 @@ def fetch_process(
                 "supports_manual_update": supports_manual_update,
             }
         )
-    except Exception:
-        logger.exception("Failed to load process")
-        raise HTTPException(status_code=500, detail="Failed to load process") from None
+    except HTTPException:
+        raise
 
 
 @process_router.get("/processes")
@@ -665,9 +664,8 @@ def fetch_processes(
 ):
     try:
         return _safe_api_response({"processes": _collect_process_entries()})
-    except Exception:
-        logger.exception("Failed to load processes")
-        raise HTTPException(status_code=500, detail="Failed to load processes") from None
+    except HTTPException:
+        raise
 
 
 @process_router.get("/dependency-graph")
@@ -1718,11 +1716,6 @@ def dependency_graph(
         )
     except HTTPException:
         raise
-    except Exception:
-        logger.exception("Failed to build dependency graph")
-        raise HTTPException(
-            status_code=500, detail="Failed to build dependency graph"
-        ) from None
 
 
 @process_router.post("/start-service")
