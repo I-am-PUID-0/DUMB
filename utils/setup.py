@@ -1111,6 +1111,7 @@ def _setup_project(
                 process_handler,
                 install_only=install_phase and not configure_phase,
                 configure_only=configure_phase and not install_phase,
+                target_instance_name=instance_name,
             )
             if not success:
                 return False, error
@@ -4683,7 +4684,10 @@ def _patch_neutarr_migrate_settings(instance_config_dir: str) -> None:
 
 
 def setup_neutarr(
-    process_handler, install_only: bool = False, configure_only: bool = False
+    process_handler,
+    install_only: bool = False,
+    configure_only: bool = False,
+    target_instance_name: str | None = None,
 ):
     config = CONFIG_MANAGER.get("neutarr", {})
     if not config:
@@ -4698,6 +4702,9 @@ def setup_neutarr(
         return False, "Invalid NeutArr setup phase."
 
     for instance_name, instance in instances.items():
+        if target_instance_name and instance_name != target_instance_name:
+            continue
+
         if not instance.get("enabled", False):
             logger.debug("Skipping disabled NeutArr instance: %s", instance_name)
             continue
@@ -4802,6 +4809,10 @@ def setup_neutarr(
         instance_env = instance.get("env", {}) or {}
         env_changed = False
         new_port = str(instance.get("port", 9705))
+        if instance_env.get("PORT") != new_port:
+            instance_env["PORT"] = new_port
+            env_changed = True
+
         if instance_env.get("NEUTARR_PORT") != new_port:
             instance_env["NEUTARR_PORT"] = new_port
             env_changed = True
@@ -4954,6 +4965,9 @@ def setup_neutarr(
             CONFIG_MANAGER.save_config(instance.get("process_name"))
 
         _write_neutarr_version_marker(force_refresh=False)
+
+    if target_instance_name and target_instance_name not in instances:
+        return False, f"NeutArr instance {target_instance_name} not found."
 
     if not install_only:
         try:
