@@ -6389,6 +6389,12 @@ def setup_python_environment(process_handler, key, config_dir):
                     apt_prefix = ["apt"] if os.geteuid() == 0 else ["sudo", "apt"]
                     try:
                         run_locked(
+                            apt_prefix + ["update"],
+                            check=True,
+                            capture_output=True,
+                            text=True,
+                        )
+                        run_locked(
                             apt_prefix + ["install", "-y", "python3.12-venv"],
                             check=True,
                             capture_output=True,
