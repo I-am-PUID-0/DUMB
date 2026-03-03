@@ -1,0 +1,88 @@
+name: Feature request
+description: Suggest a backend improvement for DUMB.
+title: "[FEATURE] "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this form for DUMB backend improvements.
+
+        For support questions or setup help, use GitHub Discussions instead. For security issues, use the private reporting flow in the Security tab.
+  - type: checkboxes
+    id: duplicate-check
+    attributes:
+      label: Duplicate check
+      options:
+        - label: I searched existing issues and discussions and did not find the same request.
+          required: true
+  - type: checkboxes
+    id: scope-check
+    attributes:
+      label: Request scope
+      options:
+        - label: This request is for DUMB itself, not only for an upstream bundled project.
+          required: true
+        - label: I can clarify requirements and test behavior if the request is implemented.
+          required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Which backend area should change?
+      multiple: false
+      options:
+        - API / routing
+        - Setup / install
+        - Config schema / validation
+        - Service orchestration
+        - Auto-update / version management
+        - Embedded UI proxying
+        - Authentication / authorization
+        - Symlink tooling
+        - Docs or contributor workflow
+        - Other / unsure
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem are you trying to solve?
+      description: Explain the operator pain point, limitation, or workflow gap.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What change do you want?
+      description: Describe the behavior, API shape, config, or UX outcome you want from the backend.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: What alternatives have you considered?
+      description: Include workarounds, competing approaches, or why the current behavior is insufficient.
+    validations:
+      required: false
+  - type: input
+    id: services
+    attributes:
+      label: Affected services or integrations
+      description: List any DUMB-managed services or integrations this request touches.
+      placeholder: seerr, riven_backend, decypharr
+    validations:
+      required: false
+  - type: textarea
+    id: impact
+    attributes:
+      label: Why does this matter?
+      description: Describe the operational benefit, expected users, and any migration or compatibility concerns.
+    validations:
+      required: false
+  - type: textarea
+    id: extra
+    attributes:
+      label: Additional context
+      description: Add examples, screenshots, links, or reference implementations.
+    validations:
+      required: false

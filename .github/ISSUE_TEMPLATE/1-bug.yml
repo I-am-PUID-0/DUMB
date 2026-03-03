@@ -1,0 +1,127 @@
+name: Bug report
+description: Report a DUMB backend bug so it can be reproduced and fixed.
+title: "[BUG] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this form for issues in the DUMB backend (API, setup, service orchestration, config handling, updates, or proxy behavior).
+
+        If the problem is in an upstream bundled app (for example Radarr, Sonarr, Seerr, Riven, or another embedded service), report it here only if DUMB is the part causing or exposing the issue.
+  - type: checkboxes
+    id: duplicate-check
+    attributes:
+      label: Duplicate check
+      options:
+        - label: I searched existing issues and did not find a matching report.
+          required: true
+  - type: checkboxes
+    id: preflight
+    attributes:
+      label: Before submitting, I have
+      options:
+        - label: Reviewed the relevant DUMB docs and checked my configuration.
+          required: true
+        - label: Confirmed this is a DUMB backend issue and not only an upstream service issue.
+          required: true
+        - label: Re-tested on the latest applicable DUMB release, image tag, or branch head.
+          required: true
+        - label: Collected logs or enough detail to help reproduce the issue.
+          required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Which backend area is affected?
+      multiple: false
+      options:
+        - API / routing
+        - Setup / install
+        - Config parsing or validation
+        - Service start / stop / restart
+        - Auto-update / version management
+        - Embedded UI proxying
+        - Authentication / authorization
+        - Symlink tooling
+        - Other / unsure
+    validations:
+      required: true
+  - type: textarea
+    id: behavior
+    attributes:
+      label: What happened?
+      description: Describe the actual behavior. Include the expected behavior if that makes the problem clearer.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: Provide a minimal, reliable set of steps so the issue can be reproduced.
+      placeholder: |
+        1. Open ...
+        2. Update ...
+        3. Start ...
+        4. Observe ...
+    validations:
+      required: true
+  - type: dropdown
+    id: deployment
+    attributes:
+      label: How are you running DUMB?
+      multiple: false
+      options:
+        - Docker container
+        - Docker Compose
+        - Dev container
+        - Local source checkout
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: DUMB version / image tag / branch marker
+      description: Include the exact version you are running (for example `latest`, `vX.Y.Z`, or `dev-<shortSHA>`).
+      placeholder: latest
+    validations:
+      required: true
+  - type: input
+    id: host-os
+    attributes:
+      label: Host OS / platform
+      description: Include your host OS and version (for example `Ubuntu 24.04`, `Unraid 7.x`, `Windows 11 + WSL2`).
+      placeholder: Ubuntu 24.04
+    validations:
+      required: true
+  - type: input
+    id: services
+    attributes:
+      label: Affected services
+      description: List the DUMB-managed service(s) involved, if any.
+      placeholder: dmbdb, radarr, rclone
+    validations:
+      required: false
+  - type: textarea
+    id: config
+    attributes:
+      label: Relevant config or request payload
+      description: Paste only the relevant config fragment, sanitized of secrets.
+      render: json
+    validations:
+      required: false
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant log output
+      description: Paste backend logs, trace snippets, or error responses that help explain the failure. Remove secrets first.
+      render: shell
+    validations:
+      required: false
+  - type: textarea
+    id: extra
+    attributes:
+      label: Additional context
+      description: Add screenshots, links, workaround notes, or anything else that narrows the issue.
+    validations:
+      required: false

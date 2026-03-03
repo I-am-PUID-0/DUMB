@@ -1,0 +1,14 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Discussions
+    url: https://github.com/I-am-PUID-0/DUMB/discussions
+    about: Use Discussions for general questions, broader workflow discussion, or pre-issue troubleshooting.
+  - name: Documentation
+    url: https://dumbarr.com/
+    about: Check the docs before filing an issue.
+  - name: Security Reports
+    url: https://github.com/I-am-PUID-0/DUMB/security/policy
+    about: Do not file public issues for vulnerabilities. Use the Security tab for private reporting.
+  - name: Discord
+    url: https://discord.gg/T6uZGy5XYb
+    about: Join the community for real-time discussion and troubleshooting.
