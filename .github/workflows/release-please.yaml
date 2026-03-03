@@ -45,3 +45,4 @@ jobs:
           config-file: .github/release-please-config.json
           manifest-file: .github/.release-please-manifest.json
           skip-github-release: true
+          target-branch: master

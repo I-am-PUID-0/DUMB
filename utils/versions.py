@@ -1,7 +1,7 @@
 from utils.global_logger import logger
 from utils.download import Downloader
 from utils.config_loader import CONFIG_MANAGER
-import os, subprocess, json, re, requests, shlex
+import os, subprocess, json, re, requests, shlex, urllib.parse
 
 
 class Versions:
@@ -10,6 +10,38 @@ class Versions:
     def __init__(self):
         self.logger = logger
         self.downloader = Downloader()
+
+    def _get_service_config_for_compare(self, key: str, instance_name: str | None):
+        config = None
+        if instance_name:
+            try:
+                config = CONFIG_MANAGER.get_instance(instance_name, key)
+            except Exception:
+                config = None
+        if not isinstance(config, dict):
+            fallback = CONFIG_MANAGER.get(key, {})
+            config = fallback if isinstance(fallback, dict) else {}
+        return config
+
+    def _get_branch_head_marker(
+        self, repo_owner: str, repo_name: str, branch_name: str
+    ) -> tuple[str | None, str | None]:
+        try:
+            headers = self.downloader.get_headers()
+            branch_ref = urllib.parse.quote(str(branch_name or "").strip(), safe="")
+            api_url = (
+                f"https://api.github.com/repos/{repo_owner}/{repo_name}/commits/{branch_ref}"
+            )
+            response = self.downloader.fetch_with_retries(api_url, headers)
+            if response and response.status_code == 200:
+                data = response.json() if hasattr(response, "json") else {}
+                sha = (data or {}).get("sha")
+                if sha:
+                    return f"{branch_name}-{sha[:8]}", None
+            status = response.status_code if response is not None else "no_response"
+            return None, f"Unable to resolve branch head sha (status: {status})"
+        except Exception as e:
+            return None, f"Error resolving branch head sha: {e}"
 
     @staticmethod
     def _normalize_arr_version(version: str | None) -> str | None:
@@ -120,13 +152,18 @@ class Versions:
                     config.get("config_dir", "/tautulli"), "version.txt"
                 )
                 is_file = True
-            elif key == "huntarr":
+            elif key == "neutarr":
                 config = CONFIG_MANAGER.get_instance(instance_name, key)
                 if not config:
                     raise ValueError(f"Configuration for {process_name} not found.")
-                version_path = os.path.join(
-                    config.get("config_dir", "/huntarr/default"), "version.txt"
-                )
+                config_dir = config.get("config_dir", "/neutarr/default")
+                version_txt = os.path.join(config_dir, "version.txt")
+                if os.path.isfile(version_txt):
+                    with open(version_txt, "r") as f:
+                        version = f.read().strip()
+                    if version:
+                        return version, None
+                version_path = os.path.join(config_dir, "pyproject.toml")
                 is_file = True
             elif key == "seerr":
                 config = CONFIG_MANAGER.get_instance(instance_name, key)
@@ -338,14 +375,18 @@ class Versions:
                             key == "riven_backend"
                             or key == "dumb_api_service"
                             or key == "plex_debrid"
+                            or key == "neutarr"
                         ):
                             for line in f:
                                 if line.startswith("version = "):
                                     version_raw = (
                                         line.split("=")[1].strip().strip('"').strip("'")
                                     )
-                                    match = re.search(r"v?\d+(\.\d+)*", version_raw)
-                                    version = match.group(0) if match else ""
+                                    if key == "neutarr":
+                                        version = version_raw
+                                    else:
+                                        match = re.search(r"v?\d+(\.\d+)*", version_raw)
+                                        version = match.group(0) if match else version_raw
                                     if key == "riven_backend":
                                         version = f"v{version}"
                                     break
@@ -413,6 +454,10 @@ class Versions:
                 version_path = version_path or "/seerr/default/version.txt"
                 with open(version_path, "w") as f:
                     f.write(version)
+            elif key == "neutarr":
+                version_path = version_path or "/neutarr/default/version.txt"
+                with open(version_path, "w") as f:
+                    f.write(version)
             elif key == "profilarr":
                 version_path = version_path or "/profilarr/default/version.txt"
                 with open(version_path, "w") as f:
@@ -438,6 +483,49 @@ class Versions:
         prerelease=False,
     ):
         try:
+            config = self._get_service_config_for_compare(key, instance_name)
+            if key in ("decypharr", "nzbdav", "neutarr") and bool(
+                config.get("branch_enabled")
+            ):
+                branch_name = (config.get("branch") or "main").strip() or "main"
+                latest_branch_version, error = self._get_branch_head_marker(
+                    repo_owner, repo_name, branch_name
+                )
+                if not latest_branch_version:
+                    self.logger.error(
+                        "Failed to get the current branch head for %s: %s",
+                        process_name,
+                        error,
+                    )
+                    raise Exception(error)
+
+                current_version, error = self.version_check(
+                    process_name, instance_name, key
+                )
+                if not current_version:
+                    self.logger.error(
+                        "Failed to get the current version for %s: %s",
+                        process_name,
+                        error,
+                    )
+                    current_version = "0.0.0"
+                    self.logger.error(
+                        "Setting current version to 0.0.0 for %s", process_name
+                    )
+
+                if current_version == latest_branch_version:
+                    return False, {
+                        "message": "No branch updates available",
+                        "current_version": current_version,
+                        "latest_version": latest_branch_version,
+                    }
+
+                return True, {
+                    "message": "Branch update available",
+                    "current_version": current_version,
+                    "latest_version": latest_branch_version,
+                }
+
             latest_release_version, error = self.downloader.get_latest_release(
                 repo_owner, repo_name, nightly=nightly, prerelease=prerelease
             )

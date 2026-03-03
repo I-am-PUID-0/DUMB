@@ -233,7 +233,7 @@ STATIC_URLS_BY_KEY = {
     "seerr": "https://github.com/seerr-team/seerr",
     "profilarr": "https://github.com/Dictionarry-Hub/profilarr",
     "traefik": "https://traefik.io/",
-    "huntarr": "https://plexguide.github.io/Huntarr.io/",
+    "neutarr": "https://github.com/I-am-PUID-0/NeutArr",
 }
 
 SPONSORSHIP_URLS_BY_KEY = {
@@ -263,7 +263,7 @@ SPONSORSHIP_URLS_BY_KEY = {
     "seerr": "https://opencollective.com/seerr",
     "profilarr": "https://github.com/sponsors/Dictionarry-Hub",
     "traefik": "https://github.com/sponsors/traefik",
-    "huntarr": "https://plexguide.github.io/Huntarr.io/donate.html",
+    "neutarr": "https://github.com/sponsors/I-am-PUID-0",
     "zilean": "https://ko-fi.com/W7W616IBNG",
 }
 
@@ -279,7 +279,7 @@ DEFAULT_SERVICE_PORTS = {
     "emby": 8096,
     "tautulli": 8181,
     "seerr": 5055,
-    "huntarr": 9705,
+    "neutarr": 9705,
     "profilarr": 6868,
 }
 ## Future support for restricting service port ranges
@@ -305,7 +305,7 @@ CORE_SERVICE_DEPENDENCIES = {
     "prowlarr": [],
     "whisparr": [],
     "seerr": [],
-    "huntarr": [],
+    "neutarr": [],
     "profilarr": [],
 }
 
@@ -351,7 +351,7 @@ CORE_SERVICE_NAMES = {
     "prowlarr": "Prowlarr",
     "whisparr": "Whisparr",
     "seerr": "Seerr",
-    "huntarr": "Huntarr",
+    "neutarr": "NeutArr",
     "profilarr": "Profilarr",
     "bazarr": "Bazarr",
     "tautulli": "Tautulli",
@@ -506,13 +506,13 @@ Seerr
 - Integrates with Sonarr and Radarr for automated downloads.
 
 Documentation: https://dumbarr.com/services/core/seerr/""",
-    "huntarr": """\
-Huntarr
+    "neutarr": """\
+NeutArr
 - Continuously scans Sonarr/Radarr/Lidarr/Whisparr libraries for missing items and upgrades.
 - Automates backlog searches in gentle batches to avoid indexer abuse.
 - Supports multiple instances and per-arr configuration.
 
-Documentation: https://dumbarr.com/services/core/huntarr/""",
+Documentation: https://dumbarr.com/services/core/neutarr/""",
 }
 
 OPTIONAL_POST_CORE = ["riven_frontend"]
@@ -601,7 +601,7 @@ SERVICE_OPTION_DESCRIPTIONS = {
     "origin": "CORS origin for the service",
     "mount_type": "Decypharr mount type: dfs, rclone, external_rclone, or none.",
     "mount_path": "Decypharr mount path for DFS or rclone mounts.",
-    "use_huntarr": "If true, auto-configures Huntarr for this Arr instance.",
+    "use_neutarr": "If true, auto-configures NeutArr for this Arr instance.",
     "use_profilarr": "If true, auto-configures Profilarr for this Arr instance.",
     "core_service": "Specifies which core service(s) this service applies to; e.g., decypharr, nzbdav, both (decypharr,nzbdav), or none (blank).",
     "webdav_password": "Password for accessing the NzbDAV WebDAV service. Leave blank to auto-generate.",
@@ -1792,24 +1792,24 @@ async def start_service(
                 except Exception as e:
                     logger.warning("Prowlarr app sync skipped: %s", e)
             if key in [
-                "huntarr",
+                "neutarr",
                 "sonarr",
                 "radarr",
                 "lidarr",
                 "whisparr",
             ]:
                 try:
-                    from utils.huntarr_settings import (
-                        any_arr_uses_huntarr,
-                        patch_huntarr_config,
+                    from utils.neutarr_settings import (
+                        any_arr_uses_neutarr,
+                        patch_neutarr_config,
                     )
 
-                    if key == "huntarr" or any_arr_uses_huntarr():
-                        ok, err = patch_huntarr_config()
+                    if key == "neutarr" or any_arr_uses_neutarr():
+                        ok, err = patch_neutarr_config()
                         if not ok and err:
-                            logger.warning("Huntarr config sync failed: %s", err)
+                            logger.warning("NeutArr config sync failed: %s", err)
                 except Exception as e:
-                    logger.warning("Huntarr config sync skipped: %s", e)
+                    logger.warning("NeutArr config sync skipped: %s", e)
             if key in [
                 "profilarr",
                 "sonarr",
@@ -1950,24 +1950,24 @@ async def restart_service(
                 except Exception as e:
                     logger.warning("Prowlarr app sync skipped: %s", e)
             if key in [
-                "huntarr",
+                "neutarr",
                 "sonarr",
                 "radarr",
                 "lidarr",
                 "whisparr",
             ]:
                 try:
-                    from utils.huntarr_settings import (
-                        any_arr_uses_huntarr,
-                        patch_huntarr_config,
+                    from utils.neutarr_settings import (
+                        any_arr_uses_neutarr,
+                        patch_neutarr_config,
                     )
 
-                    if key == "huntarr" or any_arr_uses_huntarr():
-                        ok, err = patch_huntarr_config()
+                    if key == "neutarr" or any_arr_uses_neutarr():
+                        ok, err = patch_neutarr_config()
                         if not ok and err:
-                            logger.warning("Huntarr config sync failed: %s", err)
+                            logger.warning("NeutArr config sync failed: %s", err)
                 except Exception as e:
-                    logger.warning("Huntarr config sync skipped: %s", e)
+                    logger.warning("NeutArr config sync skipped: %s", e)
             if key in [
                 "profilarr",
                 "sonarr",
@@ -4190,12 +4190,12 @@ def _run_startup(request: UnifiedStartRequest, updater, api_state, logger):
             errors.append({"service": core_service.name, "error": e.detail})
 
     try:
-        from utils.huntarr_settings import any_arr_uses_huntarr, patch_huntarr_config
+        from utils.neutarr_settings import any_arr_uses_neutarr, patch_neutarr_config
 
-        if any_arr_uses_huntarr():
-            huntarr_cfg = config.get("huntarr", {})
-            if isinstance(huntarr_cfg, dict):
-                instances = huntarr_cfg.get("instances", {}) or {}
+        if any_arr_uses_neutarr():
+            neutarr_cfg = config.get("neutarr", {})
+            if isinstance(neutarr_cfg, dict):
+                instances = neutarr_cfg.get("instances", {}) or {}
                 enabled_any = any(
                     isinstance(inst, dict) and inst.get("enabled")
                     for inst in instances.values()
@@ -4206,10 +4206,10 @@ def _run_startup(request: UnifiedStartRequest, updater, api_state, logger):
                         first["enabled"] = True
                         CONFIG_MANAGER.save_config()
 
-                merged_options = optional_service_options.get("huntarr", {})
+                merged_options = optional_service_options.get("neutarr", {})
                 _start_optional_service(
-                    opt_key="huntarr",
-                    opt_cfg=huntarr_cfg,
+                    opt_key="neutarr",
+                    opt_cfg=neutarr_cfg,
                     merged_options=merged_options,
                     used_ports=used_ports,
                     updater=updater,
@@ -4218,11 +4218,11 @@ def _run_startup(request: UnifiedStartRequest, updater, api_state, logger):
                     template_config=template_config,
                 )
 
-                ok, err = patch_huntarr_config()
+                ok, err = patch_neutarr_config()
                 if not ok and err:
-                    logger.warning("Huntarr config sync failed: %s", err)
+                    logger.warning("NeutArr config sync failed: %s", err)
     except Exception as exc:
-        logger.warning("Huntarr auto-config skipped: %s", exc)
+        logger.warning("NeutArr auto-config skipped: %s", exc)
 
     try:
         from utils.profilarr_settings import (

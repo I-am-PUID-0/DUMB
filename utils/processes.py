@@ -841,7 +841,7 @@ class ProcessHandler:
                     "readarr",
                     "whisparr",
                     "whisparr-v3",
-                    "huntarr",
+                    "neutarr",
                     "riven_frontend",
                     "riven_backend",
                     "zilean",

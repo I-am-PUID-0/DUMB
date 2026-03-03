@@ -1137,7 +1137,7 @@
                     }
                   ]
                 },
-                "use_huntarr": {
+                "use_neutarr": {
                   "type": "boolean"
                 },
                 "process_name": {
@@ -1208,7 +1208,7 @@
               "required": [
                 "enabled",
                 "core_service",
-                "use_huntarr",
+                "use_neutarr",
                 "process_name",
                 "suppress_logging",
                 "auto_update",
@@ -1599,7 +1599,7 @@
         "env"
       ]
     },
-    "huntarr": {
+    "neutarr": {
       "type": "object",
       "properties": {
         "instances": {
@@ -2442,7 +2442,7 @@
                     }
                   ]
                 },
-                "use_huntarr": {
+                "use_neutarr": {
                   "type": "boolean"
                 },
                 "use_profilarr": {
@@ -2518,7 +2518,7 @@
               "required": [
                 "enabled",
                 "core_service",
-                "use_huntarr",
+                "use_neutarr",
                 "use_profilarr",
                 "process_name",
                 "suppress_logging",
@@ -2941,7 +2941,7 @@
                     }
                   ]
                 },
-                "use_huntarr": {
+                "use_neutarr": {
                   "type": "boolean"
                 },
                 "use_profilarr": {
@@ -3023,7 +3023,7 @@
               "required": [
                 "enabled",
                 "core_service",
-                "use_huntarr",
+                "use_neutarr",
                 "use_profilarr",
                 "process_name",
                 "suppress_logging",
@@ -3070,7 +3070,7 @@
                     }
                   ]
                 },
-                "use_huntarr": {
+                "use_neutarr": {
                   "type": "boolean"
                 },
                 "process_name": {
@@ -3147,7 +3147,7 @@
               "required": [
                 "enabled",
                 "core_service",
-                "use_huntarr",
+                "use_neutarr",
                 "process_name",
                 "suppress_logging",
                 "auto_update",
@@ -3476,7 +3476,7 @@
     "phalanx_db",
     "plex",
     "tautulli",
-    "huntarr",
+    "neutarr",
     "seerr_sync",
     "profilarr",
     "seerr",

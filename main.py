@@ -299,28 +299,115 @@ def _service_has_enabled_instance(config_obj: dict) -> bool:
     return bool(config_obj.get("enabled"))
 
 
-def _service_has_huntarr_instance(config_obj: dict) -> bool:
+def _migrate_huntarr_to_neutarr(config_manager) -> None:
+    """One-time migration: rename 'huntarr' service key to 'neutarr' and update
+    all associated paths, env vars, and use_huntarr flags in-place.  Persists
+    to disk only when changes are detected."""
+    changed = False
+    cfg = config_manager.config
+
+    # 1. Rename top-level service key
+    if "huntarr" in cfg and "neutarr" not in cfg:
+        cfg["neutarr"] = cfg.pop("huntarr")
+        changed = True
+
+    # 2. Update neutarr instance internals
+    neutarr_cfg = cfg.get("neutarr")
+    if isinstance(neutarr_cfg, dict):
+        instances = neutarr_cfg.get("instances") or {}
+        if isinstance(instances, dict):
+            for inst in instances.values():
+                if not isinstance(inst, dict):
+                    continue
+                if inst.get("process_name") == "Huntarr":
+                    inst["process_name"] = "NeutArr"
+                    changed = True
+                if inst.get("repo_owner") == "plexguide":
+                    inst["repo_owner"] = "I-am-PUID-0"
+                    changed = True
+                if inst.get("repo_name") == "Huntarr.io":
+                    inst["repo_name"] = "NeutArr"
+                    changed = True
+                # Paths: /huntarr/ → /neutarr/
+                for path_key in ("config_dir", "config_file", "log_file"):
+                    val = inst.get(path_key)
+                    if isinstance(val, str) and "/huntarr/" in val:
+                        inst[path_key] = val.replace("/huntarr/", "/neutarr/")
+                        changed = True
+                if isinstance(val := inst.get("config_file"), str) and val.endswith("huntarr.db"):
+                    inst["config_file"] = val[: -len("huntarr.db")] + "general.json"
+                    changed = True
+                if isinstance(inst.get("command"), list):
+                    new_cmd = [
+                        c.replace("/huntarr/", "/neutarr/") if isinstance(c, str) else c
+                        for c in inst["command"]
+                    ]
+                    if new_cmd != inst["command"]:
+                        inst["command"] = new_cmd
+                        changed = True
+                if isinstance(inst.get("exclude_dirs"), list):
+                    new_excl = [
+                        d.replace("/huntarr/", "/neutarr/") if isinstance(d, str) else d
+                        for d in inst["exclude_dirs"]
+                    ]
+                    if new_excl != inst["exclude_dirs"]:
+                        inst["exclude_dirs"] = new_excl
+                        changed = True
+                # Env keys/values
+                env = inst.get("env")
+                if isinstance(env, dict):
+                    if "HUNTARR_CONFIG_DIR" in env:
+                        env["NEUTARR_CONFIG_DIR"] = env.pop("HUNTARR_CONFIG_DIR").replace(
+                            "/huntarr/", "/neutarr/"
+                        )
+                        changed = True
+                    if "HUNTARR_PORT" in env:
+                        env["NEUTARR_PORT"] = env.pop("HUNTARR_PORT")
+                        changed = True
+                    for k, v in list(env.items()):
+                        if isinstance(v, str) and "/huntarr/" in v:
+                            env[k] = v.replace("/huntarr/", "/neutarr/")
+                            changed = True
+
+    # 3. Migrate use_huntarr → use_neutarr on Arr service instances
+    for svc_key in ("sonarr", "radarr", "lidarr", "whisparr", "eros"):
+        svc_cfg = cfg.get(svc_key)
+        if not isinstance(svc_cfg, dict):
+            continue
+        for inst in (svc_cfg.get("instances") or {}).values():
+            if not isinstance(inst, dict):
+                continue
+            if "use_huntarr" in inst:
+                inst["use_neutarr"] = inst.pop("use_huntarr")
+                changed = True
+
+    if changed:
+        config_manager.save_config()
+        logger.info("Migrated huntarr → neutarr config entries")
+
+
+def _service_has_neutarr_instance(config_obj: dict) -> bool:
     if not isinstance(config_obj, dict):
         return False
     if "instances" not in config_obj or not isinstance(config_obj["instances"], dict):
         return False
     return any(
-        isinstance(inst, dict) and inst.get("enabled") and inst.get("use_huntarr")
+        isinstance(inst, dict) and inst.get("enabled") and inst.get("use_neutarr")
         for inst in config_obj["instances"].values()
     )
 
 
-def _enable_huntarr_if_needed(config_manager) -> None:
+def _enable_neutarr_if_needed(config_manager) -> None:
     if not any(
-        _service_has_huntarr_instance(config_manager.get(svc, {}))
+        _service_has_neutarr_instance(config_manager.get(svc, {}))
         for svc in ("sonarr", "radarr", "lidarr", "whisparr")
     ):
         return
 
-    huntarr_cfg = config_manager.get("huntarr", {})
-    if not isinstance(huntarr_cfg, dict):
+    neutarr_cfg = config_manager.get("neutarr", {})
+    if not isinstance(neutarr_cfg, dict):
         return
-    instances = huntarr_cfg.get("instances", {}) or {}
+    instances = neutarr_cfg.get("instances", {}) or {}
     if not isinstance(instances, dict) or not instances:
         return
 
@@ -869,7 +956,7 @@ def main():
             "lidarr",
             "whisparr",
             "prowlarr",
-            "huntarr",
+            "neutarr",
             "profilarr",
             "decypharr",
             "nzbdav",
@@ -889,7 +976,8 @@ def main():
             "tautulli",
             "seerr",
         ]
-        _enable_huntarr_if_needed(config)
+        _migrate_huntarr_to_neutarr(config)
+        _enable_neutarr_if_needed(config)
         dependency_map = _build_dependency_map(config)
         _start_processes_with_dependencies(
             process_handler, updater, config, grouped_keys, dependency_map

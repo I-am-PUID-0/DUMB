@@ -432,6 +432,7 @@ class Update:
         branch_enabled = bool(config.get("branch_enabled")) and key in {
             "decypharr",
             "nzbdav",
+            "neutarr",
         }
         if branch_enabled:
             current_version, current_error = versions.version_check(
@@ -863,8 +864,10 @@ class Update:
         with self.updating:
             try:
                 if allow_override:
+                    preserve_branch_mode = bool(original.get("branch_enabled")) and not target
                     config["pinned_version"] = ""
-                    config["branch_enabled"] = False
+                    if not preserve_branch_mode:
+                        config["branch_enabled"] = False
                     if config.get(
                         "release_version_enabled"
                     ) and not self._release_is_nightly_or_prerelease(config):

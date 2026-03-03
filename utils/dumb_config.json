@@ -315,7 +315,7 @@
       "Default": {
         "enabled": false,
         "core_service": "",
-        "use_huntarr": false,
+        "use_neutarr": false,
         "process_name": "Lidarr",
         "repo_owner": "Lidarr",
         "repo_name": "Lidarr",
@@ -446,14 +446,14 @@
     "log_file": "/tautulli/data/logs/tautulli.log",
     "env": {}
   },
-  "huntarr": {
+  "neutarr": {
     "instances": {
       "Default": {
         "enabled": false,
         "core_service": "",
-        "process_name": "Huntarr",
-        "repo_owner": "plexguide",
-        "repo_name": "Huntarr.io",
+        "process_name": "NeutArr",
+        "repo_owner": "I-am-PUID-0",
+        "repo_name": "NeutArr",
         "release_version_enabled": false,
         "release_version": "latest",
         "branch_enabled": false,
@@ -466,21 +466,21 @@
         "auto_update_start_time": "04:00",
         "clear_on_update": false,
         "exclude_dirs": [
-          "/huntarr/default/config"
+          "/neutarr/default/config"
         ],
         "platforms": [
           "python"
         ],
         "command": [
-          "/huntarr/default/venv/bin/python",
+          "/neutarr/default/venv/bin/python",
           "main.py"
         ],
-        "config_dir": "/huntarr/default",
-        "config_file": "/huntarr/default/config/huntarr.db",
-        "log_file": "/huntarr/default/config/logs/huntarr.log",
+        "config_dir": "/neutarr/default",
+        "config_file": "/neutarr/default/config/general.json",
+        "log_file": "/neutarr/default/config/logs/neutarr.log",
         "env": {
-          "HUNTARR_CONFIG_DIR": "/huntarr/default/config",
-          "HUNTARR_PORT": "{port}"
+          "NEUTARR_CONFIG_DIR": "/neutarr/default/config",
+          "NEUTARR_PORT": "{port}"
         }
       }
     }
@@ -803,7 +803,7 @@
       "Default": {
         "enabled": false,
         "core_service": "",
-        "use_huntarr": false,
+        "use_neutarr": false,
         "use_profilarr": false,
         "process_name": "Radarr",
         "repo_owner": "Radarr",
@@ -832,7 +832,7 @@
       "Default": {
         "enabled": false,
         "core_service": "",
-        "use_huntarr": false,
+        "use_neutarr": false,
         "use_profilarr": false,
         "process_name": "Sonarr",
         "repo_owner": "Sonarr",
@@ -861,7 +861,7 @@
       "Default": {
         "enabled": false,
         "core_service": "",
-        "use_huntarr": false,
+        "use_neutarr": false,
         "process_name": "Whisparr",
         "repo_owner": "Whisparr",
         "repo_name": "Whisparr",

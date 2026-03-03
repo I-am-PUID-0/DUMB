@@ -25,14 +25,14 @@ def _service_has_enabled_instance(config_obj: dict) -> bool:
     return bool(config_obj.get("enabled"))
 
 
-def _service_has_huntarr_instance(config_obj: dict) -> bool:
-    """Return True if the service config has at least one instance with use_huntarr enabled."""
+def _service_has_neutarr_instance(config_obj: dict) -> bool:
+    """Return True if the service config has at least one instance with use_neutarr enabled."""
     if not isinstance(config_obj, dict):
         return False
     if "instances" not in config_obj or not isinstance(config_obj["instances"], dict):
         return False
     return any(
-        isinstance(inst, dict) and inst.get("enabled") and inst.get("use_huntarr")
+        isinstance(inst, dict) and inst.get("enabled") and inst.get("use_neutarr")
         for inst in config_obj["instances"].values()
     )
 
@@ -85,13 +85,13 @@ def build_conditional_dependency_map(
     if profilarr_deps:
         deps["profilarr"] = profilarr_deps
 
-    # -- Huntarr -> arr services with use_huntarr flag --
-    huntarr_deps: set[str] = set()
+    # -- NeutArr -> arr services with use_neutarr flag --
+    neutarr_deps: set[str] = set()
     for arr_key in ("sonarr", "radarr", "lidarr", "whisparr"):
-        if _service_has_huntarr_instance(config_getter(arr_key)):
-            huntarr_deps.add(arr_key)
-    if huntarr_deps:
-        deps["huntarr"] = huntarr_deps
+        if _service_has_neutarr_instance(config_getter(arr_key)):
+            neutarr_deps.add(arr_key)
+    if neutarr_deps:
+        deps["neutarr"] = neutarr_deps
 
     # -- Rclone -> provider services based on instance flags --
     rclone_deps: set[str] = set()

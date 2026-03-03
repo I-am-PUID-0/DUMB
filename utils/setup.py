@@ -336,6 +336,13 @@ def setup_release_version(process_handler, config, process_name, key):
             version_path=os.path.join(config["config_dir"], "version.txt"),
             version=config["release_version"],
         )
+    elif key == "neutarr":
+        versions.version_write(
+            process_name,
+            key,
+            version_path=os.path.join(config["config_dir"], "version.txt"),
+            version=config["release_version"],
+        )
 
     success, error = additional_setup(process_handler, process_name, config, key)
     if not success:
@@ -507,7 +514,7 @@ def setup_branch_version(process_handler, config, process_name, key):
         if not success:
             return False, f"Failed to download branch: {error}"
 
-        if key == "nzbdav":
+        if key in {"nzbdav", "neutarr"}:
             branch_name = (config.get("branch") or "main").strip() or "main"
             branch_sha, branch_sha_error = _fetch_branch_head_sha(
                 config["repo_owner"], config["repo_name"], branch_name
@@ -525,7 +532,7 @@ def setup_branch_version(process_handler, config, process_name, key):
 
             versions.version_write(
                 process_name=config.get("process_name") or process_name,
-                key="nzbdav",
+                key=key,
                 version_path=os.path.join(target_dir, "version.txt"),
                 version=branch_version,
             )
@@ -534,7 +541,7 @@ def setup_branch_version(process_handler, config, process_name, key):
         if not success:
             return False, error
 
-        if key in {"riven_backend", "riven_frontend", "decypharr", "nzbdav"}:
+        if key in {"riven_backend", "riven_frontend", "decypharr", "nzbdav", "neutarr"}:
             current_sha, _ = _fetch_branch_head_sha(
                 config["repo_owner"], config["repo_name"], config["branch"]
             )
@@ -1099,8 +1106,8 @@ def _setup_project(
             if not success:
                 return False, error
 
-        if key == "huntarr":
-            success, error = setup_huntarr(
+        if key == "neutarr":
+            success, error = setup_neutarr(
                 process_handler,
                 install_only=install_phase and not configure_phase,
                 configure_only=configure_phase and not install_phase,
@@ -4284,59 +4291,510 @@ def setup_profilarr(
     return True, None
 
 
-def setup_huntarr(
+def _patch_neutarr_settings_manager(instance_config_dir: str) -> None:
+    """Patch NeutArr's settings_manager.py to respect NEUTARR_CONFIG_DIR env var.
+
+    Older NeutArr releases (and the current published release) have a hardcoded
+    ``SETTINGS_DIR = pathlib.Path("/config")`` line.  DUMB injects
+    ``NEUTARR_CONFIG_DIR`` into the subprocess env so that each NeutArr instance
+    gets its own config directory.  This patch makes the running code honour that
+    env var, idempotently.
+    """
+    sm_path = os.path.join(
+        instance_config_dir, "src", "primary", "settings_manager.py"
+    )
+    if not os.path.isfile(sm_path):
+        return
+    try:
+        with open(sm_path, "r") as fh:
+            content = fh.read()
+
+        old_line = 'SETTINGS_DIR = pathlib.Path("/config")'
+        new_line = 'SETTINGS_DIR = pathlib.Path(os.environ.get("NEUTARR_CONFIG_DIR", "/config"))'
+
+        if old_line not in content:
+            return  # Already patched or different version
+
+        content = content.replace(old_line, new_line, 1)
+        with open(sm_path, "w") as fh:
+            fh.write(content)
+        logger.info("Patched NeutArr settings_manager.py to use NEUTARR_CONFIG_DIR.")
+    except Exception as exc:
+        logger.warning("Failed to patch NeutArr settings_manager.py: %s", exc)
+
+
+def _patch_neutarr_stats_manager(instance_config_dir: str) -> None:
+    """Patch NeutArr's stats_manager.py to store tally data under NEUTARR_CONFIG_DIR.
+
+    Older releases have ``"/config/tally"`` hardcoded as the first candidate in
+    ``STATS_DIRS``.  This patch replaces it with an os.environ.get() call so the
+    tally directory follows the instance's config root, idempotently.
+    """
+    sm_path = os.path.join(
+        instance_config_dir, "src", "primary", "stats_manager.py"
+    )
+    if not os.path.isfile(sm_path):
+        return
+    try:
+        with open(sm_path, "r") as fh:
+            content = fh.read()
+
+        old_line = '    "/config/tally",  # Docker default'
+        new_line = '    os.path.join(os.environ.get("NEUTARR_CONFIG_DIR", "/config"), "tally"),  # Env-controlled or Docker default'
+
+        if old_line not in content:
+            return  # Already patched or different version
+
+        content = content.replace(old_line, new_line, 1)
+        with open(sm_path, "w") as fh:
+            fh.write(content)
+        logger.info("Patched NeutArr stats_manager.py to use NEUTARR_CONFIG_DIR for tally.")
+    except Exception as exc:
+        logger.warning("Failed to patch NeutArr stats_manager.py: %s", exc)
+
+
+def _patch_neutarr_keys_manager(instance_config_dir: str) -> None:
+    """Patch NeutArr's keys_manager.py to respect NEUTARR_CONFIG_DIR env var."""
+    km_path = os.path.join(
+        instance_config_dir, "src", "primary", "keys_manager.py"
+    )
+    if not os.path.isfile(km_path):
+        return
+    try:
+        with open(km_path, "r") as fh:
+            content = fh.read()
+
+        old_line = 'SETTINGS_DIR = pathlib.Path("/config")'
+        new_line = 'SETTINGS_DIR = pathlib.Path(os.environ.get("NEUTARR_CONFIG_DIR", "/config"))'
+
+        if old_line not in content:
+            return  # Already patched or different version
+
+        content = content.replace(old_line, new_line, 1)
+        with open(km_path, "w") as fh:
+            fh.write(content)
+        logger.info("Patched NeutArr keys_manager.py to use NEUTARR_CONFIG_DIR.")
+    except Exception as exc:
+        logger.warning("Failed to patch NeutArr keys_manager.py: %s", exc)
+
+
+def _patch_neutarr_auth(instance_config_dir: str) -> None:
+    """Patch NeutArr's auth.py USERS_FILE to respect NEUTARR_CONFIG_DIR env var."""
+    auth_path = os.path.join(
+        instance_config_dir, "src", "primary", "auth.py"
+    )
+    if not os.path.isfile(auth_path):
+        return
+    try:
+        with open(auth_path, "r") as fh:
+            content = fh.read()
+
+        old_line = 'USERS_FILE = Path("/config/users.json")'
+        new_line = 'USERS_FILE = Path(os.environ.get("NEUTARR_CONFIG_DIR", "/config")) / "users.json"'
+
+        if old_line not in content:
+            return  # Already patched or different version
+
+        content = content.replace(old_line, new_line, 1)
+        with open(auth_path, "w") as fh:
+            fh.write(content)
+        logger.info("Patched NeutArr auth.py to use NEUTARR_CONFIG_DIR for users.json.")
+    except Exception as exc:
+        logger.warning("Failed to patch NeutArr auth.py: %s", exc)
+
+
+def _patch_neutarr_history_manager(instance_config_dir: str) -> None:
+    """Patch NeutArr's history_manager.py to respect NEUTARR_CONFIG_DIR env var."""
+    hm_path = os.path.join(
+        instance_config_dir, "src", "primary", "history_manager.py"
+    )
+    if not os.path.isfile(hm_path):
+        return
+    try:
+        with open(hm_path, "r") as fh:
+            content = fh.read()
+
+        changed = False
+
+        old1 = 'HISTORY_BASE_PATH = pathlib.Path("/config/history")'
+        new1 = 'HISTORY_BASE_PATH = pathlib.Path(os.environ.get("NEUTARR_CONFIG_DIR", "/config")) / "history"'
+        if old1 in content:
+            content = content.replace(old1, new1, 1)
+            changed = True
+
+        old2 = '            instances_dir = pathlib.Path("/config") / app_type'
+        new2 = '            instances_dir = pathlib.Path(os.environ.get("NEUTARR_CONFIG_DIR", "/config")) / app_type'
+        if old2 in content:
+            content = content.replace(old2, new2, 1)
+            changed = True
+
+        if not changed:
+            return  # Already patched or different version
+
+        with open(hm_path, "w") as fh:
+            fh.write(content)
+        logger.info("Patched NeutArr history_manager.py to use NEUTARR_CONFIG_DIR.")
+    except Exception as exc:
+        logger.warning("Failed to patch NeutArr history_manager.py: %s", exc)
+
+
+def _patch_neutarr_state(instance_config_dir: str) -> None:
+    """Patch NeutArr's state.py to use NEUTARR_CONFIG_DIR instead of CONFIG_DIR env var."""
+    path = os.path.join(instance_config_dir, "src", "primary", "state.py")
+    if not os.path.isfile(path):
+        return
+    try:
+        with open(path, "r") as fh:
+            content = fh.read()
+        old = 'CONFIG_DIR = os.environ.get("CONFIG_DIR", "/config")'
+        new = 'CONFIG_DIR = os.environ.get("NEUTARR_CONFIG_DIR", "/config")'
+        if old not in content:
+            return
+        content = content.replace(old, new, 1)
+        with open(path, "w") as fh:
+            fh.write(content)
+        logger.info("Patched NeutArr state.py to use NEUTARR_CONFIG_DIR.")
+    except Exception as exc:
+        logger.warning("Failed to patch NeutArr state.py: %s", exc)
+
+
+def _patch_neutarr_logger(instance_config_dir: str) -> None:
+    """Patch NeutArr's utils/logger.py LOG_DIR to use NEUTARR_CONFIG_DIR env var."""
+    path = os.path.join(instance_config_dir, "src", "primary", "utils", "logger.py")
+    if not os.path.isfile(path):
+        return
+    try:
+        with open(path, "r") as fh:
+            content = fh.read()
+        old = 'LOG_DIR = pathlib.Path("/config/logs")  # Changed path'
+        new = 'LOG_DIR = pathlib.Path(os.environ.get("NEUTARR_CONFIG_DIR", "/config")) / "logs"'
+        if old not in content:
+            return
+        content = content.replace(old, new, 1)
+        with open(path, "w") as fh:
+            fh.write(content)
+        logger.info("Patched NeutArr utils/logger.py to use NEUTARR_CONFIG_DIR.")
+    except Exception as exc:
+        logger.warning("Failed to patch NeutArr utils/logger.py: %s", exc)
+
+
+def _patch_neutarr_scheduler_engine(instance_config_dir: str) -> None:
+    """Patch NeutArr's scheduler_engine.py to use NEUTARR_CONFIG_DIR env var throughout."""
+    path = os.path.join(instance_config_dir, "src", "primary", "scheduler_engine.py")
+    if not os.path.isfile(path):
+        return
+    try:
+        with open(path, "r") as fh:
+            content = fh.read()
+
+        changed = False
+
+        # Fix SCHEDULE_DIR constant and inject _CONFIG_DIR helper
+        old_sched = 'SCHEDULE_DIR = "/config/scheduler"'
+        new_sched = (
+            'SCHEDULE_DIR = os.path.join(os.environ.get("NEUTARR_CONFIG_DIR", "/config"), "scheduler")\n'
+            '_CONFIG_DIR = os.environ.get("NEUTARR_CONFIG_DIR", "/config")'
+        )
+        if old_sched in content:
+            content = content.replace(old_sched, new_sched, 1)
+            changed = True
+
+        # Fix per-app config file references: f"/config/{app}.json"
+        old_app = 'f"/config/{app}.json"'
+        new_app = 'f"{_CONFIG_DIR}/{app}.json"'
+        if old_app in content:
+            content = content.replace(old_app, new_app)
+            changed = True
+
+        # Fix per-app_type config file references: f"/config/{app_type}.json"
+        old_app_type = 'f"/config/{app_type}.json"'
+        new_app_type = 'f"{_CONFIG_DIR}/{app_type}.json"'
+        if old_app_type in content:
+            content = content.replace(old_app_type, new_app_type)
+            changed = True
+
+        if not changed:
+            return
+        with open(path, "w") as fh:
+            fh.write(content)
+        logger.info("Patched NeutArr scheduler_engine.py to use NEUTARR_CONFIG_DIR.")
+    except Exception as exc:
+        logger.warning("Failed to patch NeutArr scheduler_engine.py: %s", exc)
+
+
+def _patch_neutarr_scheduler_routes(instance_config_dir: str) -> None:
+    """Patch NeutArr's routes/scheduler_routes.py CONFIG_DIR to use NEUTARR_CONFIG_DIR env var."""
+    path = os.path.join(instance_config_dir, "src", "primary", "routes", "scheduler_routes.py")
+    if not os.path.isfile(path):
+        return
+    try:
+        with open(path, "r") as fh:
+            content = fh.read()
+        old = 'CONFIG_DIR = "/config/scheduler"'
+        new = 'CONFIG_DIR = os.path.join(os.environ.get("NEUTARR_CONFIG_DIR", "/config"), "scheduler")'
+        if old not in content:
+            return
+        content = content.replace(old, new, 1)
+        with open(path, "w") as fh:
+            fh.write(content)
+        logger.info("Patched NeutArr routes/scheduler_routes.py to use NEUTARR_CONFIG_DIR.")
+    except Exception as exc:
+        logger.warning("Failed to patch NeutArr routes/scheduler_routes.py: %s", exc)
+
+
+def _patch_neutarr_swaparr(instance_config_dir: str) -> None:
+    """Patch NeutArr's swaparr files to use NEUTARR_CONFIG_DIR instead of CONFIG_DIR env var."""
+    targets = [
+        os.path.join(instance_config_dir, "src", "primary", "apps", "swaparr.py"),
+        os.path.join(instance_config_dir, "src", "primary", "apps", "swaparr_routes.py"),
+        os.path.join(instance_config_dir, "src", "primary", "apps", "swaparr", "handler.py"),
+    ]
+    old = 'os.getenv("CONFIG_DIR", "/config")'
+    new = 'os.getenv("NEUTARR_CONFIG_DIR", "/config")'
+    for path in targets:
+        if not os.path.isfile(path):
+            continue
+        try:
+            with open(path, "r") as fh:
+                content = fh.read()
+            if old not in content:
+                continue
+            content = content.replace(old, new)
+            with open(path, "w") as fh:
+                fh.write(content)
+            logger.info("Patched %s to use NEUTARR_CONFIG_DIR.", os.path.basename(path))
+        except Exception as exc:
+            logger.warning("Failed to patch %s: %s", os.path.basename(path), exc)
+
+
+def _patch_neutarr_instance_list_generator(instance_config_dir: str) -> None:
+    """Patch NeutArr's instance_list_generator.py config_dir to use NEUTARR_CONFIG_DIR env var."""
+    path = os.path.join(
+        instance_config_dir, "src", "primary", "utils", "instance_list_generator.py"
+    )
+    if not os.path.isfile(path):
+        return
+    try:
+        with open(path, "r") as fh:
+            content = fh.read()
+        old = '    config_dir = Path("/config")'
+        new = '    config_dir = Path(os.environ.get("NEUTARR_CONFIG_DIR", "/config"))'
+        if old not in content:
+            return
+        content = content.replace(old, new, 1)
+        with open(path, "w") as fh:
+            fh.write(content)
+        logger.info("Patched NeutArr instance_list_generator.py to use NEUTARR_CONFIG_DIR.")
+    except Exception as exc:
+        logger.warning("Failed to patch NeutArr instance_list_generator.py: %s", exc)
+
+
+def _patch_neutarr_app(instance_config_dir: str) -> None:
+    """Patch NeutArr's app.py migrate_settings() to use NEUTARR_CONFIG_DIR env var."""
+    path = os.path.join(instance_config_dir, "src", "primary", "app.py")
+    if not os.path.isfile(path):
+        return
+    try:
+        with open(path, "r") as fh:
+            content = fh.read()
+
+        changed = False
+
+        # Ensure `import os` is present
+        if "import os\n" not in content and "\nimport os\n" not in content:
+            content = content.replace("import logging\n", "import logging\nimport os\n", 1)
+            changed = True
+
+        old = '    SETTINGS_DIR = pathlib.Path("/config")'
+        new = '    SETTINGS_DIR = pathlib.Path(os.environ.get("NEUTARR_CONFIG_DIR", "/config"))'
+        if old in content:
+            content = content.replace(old, new, 1)
+            changed = True
+
+        if not changed:
+            return
+        with open(path, "w") as fh:
+            fh.write(content)
+        logger.info("Patched NeutArr app.py to use NEUTARR_CONFIG_DIR.")
+    except Exception as exc:
+        logger.warning("Failed to patch NeutArr app.py: %s", exc)
+
+
+def _patch_neutarr_background(instance_config_dir: str) -> None:
+    """Patch NeutArr's background.py reset file paths to use NEUTARR_CONFIG_DIR env var."""
+    path = os.path.join(instance_config_dir, "src", "primary", "background.py")
+    if not os.path.isfile(path):
+        return
+    try:
+        with open(path, "r") as fh:
+            content = fh.read()
+        old = 'f"/config/reset/{app_type}.reset"'
+        new = 'os.path.join(os.environ.get("NEUTARR_CONFIG_DIR", "/config"), "reset", f"{app_type}.reset")'
+        if old not in content:
+            return
+        content = content.replace(old, new)
+        with open(path, "w") as fh:
+            fh.write(content)
+        logger.info("Patched NeutArr background.py to use NEUTARR_CONFIG_DIR for reset files.")
+    except Exception as exc:
+        logger.warning("Failed to patch NeutArr background.py: %s", exc)
+
+
+def _patch_neutarr_web_server(instance_config_dir: str) -> None:
+    """Patch NeutArr's web_server.py reset_dir to use NEUTARR_CONFIG_DIR env var."""
+    path = os.path.join(instance_config_dir, "src", "primary", "web_server.py")
+    if not os.path.isfile(path):
+        return
+    try:
+        with open(path, "r") as fh:
+            content = fh.read()
+        old = '        reset_dir = "/config/reset"\n        import os\n'
+        new = '        import os\n        reset_dir = os.path.join(os.environ.get("NEUTARR_CONFIG_DIR", "/config"), "reset")\n'
+        if old not in content:
+            return
+        content = content.replace(old, new, 1)
+        with open(path, "w") as fh:
+            fh.write(content)
+        logger.info("Patched NeutArr web_server.py to use NEUTARR_CONFIG_DIR for reset_dir.")
+    except Exception as exc:
+        logger.warning("Failed to patch NeutArr web_server.py: %s", exc)
+
+
+def _patch_neutarr_migrate_settings(instance_config_dir: str) -> None:
+    """Patch NeutArr's utils/migrate_settings.py to use NEUTARR_CONFIG_DIR env var."""
+    path = os.path.join(
+        instance_config_dir, "src", "primary", "utils", "migrate_settings.py"
+    )
+    if not os.path.isfile(path):
+        return
+    try:
+        with open(path, "r") as fh:
+            content = fh.read()
+        old = 'SETTINGS_DIR = pathlib.Path("/config")'
+        new = 'SETTINGS_DIR = pathlib.Path(os.environ.get("NEUTARR_CONFIG_DIR", "/config"))'
+        if old not in content:
+            return
+        content = content.replace(old, new, 1)
+        with open(path, "w") as fh:
+            fh.write(content)
+        logger.info("Patched NeutArr utils/migrate_settings.py to use NEUTARR_CONFIG_DIR.")
+    except Exception as exc:
+        logger.warning("Failed to patch NeutArr utils/migrate_settings.py: %s", exc)
+
+
+def setup_neutarr(
     process_handler, install_only: bool = False, configure_only: bool = False
 ):
-    config = CONFIG_MANAGER.get("huntarr", {})
+    config = CONFIG_MANAGER.get("neutarr", {})
     if not config:
-        return False, "Huntarr configuration not found."
+        return False, "NeutArr configuration not found."
 
     instances = config.get("instances", {})
     if not instances:
-        logger.info("No Huntarr instances configured.")
+        logger.info("No NeutArr instances configured.")
         return True, None
 
     if install_only and configure_only:
-        return False, "Invalid Huntarr setup phase."
+        return False, "Invalid NeutArr setup phase."
 
     for instance_name, instance in instances.items():
         if not instance.get("enabled", False):
-            logger.debug("Skipping disabled Huntarr instance: %s", instance_name)
+            logger.debug("Skipping disabled NeutArr instance: %s", instance_name)
             continue
 
         instance_config_dir = (
-            instance.get("config_dir") or f"/huntarr/{instance_name.lower()}"
+            instance.get("config_dir") or f"/neutarr/{instance_name.lower()}"
         )
         instance["config_dir"] = instance_config_dir
+        version_marker_path = os.path.join(instance_config_dir, "version.txt")
         path_changed = False
 
-        def _rewrite_huntarr_path(value):
-            if isinstance(value, str) and value.startswith("/huntarr/default"):
-                return value.replace("/huntarr/default", instance_config_dir, 1)
+        def _write_neutarr_version_marker(force_refresh: bool = False) -> None:
+            if not force_refresh and os.path.isfile(version_marker_path):
+                return
+
+            if instance.get("branch_enabled"):
+                branch_name = (instance.get("branch") or "main").strip() or "main"
+                branch_sha = None
+                try:
+                    headers = downloader.get_headers()
+                    branch_ref = urllib.parse.quote(branch_name, safe="")
+                    api_url = (
+                        f"https://api.github.com/repos/{instance.get('repo_owner')}/{instance.get('repo_name')}/commits/{branch_ref}"
+                    )
+                    response = downloader.fetch_with_retries(api_url, headers)
+                    if response and response.status_code == 200:
+                        data = response.json() if hasattr(response, "json") else {}
+                        branch_sha = (data or {}).get("sha")
+                except Exception as exc:
+                    logger.debug(
+                        "Failed to resolve NeutArr branch SHA for %s: %s",
+                        instance_name,
+                        exc,
+                    )
+
+                version_value = (
+                    f"{branch_name}-{branch_sha[:8]}" if branch_sha else f"branch-{branch_name}"
+                )
+            else:
+                release_version = instance.get("release_version", "latest")
+                version_value = release_version
+                if str(release_version).lower() == "latest":
+                    try:
+                        latest_version, latest_error = downloader.get_latest_release(
+                            instance.get("repo_owner"),
+                            instance.get("repo_name"),
+                            nightly=False,
+                        )
+                        if latest_version:
+                            version_value = latest_version
+                        elif latest_error:
+                            logger.debug(
+                                "Failed to resolve latest NeutArr release for %s: %s",
+                                instance_name,
+                                latest_error,
+                            )
+                    except Exception as exc:
+                        logger.debug(
+                            "Failed to resolve latest NeutArr release for %s: %s",
+                            instance_name,
+                            exc,
+                        )
+
+            versions.version_write(
+                instance.get("process_name"),
+                key="neutarr",
+                version_path=version_marker_path,
+                version=version_value,
+            )
+
+        def _rewrite_neutarr_path(value):
+            if isinstance(value, str) and value.startswith("/neutarr/default"):
+                return value.replace("/neutarr/default", instance_config_dir, 1)
             return value
 
         exclude_dirs = instance.get("exclude_dirs", [])
         if exclude_dirs:
-            rewritten = [_rewrite_huntarr_path(path) for path in exclude_dirs]
+            rewritten = [_rewrite_neutarr_path(path) for path in exclude_dirs]
             if rewritten != exclude_dirs:
                 instance["exclude_dirs"] = rewritten
                 path_changed = True
 
         config_file = instance.get("config_file")
-        new_config_file = _rewrite_huntarr_path(config_file)
+        new_config_file = _rewrite_neutarr_path(config_file)
         if new_config_file != config_file:
             instance["config_file"] = new_config_file
             path_changed = True
 
         log_file = instance.get("log_file")
-        new_log_file = _rewrite_huntarr_path(log_file)
+        new_log_file = _rewrite_neutarr_path(log_file)
         if new_log_file != log_file:
             instance["log_file"] = new_log_file
             path_changed = True
 
         command = instance.get("command", [])
         if isinstance(command, list):
-            updated_command = [_rewrite_huntarr_path(arg) for arg in command]
+            updated_command = [_rewrite_neutarr_path(arg) for arg in command]
             if updated_command != command:
                 instance["command"] = updated_command
                 path_changed = True
@@ -4344,13 +4802,18 @@ def setup_huntarr(
         instance_env = instance.get("env", {}) or {}
         env_changed = False
         new_port = str(instance.get("port", 9705))
-        if instance_env.get("HUNTARR_PORT") != new_port:
-            instance_env["HUNTARR_PORT"] = new_port
+        if instance_env.get("NEUTARR_PORT") != new_port:
+            instance_env["NEUTARR_PORT"] = new_port
             env_changed = True
 
         config_root = os.path.join(instance_config_dir, "config")
-        if instance_env.get("HUNTARR_CONFIG_DIR") != config_root:
-            instance_env["HUNTARR_CONFIG_DIR"] = config_root
+        if instance_env.get("NEUTARR_CONFIG_DIR") != config_root:
+            instance_env["NEUTARR_CONFIG_DIR"] = config_root
+            env_changed = True
+
+        stateful_dir = os.path.join(config_root, "stateful")
+        if instance_env.get("STATEFUL_DIR") != stateful_dir:
+            instance_env["STATEFUL_DIR"] = stateful_dir
             env_changed = True
 
         instance["env"] = instance_env
@@ -4379,12 +4842,12 @@ def setup_huntarr(
         repo_marker = os.path.join(instance_config_dir, "main.py")
         needs_download = not os.path.isfile(repo_marker)
         if needs_download and configure_only:
-            return False, f"Huntarr instance {instance_name} not installed."
-        if needs_download:
-            logger.warning(
-                "Huntarr instance %s not found at %s. Downloading...",
-                instance_name,
-                repo_marker,
+            return False, f"NeutArr instance {instance_name} not installed."
+            if needs_download:
+                logger.warning(
+                    "NeutArr instance %s not found at %s. Downloading...",
+                    instance_name,
+                    repo_marker,
             )
             exclude_dirs = None
             if instance.get("clear_on_update"):
@@ -4409,7 +4872,8 @@ def setup_huntarr(
                     exclude_dirs=exclude_dirs,
                 )
                 if not success:
-                    return False, f"Failed to download Huntarr branch: {error}"
+                    return False, f"Failed to download NeutArr branch: {error}"
+                _write_neutarr_version_marker(force_refresh=True)
             else:
                 release_version = instance.get("release_version", "latest")
                 version_to_write = release_version
@@ -4423,12 +4887,12 @@ def setup_huntarr(
                         version_to_write = latest_version
                     else:
                         logger.warning(
-                            "Failed to resolve latest Huntarr version: %s",
+                            "Failed to resolve latest NeutArr version: %s",
                             latest_error,
                         )
                 success, error = downloader.download_release_version(
                     process_name=instance.get("process_name"),
-                    key="huntarr",
+                    key="neutarr",
                     repo_owner=instance.get("repo_owner"),
                     repo_name=instance.get("repo_name"),
                     release_version=release_version,
@@ -4436,11 +4900,11 @@ def setup_huntarr(
                     exclude_dirs=exclude_dirs,
                 )
                 if not success:
-                    return False, f"Failed to download Huntarr release: {error}"
+                    return False, f"Failed to download NeutArr release: {error}"
                 versions.version_write(
                     instance.get("process_name"),
-                    key="huntarr",
-                    version_path=os.path.join(instance_config_dir, "version.txt"),
+                    key="neutarr",
+                    version_path=version_marker_path,
                     version=version_to_write,
                 )
 
@@ -4450,19 +4914,36 @@ def setup_huntarr(
                 CONFIG_MANAGER.get("pgid"),
             )
 
+        _patch_neutarr_settings_manager(instance_config_dir)
+        _patch_neutarr_stats_manager(instance_config_dir)
+        _patch_neutarr_keys_manager(instance_config_dir)
+        _patch_neutarr_auth(instance_config_dir)
+        _patch_neutarr_history_manager(instance_config_dir)
+        _patch_neutarr_state(instance_config_dir)
+        _patch_neutarr_logger(instance_config_dir)
+        _patch_neutarr_scheduler_engine(instance_config_dir)
+        _patch_neutarr_scheduler_routes(instance_config_dir)
+        _patch_neutarr_swaparr(instance_config_dir)
+        _patch_neutarr_instance_list_generator(instance_config_dir)
+        _patch_neutarr_app(instance_config_dir)
+        _patch_neutarr_background(instance_config_dir)
+        _patch_neutarr_web_server(instance_config_dir)
+        _patch_neutarr_migrate_settings(instance_config_dir)
+
         if instance.get("platforms") and not configure_only:
             venv_marker = os.path.join(instance_config_dir, "venv", "bin", "python")
-            if needs_download or not os.path.isfile(venv_marker):
+            poetry_marker = os.path.join(instance_config_dir, "venv", "bin", "poetry")
+            if needs_download or not os.path.isfile(venv_marker) or not os.path.isfile(poetry_marker):
                 success, error = setup_environment(
                     process_handler,
-                    "huntarr",
+                    "neutarr",
                     instance.get("platforms"),
                     instance_config_dir,
                 )
                 if not success:
                     return (
                         False,
-                        f"Failed to set up environment for Huntarr instance {instance_name}: {error}",
+                        f"Failed to set up environment for NeutArr instance {instance_name}: {error}",
                     )
 
         if not install_only and not instance.get("command"):
@@ -4472,84 +4953,20 @@ def setup_huntarr(
             ]
             CONFIG_MANAGER.save_config(instance.get("process_name"))
 
-        if not install_only:
-            _patch_huntarr_database_paths(instance_config_dir)
-            _patch_huntarr_backup_paths(instance_config_dir)
+        _write_neutarr_version_marker(force_refresh=False)
 
     if not install_only:
         try:
-            from utils.huntarr_settings import patch_huntarr_config
+            from utils.neutarr_settings import patch_neutarr_config
 
-            ok, err = patch_huntarr_config()
+            ok, err = patch_neutarr_config()
             if not ok and err:
-                logger.warning("Huntarr config sync failed: %s", err)
+                logger.warning("NeutArr config sync failed: %s", err)
         except Exception as exc:
-            logger.warning("Huntarr config sync skipped: %s", exc)
+            logger.warning("NeutArr config sync skipped: %s", exc)
 
-    logger.info("Huntarr setup complete.")
+    logger.info("NeutArr setup complete.")
     return True, None
-
-
-def _patch_huntarr_database_paths(instance_config_dir: str) -> None:
-    db_path = os.path.join(
-        instance_config_dir, "src", "primary", "utils", "database.py"
-    )
-    if not os.path.isfile(db_path):
-        logger.debug("Huntarr database.py not found at %s", db_path)
-        return
-
-    try:
-        with open(db_path, "r") as handle:
-            content = handle.read()
-    except Exception as exc:
-        logger.warning("Failed reading Huntarr database.py: %s", exc)
-        return
-
-    target_line = '        config_dir = Path("/config")\n'
-    replacement_line = (
-        '        config_dir = Path(os.environ.get("HUNTARR_CONFIG_DIR") or "/config")\n'
-    )
-
-    if target_line not in content:
-        logger.debug("Huntarr database.py patch not needed or already applied.")
-        return
-
-    updated = content.replace(target_line, replacement_line, 1)
-    try:
-        with open(db_path, "w") as handle:
-            handle.write(updated)
-    except Exception as exc:
-        logger.warning("Failed writing Huntarr database.py patch: %s", exc)
-
-
-def _patch_huntarr_backup_paths(instance_config_dir: str) -> None:
-    backup_path = os.path.join(instance_config_dir, "src", "routes", "backup_routes.py")
-    if not os.path.isfile(backup_path):
-        logger.debug("Huntarr backup_routes.py not found at %s", backup_path)
-        return
-
-    try:
-        with open(backup_path, "r") as handle:
-            content = handle.read()
-    except Exception as exc:
-        logger.warning("Failed reading Huntarr backup_routes.py: %s", exc)
-        return
-
-    target_line = '        config_dir = Path("/config")\n'
-    replacement_line = (
-        '        config_dir = Path(os.environ.get("HUNTARR_CONFIG_DIR") or "/config")\n'
-    )
-
-    if target_line not in content:
-        logger.debug("Huntarr backup_routes.py patch not needed or already applied.")
-        return
-
-    updated = content.replace(target_line, replacement_line, 1)
-    try:
-        with open(backup_path, "w") as handle:
-            handle.write(updated)
-    except Exception as exc:
-        logger.warning("Failed writing Huntarr backup_routes.py patch: %s", exc)
 
 
 def setup_jellyfin(install_only: bool = False, configure_only: bool = False):
@@ -5961,8 +6378,90 @@ def setup_python_environment(process_handler, key, config_dir):
             return True, None
 
         def _resolve_python_venv_command():
-            if key != "riven_backend":
+            if key not in ("riven_backend", "neutarr"):
                 return ["python", "-m", "venv", "venv"], None
+
+            if key == "neutarr":
+                preferred_python = "python3.12"
+                if shutil.which(preferred_python):
+                    # python3.12-venv is a separate package on Debian/Ubuntu;
+                    # ensure it is present before attempting venv creation.
+                    apt_prefix = ["apt"] if os.geteuid() == 0 else ["sudo", "apt"]
+                    try:
+                        run_locked(
+                            apt_prefix + ["install", "-y", "python3.12-venv"],
+                            check=True,
+                            capture_output=True,
+                            text=True,
+                        )
+                    except Exception:
+                        pass  # Best-effort; venv creation will surface the error if needed
+
+                    existing_venv_python = os.path.join(config_dir, "venv", "bin", "python")
+                    if os.path.exists(existing_venv_python):
+                        existing_ver = ""
+                        try:
+                            existing_ver = (
+                                subprocess.check_output(
+                                    [
+                                        existing_venv_python,
+                                        "-c",
+                                        "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')",
+                                    ],
+                                    text=True,
+                                )
+                                .strip()
+                            )
+                        except Exception:
+                            existing_ver = ""
+
+                        if existing_ver != "3.12":
+                            logger.info(
+                                "Existing NeutArr venv uses Python %s; recreating with python3.12.",
+                                existing_ver or "unknown",
+                            )
+                            return [preferred_python, "-m", "venv", "--clear", "venv"], None
+
+                    return [preferred_python, "-m", "venv", "venv"], None
+
+                logger.info(
+                    "NeutArr requires Python ~=3.12.0; attempting to install python3.12."
+                )
+                apt_prefix = ["apt"] if os.geteuid() == 0 else ["sudo", "apt"]
+                try:
+                    run_locked(
+                        apt_prefix + ["update"],
+                        check=True,
+                        capture_output=True,
+                        text=True,
+                    )
+                    run_locked(
+                        apt_prefix + ["install", "-y", "python3.12", "python3.12-venv"],
+                        check=True,
+                        capture_output=True,
+                        text=True,
+                    )
+                except FileNotFoundError as exc:
+                    return (
+                        None,
+                        f"Unable to install python3.12 automatically ({exc}). Install python3.12/python3.12-venv and retry.",
+                    )
+                except subprocess.CalledProcessError as exc:
+                    stderr = (exc.stderr or "").strip()
+                    stdout = (exc.stdout or "").strip()
+                    details = stderr or stdout or str(exc)
+                    return (
+                        None,
+                        f"Failed to install python3.12 for NeutArr setup: {details}",
+                    )
+
+                if not shutil.which(preferred_python):
+                    return (
+                        None,
+                        "python3.12 installation completed but executable was not found in PATH.",
+                    )
+
+                return [preferred_python, "-m", "venv", "--clear", "venv"], None
 
             if not _is_riven_branch_mode():
                 return ["python", "-m", "venv", "venv"], None
@@ -6048,7 +6547,7 @@ def setup_python_environment(process_handler, key, config_dir):
                 else None
             )
 
-        poetry_install = True if key == "riven_backend" else False
+        poetry_install = key in ("riven_backend", "neutarr")
 
         logger.info(f"Setting up Python environment in {config_dir}")
 
@@ -6076,7 +6575,7 @@ def setup_python_environment(process_handler, key, config_dir):
         )
         if (
             not success
-            and _is_riven_branch_mode()
+            and (key == "neutarr" or _is_riven_branch_mode())
             and isinstance(error, str)
             and (
                 "ensurepip" in error.lower()
@@ -6084,12 +6583,12 @@ def setup_python_environment(process_handler, key, config_dir):
             )
         ):
             logger.warning(
-                "python_env_setup failed during ensurepip; retrying venv creation without pip for Riven branch mode."
+                "python_env_setup failed during ensurepip; retrying venv creation without pip."
             )
             python_binary = (
                 venv_setup_cmd[0]
                 if isinstance(venv_setup_cmd, list) and venv_setup_cmd
-                else "python3.13"
+                else ("python3.12" if key == "neutarr" else "python3.13")
             )
             retry_cmd = [python_binary, "-m", "venv", "--clear", "--without-pip", "venv"]
             success, error = _run_setup_process("python_env_setup", retry_cmd)
@@ -6106,7 +6605,7 @@ def setup_python_environment(process_handler, key, config_dir):
         base_env = os.environ.copy()
         base_env["PIP_CACHE_DIR"] = pip_cache
 
-        if _is_riven_branch_mode() and venv_bootstrapped_without_pip:
+        if venv_bootstrapped_without_pip:
             success, error = _bootstrap_venv_pip(python_executable)
             if not success:
                 return False, f"Error bootstrapping pip for Python venv: {error}"
