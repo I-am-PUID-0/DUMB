@@ -124,7 +124,7 @@
         <loc>https://dumbarr.com/services/core/whisparr/</loc>
       </url>
       <url>
-        <loc>https://dumbarr.com/services/core/huntarr/</loc>
+        <loc>https://dumbarr.com/services/core/neutarr/</loc>
       </url>
       <url>
         <loc>https://dumbarr.com/services/core/profilarr/</loc>
@@ -253,7 +253,7 @@
         <loc>https://dumbarr.com/faq/dumb/</loc>
       </url>
       <url>
-        <loc>https://dumbarr.com/faq/huntarr/</loc>
+        <loc>https://dumbarr.com/faq/neutarr/</loc>
       </url>
       <url>
         <loc>https://dumbarr.com/faq/pgadmin/</loc>

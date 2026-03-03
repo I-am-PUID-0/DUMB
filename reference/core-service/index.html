@@ -2101,7 +2101,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/core/huntarr/" class="md-nav__link">
+      <a href="../../services/core/neutarr/" class="md-nav__link">
         
   
   
@@ -2110,7 +2110,7 @@
   <span class="md-ellipsis">
     
   
-    Huntarr
+    NeutArr
   
 
     
@@ -3928,7 +3928,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../faq/huntarr/" class="md-nav__link">
+      <a href="../../faq/neutarr/" class="md-nav__link">
         
   
   
@@ -3937,7 +3937,7 @@
   <span class="md-ellipsis">
     
   
-    Huntarr
+    NeutArr
   
 
     
@@ -4526,12 +4526,12 @@
   
 
 
-<h1 id="core-service-routing">Core service routing<a class="headerlink" href="#core-service-routing" title="Permanent link">#</a></h1>
+<h1 id="core-service-routing">Core service routing<a class="headerlink" href="#core-service-routing" title="Permanent link">&para;</a></h1>
 <p><code>core_service</code> is the flag DUMB uses to route automation between Arrs and the core
 download workflows. It keeps Debrid- and Usenet-based stacks isolated while
 still allowing multiple instances of the same Arr service.</p>
 <hr />
-<h2 id="where-core_service-is-used">Where <code>core_service</code> is used<a class="headerlink" href="#where-core_service-is-used" title="Permanent link">#</a></h2>
+<h2 id="where-core_service-is-used">Where <code>core_service</code> is used<a class="headerlink" href="#where-core_service-is-used" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
@@ -4545,8 +4545,8 @@ still allowing multiple instances of the same Arr service.</p>
 <td>Selects the download workflow(s) to auto-wire.</td>
 </tr>
 <tr>
-<td>Huntarr instances</td>
-<td>Filters which Arr instances are sent to Huntarr.</td>
+<td>NeutArr instances</td>
+<td>Filters which Arr instances are sent to NeutArr.</td>
 </tr>
 <tr>
 <td>Profilarr instances</td>
@@ -4559,7 +4559,7 @@ still allowing multiple instances of the same Arr service.</p>
 </tbody>
 </table>
 <hr />
-<h2 id="routing-map">Routing map<a class="headerlink" href="#routing-map" title="Permanent link">#</a></h2>
+<h2 id="routing-map">Routing map<a class="headerlink" href="#routing-map" title="Permanent link">&para;</a></h2>
 <pre class="mermaid"><code>%%{ init: { "flowchart": { "curve": "basis" } } }%%
 flowchart TD
     ARR[Arr instances]
@@ -4568,7 +4568,7 @@ flowchart TD
     NZB[NzbDAV workflow]
     PROWLARR[Prowlarr apps + tags]
     IDX[Tagged indexers]
-    HUNTARR[Huntarr instance]
+    NEUTARR[NeutArr instance]
     PROFILARR[Profilarr instance]
 
     ARR ==&gt; CS
@@ -4578,10 +4578,10 @@ flowchart TD
     NZB ==&gt; PROWLARR
     PROWLARR ==&gt; IDX
     IDX ==&gt; ARR
-    CS ==&gt; HUNTARR
+    CS ==&gt; NEUTARR
     CS ==&gt; PROFILARR</code></pre>
 <hr />
-<h2 id="supported-values">Supported values<a class="headerlink" href="#supported-values" title="Permanent link">#</a></h2>
+<h2 id="supported-values">Supported values<a class="headerlink" href="#supported-values" title="Permanent link">&para;</a></h2>
 <p>Use one or more of the core workflow keys:</p>
 <table>
 <thead>
@@ -4608,7 +4608,7 @@ flowchart TD
 workflow. To combine workflows, set <code>core_service</code> to a list or use a
 comma-separated string.</p>
 <hr />
-<h2 id="what-dumb-does-with-it">What DUMB does with it<a class="headerlink" href="#what-dumb-does-with-it" title="Permanent link">#</a></h2>
+<h2 id="what-dumb-does-with-it">What DUMB does with it<a class="headerlink" href="#what-dumb-does-with-it" title="Permanent link">&para;</a></h2>
 <p>When <code>core_service</code> is set on an Arr instance, DUMB:</p>
 <ul>
 <li>Configures matching download clients (Decypharr and/or NzbDAV).</li>
@@ -4618,9 +4618,9 @@ comma-separated string.</p>
 </ul>
 <p>When <code>core_service</code> includes both <code>decypharr</code> and <code>nzbdav</code>, DUMB uses a shared
 root folder base at <code>/mnt/debrid/combined_symlinks/&lt;slug&gt;</code> for the Arr instance.</p>
-<p>When <code>core_service</code> is set on a Huntarr instance, DUMB:</p>
+<p>When <code>core_service</code> is set on a NeutArr instance, DUMB:</p>
 <ul>
-<li>Sends Arr instances whose core services overlap the Huntarr instance.</li>
+<li>Sends Arr instances whose core services overlap the NeutArr instance.</li>
 </ul>
 <p>When <code>core_service</code> is set on a Profilarr instance, DUMB:</p>
 <ul>
@@ -4628,20 +4628,20 @@ root folder base at <code>/mnt/debrid/combined_symlinks/&lt;slug&gt;</code> for 
 <li>Seeds profile/custom format/regex/media-management sync for those Arr instances (when <code>use_profilarr</code> is enabled on the Arr).</li>
 </ul>
 <hr />
-<h2 id="example-split-debrid-and-usenet-workflows">Example: split Debrid and Usenet workflows<a class="headerlink" href="#example-split-debrid-and-usenet-workflows" title="Permanent link">#</a></h2>
+<h2 id="example-split-debrid-and-usenet-workflows">Example: split Debrid and Usenet workflows<a class="headerlink" href="#example-split-debrid-and-usenet-workflows" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="nt">&quot;radarr&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;instances&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">    </span><span class="nt">&quot;Debrid&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">      </span><span class="nt">&quot;enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
 <span class="w">      </span><span class="nt">&quot;core_service&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;decypharr&quot;</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;use_huntarr&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;use_neutarr&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
 <span class="w">      </span><span class="nt">&quot;use_profilarr&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
 <span class="w">      </span><span class="nt">&quot;port&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">7878</span>
 <span class="w">    </span><span class="p">},</span>
 <span class="w">    </span><span class="nt">&quot;Usenet&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">      </span><span class="nt">&quot;enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
 <span class="w">      </span><span class="nt">&quot;core_service&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;nzbdav&quot;</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;use_huntarr&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;use_neutarr&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
 <span class="w">      </span><span class="nt">&quot;use_profilarr&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
 <span class="w">      </span><span class="nt">&quot;port&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">7879</span>
 <span class="w">    </span><span class="p">}</span>
@@ -4652,15 +4652,15 @@ root folder base at <code>/mnt/debrid/combined_symlinks/&lt;slug&gt;</code> for 
 <ul>
 <li>The Debrid Radarr instance syncs with Decypharr and Debrid indexers.</li>
 <li>The Usenet Radarr instance syncs with NzbDAV and Usenet indexers.</li>
-<li>Huntarr only receives the Debrid instance because <code>use_huntarr</code> is set there.</li>
+<li>NeutArr only receives the Debrid instance because <code>use_neutarr</code> is set there.</li>
 <li>Profilarr only links the Debrid instance because <code>use_profilarr</code> is set there.</li>
 </ul>
-<h2 id="example-combine-workflows-on-one-arr-instance">Example: combine workflows on one Arr instance<a class="headerlink" href="#example-combine-workflows-on-one-arr-instance" title="Permanent link">#</a></h2>
+<h2 id="example-combine-workflows-on-one-arr-instance">Example: combine workflows on one Arr instance<a class="headerlink" href="#example-combine-workflows-on-one-arr-instance" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="nt">&quot;sonarr&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;instances&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">    </span><span class="nt">&quot;Combined&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">      </span><span class="nt">&quot;core_service&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;decypharr&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;nzbdav&quot;</span><span class="p">],</span>
-<span class="w">      </span><span class="nt">&quot;use_huntarr&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;use_neutarr&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
 <span class="w">      </span><span class="nt">&quot;use_profilarr&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span>
 <span class="w">    </span><span class="p">}</span>
 <span class="w">  </span><span class="p">}</span>
@@ -4669,11 +4669,11 @@ root folder base at <code>/mnt/debrid/combined_symlinks/&lt;slug&gt;</code> for 
 <p>In this layout, DUMB wires both Decypharr and NzbDAV download clients and root
 folders for the same Sonarr instance.</p>
 <hr />
-<h2 id="related-references">Related references<a class="headerlink" href="#related-references" title="Permanent link">#</a></h2>
+<h2 id="related-references">Related references<a class="headerlink" href="#related-references" title="Permanent link">&para;</a></h2>
 <ul>
 <li><a href="../instances/">Multi-instance setup</a></li>
 <li><a href="../../services/core/prowlarr/">Prowlarr</a></li>
-<li><a href="../../services/core/huntarr/">Huntarr</a></li>
+<li><a href="../../services/core/neutarr/">NeutArr</a></li>
 </ul>
 
 
