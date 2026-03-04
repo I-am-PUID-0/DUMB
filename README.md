@@ -181,7 +181,7 @@ The following table describes the ports used by the container. The mappings are 
 | `32400`        | TCP      | Plex Media Server -  Web UI accessible at the assigned port                          |
 | `5432`         | TCP      | PostgreSQL - The SQL server is accessible at the assigned port                       |
 | `9696`         | TCP      | Prowlarr - Web UI accessible at the assigned port                                    |
-| `9705`         | TCP      | Huntarr - Web UI accessible at the assigned port                                     |
+| `9705`         | TCP      | NeutArr - Web UI accessible at the assigned port                                     |
 | `7878`         | TCP      | Radarr - Web UI accessible at the assigned port                                      |
 | `3000`         | TCP      | Riven frontend -  Web UI accessible at the assigned port                             |
 | `8080`         | TCP      | Riven backend - The API is accessible at the assigned port                           |
