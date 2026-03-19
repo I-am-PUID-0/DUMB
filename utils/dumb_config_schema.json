@@ -2916,6 +2916,63 @@
         "env"
       ]
     },
+    "cacharr": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "process_name": {
+          "type": "string"
+        },
+        "suppress_logging": {
+          "type": "boolean"
+        },
+        "log_level": {
+          "type": "string"
+        },
+        "port": {
+          "type": "integer"
+        },
+        "platforms": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "command": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "config_dir": {
+          "type": "string"
+        },
+        "config_file": {
+          "type": "string"
+        },
+        "log_file": {
+          "type": "string"
+        },
+        "env": {
+          "type": "object"
+        }
+      },
+      "required": [
+        "enabled",
+        "process_name",
+        "suppress_logging",
+        "log_level",
+        "port",
+        "platforms",
+        "command",
+        "config_dir",
+        "config_file",
+        "log_file",
+        "env"
+      ]
+    },
     "sonarr": {
       "type": "object",
       "properties": {
@@ -3488,6 +3545,7 @@
     "rclone",
     "riven_backend",
     "riven_frontend",
+    "cacharr",
     "sonarr",
     "whisparr",
     "zilean",

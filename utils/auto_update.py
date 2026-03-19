@@ -2199,6 +2199,27 @@ class Update:
             time.sleep(10)
             load_settings()
 
+        if key == "cacharr":
+            if self.process_handler.shutting_down:
+                return process, "Shutdown requested"
+            from utils.cacharr_settings import patch_cacharr_config
+
+            time.sleep(5)
+            patched, error = patch_cacharr_config()
+            if patched:
+                self.logger.info("Restarting Cacharr to apply Prowlarr API key")
+                self.process_handler.stop_process(process_name)
+                self.process_handler.start_process(
+                    process_name,
+                    config_dir,
+                    command,
+                    instance_name,
+                    suppress_logging=suppress_logging,
+                    env=env,
+                )
+            elif error:
+                self.logger.warning("Cacharr config patch failed: %s", error)
+
         if key == "decypharr":
             if self.process_handler.shutting_down:
                 return process, "Shutdown requested"

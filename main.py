@@ -970,6 +970,7 @@ def main():
             "cli_battery",
             "riven_backend",
             "riven_frontend",
+            "cacharr",
             "plex",
             "jellyfin",
             "emby",
