@@ -42,20 +42,36 @@ def _source_info(path):
     return os.path.basename(path), os.path.basename(os.path.dirname(path))
 
 
-def _find_video(folder_path):
-    """Return the first video file path in a folder, or None.
+_JUNK_RE = re.compile(r"(?i)\b(sample|trailer|extras?|featurette|interview|deleted.scene)\b")
 
-    Accepts symlinks regardless of whether the target resolves — the debrid
-    FUSE mount only exists inside the DUMB container, so os.path.exists()
-    returns False here even for valid links.
+
+def _find_video(folder_path):
+    """Return the best video file path in a folder, or None.
+
+    Prefers files whose names don't look like samples/trailers/extras.
+    Falls back to the first video alphabetically if all files match the
+    junk pattern.  Accepts symlinks regardless of whether the target
+    resolves — the debrid FUSE mount only exists inside the DUMB
+    container, so os.path.exists() returns False here even for valid links.
     """
     try:
         entries = os.listdir(folder_path)
     except OSError:
         return None
-    for fname in entries:
-        if os.path.splitext(fname)[1].lower() in VIDEO_EXTS:
-            return os.path.join(folder_path, fname)
+    primary = []
+    fallback = []
+    for fname in sorted(entries):
+        if os.path.splitext(fname)[1].lower() not in VIDEO_EXTS:
+            continue
+        full_path = os.path.join(folder_path, fname)
+        if _JUNK_RE.search(fname):
+            fallback.append(full_path)
+        else:
+            primary.append(full_path)
+    if primary:
+        return primary[0]
+    if fallback:
+        return fallback[0]
     return None
 
 
@@ -108,10 +124,26 @@ def sync_movies(conn):
 
 
 # ---------------------------------------------------------------------------
+def _extract_ep_nums(filename):
+    """Return all episode numbers encoded in a filename.
+
+    Handles:
+    - Single:   S01E05            → [5]
+    - Multi:    S01E01E02E03      → [1, 2, 3]
+    - Range:    S01E01-03         → [1, 2, 3]
+    """
+    range_match = re.search(r"[Ee](\d{1,2})-(\d{2})\b", filename)
+    if range_match:
+        start, end = int(range_match.group(1)), int(range_match.group(2))
+        if end >= start:
+            return list(range(start, end + 1))
+    tokens = re.findall(r"[Ee](\d{1,2})", filename)
+    return [int(t) for t in tokens] if tokens else []
+
+
 def sync_episodes(conn):
     """Mark Riven episode items Completed when library files already exist."""
     cur  = conn.cursor()
-    ep_re = re.compile(r"[Ss](\d{1,2})[Ee](\d{1,2})")
     synced = skipped = no_match = no_file = 0
 
     for show_folder in sorted(os.listdir(SHOWS_DIR)):
@@ -168,34 +200,34 @@ def sync_episodes(conn):
                 continue
 
             for ep_file in ep_files:
-                em = ep_re.search(ep_file)
-                if not em:
+                ep_nums = _extract_ep_nums(ep_file)
+                if not ep_nums:
                     continue
-                ep_num   = int(em.group(2))
-                ep_path  = os.path.join(season_path, ep_file)
+                ep_path = os.path.join(season_path, ep_file)
 
                 # Don't check os.path.exists — FUSE target only resolves in DUMB
 
-                cur.execute(
-                    'SELECT m.id, m.last_state, m.symlinked FROM "MediaItem" m '
-                    'JOIN "Episode" e ON e.id = m.id '
-                    "WHERE m.type='episode' AND m.number=%s "
-                    "AND e.parent_id=%s LIMIT 1",
-                    (ep_num, season_id),
-                )
-                row = cur.fetchone()
-                if not row:
-                    no_match += 1
-                    continue
+                for ep_num in ep_nums:
+                    cur.execute(
+                        'SELECT m.id, m.last_state, m.symlinked FROM "MediaItem" m '
+                        'JOIN "Episode" e ON e.id = m.id '
+                        "WHERE m.type='episode' AND m.number=%s "
+                        "AND e.parent_id=%s LIMIT 1",
+                        (ep_num, season_id),
+                    )
+                    row = cur.fetchone()
+                    if not row:
+                        no_match += 1
+                        continue
 
-                ep_id, last_state, sym = row
-                if last_state == "Completed" and sym:
-                    skipped += 1
-                    continue
+                    ep_id, last_state, sym = row
+                    if last_state == "Completed" and sym:
+                        skipped += 1
+                        continue
 
-                real_file, real_folder = _source_info(ep_path)
-                cur.execute(COMPLETE_SQL, (ep_path, real_file, real_folder, ep_id))
-                synced += 1
+                    real_file, real_folder = _source_info(ep_path)
+                    cur.execute(COMPLETE_SQL, (ep_path, real_file, real_folder, ep_id))
+                    synced += 1
 
     conn.commit()
     log.info(

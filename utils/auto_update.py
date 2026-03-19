@@ -2207,15 +2207,21 @@ class Update:
             time.sleep(5)
             patched, error = patch_cacharr_config()
             if patched:
+                # Reload env from CONFIG_MANAGER so the restart picks up the
+                # newly injected PROWLARR_KEY (and URL) rather than the stale
+                # snapshot captured before patch_cacharr_config() ran.
+                refreshed_cfg = CONFIG_MANAGER.get("cacharr") or {}
+                refreshed_env = dict(env)
+                refreshed_env.update(refreshed_cfg.get("env") or {})
                 self.logger.info("Restarting Cacharr to apply Prowlarr API key")
                 self.process_handler.stop_process(process_name)
-                self.process_handler.start_process(
+                process, error = self.process_handler.start_process(
                     process_name,
                     config_dir,
                     command,
                     instance_name,
                     suppress_logging=suppress_logging,
-                    env=env,
+                    env=refreshed_env,
                 )
             elif error:
                 self.logger.warning("Cacharr config patch failed: %s", error)
