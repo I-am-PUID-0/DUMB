@@ -25,7 +25,10 @@ def _discover_prowlarr() -> tuple[str, str]:
     """
     prowlarr_cfg = CONFIG_MANAGER.get("prowlarr") or {}
     instances = prowlarr_cfg.get("instances") or {}
-    for inst_key, inst in instances.items():
+    if not isinstance(instances, dict):
+        logger.warning("Cacharr: invalid prowlarr.instances type: %s", type(instances).__name__)
+        return "", ""
+    for _inst_key, inst in instances.items():
         if not isinstance(inst, dict) or not inst.get("enabled"):
             continue
         config_file = (inst.get("config_file") or "").strip()
@@ -65,6 +68,9 @@ def patch_cacharr_config() -> tuple[bool, str | None]:
         return False, None
 
     env = cacharr_cfg.get("env") or {}
+    if not isinstance(env, dict):
+        logger.warning("Cacharr: invalid cacharr.env type: %s; skipping patch.", type(env).__name__)
+        return False, None
     existing_key = (env.get("PROWLARR_KEY") or "").strip()
     if existing_key:
         logger.debug("Cacharr: PROWLARR_KEY already set; skipping auto-inject.")
