@@ -3,8 +3,7 @@ from utils.config_loader import CONFIG_MANAGER
 from utils.core_services import get_core_services, has_core_service
 from utils.versions import Versions
 from collections import OrderedDict
-import os, json, time
-import threading
+import os, json, time, threading
 import xml.etree.ElementTree as ET
 import urllib.request
 import urllib.error
@@ -17,19 +16,23 @@ from typing import Optional, Tuple
 
 def _provider_folder(name_lc: str, mount_root: str) -> str:
     """
-    Map provider -> expected terminal directory, mirroring NON-embedded layout.
+    Map provider -> expected terminal directory for the consolidated Decypharr
+    mount root.
     - realdebrid  -> __all__
     - torbox      -> torrents
     - alldebrid   -> torrents
     - debridlink  -> torrents
+    - usenet      -> nzbs
     - default     -> other
     """
     if name_lc == "realdebrid":
-        return os.path.join(mount_root, name_lc, "__all__")
+        return os.path.join(mount_root, "__all__")
+    elif name_lc == "usenet":
+        return os.path.join(mount_root, "nzbs")
     elif name_lc in ("torbox", "alldebrid", "debridlink"):
-        return os.path.join(mount_root, name_lc, "torrents")
+        return os.path.join(mount_root, "torrents")
     else:
-        return os.path.join(mount_root, name_lc, "other")
+        return os.path.join(mount_root, "other")
 
 
 def _slugify_category(value: str) -> str:
@@ -888,18 +891,11 @@ def patch_decypharr_config():
 
         def _merged_dfs_settings(existing_mount_dfs=None):
             """
-            Ensure DFS settings exist on first run so beta DFS can start without
-            waiting for a manual UI save. Existing mount.dfs values stay authoritative.
+            Preserve Decypharr-managed DFS settings and only backfill the small set
+            of fields DUMB must ensure for ownership/basic startup compatibility.
             """
             dfs_defaults = {
-                "cache_expiry": "24h",
-                "cache_dir": "/cache/dfs",
-                "disk_cache_size": "50GB",
-                "cache_cleanup_interval": "1h",
-                "chunk_size": "10MB",
-                "read_ahead_size": "128MB",
-                "daemon_timeout": "30m",
-                "umask": "022",
+                "cache_dir": "/cache",
                 "allow_other": True,
                 "default_permissions": True,
             }
@@ -1013,6 +1009,45 @@ def patch_decypharr_config():
             if not config_data.get("download_folder"):
                 config_data["download_folder"] = "/mnt/debrid/decypharr_downloads"
                 updated = True
+        elif mount_type == "external_rclone":
+            rc_inst = debrid_instances[0] if debrid_instances else None
+            rc_url = _safe_extract_rc_url(rc_inst, "http://127.0.0.1:5572")
+            mount_block = config_data.get("mount") or {}
+            if mount_block.get("type") != "external_rclone":
+                mount_block["type"] = "external_rclone"
+                updated = True
+            if mount_block.get("mount_path") != mount_path:
+                mount_block["mount_path"] = mount_path
+                updated = True
+            external_rc = mount_block.get("external_rclone") or {}
+            desired_external = {
+                "rc_url": rc_url,
+                "rc_username": external_rc.get("rc_username", ""),
+                "rc_password": external_rc.get("rc_password", ""),
+            }
+            if external_rc != desired_external:
+                mount_block["external_rclone"] = desired_external
+                updated = True
+            config_data["mount"] = mount_block
+            if config_data.get("download_folder") != "/mnt/debrid/decypharr_downloads":
+                config_data["download_folder"] = "/mnt/debrid/decypharr_downloads"
+                updated = True
+        elif mount_type == "dfs":
+            mount_block = config_data.get("mount") or {}
+            if mount_block.get("type") != "dfs":
+                mount_block["type"] = "dfs"
+                updated = True
+            if mount_block.get("mount_path") != mount_path:
+                mount_block["mount_path"] = mount_path
+                updated = True
+            merged_dfs = _merged_dfs_settings(mount_block.get("dfs"))
+            if mount_block.get("dfs") != merged_dfs:
+                mount_block["dfs"] = merged_dfs
+                updated = True
+            config_data["mount"] = mount_block
+            if config_data.get("download_folder") != "/mnt/debrid/decypharr_downloads":
+                config_data["download_folder"] = "/mnt/debrid/decypharr_downloads"
+                updated = True
 
         # Bootstrap defaults if config is minimal
         if "debrids" not in config_data and "usenet" not in config_data:
@@ -1077,36 +1112,19 @@ def patch_decypharr_config():
                             }
                         )
                 else:
-                    for inst in debrid_instances:
-                        name = (inst.get("key_type", "unknown") or "unknown").lower()
-                        api_key = inst.get("api_key", "")
-                        rc_url = _safe_extract_rc_url(inst, "http://127.0.0.1:5572")
-
-                        if name == "realdebrid":
-                            folder = "/mnt/debrid/decypharr_realdebrid/__all__"
-                        elif name == "torbox":
-                            folder = "/mnt/debrid/decypharr_torbox/torrents"
-                        elif name == "alldebrid":
-                            folder = "/mnt/debrid/decypharr_alldebrid/torrents/"
-                        elif name == "debridlink":
-                            folder = "/mnt/debrid/decypharr_debridlink/torrents/"
-                        else:
-                            folder = "/mnt/debrid/decypharr_other"
-
+                    rc_inst = debrid_instances[0] if debrid_instances else None
+                    for name_lc, api_key in api_keys_map.items():
                         config_data["debrids"].append(
                             {
-                                "name": name,
+                                "provider": name_lc,
+                                "name": name_lc,
                                 "api_key": api_key,
                                 "download_api_keys": [api_key] if api_key else [],
-                                "folder": folder,
                                 "rate_limit": "250/minute",
-                                "use_webdav": True,
                                 "torrents_refresh_interval": "15s",
                                 "download_links_refresh_interval": "40m",
                                 "workers": 50,
                                 "auto_expire_links_after": "3d",
-                                "folder_naming": "original_no_ext",
-                                "rc_url": rc_url,
                             }
                         )
 
@@ -1255,6 +1273,89 @@ def patch_decypharr_config():
                     changed = True
             if changed:
                 logger.info("Adjusted debrid folders for embedded rclone mount layout")
+                updated = True
+
+        # Legacy external-rclone mode: synchronize/merge debrids[] from api_keys_map
+        elif mount_type == "external_rclone":
+            if not isinstance(config_data.get("debrids"), list):
+                config_data["debrids"] = []
+
+            existing = {
+                _debrid_key(d): d for d in config_data["debrids"] if isinstance(d, dict)
+            }
+
+            changed = False
+            for name_lc, api_key in api_keys_map.items():
+                d = existing.get(name_lc)
+                if not d:
+                    d = {
+                        "provider": name_lc,
+                        "name": name_lc,
+                        "api_key": api_key,
+                        "download_api_keys": [api_key] if api_key else [],
+                        "rate_limit": "250/minute",
+                        "torrents_refresh_interval": "15s",
+                        "download_links_refresh_interval": "40m",
+                        "workers": 50,
+                        "auto_expire_links_after": "3d",
+                    }
+                    config_data["debrids"].append(d)
+                    existing[name_lc] = d
+                    changed = True
+                else:
+                    if d.get("provider") != name_lc:
+                        d["provider"] = name_lc
+                        changed = True
+                    if d.get("name") != name_lc:
+                        d["name"] = name_lc
+                        changed = True
+                    if d.get("api_key") != api_key:
+                        d["api_key"] = api_key
+                        changed = True
+                    dl_keys = set(d.get("download_api_keys") or [])
+                    if api_key and api_key not in dl_keys:
+                        dl_keys.add(api_key)
+                        d["download_api_keys"] = list(dl_keys)
+                        changed = True
+                    if not d.get("rate_limit"):
+                        d["rate_limit"] = "250/minute"
+                        changed = True
+                    if not d.get("torrents_refresh_interval"):
+                        d["torrents_refresh_interval"] = "15s"
+                        changed = True
+                    if not d.get("download_links_refresh_interval"):
+                        d["download_links_refresh_interval"] = "40m"
+                        changed = True
+                    if not d.get("workers"):
+                        d["workers"] = 50
+                        changed = True
+                    if not d.get("auto_expire_links_after"):
+                        d["auto_expire_links_after"] = "3d"
+                        changed = True
+
+            if changed:
+                logger.info(
+                    "Synchronized Decypharr debrids from external_rclone api_keys map"
+                )
+                updated = True
+
+            desired_download_folder = "/mnt/debrid/decypharr_downloads"
+            if config_data.get("download_folder") != desired_download_folder:
+                config_data["download_folder"] = desired_download_folder
+                updated = True
+            qbittorrent_cfg = config_data.get("qbittorrent")
+            if not isinstance(qbittorrent_cfg, dict):
+                qbittorrent_cfg = {}
+                config_data["qbittorrent"] = qbittorrent_cfg
+            if qbittorrent_cfg.get("download_folder") != desired_download_folder:
+                qbittorrent_cfg["download_folder"] = desired_download_folder
+                updated = True
+            sabnzbd_cfg = config_data.get("sabnzbd")
+            if not isinstance(sabnzbd_cfg, dict):
+                sabnzbd_cfg = {}
+                config_data["sabnzbd"] = sabnzbd_cfg
+            if sabnzbd_cfg.get("download_folder") != desired_download_folder:
+                sabnzbd_cfg["download_folder"] = desired_download_folder
                 updated = True
 
         # ---- Build/Sync arrs from CONFIG_MANAGER (sonarr/radarr) ----
@@ -1506,6 +1607,10 @@ def patch_decypharr_config():
                 final_config["arrs"] = config_data["arrs"]
             final_config["repair"] = config_data.get("repair", {})
             final_config["webdav"] = config_data.get("webdav", {})
+            if mount_type in {"external_rclone", "dfs"} and config_data.get("mount"):
+                final_config["mount"] = config_data.get("mount", {})
+            if config_data.get("download_folder"):
+                final_config["download_folder"] = config_data.get("download_folder")
             if "rclone" in config_data:
                 final_config["rclone"] = config_data["rclone"]
             final_config["allowed_file_types"] = config_data.get(
@@ -1561,9 +1666,7 @@ def patch_decypharr_config():
             except OSError as e:
                 # FUSE-backed mountpoints may not support chown/chmod operations.
                 if getattr(e, "errno", None) in (1, 30, 95):
-                    logger.debug(
-                        "Skipping ownership update for %s: %s", dir_path, e
-                    )
+                    logger.debug("Skipping ownership update for %s: %s", dir_path, e)
                     continue
                 logger.warning(
                     f"Failed to ensure ownership or creation of {dir_path}: {e}"

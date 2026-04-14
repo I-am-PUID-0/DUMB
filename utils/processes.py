@@ -4,10 +4,10 @@ from utils.logger import (
     get_subprocess_access_logger,
 )
 from utils.config_loader import CONFIG_MANAGER
+from utils.wait_for_url import wait_for_urls
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from contextlib import contextmanager
-import shlex, os, time, signal, threading, subprocess, sys, uvicorn, socket, psutil
-import requests
+import shlex, os, time, signal, threading, subprocess, sys, uvicorn, socket, psutil, requests
 from json import dump
 
 
@@ -270,48 +270,14 @@ class ProcessHandler:
                             ", ".join(url_list),
                         )
                     time.sleep(5)
-                    start_time = time.time()
-                    for wait_entry in wait_urls:
-                        wait_url = wait_entry.get("url")
-                        if not wait_url:
-                            continue
-                        auth = wait_entry.get("auth")
-                        sleep_s = 5
-                        while time.time() - start_time < 600:
-                            if self.shutting_down:
-                                self.logger.info(
-                                    "Shutdown requested; skipping wait for %s.",
-                                    wait_url,
-                                )
-                                return False, "Shutdown requested"
-                            try:
-                                if auth:
-                                    response = requests.get(
-                                        wait_url,
-                                        auth=(auth["user"], auth["password"]),
-                                    )
-                                else:
-                                    response = requests.get(wait_url)
-                                if 200 <= response.status_code < 300:
-                                    self.logger.info(
-                                        "%s is accessible with %s.",
-                                        wait_url,
-                                        response.status_code,
-                                    )
-                                    break
-                                self.logger.debug(
-                                    "Received status code %s while waiting for %s.",
-                                    response.status_code,
-                                    wait_url,
-                                )
-                            except requests.RequestException as e:
-                                self.logger.debug("Waiting for %s: %s", wait_url, e)
-                            time.sleep(sleep_s)
-                            sleep_s = min(60, int(sleep_s * 1.5))
-                        else:
-                            raise RuntimeError(
-                                f"Timeout: {wait_url} is not accessible after 600 seconds."
-                            )
+                    result, error = wait_for_urls(
+                        wait_urls,
+                        process_name,
+                        self.logger,
+                        lambda: self.shutting_down,
+                    )
+                    if not result:
+                        return False, error
 
             def preexec_fn():
                 os.setgid(group_id)

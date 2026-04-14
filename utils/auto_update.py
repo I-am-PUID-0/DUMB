@@ -12,6 +12,7 @@ from utils.plex import PlexInstaller
 from utils.arr import ArrInstaller
 from utils.jellyfin import JellyfinInstaller
 from utils.config_loader import CONFIG_MANAGER
+from utils.wait_for_url import wait_for_urls
 from datetime import datetime
 from glob import glob
 import threading, time, os, schedule, requests, subprocess
@@ -2115,54 +2116,16 @@ class Update:
                 sleep_s = min(60, int(sleep_s * 1.5))
 
         if config.get("wait_for_url", False):
-            wait_for_urls = config["wait_for_url"]
+            wait_url_entries = config["wait_for_url"]
             time.sleep(5)
-            start_time = time.time()
-
-            for wait_entry in wait_for_urls:
-                wait_url = wait_entry["url"]
-                auth = wait_entry.get("auth", None)
-
-                logger.info(
-                    f"Waiting to start {process_name} until {wait_url} is accessible."
-                )
-
-                sleep_s = 5
-                while time.time() - start_time < 600:
-                    if self.process_handler.shutting_down:
-                        self.logger.info(
-                            "Shutdown requested; skipping wait for %s.",
-                            wait_url,
-                        )
-                        return False, "Shutdown requested"
-                    try:
-                        if auth:
-                            response = requests.get(
-                                wait_url, auth=(auth["user"], auth["password"])
-                            )
-                            # logger.debug(
-                            #    f"Authenticating to {wait_url} with {auth['user']}:{auth['password']}"
-                            # )
-                        else:
-                            response = requests.get(wait_url)
-
-                        if 200 <= response.status_code < 300:
-                            logger.info(
-                                f"{wait_url} is accessible with {response.status_code}."
-                            )
-                            break
-                        else:
-                            logger.debug(
-                                f"Received status code {response.status_code} while waiting for {wait_url} to be accessible."
-                            )
-                    except requests.RequestException as e:
-                        logger.debug(f"Waiting for {wait_url}: {e}")
-                    time.sleep(sleep_s)
-                    sleep_s = min(60, int(sleep_s * 1.5))
-                else:
-                    raise RuntimeError(
-                        f"Timeout: {wait_url} is not accessible after 600 seconds."
-                    )
+            result, error = wait_for_urls(
+                wait_url_entries,
+                process_name,
+                logger,
+                lambda: self.process_handler.shutting_down,
+            )
+            if not result:
+                return False, error
 
         command = config["command"]
         config_dir = config["config_dir"]

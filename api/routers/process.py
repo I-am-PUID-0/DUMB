@@ -102,7 +102,7 @@ versions = Versions()
 SYMLINK_SNAPSHOT_ROOT = "/config/symlink-repair/snapshots"
 STACKTRACE_MARKERS = (
     "Traceback (most recent call last)",
-    "File \"",
+    'File "',
     "line ",
 )
 DEPENDENCY_INSTANCE_SCOPED_KEYS = {"rclone", "zurg"}
@@ -331,6 +331,17 @@ def _effective_core_dependencies(
     if core_key == "riven_backend" and bool(cfg.get("branch_enabled")):
         deps = [dep for dep in deps if dep not in {"zurg", "rclone"}]
 
+    return deps
+
+
+def _onboarding_core_dependencies(
+    core_key: str, config_obj: Optional[Dict[str, Any]] = None
+) -> List[str]:
+    deps = _effective_core_dependencies(core_key, config_obj)
+    if core_key == "decypharr" and "rclone" not in deps:
+        deps = list(
+            dict.fromkeys(list(CORE_SERVICE_DEPENDENCIES.get(core_key, [])) + deps)
+        )
     return deps
 
 
@@ -1687,7 +1698,11 @@ def dependency_graph(
                 "process_name": target_proc_name,
                 "config_key": target_key,
                 "scope": scope_mode,
-                "context": {"mode": context_mode, "key": target_key, "core": core_entry},
+                "context": {
+                    "mode": context_mode,
+                    "key": target_key,
+                    "core": core_entry,
+                },
                 "core_services": [
                     {
                         "name": CORE_SERVICE_NAMES.get(key, key),
@@ -2738,7 +2753,9 @@ def _snapshot_filename_glob(process_name: str, template: str) -> str:
     raw_template = str(template or "").strip()
     if not raw_template:
         raw_template = "{process_slug}-{timestamp}.json"
-    filename_template = os.path.basename(raw_template) or "{process_slug}-{timestamp}.json"
+    filename_template = (
+        os.path.basename(raw_template) or "{process_slug}-{timestamp}.json"
+    )
     filename_pattern = _symlink_manifest_glob_pattern(process_name, filename_template)
     safe_filename_pattern = os.path.basename(filename_pattern)
     return os.path.join(SYMLINK_SNAPSHOT_ROOT, safe_filename_pattern)
@@ -3649,10 +3666,6 @@ def _run_startup(request: UnifiedStartRequest, updater, api_state, logger):
             # Validate core service
             if config_key not in CORE_SERVICE_DEPENDENCIES:
                 raise HTTPException(400, detail=f"{process_name} is not a core service")
-            dependencies = _effective_core_dependencies(
-                config_key, config.get(config_key, {}) or {}
-            )
-
             # ---- Determine effective options for this core service BEFORE deps ----
             # don't mutate config here; just compute the effective value by peeking
             # at the request's service_options and falling back to current config.
@@ -3691,6 +3704,14 @@ def _run_startup(request: UnifiedStartRequest, updater, api_state, logger):
                 mount_type = "dfs"
             if not mount_type and not beta_enabled:
                 mount_type = "rclone"
+
+            effective_config = copy.deepcopy(config.get(config_key, {}) or {})
+            effective_config.update(effective_opts)
+            if config_key == "decypharr":
+                effective_config["branch"] = branch_name
+                effective_config["mount_type"] = mount_type
+
+            dependencies = _effective_core_dependencies(config_key, effective_config)
 
             if config_key == "decypharr" and beta_enabled:
                 # Beta builds use branch deployments; default to beta unless overridden
@@ -3749,6 +3770,8 @@ def _run_startup(request: UnifiedStartRequest, updater, api_state, logger):
             # 4.1) Handle zurg/rclone dependencies for this core service (multi-instance support)
             #
             num_instances = max(len(debrid_services), 1)
+            if config_key == "decypharr":
+                num_instances = 1
             for i in range(num_instances):
                 for dep in dependencies:
                     if dep in ("zurg", "rclone"):
@@ -3762,7 +3785,7 @@ def _run_startup(request: UnifiedStartRequest, updater, api_state, logger):
                         display = CORE_SERVICE_NAMES.get(
                             config_key, config_key.replace("_", " ").title()
                         )
-                        if config_key == "decypharr":
+                        if config_key == "decypharr" and dep != "rclone":
                             display += f" ({service_type.title()})"
                         clean_display = (
                             display.lower()
@@ -3844,12 +3867,24 @@ def _run_startup(request: UnifiedStartRequest, updater, api_state, logger):
                                     "core_service": config_key,
                                     "process_name": f"Rclone w/ {display}",
                                     "key_type": (
-                                        "nzbdav"
-                                        if config_key == "nzbdav"
-                                        else service_type
+                                        "decypharr"
+                                        if config_key == "decypharr"
+                                        else (
+                                            "nzbdav"
+                                            if config_key == "nzbdav"
+                                            else service_type
+                                        )
                                     ),
-                                    "mount_name": clean_display,
-                                    "log_file": f"/log/rclone_w_{clean_display}.log",
+                                    "mount_name": (
+                                        "decypharr"
+                                        if config_key == "decypharr"
+                                        else clean_display
+                                    ),
+                                    "log_file": (
+                                        "/log/rclone_w_decypharr.log"
+                                        if config_key == "decypharr"
+                                        else f"/log/rclone_w_{clean_display}.log"
+                                    ),
                                 }
                                 if config_key == "nzbdav":
                                     rclone_cfg.update(
@@ -3873,10 +3908,20 @@ def _run_startup(request: UnifiedStartRequest, updater, api_state, logger):
                                             "zurg_enabled": False,
                                             "decypharr_enabled": True,
                                             "zurg_config_file": "",
-                                            "api_key": service_key or "",
+                                            "mount_dir": "/mnt/debrid",
+                                            "api_key": "",
                                         }
                                     )
                                 new_cfg.update(rclone_cfg)
+
+                                if config_key == "decypharr":
+                                    for other_name, other_cfg in instances.items():
+                                        if (
+                                            other_name != instance_key
+                                            and isinstance(other_cfg, dict)
+                                            and other_cfg.get("decypharr_enabled")
+                                        ):
+                                            other_cfg["enabled"] = False
 
                             instances[instance_key] = new_cfg
                             CONFIG_MANAGER.save_config()
@@ -4308,7 +4353,8 @@ async def get_core_services(
             }
 
         # Dependencies (keep your current behavior)
-        for dep in _effective_core_dependencies(key, core_block):
+        dependencies = _onboarding_core_dependencies(key, core_block)
+        for dep in dependencies:
             if dep in ("zurg", "rclone"):
                 instances = default_conf.get(dep, {}).get("instances", {})
                 inst_cfg = next(
@@ -4343,7 +4389,7 @@ async def get_core_services(
             {
                 "name": display_name,
                 "key": key,
-                "dependencies": _effective_core_dependencies(key, core_block),
+                "dependencies": dependencies,
                 "description": desc,
                 "debrid_providers": providers,
                 "service_options": svc_opts,

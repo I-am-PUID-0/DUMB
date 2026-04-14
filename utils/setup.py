@@ -8,7 +8,7 @@ from utils.traefik_setup import setup_traefik
 from utils.user_management import chown_recursive, chown_single
 from utils.apt_lock import run_locked
 import xml.etree.ElementTree as ET
-import os, shutil, random, subprocess, re, glob, secrets, shlex, time, urllib.parse, base64, threading, sys, hashlib, json, requests
+import os, shutil, random, subprocess, re, glob, secrets, shlex, time, urllib.parse, base64, threading, sys, hashlib, json, requests, copy
 
 
 user_id = CONFIG_MANAGER.get("puid")
@@ -133,11 +133,7 @@ def _sanitize_credential(value: str) -> str:
         return value
     normalized = value.strip()
     decoded = urllib.parse.unquote(normalized)
-    if (
-        len(decoded) >= 2
-        and decoded[0] == decoded[-1]
-        and decoded[0] in {"'", '"'}
-    ):
+    if len(decoded) >= 2 and decoded[0] == decoded[-1] and decoded[0] in {"'", '"'}:
         return decoded[1:-1]
     return decoded
 
@@ -225,9 +221,7 @@ def _fetch_github_branch_head_sha(
 ) -> tuple[str | None, str | None]:
     try:
         branch_ref = urllib.parse.quote(str(branch or "").strip(), safe="")
-        api_url = (
-            f"https://api.github.com/repos/{repo_owner}/{repo_name}/commits/{branch_ref}"
-        )
+        api_url = f"https://api.github.com/repos/{repo_owner}/{repo_name}/commits/{branch_ref}"
         response = downloader.fetch_with_retries(api_url, downloader.get_headers())
         if response and response.status_code == 200:
             data = response.json() if hasattr(response, "json") else {}
@@ -390,9 +384,7 @@ def setup_branch_version(process_handler, config, process_name, key):
         try:
             headers = downloader.get_headers()
             branch_ref = urllib.parse.quote(str(branch or "").strip(), safe="")
-            api_url = (
-                f"https://api.github.com/repos/{repo_owner}/{repo_name}/commits/{branch_ref}"
-            )
+            api_url = f"https://api.github.com/repos/{repo_owner}/{repo_name}/commits/{branch_ref}"
             response = downloader.fetch_with_retries(api_url, headers)
             if response and response.status_code == 200:
                 data = response.json() if hasattr(response, "json") else {}
@@ -406,19 +398,18 @@ def setup_branch_version(process_handler, config, process_name, key):
 
     def _has_branch_runtime_artifacts(target_dir: str, service_key: str) -> bool:
         if service_key == "riven_backend":
-            return (
-                os.path.isfile(os.path.join(target_dir, "pyproject.toml"))
-                and os.path.isfile(os.path.join(target_dir, "venv", "bin", "python"))
-            )
+            return os.path.isfile(
+                os.path.join(target_dir, "pyproject.toml")
+            ) and os.path.isfile(os.path.join(target_dir, "venv", "bin", "python"))
         if service_key == "riven_frontend":
             build_path = os.path.join(target_dir, "build")
             return os.path.isfile(os.path.join(target_dir, "package.json")) and (
                 os.path.isfile(build_path) or os.path.isdir(build_path)
             )
         if service_key == "decypharr":
-            return os.path.isfile(os.path.join(target_dir, "decypharr")) and os.path.isfile(
-                os.path.join(target_dir, "version.txt")
-            )
+            return os.path.isfile(
+                os.path.join(target_dir, "decypharr")
+            ) and os.path.isfile(os.path.join(target_dir, "version.txt"))
         if service_key == "nzbdav":
             backend_output_dir = config.get("backend_output_dir") or os.path.join(
                 target_dir, "app"
@@ -429,7 +420,9 @@ def setup_branch_version(process_handler, config, process_name, key):
                     has_output = any(os.scandir(backend_output_dir))
             except Exception:
                 has_output = False
-            return has_output and os.path.isfile(os.path.join(target_dir, "version.txt"))
+            return has_output and os.path.isfile(
+                os.path.join(target_dir, "version.txt")
+            )
         return False
 
     if key in [
@@ -908,11 +901,7 @@ def _setup_project(
                         str(CONFIG_MANAGER.get("postgres").get("user", "DUMB"))
                     )
                     postgres_password = _sanitize_credential(
-                        str(
-                            CONFIG_MANAGER.get("postgres").get(
-                        "password", "postgres"
-                            )
-                        )
+                        str(CONFIG_MANAGER.get("postgres").get("password", "postgres"))
                     )
                     updated_value = _update_zilean_connection_string(
                         updated_value,
@@ -933,11 +922,7 @@ def _setup_project(
                         str(CONFIG_MANAGER.get("postgres").get("user", "DUMB"))
                     )
                     postgres_password = _sanitize_credential(
-                        str(
-                            CONFIG_MANAGER.get("postgres").get(
-                        "password", "postgres"
-                            )
-                        )
+                        str(CONFIG_MANAGER.get("postgres").get("password", "postgres"))
                     )
                     updated_value = _update_postgres_url(
                         updated_value,
@@ -2182,6 +2167,110 @@ def setup_decypharr(install_only: bool = False, configure_only: bool = False):
 
     try:
 
+        def _decypharr_provider_label(raw_name: str) -> str:
+            normalized = str(raw_name or "").strip().replace("_", " ").replace("-", " ")
+            if not normalized:
+                return ""
+            label_map = {
+                "realdebrid": "Realdebrid",
+                "alldebrid": "Alldebrid",
+                "debridlink": "Debrid Link",
+                "debrid link": "Debrid Link",
+                "torbox": "Torbox",
+                "usenet": "Usenet",
+            }
+            key = normalized.lower()
+            return label_map.get(key, normalized.title())
+
+        def _reconcile_external_rclone_instances() -> None:
+            rclone_cfg = CONFIG_MANAGER.get("rclone", {}) or {}
+            instances = rclone_cfg.get("instances")
+            if not isinstance(instances, dict):
+                if decypharr_mount_type == "external_rclone":
+                    logger.warning(
+                        "Decypharr external_rclone requested but rclone instances config is missing."
+                    )
+                return
+
+            updated = False
+            provider_keys = []
+            api_keys_map = config.get("api_keys") or {}
+            if isinstance(api_keys_map, dict):
+                for provider_name, api_key in api_keys_map.items():
+                    if str(api_key or "").strip():
+                        provider_keys.append(str(provider_name).strip())
+
+            consolidated_instance_key = "Decypharr"
+            if decypharr_mount_type != "external_rclone":
+                for name, instance in instances.items():
+                    if (
+                        isinstance(instance, dict)
+                        and instance.get("decypharr_enabled")
+                        and instance.get("enabled")
+                    ):
+                        instance["enabled"] = False
+                        updated = True
+                if updated:
+                    CONFIG_MANAGER.save_config()
+                    logger.info(
+                        "Disabled DUMB-managed Decypharr rclone instances because mount_type=%s.",
+                        decypharr_mount_type or "default",
+                    )
+                return
+
+            if not provider_keys:
+                logger.info(
+                    "Decypharr external_rclone selected but no Decypharr api_keys are configured yet; skipping rclone instance reconciliation."
+                )
+                return
+
+            template = instances.get("RealDebrid")
+            if not isinstance(template, dict):
+                template = next(
+                    (inst for inst in instances.values() if isinstance(inst, dict)),
+                    {},
+                )
+
+            for name, instance in instances.items():
+                if (
+                    name != consolidated_instance_key
+                    and isinstance(instance, dict)
+                    and instance.get("decypharr_enabled")
+                    and instance.get("enabled")
+                ):
+                    instance["enabled"] = False
+                    updated = True
+
+            instance = instances.get(consolidated_instance_key)
+            if not isinstance(instance, dict):
+                instance = copy.deepcopy(template) if isinstance(template, dict) else {}
+                instances[consolidated_instance_key] = instance
+                updated = True
+
+            desired_values = {
+                "enabled": True,
+                "core_service": "decypharr",
+                "process_name": "Rclone w/ Decypharr",
+                "key_type": "decypharr",
+                "mount_dir": "/mnt/debrid",
+                "mount_name": "decypharr",
+                "log_file": "/log/rclone_w_decypharr.log",
+                "zurg_enabled": False,
+                "decypharr_enabled": True,
+                "zurg_config_file": "",
+                "api_key": "",
+            }
+            for key, value in desired_values.items():
+                if instance.get(key) != value:
+                    instance[key] = value
+                    updated = True
+
+            if updated:
+                CONFIG_MANAGER.save_config()
+                logger.info(
+                    "Reconciled Decypharr external_rclone dependencies in rclone config."
+                )
+
         def _collect_decypharr_mounts(config_path: str) -> list[str]:
             if not config_path or not os.path.exists(config_path):
                 return []
@@ -2238,6 +2327,41 @@ def setup_decypharr(install_only: bool = False, configure_only: bool = False):
                     logger.error("Failed to unmount %s: %s", mount_path, error_msg)
             return True, None
 
+        def _decypharr_config_mount_out_of_sync(config_path: str) -> bool:
+            if not config_path or not os.path.exists(config_path):
+                return False
+            try:
+                with open(config_path, "r") as handle:
+                    data = json.load(handle)
+            except Exception as e:
+                logger.debug("Failed to read Decypharr config for mount sync check: %s", e)
+                return False
+
+            expected_mount_path = (config.get("mount_path") or "/mnt/debrid/decypharr").strip()
+            mount_block = data.get("mount") if isinstance(data.get("mount"), dict) else {}
+            actual_mount_type = str(mount_block.get("type") or "").strip().lower()
+            actual_mount_path = str(mount_block.get("mount_path") or "").strip()
+
+            if decypharr_mount_type == "external_rclone":
+                external_rc = (
+                    mount_block.get("external_rclone")
+                    if isinstance(mount_block.get("external_rclone"), dict)
+                    else {}
+                )
+                return (
+                    actual_mount_type != "external_rclone"
+                    or actual_mount_path != expected_mount_path
+                    or not str(external_rc.get("rc_url") or "").strip()
+                )
+
+            if decypharr_mount_type in {"rclone", "dfs"}:
+                return (
+                    actual_mount_type != decypharr_mount_type
+                    or actual_mount_path != expected_mount_path
+                )
+
+            return False
+
         if install_only and configure_only:
             return False, "Invalid Decypharr setup phase."
         decypharr_config_dir = config.get("config_dir")
@@ -2257,6 +2381,7 @@ def setup_decypharr(install_only: bool = False, configure_only: bool = False):
             )
             os.makedirs(decypharr_config_dir, exist_ok=True)
         chown_single(decypharr_config_dir, user_id, group_id)
+        _reconcile_external_rclone_instances()
 
         if (
             decypharr_embedded_rclone or decypharr_mount_type == "dfs"
@@ -2277,7 +2402,9 @@ def setup_decypharr(install_only: bool = False, configure_only: bool = False):
                     with open(version_path, "r") as handle:
                         installed_version = (handle.read() or "").strip()
                     is_branch_marker = bool(
-                        re.match(r"^[A-Za-z0-9._/-]+-[0-9a-fA-F]{7,}$", installed_version)
+                        re.match(
+                            r"^[A-Za-z0-9._/-]+-[0-9a-fA-F]{7,}$", installed_version
+                        )
                     )
                     if installed_version.startswith("3.0.0") or is_branch_marker:
                         force_release_install = True
@@ -2330,10 +2457,17 @@ def setup_decypharr(install_only: bool = False, configure_only: bool = False):
                 return False, error
         if install_only:
             logger.info("Decypharr install phase: skipping runtime config patch.")
-        elif configure_only and os.path.exists(decypharr_config_file):
+        elif os.path.exists(decypharr_config_file) and (
+            configure_only
+            or _decypharr_config_mount_out_of_sync(decypharr_config_file)
+        ):
             from utils.decypharr_settings import patch_decypharr_config
 
-            patch_decypharr_config()
+            patched, error = patch_decypharr_config()
+            if error:
+                logger.warning("Decypharr config patch during setup reported: %s", error)
+            elif patched:
+                logger.info("Patched Decypharr config during setup to match current mount settings.")
 
         return True, None
     except Exception as e:
@@ -2430,11 +2564,13 @@ def setup_nzbdav(
         uses_internal_nzb_models = _nzbdav_uses_internal_nzb_models(
             backend_project_path
         )
-        needs_namespace_patch = uses_internal_nzb_models and _nzbdav_namespace_patch_needed(
-            backend_project_path
+        needs_namespace_patch = (
+            uses_internal_nzb_models
+            and _nzbdav_namespace_patch_needed(backend_project_path)
         )
-        needs_main_api_patch = uses_internal_nzb_models and _nzbdav_main_api_patch_needed(
-            backend_project_path
+        needs_main_api_patch = (
+            uses_internal_nzb_models
+            and _nzbdav_main_api_patch_needed(backend_project_path)
         )
         build_needed = needs_patch or needs_namespace_patch or needs_main_api_patch
         backend_command, _ = _nzbdav_build_command(
@@ -2511,7 +2647,9 @@ def setup_nzbdav_build(process_handler, config):
     if not patched and patch_error:
         logger.warning("NzbDAV resource patch skipped: %s", patch_error)
     uses_internal_nzb_models = _nzbdav_uses_internal_nzb_models(backend_project_path)
-    if uses_internal_nzb_models and _nzbdav_namespace_patch_needed(backend_project_path):
+    if uses_internal_nzb_models and _nzbdav_namespace_patch_needed(
+        backend_project_path
+    ):
         namespace_patched, namespace_patch_error = _patch_nzbdav_namespace_imports(
             backend_project_path
         )
@@ -3112,9 +3250,7 @@ def _nzbdav_build_command(backend_output_dir, dotnet_dir=None):
             os.path.join(
                 os.path.dirname(backend_output_dir), "backend", ".dotnet-sdk", "dotnet"
             ),
-            os.path.join(
-                os.path.dirname(backend_output_dir), ".dotnet-sdk", "dotnet"
-            ),
+            os.path.join(os.path.dirname(backend_output_dir), ".dotnet-sdk", "dotnet"),
             os.path.join(os.path.dirname(backend_output_dir), ".dotnet", "dotnet"),
         ]
     )
@@ -3174,10 +3310,9 @@ def build_decypharr_dev(process_handler, config):
             if process_handler.returncode == 0:
                 go_build_success = True
                 break
-            go_build_error = (
-                (process_handler.stderr or "").strip()
-                or (process_handler.stdout or "").strip()
-            )
+            go_build_error = (process_handler.stderr or "").strip() or (
+                process_handler.stdout or ""
+            ).strip()
             logger.warning(f"Decypharr build failed (attempt {attempt + 1}/3)")
 
         if not go_build_success:
@@ -4301,9 +4436,7 @@ def _patch_neutarr_settings_manager(instance_config_dir: str) -> None:
     gets its own config directory.  This patch makes the running code honour that
     env var, idempotently.
     """
-    sm_path = os.path.join(
-        instance_config_dir, "src", "primary", "settings_manager.py"
-    )
+    sm_path = os.path.join(instance_config_dir, "src", "primary", "settings_manager.py")
     if not os.path.isfile(sm_path):
         return
     try:
@@ -4331,9 +4464,7 @@ def _patch_neutarr_stats_manager(instance_config_dir: str) -> None:
     ``STATS_DIRS``.  This patch replaces it with an os.environ.get() call so the
     tally directory follows the instance's config root, idempotently.
     """
-    sm_path = os.path.join(
-        instance_config_dir, "src", "primary", "stats_manager.py"
-    )
+    sm_path = os.path.join(instance_config_dir, "src", "primary", "stats_manager.py")
     if not os.path.isfile(sm_path):
         return
     try:
@@ -4349,16 +4480,16 @@ def _patch_neutarr_stats_manager(instance_config_dir: str) -> None:
         content = content.replace(old_line, new_line, 1)
         with open(sm_path, "w") as fh:
             fh.write(content)
-        logger.info("Patched NeutArr stats_manager.py to use NEUTARR_CONFIG_DIR for tally.")
+        logger.info(
+            "Patched NeutArr stats_manager.py to use NEUTARR_CONFIG_DIR for tally."
+        )
     except Exception as exc:
         logger.warning("Failed to patch NeutArr stats_manager.py: %s", exc)
 
 
 def _patch_neutarr_keys_manager(instance_config_dir: str) -> None:
     """Patch NeutArr's keys_manager.py to respect NEUTARR_CONFIG_DIR env var."""
-    km_path = os.path.join(
-        instance_config_dir, "src", "primary", "keys_manager.py"
-    )
+    km_path = os.path.join(instance_config_dir, "src", "primary", "keys_manager.py")
     if not os.path.isfile(km_path):
         return
     try:
@@ -4381,9 +4512,7 @@ def _patch_neutarr_keys_manager(instance_config_dir: str) -> None:
 
 def _patch_neutarr_auth(instance_config_dir: str) -> None:
     """Patch NeutArr's auth.py USERS_FILE to respect NEUTARR_CONFIG_DIR env var."""
-    auth_path = os.path.join(
-        instance_config_dir, "src", "primary", "auth.py"
-    )
+    auth_path = os.path.join(instance_config_dir, "src", "primary", "auth.py")
     if not os.path.isfile(auth_path):
         return
     try:
@@ -4406,9 +4535,7 @@ def _patch_neutarr_auth(instance_config_dir: str) -> None:
 
 def _patch_neutarr_history_manager(instance_config_dir: str) -> None:
     """Patch NeutArr's history_manager.py to respect NEUTARR_CONFIG_DIR env var."""
-    hm_path = os.path.join(
-        instance_config_dir, "src", "primary", "history_manager.py"
-    )
+    hm_path = os.path.join(instance_config_dir, "src", "primary", "history_manager.py")
     if not os.path.isfile(hm_path):
         return
     try:
@@ -4525,7 +4652,9 @@ def _patch_neutarr_scheduler_engine(instance_config_dir: str) -> None:
 
 def _patch_neutarr_scheduler_routes(instance_config_dir: str) -> None:
     """Patch NeutArr's routes/scheduler_routes.py CONFIG_DIR to use NEUTARR_CONFIG_DIR env var."""
-    path = os.path.join(instance_config_dir, "src", "primary", "routes", "scheduler_routes.py")
+    path = os.path.join(
+        instance_config_dir, "src", "primary", "routes", "scheduler_routes.py"
+    )
     if not os.path.isfile(path):
         return
     try:
@@ -4538,7 +4667,9 @@ def _patch_neutarr_scheduler_routes(instance_config_dir: str) -> None:
         content = content.replace(old, new, 1)
         with open(path, "w") as fh:
             fh.write(content)
-        logger.info("Patched NeutArr routes/scheduler_routes.py to use NEUTARR_CONFIG_DIR.")
+        logger.info(
+            "Patched NeutArr routes/scheduler_routes.py to use NEUTARR_CONFIG_DIR."
+        )
     except Exception as exc:
         logger.warning("Failed to patch NeutArr routes/scheduler_routes.py: %s", exc)
 
@@ -4547,8 +4678,12 @@ def _patch_neutarr_swaparr(instance_config_dir: str) -> None:
     """Patch NeutArr's swaparr files to use NEUTARR_CONFIG_DIR instead of CONFIG_DIR env var."""
     targets = [
         os.path.join(instance_config_dir, "src", "primary", "apps", "swaparr.py"),
-        os.path.join(instance_config_dir, "src", "primary", "apps", "swaparr_routes.py"),
-        os.path.join(instance_config_dir, "src", "primary", "apps", "swaparr", "handler.py"),
+        os.path.join(
+            instance_config_dir, "src", "primary", "apps", "swaparr_routes.py"
+        ),
+        os.path.join(
+            instance_config_dir, "src", "primary", "apps", "swaparr", "handler.py"
+        ),
     ]
     old = 'os.getenv("CONFIG_DIR", "/config")'
     new = 'os.getenv("NEUTARR_CONFIG_DIR", "/config")'
@@ -4585,7 +4720,9 @@ def _patch_neutarr_instance_list_generator(instance_config_dir: str) -> None:
         content = content.replace(old, new, 1)
         with open(path, "w") as fh:
             fh.write(content)
-        logger.info("Patched NeutArr instance_list_generator.py to use NEUTARR_CONFIG_DIR.")
+        logger.info(
+            "Patched NeutArr instance_list_generator.py to use NEUTARR_CONFIG_DIR."
+        )
     except Exception as exc:
         logger.warning("Failed to patch NeutArr instance_list_generator.py: %s", exc)
 
@@ -4603,7 +4740,9 @@ def _patch_neutarr_app(instance_config_dir: str) -> None:
 
         # Ensure `import os` is present
         if "import os\n" not in content and "\nimport os\n" not in content:
-            content = content.replace("import logging\n", "import logging\nimport os\n", 1)
+            content = content.replace(
+                "import logging\n", "import logging\nimport os\n", 1
+            )
             changed = True
 
         old = '    SETTINGS_DIR = pathlib.Path("/config")'
@@ -4636,7 +4775,9 @@ def _patch_neutarr_background(instance_config_dir: str) -> None:
         content = content.replace(old, new)
         with open(path, "w") as fh:
             fh.write(content)
-        logger.info("Patched NeutArr background.py to use NEUTARR_CONFIG_DIR for reset files.")
+        logger.info(
+            "Patched NeutArr background.py to use NEUTARR_CONFIG_DIR for reset files."
+        )
     except Exception as exc:
         logger.warning("Failed to patch NeutArr background.py: %s", exc)
 
@@ -4656,7 +4797,9 @@ def _patch_neutarr_web_server(instance_config_dir: str) -> None:
         content = content.replace(old, new, 1)
         with open(path, "w") as fh:
             fh.write(content)
-        logger.info("Patched NeutArr web_server.py to use NEUTARR_CONFIG_DIR for reset_dir.")
+        logger.info(
+            "Patched NeutArr web_server.py to use NEUTARR_CONFIG_DIR for reset_dir."
+        )
     except Exception as exc:
         logger.warning("Failed to patch NeutArr web_server.py: %s", exc)
 
@@ -4678,7 +4821,9 @@ def _patch_neutarr_migrate_settings(instance_config_dir: str) -> None:
         content = content.replace(old, new, 1)
         with open(path, "w") as fh:
             fh.write(content)
-        logger.info("Patched NeutArr utils/migrate_settings.py to use NEUTARR_CONFIG_DIR.")
+        logger.info(
+            "Patched NeutArr utils/migrate_settings.py to use NEUTARR_CONFIG_DIR."
+        )
     except Exception as exc:
         logger.warning("Failed to patch NeutArr utils/migrate_settings.py: %s", exc)
 
@@ -4726,9 +4871,7 @@ def setup_neutarr(
                 try:
                     headers = downloader.get_headers()
                     branch_ref = urllib.parse.quote(branch_name, safe="")
-                    api_url = (
-                        f"https://api.github.com/repos/{instance.get('repo_owner')}/{instance.get('repo_name')}/commits/{branch_ref}"
-                    )
+                    api_url = f"https://api.github.com/repos/{instance.get('repo_owner')}/{instance.get('repo_name')}/commits/{branch_ref}"
                     response = downloader.fetch_with_retries(api_url, headers)
                     if response and response.status_code == 200:
                         data = response.json() if hasattr(response, "json") else {}
@@ -4741,7 +4884,9 @@ def setup_neutarr(
                     )
 
                 version_value = (
-                    f"{branch_name}-{branch_sha[:8]}" if branch_sha else f"branch-{branch_name}"
+                    f"{branch_name}-{branch_sha[:8]}"
+                    if branch_sha
+                    else f"branch-{branch_name}"
                 )
             else:
                 release_version = instance.get("release_version", "latest")
@@ -4859,7 +5004,7 @@ def setup_neutarr(
                     "NeutArr instance %s not found at %s. Downloading...",
                     instance_name,
                     repo_marker,
-            )
+                )
             exclude_dirs = None
             if instance.get("clear_on_update"):
                 exclude_dirs = instance.get("exclude_dirs", [])
@@ -4944,7 +5089,11 @@ def setup_neutarr(
         if instance.get("platforms") and not configure_only:
             venv_marker = os.path.join(instance_config_dir, "venv", "bin", "python")
             poetry_marker = os.path.join(instance_config_dir, "venv", "bin", "poetry")
-            if needs_download or not os.path.isfile(venv_marker) or not os.path.isfile(poetry_marker):
+            if (
+                needs_download
+                or not os.path.isfile(venv_marker)
+                or not os.path.isfile(poetry_marker)
+            ):
                 success, error = setup_environment(
                     process_handler,
                     "neutarr",
@@ -5486,7 +5635,9 @@ def _ensure_secret_file_permissions(config_file_path):
     try:
         os.chmod(config_file_path, 0o600)
     except Exception as e:
-        logger.debug(f"Failed to apply secret file permissions on {config_file_path}: {e}")
+        logger.debug(
+            f"Failed to apply secret file permissions on {config_file_path}: {e}"
+        )
 
 
 def update_token(config_file_path, api_key_value):
@@ -5792,7 +5943,9 @@ def rclone_setup():
             elif instance.get("decypharr_enabled") and not instance.get("zurg_enabled"):
                 decypharr_config = CONFIG_MANAGER.get("decypharr", {})
                 key_type = instance.get("key_type", "").lower()
-                if key_type == "realdebrid":
+                if key_type in {"decypharr", ""} or mount_name == "decypharr":
+                    url = f"http://localhost:{decypharr_config.get('port', 8282)}/webdav"
+                elif key_type == "realdebrid":
                     url = f"http://localhost:{decypharr_config.get('port', 8282)}/webdav/realdebrid"
                 elif key_type == "alldebrid":
                     url = f"http://localhost:{decypharr_config.get('port', 8282)}/webdav/alldebrid"
@@ -6208,6 +6361,7 @@ def copy_server_config(source, destination):
 
 def setup_python_environment(process_handler, key, config_dir):
     try:
+
         def _is_riven_branch_mode():
             if key != "riven_backend":
                 return False
@@ -6387,7 +6541,10 @@ def setup_python_environment(process_handler, key, config_dir):
             except Exception:
                 fuse_ok = False
             if not fuse_ok:
-                return False, "fuse3 pkg-config metadata not found after dependency install."
+                return (
+                    False,
+                    "fuse3 pkg-config metadata not found after dependency install.",
+                )
 
             return True, None
 
@@ -6417,21 +6574,20 @@ def setup_python_environment(process_handler, key, config_dir):
                     except Exception:
                         pass  # Best-effort; venv creation will surface the error if needed
 
-                    existing_venv_python = os.path.join(config_dir, "venv", "bin", "python")
+                    existing_venv_python = os.path.join(
+                        config_dir, "venv", "bin", "python"
+                    )
                     if os.path.exists(existing_venv_python):
                         existing_ver = ""
                         try:
-                            existing_ver = (
-                                subprocess.check_output(
-                                    [
-                                        existing_venv_python,
-                                        "-c",
-                                        "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')",
-                                    ],
-                                    text=True,
-                                )
-                                .strip()
-                            )
+                            existing_ver = subprocess.check_output(
+                                [
+                                    existing_venv_python,
+                                    "-c",
+                                    "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')",
+                                ],
+                                text=True,
+                            ).strip()
                         except Exception:
                             existing_ver = ""
 
@@ -6440,7 +6596,13 @@ def setup_python_environment(process_handler, key, config_dir):
                                 "Existing NeutArr venv uses Python %s; recreating with python3.12.",
                                 existing_ver or "unknown",
                             )
-                            return [preferred_python, "-m", "venv", "--clear", "venv"], None
+                            return [
+                                preferred_python,
+                                "-m",
+                                "venv",
+                                "--clear",
+                                "venv",
+                            ], None
 
                     return [preferred_python, "-m", "venv", "venv"], None
 
@@ -6492,17 +6654,14 @@ def setup_python_environment(process_handler, key, config_dir):
                 if os.path.exists(existing_venv_python):
                     existing_ver = ""
                     try:
-                        existing_ver = (
-                            subprocess.check_output(
-                                [
-                                    existing_venv_python,
-                                    "-c",
-                                    "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')",
-                                ],
-                                text=True,
-                            )
-                            .strip()
-                        )
+                        existing_ver = subprocess.check_output(
+                            [
+                                existing_venv_python,
+                                "-c",
+                                "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')",
+                            ],
+                            text=True,
+                        ).strip()
                     except Exception:
                         existing_ver = ""
 
@@ -6590,9 +6749,7 @@ def setup_python_environment(process_handler, key, config_dir):
             return False, venv_setup_error
 
         venv_bootstrapped_without_pip = False
-        success, error = _run_setup_process(
-            "python_env_setup", venv_setup_cmd
-        )
+        success, error = _run_setup_process("python_env_setup", venv_setup_cmd)
         if (
             not success
             and (key == "neutarr" or _is_riven_branch_mode())
@@ -6610,7 +6767,14 @@ def setup_python_environment(process_handler, key, config_dir):
                 if isinstance(venv_setup_cmd, list) and venv_setup_cmd
                 else ("python3.12" if key == "neutarr" else "python3.13")
             )
-            retry_cmd = [python_binary, "-m", "venv", "--clear", "--without-pip", "venv"]
+            retry_cmd = [
+                python_binary,
+                "-m",
+                "venv",
+                "--clear",
+                "--without-pip",
+                "venv",
+            ]
             success, error = _run_setup_process("python_env_setup", retry_cmd)
             if success:
                 venv_bootstrapped_without_pip = True
@@ -6710,9 +6874,7 @@ def _extract_target_frameworks(project_file_path):
         return frameworks
 
     single_matches = re.findall(r"<TargetFramework>([^<]+)</TargetFramework>", content)
-    multi_matches = re.findall(
-        r"<TargetFrameworks>([^<]+)</TargetFrameworks>", content
-    )
+    multi_matches = re.findall(r"<TargetFrameworks>([^<]+)</TargetFrameworks>", content)
     frameworks.extend(single_matches)
     for raw in multi_matches:
         frameworks.extend(raw.split(";"))
