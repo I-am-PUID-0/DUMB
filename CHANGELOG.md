@@ -1,5 +1,75 @@
 # Changelog
 
+## [2.4.0](https://github.com/I-am-PUID-0/DUMB/compare/2.3.0...2.4.0) (2026-04-14)
+
+
+### ✨ Features
+
+* add new issue templates for bug reports, feature requests, and help requests ([95d12c9](https://github.com/I-am-PUID-0/DUMB/commit/95d12c9df4730c09f9ea4a66d9d7e2c517e0fa83))
+* **api:** replace stacktrace sanitization with safe API response handling ([2fe6a5a](https://github.com/I-am-PUID-0/DUMB/commit/2fe6a5af4267a8ca911cefb60aa6722f3dc2e17f))
+* **autoupdate, dotnet:** Enhance .NET application management ([4e45519](https://github.com/I-am-PUID-0/DUMB/commit/4e45519bd4ff616d2f880146d77448fe6d02fd19))
+* **branch:** Improve automated branch updates and Decypharr build ([478c87d](https://github.com/I-am-PUID-0/DUMB/commit/478c87dd2f6ae966466f8763d8fe2737624418b4))
+* **process:** Introduces `_effective_core_dependencies` ([b61e1b8](https://github.com/I-am-PUID-0/DUMB/commit/b61e1b8819e00c173e6ed09a868a1e8915b03cc9))
+* rename huntarr to neutarr and update related configurations ([dbbd217](https://github.com/I-am-PUID-0/DUMB/commit/dbbd217668a1f71d5eb65557e59c3e5b3e9a2ae8))
+* **riven_settings:** Adds Debrid Link support ([b61e1b8](https://github.com/I-am-PUID-0/DUMB/commit/b61e1b8819e00c173e6ed09a868a1e8915b03cc9))
+* **security:** add security policy document with reporting guidelines ([3d9857d](https://github.com/I-am-PUID-0/DUMB/commit/3d9857dd97cf78bcd58b1e7a36f934f35ae38be8))
+* **security:** bolster security and refine path handling ([3b38abb](https://github.com/I-am-PUID-0/DUMB/commit/3b38abb27f68b2140ab5cf2682e426611f7e52b9))
+* **security:** Sanitize sensitive configuration credentials ([0c1a19b](https://github.com/I-am-PUID-0/DUMB/commit/0c1a19b29d6df468f1533d2f34ab45e5e7be8c54))
+* **setup:** add pip bootstrap functionality for Python virtual environments ([385f406](https://github.com/I-am-PUID-0/DUMB/commit/385f4060319892e91482435d19c5e7a30ccb6589))
+* **setup:** Adds FUSE config and runtime dependencies ([b61e1b8](https://github.com/I-am-PUID-0/DUMB/commit/b61e1b8819e00c173e6ed09a868a1e8915b03cc9))
+* **setup:** Improves Riven Backend branch install logic ([b61e1b8](https://github.com/I-am-PUID-0/DUMB/commit/b61e1b8819e00c173e6ed09a868a1e8915b03cc9))
+* **stacktrace:** add stacktrace sanitization to improve error handling ([a599836](https://github.com/I-am-PUID-0/DUMB/commit/a599836bf7d4883e5aa2c560460d683f4db047a5))
+* update Python environment setup to include Python 3.12 and related packages ([0907305](https://github.com/I-am-PUID-0/DUMB/commit/0907305ec3068f0d97de33ec7d10b4f483d842ee))
+* **user_management:** add debrid mount directory creation and ownership management ([839b153](https://github.com/I-am-PUID-0/DUMB/commit/839b153a48736ac4fcc798574ff777705a18e6ec))
+
+
+### 🐛 Bug Fixes
+
+* **api:** simplify exception handling in process fetching functions ([3d114f9](https://github.com/I-am-PUID-0/DUMB/commit/3d114f9661a6536ba5953316d50364183b806f03))
+* **decypharr:** adjust rclone startup sequence to prevent deadlock and ensure proper dependency handling ([a3abebc](https://github.com/I-am-PUID-0/DUMB/commit/a3abebc677da04ff916bb28019261eae6aecd702))
+* **decypharr:** enhance API key management and streamline external rclone integration during startup ([428f86d](https://github.com/I-am-PUID-0/DUMB/commit/428f86ddef0f00cea4a3f85c68231c92a19de585))
+* **decypharr:** reconcile mount config and managed rclone across external_rclone/dfs modes ([457aca1](https://github.com/I-am-PUID-0/DUMB/commit/457aca152b3afa6fa5122ed499ea7832d499ce3e))
+* **decypharr:** simplify mount type logic and remove beta branch handling in startup process ([a01f444](https://github.com/I-am-PUID-0/DUMB/commit/a01f44481a73b6ee2591eebf87fd5e2df2bdbea3))
+* **neutarr:** add target_instance_name parameter to setup_neutarr function ([08ba827](https://github.com/I-am-PUID-0/DUMB/commit/08ba827dbdc72a6a45f483513c8a330ee41e1744))
+* **nzbdav:** handle empty NzbDAV version in environment variable ([5370c78](https://github.com/I-am-PUID-0/DUMB/commit/5370c786e6dfdc585f776991afa050e01b4c1f3d))
+* preserve file permissions in _atomic_write ([3aa2c33](https://github.com/I-am-PUID-0/DUMB/commit/3aa2c338c6cbe1ba295042d8ed321c47ed6e277e))
+* **process:** Fixes dependency retrieval ([b61e1b8](https://github.com/I-am-PUID-0/DUMB/commit/b61e1b8819e00c173e6ed09a868a1e8915b03cc9))
+* **symlink:** update path handling for symlink backups and manifests ([c6f1c66](https://github.com/I-am-PUID-0/DUMB/commit/c6f1c662d08e3535904f224b6365d1a260abe6d5))
+* use atomic writes for dumb_config.json to prevent corruption ([fb68742](https://github.com/I-am-PUID-0/DUMB/commit/fb68742ea48d702192d6e889b2f3cecacd9db144)), closes [#132](https://github.com/I-am-PUID-0/DUMB/issues/132)
+* **versions:** Improves version comparison logic ([1a33b87](https://github.com/I-am-PUID-0/DUMB/commit/1a33b876b1e19529bdd6b89d90760de815607d0a))
+* **versions:** simplify exception messages in version reading functions ([3157d61](https://github.com/I-am-PUID-0/DUMB/commit/3157d61e609a9cc7a7feae34b97d0e572220e3d0))
+* widen inner except to OSError in _atomic_write ([59d662c](https://github.com/I-am-PUID-0/DUMB/commit/59d662c0b983d0c095483b7fdf41e47bb1fc520b))
+
+
+### 🤡 Other Changes
+
+* **ci:** add Code of Conduct and Pull Request Template ([5eeda79](https://github.com/I-am-PUID-0/DUMB/commit/5eeda79471ac76108d7757c76a74226885bff0b7))
+* **deps:** update dependencies ([44fc511](https://github.com/I-am-PUID-0/DUMB/commit/44fc51129429645a882a448743107a0a48604e82))
+* **deps:** update dependencies ([04c0788](https://github.com/I-am-PUID-0/DUMB/commit/04c078896bbfe76889af864ebd0453a2eb7e8bb3))
+* **deps:** updates core dependencies ([32fdc67](https://github.com/I-am-PUID-0/DUMB/commit/32fdc67886c2d2115b4fdb60529a33dd4795e4e0))
+* **docs:** update readme ([19e3689](https://github.com/I-am-PUID-0/DUMB/commit/19e36894594dec5d6b8fc64d8f9e3c2558ff067a))
+* **docs:** update readme ([398fc87](https://github.com/I-am-PUID-0/DUMB/commit/398fc87c89124b764d069d02a6bbe97bcd9db06e))
+* update dependencies and devcontainer setup ([9affefd](https://github.com/I-am-PUID-0/DUMB/commit/9affefd91537f38e1efe0998acf2be509921c5b2))
+
+
+### 📖 Documentation
+
+* add contributing guidelines for the project ([cc4414b](https://github.com/I-am-PUID-0/DUMB/commit/cc4414bc733611c48a60258a014316e83b9e76dc))
+
+
+### 🚀 CI/CD Pipeline
+
+* **dev:** configure automated workflows for the dev branch ([9ecf9f7](https://github.com/I-am-PUID-0/DUMB/commit/9ecf9f71adf23a44db0731d55f77560a1e19b989))
+
+
+### 🛠️ Build System
+
+* **deps-dev:** bump black from 26.1.0 to 26.3.1 ([#155](https://github.com/I-am-PUID-0/DUMB/issues/155)) ([c9919d4](https://github.com/I-am-PUID-0/DUMB/commit/c9919d465ed55788018f1cc0fb5c1982423bf931))
+* **deps:** bump docker/build-push-action from 6.19.2 to 7.0.0 ([#150](https://github.com/I-am-PUID-0/DUMB/issues/150)) ([65748f7](https://github.com/I-am-PUID-0/DUMB/commit/65748f78e6a8c9bae0e4a2ab8360b3b8b2a05ad7))
+* **deps:** bump docker/setup-buildx-action from 3.12.0 to 4.0.0 ([6ceef54](https://github.com/I-am-PUID-0/DUMB/commit/6ceef54438c95986b7b2544057d0de3ef0b5ab94))
+* **deps:** bump pyjwt from 2.11.0 to 2.12.0 ([#158](https://github.com/I-am-PUID-0/DUMB/issues/158)) ([8b4a7a9](https://github.com/I-am-PUID-0/DUMB/commit/8b4a7a9ec9dd48b965ebf816157d6dea90fb973e))
+* **deps:** update CI actions and dependencies ([0e3ec3b](https://github.com/I-am-PUID-0/DUMB/commit/0e3ec3b27878b13d188e89e95ed989606d2e264f))
+
 ## [2.3.0](https://github.com/I-am-PUID-0/DUMB/compare/2.2.1...2.3.0) (2026-02-13)
 
 
