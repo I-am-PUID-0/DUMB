@@ -29,9 +29,7 @@ class Versions:
         try:
             headers = self.downloader.get_headers()
             branch_ref = urllib.parse.quote(str(branch_name or "").strip(), safe="")
-            api_url = (
-                f"https://api.github.com/repos/{repo_owner}/{repo_name}/commits/{branch_ref}"
-            )
+            api_url = f"https://api.github.com/repos/{repo_owner}/{repo_name}/commits/{branch_ref}"
             response = self.downloader.fetch_with_retries(api_url, headers)
             if response and response.status_code == 200:
                 data = response.json() if hasattr(response, "json") else {}
@@ -82,7 +80,7 @@ class Versions:
         base_tuple = self._parse_version_tuple(base_version)
         if not latest_tuple or not base_tuple:
             return False, latest_tag, "Invalid version format for comparison"
-        return latest_tuple == base_tuple, latest_tag, None
+        return latest_tuple >= base_tuple, latest_tag, None
 
     def read_arr_version_from_dir(self, key: str, install_dir: str):
         dll_path = os.path.join(
@@ -386,7 +384,9 @@ class Versions:
                                         version = version_raw
                                     else:
                                         match = re.search(r"v?\d+(\.\d+)*", version_raw)
-                                        version = match.group(0) if match else version_raw
+                                        version = (
+                                            match.group(0) if match else version_raw
+                                        )
                                     if key == "riven_backend":
                                         version = f"v{version}"
                                     break
