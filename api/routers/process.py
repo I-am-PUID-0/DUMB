@@ -321,10 +321,9 @@ def _effective_core_dependencies(
     )
 
     if core_key == "decypharr":
-        branch_name = _normalize_dep_token(cfg.get("branch") or "")
         mount_type = _normalize_dep_token(cfg.get("mount_type") or "")
         if not mount_type:
-            mount_type = "dfs" if branch_name == "beta" else "rclone"
+            mount_type = "rclone"
         if mount_type in {"rclone", "dfs", "none"}:
             deps = [dep for dep in deps if dep != "rclone"]
 
@@ -3691,7 +3690,6 @@ def _run_startup(request: UnifiedStartRequest, updater, api_state, logger):
                 )
                 or ""
             )
-            beta_enabled = str(branch_name).strip().lower() == "beta"
             mount_type = (
                 effective_opts.get(
                     "mount_type",
@@ -3700,9 +3698,7 @@ def _run_startup(request: UnifiedStartRequest, updater, api_state, logger):
                 or ""
             )
             mount_type = str(mount_type).strip().lower()
-            if beta_enabled and not mount_type:
-                mount_type = "dfs"
-            if not mount_type and not beta_enabled:
+            if not mount_type:
                 mount_type = "rclone"
 
             effective_config = copy.deepcopy(config.get(config_key, {}) or {})
@@ -3712,27 +3708,6 @@ def _run_startup(request: UnifiedStartRequest, updater, api_state, logger):
                 effective_config["mount_type"] = mount_type
 
             dependencies = _effective_core_dependencies(config_key, effective_config)
-
-            if config_key == "decypharr" and beta_enabled:
-                # Beta builds use branch deployments; default to beta unless overridden
-                desired_branch = effective_opts.get("branch") or "beta"
-                cfg = config.get(config_key, {}) or {}
-                updated = False
-                if not cfg.get("branch_enabled"):
-                    cfg["branch_enabled"] = True
-                    updated = True
-                if (cfg.get("branch") or "").strip() != desired_branch:
-                    cfg["branch"] = desired_branch
-                    updated = True
-                if cfg.get("release_version_enabled"):
-                    cfg["release_version_enabled"] = False
-                    updated = True
-                if cfg.get("mount_type") != mount_type:
-                    cfg["mount_type"] = mount_type
-                    updated = True
-                if updated:
-                    config[config_key] = cfg
-                    CONFIG_MANAGER.save_config()
 
             if config_key == "decypharr":
                 # Persist provider API keys from onboarding/runtime requests so both
