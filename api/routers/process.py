@@ -3734,36 +3734,47 @@ def _run_startup(request: UnifiedStartRequest, updater, api_state, logger):
                     config[config_key] = cfg
                     CONFIG_MANAGER.save_config()
 
-            # If decypharr uses embedded rclone, drop rclone from deps *now*
+            # Decypharr must start before any DUMB-managed rclone that points at its
+            # WebDAV endpoint. Treat external_rclone as a post-core start instead of a
+            # hard pre-core dependency to avoid a startup deadlock.
             if config_key == "decypharr" and mount_type in (
                 "rclone",
                 "dfs",
                 "none",
                 "",
+                "external_rclone",
             ):
-                logger.debug(
-                    "Decypharr does not require DUMB rclone; removing 'rclone' from dependencies."
-                )
+                if mount_type == "external_rclone":
+                    logger.debug(
+                        "Decypharr external_rclone uses a DUMB-managed rclone instance; delaying rclone startup until after Decypharr is running."
+                    )
+                else:
+                    logger.debug(
+                        "Decypharr does not require DUMB rclone; removing 'rclone' from dependencies."
+                    )
                 dependencies = [d for d in dependencies if d != "rclone"]
-                # Ensure api_keys map exists in decypharr config
-                api_keys_map = config[config_key].setdefault("api_keys", {})
+                if mount_type in ("rclone", "dfs", "none", ""):
+                    # Ensure api_keys map exists in decypharr config
+                    api_keys_map = config[config_key].setdefault("api_keys", {})
 
-                # Merge/update for each debrid service passed to _run_startup
-                for svc_name, svc_key in zip(debrid_services, debrid_keys):
-                    if svc_name and svc_key:
-                        svc_name_lc = svc_name.strip().lower()
-                        if (
-                            not api_keys_map.get(svc_name_lc)
-                            or api_keys_map[svc_name_lc] != svc_key
-                        ):
-                            api_keys_map[svc_name_lc] = svc_key
-                            logger.debug(
-                                f"Set Decypharr embedded rclone API key for {svc_name_lc}: {svc_key[:4]}..."
-                            )
-                            CONFIG_MANAGER.save_config()
+                    # Merge/update for each debrid service passed to _run_startup
+                    for svc_name, svc_key in zip(debrid_services, debrid_keys):
+                        if svc_name and svc_key:
+                            svc_name_lc = svc_name.strip().lower()
+                            if (
+                                not api_keys_map.get(svc_name_lc)
+                                or api_keys_map[svc_name_lc] != svc_key
+                            ):
+                                api_keys_map[svc_name_lc] = svc_key
+                                logger.debug(
+                                    f"Set Decypharr embedded rclone API key for {svc_name_lc}: {svc_key[:4]}..."
+                                )
+                                CONFIG_MANAGER.save_config()
 
             logger.debug(f"Dependencies for '{config_key}': {dependencies}")
-            post_core_rclone = config_key == "nzbdav"
+            post_core_rclone = config_key == "nzbdav" or (
+                config_key == "decypharr" and mount_type == "external_rclone"
+            )
             post_core_rclone_processes = []
 
             #
@@ -3973,7 +3984,28 @@ def _run_startup(request: UnifiedStartRequest, updater, api_state, logger):
                                     500,
                                     detail=f"{dep_proc} failed to start. Please check the logs.",
                                 )
-                logger.debug(f"All dependencies for '{config_key}' are running.")
+
+            if config_key == "decypharr" and mount_type == "external_rclone":
+                instances = config.get("rclone", {}).get("instances", {}) or {}
+                for inst_cfg in instances.values():
+                    if not isinstance(inst_cfg, dict):
+                        continue
+                    if not inst_cfg.get("decypharr_enabled"):
+                        continue
+                    proc = inst_cfg.get("process_name")
+                    if not proc:
+                        continue
+                    ok = inst_cfg.get("auto_update", False)
+                    post_core_rclone_processes.append((proc, ok))
+
+                seen = set()
+                post_core_rclone_processes = [
+                    item
+                    for item in post_core_rclone_processes
+                    if item[0] and not (item[0] in seen or seen.add(item[0]))
+                ]
+
+            logger.debug(f"All dependencies for '{config_key}' are running.")
             #
             # 4.2) Finally, start the core service itself
             #
