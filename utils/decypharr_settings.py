@@ -1090,17 +1090,12 @@ def patch_decypharr_config():
                 config_data["debrids"] = []
 
                 if use_embedded:
-                    mount_root = config_data.get("rclone", {}).get(
-                        "mount_path", default_embedded_rclone["mount_path"]
-                    )
                     for name_lc, api_key in api_keys_map.items():
-                        folder = _provider_folder(name_lc, mount_root) + "/"
                         config_data["debrids"].append(
                             {
                                 "name": name_lc,
                                 "api_key": api_key,
                                 "download_api_keys": [api_key],
-                                "folder": folder,
                                 "rate_limit": "250/minute",
                                 "use_webdav": True,
                                 "torrents_refresh_interval": "15s",
@@ -1203,20 +1198,12 @@ def patch_decypharr_config():
             if not isinstance(config_data.get("debrids"), list):
                 config_data["debrids"] = []
 
-            mount_root = (
-                mount_path
-                if beta_enabled
-                else config_data.get("rclone", {}).get(
-                    "mount_path", default_embedded_rclone["mount_path"]
-                )
-            )
             existing = {
                 _debrid_key(d): d for d in config_data["debrids"] if isinstance(d, dict)
             }
 
             changed = False
             for name_lc, api_key in api_keys_map.items():
-                desired_folder = _provider_folder(name_lc, mount_root) + "/"
                 d = existing.get(name_lc)
                 if not d:
                     d = {
@@ -1224,7 +1211,6 @@ def patch_decypharr_config():
                         "name": name_lc,
                         "api_key": api_key,
                         "download_api_keys": [api_key],
-                        "folder": desired_folder,
                         "rate_limit": "250/minute",
                         "use_webdav": True,
                         "torrents_refresh_interval": "15s",
@@ -1249,9 +1235,6 @@ def patch_decypharr_config():
                         dl_keys.add(api_key)
                         d["download_api_keys"] = list(dl_keys)
                         changed = True
-                    if d.get("folder") != desired_folder:
-                        d["folder"] = desired_folder
-                        changed = True
                     if d.get("use_webdav") is not True:
                         d["use_webdav"] = True
                         changed = True
@@ -1261,18 +1244,6 @@ def patch_decypharr_config():
 
             if changed:
                 logger.info("Synchronized Decypharr debrids from embedded api_keys map")
-                updated = True
-
-            # Final safety pass to ensure folder layout even if user edited manually
-            changed = False
-            for d in config_data["debrids"]:
-                name_lc = _debrid_key(d) or "unknown"
-                desired_folder = _provider_folder(name_lc, mount_root) + "/"
-                if d.get("folder") != desired_folder:
-                    d["folder"] = desired_folder
-                    changed = True
-            if changed:
-                logger.info("Adjusted debrid folders for embedded rclone mount layout")
                 updated = True
 
         # Legacy external-rclone mode: synchronize/merge debrids[] from api_keys_map
