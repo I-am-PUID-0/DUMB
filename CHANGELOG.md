@@ -1,5 +1,17 @@
 # Changelog
 
+## [2.4.1](https://github.com/I-am-PUID-0/DUMB/compare/2.4.0...2.4.1) (2026-04-16)
+
+
+### 🐛 Bug Fixes
+
+* **decypharr:** remove unused folder assignments and simplify debrid configuration logic ([bdd39c7](https://github.com/I-am-PUID-0/DUMB/commit/bdd39c7d86a1847e1b7afcc21c5816254a6ffc7d))
+
+
+### 🤡 Other Changes
+
+* **deps:** update dependencies ([dc63dc2](https://github.com/I-am-PUID-0/DUMB/commit/dc63dc28af1e6625b0135a73ce14f22174d44f77))
+
 ## [2.4.0](https://github.com/I-am-PUID-0/DUMB/compare/2.3.0...2.4.0) (2026-04-14)
 
 
