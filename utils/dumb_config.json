@@ -798,6 +798,28 @@
     "log_file": "/log/riven_frontend.log",
     "env": {}
   },
+  "cacharr": {
+    "enabled": false,
+    "process_name": "Cacharr",
+    "suppress_logging": false,
+    "log_level": "INFO",
+    "port": 8484,
+    "platforms": [],
+    "command": [
+      "/venv/bin/python",
+      "/cacharr/cacharr.py"
+    ],
+    "config_dir": "/cacharr",
+    "config_file": "/data/cacharr_config.json",
+    "log_file": "/log/cacharr.log",
+    "env": {
+      "PYTHONUNBUFFERED": "1",
+      "PROWLARR_URL": "http://127.0.0.1:9696",
+      "PROWLARR_KEY": "",
+      "DB_DSN": "postgresql://DUMB:postgres@127.0.0.1:5432/riven",
+      "UI_PORT": "{port}"
+    }
+  },
   "radarr": {
     "instances": {
       "Default": {

@@ -56,6 +56,7 @@ def build_conditional_dependency_map(
     deps: dict[str, set[str]] = {
         "riven_backend": {"postgres"},
         "riven_frontend": {"riven_backend"},
+        "cacharr": {"riven_backend"},
         "zilean": {"postgres"},
         "pgadmin": {"postgres"},
     }
