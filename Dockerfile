@@ -62,7 +62,7 @@ RUN curl -L https://github.com/EnterpriseDB/system_stats/archive/refs/tags/${SYS
     mkdir -p /usr/share/postgresql/16/extension && \
     cp system_stats.control /usr/share/postgresql/16/extension/ && \
     cp system_stats--*.sql /usr/share/postgresql/16/extension/ && \
-    cd / && rm -rf /tmp/system_stats* 
+    cd / && rm -rf /tmp/system_stats*
 
 ####################################################################################################################################################
 # Stage 3: zilean-builder
@@ -159,7 +159,9 @@ ENV XDG_CONFIG_HOME=/config \
     TERM=xterm \
     DUMB_VERSION=${DEV_VERSION}
 
+ENV PATH="/venv/bin:$PATH"
+
 WORKDIR /
 
-HEALTHCHECK --interval=60s --timeout=10s CMD ["/bin/bash","-c",". /venv/bin/activate && python /healthcheck.py"]
-ENTRYPOINT ["/bin/bash","-c",". /venv/bin/activate && python /main.py"]
+HEALTHCHECK --interval=60s --timeout=10s CMD ["python", "/healthcheck.py"]
+ENTRYPOINT ["python", "/main.py"]
