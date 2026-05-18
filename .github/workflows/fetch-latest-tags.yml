@@ -102,7 +102,7 @@ jobs:
     if: ${{ needs.check-latest-tags.outputs.update_found == 'true' }}
     steps:      
       - name: Trigger Docker CI if new versions found
-        uses: benc-uk/workflow-dispatch@7a027648b88c2413826b6ddd6c76114894dc5ec4 # v1
+        uses: benc-uk/workflow-dispatch@31e2b3319479a63f0ab15bf800eff9e913504e26 # v1
         with:
           workflow: Docker Image CI
           token: ${{ secrets.GITHUB_TOKEN }}
