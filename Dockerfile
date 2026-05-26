@@ -40,7 +40,7 @@ RUN apt-get update && \
 
 # make Postgres client binaries available in login shells
 RUN echo "export PATH=/usr/lib/postgresql/16/bin:\$PATH" > /etc/profile.d/postgresql.sh
-RUN echo "export PATH=/usr/lib/postgresql/16/bin:$PATH" >> /root/.bashrc
+RUN echo "export PATH=/usr/lib/postgresql/16/bin:\$PATH" >> /root/.bashrc
 
 ####################################################################################################################################################
 # Stage 1: pgadmin-builder
