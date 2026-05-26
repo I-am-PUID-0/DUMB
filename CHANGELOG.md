@@ -1,5 +1,22 @@
 # Changelog
 
+## [2.4.2](https://github.com/I-am-PUID-0/DUMB/compare/2.4.1...2.4.2) (2026-05-26)
+
+
+### 🐛 Bug Fixes
+
+* **devcontainer:** update remote environment variables and post-start command ([1e6bde6](https://github.com/I-am-PUID-0/DUMB/commit/1e6bde63cb1bfbbd2cb75a166ac0f3f7cfd1eb47))
+* **docker:** Dockerfile healthcheck and entrypoint commands ([#197](https://github.com/I-am-PUID-0/DUMB/issues/197)) ([f320ceb](https://github.com/I-am-PUID-0/DUMB/commit/f320ceb8e27c2ed9bf3d900411841c79f315c9a1))
+* **Dockerfile:** correct PATH export syntax in .bashrc ([1e6bde6](https://github.com/I-am-PUID-0/DUMB/commit/1e6bde63cb1bfbbd2cb75a166ac0f3f7cfd1eb47))
+
+
+### 🤡 Other Changes
+
+* **deps:** update dependencies ([31fa019](https://github.com/I-am-PUID-0/DUMB/commit/31fa0190b0ea9a1ec3a492b00b166aff14a5737e))
+* **deps:** update dependencies ([c58af4d](https://github.com/I-am-PUID-0/DUMB/commit/c58af4d1e0420df12e473389e6f912b693de7d1a))
+* **deps:** update uvicorn to version 0.48.0 in dependencies ([e9960e1](https://github.com/I-am-PUID-0/DUMB/commit/e9960e146ef01004f7986b1b74b1298372872a06))
+* **workflows:** upgrade docker/setup-buildx-action to v4.1.0 ([1e6bde6](https://github.com/I-am-PUID-0/DUMB/commit/1e6bde63cb1bfbbd2cb75a166ac0f3f7cfd1eb47))
+
 ## [2.4.1](https://github.com/I-am-PUID-0/DUMB/compare/2.4.0...2.4.1) (2026-04-16)
 
 
