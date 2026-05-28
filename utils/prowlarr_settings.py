@@ -28,6 +28,22 @@ ARR_APP_MAP = {
     "whisparr-v3": "Whisparr",
 }
 
+WHISPARR_SYNC_CATEGORIES = [
+    2000,  # Movies
+    5000,  # TV
+    6000,  # XXX
+    6010,
+    6020,
+    6030,
+    6040,
+    6045,
+    6050,
+    6060,
+    6070,
+    6080,
+    6090,
+]
+
 CUSTOM_INDEXER_URLS = {
     "stremthru.yml": "https://raw.githubusercontent.com/dreulavelle/Prowlarr-Indexers/main/Custom/stremthru.yml",
     "zilean.yml": "https://raw.githubusercontent.com/dreulavelle/Prowlarr-Indexers/main/Custom/zilean.yml",
@@ -440,6 +456,8 @@ def _build_application_payload(
         "apiKey": arr_api_key,
         "syncLevel": "fullSync",
     }
+    if app_name.lower() == "whisparr":
+        overrides["syncCategories"] = WHISPARR_SYNC_CATEGORIES
     fields = _build_fields_from_schema(schema, overrides)
     return {
         "name": name,

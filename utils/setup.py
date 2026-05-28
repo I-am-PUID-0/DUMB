@@ -2362,6 +2362,29 @@ def setup_decypharr(install_only: bool = False, configure_only: bool = False):
 
             return False
 
+        def _ensure_decypharr_dfs_cache_dir(config_path: str) -> None:
+            cache_dir = None
+            if config_path and os.path.exists(config_path):
+                try:
+                    with open(config_path, "r") as handle:
+                        data = json.load(handle)
+                    mount_block = data.get("mount") if isinstance(data.get("mount"), dict) else {}
+                    dfs_block = mount_block.get("dfs") if isinstance(mount_block.get("dfs"), dict) else {}
+                    cache_dir = str(dfs_block.get("cache_dir") or "").strip() or None
+                except Exception as e:
+                    logger.debug("Failed to read Decypharr DFS cache_dir: %s", e)
+            cache_dir = cache_dir or "/cache"
+            try:
+                os.makedirs(cache_dir, exist_ok=True)
+                if user_id is not None and group_id is not None:
+                    os.chown(cache_dir, int(user_id), int(group_id))
+                logger.debug("Ensured Decypharr DFS cache dir at %s", cache_dir)
+            except OSError as e:
+                if getattr(e, "errno", None) in (1, 30, 95):
+                    logger.debug("Skipping Decypharr DFS cache dir ownership for %s: %s", cache_dir, e)
+                    return
+                raise
+
         if install_only and configure_only:
             return False, "Invalid Decypharr setup phase."
         decypharr_config_dir = config.get("config_dir")
@@ -2455,6 +2478,8 @@ def setup_decypharr(install_only: bool = False, configure_only: bool = False):
             success, error = fuse_config()
             if not success:
                 return False, error
+        if decypharr_mount_type == "dfs":
+            _ensure_decypharr_dfs_cache_dir(decypharr_config_file)
         if install_only:
             logger.info("Decypharr install phase: skipping runtime config patch.")
         elif os.path.exists(decypharr_config_file) and (
