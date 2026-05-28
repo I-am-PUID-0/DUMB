@@ -7226,9 +7226,34 @@ def vite_modifications(config_dir):
 def setup_pnpm_environment(process_handler, config_dir):
     try:
         _chown_recursive_if_needed(config_dir, user_id, group_id)
+        config_realpath = os.path.realpath(config_dir)
+        config_label = os.path.basename(os.path.normpath(config_realpath)) or "app"
+        config_label = re.sub(r"[^A-Za-z0-9_.-]+", "_", config_label).strip("._-")
+        config_label = config_label or "app"
+        config_hash = hashlib.sha256(
+            config_realpath.encode("utf-8", errors="ignore")
+        ).hexdigest()[:12]
+        pnpm_store_root = os.getenv("DUMB_PNPM_STORE_ROOT", "/config/.pnpm-store")
+        try:
+            os.makedirs(pnpm_store_root, exist_ok=True)
+        except OSError as e:
+            logger.warning(
+                "Unable to create persistent pnpm store root %s: %s; using /tmp fallback.",
+                pnpm_store_root,
+                e,
+            )
+            pnpm_store_root = "/tmp/dumb-pnpm"
+            os.makedirs(pnpm_store_root, exist_ok=True)
+        pnpm_runtime_dir = os.path.join(pnpm_store_root, f"{config_label}-{config_hash}")
+        pnpm_store_dir = os.path.join(pnpm_runtime_dir, "store")
+        npm_cache_dir = os.path.join(pnpm_runtime_dir, "npm-cache")
+        os.makedirs(pnpm_store_dir, exist_ok=True)
+        os.makedirs(npm_cache_dir, exist_ok=True)
+        _chown_recursive_if_needed(pnpm_runtime_dir, user_id, group_id)
+
         with open(os.path.join(config_dir, ".npmrc"), "w") as file:
             file.write(
-                "store-dir=./.pnpm-store\n"
+                f"store-dir={pnpm_store_dir}\n"
                 "child-concurrency=1\n"
                 "network-concurrency=1\n"
                 "fetch-retries=10\n"
@@ -7237,13 +7262,16 @@ def setup_pnpm_environment(process_handler, config_dir):
                 "package-import-method=copy\n"
             )
 
-        logger.info(f"Setting up pnpm environment in {config_dir}")
+        logger.info(
+            "Setting up pnpm environment in %s using store %s",
+            config_dir,
+            pnpm_store_dir,
+        )
         env = os.environ.copy()
         env["HOME"] = config_dir
         env["npm_config_userconfig"] = os.path.join(config_dir, ".npmrc")
-        env["npm_config_cache"] = os.path.join(config_dir, ".npm-cache")
-        os.makedirs(env["npm_config_cache"], exist_ok=True)
-        chown_single(env["npm_config_cache"], user_id, group_id)
+        env["npm_config_cache"] = npm_cache_dir
+        env.setdefault("XDG_CACHE_HOME", os.path.join(pnpm_runtime_dir, "xdg-cache"))
         env.setdefault("PNPM_NETWORK_CONCURRENCY", "1")
         env.setdefault("PNPM_CHILD_CONCURRENCY", "1")
         env.setdefault("PNPM_FETCH_RETRIES", "10")
