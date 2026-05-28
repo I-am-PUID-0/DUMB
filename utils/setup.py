@@ -330,6 +330,13 @@ def setup_release_version(process_handler, config, process_name, key):
             version_path=os.path.join(config["config_dir"], "version.txt"),
             version=config["release_version"],
         )
+    elif key == "pulsarr":
+        versions.version_write(
+            process_name,
+            key,
+            version_path=os.path.join(config["config_dir"], "version.txt"),
+            version=config["release_version"],
+        )
     elif key == "neutarr":
         versions.version_write(
             process_name,
@@ -507,7 +514,7 @@ def setup_branch_version(process_handler, config, process_name, key):
         if not success:
             return False, f"Failed to download branch: {error}"
 
-        if key in {"nzbdav", "neutarr"}:
+        if key in {"nzbdav", "neutarr", "pulsarr"}:
             branch_name = (config.get("branch") or "main").strip() or "main"
             branch_sha, branch_sha_error = _fetch_branch_head_sha(
                 config["repo_owner"], config["repo_name"], branch_name
@@ -1102,6 +1109,14 @@ def _setup_project(
                 return False, error
         if key == "seerr":
             success, error = setup_seerr(
+                process_handler,
+                install_only=install_phase and not configure_phase,
+                configure_only=configure_phase and not install_phase,
+            )
+            if not success:
+                return False, error
+        if key == "pulsarr":
+            success, error = setup_pulsarr(
                 process_handler,
                 install_only=install_phase and not configure_phase,
                 configure_only=configure_phase and not install_phase,
@@ -4099,6 +4114,176 @@ def setup_seerr(
     return True, None
 
 
+def setup_pulsarr(
+    process_handler, install_only: bool = False, configure_only: bool = False
+):
+    config = CONFIG_MANAGER.get("pulsarr")
+    if not config:
+        return False, "Pulsarr configuration not found."
+    if not config.get("enabled", False):
+        logger.debug("Skipping disabled Pulsarr service.")
+        return True, None
+    if install_only and configure_only:
+        return False, "Invalid Pulsarr setup phase."
+
+    config_dir = config.get("config_dir") or "/pulsarr"
+    config["config_dir"] = config_dir
+    data_dir = os.path.join(config_dir, "data")
+    db_dir = os.path.join(data_dir, "db")
+    logs_dir = os.path.join(data_dir, "logs")
+    port_value = str(config.get("port", 3003))
+    path_changed = False
+
+    def _rewrite_pulsarr_path(value):
+        if isinstance(value, str) and value.startswith("/pulsarr"):
+            return value.replace("/pulsarr", config_dir, 1)
+        return value
+
+    exclude_dirs = config.get("exclude_dirs", [])
+    if exclude_dirs:
+        rewritten = [_rewrite_pulsarr_path(path) for path in exclude_dirs]
+        if rewritten != exclude_dirs:
+            config["exclude_dirs"] = rewritten
+            path_changed = True
+
+    if "config_file" in config:
+        # Pulsarr stores app state in SQLite; do not expose that DB as editable service config.
+        config.pop("config_file", None)
+        path_changed = True
+
+    log_file = config.get("log_file")
+    new_log_file = _rewrite_pulsarr_path(log_file)
+    if new_log_file != log_file:
+        config["log_file"] = new_log_file
+        path_changed = True
+
+    env = config.get("env", {}) or {}
+    env_changed = False
+    expected_env = {
+        "NODE_ENV": "production",
+        "listenPort": port_value,
+        "dbPath": os.path.join(db_dir, "pulsarr.db"),
+        "allowIframes": "true",
+    }
+    for key, value in expected_env.items():
+        if env.get(key) != value:
+            env[key] = value
+            env_changed = True
+    config["env"] = env
+
+    bun_bin = os.path.join(os.getenv("BUN_INSTALL", "/config/.bun"), "bin", "bun")
+    command = config.get("command", [])
+    if isinstance(command, list) and command:
+        if command[0] in {"bun", "/root/.bun/bin/bun"} or command[0].endswith(
+            "/.bun/bin/bun"
+        ):
+            if command[0] != bun_bin:
+                command[0] = bun_bin
+                config["command"] = command
+                path_changed = True
+    elif not command:
+        config["command"] = [bun_bin, "run", "--bun", "dist/server.js"]
+        path_changed = True
+
+    if not install_only and (env_changed or path_changed):
+        CONFIG_MANAGER.save_config(config.get("process_name"))
+
+    for path_to_create in (config_dir, data_dir, db_dir, logs_dir):
+        os.makedirs(path_to_create, exist_ok=True)
+    _chown_recursive_if_needed(
+        config_dir, CONFIG_MANAGER.get("puid"), CONFIG_MANAGER.get("pgid")
+    )
+
+    repo_marker = os.path.join(config_dir, "package.json")
+    entry_path = os.path.join(config_dir, "dist", "server.js")
+    needs_download = not os.path.isfile(repo_marker)
+    if needs_download and configure_only:
+        return False, "Pulsarr is not installed."
+
+    if needs_download:
+        logger.warning("Pulsarr not found at %s. Downloading...", repo_marker)
+        exclude_dirs = None
+        if config.get("clear_on_update"):
+            exclude_dirs = config.get("exclude_dirs", [])
+            success, error = clear_directory(config_dir, exclude_dirs)
+            if not success:
+                return False, f"Failed to clear Pulsarr directory: {error}"
+
+        if config.get("branch_enabled"):
+            branch = config.get("branch", "master")
+            branch_url, zip_folder_name = downloader.get_branch(
+                config.get("repo_owner"), config.get("repo_name"), branch
+            )
+            if not branch_url:
+                return False, f"Failed to fetch Pulsarr branch {branch}"
+            success, error = downloader.download_and_extract(
+                branch_url,
+                config_dir,
+                zip_folder_name=zip_folder_name,
+                exclude_dirs=exclude_dirs,
+            )
+            if not success:
+                return False, f"Failed to download Pulsarr branch: {error}"
+            versions.version_write(
+                config.get("process_name"),
+                key="pulsarr",
+                version_path=os.path.join(config_dir, "version.txt"),
+                version=f"branch:{branch}",
+            )
+        else:
+            release_version = config.get("release_version", "latest")
+            version_to_write = release_version
+            if str(release_version).lower() == "latest":
+                latest_version, latest_error = downloader.get_latest_release(
+                    config.get("repo_owner"), config.get("repo_name"), nightly=False
+                )
+                if latest_version:
+                    version_to_write = latest_version
+                else:
+                    logger.warning(
+                        "Failed to resolve latest Pulsarr version: %s", latest_error
+                    )
+            success, error = downloader.download_release_version(
+                process_name=config.get("process_name"),
+                key="pulsarr",
+                repo_owner=config.get("repo_owner"),
+                repo_name=config.get("repo_name"),
+                release_version=release_version,
+                target_dir=config_dir,
+                exclude_dirs=exclude_dirs,
+            )
+            if not success:
+                return False, f"Failed to download Pulsarr release: {error}"
+            versions.version_write(
+                config.get("process_name"),
+                key="pulsarr",
+                version_path=os.path.join(config_dir, "version.txt"),
+                version=version_to_write,
+            )
+        chown_recursive(
+            config_dir, CONFIG_MANAGER.get("puid"), CONFIG_MANAGER.get("pgid")
+        )
+
+    if config.get("platforms") and not configure_only:
+        node_modules_path = os.path.join(config_dir, "node_modules")
+        if (
+            needs_download
+            or not os.path.isdir(node_modules_path)
+            or not os.path.isfile(entry_path)
+        ):
+            success, error = setup_environment(
+                process_handler, "pulsarr", config.get("platforms"), config_dir
+            )
+            if not success:
+                return False, f"Failed to set up Pulsarr environment: {error}"
+
+    if install_only:
+        return True, None
+
+    logger.info("Pulsarr setup complete.")
+    return True, None
+
+
 def _ensure_profilarr_config_override(config_path: str) -> None:
     try:
         with open(config_path, "r") as file:
@@ -6348,6 +6533,11 @@ def setup_environment(
                     if not success:
                         return False, error
 
+                if platform == "bun":
+                    success, error = setup_bun_environment(process_handler, env_dir)
+                    if not success:
+                        return False, error
+
                 if platform == "dotnet":
                     success, error = setup_dotnet_environment(
                         process_handler,
@@ -7246,6 +7436,99 @@ def vite_modifications(config_dir):
 
     except Exception as e:
         return False, f"Error modifying vite.config.ts: {e}"
+
+
+def setup_bun_environment(process_handler, config_dir):
+    try:
+        chown_recursive(config_dir, user_id, group_id)
+        bun_install = os.getenv("BUN_INSTALL", "/config/.bun")
+        bun_bin = os.path.join(bun_install, "bin", "bun")
+        config_realpath = os.path.realpath(config_dir)
+        config_label = os.path.basename(os.path.normpath(config_realpath)) or "app"
+        config_label = re.sub(r"[^A-Za-z0-9_.-]+", "_", config_label).strip("._-")
+        config_label = config_label or "app"
+        config_hash = hashlib.sha256(
+            config_realpath.encode("utf-8", errors="ignore")
+        ).hexdigest()[:12]
+        bun_cache_root = os.getenv("DUMB_BUN_CACHE_ROOT", "/config/.bun-cache")
+        try:
+            os.makedirs(bun_cache_root, exist_ok=True)
+        except OSError as e:
+            logger.warning(
+                "Unable to create persistent Bun cache root %s: %s; using /tmp fallback.",
+                bun_cache_root,
+                e,
+            )
+            bun_cache_root = "/tmp/dumb-bun-cache"
+            os.makedirs(bun_cache_root, exist_ok=True)
+        bun_runtime_cache = os.path.join(
+            bun_cache_root, f"{config_label}-{config_hash}"
+        )
+        os.makedirs(bun_install, exist_ok=True)
+        os.makedirs(bun_runtime_cache, exist_ok=True)
+        chown_recursive(bun_install, user_id, group_id)
+        chown_recursive(bun_runtime_cache, user_id, group_id)
+
+        env = os.environ.copy()
+        env["BUN_INSTALL"] = bun_install
+        env["BUN_INSTALL_CACHE_DIR"] = bun_runtime_cache
+        env["HOME"] = config_dir
+        env["PATH"] = f"{os.path.join(bun_install, 'bin')}:{env.get('PATH', '')}"
+        env.setdefault("CI", "1")
+        env.setdefault("HUSKY", "0")
+        env.setdefault("npm_config_fund", "false")
+        env.setdefault("npm_config_audit", "false")
+
+        if not os.path.isfile(bun_bin):
+            logger.info("Installing Bun runtime to %s", bun_install)
+            process_handler.start_process(
+                "bun_install_runtime",
+                config_dir,
+                ["bash", "-lc", "curl -fsSL https://bun.sh/install | bash"],
+                env=env,
+            )
+            process_handler.wait("bun_install_runtime")
+            if process_handler.returncode != 0:
+                return False, f"Error installing Bun: {process_handler.stderr}"
+            chown_recursive(bun_install, user_id, group_id)
+
+        chown_recursive(bun_runtime_cache, user_id, group_id)
+        process_handler.start_process(
+            "bun_install", config_dir, [bun_bin, "install"], env=env
+        )
+        process_handler.wait("bun_install")
+        if process_handler.returncode != 0:
+            return False, f"Error during bun install: {process_handler.stderr}"
+
+        package_json_path = os.path.join(config_dir, "package.json")
+        scripts = {}
+        if os.path.isfile(package_json_path):
+            with open(package_json_path, "r") as f:
+                package_data = json.load(f)
+                scripts = package_data.get("scripts", {}) or {}
+
+        if scripts.get("build"):
+            process_handler.start_process(
+                "bun_build", config_dir, [bun_bin, "run", "build"], env=env
+            )
+            process_handler.wait("bun_build")
+            if process_handler.returncode != 0:
+                return False, f"Error during bun build: {process_handler.stderr}"
+
+        if scripts.get("migrate"):
+            process_handler.start_process(
+                "bun_migrate", config_dir, [bun_bin, "run", "migrate"], env=env
+            )
+            process_handler.wait("bun_migrate")
+            if process_handler.returncode != 0:
+                return False, f"Error during bun migrate: {process_handler.stderr}"
+
+        chown_recursive(config_dir, user_id, group_id)
+        chown_recursive(bun_runtime_cache, user_id, group_id)
+        logger.info("Bun environment setup complete")
+        return True, None
+    except Exception as e:
+        return False, f"Error during Bun setup: {e}"
 
 
 def setup_pnpm_environment(process_handler, config_dir):

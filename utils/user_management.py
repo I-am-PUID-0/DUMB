@@ -184,6 +184,7 @@ def migrate_symlinks():
                 ("/traefik", os.path.join(data_root, "traefik")),
                 ("/neutarr", os.path.join(data_root, "neutarr")),
                 ("/profilarr", os.path.join(data_root, "profilarr")),
+                ("/pulsarr", os.path.join(data_root, "pulsarr")),
             ]
 
             for original_path, data_path in symlink_map:

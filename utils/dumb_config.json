@@ -446,6 +446,43 @@
     "log_file": "/tautulli/data/logs/tautulli.log",
     "env": {}
   },
+  "pulsarr": {
+    "enabled": false,
+    "process_name": "Pulsarr",
+    "repo_owner": "jamcalli",
+    "repo_name": "Pulsarr",
+    "release_version_enabled": false,
+    "release_version": "latest",
+    "branch_enabled": false,
+    "branch": "master",
+    "suppress_logging": false,
+    "log_level": "INFO",
+    "port": 3003,
+    "auto_update": false,
+    "auto_update_interval": 24,
+    "auto_update_start_time": "04:00",
+    "clear_on_update": true,
+    "exclude_dirs": [
+      "/pulsarr/data"
+    ],
+    "platforms": [
+      "bun"
+    ],
+    "command": [
+      "/config/.bun/bin/bun",
+      "run",
+      "--bun",
+      "dist/server.js"
+    ],
+    "config_dir": "/pulsarr",
+    "log_file": "/pulsarr/data/logs/pulsarr.log",
+    "env": {
+      "NODE_ENV": "production",
+      "listenPort": "{port}",
+      "dbPath": "/pulsarr/data/db/pulsarr.db",
+      "allowIframes": "true"
+    }
+  },
   "neutarr": {
     "instances": {
       "Default": {

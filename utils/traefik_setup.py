@@ -36,6 +36,7 @@ UI_SERVICE_DEFS = [
     {"name": "neutarr", "config_key": "neutarr"},
     {"name": "seerr", "config_key": "seerr"},
     {"name": "profilarr", "config_key": "profilarr"},
+    {"name": "pulsarr", "config_key": "pulsarr"},
     {"name": "pgadmin4", "config_key": "pgadmin"},
     {"name": "prowlarr", "config_key": "prowlarr"},
     {"name": "riven_backend", "config_key": "riven_backend", "path": "/scalar"},

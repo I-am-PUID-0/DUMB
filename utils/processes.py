@@ -337,6 +337,10 @@ class ProcessHandler:
                 "PostgreSQL_init",
                 "pnpm_install",
                 "pnpm_build",
+                "bun_install_runtime",
+                "bun_install",
+                "bun_build",
+                "bun_migrate",
                 "python_env_setup",
                 "install_requirements",
                 "setup_env_and_install",
@@ -372,6 +376,7 @@ class ProcessHandler:
                 "phalanx_db",
                 "postgres",
                 "profilarr",
+                "pulsarr",
             }:
                 log_file = config.get("log_file")
                 if log_file:
@@ -799,6 +804,7 @@ class ProcessHandler:
                 (
                     "tautulli",
                     "seerr",
+                    "pulsarr",
                     "prowlarr",
                     "bazarr",
                     "sonarr",

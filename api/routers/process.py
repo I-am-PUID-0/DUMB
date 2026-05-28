@@ -232,6 +232,7 @@ STATIC_URLS_BY_KEY = {
     "tautulli": "https://tautulli.com",
     "seerr": "https://github.com/seerr-team/seerr",
     "profilarr": "https://github.com/Dictionarry-Hub/profilarr",
+    "pulsarr": "https://github.com/jamcalli/Pulsarr",
     "traefik": "https://traefik.io/",
     "neutarr": "https://github.com/I-am-PUID-0/NeutArr",
 }
@@ -262,6 +263,7 @@ SPONSORSHIP_URLS_BY_KEY = {
     "tautulli": "https://tautulli.com/#donate",
     "seerr": "https://opencollective.com/seerr",
     "profilarr": "https://github.com/sponsors/Dictionarry-Hub",
+    "pulsarr": "https://ko-fi.com/jamcalli",
     "traefik": "https://github.com/sponsors/traefik",
     "neutarr": "https://github.com/sponsors/I-am-PUID-0",
     "zilean": "https://ko-fi.com/W7W616IBNG",
@@ -281,6 +283,7 @@ DEFAULT_SERVICE_PORTS = {
     "seerr": 5055,
     "neutarr": 9705,
     "profilarr": 6868,
+    "pulsarr": 3003,
 }
 ## Future support for restricting service port ranges
 SERVICE_PORT_RANGES = {
@@ -307,6 +310,7 @@ CORE_SERVICE_DEPENDENCIES = {
     "seerr": [],
     "neutarr": [],
     "profilarr": [],
+    "pulsarr": [],
 }
 
 
@@ -533,6 +537,7 @@ OPTIONAL_SERVICES = {
     "postgres": "Postgres",
     "riven_frontend": "Riven Frontend",
     "tautulli": "Tautulli",
+    "pulsarr": "Pulsarr",
 }
 
 OPTIONAL_SERVICES_DESCRIPTIONS = {
@@ -572,6 +577,13 @@ Tautulli
 - Provides alerts, newsletters, and watch history insights.
 
 Documentation: https://github.com/Tautulli/Tautulli""",
+    "pulsarr": """\
+Pulsarr
+- Monitors Plex watchlists and routes requested movies/shows to Radarr and Sonarr.
+- Supports Plex-user permissions, approvals, quotas, and notification workflows.
+- Designed for fast Plex-first request automation.
+
+Documentation: https://dumbarr.com/services/optional/pulsarr""",
 }
 
 ### create a list of debrid providers that are supported by each core service, and if any core service uses zurg as a dependency, then it is limited to RealDebrid.

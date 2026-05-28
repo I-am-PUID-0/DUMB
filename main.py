@@ -975,6 +975,7 @@ def main():
             "emby",
             "tautulli",
             "seerr",
+            "pulsarr",
         ]
         _migrate_huntarr_to_neutarr(config)
         _enable_neutarr_if_needed(config)

@@ -172,6 +172,8 @@ def load_config_file(config_path):
                 status_code=400,
                 detail=f"Unsupported config file format: {config_path.suffix}",
             )
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to load config file: {e}")
 
