@@ -1908,10 +1908,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#embedded-vs-external-rclone" class="md-nav__link">
+  <a href="#mount-modes" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Embedded vs external rclone
+        Mount modes
       
     </span>
   </a>
@@ -1919,15 +1919,15 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#beta-features-dfs--usenet" class="md-nav__link">
+  <a href="#native-usenet" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Beta Features: DFS + Usenet
+        Native Usenet
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Beta Features: DFS + Usenet">
+    <nav class="md-nav" aria-label="Native Usenet">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -2728,6 +2728,8 @@
       
         
       
+        
+      
     
     
     
@@ -2866,6 +2868,36 @@
     
   
     Tautulli
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../optional/pulsarr/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-radio-tower" viewBox="0 0 24 24"><path d="M4.9 16.1C1 12.2 1 5.8 4.9 1.9M7.8 4.7a6.14 6.14 0 0 0-.8 7.5"/><circle cx="12" cy="9" r="2"/><path d="M16.2 4.8c2 2 2.26 5.11.8 7.47M19.1 1.9a9.96 9.96 0 0 1 0 14.1M9.5 18h5M8 22l4-11 4 11"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    Pulsarr
   
 
     
@@ -4673,10 +4705,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#embedded-vs-external-rclone" class="md-nav__link">
+  <a href="#mount-modes" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Embedded vs external rclone
+        Mount modes
       
     </span>
   </a>
@@ -4684,15 +4716,15 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#beta-features-dfs--usenet" class="md-nav__link">
+  <a href="#native-usenet" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Beta Features: DFS + Usenet
+        Native Usenet
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Beta Features: DFS + Usenet">
+    <nav class="md-nav" aria-label="Native Usenet">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -4891,7 +4923,7 @@
 
 
 <h1 id="decypharr-core-service">Decypharr (Core Service)<a class="headerlink" href="#decypharr-core-service" title="Permanent link">#</a></h1>
-<p><strong>Decypharr</strong> is a self-hosted, Go-based torrent manager and content orchestrator that integrates multiple Debrid services and acts as a mock qBittorrent client for Arr applications like Sonarr and Radarr. It is a core component in DUMB for automating torrent-based downloads with native Debrid support and seamless library linking.</p>
+<p><strong>Decypharr</strong> is a self-hosted, Go-based content orchestrator that integrates multiple Debrid services, provides stable DFS and native Usenet support in Decypharr 2.0+, and acts as mock qBittorrent/Sabnzbd clients for Arr applications like Sonarr and Radarr. It is a core component in DUMB for automating Debrid and Usenet downloads with seamless library linking.</p>
 <hr />
 <h2 id="workflow-diagram">Workflow diagram<a class="headerlink" href="#workflow-diagram" title="Permanent link">#</a></h2>
 <pre class="mermaid"><code>%%{ init: { "flowchart": { "curve": "basis" } } }%%
@@ -4901,7 +4933,7 @@ flowchart TD
     C[[Prowlarr / Indexers]]
     D[Decypharr]
     E@{shape: cloud, label: "Debrid Providers"}
-    F[[Rclone&lt;br/&gt;Embedded / External]]
+    F[[DFS / Rclone&lt;br/&gt;Mount Mode]]
     G[(WebDAV Mount Root Path:&lt;br/&gt;/mnt/debrid/decypharr)]
     H[(QBit Download Symlinks:&lt;br/&gt;/mnt/debrid/&lt;br/&gt;decypharr_downloads)]
     I[Arr Rename + Link Step:&lt;br/&gt;Hard Link / Symlink]
@@ -4943,11 +4975,11 @@ flowchart TD
 <tbody>
 <tr>
 <td>Core Service</td>
-<td>Debrid Torrent Orchestrator</td>
+<td>Debrid and Usenet Orchestrator</td>
 </tr>
 <tr>
 <td>Depends On</td>
-<td><a href="../../dependent/rclone/">rclone</a></td>
+<td>None by default; external rclone mode uses <a href="../../dependent/rclone/">rclone</a></td>
 </tr>
 <tr>
 <td>Optional</td>
@@ -4967,7 +4999,7 @@ flowchart TD
 <span class="w">    </span><span class="nt">&quot;repo_owner&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;sirrobot01&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;repo_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;decypharr&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;release_version_enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;release_version&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;v1.0.0&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;release_version&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;latest&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;branch_enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;branch&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;main&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;suppress_logging&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
@@ -4986,7 +5018,8 @@ flowchart TD
 <span class="w">    </span><span class="nt">&quot;config_file&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/decypharr/config.json&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;log_file&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/decypharr/logs/decypharr.log&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;env&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{},</span>
-<span class="w">    </span><span class="nt">&quot;use_embedded_rclone&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;mount_type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;dfs&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;mount_path&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/mnt/debrid/decypharr&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;api_keys&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{}</span>
 <span class="p">},</span>
 </code></pre></div>
@@ -4999,8 +5032,9 @@ flowchart TD
 <li><code>log_level</code>, <code>suppress_logging</code>: Logging controls.</li>
 <li><code>port</code>: Web UI port.</li>
 <li><code>env</code>: Environment variables passed to Decypharr.</li>
-<li><code>use_embedded_rclone</code>: Enable the embedded rclone integration (recommended).</li>
-<li><code>api_keys</code>: Per-provider API keys used by Decypharr (embedded mode).</li>
+<li><code>mount_type</code>: Decypharr mount mode. Stable Decypharr 2.0+ supports <code>dfs</code>, <code>rclone</code>, <code>external_rclone</code>, and <code>none</code> without requiring the beta branch.</li>
+<li><code>mount_path</code>: Container path for the Decypharr mount (default <code>/mnt/debrid/decypharr</code>).</li>
+<li><code>api_keys</code>: Per-provider API keys used by Decypharr for Debrid providers.</li>
 <li><code>clear_on_update</code>, <code>exclude_dirs</code>: Clean old files during update while protecting data dirs.</li>
 </ul>
 <hr />
@@ -5009,7 +5043,8 @@ flowchart TD
 <p>Decypharr acts as both a torrent manager and a renaming/organizing engine:</p>
 <ul>
 <li>Handles torrent links via Debrid services</li>
-<li>Mimics qBittorrent API for seamless *Arr integration</li>
+<li>Handles NZB/Usenet downloads through Decypharr 2.0+ native Usenet support</li>
+<li>Mimics qBittorrent and Sabnzbd-compatible APIs for seamless *Arr integration</li>
 <li>Renames and organizes files into structured symlink folders</li>
 <li>Provides a Web UI and WebDAV endpoints for remote management</li>
 </ul>
@@ -5020,6 +5055,8 @@ flowchart TD
 <li>Proxy filtering for un-cached Debrid torrents</li>
 <li>Multiple Debrid service support (Real Debrid, Torbox, Debrid Link, All Debrid)</li>
 <li>WebDAV server per Debrid provider for mounting remote files</li>
+<li>DFS mount mode for Decypharr-managed streaming paths (stable in Decypharr 2.0+)</li>
+<li>Native Usenet support through Decypharr's Sabnzbd-compatible endpoint (stable in Decypharr 2.0+)</li>
 <li>Repair Worker for missing files or symlinks</li>
 </ul>
 <hr />
@@ -5030,7 +5067,7 @@ flowchart TD
 <li>Ensures <code>/mnt/debrid/decypharr_symlinks/&lt;instance&gt;</code> roots exist</li>
 <li>Updates Arr permissions and root folders</li>
 <li>Adds or updates a download client named <code>decypharr</code> in Arr</li>
-<li>Populates Debrid providers and folders when embedded rclone is enabled</li>
+<li>Populates Debrid providers from <code>api_keys</code> for Decypharr mount modes</li>
 <li>Uses per-instance category labels when creating Arr download client entries</li>
 </ul>
 <h3 id="symlink-repair-and-migration">Symlink repair and migration<a class="headerlink" href="#symlink-repair-and-migration" title="Permanent link">#</a></h3>
@@ -5089,42 +5126,15 @@ as the username/password pair expected by Decypharr.</p>
 </code></pre></div>
 <p>This tells DUMB to auto-configure Arr integration around Decypharr’s WebDAV and symlink workflows.
 See <a href="../../../reference/core-service/">Core Service Routing</a> for how <code>core_service</code> affects automation.</p>
-<p>To successfully run Decypharr with DUMB, the following configuration and mounting steps must be completed:</p>
-<h3 id="embedded-vs-external-rclone">Embedded vs external rclone<a class="headerlink" href="#embedded-vs-external-rclone" title="Permanent link">#</a></h3>
-<p>Decypharr can run with either embedded rclone (recommended) or external rclone instances.</p>
-<table>
-<thead>
-<tr>
-<th>Mode</th>
-<th>How to configure</th>
-<th>Notes</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Embedded rclone</td>
-<td><code>use_embedded_rclone: true</code> + <code>api_keys</code> map</td>
-<td>DUMB populates <code>config.json</code> and Decypharr mounts to <code>/mnt/debrid/decypharr</code>.</td>
-</tr>
-<tr>
-<td>External rclone</td>
-<td><code>use_embedded_rclone: false</code> + rclone instances with <code>core_service: decypharr</code></td>
-<td>DUMB reads rclone instance settings and populates debrid folders + RC URLs.</td>
-</tr>
-</tbody>
-</table>
-<p>When embedded mode is enabled, DUMB builds a default <code>rclone</code> block and synchronizes <code>debrids</code> entries from the <code>api_keys</code> map. It also ensures provider folders match the embedded mount layout under <code>/mnt/debrid/decypharr</code>.</p>
-<h3 id="beta-features-dfs--usenet">Beta Features: DFS + Usenet<a class="headerlink" href="#beta-features-dfs--usenet" title="Permanent link">#</a></h3>
-<p>Decypharr beta introduces a new mount system (DFS) and native Usenet support.
-To use beta builds in DUMB, set:</p>
+<p>To successfully run Decypharr with DUMB, review the mount mode and path guidance below:</p>
+<h3 id="mount-modes">Mount modes<a class="headerlink" href="#mount-modes" title="Permanent link">#</a></h3>
+<p>Decypharr 2.0+ includes DFS and native Usenet support in stable releases. You no longer need to install the <code>beta</code> branch to use these features.</p>
+<p>Choose the mount behavior with <code>mount_type</code>:</p>
 <div class="highlight"><pre><span></span><code><span class="nt">&quot;decypharr&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<span class="w">  </span><span class="nt">&quot;branch_enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;branch&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;beta&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;mount_type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;dfs&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;mount_path&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/mnt/debrid/decypharr&quot;</span>
 <span class="p">}</span>
 </code></pre></div>
-<p><strong>Mount types (beta)</strong></p>
 <table>
 <thead>
 <tr>
@@ -5135,27 +5145,28 @@ To use beta builds in DUMB, set:</p>
 <tbody>
 <tr>
 <td><code>dfs</code></td>
-<td>Decypharr File System (recommended for streaming)</td>
+<td>Decypharr File System. Recommended default for Decypharr-managed streaming paths.</td>
 </tr>
 <tr>
 <td><code>rclone</code></td>
-<td>Embedded rclone managed by Decypharr</td>
+<td>Embedded rclone managed by Decypharr. DUMB synchronizes Debrid providers from <code>api_keys</code>.</td>
 </tr>
 <tr>
 <td><code>external_rclone</code></td>
-<td>External RC endpoint (manual)</td>
+<td>DUMB-managed external rclone mount pointed at Decypharr WebDAV.</td>
 </tr>
 <tr>
 <td><code>none</code></td>
-<td>No mount (API/WebDAV only)</td>
+<td>No mount; Decypharr exposes API/WebDAV behavior only.</td>
 </tr>
 </tbody>
 </table>
-<p><strong>Usenet (beta)</strong></p>
-<p>Decypharr beta connects directly to NNTP providers (no Sabnzbd container needed).
+<p>When <code>mount_type</code> is <code>rclone</code>, DUMB builds the embedded rclone block and synchronizes <code>debrids</code> entries from the <code>api_keys</code> map. When <code>mount_type</code> is <code>external_rclone</code>, DUMB reconciles the matching managed rclone instance. DFS settings such as <code>mount.dfs.cache_dir</code> are app-owned; DUMB only ensures required startup paths exist and have the configured ownership.</p>
+<h3 id="native-usenet">Native Usenet<a class="headerlink" href="#native-usenet" title="Permanent link">#</a></h3>
+<p>Decypharr 2.0+ can connect directly to NNTP providers (no Sabnzbd container needed).
 Configure Usenet inside the Decypharr UI or <code>config.json</code>. DUMB does not manage
 Usenet provider credentials.</p>
-<p>To wire Arrs to Usenet, add a <strong>Sabnzbd</strong> download client in Sonarr/Radarr:</p>
+<p>To wire Arrs to Decypharr Usenet, add a <strong>Sabnzbd</strong> download client in Sonarr/Radarr:</p>
 <ul>
 <li>Host: <code>http://decypharr:8282</code></li>
 <li>API Key: Decypharr API token (Settings → Auth)</li>
