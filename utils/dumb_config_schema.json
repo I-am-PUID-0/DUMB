@@ -2612,6 +2612,15 @@
                 },
                 "api_key": {
                   "type": "string"
+                },
+                "username": {
+                  "type": "string"
+                },
+                "password": {
+                  "type": "string"
+                },
+                "customer_id": {
+                  "type": "string"
                 }
               },
               "required": [

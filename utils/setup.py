@@ -5869,6 +5869,24 @@ def rclone_setup():
             return True
         return False
 
+    def get_required_rclone_values(instance_name, instance, provider, *fields):
+        values = []
+        missing = []
+        for field in fields:
+            value = instance.get(field)
+            if value is None or (isinstance(value, str) and not value.strip()):
+                missing.append(field)
+            else:
+                values.append(value)
+
+        if missing:
+            missing_fields = ", ".join(missing)
+            return None, (
+                f"Rclone instance '{instance_name}' with key_type '{provider}' "
+                f"requires the following config field(s): {missing_fields}."
+            )
+        return values, None
+
     try:
 
         def setup_rclone_instance(instance_name, instance):
@@ -5969,48 +5987,78 @@ def rclone_setup():
             else:
                 key_type = instance.get("key_type", "").lower()
                 if key_type == "realdebrid":
-                    obscured_password = obscure_password(instance["password"])
+                    credentials, error = get_required_rclone_values(
+                        instance_name, instance, "RealDebrid", "username", "password"
+                    )
+                    if error:
+                        return False, error
+                    username, password = credentials
+                    obscured_password = obscure_password(password)
                     config_data[mount_name] = [
                         "type = webdav",
                         "url = https://dav.real-debrid.com/",
                         "vendor = other",
-                        f"user = {instance['username']}",
+                        f"user = {username}",
                         f"pass = {obscured_password}",
                     ]
                 elif key_type == "alldebrid":
+                    credentials, error = get_required_rclone_values(
+                        instance_name, instance, "AllDebrid", "api_key"
+                    )
+                    if error:
+                        return False, error
+                    (api_key,) = credentials
                     obscured_password = obscure_password("eeeee")
                     config_data[mount_name] = [
                         "type = webdav",
                         "url = https://webdav.debrid.it/",
                         "vendor = other",
-                        f"user = {instance['api_key']}",
+                        f"user = {api_key}",
                         f"pass = {obscured_password}",
                     ]
                 elif key_type == "premiumize":
-                    obscured_password = obscure_password(instance["api_key"])
+                    credentials, error = get_required_rclone_values(
+                        instance_name, instance, "Premiumize", "customer_id", "api_key"
+                    )
+                    if error:
+                        return False, error
+                    customer_id, api_key = credentials
+                    obscured_password = obscure_password(api_key)
                     config_data[mount_name] = [
                         "type = webdav",
                         "url = davs://webdav.premiumize.me",
                         "vendor = other",
-                        f"user = {instance['customer_id']}",
+                        f"user = {customer_id}",
                         f"pass = {obscured_password}",
                     ]
                 elif key_type == "torbox":
-                    obscured_password = obscure_password(instance["password"])
+                    credentials, error = get_required_rclone_values(
+                        instance_name, instance, "TorBox", "username", "password"
+                    )
+                    if error:
+                        return False, error
+                    username, password = credentials
+                    obscured_password = obscure_password(password)
                     config_data[mount_name] = [
                         "type = webdav",
                         "url = https://webdav.torbox.app",
                         "vendor = rclone",
-                        f"user = {instance['username']}",
+                        f"user = {username}",
                         f"pass = {obscured_password}",
                         "pacer_min_sleep = 15s",
                     ]
                 elif key_type == "torbox-ftp":
-                    obscured_password = obscure_password(instance["password"])
+                    credentials, error = get_required_rclone_values(
+                        instance_name, instance, "TorBox FTP", "username", "password"
+                    )
+                    if error:
+                        return False, error
+                    username, password = credentials
+                    obscured_password = obscure_password(password)
                     config_data[mount_name] = [
                         "type = ftp",
                         "host = ftp.torbox.app",
-                        f"user = {instance['username']}",
+                        f"user = {username}",
                         f"pass = {obscured_password}",
                     ]
                 elif key_type == "nzbdav":
