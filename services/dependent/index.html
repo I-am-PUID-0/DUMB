@@ -4407,17 +4407,17 @@
   
 
 
-<h1 id="dependent-services">Dependent Services<a class="headerlink" href="#dependent-services" title="Permanent link">&para;</a></h1>
+<h1 id="dependent-services">Dependent Services<a class="headerlink" href="#dependent-services" title="Permanent link">#</a></h1>
 <p>Dependent services are essential building blocks required by one or more core services to operate correctly. These services do not perform media automation on their own but provide critical functionality like mounting, database storage, or metadata enrichment.</p>
 <hr />
-<h2 id="what-are-dependent-services">What Are Dependent Services?<a class="headerlink" href="#what-are-dependent-services" title="Permanent link">&para;</a></h2>
+<h2 id="what-are-dependent-services">What Are Dependent Services?<a class="headerlink" href="#what-are-dependent-services" title="Permanent link">#</a></h2>
 <p>A service is considered <strong>dependent</strong> if:</p>
 <ul>
 <li>It must be running before a core service can start successfully</li>
 <li>It provides a shared capability such as metadata, storage, or content mounting</li>
 </ul>
 <hr />
-<h2 id="dependent-service-index">Dependent Service Index<a class="headerlink" href="#dependent-service-index" title="Permanent link">&para;</a></h2>
+<h2 id="dependent-service-index">Dependent Service Index<a class="headerlink" href="#dependent-service-index" title="Permanent link">#</a></h2>
 <table>
 <thead>
 <tr>
@@ -4455,7 +4455,7 @@
 </tbody>
 </table>
 <hr />
-<h2 id="how-they-work">How They Work<a class="headerlink" href="#how-they-work" title="Permanent link">&para;</a></h2>
+<h2 id="how-they-work">How They Work<a class="headerlink" href="#how-they-work" title="Permanent link">#</a></h2>
 <p>Dependent services act as building blocks — either providing runtime resources or exposing interfaces used by core services.</p>
 <p>For example:</p>
 <ul>
@@ -4465,14 +4465,14 @@
 <li><strong><a href="../dependent/zurg/">Zurg</a></strong> must run if rclone is configured to use its WebDAV endpoint.</li>
 </ul>
 <hr />
-<h2 id="tips">Tips<a class="headerlink" href="#tips" title="Permanent link">&para;</a></h2>
+<h2 id="tips">Tips<a class="headerlink" href="#tips" title="Permanent link">#</a></h2>
 <ul>
 <li>These services are typically auto-launched when their associated core service starts</li>
 <li>Avoid disabling them manually unless you're sure the core service won't need them</li>
 <li>Check logs for startup dependency errors if a core service fails to launch</li>
 </ul>
 <hr />
-<h2 id="related-pages">Related Pages<a class="headerlink" href="#related-pages" title="Permanent link">&para;</a></h2>
+<h2 id="related-pages">Related Pages<a class="headerlink" href="#related-pages" title="Permanent link">#</a></h2>
 <ul>
 <li><a href="../core/">Core Services</a></li>
 <li><a href="../optional/">Optional Services</a></li>

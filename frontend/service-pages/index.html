@@ -1235,6 +1235,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Auto-restart policy">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#service-overrides" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Service overrides
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1268,6 +1285,34 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Configuration editors">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#edit-dumb-config" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Edit DUMB Config
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#edit-service-config" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Edit Service Config
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1278,6 +1323,23 @@
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="Logs">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#special-log-tabs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Special log tabs
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -4489,6 +4551,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Auto-restart policy">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#service-overrides" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Service overrides
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -4522,6 +4601,34 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Configuration editors">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#edit-dumb-config" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Edit DUMB Config
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#edit-service-config" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Edit Service Config
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -4532,6 +4639,23 @@
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="Logs">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#special-log-tabs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Special log tabs
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -4658,11 +4782,11 @@
   
 
 
-<h1 id="service-pages">Service pages<a class="headerlink" href="#service-pages" title="Permanent link">&para;</a></h1>
+<h1 id="service-pages">Service pages<a class="headerlink" href="#service-pages" title="Permanent link">#</a></h1>
 <p>This page covers the service-level controls exposed in the DUMB Frontend, including
 auto-restart policies, auto-update scheduling, and configuration editors.</p>
 <hr />
-<h2 id="overview">Overview<a class="headerlink" href="#overview" title="Permanent link">&para;</a></h2>
+<h2 id="overview">Overview<a class="headerlink" href="#overview" title="Permanent link">#</a></h2>
 <p>Each service page includes:</p>
 <ul>
 <li>Current status, health, and restart counters</li>
@@ -4678,7 +4802,7 @@ auto-restart policies, auto-update scheduling, and configuration editors.</p>
 <li>Sidebar operator QoL controls (quick filters, saved views, compact mode, and command palette)</li>
 </ul>
 <hr />
-<h2 id="status-and-controls">Status and controls<a class="headerlink" href="#status-and-controls" title="Permanent link">&para;</a></h2>
+<h2 id="status-and-controls">Status and controls<a class="headerlink" href="#status-and-controls" title="Permanent link">#</a></h2>
 <p>The header shows the service name, status dot, and health badge. When auto-restart is
 enabled for a service, you also see restart counters and the last restart reason.
 With <a href="../settings/#geek-mode">Geek Mode</a> enabled, the header also displays the internal
@@ -4693,7 +4817,7 @@ config key and process name in monospace.</p>
 <p>The DUMB API service does not show Start/Stop/Restart controls in the UI.</p>
 </div>
 <hr />
-<h2 id="dependency-graph-view">Dependency graph view<a class="headerlink" href="#dependency-graph-view" title="Permanent link">&para;</a></h2>
+<h2 id="dependency-graph-view">Dependency graph view<a class="headerlink" href="#dependency-graph-view" title="Permanent link">#</a></h2>
 <p>On the <strong>DUMB Config</strong> tab, use the <strong>Dependencies</strong> action to open a pop-out dependency graph panel that:</p>
 <ul>
 <li>Shows dependency startup order for the current service context</li>
@@ -4731,7 +4855,7 @@ config key and process name in monospace.</p>
 </ul>
 <p>For dependency services (for example <code>zurg</code>/<code>rclone</code>), the panel also shows which core services currently depend on them.</p>
 <hr />
-<h2 id="process-metrics-panel">Process Metrics panel<a class="headerlink" href="#process-metrics-panel" title="Permanent link">&para;</a></h2>
+<h2 id="process-metrics-panel">Process Metrics panel<a class="headerlink" href="#process-metrics-panel" title="Permanent link">#</a></h2>
 <p>With <a href="../settings/#geek-mode">Geek Mode</a> enabled, the <strong>DUMB Config</strong> tab displays a
 <strong>Process Metrics</strong> panel showing live data from the <code>/api/metrics</code> endpoint:</p>
 <table>
@@ -4771,7 +4895,7 @@ config key and process name in monospace.</p>
 <p>Click <strong>Refresh</strong> to re-fetch metrics on demand. Metrics are fetched once when entering a
 service page with Geek Mode active.</p>
 <hr />
-<h2 id="auto-restart-policy">Auto-restart policy<a class="headerlink" href="#auto-restart-policy" title="Permanent link">&para;</a></h2>
+<h2 id="auto-restart-policy">Auto-restart policy<a class="headerlink" href="#auto-restart-policy" title="Permanent link">#</a></h2>
 <p>Configure the global auto-restart behavior:</p>
 <table>
 <thead>
@@ -4801,7 +4925,7 @@ service page with Geek Mode active.</p>
 </table>
 <p>The auto-restart modal includes a contextual <strong>Why this matters</strong> callout linking to this section.</p>
 <p><img alt="Auto-restart controls" class="shadow" src="../../assets/images/frontend/auto_restart.png" /></p>
-<h3 id="service-overrides">Service overrides<a class="headerlink" href="#service-overrides" title="Permanent link">&para;</a></h3>
+<h3 id="service-overrides">Service overrides<a class="headerlink" href="#service-overrides" title="Permanent link">#</a></h3>
 <p>Service pages can also override auto-restart settings per service:</p>
 <ul>
 <li>Enable/disable auto-restart for the current service</li>
@@ -4809,7 +4933,7 @@ service page with Geek Mode active.</p>
 <li>Apply in memory or save to file</li>
 </ul>
 <hr />
-<h2 id="auto-update-settings">Auto-update settings<a class="headerlink" href="#auto-update-settings" title="Permanent link">&para;</a></h2>
+<h2 id="auto-update-settings">Auto-update settings<a class="headerlink" href="#auto-update-settings" title="Permanent link">#</a></h2>
 <p>The updates panel lets you check for updates on demand and configure automatic update checks:</p>
 <p>The panel includes a contextual <strong>Why this matters</strong> callout linking to this section.</p>
 <p>Manual update actions:</p>
@@ -4847,7 +4971,7 @@ service page with Geek Mode active.</p>
 <li><strong>Next check</strong> is shown in the panel once auto-update is enabled and scheduled.</li>
 </ul>
 <hr />
-<h2 id="seerr-sync-panel">Seerr Sync panel<a class="headerlink" href="#seerr-sync-panel" title="Permanent link">&para;</a></h2>
+<h2 id="seerr-sync-panel">Seerr Sync panel<a class="headerlink" href="#seerr-sync-panel" title="Permanent link">#</a></h2>
 <p>On Seerr service pages, the <strong>Seerr Sync</strong> panel lets you:</p>
 <ul>
 <li>Configure the top-level <code>seerr_sync</code> settings (enable, polling, external primary/subordinates)</li>
@@ -4860,9 +4984,9 @@ service page with Geek Mode active.</p>
 <p>API keys are hidden by default and can be revealed when needed.</p>
 <p>Failed request lists are shown in a scrollable panel so large queues don’t expand the page.</p>
 <hr />
-<h2 id="configuration-editors">Configuration editors<a class="headerlink" href="#configuration-editors" title="Permanent link">&para;</a></h2>
+<h2 id="configuration-editors">Configuration editors<a class="headerlink" href="#configuration-editors" title="Permanent link">#</a></h2>
 <p>The frontend includes editors for the main DUMB config and service-specific configs.</p>
-<h3 id="edit-dumb-config">Edit DUMB Config<a class="headerlink" href="#edit-dumb-config" title="Permanent link">&para;</a></h3>
+<h3 id="edit-dumb-config">Edit DUMB Config<a class="headerlink" href="#edit-dumb-config" title="Permanent link">#</a></h3>
 <p>View or edit <code>dumb_config.json</code>. Changes can be saved in memory or written to disk.</p>
 <p>Notes:</p>
 <ul>
@@ -4872,12 +4996,12 @@ service page with Geek Mode active.</p>
 <li>A live config diff preview shows added/changed/removed paths before apply/save.</li>
 <li>Risk-tagged config changes (for example command/env/path/network/restart/update/credential fields) require an explicit acknowledgement checkbox before apply/save.</li>
 </ul>
-<h3 id="edit-service-config">Edit Service Config<a class="headerlink" href="#edit-service-config" title="Permanent link">&para;</a></h3>
+<h3 id="edit-service-config">Edit Service Config<a class="headerlink" href="#edit-service-config" title="Permanent link">#</a></h3>
 <p><img alt="Edit Service Config" class="shadow" src="../../assets/images/frontend/edit_service_config.png" /></p>
 <p>For services with separate config files, you can open and modify those settings here.
 Service configs should be saved to file.</p>
 <hr />
-<h2 id="logs">Logs<a class="headerlink" href="#logs" title="Permanent link">&para;</a></h2>
+<h2 id="logs">Logs<a class="headerlink" href="#logs" title="Permanent link">#</a></h2>
 <p>Service pages include log viewers when a log file is configured or when the service
 is allowlisted for logs:</p>
 <p><img alt="View service logs" class="shadow" src="../../assets/images/frontend/view_service_logs.png" /></p>
@@ -4888,13 +5012,13 @@ is allowlisted for logs:</p>
 <li>Manual refresh</li>
 <li>Download logs</li>
 </ul>
-<h3 id="special-log-tabs">Special log tabs<a class="headerlink" href="#special-log-tabs" title="Permanent link">&para;</a></h3>
+<h3 id="special-log-tabs">Special log tabs<a class="headerlink" href="#special-log-tabs" title="Permanent link">#</a></h3>
 <ul>
 <li><strong>Traefik Access Logs</strong> appear on the Traefik service page.</li>
 <li><strong>DBRepair Logs</strong> appear on the Plex service page when DBRepair is enabled.</li>
 </ul>
 <hr />
-<h2 id="embedded-ui">Embedded UI<a class="headerlink" href="#embedded-ui" title="Permanent link">&para;</a></h2>
+<h2 id="embedded-ui">Embedded UI<a class="headerlink" href="#embedded-ui" title="Permanent link">#</a></h2>
 <p>When embedded UIs are enabled and the service exposes a UI, a dedicated <strong>Embedded UI</strong>
 tab appears.</p>
 <p>Features:</p>
@@ -4905,11 +5029,11 @@ tab appears.</p>
 </ul>
 <p>NzbDAV uses a trailing slash in its embedded UI path to match its frontend routing.</p>
 <hr />
-<h2 id="default-tab-selection">Default tab selection<a class="headerlink" href="#default-tab-selection" title="Permanent link">&para;</a></h2>
+<h2 id="default-tab-selection">Default tab selection<a class="headerlink" href="#default-tab-selection" title="Permanent link">#</a></h2>
 <p>You can choose a default tab for each service page (for example, always open logs).
 The selection is stored in the UI preferences.</p>
 <hr />
-<h2 id="sidebar-operator-qol">Sidebar operator QoL<a class="headerlink" href="#sidebar-operator-qol" title="Permanent link">&para;</a></h2>
+<h2 id="sidebar-operator-qol">Sidebar operator QoL<a class="headerlink" href="#sidebar-operator-qol" title="Permanent link">#</a></h2>
 <p>The services sidebar includes faster navigation controls for large stacks:</p>
 <ul>
 <li><strong>Quick filters</strong> for <code>All</code>, <code>Running</code>, <code>Stopped</code>, and <code>Unhealthy</code> services</li>
@@ -4927,7 +5051,7 @@ The selection is stored in the UI preferences.</p>
 </ul>
 <p>Tile order is written from dashboard drag-and-drop actions and then consumed by both the dashboard and the sidebar service list.</p>
 <hr />
-<h2 id="related-pages">Related pages<a class="headerlink" href="#related-pages" title="Permanent link">&para;</a></h2>
+<h2 id="related-pages">Related pages<a class="headerlink" href="#related-pages" title="Permanent link">#</a></h2>
 <ul>
 <li><a href="../settings/">Settings</a> - Preferences and onboarding controls</li>
 <li><a href="../dashboard/">Dashboard</a> - Service controls and logs</li>
