@@ -2117,6 +2117,171 @@ def update_status(
     return {"process_name": process_name, "update_status": payload}
 
 
+def _is_dev_version(version: str | None) -> bool:
+    version = str(version or "").strip()
+    return bool(re.match(r"^v?\d+(?:\.\d+){1,3}-dev\.\d+$", version))
+
+
+def _is_release_version(version: str | None) -> bool:
+    version = str(version or "").strip()
+    return bool(
+        version
+        and not _is_dev_version(version)
+        and re.match(r"^v?\d+(?:\.\d+){1,3}(?:[-+][A-Za-z0-9._-]+)?$", version)
+    )
+
+
+def _is_dumb_repo(repo_url: str | None) -> bool:
+    normalized = str(repo_url or "").strip().rstrip("/").lower()
+    return normalized.endswith("/i-am-puid-0/dumb")
+
+
+def _branch_commit_marker(version: str | None) -> tuple[str | None, str | None]:
+    version = str(version or "").strip()
+    if not version:
+        return None, None
+    match = re.match(r"^(.+)-([0-9a-fA-F]{7,40})$", version)
+    if not match:
+        return None, None
+    branch = match.group(1).strip()
+    sha = match.group(2).strip()
+    if branch.startswith("branch-"):
+        branch = branch.removeprefix("branch-")
+    return branch or None, sha.lower() or None
+
+
+def _update_notes_target(
+    repo_url: str | None,
+    current_version: str | None,
+    available_version: str | None,
+) -> tuple[str | None, str]:
+    repo_url = str(repo_url or "").strip().rstrip("/")
+    if not repo_url:
+        return None, "Release notes"
+
+    current_branch, current_sha = _branch_commit_marker(current_version)
+    available_branch, available_sha = _branch_commit_marker(available_version)
+    if current_sha and available_sha:
+        return f"{repo_url}/compare/{current_sha}...{available_sha}", "Compare commits"
+    if available_sha:
+        return f"{repo_url}/commit/{available_sha}", "View commit"
+    if current_sha:
+        return f"{repo_url}/commit/{current_sha}", "View commit"
+
+    version = str(available_version or current_version or "").strip()
+    if _is_dev_version(version) and _is_dumb_repo(repo_url):
+        return f"{repo_url}/releases/tag/dev-build", "View dev build"
+    if _is_release_version(version):
+        return f"{repo_url}/releases/tag/{version}", "Release notes"
+    if available_branch or current_branch:
+        branch = available_branch or current_branch
+        return f"{repo_url}/tree/{branch}", "View branch"
+    return f"{repo_url}/releases", "Release notes"
+
+
+def _build_update_notice_entry(status: dict, process_entry: dict | None = None) -> dict:
+    status = status if isinstance(status, dict) else {}
+    process_entry = process_entry if isinstance(process_entry, dict) else {}
+    process_name = status.get("process_name") or process_entry.get("process_name")
+    display_name = process_entry.get("name") or process_name
+    available_version = status.get("available_version") or status.get("current_version")
+    repo_url = process_entry.get("repo_url")
+    notes_url, notes_label = _update_notes_target(
+        repo_url,
+        status.get("previous_version") or status.get("current_version"),
+        available_version,
+    )
+    dev_build_notice = notes_label == "View dev build"
+    release_url = (
+        notes_url if dev_build_notice else status.get("release_url") or notes_url
+    )
+    display_notes_label = (
+        notes_label if dev_build_notice else status.get("notes_label") or notes_label
+    )
+    entry = {
+        "id": status.get("id")
+        or f"{process_name}:{status.get('status')}:{available_version or status.get('checked_at')}",
+        "type": status.get("type")
+        or (
+            "available"
+            if status.get("status") in {"update_available", "blocked"}
+            else "status"
+        ),
+        "process_name": process_name,
+        "display_name": display_name,
+        "status": status.get("status"),
+        "message": status.get("message"),
+        "reason": status.get("reason"),
+        "current_version": status.get("current_version"),
+        "previous_version": status.get("previous_version"),
+        "available_version": available_version,
+        "checked_at": status.get("checked_at"),
+        "applied_at": status.get("applied_at"),
+        "release_url": release_url,
+        "notes_label": display_notes_label,
+        "repo_url": repo_url,
+    }
+    return {key: value for key, value in entry.items() if value not in (None, "")}
+
+
+@process_router.get("/update-notices")
+def update_notices(
+    scope: str = Query("project", description="Notice scope: project or all"),
+    api_state=Depends(get_api_state),
+    current_user: str = Depends(get_optional_current_user),
+):
+    scope_mode = str(scope or "project").strip().lower()
+    if scope_mode not in {"project", "all"}:
+        raise HTTPException(status_code=400, detail="scope must be 'project' or 'all'")
+
+    process_entries = _collect_process_entries()
+    by_name = {
+        str(entry.get("process_name") or "").strip(): entry for entry in process_entries
+    }
+
+    def include_entry(process_name: str) -> bool:
+        if scope_mode == "all":
+            return True
+        normalized = str(process_name or "").strip().lower()
+        return normalized.startswith("dumb") or normalized.startswith("dmb")
+
+    statuses = api_state.get_update_statuses() if api_state else []
+    available = []
+    for status in statuses:
+        process_name = str(status.get("process_name") or "").strip()
+        if not process_name or not include_entry(process_name):
+            continue
+        if status.get("status") not in {"update_available", "blocked"}:
+            continue
+        available.append(_build_update_notice_entry(status, by_name.get(process_name)))
+
+    persisted = (
+        api_state.get_update_notices() if api_state else {"applied": [], "info": []}
+    )
+    info = []
+    for status in persisted.get("info", []):
+        process_name = str(status.get("process_name") or "").strip()
+        if not process_name or not include_entry(process_name):
+            continue
+        info.append(_build_update_notice_entry(status, by_name.get(process_name)))
+
+    applied = []
+    for status in persisted.get("applied", []):
+        process_name = str(status.get("process_name") or "").strip()
+        if not process_name or not include_entry(process_name):
+            continue
+        applied.append(_build_update_notice_entry(status, by_name.get(process_name)))
+
+    return _safe_api_response(
+        {
+            "scope": scope_mode,
+            "available": available,
+            "info": info[:10],
+            "applied": applied[:10],
+        }
+    )
+
+
 @process_router.post("/update-check")
 async def update_check(
     request: UpdateCheckRequest,

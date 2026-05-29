@@ -1,4 +1,4 @@
-import os, socket, psutil, threading, time, uuid
+import os, socket, psutil, threading, time, uuid, json, re
 from json import load
 from utils.config_loader import CONFIG_MANAGER
 
@@ -17,6 +17,13 @@ class APIState:
         self.shutdown_in_progress = set()
         self._update_cache = {}
         self._update_cache_lock = threading.Lock()
+        self.update_notices_file_path = "/config/update_notices.json"
+        self._update_notices_file_existed = os.path.exists(
+            self.update_notices_file_path
+        )
+        self._update_notices_lock = threading.Lock()
+        self._update_notices = self._load_update_notices()
+        self._ensure_first_run_update_notice()
         self._symlink_backup_cache = {}
         self._symlink_backup_cache_lock = threading.Lock()
         self._symlink_job_cache = {}
@@ -25,17 +32,187 @@ class APIState:
     def _normalize_process_name(self, value):
         return str(value or "").replace(" ", "").replace("/ ", "/").strip().lower()
 
+    def _load_update_notices(self):
+        try:
+            with open(self.update_notices_file_path, "r") as handle:
+                payload = json.load(handle)
+            if isinstance(payload, dict):
+                applied = payload.get("applied")
+                info = payload.get("info")
+                return {
+                    "applied": (
+                        [item for item in applied if isinstance(item, dict)]
+                        if isinstance(applied, list)
+                        else []
+                    ),
+                    "info": (
+                        [item for item in info if isinstance(item, dict)]
+                        if isinstance(info, list)
+                        else []
+                    ),
+                }
+        except FileNotFoundError:
+            pass
+        except Exception as exc:
+            self.logger.debug("Failed to load update notices: %s", exc)
+        return {"applied": [], "info": []}
+
+    def _current_dumb_version(self):
+        env_version = (os.environ.get("DUMB_VERSION") or "").strip()
+        if env_version:
+            return env_version
+
+        candidates = (
+            "/pyproject.toml",
+            os.path.join(os.getcwd(), "pyproject.toml"),
+            "/workspace/pyproject.toml",
+        )
+        for candidate in candidates:
+            try:
+                with open(candidate, "r") as handle:
+                    for line in handle:
+                        stripped = line.strip()
+                        if stripped.startswith("version") and "=" in stripped:
+                            value = stripped.split("=", 1)[1].strip()
+                            return value.strip('"').strip("'") or None
+            except OSError:
+                continue
+        return None
+
+    def _is_dev_version(self, version):
+        value = str(version or "").strip()
+        return bool(re.match(r"^v?\d+(?:\.\d+){1,3}-dev\.\d+$", value))
+
+    def _is_release_version(self, version):
+        value = str(version or "").strip()
+        return bool(
+            value
+            and not self._is_dev_version(value)
+            and re.match(r"^v?\d+(?:\.\d+){1,3}(?:[-+][A-Za-z0-9._-]+)?$", value)
+        )
+
+    def _branch_commit_marker(self, version):
+        value = str(version or "").strip()
+        match = re.match(r"^(.+)-([0-9a-fA-F]{7,40})$", value)
+        if not match:
+            return None
+        return match.group(2).strip().lower() or None
+
+    def _ensure_first_run_update_notice(self):
+        if self._update_notices_file_existed:
+            return
+
+        version = self._current_dumb_version()
+        release_url = "https://github.com/I-am-PUID-0/DUMB/releases"
+        notes_label = "Release notes"
+        branch_commit = self._branch_commit_marker(version)
+        if branch_commit:
+            release_url = f"https://github.com/I-am-PUID-0/DUMB/commit/{branch_commit}"
+            notes_label = "View commit"
+        elif self._is_dev_version(version):
+            release_url = "https://github.com/I-am-PUID-0/DUMB/releases/tag/dev-build"
+            notes_label = "View dev build"
+        elif self._is_release_version(version):
+            release_url = f"{release_url}/tag/{version}"
+
+        now_ts = int(time.time())
+        notice = {
+            "id": f"update-notices-intro:{version or 'unknown'}",
+            "type": "info",
+            "process_name": "DUMB API",
+            "display_name": "DUMB",
+            "status": "info",
+            "message": "Update notices are now available in this DUMB release. Future backend/frontend updates will show available and applied change notices here.",
+            "current_version": version,
+            "checked_at": now_ts,
+            "applied_at": now_ts,
+            "release_url": release_url,
+            "notes_label": notes_label,
+            "repo_url": "https://github.com/I-am-PUID-0/DUMB",
+        }
+        notice = {
+            key: value for key, value in notice.items() if value not in (None, "")
+        }
+        with self._update_notices_lock:
+            info = self._update_notices.setdefault("info", [])
+            if any(
+                item.get("id") == notice["id"]
+                for item in info
+                if isinstance(item, dict)
+            ):
+                return
+            info.insert(0, notice)
+            self._update_notices["info"] = info[:10]
+            self._save_update_notices()
+
+    def _save_update_notices(self):
+        try:
+            os.makedirs(os.path.dirname(self.update_notices_file_path), exist_ok=True)
+            tmp_path = f"{self.update_notices_file_path}.tmp"
+            with open(tmp_path, "w") as handle:
+                json.dump(self._update_notices, handle, indent=2, sort_keys=True)
+            os.replace(tmp_path, self.update_notices_file_path)
+        except Exception as exc:
+            self.logger.debug("Failed to save update notices: %s", exc)
+
+    def _record_applied_update_notice(self, process_name, payload, previous):
+        now_ts = int(time.time())
+        previous = previous if isinstance(previous, dict) else {}
+        notice = {
+            "id": uuid.uuid4().hex,
+            "type": "applied",
+            "process_name": process_name,
+            "display_name": process_name,
+            "status": "updated",
+            "message": payload.get("message") or f"Updated {process_name}.",
+            "previous_version": payload.get("previous_version")
+            or previous.get("current_version"),
+            "current_version": payload.get("current_version")
+            or previous.get("available_version"),
+            "available_version": payload.get("available_version")
+            or previous.get("available_version"),
+            "applied_at": payload.get("applied_at")
+            or payload.get("checked_at")
+            or now_ts,
+            "checked_at": payload.get("checked_at") or now_ts,
+        }
+        notice = {
+            key: value for key, value in notice.items() if value not in (None, "")
+        }
+        with self._update_notices_lock:
+            applied = self._update_notices.setdefault("applied", [])
+            applied.insert(0, notice)
+            self._update_notices["applied"] = applied[:30]
+            self._save_update_notices()
+
     def set_update_status(self, process_name, payload):
         if not process_name or not isinstance(payload, dict):
             return
         normalized = self._normalize_process_name(process_name)
-        update_payload = {
-            "process_name": process_name,
-            "checked_at": payload.get("checked_at") or int(time.time()),
-            **payload,
-        }
+        now_ts = int(time.time())
         with self._update_cache_lock:
+            previous = self._update_cache.get(normalized)
+            update_payload = {
+                "process_name": process_name,
+                "checked_at": payload.get("checked_at") or now_ts,
+                **payload,
+            }
+            if update_payload.get("status") == "updated":
+                update_payload.setdefault("applied_at", now_ts)
+                if isinstance(previous, dict):
+                    update_payload.setdefault(
+                        "previous_version", previous.get("current_version")
+                    )
+                    update_payload.setdefault(
+                        "available_version", previous.get("available_version")
+                    )
+                    update_payload.setdefault(
+                        "current_version", previous.get("available_version")
+                    )
             self._update_cache[normalized] = update_payload
+
+        if update_payload.get("status") == "updated":
+            self._record_applied_update_notice(process_name, update_payload, previous)
 
     def get_update_status(self, process_name):
         normalized = self._normalize_process_name(process_name)
@@ -44,6 +221,25 @@ class APIState:
             if not payload:
                 return None
             return dict(payload)
+
+    def get_update_statuses(self):
+        with self._update_cache_lock:
+            return [dict(payload) for payload in self._update_cache.values()]
+
+    def get_update_notices(self):
+        with self._update_notices_lock:
+            return {
+                "applied": [
+                    dict(item)
+                    for item in self._update_notices.get("applied", [])
+                    if isinstance(item, dict)
+                ],
+                "info": [
+                    dict(item)
+                    for item in self._update_notices.get("info", [])
+                    if isinstance(item, dict)
+                ],
+            }
 
     def set_symlink_backup_status(self, process_name, payload):
         if not process_name or not isinstance(payload, dict):
@@ -76,7 +272,11 @@ class APIState:
                 continue
             status = str(payload.get("status") or "").strip().lower()
             updated_at = int(payload.get("updated_at") or 0)
-            if status in {"completed", "error"} and updated_at and updated_at < cutoff_ts:
+            if (
+                status in {"completed", "error"}
+                and updated_at
+                and updated_at < cutoff_ts
+            ):
                 keys_to_remove.append(job_id)
         for job_id in keys_to_remove:
             self._symlink_job_cache.pop(job_id, None)
@@ -145,7 +345,10 @@ class APIState:
             for payload in self._symlink_job_cache.values():
                 if not isinstance(payload, dict):
                     continue
-                if self._normalize_process_name(payload.get("process_name")) != normalized_process:
+                if (
+                    self._normalize_process_name(payload.get("process_name"))
+                    != normalized_process
+                ):
                     continue
                 op = str(payload.get("operation") or "").strip().lower()
                 if operation_filter and op != operation_filter:
@@ -156,7 +359,9 @@ class APIState:
                 candidates.append(payload)
             if not candidates:
                 return None
-            candidates.sort(key=lambda item: int(item.get("updated_at") or 0), reverse=True)
+            candidates.sort(
+                key=lambda item: int(item.get("updated_at") or 0), reverse=True
+            )
             return dict(candidates[0])
 
     def _get_status_mtime(self):
