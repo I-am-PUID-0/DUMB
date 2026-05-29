@@ -29,8 +29,6 @@ ARR_APP_MAP = {
 }
 
 WHISPARR_SYNC_CATEGORIES = [
-    2000,  # Movies
-    5000,  # TV
     6000,  # XXX
     6010,
     6020,
@@ -43,6 +41,8 @@ WHISPARR_SYNC_CATEGORIES = [
     6080,
     6090,
 ]
+
+WHISPARR_CUSTOM_CATEGORY = "XXX"
 
 CUSTOM_INDEXER_URLS = {
     "stremthru.yml": "https://raw.githubusercontent.com/dreulavelle/Prowlarr-Indexers/main/Custom/stremthru.yml",
@@ -91,6 +91,52 @@ def _replace_links_block(content: str, links: list[str]) -> str:
     return "\n".join(out) + trailing_newline
 
 
+def _ensure_custom_indexer_whisparr_caps(filename: str, content: str) -> str:
+    if filename not in {"stremthru.yml", "zilean.yml"}:
+        return content
+
+    updated = content
+    categories_inline = "caps: categories: Movies: Movies TV: TV"
+    if (
+        categories_inline in updated
+        and f"{WHISPARR_CUSTOM_CATEGORY}: {WHISPARR_CUSTOM_CATEGORY}" not in updated
+    ):
+        updated = updated.replace(
+            categories_inline,
+            f"{categories_inline} {WHISPARR_CUSTOM_CATEGORY}: {WHISPARR_CUSTOM_CATEGORY}",
+            1,
+        )
+
+    if filename == "zilean.yml":
+        category_input = f'Category: "{{{{ join .Categories \"," }}}}"'
+        if category_input not in updated:
+            needle = 'Episode: "{{ if .Query.Ep }}{{ .Query.Ep }}{{ else }}{{ end }}"'
+            updated = updated.replace(
+                needle,
+                f"{needle} {category_input}",
+                1,
+            )
+        if 'args: ["xxx", "XXX"]' not in updated:
+            needle = '- name: replace args: ["movie", "Movies"]'
+            updated = updated.replace(
+                needle,
+                f'{needle} - name: replace args: ["xxx", "XXX"]',
+                1,
+            )
+
+    if filename == "stremthru.yml":
+        updated = updated.replace(
+            "categories: [Movies]",
+            f"categories: [Movies, {WHISPARR_CUSTOM_CATEGORY}]",
+        )
+        updated = updated.replace(
+            "categories: [TV]",
+            f"categories: [TV, {WHISPARR_CUSTOM_CATEGORY}]",
+        )
+
+    return updated
+
+
 def ensure_custom_indexers(config_dir: str, zilean_port: int) -> None:
     global _CUSTOM_INDEXER_SYNC_TS
     with _CUSTOM_INDEXER_SYNC_LOCK:
@@ -116,6 +162,7 @@ def ensure_custom_indexers(config_dir: str, zilean_port: int) -> None:
     }
     def _write_with_links(path: str, content: str, link_overrides: list[str]) -> None:
         updated = _replace_links_block(content, link_overrides)
+        updated = _ensure_custom_indexer_whisparr_caps(os.path.basename(path), updated)
         with open(path, "w") as handle:
             handle.write(updated)
 
