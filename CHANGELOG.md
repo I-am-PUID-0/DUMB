@@ -1,5 +1,23 @@
 # Changelog
 
+## [2.5.0](https://github.com/I-am-PUID-0/DUMB/compare/2.4.2...2.5.0) (2026-05-29)
+
+
+### ✨ Features
+
+* **api:** implement update notices management and version handling ([1440e8a](https://github.com/I-am-PUID-0/DUMB/commit/1440e8a84c48588721cfaf6c59968c741eb30a65))
+* **proxy:** add TPA and Cloudflared optional services ([8eb474f](https://github.com/I-am-PUID-0/DUMB/commit/8eb474f94ed584fc577c59f4f104e38b64f600a5))
+* **pulsarr:** add optional Pulsarr service ([eb19a19](https://github.com/I-am-PUID-0/DUMB/commit/eb19a195a0e9721e25666715b1c5dd7c94a4612a)), closes [#149](https://github.com/I-am-PUID-0/DUMB/issues/149)
+
+
+### 🐛 Bug Fixes
+
+* **decypharr:** prepare DFS cache dir before startup ([85ecde7](https://github.com/I-am-PUID-0/DUMB/commit/85ecde7379f2f9ae8a2e557b9a3ec33164230be8))
+* **prowlarr:** sync custom indexers to Whisparr ([85ecde7](https://github.com/I-am-PUID-0/DUMB/commit/85ecde7379f2f9ae8a2e557b9a3ec33164230be8)), closes [#212](https://github.com/I-am-PUID-0/DUMB/issues/212)
+* **rclone:** allow direct provider credentials ([a05c24f](https://github.com/I-am-PUID-0/DUMB/commit/a05c24f32283aa385e6f4a4ea750cf286e866d2c)), closes [#205](https://github.com/I-am-PUID-0/DUMB/issues/205)
+* **setup:** persist pnpm store outside service dirs ([c5b31e2](https://github.com/I-am-PUID-0/DUMB/commit/c5b31e23baabedf3cc246d14ef20c26e39b397a9)), closes [#204](https://github.com/I-am-PUID-0/DUMB/issues/204)
+* **tpa:** add ADMIN_COOKIE_SECURE option to configuration ([61524ac](https://github.com/I-am-PUID-0/DUMB/commit/61524ac32bd3ac97fdf7229af9257756b6c9d008))
+
 ## [2.4.2](https://github.com/I-am-PUID-0/DUMB/compare/2.4.1...2.4.2) (2026-05-26)
 
 
