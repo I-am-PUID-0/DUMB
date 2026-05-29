@@ -2810,6 +2810,10 @@
       
         
       
+        
+      
+        
+      
     
     
     
@@ -2975,6 +2979,66 @@
     
   
     Pulsarr
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/optional/traefik-proxy-admin/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-shield-check" viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    Traefik Proxy Admin
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/optional/cloudflared/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-cloud" viewBox="0 0 24 24"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    Cloudflared
   
 
     
@@ -5222,6 +5286,11 @@ flowchart TD
 <td><code>/service/ui/traefik</code></td>
 <td>18081</td>
 </tr>
+<tr>
+<td>Traefik Proxy Admin</td>
+<td><code>/service/ui/traefik_proxy_admin</code></td>
+<td>3004</td>
+</tr>
 </tbody>
 </table>
 <div class="admonition note">
@@ -5230,7 +5299,7 @@ flowchart TD
 </div>
 <hr />
 <h2 id="traefik-configuration">Traefik configuration<a class="headerlink" href="#traefik-configuration" title="Permanent link">#</a></h2>
-<p>DUMB automatically generates Traefik routing configuration in <code>/config/traefik/services.yaml</code>.</p>
+<p>DUMB automatically generates Traefik embedded-UI routing configuration in <code>/config/traefik/dynamic/services.yaml</code>. Traefik watches <code>/config/traefik/dynamic</code> for DUMB-owned dynamic files and can also poll Traefik Proxy Admin through its HTTP provider when that optional service is enabled.</p>
 <h3 id="example-configuration">Example configuration<a class="headerlink" href="#example-configuration" title="Permanent link">#</a></h3>
 <div class="highlight"><pre><span></span><code><span class="nt">http</span><span class="p">:</span>
 <span class="w">  </span><span class="nt">routers</span><span class="p">:</span>

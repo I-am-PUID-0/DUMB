@@ -2438,6 +2438,10 @@
       
         
       
+        
+      
+        
+      
     
     
     
@@ -2604,6 +2608,66 @@
     
   
     Pulsarr
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="traefik-proxy-admin/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-shield-check" viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    Traefik Proxy Admin
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="cloudflared/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-cloud" viewBox="0 0 24 24"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    Cloudflared
   
 
     
@@ -4481,6 +4545,16 @@
 <td>Plex, Sonarr, Radarr</td>
 </tr>
 <tr>
+<td><a href="../optional/traefik-proxy-admin/">Traefik Proxy Admin</a></td>
+<td>User-managed Traefik reverse proxy routes</td>
+<td>Traefik, PostgreSQL</td>
+</tr>
+<tr>
+<td><a href="../optional/cloudflared/">Cloudflared</a></td>
+<td>Cloudflare Tunnel connector for DUMB Traefik</td>
+<td>Traefik</td>
+</tr>
+<tr>
 <td><a href="../optional/zilean/">Zilean</a></td>
 <td>Debrid scraper and metadata cache for various core services</td>
 <td>Riven, CLI Debrid, Plex Debrid</td>
@@ -4495,6 +4569,8 @@
 <li><strong><a href="../optional/riven-frontend/">Riven Frontend</a></strong> provides a GUI for exploring and managing content requests that are facilitated by the <a href="../core/riven-backend/">Riven Backend</a>.</li>
 <li><strong><a href="../optional/tautulli/">Tautulli</a></strong> monitors your Plex server, tracking playback history, user activity, and providing detailed statistics.</li>
 <li><strong><a href="../optional/pulsarr/">Pulsarr</a></strong> monitors Plex watchlists and routes approved requests into Sonarr and Radarr.</li>
+<li><strong><a href="../optional/traefik-proxy-admin/">Traefik Proxy Admin</a></strong> lets operators create Traefik reverse proxy routes for services inside or outside the DUMB container.</li>
+<li><strong><a href="../optional/cloudflared/">Cloudflared</a></strong> runs a Cloudflare Tunnel connector inside DUMB so public traffic can reach the built-in Traefik entrypoint without direct port forwarding.</li>
 <li><strong><a href="../optional/zilean/">Zilean</a></strong> improves scraping efficiency by caching previous results from <a href="https://debridmediamanager.com/">Debrid Media Manager</a> hash lists shared by users and reducing redundant queries. Core services like Riven and CLI Debrid can use it as a scraping backend.</li>
 </ul>
 <p>These services can be disabled at any time without affecting the startup of core or dependent services.</p>

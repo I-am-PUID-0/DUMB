@@ -2424,6 +2424,10 @@
       
         
       
+        
+      
+        
+      
     
     
     
@@ -2589,6 +2593,66 @@
     
   
     Pulsarr
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/optional/traefik-proxy-admin/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-shield-check" viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    Traefik Proxy Admin
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/optional/cloudflared/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-cloud" viewBox="0 0 24 24"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    Cloudflared
   
 
     
@@ -3796,6 +3860,28 @@
     <span class="md-ellipsis">
       
         Zilean
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#traefik-proxy-admin" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Traefik Proxy Admin
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cloudflared" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Cloudflared
       
     </span>
   </a>
@@ -5108,6 +5194,28 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#traefik-proxy-admin" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Traefik Proxy Admin
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cloudflared" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Cloudflared
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -5996,6 +6104,29 @@ http://localhost:7879  # NzbDAV instance
 </table>
 <div class="highlight"><pre><span></span><code>http://localhost:8182
 </code></pre></div>
+<h3 id="traefik-proxy-admin">Traefik Proxy Admin<a class="headerlink" href="#traefik-proxy-admin" title="Permanent link">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Port</strong></td>
+<td>3004</td>
+</tr>
+<tr>
+<td><strong>Type</strong></td>
+<td>Web UI / API</td>
+</tr>
+</tbody>
+</table>
+<div class="highlight"><pre><span></span><code>http://localhost:3004
+</code></pre></div>
+<h3 id="cloudflared">Cloudflared<a class="headerlink" href="#cloudflared" title="Permanent link">#</a></h3>
+<p>Cloudflared does not expose a local web UI port. It opens an outbound tunnel connection to Cloudflare and forwards public hostname traffic to DUMB Traefik.</p>
 <hr />
 <h2 id="dependent-services">Dependent services<a class="headerlink" href="#dependent-services" title="Permanent link">#</a></h2>
 <h3 id="zurg">Zurg<a class="headerlink" href="#zurg" title="Permanent link">#</a></h3>
