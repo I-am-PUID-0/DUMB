@@ -4,7 +4,7 @@ from utils.global_logger import logger
 from utils.versions import Versions
 from typing import Any, Dict, List, Optional, Tuple
 from pathlib import Path
-import os, re, shlex, shutil, tempfile, yaml
+import os, re, shlex, shutil, tempfile, threading, yaml
 from ruamel.yaml import YAML
 
 UI_SERVICE_DEFS = [
@@ -53,10 +53,12 @@ UI_SERVICE_DEFS = [
         "path_prefix": "/dashboard",
         "internal_service": "api@internal",
     },
+    {"name": "traefik_proxy_admin", "config_key": "traefik_proxy_admin"},
 ]
 
 _downloader = Downloader()
 _versions = Versions()
+_TRAEFIK_SETUP_LOCK = threading.RLock()
 
 
 def _get_traefik_config() -> Dict[str, Any]:
@@ -92,6 +94,10 @@ def get_traefik_config_file() -> Path:
     return get_traefik_config_dir() / "traefik.yml"
 
 
+def get_traefik_dynamic_config_dir() -> Path:
+    return get_traefik_config_dir() / "dynamic"
+
+
 def _get_traefik_version_stamps() -> Tuple[str, str]:
     traefik_bin = get_traefik_bin()
     config_dir = get_traefik_config_dir()
@@ -122,8 +128,47 @@ def _parse_entrypoint_port(address: str, fallback: int) -> int:
 
 
 def ensure_traefik_config() -> None:
-    """Ensure the Traefik config directory exists."""
+    """Ensure the Traefik config directories exist."""
     get_traefik_config_dir().mkdir(parents=True, exist_ok=True)
+    get_traefik_dynamic_config_dir().mkdir(parents=True, exist_ok=True)
+
+
+def _ensure_traefik_tree_accessible(*paths: str) -> None:
+    uid = CONFIG_MANAGER.get("puid")
+    gid = CONFIG_MANAGER.get("pgid")
+    if uid is None or gid is None:
+        return
+    for raw_path in paths:
+        if not raw_path:
+            continue
+        root = Path(raw_path)
+        if not root.exists():
+            continue
+        try:
+            os.chown(root, uid, gid)
+            if root.is_dir():
+                root.chmod(root.stat().st_mode | 0o700)
+        except OSError as exc:
+            logger.debug("Skipping ownership update for %s: %s", root, exc)
+        if not root.is_dir():
+            continue
+        for current_root, dirs, files in os.walk(root):
+            current = Path(current_root)
+            try:
+                os.chown(current, uid, gid)
+                current.chmod(current.stat().st_mode | 0o700)
+            except OSError as exc:
+                logger.debug("Skipping ownership update for %s: %s", current, exc)
+            for name in dirs + files:
+                item = current / name
+                try:
+                    os.chown(item, uid, gid)
+                    if item.is_dir():
+                        item.chmod(item.stat().st_mode | 0o700)
+                    else:
+                        item.chmod(item.stat().st_mode | 0o644)
+                except OSError as exc:
+                    logger.debug("Skipping ownership update for %s: %s", item, exc)
 
 
 def _resolve_ui_service(service_def: Dict[str, Any]) -> List[Dict[str, Any]]:
@@ -421,23 +466,42 @@ def generate_traefik_config(services: List[Dict[str, Any]]) -> Dict[str, Any]:
 
 def write_traefik_config(path: Path, config: Dict[str, Any]) -> None:
     """Write Traefik config atomically to avoid empty/partial reads."""
-    temp_path = path.with_suffix(path.suffix + ".tmp")
+    path.parent.mkdir(parents=True, exist_ok=True)
     yaml_safe = YAML(typ="safe")
     yaml_safe.default_flow_style = False
-    with open(temp_path, "w") as file:
-        yaml_safe.dump(config, file)
-        file.flush()
-        os.fsync(file.fileno())
-    os.replace(temp_path, path)
+    fd, temp_name = tempfile.mkstemp(
+        prefix=f".{path.name}.", suffix=".tmp", dir=str(path.parent), text=True
+    )
+    temp_path = Path(temp_name)
+    try:
+        with os.fdopen(fd, "w") as file:
+            yaml_safe.dump(config, file)
+            file.flush()
+            os.fsync(file.fileno())
+        uid = CONFIG_MANAGER.get("puid")
+        gid = CONFIG_MANAGER.get("pgid")
+        if uid is not None and gid is not None:
+            os.chown(temp_path, uid, gid)
+        os.chmod(temp_path, 0o644)
+        os.replace(temp_path, path)
+        if uid is not None and gid is not None:
+            os.chown(path, uid, gid)
+        os.chmod(path, 0o644)
+    finally:
+        if temp_path.exists():
+            temp_path.unlink()
 
 
 def ensure_ui_services_config(config_dir: str) -> List[Dict[str, Any]]:
     ensure_traefik_config()
     services = build_ui_services()
-    legacy_path = Path(config_dir) / "services.json"
-    if legacy_path.exists():
-        legacy_path.unlink()
-    traefik_config_path = Path(config_dir) / "services.yaml"
+    base_dir = Path(config_dir)
+    dynamic_dir = get_traefik_dynamic_config_dir()
+    for legacy_name in ("services.json", "services.yaml"):
+        legacy_path = base_dir / legacy_name
+        if legacy_path.exists() and legacy_path.parent != dynamic_dir:
+            legacy_path.unlink()
+    traefik_config_path = dynamic_dir / "services.yaml"
     write_traefik_config(traefik_config_path, generate_traefik_config(services))
     return services
 
@@ -568,6 +632,13 @@ def setup_traefik(
     process_handler, install_only: bool = False, configure_only: bool = False
 ) -> Optional[tuple]:
     """Configures and starts Traefik using ProcessHandler."""
+    with _TRAEFIK_SETUP_LOCK:
+        return _setup_traefik_locked(process_handler, install_only, configure_only)
+
+
+def _setup_traefik_locked(
+    process_handler, install_only: bool = False, configure_only: bool = False
+) -> Optional[tuple]:
     traefik_config = _get_traefik_config()
     if not traefik_config or not traefik_config.get("enabled"):
         logger.info("Traefik is disabled. Skipping setup.")
@@ -594,7 +665,10 @@ def setup_traefik(
         return True, None
 
     config_dir = str(get_traefik_config_dir())
+    dynamic_config_dir = str(get_traefik_dynamic_config_dir())
     os.makedirs(config_dir, exist_ok=True)
+    os.makedirs(dynamic_config_dir, exist_ok=True)
+    _ensure_traefik_tree_accessible(config_dir, dynamic_config_dir)
 
     logger.info("Setting up Traefik configuration in %s", config_dir)
 
@@ -629,11 +703,43 @@ def setup_traefik(
         },
         "providers": {
             "file": {
-                "filename": os.path.join(config_dir, "services.yaml"),
+                "directory": dynamic_config_dir,
                 "watch": True,
             }
         },
     }
+    tpa_config = CONFIG_MANAGER.get("traefik_proxy_admin") or {}
+    if tpa_config.get("enabled"):
+        tpa_port = tpa_config.get("port", 3004)
+        tpa_provider_endpoint = f"http://127.0.0.1:{tpa_port}/api/traefik/config?dumb_provider=traefik"
+        static_config["providers"]["http"] = {
+            "endpoint": tpa_provider_endpoint,
+            "pollInterval": "10s",
+        }
+        expected_wait_for_url = [
+            {
+                "url": tpa_provider_endpoint,
+                "expected_json_path": "http",
+            }
+        ]
+        if traefik_config.get("wait_for_url") != expected_wait_for_url:
+            traefik_config["wait_for_url"] = expected_wait_for_url
+            CONFIG_MANAGER.save_config(traefik_config.get("process_name", "Traefik"))
+    elif traefik_config.get("wait_for_url"):
+        filtered_waits = [
+            entry
+            for entry in traefik_config.get("wait_for_url", [])
+            if not (
+                isinstance(entry, dict)
+                and "/api/traefik/config" in str(entry.get("url", ""))
+            )
+        ]
+        if filtered_waits != traefik_config.get("wait_for_url"):
+            if filtered_waits:
+                traefik_config["wait_for_url"] = filtered_waits
+            else:
+                traefik_config.pop("wait_for_url", None)
+            CONFIG_MANAGER.save_config(traefik_config.get("process_name", "Traefik"))
     if not access_log_file:
         # Keep Traefik writing to a file unless we manage rotation via subprocess logging.
         static_config["accessLog"]["filePath"] = os.path.join(
@@ -674,7 +780,10 @@ def setup_traefik(
         }
         has_dynamic = True
 
-    dynamic_config_path = os.path.join(config_dir, "dynamic_config.yml")
+    legacy_dynamic_config_path = os.path.join(config_dir, "dynamic_config.yml")
+    if os.path.exists(legacy_dynamic_config_path):
+        os.remove(legacy_dynamic_config_path)
+    dynamic_config_path = os.path.join(dynamic_config_dir, "dynamic_config.yml")
     if has_dynamic:
         with open(dynamic_config_path, "w") as file:
             yaml.dump(dynamic_config, file, default_flow_style=False)
@@ -683,5 +792,6 @@ def setup_traefik(
         os.remove(dynamic_config_path)
 
     ensure_ui_services_config(config_dir)
+    _ensure_traefik_tree_accessible(config_dir, dynamic_config_dir)
 
     return True, None

@@ -207,6 +207,8 @@ NON_CORE_HARD_DEPENDENCIES = {
     "riven_frontend": ["riven_backend"],
     "zilean": ["postgres"],
     "pgadmin": ["postgres"],
+    "traefik_proxy_admin": ["postgres"],
+    "cloudflared": ["traefik"],
 }
 DOCUMENTED_INTEGRATION_LINKS = {
     "seerr": ["sonarr", "radarr"],
@@ -234,6 +236,8 @@ STATIC_URLS_BY_KEY = {
     "profilarr": "https://github.com/Dictionarry-Hub/profilarr",
     "pulsarr": "https://github.com/jamcalli/Pulsarr",
     "traefik": "https://traefik.io/",
+    "traefik_proxy_admin": "https://github.com/I-am-PUID-0/traefik-proxy-admin",
+    "cloudflared": "https://github.com/cloudflare/cloudflared",
     "neutarr": "https://github.com/I-am-PUID-0/NeutArr",
 }
 
@@ -265,6 +269,8 @@ SPONSORSHIP_URLS_BY_KEY = {
     "profilarr": "https://github.com/sponsors/Dictionarry-Hub",
     "pulsarr": "https://ko-fi.com/jamcalli",
     "traefik": "https://github.com/sponsors/traefik",
+    "traefik_proxy_admin": "https://github.com/sponsors/I-am-PUID-0",
+    "cloudflared": "https://github.com/sponsors/cloudflare",
     "neutarr": "https://github.com/sponsors/I-am-PUID-0",
     "zilean": "https://ko-fi.com/W7W616IBNG",
 }
@@ -284,6 +290,7 @@ DEFAULT_SERVICE_PORTS = {
     "neutarr": 9705,
     "profilarr": 6868,
     "pulsarr": 3003,
+    "traefik_proxy_admin": 3004,
 }
 ## Future support for restricting service port ranges
 SERVICE_PORT_RANGES = {
@@ -348,6 +355,25 @@ def _onboarding_core_dependencies(
     return deps
 
 
+# Only these services are shown on the onboarding core-service page.
+ONBOARDING_CORE_SERVICE_KEYS = {
+    "plex",
+    "jellyfin",
+    "emby",
+    "cli_debrid",
+    "decypharr",
+    "nzbdav",
+    "riven_backend",
+    "radarr",
+    "sonarr",
+    "lidarr",
+    "prowlarr",
+    "whisparr",
+    "seerr",
+    "neutarr",
+    "profilarr",
+    "plex_debrid",
+}
 # Temporarily hide not-ready services from onboarding core selection.
 ONBOARDING_HIDDEN_CORE_SERVICES = {"bazarr"}
 
@@ -376,6 +402,8 @@ CORE_SERVICE_NAMES = {
     "rclone": "rclone",
     "zurg": "Zurg",
     "traefik": "Traefik",
+    "traefik_proxy_admin": "Traefik Proxy Admin",
+    "cloudflared": "Cloudflared",
     "dumb_api_service": "DUMB API",
     "dumb_frontend": "DUMB Frontend",
     "cli_battery": "CLI Battery",
@@ -529,7 +557,7 @@ NeutArr
 Documentation: https://dumbarr.com/services/core/neutarr/""",
 }
 
-OPTIONAL_POST_CORE = ["riven_frontend"]
+OPTIONAL_POST_CORE = ["riven_frontend", "cloudflared"]
 
 OPTIONAL_SERVICES = {
     "zilean": "Zilean",
@@ -538,6 +566,8 @@ OPTIONAL_SERVICES = {
     "riven_frontend": "Riven Frontend",
     "tautulli": "Tautulli",
     "pulsarr": "Pulsarr",
+    "traefik_proxy_admin": "Traefik Proxy Admin",
+    "cloudflared": "Cloudflared",
 }
 
 OPTIONAL_SERVICES_DESCRIPTIONS = {
@@ -584,6 +614,20 @@ Pulsarr
 - Designed for fast Plex-first request automation.
 
 Documentation: https://dumbarr.com/services/optional/pulsarr""",
+    "traefik_proxy_admin": """\
+Traefik Proxy Admin
+- Optional DUMB-hosted admin panel for creating user-managed Traefik reverse proxy routes.
+- Publishes dynamic config to the built-in Traefik service through Traefik's HTTP provider.
+- Uses DUMB PostgreSQL for persistent domains, services, auth rules, and backup/restore data.
+
+Documentation: https://dumbarr.com/services/optional/traefik-proxy-admin""",
+    "cloudflared": """\
+Cloudflared
+- Runs a Cloudflare Tunnel client inside the DUMB container.
+- Lets operators expose the built-in Traefik entrypoint through a Cloudflare-managed tunnel without opening router ports.
+- Requires a Cloudflare tunnel token configured in service options before start.
+
+Documentation: https://dumbarr.com/services/optional/cloudflared""",
 }
 
 ### create a list of debrid providers that are supported by each core service, and if any core service uses zurg as a dependency, then it is limited to RealDebrid.
@@ -627,7 +671,10 @@ SERVICE_OPTION_DESCRIPTIONS = {
     "use_profilarr": "If true, auto-configures Profilarr for this Arr instance.",
     "core_service": "Specifies which core service(s) this service applies to; e.g., decypharr, nzbdav, both (decypharr,nzbdav), or none (blank).",
     "webdav_password": "Password for accessing the NzbDAV WebDAV service. Leave blank to auto-generate.",
+    "pinned_version": "The specific binary release version to deploy, or latest.",
+    "tunnel_token": "Cloudflare Tunnel token used by cloudflared to connect this DUMB instance to Cloudflare.",
 }
+
 
 BASIC_FIELDS = set(SERVICE_OPTION_DESCRIPTIONS.keys())
 ALIAS_TO_KEY = {v.lower(): k for k, v in CORE_SERVICE_NAMES.items()} | {
@@ -4343,6 +4390,8 @@ async def get_core_services(
 
     core_services = []
     for key, display_name in CORE_SERVICE_NAMES.items():
+        if key not in ONBOARDING_CORE_SERVICE_KEYS:
+            continue
         if key in ONBOARDING_HIDDEN_CORE_SERVICES:
             continue
         desc = CORE_SERVICE_DESCRIPTIONS.get(key, "No description available")
@@ -4429,6 +4478,35 @@ async def get_core_services(
     return {"core_services": core_services}
 
 
+def _read_secret_file(path: str) -> str:
+    try:
+        with open(path, "r", encoding="utf-8") as handle:
+            return handle.read().strip()
+    except OSError:
+        return ""
+
+
+def _resolve_cloudflared_tunnel_token() -> str:
+    for env_name in (
+        "CLOUDFLARED_TUNNEL_TOKEN",
+        "CF_TUNNEL_TOKEN",
+        "TUNNEL_TOKEN",
+    ):
+        value = os.environ.get(env_name)
+        if value and value.strip():
+            return value.strip()
+    for secret_path in (
+        "/run/secrets/cloudflared_tunnel_token",
+        "/run/secrets/CLOUDFLARED_TUNNEL_TOKEN",
+        "/run/secrets/cf_tunnel_token",
+        "/run/secrets/TUNNEL_TOKEN",
+    ):
+        value = _read_secret_file(secret_path)
+        if value:
+            return value
+    return ""
+
+
 @process_router.get("/optional-services")
 async def get_optional_services(
     logger=Depends(get_logger),
@@ -4476,7 +4554,7 @@ async def get_optional_services(
     ) in OPTIONAL_SERVICES.items():
         if key in core_deps:
             continue
-        if key == "postgres" and picked & {"zilean", "pgadmin"}:
+        if key == "postgres" and picked & {"zilean", "pgadmin", "traefik_proxy_admin"}:
             continue
         raw = default_conf.get(key, {})
         svc_opts = {}
@@ -4502,6 +4580,10 @@ async def get_optional_services(
                 for k in SERVICE_OPTION_DESCRIPTIONS
                 if k in raw and k in BASIC_FIELDS
             }
+        if key == "cloudflared" and not str(svc_opts.get("tunnel_token") or "").strip():
+            resolved_token = _resolve_cloudflared_tunnel_token()
+            if resolved_token:
+                svc_opts["tunnel_token"] = resolved_token
 
         svc_opt_desc = {
             field: SERVICE_OPTION_DESCRIPTIONS[field] for field in svc_opts.keys()

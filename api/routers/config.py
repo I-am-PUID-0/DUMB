@@ -11,6 +11,7 @@ from utils.config_loader import CONFIG_MANAGER, find_service_config
 from utils.traefik_setup import (
     ensure_ui_services_config,
     get_traefik_config_dir,
+    get_traefik_dynamic_config_dir,
     setup_traefik,
     build_ui_services,
 )
@@ -738,7 +739,7 @@ async def get_service_ui_links(
         traefik_config_dir = get_traefik_config_dir()
         services = ensure_ui_services_config(str(traefik_config_dir))
         services = [_normalize_direct_url(service, request) for service in services]
-        traefik_config_path = traefik_config_dir / "services.yaml"
+        traefik_config_path = get_traefik_dynamic_config_dir() / "services.yaml"
 
         logger.info("Updated Traefik configuration for service UIs.")
         return {
@@ -773,7 +774,7 @@ async def toggle_service_ui(
         traefik_config_dir = get_traefik_config_dir()
         services = ensure_ui_services_config(str(traefik_config_dir))
         services = [_normalize_direct_url(service, request) for service in services]
-        traefik_config_path = traefik_config_dir / "services.yaml"
+        traefik_config_path = get_traefik_dynamic_config_dir() / "services.yaml"
 
         if enabled:
             setup_traefik(process_handler)

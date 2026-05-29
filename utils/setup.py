@@ -1123,6 +1123,22 @@ def _setup_project(
             )
             if not success:
                 return False, error
+        if key == "traefik_proxy_admin":
+            success, error = setup_traefik_proxy_admin(
+                process_handler,
+                install_only=install_phase and not configure_phase,
+                configure_only=configure_phase and not install_phase,
+            )
+            if not success:
+                return False, error
+        if key == "cloudflared":
+            success, error = setup_cloudflared(
+                process_handler,
+                install_only=install_phase and not configure_phase,
+                configure_only=configure_phase and not install_phase,
+            )
+            if not success:
+                return False, error
         if key == "profilarr":
             success, error = setup_profilarr(
                 process_handler,
@@ -4111,6 +4127,618 @@ def setup_seerr(
             continue
 
     logger.info("Seerr setup complete.")
+    return True, None
+
+
+def _ensure_traefik_enabled(process_handler=None) -> bool:
+    traefik_config = CONFIG_MANAGER.get("traefik") or {}
+    process_name = traefik_config.get("process_name", "Traefik")
+    if traefik_config.get("enabled"):
+        return False
+    traefik_config["enabled"] = True
+    CONFIG_MANAGER.config["traefik"] = traefik_config
+    CONFIG_MANAGER.save_config(process_name)
+    return True
+
+
+def _ensure_postgres_enabled() -> bool:
+    postgres_config = CONFIG_MANAGER.get("postgres") or {}
+    process_name = postgres_config.get("process_name", "PostgreSQL")
+    if postgres_config.get("enabled"):
+        return False
+    postgres_config["enabled"] = True
+    CONFIG_MANAGER.config["postgres"] = postgres_config
+    CONFIG_MANAGER.save_config(process_name)
+    return True
+
+
+def _ensure_postgres_database_config(database_name: str) -> bool:
+    postgres_config = CONFIG_MANAGER.get("postgres") or {}
+    databases = postgres_config.setdefault("databases", [])
+    if any(db.get("name") == database_name for db in databases if isinstance(db, dict)):
+        return False
+    databases.append({"name": database_name, "enabled": True})
+    CONFIG_MANAGER.config["postgres"] = postgres_config
+    CONFIG_MANAGER.save_config(postgres_config.get("process_name", "PostgreSQL"))
+    return True
+
+
+def _postgres_database_url(database_name: str) -> str:
+    postgres_config = CONFIG_MANAGER.get("postgres") or {}
+    host = postgres_config.get("host", "127.0.0.1")
+    port = postgres_config.get("port", 5432)
+    user = _sanitize_credential(str(postgres_config.get("user", "DUMB")))
+    password = _sanitize_credential(str(postgres_config.get("password", "postgres")))
+    encoded_user = urllib.parse.quote(user, safe="")
+    encoded_password = urllib.parse.quote(password, safe="")
+    return f"postgresql://{encoded_user}:{encoded_password}@{host}:{port}/{database_name}"
+
+
+
+def _patch_traefik_proxy_admin_for_dumb(config_dir: str) -> bool:
+    """Patch known TPA release issues until the bundled release includes them."""
+    patched = False
+
+    instrumentation_path = os.path.join(config_dir, "src", "instrumentation.ts")
+    try:
+        with open(instrumentation_path, "r", encoding="utf-8") as handle:
+            content = handle.read()
+    except OSError:
+        content = ""
+
+    if content:
+        updated = content
+        updated = updated.replace(
+            'import { dbCredentials, migrationsFolder } from "../drizzle.config";\nimport postgres from "postgres";',
+            'import { dbCredentials, migrationsFolder as configuredMigrationsFolder } from "../drizzle.config";\n'
+            'import postgres from "postgres";',
+        )
+        marker = "const LATEST_MIGRATION_CREATED_AT = 1779414000000;\n\n"
+        helper = (
+            "const LATEST_MIGRATION_CREATED_AT = 1779414000000;\n\n"
+            "function isBuildPhase() {\n"
+            "  return (\n"
+            "    process.env.NEXT_PHASE === \"phase-production-build\" ||\n"
+            "    process.env.npm_lifecycle_event === \"build\"\n"
+            "  );\n"
+            "}\n\n"
+            "function resolveMigrationsFolder() {\n"
+            "  // Keep Node-only modules behind runtime require calls so Next/Turbopack does\n"
+            "  // not try to bundle this helper for the Edge instrumentation path.\n"
+            "  // eslint-disable-next-line @typescript-eslint/no-require-imports\n"
+            "  const fs = require(\"fs\") as typeof import(\"fs\");\n"
+            "  // eslint-disable-next-line @typescript-eslint/no-require-imports\n"
+            "  const path = require(\"path\") as typeof import(\"path\");\n\n"
+            "  const configured = configuredMigrationsFolder || \"./drizzle/migrations\";\n"
+            "  const workingDirectory = process.env.PWD || \".\";\n"
+            "  const candidates = [\n"
+            "    path.isAbsolute(configured) ? configured : path.resolve(workingDirectory, configured),\n"
+            "    path.resolve(workingDirectory, \"drizzle/migrations\"),\n"
+            "    path.resolve(workingDirectory, \".next/standalone/drizzle/migrations\"),\n"
+            "    path.resolve(workingDirectory, \"../drizzle/migrations\"),\n"
+            "    path.join(__dirname, \"../drizzle/migrations\"),\n"
+            "    path.join(__dirname, \"../../drizzle/migrations\"),\n"
+            "    path.join(__dirname, \"../../../drizzle/migrations\"),\n"
+            "  ];\n\n"
+            "  const found = candidates.find((candidate) =>\n"
+            "    fs.existsSync(path.join(candidate, \"meta\", \"_journal.json\")),\n"
+            "  );\n\n"
+            "  return found ?? candidates[0];\n"
+            "}\n\n"
+        )
+        if "function resolveMigrationsFolder()" not in updated:
+            updated = updated.replace(marker, helper)
+        updated = updated.replace(
+            "await migrate(db, { migrationsFolder: migrationsFolder });",
+            "await migrate(db, { migrationsFolder: resolveMigrationsFolder() });",
+        )
+        updated = updated.replace(
+            '  if (process.env.NEXT_RUNTIME !== "nodejs") {\n'
+            '    return;\n'
+            '  }\n'
+            '  process.env["BUILD_ID"] = getBuildId();',
+            '  if (process.env.NEXT_RUNTIME !== "nodejs") {\n'
+            '    return;\n'
+            '  }\n'
+            '  if (isBuildPhase()) {\n'
+            '    return;\n'
+            '  }\n'
+            '  process.env["BUILD_ID"] = getBuildId();',
+        )
+        if updated != content:
+            with open(instrumentation_path, "w", encoding="utf-8") as handle:
+                handle.write(updated)
+            logger.info("Applied Traefik Proxy Admin DUMB startup compatibility patch.")
+            patched = True
+
+
+
+    startup_path = os.path.join(config_dir, "src", "lib", "startup.ts")
+    try:
+        with open(startup_path, "r", encoding="utf-8") as handle:
+            content = handle.read()
+    except OSError:
+        content = ""
+
+    if content:
+        updated = content
+        if "function isBuildPhase()" not in updated:
+            updated = updated.replace(
+                "let isInitialized = false;\n",
+                "let isInitialized = false;\n\n"
+                "function isBuildPhase() {\n"
+                "  return (\n"
+                "    process.env.NEXT_PHASE === \"phase-production-build\" ||\n"
+                "    process.env.npm_lifecycle_event === \"build\"\n"
+                "  );\n"
+                "}\n",
+            )
+        updated = updated.replace(
+            'if (typeof window === "undefined") { // Server-side only\n  initializeServices();\n}',
+            'if (typeof window === "undefined" && !isBuildPhase()) { // Server-side runtime only\n  initializeServices();\n}',
+        )
+        if updated != content:
+            with open(startup_path, "w", encoding="utf-8") as handle:
+                handle.write(updated)
+            logger.info("Applied Traefik Proxy Admin build-time scheduler guard patch.")
+            patched = True
+
+    route_path = os.path.join(config_dir, "src", "app", "api", "traefik", "config", "route.ts")
+    try:
+        with open(route_path, "r", encoding="utf-8") as handle:
+            content = handle.read()
+    except OSError:
+        content = ""
+
+    if content and "const traefikConfig = \"http\" in config ? config : { http: config };" not in content:
+        updated = content.replace(
+            "    const config = await generateTraefikConfig();\n    return NextResponse.json(config);",
+            "    const config = await generateTraefikConfig();\n"
+            "    const traefikConfig = \"http\" in config ? config : { http: config };\n"
+            "    return NextResponse.json(traefikConfig);",
+        )
+        if updated != content:
+            with open(route_path, "w", encoding="utf-8") as handle:
+                handle.write(updated)
+            logger.info("Applied Traefik Proxy Admin provider response compatibility patch.")
+            patched = True
+
+    next_config_path = os.path.join(config_dir, "next.config.ts")
+    try:
+        with open(next_config_path, "r", encoding="utf-8") as handle:
+            content = handle.read()
+    except OSError:
+        content = ""
+
+    if content and "./drizzle/migrations/**/*" not in content:
+        updated = content.replace(
+            '"/*": ["./docs/**/*"],',
+            '"/*": ["./docs/**/*", "./drizzle/migrations/**/*"],',
+        )
+        if updated != content:
+            with open(next_config_path, "w", encoding="utf-8") as handle:
+                handle.write(updated)
+            logger.info("Included Traefik Proxy Admin migrations in standalone tracing.")
+            patched = True
+
+    return patched
+
+
+def _sync_traefik_proxy_admin_standalone_assets(config_dir: str) -> bool:
+    standalone_dir = os.path.join(config_dir, ".next", "standalone")
+    if not os.path.isdir(standalone_dir):
+        return False
+
+    changed = False
+    source_static = os.path.join(config_dir, ".next", "static")
+    target_static = os.path.join(standalone_dir, ".next", "static")
+    if os.path.isdir(source_static):
+        if os.path.exists(target_static):
+            shutil.rmtree(target_static)
+        os.makedirs(os.path.dirname(target_static), exist_ok=True)
+        shutil.copytree(source_static, target_static)
+        changed = True
+
+    source_public = os.path.join(config_dir, "public")
+    target_public = os.path.join(standalone_dir, "public")
+    if os.path.isdir(source_public):
+        if os.path.exists(target_public):
+            shutil.rmtree(target_public)
+        shutil.copytree(source_public, target_public)
+        changed = True
+
+    if changed:
+        logger.info("Synced Traefik Proxy Admin standalone static assets.")
+        chown_recursive(standalone_dir, CONFIG_MANAGER.get("puid"), CONFIG_MANAGER.get("pgid"))
+    return changed
+
+def setup_traefik_proxy_admin(
+    process_handler, install_only: bool = False, configure_only: bool = False
+):
+    config = CONFIG_MANAGER.get("traefik_proxy_admin")
+    if not config:
+        return False, "Traefik Proxy Admin configuration not found."
+    if not config.get("enabled", False):
+        logger.debug("Skipping disabled Traefik Proxy Admin service.")
+        return True, None
+    if install_only and configure_only:
+        return False, "Invalid Traefik Proxy Admin setup phase."
+
+    config_dir = config.get("config_dir") or "/traefik-proxy-admin"
+    config["config_dir"] = config_dir
+    os.makedirs(config_dir, exist_ok=True)
+    os.makedirs("/log", exist_ok=True)
+
+    changed = False
+    if _ensure_traefik_enabled(process_handler):
+        changed = True
+    if _ensure_postgres_enabled():
+        changed = True
+    if _ensure_postgres_database_config("traefik_proxy_admin"):
+        changed = True
+
+    postgres_config = CONFIG_MANAGER.get("postgres") or {}
+    postgres_host = postgres_config.get("host", "127.0.0.1")
+    postgres_port = int(postgres_config.get("port", 5432) or 5432)
+    expected_wait_for_tcp = [
+        {
+            "name": "PostgreSQL",
+            "host": postgres_host,
+            "port": postgres_port,
+            "timeout": 2,
+        }
+    ]
+    if config.get("wait_for_tcp") != expected_wait_for_tcp:
+        config["wait_for_tcp"] = expected_wait_for_tcp
+        changed = True
+
+    port_value = str(config.get("port", 3004))
+    traefik_cfg = CONFIG_MANAGER.get("traefik") or {}
+    entrypoints = traefik_cfg.get("entrypoints") or {}
+    web_address = entrypoints.get("web", {}).get("address", ":18080")
+    match = re.search(r":(\d+)$", str(web_address).strip())
+    web_port = int(match.group(1)) if match else 18080
+
+    env = config.get("env", {}) or {}
+    pnpm_runtime_root = os.path.join("/config", ".pnpm-store", "traefik-proxy-admin-runtime")
+    pnpm_home = os.path.join(pnpm_runtime_root, "pnpm-home")
+    pnpm_store = os.path.join(pnpm_runtime_root, "store")
+    pnpm_cache = os.path.join(pnpm_runtime_root, "npm-cache")
+    xdg_data_home = os.path.join(pnpm_runtime_root, "xdg-data")
+    xdg_cache_home = os.path.join(pnpm_runtime_root, "xdg-cache")
+    for runtime_dir in (pnpm_home, pnpm_store, pnpm_cache, xdg_data_home, xdg_cache_home):
+        os.makedirs(runtime_dir, exist_ok=True)
+        _chown_recursive_if_needed(
+            runtime_dir, CONFIG_MANAGER.get("puid"), CONFIG_MANAGER.get("pgid")
+        )
+    npmrc_path = os.path.join(config_dir, ".npmrc")
+    if not os.path.exists(npmrc_path):
+        with open(npmrc_path, "w") as npmrc:
+            npmrc.write(
+                f"store-dir={pnpm_store}\n"
+                "package-import-method=copy\n"
+                "child-concurrency=1\n"
+                "network-concurrency=1\n"
+            )
+    if not env.get("ADMIN_AUTH_SECRET"):
+        env["ADMIN_AUTH_SECRET"] = secrets.token_urlsafe(48)
+        changed = True
+    existing_path = env.get("PATH") or os.environ.get("PATH", "")
+    default_target_test_cidrs = "10.0.0.0/16,172.20.0.0/16,192.168.0.0/16,127.0.0.0/8"
+    legacy_target_test_cidrs = {
+        "10.0.0.0/24,172.20.0.0/16,127.0.0.0/8",
+        "10.0.0.0/24,172.20.0.0/16,192.168.0.0/16,127.0.0.0/8",
+    }
+    if not env.get("TARGET_TEST_ALLOW_CIDRS") or env.get("TARGET_TEST_ALLOW_CIDRS") in legacy_target_test_cidrs:
+        env["TARGET_TEST_ALLOW_CIDRS"] = default_target_test_cidrs
+        changed = True
+    expected_env = {
+        "NODE_ENV": "production",
+        "PORT": port_value,
+        "HOSTNAME": "0.0.0.0",
+        "HOME": config_dir,
+        "PNPM_HOME": pnpm_home,
+        "XDG_DATA_HOME": xdg_data_home,
+        "XDG_CACHE_HOME": xdg_cache_home,
+        "npm_config_userconfig": npmrc_path,
+        "npm_config_cache": pnpm_cache,
+        "npm_config_store_dir": pnpm_store,
+        "PATH": f"{pnpm_home}:{existing_path}",
+        "ADMIN_AUTH_ENABLED": env.get("ADMIN_AUTH_ENABLED", "true"),
+        "ADMIN_AUTH_PROVIDER": env.get("ADMIN_AUTH_PROVIDER", "local"),
+        "DATABASE_URL": env.get("DATABASE_URL") or _postgres_database_url("traefik_proxy_admin"),
+        "TRAEFIK_API_URL": f"http://127.0.0.1:{web_port + 1}",
+        "TRAEFIK_ACCESS_LOG_PATH": config.get("traefik_access_log_path") or "/log/traefik_access.log",
+        "NEXT_TELEMETRY_DISABLED": "1",
+    }
+    for key_name, value in expected_env.items():
+        if env.get(key_name) != value:
+            env[key_name] = value
+            changed = True
+    config["env"] = env
+
+    command = config.get("command")
+    legacy_commands = [
+        ["/bin/bash", "-lc", 'exec pnpm start -- -H 0.0.0.0 -p "$PORT"'],
+        ["/bin/bash", "-c", 'exec pnpm start -- -H 0.0.0.0 -p "$PORT"'],
+        ["/bin/bash", "-c", 'exec pnpm exec next start -H 0.0.0.0 -p "$PORT"'],
+    ]
+    expected_command = [
+        "/bin/bash",
+        "-c",
+        'if [ -f .next/standalone/server.js ]; then exec node .next/standalone/server.js; else exec pnpm exec next start -H 0.0.0.0 -p "$PORT"; fi',
+    ]
+    if not command or command in legacy_commands:
+        config["command"] = expected_command
+        changed = True
+
+    if changed and not install_only:
+        CONFIG_MANAGER.save_config(config.get("process_name", "Traefik Proxy Admin"))
+
+    _chown_recursive_if_needed(
+        config_dir, CONFIG_MANAGER.get("puid"), CONFIG_MANAGER.get("pgid")
+    )
+
+    package_marker = os.path.join(config_dir, "package.json")
+    build_marker = os.path.join(config_dir, ".next", "BUILD_ID")
+    needs_download = not os.path.isfile(package_marker)
+    if needs_download and configure_only:
+        return False, "Traefik Proxy Admin is not installed."
+
+    if needs_download:
+        logger.warning("Traefik Proxy Admin not found at %s. Downloading...", package_marker)
+        exclude_dirs = None
+        if config.get("clear_on_update"):
+            exclude_dirs = config.get("exclude_dirs", [])
+            success, error = clear_directory(config_dir, exclude_dirs)
+            if not success:
+                return False, f"Failed to clear Traefik Proxy Admin directory: {error}"
+
+        if config.get("branch_enabled"):
+            branch = config.get("branch", "main")
+            branch_url, zip_folder_name = downloader.get_branch(
+                config.get("repo_owner"), config.get("repo_name"), branch
+            )
+            if not branch_url:
+                return False, f"Failed to fetch Traefik Proxy Admin branch {branch}"
+            success, error = downloader.download_and_extract(
+                branch_url,
+                config_dir,
+                zip_folder_name=zip_folder_name,
+                exclude_dirs=exclude_dirs,
+            )
+            if not success:
+                return False, f"Failed to download Traefik Proxy Admin branch: {error}"
+            branch_sha, _ = _fetch_branch_head_sha(
+                config.get("repo_owner"), config.get("repo_name"), branch
+            )
+            version_value = f"{branch}-{branch_sha[:8]}" if branch_sha else f"branch:{branch}"
+        else:
+            release_version = config.get("release_version", "latest")
+            version_value = release_version
+            if str(release_version).lower() == "latest":
+                latest_version, latest_error = downloader.get_latest_release(
+                    config.get("repo_owner"), config.get("repo_name"), nightly=False
+                )
+                if latest_version:
+                    version_value = latest_version
+                else:
+                    logger.warning(
+                        "Failed to resolve latest Traefik Proxy Admin version: %s",
+                        latest_error,
+                    )
+            success, error = downloader.download_release_version(
+                process_name=config.get("process_name"),
+                key="traefik_proxy_admin",
+                repo_owner=config.get("repo_owner"),
+                repo_name=config.get("repo_name"),
+                release_version=release_version,
+                target_dir=config_dir,
+                exclude_dirs=exclude_dirs,
+            )
+            if not success:
+                return False, f"Failed to download Traefik Proxy Admin release: {error}"
+        versions.version_write(
+            config.get("process_name"),
+            key="traefik_proxy_admin",
+            version_path=os.path.join(config_dir, "version.txt"),
+            version=version_value,
+        )
+        chown_recursive(config_dir, CONFIG_MANAGER.get("puid"), CONFIG_MANAGER.get("pgid"))
+
+    patched_tpa = _patch_traefik_proxy_admin_for_dumb(config_dir)
+
+    if patched_tpa:
+        chown_recursive(config_dir, CONFIG_MANAGER.get("puid"), CONFIG_MANAGER.get("pgid"))
+
+    if config.get("platforms") and not configure_only:
+        if needs_download or patched_tpa or not os.path.isfile(build_marker):
+            success, error = setup_environment(
+                process_handler,
+                "traefik_proxy_admin",
+                config.get("platforms"),
+                config_dir,
+            )
+            if not success:
+                return False, f"Failed to set up Traefik Proxy Admin environment: {error}"
+
+    _sync_traefik_proxy_admin_standalone_assets(config_dir)
+
+    if install_only:
+        return True, None
+
+    logger.info("Traefik Proxy Admin setup complete.")
+    return True, None
+
+
+def _read_secret_file(path: str) -> str:
+    try:
+        with open(path, "r", encoding="utf-8") as handle:
+            return handle.read().strip()
+    except OSError:
+        return ""
+
+
+def _resolve_cloudflared_tunnel_token(config: dict | None = None) -> str:
+    config = config or {}
+    env = config.get("env") if isinstance(config.get("env"), dict) else {}
+    for value in (
+        config.get("tunnel_token"),
+        env.get("TUNNEL_TOKEN"),
+        env.get("CLOUDFLARED_TUNNEL_TOKEN"),
+        env.get("CF_TUNNEL_TOKEN"),
+    ):
+        if value and str(value).strip():
+            return str(value).strip()
+    for env_name in (
+        "CLOUDFLARED_TUNNEL_TOKEN",
+        "CF_TUNNEL_TOKEN",
+        "TUNNEL_TOKEN",
+    ):
+        value = os.environ.get(env_name)
+        if value and value.strip():
+            return value.strip()
+    for secret_path in (
+        "/run/secrets/cloudflared_tunnel_token",
+        "/run/secrets/CLOUDFLARED_TUNNEL_TOKEN",
+        "/run/secrets/cf_tunnel_token",
+        "/run/secrets/TUNNEL_TOKEN",
+    ):
+        value = _read_secret_file(secret_path)
+        if value:
+            return value
+    return ""
+
+
+def _normalize_cloudflared_version(value: str | None) -> str:
+    value = str(value or "latest").strip()
+    if not value or value.lower() == "latest":
+        return "latest"
+    return value if value.startswith("v") else f"v{value}"
+
+
+def _cloudflared_version_file(config_dir: str) -> str:
+    return os.path.join(config_dir, "version.txt")
+
+
+def _read_cloudflared_version(config_dir: str) -> str | None:
+    try:
+        with open(_cloudflared_version_file(config_dir), "r", encoding="utf-8") as handle:
+            return handle.read().strip() or None
+    except OSError:
+        return None
+
+
+def _download_cloudflared_binary(config: dict, target_bin: str) -> tuple[bool, str | None]:
+    requested = _normalize_cloudflared_version(config.get("pinned_version"))
+    release_tag = requested
+    if requested == "latest":
+        latest_version, latest_error = downloader.get_latest_release(
+            "cloudflare", "cloudflared", nightly=False
+        )
+        if not latest_version:
+            return False, latest_error or "Failed to resolve latest cloudflared release."
+        requested = latest_version
+    release_info, error = downloader.fetch_github_release_info(
+        "cloudflare", "cloudflared", requested
+    )
+    if error or not release_info:
+        return False, error or "Failed to fetch cloudflared release information."
+    release_tag = release_info.get("tag_name") or requested
+    arch = downloader.get_architecture()
+    expected_asset = f"cloudflared-{arch}"
+    asset = None
+    for candidate in release_info.get("assets", []):
+        if candidate.get("name") == expected_asset:
+            asset = candidate
+            break
+    if not asset:
+        return False, f"No cloudflared asset found for {arch}."
+    download_url = asset.get("browser_download_url")
+    if not download_url:
+        return False, "cloudflared asset download URL missing."
+
+    logger.info("Downloading cloudflared %s from %s", release_tag, download_url)
+    os.makedirs(os.path.dirname(target_bin), exist_ok=True)
+    temp_path = f"{target_bin}.download"
+    with requests.get(download_url, stream=True, timeout=60) as response:
+        response.raise_for_status()
+        with open(temp_path, "wb") as handle:
+            for chunk in response.iter_content(chunk_size=1024 * 1024):
+                if chunk:
+                    handle.write(chunk)
+    os.replace(temp_path, target_bin)
+    os.chmod(target_bin, 0o755)
+    with open(_cloudflared_version_file(os.path.dirname(target_bin)), "w", encoding="utf-8") as handle:
+        handle.write(str(release_tag))
+    return True, None
+
+
+def setup_cloudflared(
+    process_handler, install_only: bool = False, configure_only: bool = False
+):
+    config = CONFIG_MANAGER.get("cloudflared")
+    if not config:
+        return False, "Cloudflared configuration not found."
+    if not config.get("enabled", False):
+        logger.debug("Skipping disabled Cloudflared service.")
+        return True, None
+    if install_only and configure_only:
+        return False, "Invalid Cloudflared setup phase."
+
+    _ensure_traefik_enabled(process_handler)
+
+    config_dir = config.get("config_dir") or "/cloudflared"
+    config["config_dir"] = config_dir
+    os.makedirs(config_dir, exist_ok=True)
+    os.makedirs("/log", exist_ok=True)
+    cloudflared_bin = os.path.join(config_dir, "cloudflared")
+
+    env = config.get("env", {}) or {}
+    if env.get("HOME") != config_dir:
+        env["HOME"] = config_dir
+    token = _resolve_cloudflared_tunnel_token(config)
+    if token:
+        env["TUNNEL_TOKEN"] = token
+        if not str(config.get("tunnel_token") or "").strip():
+            config["tunnel_token"] = token
+    config["env"] = env
+    if not token:
+        return False, "Cloudflared requires tunnel_token or env.TUNNEL_TOKEN."
+
+    command = config.get("command")
+    legacy_cloudflared_command = [
+        "/bin/bash",
+        "-lc",
+        'exec /cloudflared/cloudflared tunnel --no-autoupdate run --token "$TUNNEL_TOKEN"',
+    ]
+    expected_cloudflared_command = [
+        "/bin/bash",
+        "-c",
+        'exec /cloudflared/cloudflared tunnel --no-autoupdate run --token "$TUNNEL_TOKEN"',
+    ]
+    if not command or command == legacy_cloudflared_command:
+        config["command"] = expected_cloudflared_command
+
+    target_version = _normalize_cloudflared_version(config.get("pinned_version"))
+    current_version = _read_cloudflared_version(config_dir)
+    needs_download = not os.path.isfile(cloudflared_bin) or not os.access(cloudflared_bin, os.X_OK)
+    if target_version != "latest" and current_version != target_version:
+        needs_download = True
+    if needs_download and configure_only:
+        return False, f"cloudflared binary not found at {cloudflared_bin}."
+    if needs_download:
+        success, error = _download_cloudflared_binary(config, cloudflared_bin)
+        if not success:
+            return False, error
+
+    chown_single(config_dir, CONFIG_MANAGER.get("puid"), CONFIG_MANAGER.get("pgid"))
+    CONFIG_MANAGER.save_config(config.get("process_name", "Cloudflared"))
+
+    if install_only:
+        return True, None
+
+    logger.info("Cloudflared setup complete.")
     return True, None
 
 

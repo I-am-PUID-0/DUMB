@@ -179,6 +179,22 @@ class Versions:
                     config.get("config_dir", "/pulsarr"), "version.txt"
                 )
                 is_file = True
+            elif key == "traefik_proxy_admin":
+                config = CONFIG_MANAGER.get_instance(instance_name, key)
+                if not config:
+                    raise ValueError(f"Configuration for {process_name} not found.")
+                version_path = os.path.join(
+                    config.get("config_dir", "/traefik-proxy-admin"), "version.txt"
+                )
+                is_file = True
+            elif key == "cloudflared":
+                config = CONFIG_MANAGER.get_instance(instance_name, key)
+                if not config:
+                    raise ValueError(f"Configuration for {process_name} not found.")
+                version_path = os.path.join(
+                    config.get("config_dir", "/cloudflared"), "version.txt"
+                )
+                is_file = True
             elif key == "profilarr":
                 config = CONFIG_MANAGER.get_instance(instance_name, key)
                 if not config:
@@ -408,6 +424,8 @@ class Versions:
                             or key == "huntarr"
                             or key == "seerr"
                             or key == "pulsarr"
+                            or key == "traefik_proxy_admin"
+                            or key == "cloudflared"
                             or key == "profilarr"
                             or key == "emby"
                         ):
@@ -465,6 +483,14 @@ class Versions:
                     f.write(version)
             elif key == "pulsarr":
                 version_path = version_path or "/pulsarr/version.txt"
+                with open(version_path, "w") as f:
+                    f.write(version)
+            elif key == "traefik_proxy_admin":
+                version_path = version_path or "/traefik-proxy-admin/version.txt"
+                with open(version_path, "w") as f:
+                    f.write(version)
+            elif key == "cloudflared":
+                version_path = version_path or "/cloudflared/version.txt"
                 with open(version_path, "w") as f:
                     f.write(version)
             elif key == "neutarr":

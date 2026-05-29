@@ -58,7 +58,12 @@ def build_conditional_dependency_map(
         "riven_frontend": {"riven_backend"},
         "zilean": {"postgres"},
         "pgadmin": {"postgres"},
+        "traefik_proxy_admin": {"postgres"},
+        "cloudflared": {"traefik"},
     }
+
+    if _service_has_enabled_instance(config_getter("traefik_proxy_admin")):
+        deps.setdefault("traefik", set()).add("traefik_proxy_admin")
 
     # -- Media-server-conditional deps --
     if _service_has_enabled_instance(config_getter("plex")):

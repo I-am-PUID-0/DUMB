@@ -130,6 +130,84 @@
     "config_dir": "/config/traefik",
     "config_file": "/config/traefik/traefik.yml"
   },
+  "traefik_proxy_admin": {
+    "enabled": false,
+    "process_name": "Traefik Proxy Admin",
+    "repo_owner": "I-am-PUID-0",
+    "repo_name": "traefik-proxy-admin",
+    "release_version_enabled": false,
+    "release_version": "latest",
+    "branch_enabled": false,
+    "branch": "main",
+    "suppress_logging": false,
+    "log_level": "INFO",
+    "port": 3004,
+    "auto_update": false,
+    "auto_update_interval": 24,
+    "auto_update_start_time": "04:00",
+    "clear_on_update": true,
+    "exclude_dirs": [
+      "/traefik-proxy-admin/.next/cache",
+      "/traefik-proxy-admin/node_modules"
+    ],
+    "platforms": [
+      "pnpm"
+    ],
+    "command": [
+      "/bin/bash",
+      "-c",
+      "if [ -f .next/standalone/server.js ]; then exec node .next/standalone/server.js; else exec pnpm exec next start -H 0.0.0.0 -p \"$PORT\"; fi"
+    ],
+    "config_dir": "/traefik-proxy-admin",
+    "log_file": "/log/traefik_proxy_admin.log",
+    "env": {
+      "NODE_ENV": "production",
+      "PORT": "3004",
+      "HOSTNAME": "0.0.0.0",
+      "ADMIN_AUTH_ENABLED": "true",
+      "ADMIN_AUTH_PROVIDER": "local",
+      "TRAEFIK_API_URL": "http://127.0.0.1:18081",
+      "TRAEFIK_ACCESS_LOG_PATH": "/log/traefik_access.log",
+      "TARGET_TEST_ALLOW_CIDRS": "10.0.0.0/16,172.20.0.0/16,192.168.0.0/16,127.0.0.0/8",
+      "NEXT_TELEMETRY_DISABLED": "1",
+      "HOME": "/traefik-proxy-admin",
+      "PNPM_HOME": "/config/.pnpm-store/traefik-proxy-admin-runtime/pnpm-home",
+      "XDG_DATA_HOME": "/config/.pnpm-store/traefik-proxy-admin-runtime/xdg-data",
+      "XDG_CACHE_HOME": "/config/.pnpm-store/traefik-proxy-admin-runtime/xdg-cache",
+      "npm_config_userconfig": "/traefik-proxy-admin/.npmrc",
+      "npm_config_cache": "/config/.pnpm-store/traefik-proxy-admin-runtime/npm-cache",
+      "npm_config_store_dir": "/config/.pnpm-store/traefik-proxy-admin-runtime/store"
+    },
+    "wait_for_tcp": [
+      {
+        "name": "PostgreSQL",
+        "host": "127.0.0.1",
+        "port": 5432,
+        "timeout": 2
+      }
+    ]
+  },
+  "cloudflared": {
+    "enabled": false,
+    "process_name": "Cloudflared",
+    "pinned_version": "latest",
+    "suppress_logging": false,
+    "log_level": "INFO",
+    "auto_update": false,
+    "auto_update_interval": 24,
+    "auto_update_start_time": "04:00",
+    "config_dir": "/cloudflared",
+    "log_file": "/log/cloudflared.log",
+    "tunnel_token": "",
+    "command": [
+      "/bin/bash",
+      "-c",
+      "exec /cloudflared/cloudflared tunnel --no-autoupdate run --token \"$TUNNEL_TOKEN\""
+    ],
+    "env": {
+      "HOME": "/cloudflared"
+    }
+  },
   "cli_debrid": {
     "enabled": false,
     "process_name": "CLI Debrid",
@@ -680,6 +758,10 @@
       },
       {
         "name": "riven",
+        "enabled": true
+      },
+      {
+        "name": "traefik_proxy_admin",
         "enabled": true
       }
     ],

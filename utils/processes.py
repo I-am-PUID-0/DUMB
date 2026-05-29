@@ -2,6 +2,7 @@ from utils.logger import (
     SubprocessLogger,
     get_subprocess_file_logger,
     get_subprocess_access_logger,
+    redact_sensitive_log_data,
 )
 from utils.config_loader import CONFIG_MANAGER
 from utils.wait_for_url import wait_for_urls
@@ -256,6 +257,43 @@ class ProcessHandler:
                         time.sleep(sleep_s)
                         sleep_s = min(60, int(sleep_s * 1.5))
 
+                wait_tcp_entries = config_for_wait.get("wait_for_tcp") or []
+                if wait_tcp_entries:
+                    if isinstance(wait_tcp_entries, dict):
+                        wait_tcp_entries = [wait_tcp_entries]
+                    sleep_s = 2
+                    while True:
+                        if self.shutting_down:
+                            self.logger.info(
+                                "Shutdown requested; skipping wait for TCP dependencies."
+                            )
+                            return False, "Shutdown requested"
+                        missing = []
+                        for entry in wait_tcp_entries:
+                            if not isinstance(entry, dict):
+                                continue
+                            host = str(entry.get("host") or "127.0.0.1")
+                            try:
+                                port = int(entry.get("port"))
+                            except (TypeError, ValueError):
+                                continue
+                            label = entry.get("name") or f"{host}:{port}"
+                            timeout = float(entry.get("timeout", 2) or 2)
+                            try:
+                                with socket.create_connection((host, port), timeout=timeout):
+                                    continue
+                            except OSError as exc:
+                                missing.append(f"{label} ({host}:{port}: {exc})")
+                        if not missing:
+                            break
+                        self.logger.info(
+                            "Waiting for TCP dependencies before starting %s: %s",
+                            process_name,
+                            "; ".join(missing),
+                        )
+                        time.sleep(sleep_s)
+                        sleep_s = min(30, int(sleep_s * 1.5) or 2)
+
                 wait_urls = config_for_wait.get("wait_for_url") or []
                 if wait_urls:
                     url_list = [
@@ -377,6 +415,8 @@ class ProcessHandler:
                 "postgres",
                 "profilarr",
                 "pulsarr",
+                "traefik_proxy_admin",
+                "cloudflared",
             }:
                 log_file = config.get("log_file")
                 if log_file:
@@ -503,6 +543,8 @@ class ProcessHandler:
 
                 # Preserve immediate-exit details so callers can surface useful setup errors.
                 self.returncode = process.returncode
+                stdout_output = redact_sensitive_log_data(stdout_output)
+                stderr_output = redact_sensitive_log_data(stderr_output)
                 self.stdout = stdout_output
                 self.stderr = stderr_output
 
@@ -805,6 +847,7 @@ class ProcessHandler:
                     "tautulli",
                     "seerr",
                     "pulsarr",
+                    "traefik_proxy_admin",
                     "prowlarr",
                     "bazarr",
                     "sonarr",
@@ -830,6 +873,7 @@ class ProcessHandler:
                     "plex_debrid",
                     "cli_debrid",
                     "cli_battery",
+                    "cloudflared",
                     "traefik",
                     "dumb_api_service",
                     "dumb_frontend",

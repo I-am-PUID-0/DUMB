@@ -946,10 +946,8 @@ def main():
             time.sleep(interval)
 
     try:
-        if config.get("traefik", {}).get("enabled"):
-            start_configured_process(config.get("traefik", {}), updater, "traefik")
-
         grouped_keys = [
+            "traefik",
             "zurg",
             "radarr",
             "sonarr",
@@ -962,6 +960,7 @@ def main():
             "nzbdav",
             "rclone",
             "postgres",
+            "traefik_proxy_admin",
             "pgadmin",
             "zilean",
             "plex_debrid",
@@ -976,6 +975,7 @@ def main():
             "tautulli",
             "seerr",
             "pulsarr",
+            "cloudflared",
         ]
         _migrate_huntarr_to_neutarr(config)
         _enable_neutarr_if_needed(config)

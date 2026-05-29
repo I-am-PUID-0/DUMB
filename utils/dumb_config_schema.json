@@ -3520,6 +3520,228 @@
         "log_file",
         "env"
       ]
+    },
+    "traefik_proxy_admin": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "process_name": {
+          "type": "string"
+        },
+        "repo_owner": {
+          "type": "string"
+        },
+        "repo_name": {
+          "type": "string"
+        },
+        "release_version_enabled": {
+          "type": "boolean"
+        },
+        "release_version": {
+          "type": "string"
+        },
+        "branch_enabled": {
+          "type": "boolean"
+        },
+        "branch": {
+          "type": "string"
+        },
+        "pinned_version": {
+          "type": "string"
+        },
+        "suppress_logging": {
+          "type": "boolean"
+        },
+        "log_level": {
+          "type": "string"
+        },
+        "port": {
+          "type": "integer"
+        },
+        "auto_update": {
+          "type": "boolean"
+        },
+        "auto_update_interval": {
+          "type": "integer"
+        },
+        "auto_update_start_time": {
+          "type": "string"
+        },
+        "clear_on_update": {
+          "type": "boolean"
+        },
+        "exclude_dirs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "platforms": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "command": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "config_dir": {
+          "type": "string"
+        },
+        "config_file": {
+          "type": "string"
+        },
+        "log_file": {
+          "type": "string"
+        },
+        "tunnel_token": {
+          "type": "string"
+        },
+        "env": {
+          "type": "object"
+        },
+        "wait_for_tcp": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "host": {
+                "type": "string"
+              },
+              "port": {
+                "type": "integer"
+              },
+              "timeout": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "host",
+              "port"
+            ]
+          }
+        }
+      },
+      "required": [
+        "enabled",
+        "process_name",
+        "suppress_logging",
+        "log_level",
+        "command",
+        "config_dir",
+        "log_file",
+        "repo_owner",
+        "repo_name",
+        "port",
+        "platforms",
+        "env"
+      ]
+    },
+    "cloudflared": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "process_name": {
+          "type": "string"
+        },
+        "repo_owner": {
+          "type": "string"
+        },
+        "repo_name": {
+          "type": "string"
+        },
+        "release_version_enabled": {
+          "type": "boolean"
+        },
+        "release_version": {
+          "type": "string"
+        },
+        "branch_enabled": {
+          "type": "boolean"
+        },
+        "branch": {
+          "type": "string"
+        },
+        "pinned_version": {
+          "type": "string"
+        },
+        "suppress_logging": {
+          "type": "boolean"
+        },
+        "log_level": {
+          "type": "string"
+        },
+        "port": {
+          "type": "integer"
+        },
+        "auto_update": {
+          "type": "boolean"
+        },
+        "auto_update_interval": {
+          "type": "integer"
+        },
+        "auto_update_start_time": {
+          "type": "string"
+        },
+        "clear_on_update": {
+          "type": "boolean"
+        },
+        "exclude_dirs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "platforms": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "command": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "config_dir": {
+          "type": "string"
+        },
+        "config_file": {
+          "type": "string"
+        },
+        "log_file": {
+          "type": "string"
+        },
+        "tunnel_token": {
+          "type": "string"
+        },
+        "env": {
+          "type": "object"
+        }
+      },
+      "required": [
+        "enabled",
+        "process_name",
+        "suppress_logging",
+        "log_level",
+        "command",
+        "config_dir",
+        "log_file",
+        "pinned_version",
+        "tunnel_token",
+        "env"
+      ]
     }
   },
   "required": [
@@ -3554,6 +3776,8 @@
     "sonarr",
     "whisparr",
     "zilean",
-    "zurg"
+    "zurg",
+    "traefik_proxy_admin",
+    "cloudflared"
   ]
 }

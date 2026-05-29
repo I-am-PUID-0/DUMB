@@ -4,6 +4,23 @@ from logging.handlers import BaseRotatingHandler
 from colorlog import ColoredFormatter
 
 
+
+SENSITIVE_LOG_PATTERNS = [
+    re.compile(
+        r"(\b(?:CLOUDFLARED_TUNNEL_TOKEN|CF_TUNNEL_TOKEN|TUNNEL_TOKEN)\s*[:=]\s*)[^,\]\s}]+",
+        re.IGNORECASE,
+    ),
+    re.compile(r"(\btoken=)[^&\s]+", re.IGNORECASE),
+    re.compile(r"(\btoken\s*[:=]\s*)eyJ[A-Za-z0-9._-]+", re.IGNORECASE),
+]
+
+
+def redact_sensitive_log_data(value):
+    text = str(value or "")
+    for pattern in SENSITIVE_LOG_PATTERNS:
+        text = pattern.sub(r"\1[REDACTED]", text)
+    return text
+
 class SubprocessLogger:
     def __init__(
         self, logger, key_type, file_logger=None, access_logger=None, log_to_main=True
@@ -158,9 +175,9 @@ class SubprocessLogger:
                     line, process_name
                 )
                 if process_name == "rclone":
-                    formatted = f'rclone mount name "{mount_name}": {message}'
+                    formatted = f'rclone mount name "{mount_name}": {redact_sensitive_log_data(message)}'
                 else:
-                    formatted = f"{process_name} subprocess: {message}"
+                    formatted = f"{process_name} subprocess: {redact_sensitive_log_data(message)}"
                 if self.log_to_main:
                     log_func = self.log_methods.get(log_level, self.logger.info)
                     log_func(formatted)
@@ -195,7 +212,7 @@ class SubprocessLogger:
                     log_level, message = SubprocessLogger.parse_log_level_and_message(
                         line, self.key_type
                     )
-                    formatted = f"{self.key_type} subprocess: {message}"
+                    formatted = f"{self.key_type} subprocess: {redact_sensitive_log_data(message)}"
                     if self.log_to_main:
                         log_func = self.log_methods.get(log_level, self.logger.info)
                         log_func(formatted)

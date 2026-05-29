@@ -3,6 +3,7 @@ from pathlib import Path
 from pydantic import BaseModel
 from typing import Optional
 from utils.dependencies import get_logger, resolve_path, get_optional_current_user
+from utils.logger import redact_sensitive_log_data
 from utils.config_loader import CONFIG_MANAGER
 import os, re, asyncio
 
@@ -149,7 +150,7 @@ async def get_log_file(
         # otherwise a tail slice. Mark as reset so the client replaces its buffer.
         if cursor is None:
             if "dumb" in process_name.lower() or "dmb" in process_name.lower():
-                text = filter_dumb_log(log_path, logger)
+                text = redact_sensitive_log_data(filter_dumb_log(log_path, logger))
                 # After initial snapshot, cursor should point to EOF
                 return {
                     "process_name": process_name,
@@ -164,7 +165,7 @@ async def get_log_file(
                 "process_name": process_name,
                 "size": size,
                 "cursor": size,
-                "chunk": data.decode("utf-8", "replace"),
+                "chunk": redact_sensitive_log_data(data.decode("utf-8", "replace")),
                 "reset": True,
             }
 
@@ -177,7 +178,7 @@ async def get_log_file(
                 "process_name": process_name,
                 "size": size,
                 "cursor": size,
-                "chunk": data.decode("utf-8", "replace"),
+                "chunk": redact_sensitive_log_data(data.decode("utf-8", "replace")),
                 "reset": True,
             }
 
@@ -188,7 +189,7 @@ async def get_log_file(
             "process_name": process_name,
             "size": size,
             "cursor": new_cursor,
-            "chunk": data.decode("utf-8", "replace"),
+            "chunk": redact_sensitive_log_data(data.decode("utf-8", "replace")),
             "reset": False,
         }
 

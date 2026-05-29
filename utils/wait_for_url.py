@@ -29,13 +29,48 @@ def _resolve_probe(wait_entry):
     return method, headers
 
 
-def _response_is_ready(response, method):
+def _json_path_exists(payload, path):
+    current = payload
+    for part in str(path or "").split("."):
+        if not part:
+            continue
+        if isinstance(current, dict) and part in current:
+            current = current[part]
+            continue
+        return False
+    return True
+
+
+def _response_is_ready(response, method, wait_entry=None, logger=None, wait_url=None):
     status_code = response.status_code
-    if 200 <= status_code < 300:
-        return True
-    if method == "PROPFIND" and status_code == 207:
-        return True
-    return False
+    status_ready = 200 <= status_code < 300 or (method == "PROPFIND" and status_code == 207)
+    if not status_ready:
+        return False
+
+    expected_json_path = (wait_entry or {}).get("expected_json_path")
+    if expected_json_path:
+        try:
+            payload = response.json()
+        except ValueError:
+            if logger:
+                logger.debug(
+                    "Response from %s was %s but was not valid JSON while waiting for %s.",
+                    wait_url,
+                    status_code,
+                    expected_json_path,
+                )
+            return False
+        if not _json_path_exists(payload, expected_json_path):
+            if logger:
+                logger.debug(
+                    "Response from %s was %s but missing JSON path %s.",
+                    wait_url,
+                    status_code,
+                    expected_json_path,
+                )
+            return False
+
+    return True
 
 
 def wait_for_urls(wait_entries, process_name, logger, shutdown_requested):
@@ -70,13 +105,23 @@ def wait_for_urls(wait_entries, process_name, logger, shutdown_requested):
                 else:
                     response = requests.request(method, wait_url, headers=headers)
 
-                if _response_is_ready(response, method):
-                    logger.info(
-                        "%s is accessible with %s via %s.",
-                        wait_url,
-                        response.status_code,
-                        method,
-                    )
+                if _response_is_ready(response, method, wait_entry, logger, wait_url):
+                    expected_json_path = wait_entry.get("expected_json_path")
+                    if expected_json_path:
+                        logger.info(
+                            "%s is accessible with %s via %s and contains JSON path %s.",
+                            wait_url,
+                            response.status_code,
+                            method,
+                            expected_json_path,
+                        )
+                    else:
+                        logger.info(
+                            "%s is accessible with %s via %s.",
+                            wait_url,
+                            response.status_code,
+                            method,
+                        )
                     break
 
                 logger.debug(
