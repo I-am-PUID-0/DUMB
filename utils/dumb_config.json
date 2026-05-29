@@ -166,6 +166,7 @@
       "HOSTNAME": "0.0.0.0",
       "ADMIN_AUTH_ENABLED": "true",
       "ADMIN_AUTH_PROVIDER": "local",
+      "ADMIN_COOKIE_SECURE": "false",
       "TRAEFIK_API_URL": "http://127.0.0.1:18081",
       "TRAEFIK_ACCESS_LOG_PATH": "/log/traefik_access.log",
       "TARGET_TEST_ALLOW_CIDRS": "10.0.0.0/16,172.20.0.0/16,192.168.0.0/16,127.0.0.0/8",

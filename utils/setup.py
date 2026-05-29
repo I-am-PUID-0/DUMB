@@ -10,7 +10,6 @@ from utils.apt_lock import run_locked
 import xml.etree.ElementTree as ET
 import os, shutil, random, subprocess, re, glob, secrets, shlex, time, urllib.parse, base64, threading, sys, hashlib, json, requests, copy
 
-
 user_id = CONFIG_MANAGER.get("puid")
 group_id = CONFIG_MANAGER.get("pgid")
 downloader = Downloader()
@@ -337,7 +336,7 @@ def setup_release_version(process_handler, config, process_name, key):
             version_path=os.path.join(config["config_dir"], "version.txt"),
             version=config["release_version"],
         )
-    elif key == "neutarr":
+    elif key in {"traefik_proxy_admin", "cloudflared", "neutarr"}:
         versions.version_write(
             process_name,
             key,
@@ -2365,11 +2364,17 @@ def setup_decypharr(install_only: bool = False, configure_only: bool = False):
                 with open(config_path, "r") as handle:
                     data = json.load(handle)
             except Exception as e:
-                logger.debug("Failed to read Decypharr config for mount sync check: %s", e)
+                logger.debug(
+                    "Failed to read Decypharr config for mount sync check: %s", e
+                )
                 return False
 
-            expected_mount_path = (config.get("mount_path") or "/mnt/debrid/decypharr").strip()
-            mount_block = data.get("mount") if isinstance(data.get("mount"), dict) else {}
+            expected_mount_path = (
+                config.get("mount_path") or "/mnt/debrid/decypharr"
+            ).strip()
+            mount_block = (
+                data.get("mount") if isinstance(data.get("mount"), dict) else {}
+            )
             actual_mount_type = str(mount_block.get("type") or "").strip().lower()
             actual_mount_path = str(mount_block.get("mount_path") or "").strip()
 
@@ -2399,8 +2404,14 @@ def setup_decypharr(install_only: bool = False, configure_only: bool = False):
                 try:
                     with open(config_path, "r") as handle:
                         data = json.load(handle)
-                    mount_block = data.get("mount") if isinstance(data.get("mount"), dict) else {}
-                    dfs_block = mount_block.get("dfs") if isinstance(mount_block.get("dfs"), dict) else {}
+                    mount_block = (
+                        data.get("mount") if isinstance(data.get("mount"), dict) else {}
+                    )
+                    dfs_block = (
+                        mount_block.get("dfs")
+                        if isinstance(mount_block.get("dfs"), dict)
+                        else {}
+                    )
                     cache_dir = str(dfs_block.get("cache_dir") or "").strip() or None
                 except Exception as e:
                     logger.debug("Failed to read Decypharr DFS cache_dir: %s", e)
@@ -2412,7 +2423,11 @@ def setup_decypharr(install_only: bool = False, configure_only: bool = False):
                 logger.debug("Ensured Decypharr DFS cache dir at %s", cache_dir)
             except OSError as e:
                 if getattr(e, "errno", None) in (1, 30, 95):
-                    logger.debug("Skipping Decypharr DFS cache dir ownership for %s: %s", cache_dir, e)
+                    logger.debug(
+                        "Skipping Decypharr DFS cache dir ownership for %s: %s",
+                        cache_dir,
+                        e,
+                    )
                     return
                 raise
 
@@ -2514,16 +2529,19 @@ def setup_decypharr(install_only: bool = False, configure_only: bool = False):
         if install_only:
             logger.info("Decypharr install phase: skipping runtime config patch.")
         elif os.path.exists(decypharr_config_file) and (
-            configure_only
-            or _decypharr_config_mount_out_of_sync(decypharr_config_file)
+            configure_only or _decypharr_config_mount_out_of_sync(decypharr_config_file)
         ):
             from utils.decypharr_settings import patch_decypharr_config
 
             patched, error = patch_decypharr_config()
             if error:
-                logger.warning("Decypharr config patch during setup reported: %s", error)
+                logger.warning(
+                    "Decypharr config patch during setup reported: %s", error
+                )
             elif patched:
-                logger.info("Patched Decypharr config during setup to match current mount settings.")
+                logger.info(
+                    "Patched Decypharr config during setup to match current mount settings."
+                )
 
         return True, None
     except Exception as e:
@@ -4171,8 +4189,9 @@ def _postgres_database_url(database_name: str) -> str:
     password = _sanitize_credential(str(postgres_config.get("password", "postgres")))
     encoded_user = urllib.parse.quote(user, safe="")
     encoded_password = urllib.parse.quote(password, safe="")
-    return f"postgresql://{encoded_user}:{encoded_password}@{host}:{port}/{database_name}"
-
+    return (
+        f"postgresql://{encoded_user}:{encoded_password}@{host}:{port}/{database_name}"
+    )
 
 
 def _patch_traefik_proxy_admin_for_dumb(config_dir: str) -> bool:
@@ -4198,30 +4217,30 @@ def _patch_traefik_proxy_admin_for_dumb(config_dir: str) -> bool:
             "const LATEST_MIGRATION_CREATED_AT = 1779414000000;\n\n"
             "function isBuildPhase() {\n"
             "  return (\n"
-            "    process.env.NEXT_PHASE === \"phase-production-build\" ||\n"
-            "    process.env.npm_lifecycle_event === \"build\"\n"
+            '    process.env.NEXT_PHASE === "phase-production-build" ||\n'
+            '    process.env.npm_lifecycle_event === "build"\n'
             "  );\n"
             "}\n\n"
             "function resolveMigrationsFolder() {\n"
             "  // Keep Node-only modules behind runtime require calls so Next/Turbopack does\n"
             "  // not try to bundle this helper for the Edge instrumentation path.\n"
             "  // eslint-disable-next-line @typescript-eslint/no-require-imports\n"
-            "  const fs = require(\"fs\") as typeof import(\"fs\");\n"
+            '  const fs = require("fs") as typeof import("fs");\n'
             "  // eslint-disable-next-line @typescript-eslint/no-require-imports\n"
-            "  const path = require(\"path\") as typeof import(\"path\");\n\n"
-            "  const configured = configuredMigrationsFolder || \"./drizzle/migrations\";\n"
-            "  const workingDirectory = process.env.PWD || \".\";\n"
+            '  const path = require("path") as typeof import("path");\n\n'
+            '  const configured = configuredMigrationsFolder || "./drizzle/migrations";\n'
+            '  const workingDirectory = process.env.PWD || ".";\n'
             "  const candidates = [\n"
             "    path.isAbsolute(configured) ? configured : path.resolve(workingDirectory, configured),\n"
-            "    path.resolve(workingDirectory, \"drizzle/migrations\"),\n"
-            "    path.resolve(workingDirectory, \".next/standalone/drizzle/migrations\"),\n"
-            "    path.resolve(workingDirectory, \"../drizzle/migrations\"),\n"
-            "    path.join(__dirname, \"../drizzle/migrations\"),\n"
-            "    path.join(__dirname, \"../../drizzle/migrations\"),\n"
-            "    path.join(__dirname, \"../../../drizzle/migrations\"),\n"
+            '    path.resolve(workingDirectory, "drizzle/migrations"),\n'
+            '    path.resolve(workingDirectory, ".next/standalone/drizzle/migrations"),\n'
+            '    path.resolve(workingDirectory, "../drizzle/migrations"),\n'
+            '    path.join(__dirname, "../drizzle/migrations"),\n'
+            '    path.join(__dirname, "../../drizzle/migrations"),\n'
+            '    path.join(__dirname, "../../../drizzle/migrations"),\n'
             "  ];\n\n"
             "  const found = candidates.find((candidate) =>\n"
-            "    fs.existsSync(path.join(candidate, \"meta\", \"_journal.json\")),\n"
+            '    fs.existsSync(path.join(candidate, "meta", "_journal.json")),\n'
             "  );\n\n"
             "  return found ?? candidates[0];\n"
             "}\n\n"
@@ -4234,15 +4253,15 @@ def _patch_traefik_proxy_admin_for_dumb(config_dir: str) -> bool:
         )
         updated = updated.replace(
             '  if (process.env.NEXT_RUNTIME !== "nodejs") {\n'
-            '    return;\n'
-            '  }\n'
+            "    return;\n"
+            "  }\n"
             '  process.env["BUILD_ID"] = getBuildId();',
             '  if (process.env.NEXT_RUNTIME !== "nodejs") {\n'
-            '    return;\n'
-            '  }\n'
-            '  if (isBuildPhase()) {\n'
-            '    return;\n'
-            '  }\n'
+            "    return;\n"
+            "  }\n"
+            "  if (isBuildPhase()) {\n"
+            "    return;\n"
+            "  }\n"
             '  process.env["BUILD_ID"] = getBuildId();',
         )
         if updated != content:
@@ -4250,8 +4269,6 @@ def _patch_traefik_proxy_admin_for_dumb(config_dir: str) -> bool:
                 handle.write(updated)
             logger.info("Applied Traefik Proxy Admin DUMB startup compatibility patch.")
             patched = True
-
-
 
     startup_path = os.path.join(config_dir, "src", "lib", "startup.ts")
     try:
@@ -4268,8 +4285,8 @@ def _patch_traefik_proxy_admin_for_dumb(config_dir: str) -> bool:
                 "let isInitialized = false;\n\n"
                 "function isBuildPhase() {\n"
                 "  return (\n"
-                "    process.env.NEXT_PHASE === \"phase-production-build\" ||\n"
-                "    process.env.npm_lifecycle_event === \"build\"\n"
+                '    process.env.NEXT_PHASE === "phase-production-build" ||\n'
+                '    process.env.npm_lifecycle_event === "build"\n'
                 "  );\n"
                 "}\n",
             )
@@ -4283,24 +4300,64 @@ def _patch_traefik_proxy_admin_for_dumb(config_dir: str) -> bool:
             logger.info("Applied Traefik Proxy Admin build-time scheduler guard patch.")
             patched = True
 
-    route_path = os.path.join(config_dir, "src", "app", "api", "traefik", "config", "route.ts")
+    route_path = os.path.join(
+        config_dir, "src", "app", "api", "traefik", "config", "route.ts"
+    )
     try:
         with open(route_path, "r", encoding="utf-8") as handle:
             content = handle.read()
     except OSError:
         content = ""
 
-    if content and "const traefikConfig = \"http\" in config ? config : { http: config };" not in content:
+    if (
+        content
+        and 'const traefikConfig = "http" in config ? config : { http: config };'
+        not in content
+    ):
         updated = content.replace(
             "    const config = await generateTraefikConfig();\n    return NextResponse.json(config);",
             "    const config = await generateTraefikConfig();\n"
-            "    const traefikConfig = \"http\" in config ? config : { http: config };\n"
+            '    const traefikConfig = "http" in config ? config : { http: config };\n'
             "    return NextResponse.json(traefikConfig);",
         )
         if updated != content:
             with open(route_path, "w", encoding="utf-8") as handle:
                 handle.write(updated)
-            logger.info("Applied Traefik Proxy Admin provider response compatibility patch.")
+            logger.info(
+                "Applied Traefik Proxy Admin provider response compatibility patch."
+            )
+            patched = True
+
+    admin_auth_path = os.path.join(config_dir, "src", "lib", "admin-auth.ts")
+    try:
+        with open(admin_auth_path, "r", encoding="utf-8") as handle:
+            content = handle.read()
+    except OSError:
+        content = ""
+
+    if content and "function adminCookieSecure()" not in content:
+        updated = content.replace(
+            "export function adminCookieOptions(maxAgeSeconds?: number) {\n"
+            "  return {\n"
+            "    httpOnly: true,\n"
+            '    secure: process.env.NODE_ENV === "production",',
+            "function adminCookieSecure() {\n"
+            "  const override = process.env.ADMIN_COOKIE_SECURE?.trim().toLowerCase();\n"
+            '  if (override === "true") return true;\n'
+            '  if (override === "false") return false;\n'
+            '  return process.env.NODE_ENV === "production";\n'
+            "}\n\n"
+            "export function adminCookieOptions(maxAgeSeconds?: number) {\n"
+            "  return {\n"
+            "    httpOnly: true,\n"
+            "    secure: adminCookieSecure(),",
+        )
+        if updated != content:
+            with open(admin_auth_path, "w", encoding="utf-8") as handle:
+                handle.write(updated)
+            logger.info(
+                "Applied Traefik Proxy Admin admin cookie secure compatibility patch."
+            )
             patched = True
 
     next_config_path = os.path.join(config_dir, "next.config.ts")
@@ -4318,10 +4375,58 @@ def _patch_traefik_proxy_admin_for_dumb(config_dir: str) -> bool:
         if updated != content:
             with open(next_config_path, "w", encoding="utf-8") as handle:
                 handle.write(updated)
-            logger.info("Included Traefik Proxy Admin migrations in standalone tracing.")
+            logger.info(
+                "Included Traefik Proxy Admin migrations in standalone tracing."
+            )
             patched = True
 
     return patched
+
+
+def _read_traefik_proxy_admin_package_version(config_dir: str):
+    package_path = os.path.join(config_dir, "package.json")
+    try:
+        with open(package_path, "r", encoding="utf-8") as handle:
+            package_data = json.load(handle)
+        package_version = str((package_data or {}).get("version") or "").strip()
+        if not package_version:
+            return None
+        return package_version if package_version.startswith("v") else f"v{package_version}"
+    except Exception as e:
+        logger.debug("Failed to read Traefik Proxy Admin package version: %s", e)
+        return None
+
+
+def _resolve_traefik_proxy_admin_version_marker(config: dict, config_dir: str):
+    if config.get("branch_enabled"):
+        branch = (config.get("branch") or "main").strip() or "main"
+        branch_sha, branch_error = _fetch_github_branch_head_sha(
+            config.get("repo_owner"), config.get("repo_name"), branch
+        )
+        if branch_sha:
+            return f"{branch}-{branch_sha[:8]}"
+        if branch_error:
+            logger.debug(
+                "Failed to resolve Traefik Proxy Admin branch SHA for version marker: %s",
+                branch_error,
+            )
+        return f"branch:{branch}"
+
+    release_version = str(config.get("release_version") or "latest").strip() or "latest"
+    if release_version.lower() != "latest":
+        return release_version
+
+    latest_version, latest_error = downloader.get_latest_release(
+        config.get("repo_owner"), config.get("repo_name"), nightly=False
+    )
+    if latest_version:
+        return latest_version
+    if latest_error:
+        logger.debug(
+            "Failed to resolve latest Traefik Proxy Admin version for marker: %s",
+            latest_error,
+        )
+    return _read_traefik_proxy_admin_package_version(config_dir) or release_version
 
 
 def _sync_traefik_proxy_admin_standalone_assets(config_dir: str) -> bool:
@@ -4349,8 +4454,11 @@ def _sync_traefik_proxy_admin_standalone_assets(config_dir: str) -> bool:
 
     if changed:
         logger.info("Synced Traefik Proxy Admin standalone static assets.")
-        chown_recursive(standalone_dir, CONFIG_MANAGER.get("puid"), CONFIG_MANAGER.get("pgid"))
+        chown_recursive(
+            standalone_dir, CONFIG_MANAGER.get("puid"), CONFIG_MANAGER.get("pgid")
+        )
     return changed
+
 
 def setup_traefik_proxy_admin(
     process_handler, install_only: bool = False, configure_only: bool = False
@@ -4400,13 +4508,21 @@ def setup_traefik_proxy_admin(
     web_port = int(match.group(1)) if match else 18080
 
     env = config.get("env", {}) or {}
-    pnpm_runtime_root = os.path.join("/config", ".pnpm-store", "traefik-proxy-admin-runtime")
+    pnpm_runtime_root = os.path.join(
+        "/config", ".pnpm-store", "traefik-proxy-admin-runtime"
+    )
     pnpm_home = os.path.join(pnpm_runtime_root, "pnpm-home")
     pnpm_store = os.path.join(pnpm_runtime_root, "store")
     pnpm_cache = os.path.join(pnpm_runtime_root, "npm-cache")
     xdg_data_home = os.path.join(pnpm_runtime_root, "xdg-data")
     xdg_cache_home = os.path.join(pnpm_runtime_root, "xdg-cache")
-    for runtime_dir in (pnpm_home, pnpm_store, pnpm_cache, xdg_data_home, xdg_cache_home):
+    for runtime_dir in (
+        pnpm_home,
+        pnpm_store,
+        pnpm_cache,
+        xdg_data_home,
+        xdg_cache_home,
+    ):
         os.makedirs(runtime_dir, exist_ok=True)
         _chown_recursive_if_needed(
             runtime_dir, CONFIG_MANAGER.get("puid"), CONFIG_MANAGER.get("pgid")
@@ -4429,7 +4545,10 @@ def setup_traefik_proxy_admin(
         "10.0.0.0/24,172.20.0.0/16,127.0.0.0/8",
         "10.0.0.0/24,172.20.0.0/16,192.168.0.0/16,127.0.0.0/8",
     }
-    if not env.get("TARGET_TEST_ALLOW_CIDRS") or env.get("TARGET_TEST_ALLOW_CIDRS") in legacy_target_test_cidrs:
+    if (
+        not env.get("TARGET_TEST_ALLOW_CIDRS")
+        or env.get("TARGET_TEST_ALLOW_CIDRS") in legacy_target_test_cidrs
+    ):
         env["TARGET_TEST_ALLOW_CIDRS"] = default_target_test_cidrs
         changed = True
     expected_env = {
@@ -4446,9 +4565,12 @@ def setup_traefik_proxy_admin(
         "PATH": f"{pnpm_home}:{existing_path}",
         "ADMIN_AUTH_ENABLED": env.get("ADMIN_AUTH_ENABLED", "true"),
         "ADMIN_AUTH_PROVIDER": env.get("ADMIN_AUTH_PROVIDER", "local"),
-        "DATABASE_URL": env.get("DATABASE_URL") or _postgres_database_url("traefik_proxy_admin"),
+        "ADMIN_COOKIE_SECURE": env.get("ADMIN_COOKIE_SECURE", "false"),
+        "DATABASE_URL": env.get("DATABASE_URL")
+        or _postgres_database_url("traefik_proxy_admin"),
         "TRAEFIK_API_URL": f"http://127.0.0.1:{web_port + 1}",
-        "TRAEFIK_ACCESS_LOG_PATH": config.get("traefik_access_log_path") or "/log/traefik_access.log",
+        "TRAEFIK_ACCESS_LOG_PATH": config.get("traefik_access_log_path")
+        or "/log/traefik_access.log",
         "NEXT_TELEMETRY_DISABLED": "1",
     }
     for key_name, value in expected_env.items():
@@ -4481,12 +4603,16 @@ def setup_traefik_proxy_admin(
 
     package_marker = os.path.join(config_dir, "package.json")
     build_marker = os.path.join(config_dir, ".next", "BUILD_ID")
+    version_marker = os.path.join(config_dir, "version.txt")
+    version_value = None
     needs_download = not os.path.isfile(package_marker)
     if needs_download and configure_only:
         return False, "Traefik Proxy Admin is not installed."
 
     if needs_download:
-        logger.warning("Traefik Proxy Admin not found at %s. Downloading...", package_marker)
+        logger.warning(
+            "Traefik Proxy Admin not found at %s. Downloading...", package_marker
+        )
         exclude_dirs = None
         if config.get("clear_on_update"):
             exclude_dirs = config.get("exclude_dirs", [])
@@ -4509,10 +4635,12 @@ def setup_traefik_proxy_admin(
             )
             if not success:
                 return False, f"Failed to download Traefik Proxy Admin branch: {error}"
-            branch_sha, _ = _fetch_branch_head_sha(
+            branch_sha, _ = _fetch_github_branch_head_sha(
                 config.get("repo_owner"), config.get("repo_name"), branch
             )
-            version_value = f"{branch}-{branch_sha[:8]}" if branch_sha else f"branch:{branch}"
+            version_value = (
+                f"{branch}-{branch_sha[:8]}" if branch_sha else f"branch:{branch}"
+            )
         else:
             release_version = config.get("release_version", "latest")
             version_value = release_version
@@ -4541,15 +4669,40 @@ def setup_traefik_proxy_admin(
         versions.version_write(
             config.get("process_name"),
             key="traefik_proxy_admin",
-            version_path=os.path.join(config_dir, "version.txt"),
+            version_path=version_marker,
             version=version_value,
         )
-        chown_recursive(config_dir, CONFIG_MANAGER.get("puid"), CONFIG_MANAGER.get("pgid"))
+        chown_recursive(
+            config_dir, CONFIG_MANAGER.get("puid"), CONFIG_MANAGER.get("pgid")
+        )
+
+    if not os.path.isfile(version_marker):
+        version_value = version_value or _resolve_traefik_proxy_admin_version_marker(
+            config, config_dir
+        )
+        if version_value:
+            success, error = versions.version_write(
+                config.get("process_name"),
+                key="traefik_proxy_admin",
+                version_path=version_marker,
+                version=version_value,
+            )
+            if success:
+                chown_single(version_marker, CONFIG_MANAGER.get("puid"), CONFIG_MANAGER.get("pgid"))
+                logger.info(
+                    "Backfilled Traefik Proxy Admin version marker: %s", version_value
+                )
+            else:
+                logger.warning(
+                    "Failed to backfill Traefik Proxy Admin version marker: %s", error
+                )
 
     patched_tpa = _patch_traefik_proxy_admin_for_dumb(config_dir)
 
     if patched_tpa:
-        chown_recursive(config_dir, CONFIG_MANAGER.get("puid"), CONFIG_MANAGER.get("pgid"))
+        chown_recursive(
+            config_dir, CONFIG_MANAGER.get("puid"), CONFIG_MANAGER.get("pgid")
+        )
 
     if config.get("platforms") and not configure_only:
         if needs_download or patched_tpa or not os.path.isfile(build_marker):
@@ -4560,7 +4713,10 @@ def setup_traefik_proxy_admin(
                 config_dir,
             )
             if not success:
-                return False, f"Failed to set up Traefik Proxy Admin environment: {error}"
+                return (
+                    False,
+                    f"Failed to set up Traefik Proxy Admin environment: {error}",
+                )
 
     _sync_traefik_proxy_admin_standalone_assets(config_dir)
 
@@ -4623,13 +4779,17 @@ def _cloudflared_version_file(config_dir: str) -> str:
 
 def _read_cloudflared_version(config_dir: str) -> str | None:
     try:
-        with open(_cloudflared_version_file(config_dir), "r", encoding="utf-8") as handle:
+        with open(
+            _cloudflared_version_file(config_dir), "r", encoding="utf-8"
+        ) as handle:
             return handle.read().strip() or None
     except OSError:
         return None
 
 
-def _download_cloudflared_binary(config: dict, target_bin: str) -> tuple[bool, str | None]:
+def _download_cloudflared_binary(
+    config: dict, target_bin: str
+) -> tuple[bool, str | None]:
     requested = _normalize_cloudflared_version(config.get("pinned_version"))
     release_tag = requested
     if requested == "latest":
@@ -4637,7 +4797,10 @@ def _download_cloudflared_binary(config: dict, target_bin: str) -> tuple[bool, s
             "cloudflare", "cloudflared", nightly=False
         )
         if not latest_version:
-            return False, latest_error or "Failed to resolve latest cloudflared release."
+            return (
+                False,
+                latest_error or "Failed to resolve latest cloudflared release.",
+            )
         requested = latest_version
     release_info, error = downloader.fetch_github_release_info(
         "cloudflare", "cloudflared", requested
@@ -4669,7 +4832,9 @@ def _download_cloudflared_binary(config: dict, target_bin: str) -> tuple[bool, s
                     handle.write(chunk)
     os.replace(temp_path, target_bin)
     os.chmod(target_bin, 0o755)
-    with open(_cloudflared_version_file(os.path.dirname(target_bin)), "w", encoding="utf-8") as handle:
+    with open(
+        _cloudflared_version_file(os.path.dirname(target_bin)), "w", encoding="utf-8"
+    ) as handle:
         handle.write(str(release_tag))
     return True, None
 
@@ -4722,7 +4887,9 @@ def setup_cloudflared(
 
     target_version = _normalize_cloudflared_version(config.get("pinned_version"))
     current_version = _read_cloudflared_version(config_dir)
-    needs_download = not os.path.isfile(cloudflared_bin) or not os.access(cloudflared_bin, os.X_OK)
+    needs_download = not os.path.isfile(cloudflared_bin) or not os.access(
+        cloudflared_bin, os.X_OK
+    )
     if target_version != "latest" and current_version != target_version:
         needs_download = True
     if needs_download and configure_only:
@@ -6800,7 +6967,9 @@ def rclone_setup():
                 decypharr_config = CONFIG_MANAGER.get("decypharr", {})
                 key_type = instance.get("key_type", "").lower()
                 if key_type in {"decypharr", ""} or mount_name == "decypharr":
-                    url = f"http://localhost:{decypharr_config.get('port', 8282)}/webdav"
+                    url = (
+                        f"http://localhost:{decypharr_config.get('port', 8282)}/webdav"
+                    )
                 elif key_type == "realdebrid":
                     url = f"http://localhost:{decypharr_config.get('port', 8282)}/webdav/realdebrid"
                 elif key_type == "alldebrid":
@@ -8180,7 +8349,9 @@ def setup_pnpm_environment(process_handler, config_dir):
             )
             pnpm_store_root = "/tmp/dumb-pnpm"
             os.makedirs(pnpm_store_root, exist_ok=True)
-        pnpm_runtime_dir = os.path.join(pnpm_store_root, f"{config_label}-{config_hash}")
+        pnpm_runtime_dir = os.path.join(
+            pnpm_store_root, f"{config_label}-{config_hash}"
+        )
         pnpm_store_dir = os.path.join(pnpm_runtime_dir, "store")
         npm_cache_dir = os.path.join(pnpm_runtime_dir, "npm-cache")
         os.makedirs(pnpm_store_dir, exist_ok=True)
