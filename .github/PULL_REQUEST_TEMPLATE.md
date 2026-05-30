@@ -24,6 +24,7 @@ Describe what you tested and how.
 - [ ] Manual testing completed
 - [ ] Automated tests updated or added
 - [ ] `make verify` passes inside the DUMB devcontainer
+- [ ] `make audit` reviewed when dependency metadata changed
 
 ## Related Issues
 

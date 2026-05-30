@@ -22,9 +22,9 @@ def check_pyproject() -> None:
     project = data.get("project", {})
     if project.get("name") != "DUMB":
         fail("pyproject.toml project.name must be DUMB")
-    if project.get("requires-python") != ">=3.11":
+    if project.get("requires-python") != ">=3.11,<4.0":
         fail(
-            "pyproject.toml requires-python must remain >=3.11 unless CI matrix is updated"
+            "pyproject.toml requires-python must remain >=3.11,<4.0 unless CI matrix is updated"
         )
     if not project.get("version"):
         fail(

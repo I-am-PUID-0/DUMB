@@ -1,4 +1,4 @@
-.PHONY: env-check env-example format format-check lint lock-check metadata syntax test verify
+.PHONY: audit env-check env-example format format-check lint lock-check metadata syntax test verify
 
 POETRY ?= poetry
 PYTHON ?= $(POETRY) run python
@@ -6,6 +6,9 @@ BLACK ?= $(POETRY) run black
 RUFF ?= $(POETRY) run ruff
 PYTHONPYCACHEPREFIX ?= /tmp/dumb-pycache
 PYTHON_TARGETS ?= api utils tests scripts
+
+audit:
+	$(POETRY) run pip-audit
 
 env-example:
 	$(PYTHON) scripts/generate_env_example.py
