@@ -3,6 +3,7 @@ import sys
 import tempfile
 import types
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
 
@@ -341,6 +342,103 @@ class ConfigRouterHelperTests(unittest.TestCase):
             },
         )
 
+    def test_update_config_global_rejects_unknown_root_keys_when_schema_present(self):
+        manager = _ConfigManager(
+            {
+                "dumb": {
+                    "ui": {"log_timestamp": True},
+                }
+            },
+            {
+                "properties": {
+                    "dumb": {
+                        "type": "object",
+                        "properties": {
+                            "ui": {
+                                "type": "object",
+                                "properties": {
+                                    "log_timestamp": {"type": "boolean"},
+                                },
+                            }
+                        },
+                    }
+                }
+            },
+        )
+        config_router.CONFIG_MANAGER = manager
+        request = types.SimpleNamespace(
+            process_name=None,
+            updates={"evil": {"enabled": True}},
+        )
+
+        with self.assertRaises(config_router.HTTPException) as ctx:
+            asyncio.run(config_router.update_config(request, logger=_Logger()))
+
+        self.assertEqual(ctx.exception.status_code, 400)
+        self.assertEqual(ctx.exception.detail, "Invalid global configuration key: evil")
+        self.assertEqual(
+            manager.config,
+            {
+                "dumb": {
+                    "ui": {"log_timestamp": True},
+                }
+            },
+        )
+
+    def test_update_config_global_rejects_schema_violations(self):
+        manager = _ConfigManager(
+            {
+                "dumb": {
+                    "ui": {"log_timestamp": True},
+                }
+            },
+            {
+                "properties": {
+                    "dumb": {
+                        "type": "object",
+                        "properties": {
+                            "ui": {
+                                "type": "object",
+                                "properties": {
+                                    "log_timestamp": {"type": "boolean"},
+                                },
+                            }
+                        },
+                    }
+                }
+            },
+        )
+        config_router.CONFIG_MANAGER = manager
+        original_validate = config_router.validate
+        try:
+
+            def fake_validate(instance, schema):
+                if instance["dumb"]["ui"].get("log_timestamp") not in (True, False):
+                    raise config_router.ValidationError("validation failed")
+
+            config_router.validate = fake_validate
+
+            request = types.SimpleNamespace(
+                process_name=None,
+                updates={"dumb": {"ui": {"log_timestamp": "not-a-bool"}}},
+            )
+
+            with self.assertRaises(config_router.HTTPException) as ctx:
+                asyncio.run(config_router.update_config(request, logger=_Logger()))
+
+            self.assertEqual(ctx.exception.status_code, 400)
+            self.assertIn("Validation error in global update", ctx.exception.detail)
+            self.assertEqual(
+                manager.config,
+                {
+                    "dumb": {
+                        "ui": {"log_timestamp": True},
+                    }
+                },
+            )
+        finally:
+            config_router.validate = original_validate
+
     def test_update_config_service_allows_schema_declared_new_keys(self):
         manager = _ConfigManager(
             {
@@ -369,6 +467,58 @@ class ConfigRouterHelperTests(unittest.TestCase):
             manager.config["sonarr"]["instances"]["default"]["schema_declared"]
         )
         self.assertEqual(manager.saved_process_names, [])
+
+    def test_load_config_file_uses_safe_yaml_parser(self):
+        created = []
+
+        class FakeYAML:
+            def __init__(self, typ=None):
+                created.append(typ)
+
+            def load(self, raw):
+                return {"loaded": True}
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            path = Path(temp_dir, "service.yaml")
+            path.write_text("a: 1\n")
+
+            with patch.object(config_router, "YAML", FakeYAML):
+                _, config_data, _ = config_router.load_config_file(path)
+
+        self.assertEqual(config_data, {"loaded": True})
+        self.assertIn("safe", created)
+
+    def test_save_config_file_updates_with_safe_yaml_parser(self):
+        created = []
+
+        class FakeYAML:
+            def __init__(self, typ=None):
+                created.append(typ)
+                self.typ = typ
+
+            def load(self, raw):
+                return {"from_updates": True}
+
+            def indent(self, *args, **kwargs):
+                return None
+
+            def dump(self, data, file):
+                file.write(str(data))
+
+        def fake_write_to_file(path, data):
+            self.fail("write_to_file should not be used for yaml updates")
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            path = Path(temp_dir, "service.yaml")
+            path.write_text("{}\n")
+
+            with (
+                patch.object(config_router, "YAML", FakeYAML),
+                patch.object(config_router, "write_to_file", fake_write_to_file),
+            ):
+                config_router.save_config_file(path, {}, "yaml", updates="a: 2")
+
+        self.assertIn("safe", created)
 
     def test_update_config_service_rejects_keys_outside_config_schema_and_dynamic_set(
         self,

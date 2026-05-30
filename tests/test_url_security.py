@@ -23,6 +23,14 @@ class URLSecurityTests(unittest.TestCase):
 
         self.assertEqual(req.full_url, "https://example.test/index.json")
 
+    def test_safe_request_rejects_userinfo_urls(self):
+        with self.assertRaises(ValueError):
+            url_security.safe_request("https://user:pass@example.com/api")
+
+    def test_safe_request_rejects_urls_without_host(self):
+        with self.assertRaises(ValueError):
+            url_security.safe_request("https:///api")
+
     def test_safe_request_rejects_non_http_schemes(self):
         with self.assertRaises(ValueError):
             url_security.safe_request("file:///etc/passwd")

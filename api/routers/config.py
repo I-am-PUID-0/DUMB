@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends, Query, Request
 from typing import Union, Optional, Dict, Any, List
 from pydantic import BaseModel
+import copy
 from utils.dependencies import (
     get_logger,
     get_process_handler,
@@ -131,7 +132,7 @@ def _deep_merge_dict(target: Dict[str, Any], updates: Dict[str, Any]) -> Dict[st
 
 
 def load_config_file(config_path):
-    yaml = YAML(typ="rt")
+    yaml = YAML(typ="safe")
     raw_config = None
     config_data = None
     config_format = None
@@ -183,6 +184,7 @@ def load_config_file(config_path):
 
 def save_config_file(config_path, config_data, config_format, updates=None):
     yaml = YAML(typ="rt")
+    safe_yaml = YAML(typ="safe")
     try:
         if updates:
             if isinstance(updates, dict):
@@ -200,7 +202,7 @@ def save_config_file(config_path, config_data, config_format, updates=None):
                     config_data.update(updates)
             elif isinstance(updates, str):
                 if config_format == "yaml":
-                    updates_dict = yaml.load(updates)
+                    updates_dict = safe_yaml.load(updates)
                     config_data.update(updates_dict)
                 elif config_format == "json":
                     updates_dict = json.loads(updates)
@@ -603,7 +605,33 @@ async def update_config(
             status_code=400, detail="No updates provided for global config."
         )
 
+    schema_root = getattr(CONFIG_MANAGER, "schema", None) or {}
+    allowed_root_keys = set((schema_root.get("properties") or {}).keys())
+    if allowed_root_keys:
+        unknown_keys = set(updates.keys()) - allowed_root_keys
+        if unknown_keys:
+            unknown_key = next(iter(sorted(unknown_keys)))
+            logger.error(f"Invalid global configuration key: {unknown_key}")
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid global configuration key: {unknown_key}",
+            )
+
     logger.info("Performing global config update (deep merge)")
+
+    merged_config = copy.deepcopy(CONFIG_MANAGER.config)
+    _deep_merge_dict(merged_config, updates)
+
+    try:
+        validate(instance=merged_config, schema=schema_root)
+    except ValidationError as e:
+        path = getattr(e, "absolute_path", [])
+        loc = " -> ".join(map(str, path)) or getattr(e, "path", None) or "root"
+        detail = getattr(e, "message", str(e))
+        raise HTTPException(
+            status_code=400,
+            detail=f"Validation error in global update at '{loc}': {detail}",
+        )
 
     _deep_merge_dict(CONFIG_MANAGER.config, updates)
 

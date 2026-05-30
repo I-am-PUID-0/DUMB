@@ -3,6 +3,9 @@ from utils.global_logger import logger
 from typing import Dict, Iterable, Optional, Tuple
 import os, re, sqlite3
 
+_TABLE_NAME_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+_COLUMN_NAME_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+
 
 def _get_config_path(config_dir: Optional[str] = None) -> str:
     if config_dir:
@@ -33,11 +36,45 @@ def list_tables(config_dir: Optional[str] = None) -> list[str]:
     return [row["name"] for row in rows]
 
 
+def _validate_table_name(conn: sqlite3.Connection, table: str) -> str:
+    if not isinstance(table, str) or not _TABLE_NAME_RE.match(table):
+        raise ValueError(f"Invalid table name: {table!r}")
+
+    row = conn.execute(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name=?",
+        (table,),
+    ).fetchone()
+    if row is None:
+        raise ValueError(f"Unknown table name: {table!r}")
+
+    return table
+
+
+def _quote_identifier(identifier: str) -> str:
+    return '"' + identifier.replace('"', '""') + '"'
+
+
+def _validate_column_name(conn: sqlite3.Connection, table: str, column: str) -> str:
+    if not isinstance(column, str) or not _COLUMN_NAME_RE.match(column):
+        raise ValueError(f"Invalid column name: {column!r}")
+
+    if column not in _get_table_column_names(conn, table):
+        raise ValueError(f"Unknown column name: {column!r}")
+
+    return column
+
+
+def _get_table_column_names(conn: sqlite3.Connection, table: str) -> set[str]:
+    rows = conn.execute(f"PRAGMA table_info({table})").fetchall()
+    return {row["name"] for row in rows}
+
+
 def get_table_columns(table: str, config_dir: Optional[str] = None) -> list[dict]:
     db_path = _get_db_path(config_dir)
     if not os.path.exists(db_path):
         raise FileNotFoundError(f"NzbDAV db not found: {db_path}")
     with _connect(db_path) as conn:
+        _validate_table_name(conn, table)
         rows = conn.execute(f"PRAGMA table_info({table})").fetchall()
     return [
         {
@@ -65,7 +102,12 @@ def fetch_rows(
     db_path = _get_db_path(config_dir)
     if not os.path.exists(db_path):
         raise FileNotFoundError(f"NzbDAV db not found: {db_path}")
+    if not isinstance(limit, int) or not isinstance(offset, int):
+        raise TypeError("limit and offset must be integers.")
+    if limit < 0 or offset < 0:
+        raise ValueError("limit and offset must be non-negative integers.")
     with _connect(db_path) as conn:
+        _validate_table_name(conn, table)
         rows = conn.execute(
             f"SELECT * FROM {table} LIMIT ? OFFSET ?", (limit, offset)
         ).fetchall()
@@ -81,34 +123,73 @@ def upsert_row(
     db_path = _get_db_path(config_dir)
     if not os.path.exists(db_path):
         return False, f"NzbDAV db not found: {db_path}"
+    if not isinstance(data, dict):
+        return False, "Data must be a mapping of column names to values."
     if not data:
         return False, "No data provided for upsert."
 
-    keys = list(key_columns or list_primary_keys(table, config_dir=config_dir))
-    if not keys:
-        return False, f"No primary keys found for table {table}."
+    with _connect(db_path) as conn:
+        table = _validate_table_name(conn, table)
+        table_columns = _get_table_column_names(conn, table)
 
-    columns = list(data.keys())
-    placeholders = ", ".join(["?"] * len(columns))
-    col_list = ", ".join(columns)
-    update_cols = [c for c in columns if c not in keys]
-    if update_cols:
-        update_stmt = ", ".join([f"{c}=excluded.{c}" for c in update_cols])
-    else:
-        update_stmt = ", ".join([f"{k}=excluded.{k}" for k in keys])
+        if key_columns is not None:
+            if isinstance(key_columns, str) or not isinstance(key_columns, Iterable):
+                raise ValueError("key_columns must be a non-empty iterable of strings.")
+            keys = list(key_columns)
+            if not keys:
+                raise ValueError(f"No key columns provided for table {table}.")
+        else:
+            keys = list_primary_keys(table, config_dir=config_dir)
 
-    sql = (
-        f"INSERT INTO {table} ({col_list}) VALUES ({placeholders}) "
-        f"ON CONFLICT({', '.join(keys)}) DO UPDATE SET {update_stmt}"
-    )
-    try:
-        with _connect(db_path) as conn:
+        if not keys:
+            return False, f"No primary keys found for table {table}."
+
+        for key in keys:
+            if not isinstance(key, str):
+                raise ValueError(f"Invalid key column type: {key!r}")
+            _validate_column_name(conn, table, key)
+        for column in data.keys():
+            _validate_column_name(conn, table, column)
+        for key in keys:
+            if key not in data:
+                return False, f"Missing key column in data: {key!r}"
+
+        for column in data.keys():
+            if column not in table_columns:
+                return False, f"Unknown column name: {column!r}"
+
+        columns = list(data.keys())
+        placeholders = ", ".join(["?"] * len(columns))
+        quoted_columns = [_quote_identifier(column) for column in columns]
+        col_list = ", ".join(quoted_columns)
+
+        update_cols = [c for c in columns if c not in keys]
+        if update_cols:
+            update_stmt = ", ".join(
+                [
+                    f"{_quote_identifier(c)}=excluded.{_quote_identifier(c)}"
+                    for c in update_cols
+                ]
+            )
+        else:
+            update_stmt = ", ".join(
+                [
+                    f"{_quote_identifier(k)}=excluded.{_quote_identifier(k)}"
+                    for k in keys
+                ]
+            )
+
+        sql = (
+            f"INSERT INTO {_quote_identifier(table)} ({col_list}) VALUES ({placeholders}) "
+            f"ON CONFLICT({', '.join(_quote_identifier(key) for key in keys)}) DO UPDATE SET {update_stmt}"
+        )
+        try:
             conn.execute(sql, tuple(data.values()))
             conn.commit()
-        return True, None
-    except sqlite3.Error as e:
-        logger.error("Failed to upsert into %s: %s", table, e)
-        return False, str(e)
+            return True, None
+        except sqlite3.Error as e:
+            logger.error("Failed to upsert into %s: %s", table, e)
+            return False, str(e)
 
 
 def delete_rows(
@@ -122,8 +203,11 @@ def delete_rows(
         return False, f"NzbDAV db not found: {db_path}"
     if not where_sql.strip():
         return False, "Refusing to delete without a WHERE clause."
+    if len(where_sql) > 500:
+        return False, "WHERE clause is too long."
     try:
         with _connect(db_path) as conn:
+            _validate_table_name(conn, table)
             conn.execute(f"DELETE FROM {table} WHERE {where_sql}", params or [])
             conn.commit()
         return True, None

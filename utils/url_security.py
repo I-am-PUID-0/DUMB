@@ -9,6 +9,10 @@ def validate_url_scheme(url: str) -> str:
     if parsed.scheme not in ALLOWED_URL_SCHEMES:
         allowed = ", ".join(sorted(ALLOWED_URL_SCHEMES))
         raise ValueError(f"Unsupported URL scheme for {url!r}; expected {allowed}")
+    if not parsed.netloc:
+        raise ValueError(f"Missing host for URL: {url!r}")
+    if parsed.username is not None or parsed.password is not None:
+        raise ValueError(f"User credentials are not allowed in URL: {url!r}")
     return url
 
 

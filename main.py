@@ -15,7 +15,7 @@ from utils.ffprobe_monitor import start_ffprobe_monitor
 from utils.setup import setup_project
 from utils.seerr_sync import start_seerr_sync_service
 from concurrent.futures import ThreadPoolExecutor, wait, FIRST_COMPLETED, as_completed
-import subprocess, threading, time, os, socket, errno, psutil, json, urllib.parse
+import subprocess, threading, time, os, socket, errno, psutil, json, urllib.parse, sys
 
 
 def log_ascii_art():
@@ -285,6 +285,20 @@ def start_configured_process(config_obj, updater, key_name, exit_on_error=True):
         logger.error(f"An error occurred in setup for {key_name}: {e}")
         if exit_on_error:
             raise
+
+
+def _healthcheck_command():
+    return [sys.executable, "/healthcheck.py"]
+
+
+def _run_healthcheck_once():
+    try:
+        return subprocess.run(
+            _healthcheck_command(), capture_output=True, text=True, timeout=8
+        )
+    except subprocess.TimeoutExpired:
+        logger.error("healthcheck.py timed out")
+        return None
 
 
 def _service_has_enabled_instance(config_obj: dict) -> bool:
@@ -996,9 +1010,9 @@ def main():
         while True:
             time.sleep(10)
             try:
-                result = subprocess.run(
-                    ["python", "healthcheck.py"], capture_output=True, text=True
-                )
+                result = _run_healthcheck_once()
+                if not result:
+                    continue
                 if result.stderr:
                     logger.error(result.stderr.strip())
             except Exception as e:
