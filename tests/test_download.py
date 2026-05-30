@@ -1,6 +1,12 @@
+import io
+import os
 import sys
+import tarfile
+import tempfile
 import types
 import unittest
+import zipfile
+from pathlib import Path
 from unittest.mock import patch
 
 
@@ -27,9 +33,10 @@ class _ConfigManager:
 
 
 class FakeResponse:
-    def __init__(self, status_code, headers=None):
+    def __init__(self, status_code, headers=None, content=b""):
         self.status_code = status_code
         self.headers = headers or {}
+        self.content = content
 
 
 def _install_runtime_stubs():
@@ -134,6 +141,62 @@ class DownloaderHelperTests(unittest.TestCase):
 
         self.assertTrue(handled)
         sleep.assert_called_once_with(12)
+
+    def test_download_and_extract_skips_zip_members_outside_target_dir(self):
+        zip_buffer = io.BytesIO()
+        with zipfile.ZipFile(zip_buffer, "w") as archive:
+            archive.writestr("app/good.txt", "ok")
+            archive.writestr("app/../../escape.txt", "bad")
+        response = FakeResponse(
+            200,
+            {"Content-Disposition": "attachment; filename=app.zip"},
+            zip_buffer.getvalue(),
+        )
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            target = Path(temp_dir) / "target"
+            escaped = Path(temp_dir) / "escape.txt"
+            with patch.object(
+                self.downloader, "fetch_with_retries", return_value=response
+            ):
+                success, error = self.downloader.download_and_extract(
+                    "https://example.test/app.zip", str(target), zip_folder_name="app"
+                )
+
+            self.assertTrue(success, error)
+            self.assertEqual((target / "good.txt").read_text(), "ok")
+            self.assertFalse(escaped.exists())
+
+    def test_download_and_extract_skips_tar_members_outside_target_dir(self):
+        tar_buffer = io.BytesIO()
+        with tarfile.open(fileobj=tar_buffer, mode="w") as archive:
+            good_data = b"ok"
+            good = tarfile.TarInfo("app/good.txt")
+            good.size = len(good_data)
+            archive.addfile(good, io.BytesIO(good_data))
+            bad_data = b"bad"
+            bad = tarfile.TarInfo("../escape.txt")
+            bad.size = len(bad_data)
+            archive.addfile(bad, io.BytesIO(bad_data))
+        response = FakeResponse(
+            200,
+            {"Content-Disposition": "attachment; filename=app.tar"},
+            tar_buffer.getvalue(),
+        )
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            target = Path(temp_dir) / "target"
+            escaped = Path(temp_dir) / "escape.txt"
+            with patch.object(
+                self.downloader, "fetch_with_retries", return_value=response
+            ):
+                success, error = self.downloader.download_and_extract(
+                    "https://example.test/app.tar", str(target)
+                )
+
+            self.assertTrue(success, error)
+            self.assertEqual((target / "app" / "good.txt").read_text(), "ok")
+            self.assertFalse(escaped.exists())
 
     def test_handle_rate_limits_ignores_non_rate_limit_statuses(self):
         with patch.object(download.time, "sleep") as sleep:

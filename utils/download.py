@@ -416,6 +416,23 @@ class Downloader:
         self.logger.error("No assets or zipball/tarball URL found for the release.")
         return None, None
 
+    def _safe_extract_path(self, target_dir, member_name):
+        target_real = os.path.realpath(target_dir)
+        destination = os.path.realpath(os.path.join(target_dir, member_name))
+        try:
+            if os.path.commonpath([target_real, destination]) != target_real:
+                self.logger.warning(
+                    "Skipping archive member outside target directory: %s",
+                    member_name,
+                )
+                return None
+        except Exception:
+            self.logger.warning(
+                "Skipping archive member with invalid target path: %s", member_name
+            )
+            return None
+        return destination
+
     def _extract_tarfile(
         self, tar_bytes_io, target_dir, zip_folder_name=None, exclude_dirs=None
     ):
@@ -463,7 +480,9 @@ class Downloader:
                         )
                         continue
 
-                    fpath = os.path.join(target_dir, member_name)
+                    fpath = self._safe_extract_path(target_dir, member_name)
+                    if not fpath:
+                        continue
 
                     try:
                         os.makedirs(os.path.dirname(fpath), exist_ok=True)
@@ -547,13 +566,19 @@ class Downloader:
                             ):
                                 parts = file_info.filename.split("/", 1)
                                 inner_path = parts[1] if len(parts) > 1 else parts[0]
-                                fpath = os.path.join(target_dir, inner_path)
+                                fpath = self._safe_extract_path(target_dir, inner_path)
                             elif len(z.infolist()) == 1:
-                                fpath = os.path.join(target_dir, file_info.filename)
+                                fpath = self._safe_extract_path(
+                                    target_dir, file_info.filename
+                                )
                             else:
                                 continue
                         else:
-                            fpath = os.path.join(target_dir, file_info.filename)
+                            fpath = self._safe_extract_path(
+                                target_dir, file_info.filename
+                            )
+                        if not fpath:
+                            continue
                         if exclude_dirs and any(
                             excl in file_info.filename for excl in exclude_dirs
                         ):
@@ -590,7 +615,9 @@ class Downloader:
                     archive_data.seek(0)
 
             os.makedirs(target_dir, exist_ok=True)
-            out_path = os.path.join(target_dir, filename)
+            out_path = self._safe_extract_path(target_dir, filename)
+            if not out_path:
+                return False, "Unsafe output path."
             with open(out_path, "wb") as f:
                 f.write(content)
             self.logger.debug(f"Saved non-archive asset to {out_path}")
