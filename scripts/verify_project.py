@@ -72,6 +72,31 @@ def check_env_example() -> None:
         )
 
 
+def check_dockerignore_required_patterns() -> None:
+    required_patterns = {
+        ".git",
+        ".github",
+        ".env",
+        "config/",
+        "log/",
+        "logs/",
+        "__pycache__/",
+        "*.py[cod]",
+        ".ruff_cache/",
+        ".venv/",
+        "venv/",
+    }
+    dockerignore_path = ROOT / ".dockerignore"
+    patterns = {
+        line.strip()
+        for line in dockerignore_path.read_text(encoding="utf-8").splitlines()
+        if line.strip() and not line.lstrip().startswith("#")
+    }
+    missing = sorted(required_patterns - patterns)
+    if missing:
+        fail(".dockerignore missing required patterns: " + ", ".join(missing))
+
+
 def check_workflow_permissions() -> None:
     workflow_dir = ROOT / ".github" / "workflows"
     missing = []
@@ -93,6 +118,7 @@ def main() -> None:
     check_json_files()
     check_release_manifest()
     check_env_example()
+    check_dockerignore_required_patterns()
     check_workflow_permissions()
     check_tests_are_importable_package()
     print("project metadata ok")
