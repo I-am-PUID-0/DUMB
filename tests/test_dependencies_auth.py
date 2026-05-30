@@ -57,11 +57,23 @@ def _install_dependency_stubs():
     sys.modules["fastapi.security"] = security
 
     api_state = types.ModuleType("api.api_state")
-    api_state.APIState = type("APIState", (), {})
+
+    class APIState:
+        def __init__(self, process_handler=None, logger=None):
+            self.process_handler = process_handler
+            self.logger = logger
+
+    api_state.APIState = APIState
     sys.modules["api.api_state"] = api_state
 
     metrics = types.ModuleType("utils.metrics")
-    metrics.MetricsCollector = type("MetricsCollector", (), {})
+
+    class MetricsCollector:
+        def __init__(self, process_handler=None, logger=None):
+            self.process_handler = process_handler
+            self.logger = logger
+
+    metrics.MetricsCollector = MetricsCollector
     sys.modules["utils.metrics"] = metrics
 
     processes = types.ModuleType("utils.processes")
@@ -237,6 +249,55 @@ class DependencyAuthTests(unittest.TestCase):
         )
 
         self.assertEqual(result, "alice")
+
+
+class DependencyWiringTests(unittest.TestCase):
+    def setUp(self):
+        dependencies._shared_instances.clear()
+
+    def tearDown(self):
+        dependencies._shared_instances.clear()
+
+    def test_initialize_dependencies_stores_shared_instances_and_builds_helpers(self):
+        process_handler = object()
+        updater = object()
+        websocket_manager = object()
+        metrics_manager = object()
+        status_manager = object()
+        logger = object()
+
+        dependencies.initialize_dependencies(
+            process_handler,
+            updater,
+            websocket_manager,
+            metrics_manager,
+            status_manager,
+            logger,
+        )
+
+        self.assertIs(dependencies.get_process_handler(), process_handler)
+        self.assertIs(dependencies.get_updater(), updater)
+        self.assertIs(dependencies.get_websocket_manager(), websocket_manager)
+        self.assertIs(dependencies.get_metrics_manager(), metrics_manager)
+        self.assertIs(dependencies.get_status_manager(), status_manager)
+        self.assertIs(dependencies.get_logger(), logger)
+
+        api_state = dependencies.get_api_state()
+        self.assertIsInstance(api_state, dependencies.APIState)
+        self.assertIs(api_state.process_handler, process_handler)
+        self.assertIs(api_state.logger, logger)
+
+        metrics_collector = dependencies.get_metrics_collector()
+        self.assertIsInstance(metrics_collector, dependencies.MetricsCollector)
+        self.assertIs(metrics_collector.process_handler, process_handler)
+        self.assertIs(metrics_collector.logger, logger)
+
+    def test_shared_instance_getters_raise_key_error_before_initialization(self):
+        with self.assertRaises(KeyError):
+            dependencies.get_process_handler()
+
+        with self.assertRaises(KeyError):
+            dependencies.get_api_state()
 
 
 if __name__ == "__main__":
