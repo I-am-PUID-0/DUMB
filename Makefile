@@ -1,4 +1,4 @@
-.PHONY: audit env-check env-example format format-check lint lock-check metadata syntax test verify
+.PHONY: audit secret-scan security env-check env-example format format-check lint lock-check metadata syntax test verify
 
 POETRY ?= poetry
 PYTHON ?= $(POETRY) run python
@@ -9,6 +9,12 @@ PYTHON_TARGETS ?= api utils tests scripts
 
 audit:
 	$(POETRY) run pip-audit
+
+secret-scan:
+	$(PYTHON) scripts/security_scan.py
+
+security:
+	$(MAKE) audit secret-scan
 
 env-example:
 	$(PYTHON) scripts/generate_env_example.py
@@ -37,4 +43,4 @@ syntax:
 test:
 	$(PYTHON) -m unittest discover -s tests
 
-verify: metadata lock-check format-check lint syntax test
+verify: metadata lock-check format-check lint syntax test security

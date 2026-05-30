@@ -28,6 +28,8 @@ from utils.config_loader import CONFIG_MANAGER
 from utils.project_metadata import get_project_version
 import threading
 
+_DEFAULT_ALLOWED_ORIGINS = ["http://localhost", "http://localhost:8000"]
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -41,6 +43,33 @@ async def lifespan(app: FastAPI):
 
 def get_version_from_pyproject(path="pyproject.toml") -> str:
     return get_project_version(path)
+
+
+def _normalize_cors_origins(origins):
+    if origins is None:
+        return list(_DEFAULT_ALLOWED_ORIGINS)
+
+    if isinstance(origins, str):
+        origins = [origins]
+    elif not isinstance(origins, list):
+        return list(_DEFAULT_ALLOWED_ORIGINS)
+
+    normalized = []
+    seen = set()
+    for origin in origins:
+        if not isinstance(origin, str):
+            continue
+        value = origin.strip()
+        if not value or value == "*":
+            continue
+        if value not in seen:
+            normalized.append(value)
+            seen.add(value)
+
+    if not normalized:
+        return list(_DEFAULT_ALLOWED_ORIGINS)
+
+    return normalized
 
 
 def create_app() -> FastAPI:
@@ -88,17 +117,31 @@ def create_app() -> FastAPI:
     origin_from_config = (
         CONFIG_MANAGER.config.get("dumb", {}).get("frontend", {}).get("origins", None)
     )
-    origins = (
-        [origin_from_config]
-        if origin_from_config
-        else ["http://localhost", "http://localhost:8000"]
+    origins = _normalize_cors_origins(origin_from_config)
+
+    configured_values = [
+        v
+        for v in (
+            origin_from_config
+            if isinstance(origin_from_config, list)
+            else [origin_from_config]
+        )
+        if isinstance(v, str)
+    ]
+    configured_set = set(
+        value.strip() for value in configured_values if value is not None
     )
+    allow_credentials = "*" not in configured_set
+    if not allow_credentials:
+        logger.warning(
+            "Disabling CORS credentials because wildcard origins are not safe with cookies"
+        )
     logger.info(f"Allowed CORS origins set to: {origins}")
 
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],
-        allow_credentials=True,
+        allow_origins=origins,
+        allow_credentials=allow_credentials,
         allow_methods=["*"],
         allow_headers=["*"],
     )

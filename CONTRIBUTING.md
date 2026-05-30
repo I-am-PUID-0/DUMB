@@ -45,14 +45,13 @@ make env-example
 
 `make verify` checks that `.env.example` is current, but it does not rewrite the file for you. Use `make env-check` when you only want to check generated env-file drift.
 
-Dependency vulnerability auditing is available as a separate check while the audit noise level is evaluated:
+Dependency scanning and dependency vulnerability auditing now live in one command:
 
 ```bash
-make audit
+make security
 ```
 
-`make audit` runs `pip-audit` against the Poetry environment. It is not part of `make verify` yet.
-
+`make security` runs `pip-audit` and the local project secret scan script in `scripts/security_scan.py` (for obvious hard-coded secrets).
 ## Pull Request Expectations
 
 - Use Conventional Commit style for PR titles and commits.

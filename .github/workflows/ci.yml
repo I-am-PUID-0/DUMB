@@ -81,3 +81,7 @@ jobs:
 
       - name: Unit tests
         run: poetry run python -m unittest discover -s tests
+
+      - name: Security checks
+        run: make security
+
