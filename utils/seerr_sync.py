@@ -8,6 +8,7 @@ with its own Arr stack configuration.
 
 from utils.global_logger import logger
 from utils.config_loader import CONFIG_MANAGER
+from utils.url_security import safe_request, safe_urlopen
 from typing import Optional
 import json, os, time, threading, urllib.request, urllib.error
 
@@ -58,9 +59,9 @@ def _seerr_req(
         headers["Content-Type"] = "application/json"
         body = json.dumps(data).encode("utf-8")
 
-    req = urllib.request.Request(url, data=body, headers=headers, method=method)
+    req = safe_request(url, data=body, headers=headers, method=method)
     try:
-        with urllib.request.urlopen(req, timeout=timeout) as resp:
+        with safe_urlopen(req, timeout=timeout) as resp:
             raw = resp.read()
             if not raw:
                 return None

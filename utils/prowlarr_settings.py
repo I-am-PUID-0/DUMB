@@ -1,6 +1,7 @@
 from utils.global_logger import logger
 from utils.config_loader import CONFIG_MANAGER
 from utils.core_services import get_core_services
+from utils.url_security import safe_request, safe_urlopen
 from utils.user_management import chown_recursive
 from typing import Optional, Tuple
 import defusedxml.ElementTree as ET
@@ -167,7 +168,7 @@ def ensure_custom_indexers(config_dir: str, zilean_port: int) -> None:
             handle.write(updated)
 
     try:
-        with urllib.request.urlopen(CUSTOM_INDEXER_REPO_ZIP, timeout=60) as resp:
+        with safe_urlopen(CUSTOM_INDEXER_REPO_ZIP, timeout=60) as resp:
             zip_bytes = resp.read()
         with tempfile.TemporaryDirectory() as temp_dir:
             zip_path = os.path.join(temp_dir, "custom.zip")
@@ -209,7 +210,7 @@ def ensure_custom_indexers(config_dir: str, zilean_port: int) -> None:
                     exc,
                 )
         try:
-            with urllib.request.urlopen(url, timeout=30) as resp:
+            with safe_urlopen(url, timeout=30) as resp:
                 raw = resp.read().decode("utf-8")
             _write_with_links(target_path, raw, links_map.get(filename, []))
         except Exception as exc:
@@ -305,9 +306,9 @@ def _prowlarr_req(
     if data is not None:
         headers["Content-Type"] = "application/json"
         body = json.dumps(data).encode("utf-8")
-    req = urllib.request.Request(url, data=body, headers=headers, method=method)
+    req = safe_request(url, data=body, headers=headers, method=method)
     try:
-        with urllib.request.urlopen(req, timeout=timeout) as resp:
+        with safe_urlopen(req, timeout=timeout) as resp:
             raw = resp.read()
             if not raw:
                 return None
@@ -337,8 +338,8 @@ def _arr_req(
     if data is not None:
         headers["Content-Type"] = "application/json"
         body = json.dumps(data).encode("utf-8")
-    req = urllib.request.Request(url, data=body, headers=headers, method=method)
-    with urllib.request.urlopen(req, timeout=timeout) as resp:
+    req = safe_request(url, data=body, headers=headers, method=method)
+    with safe_urlopen(req, timeout=timeout) as resp:
         raw = resp.read()
         if not raw:
             return None

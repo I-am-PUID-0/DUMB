@@ -1,6 +1,7 @@
 from utils.global_logger import logger
 from utils.config_loader import CONFIG_MANAGER
 from utils.core_services import get_core_services, has_core_service
+from utils.url_security import safe_request, safe_urlopen
 from utils.versions import Versions
 from collections import OrderedDict
 import os, json, time, threading
@@ -159,9 +160,9 @@ def _arr_req(
     if data is not None:
         headers["Content-Type"] = "application/json"
         body = json.dumps(data).encode("utf-8")
-    req = urllib.request.Request(url, data=body, headers=headers, method=method)
+    req = safe_request(url, data=body, headers=headers, method=method)
     try:
-        with urllib.request.urlopen(req, timeout=timeout) as resp:
+        with safe_urlopen(req, timeout=timeout) as resp:
             raw = resp.read()
             if not raw:
                 return None
@@ -733,8 +734,8 @@ def _wait_for_decypharr(
     url = f"http://{host}:{port}/"
     while time.time() < deadline:
         try:
-            req = urllib.request.Request(url, method="GET")
-            with urllib.request.urlopen(req, timeout=3) as resp:
+            req = safe_request(url, method="GET")
+            with safe_urlopen(req, timeout=3) as resp:
                 resp.read(1)
             return True
         except Exception:
