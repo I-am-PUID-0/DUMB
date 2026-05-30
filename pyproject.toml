@@ -1,9 +1,15 @@
-[tool.poetry]
+[project]
 name = "DUMB"
 version = "2.5.0"
 description = "Debrid Unlimited Media Bridge (DUMB) is an all-in-one, containerized platform for managing and automating media workflows using premium debrid services like Real-Debrid."
-authors = ["I-am-PUID-0 <36779668+I-am-PUID-0@users.noreply.github.com>"]
 readme = "README.md"
+requires-python = ">=3.11"
+dynamic = ["dependencies"]
+authors = [
+    { name = "I-am-PUID-0", email = "36779668+I-am-PUID-0@users.noreply.github.com" },
+]
+
+[tool.poetry]
 package-mode = false
 
 [tool.poetry.dependencies]
@@ -32,7 +38,26 @@ passlib = {extras = ["bcrypt"], version = ">=1.7.4,<2.0.0"}
 
 [tool.poetry.group.dev.dependencies]
 black = ">=25.1.0,<27.0.0"
+ruff = ">=0.14.0,<0.15.0"
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.black]
+line-length = 88
+target-version = ["py311"]
+include = '''/(api|utils|tests|scripts)/.*\.py$'''
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+include = ["api/**/*.py", "utils/**/*.py", "tests/**/*.py", "scripts/**/*.py"]
+
+[tool.ruff.lint]
+# Start with fatal correctness checks that are feasible on the existing tree.
+# Expand this set as legacy style/import/typing issues are cleaned up.
+select = ["E9", "F63", "F7", "F82"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = ["E402"]

@@ -280,7 +280,9 @@ class ProcessHandler:
                             label = entry.get("name") or f"{host}:{port}"
                             timeout = float(entry.get("timeout", 2) or 2)
                             try:
-                                with socket.create_connection((host, port), timeout=timeout):
+                                with socket.create_connection(
+                                    (host, port), timeout=timeout
+                                ):
                                     continue
                             except OSError as exc:
                                 missing.append(f"{label} ({host}:{port}: {exc})")

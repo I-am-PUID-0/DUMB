@@ -98,7 +98,10 @@ class MetricsCollector:
 
         now = time.time()
         cpu_percent = None
-        if self._cgroup_last_cpu_usage is not None and self._cgroup_last_cpu_time is not None:
+        if (
+            self._cgroup_last_cpu_usage is not None
+            and self._cgroup_last_cpu_time is not None
+        ):
             delta_usage = cpu_usage - self._cgroup_last_cpu_usage
             delta_time = now - self._cgroup_last_cpu_time
             if delta_time > 0 and delta_usage >= 0 and cpu_limit > 0:
@@ -253,7 +256,11 @@ class MetricsCollector:
         mount_paths = self._collect_mount_paths()
         for pid, info in list(self.process_handler.processes.items()):
             process_name = info.get("name")
-            entry = {"name": process_name, "pid": pid, "start_time": info.get("start_time")}
+            entry = {
+                "name": process_name,
+                "pid": pid,
+                "start_time": info.get("start_time"),
+            }
             proc = self._get_process(pid)
             if proc:
                 entry.update(self._collect_process_metrics(proc))
@@ -384,13 +391,15 @@ class MetricsCollector:
                 {
                     "path": path,
                     "exists": path_exists,
-                    "usage": {
-                        "total": usage.total,
-                        "used": usage.used,
-                        "percent": usage.percent,
-                    }
-                    if usage
-                    else None,
+                    "usage": (
+                        {
+                            "total": usage.total,
+                            "used": usage.used,
+                            "percent": usage.percent,
+                        }
+                        if usage
+                        else None
+                    ),
                 }
             )
         return {"paths": disk_entries, "used_total": total_used}

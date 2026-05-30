@@ -3,7 +3,6 @@ from utils.config_loader import CONFIG_MANAGER
 import xml.etree.ElementTree as ET
 import os
 
-
 EMBY_PORT_TAGS = (
     "HttpServerPortNumber",
     "PublicPort",

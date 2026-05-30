@@ -4,6 +4,7 @@ from utils import user_management
 from api.api_service import start_fastapi_process
 from api.connection_manager import ConnectionManager
 from utils.metrics_history import MetricsHistoryWriter
+from utils.project_metadata import get_project_version
 from utils.processes import ProcessHandler
 from utils.auto_update import Update
 from utils.dependencies import initialize_dependencies
@@ -14,7 +15,7 @@ from utils.ffprobe_monitor import start_ffprobe_monitor
 from utils.setup import setup_project
 from utils.seerr_sync import start_seerr_sync_service
 from concurrent.futures import ThreadPoolExecutor, wait, FIRST_COMPLETED, as_completed
-import subprocess, threading, time, tomllib, os, socket, errno, psutil, json, urllib.parse
+import subprocess, threading, time, os, socket, errno, psutil, json, urllib.parse
 
 
 def log_ascii_art():
@@ -22,9 +23,7 @@ def log_ascii_art():
     if env_version:
         version = env_version
     else:
-        with open("pyproject.toml", "rb") as file:
-            pyproject = tomllib.load(file)
-            version = pyproject["tool"]["poetry"]["version"]
+        version = get_project_version()
 
     ascii_art = f"""
                                                                        
@@ -334,7 +333,9 @@ def _migrate_huntarr_to_neutarr(config_manager) -> None:
                     if isinstance(val, str) and "/huntarr/" in val:
                         inst[path_key] = val.replace("/huntarr/", "/neutarr/")
                         changed = True
-                if isinstance(val := inst.get("config_file"), str) and val.endswith("huntarr.db"):
+                if isinstance(val := inst.get("config_file"), str) and val.endswith(
+                    "huntarr.db"
+                ):
                     inst["config_file"] = val[: -len("huntarr.db")] + "general.json"
                     changed = True
                 if isinstance(inst.get("command"), list):
@@ -357,9 +358,9 @@ def _migrate_huntarr_to_neutarr(config_manager) -> None:
                 env = inst.get("env")
                 if isinstance(env, dict):
                     if "HUNTARR_CONFIG_DIR" in env:
-                        env["NEUTARR_CONFIG_DIR"] = env.pop("HUNTARR_CONFIG_DIR").replace(
-                            "/huntarr/", "/neutarr/"
-                        )
+                        env["NEUTARR_CONFIG_DIR"] = env.pop(
+                            "HUNTARR_CONFIG_DIR"
+                        ).replace("/huntarr/", "/neutarr/")
                         changed = True
                     if "HUNTARR_PORT" in env:
                         env["NEUTARR_PORT"] = env.pop("HUNTARR_PORT")

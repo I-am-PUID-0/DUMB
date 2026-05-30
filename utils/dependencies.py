@@ -75,7 +75,9 @@ def resolve_path(path_str: str) -> Path:
 
 
 def get_optional_current_user(
-    credentials: Optional[HTTPAuthorizationCredentials] = Depends(HTTPBearer(auto_error=False))
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(
+        HTTPBearer(auto_error=False)
+    ),
 ) -> Optional[str]:
     """
     Optional authentication dependency.
@@ -144,16 +146,22 @@ async def get_websocket_current_user(websocket: WebSocket) -> Optional[str]:
     # Auth is enabled, check for token in query params
     token = websocket.query_params.get("token")
     if not token:
-        raise WebSocketException(code=status.WS_1008_POLICY_VIOLATION, reason="Authentication required")
+        raise WebSocketException(
+            code=status.WS_1008_POLICY_VIOLATION, reason="Authentication required"
+        )
 
     payload = decode_token(token)
 
     if not payload or payload.type != "access":
-        raise WebSocketException(code=status.WS_1008_POLICY_VIOLATION, reason="Invalid or expired token")
+        raise WebSocketException(
+            code=status.WS_1008_POLICY_VIOLATION, reason="Invalid or expired token"
+        )
 
     # Verify user still exists and is not disabled
     user = auth_config.get_user(payload.sub)
     if not user or user.disabled:
-        raise WebSocketException(code=status.WS_1008_POLICY_VIOLATION, reason="User account is disabled")
+        raise WebSocketException(
+            code=status.WS_1008_POLICY_VIOLATION, reason="User account is disabled"
+        )
 
     return payload.sub

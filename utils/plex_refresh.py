@@ -9,7 +9,6 @@ project_path = plex_refresh_path.parent.parent.parent
 sys.path.append(str(project_path))
 from base import PLEXTOKEN, PLEXADD, PLEXMOUNT, RCLONEMN, RCLONEDIR
 
-
 # Configuration
 plex_url = PLEXADD.replace("'", "").replace('"', "")
 token = PLEXTOKEN.replace("'", "").replace('"', "")

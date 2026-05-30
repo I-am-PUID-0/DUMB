@@ -1,0 +1,83 @@
+name: CI
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - dev
+      - master
+    paths:
+      - "api/**"
+      - "utils/**"
+      - "tests/**"
+      - "scripts/**"
+      - "Makefile"
+      - "pyproject.toml"
+      - "poetry.lock"
+      - ".github/workflows/**"
+  push:
+    branches:
+      - dev
+      - master
+    paths:
+      - "api/**"
+      - "utils/**"
+      - "tests/**"
+      - "scripts/**"
+      - "Makefile"
+      - "pyproject.toml"
+      - "poetry.lock"
+      - ".github/workflows/**"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  python-checks:
+    name: Python ${{ matrix.python-version }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version:
+          - "3.11"
+          - "3.12"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install Poetry
+        run: python -m pip install "poetry>=2.0,<3.0"
+
+      - name: Poetry lock check
+        run: poetry check --lock
+
+      - name: Install dependencies
+        run: poetry install --no-root --with dev
+
+      - name: Project metadata
+        run: poetry run python scripts/verify_project.py
+
+      - name: Black format check
+        run: poetry run black --check api utils tests scripts
+
+      - name: Ruff lint
+        run: poetry run ruff check api utils tests scripts
+
+      - name: Syntax compile
+        env:
+          PYTHONPYCACHEPREFIX: /tmp/dumb-pycache
+        run: poetry run python -m compileall -q api utils tests scripts
+
+      - name: Unit tests
+        run: poetry run python -m unittest discover -s tests

@@ -10,7 +10,6 @@ from utils.dependencies import (
 from utils.config_loader import CONFIG_MANAGER
 from utils.metrics_history_reader import read_history, read_history_series
 
-
 websocket_metrics_router = APIRouter()
 _publisher_task = None
 _publisher_lock = asyncio.Lock()
@@ -126,9 +125,13 @@ def _parse_float(value, default=None):
 async def _ensure_publisher(collector, metrics_manager, interval):
     global _publisher_task, _publisher_interval
     async with _publisher_lock:
-        _publisher_interval = min(_publisher_interval, interval) if _publisher_task else interval
+        _publisher_interval = (
+            min(_publisher_interval, interval) if _publisher_task else interval
+        )
         if _publisher_task is None or _publisher_task.done():
-            _publisher_task = asyncio.create_task(_publisher_loop(collector, metrics_manager))
+            _publisher_task = asyncio.create_task(
+                _publisher_loop(collector, metrics_manager)
+            )
 
 
 async def _publisher_loop(collector, metrics_manager):
@@ -140,7 +143,9 @@ async def _publisher_loop(collector, metrics_manager):
                 continue
             snapshot = await asyncio.to_thread(collector.snapshot)
             _latest_snapshot = snapshot
-            await metrics_manager.broadcast(json.dumps({"type": "snapshot", "data": snapshot}))
+            await metrics_manager.broadcast(
+                json.dumps({"type": "snapshot", "data": snapshot})
+            )
         except Exception:
             await asyncio.sleep(_publisher_interval)
             continue

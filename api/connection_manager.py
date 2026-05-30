@@ -23,7 +23,9 @@ class ConnectionManager:
             connections = list(self.active_connections)
         if not connections:
             return
-        tasks = [asyncio.create_task(self._safe_send(conn, message)) for conn in connections]
+        tasks = [
+            asyncio.create_task(self._safe_send(conn, message)) for conn in connections
+        ]
         results = await asyncio.gather(*tasks)
         stale = [conn for conn, ok in zip(connections, results) if not ok]
         if stale:

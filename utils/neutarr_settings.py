@@ -9,7 +9,6 @@ import os
 import xml.etree.ElementTree as ET
 from typing import Any, Dict
 
-
 ARR_SERVICES = ("sonarr", "radarr", "lidarr", "whisparr")
 APP_URL_FIELDS = {
     "sonarr": ("api_url",),
@@ -77,7 +76,11 @@ def _load_app_json(config_root: str, app_type: str) -> Dict[str, Any]:
                 return json.load(fh)
         except Exception as exc:
             logger.warning("Failed reading NeutArr config %s: %s", json_path, exc)
-    return {"instances": [{"name": "Default", "api_url": "", "api_key": "", "enabled": True}]}
+    return {
+        "instances": [
+            {"name": "Default", "api_url": "", "api_key": "", "enabled": True}
+        ]
+    }
 
 
 def _save_app_json(config_root: str, app_type: str, config: Dict[str, Any]) -> None:

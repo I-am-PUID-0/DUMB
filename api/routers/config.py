@@ -574,7 +574,9 @@ async def update_config(
 
                     patched, err = patch_nzbdav_config()
                     if not patched and err:
-                        logger.warning("NzbDAV auto-sync after config update failed: %s", err)
+                        logger.warning(
+                            "NzbDAV auto-sync after config update failed: %s", err
+                        )
             except Exception as exc:
                 logger.warning("NzbDAV auto-sync after config update skipped: %s", exc)
 
@@ -718,7 +720,9 @@ async def get_service_ui_map(
             if service.get("name") and service.get("config_key"):
                 # Sanitize the name the same way Traefik config does
                 # Replace spaces and forward slashes with underscores, then lowercase
-                sanitized_name = service["name"].replace(" ", "_").replace("/", "_").lower()
+                sanitized_name = (
+                    service["name"].replace(" ", "_").replace("/", "_").lower()
+                )
                 service_map[sanitized_name] = service["config_key"]
 
         return service_map

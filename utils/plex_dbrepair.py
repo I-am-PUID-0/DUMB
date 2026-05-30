@@ -43,9 +43,7 @@ def _plex_token(plex_cfg, dumb_cfg):
         root = tree.getroot()
         return root.attrib.get("PlexOnlineToken", "") or ""
     except Exception as exc:
-        logger.warning(
-            "Failed to read Plex token from %s: %s", preferences_path, exc
-        )
+        logger.warning("Failed to read Plex token from %s: %s", preferences_path, exc)
         return ""
 
 
@@ -197,7 +195,9 @@ def _default_dbrepair_command(db_cfg, plex_cfg):
     filtered = []
     for arg in script_args:
         if str(arg).lower() in {"start", "stop"}:
-            logger.warning("DBRepair script arg '%s' removed; Plex is managed by DUMB.", arg)
+            logger.warning(
+                "DBRepair script arg '%s' removed; Plex is managed by DUMB.", arg
+            )
             continue
         filtered.append(arg)
     command.extend(filtered)

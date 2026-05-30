@@ -80,11 +80,16 @@ def _collect_arr_entries() -> Tuple[list[dict], list[dict], list[dict], list[dic
             inst_name = (
                 inst.get("instance_name") or inst.get("name") or inst_key or ""
             ).strip()
-            category = _slugify_category(f"{svc_name}-{inst_name}") or _slugify_category(
-                svc_name
-            )
+            category = _slugify_category(
+                f"{svc_name}-{inst_name}"
+            ) or _slugify_category(svc_name)
             bucket.append(
-                {"Host": host, "ApiKey": token, "Instance": inst_name, "Category": category}
+                {
+                    "Host": host,
+                    "ApiKey": token,
+                    "Instance": inst_name,
+                    "Category": category,
+                }
             )
     return radarr_entries, sonarr_entries, lidarr_entries, whisparr_entries
 
@@ -147,8 +152,7 @@ def _arr_req(
 
 def _get_sab_schema(host: str, key: str, api_version: str = "v3"):
     schemas = (
-        _arr_req(_arr_url(host, api_version, "downloadclient/schema"), key, "GET")
-        or []
+        _arr_req(_arr_url(host, api_version, "downloadclient/schema"), key, "GET") or []
     )
     for item in schemas:
         impl = (item.get("implementation") or "").lower()
@@ -180,8 +184,12 @@ def _arr_url(host: str, api_version: str, path: str) -> str:
 
 
 def _get_lidarr_rootfolder_payload(host: str, token: str, path: str) -> Optional[dict]:
-    quality_profiles = _arr_req(_arr_url(host, "v1", "qualityprofile"), token, "GET") or []
-    meta_profiles = _arr_req(_arr_url(host, "v1", "metadataprofile"), token, "GET") or []
+    quality_profiles = (
+        _arr_req(_arr_url(host, "v1", "qualityprofile"), token, "GET") or []
+    )
+    meta_profiles = (
+        _arr_req(_arr_url(host, "v1", "metadataprofile"), token, "GET") or []
+    )
     if not meta_profiles:
         meta_profiles = (
             _arr_req(_arr_url(host, "v1", "metadata/profile"), token, "GET") or []
@@ -285,10 +293,7 @@ def _ensure_arr_permissions(
             return False
         _arr_req(url, token, "PUT", desired)
         verify = _arr_req(url, token, "GET") or {}
-        if (
-            isinstance(verify, dict)
-            and verify.get(perms_key) != desired.get(perms_key)
-        ):
+        if isinstance(verify, dict) and verify.get(perms_key) != desired.get(perms_key):
             logger.warning(
                 "Arr permissions update did not persist on %s: %s=%s",
                 host,
@@ -328,11 +333,7 @@ def _ensure_symlink_roots(paths: list[str]) -> None:
             os.chmod(path, 0o777)
         except Exception as e:
             logger.debug("Failed chmod for %s: %s", path, e)
-        if (
-            stat_info
-            and stat_info.st_uid == user_id
-            and stat_info.st_gid == group_id
-        ):
+        if stat_info and stat_info.st_uid == user_id and stat_info.st_gid == group_id:
             logger.debug(
                 "Skipping recursive chown for %s; owner matches %s:%s",
                 path,
@@ -431,9 +432,7 @@ def ensure_nzbdav_download_client(
         )
 
     existing = (
-        _arr_req(
-            _arr_url(arr_host, api_version, "downloadclient"), arr_api_key, "GET"
-        )
+        _arr_req(_arr_url(arr_host, api_version, "downloadclient"), arr_api_key, "GET")
         or []
     )
     match = next(
@@ -608,7 +607,12 @@ def patch_nzbdav_config():
     radarr_entries, sonarr_entries, lidarr_entries, whisparr_entries = (
         _collect_arr_entries()
     )
-    if not radarr_entries and not sonarr_entries and not lidarr_entries and not whisparr_entries:
+    if (
+        not radarr_entries
+        and not sonarr_entries
+        and not lidarr_entries
+        and not whisparr_entries
+    ):
         logger.info("No Radarr/Sonarr/Lidarr/Whisparr instances configured for NzbDAV.")
         return False, None
 

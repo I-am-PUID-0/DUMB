@@ -43,7 +43,9 @@ def _json_path_exists(payload, path):
 
 def _response_is_ready(response, method, wait_entry=None, logger=None, wait_url=None):
     status_code = response.status_code
-    status_ready = 200 <= status_code < 300 or (method == "PROPFIND" and status_code == 207)
+    status_ready = 200 <= status_code < 300 or (
+        method == "PROPFIND" and status_code == 207
+    )
     if not status_ready:
         return False
 

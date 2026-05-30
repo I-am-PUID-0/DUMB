@@ -3,11 +3,15 @@ from utils.logger import format_time, get_start_time, time_to_complete
 from plexapi.server import PlexServer
 from plexapi import exceptions as plexapi_exceptions
 from requests.exceptions import HTTPError
-import requests, re, schedule, threading, time
-
+import os, requests, re, schedule, threading, time
 
 max_retry_attempts = 5
 retry_interval = 10
+PLEXADD = os.environ.get("PLEX_ADDRESS")
+PLEXTOKEN = os.environ.get("PLEX_TOKEN")
+RCLONEMN = os.environ.get("RCLONE_MOUNT_NAME")
+DUPECLEAN = os.environ.get("DUPECLEAN") or os.environ.get("DUPLICATE_CLEANUP")
+CLEANUPINT = os.environ.get("CLEANUPINT") or os.environ.get("CLEANUP_INTERVAL")
 
 
 def delete_media_with_retry(media):

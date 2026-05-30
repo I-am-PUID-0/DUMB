@@ -5,7 +5,6 @@ from utils.auth import create_token_pair, decode_token, TokenResponse
 from utils.auth_config import AuthConfigManager
 from utils.dependencies import get_logger, get_optional_current_user
 
-
 auth_router = APIRouter()
 
 # Global auth config manager instance
@@ -353,7 +352,8 @@ def list_users(
         # Auth is enabled - require authentication
         if not current_user:
             raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED, detail="Authentication required"
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Authentication required",
             )
 
     users = [
@@ -385,13 +385,16 @@ def create_user(
         HTTPException: 400 if validation fails, 401 if not authenticated when required
     """
     # Allow creating first user when auth is disabled and no users exist
-    is_first_user = not AUTH_CONFIG.is_auth_enabled() and len(AUTH_CONFIG.config.users) == 0
+    is_first_user = (
+        not AUTH_CONFIG.is_auth_enabled() and len(AUTH_CONFIG.config.users) == 0
+    )
 
     if AUTH_CONFIG.is_auth_enabled():
         # Auth is enabled - require authentication
         if not current_user:
             raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED, detail="Authentication required"
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Authentication required",
             )
 
     # Validate username and password
@@ -483,7 +486,9 @@ def update_user(
     if request.disabled and not user.disabled:
         # Count active users (non-disabled)
         active_users = [u for u in AUTH_CONFIG.config.users if not u.disabled]
-        logger.info(f"Attempting to disable user {username}. Active users count: {len(active_users)}")
+        logger.info(
+            f"Attempting to disable user {username}. Active users count: {len(active_users)}"
+        )
         if len(active_users) <= 1:
             logger.warning(f"Blocked attempt to disable last active user: {username}")
             raise HTTPException(

@@ -43,9 +43,7 @@ class Update:
     def _fetch_branch_head_sha(self, repo_owner: str, repo_name: str, branch: str):
         try:
             branch_ref = requests.utils.quote(str(branch or "").strip(), safe="")
-            api_url = (
-                f"https://api.github.com/repos/{repo_owner}/{repo_name}/commits/{branch_ref}"
-            )
+            api_url = f"https://api.github.com/repos/{repo_owner}/{repo_name}/commits/{branch_ref}"
             response = self.downloader.fetch_with_retries(
                 api_url, self.downloader.get_headers()
             )
@@ -865,7 +863,9 @@ class Update:
         with self.updating:
             try:
                 if allow_override:
-                    preserve_branch_mode = bool(original.get("branch_enabled")) and not target
+                    preserve_branch_mode = (
+                        bool(original.get("branch_enabled")) and not target
+                    )
                     config["pinned_version"] = ""
                     if not preserve_branch_mode:
                         config["branch_enabled"] = False
@@ -1267,7 +1267,9 @@ class Update:
     ):
         try:
             versions = Versions()
-            current_version, _ = versions.version_check(process_name, instance_name, key)
+            current_version, _ = versions.version_check(
+                process_name, instance_name, key
+            )
             current_version = (current_version or "").strip()
         except Exception:
             current_version = ""
@@ -1320,7 +1322,10 @@ class Update:
             requested_lower = requested_release.lower()
             if not requested_release:
                 return True
-            if requested_lower in {"latest", "prerelease"} or "nightly" in requested_lower:
+            if (
+                requested_lower in {"latest", "prerelease"}
+                or "nightly" in requested_lower
+            ):
                 return False
             return current_version != requested_release
 

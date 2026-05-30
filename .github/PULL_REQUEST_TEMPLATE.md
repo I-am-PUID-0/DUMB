@@ -23,6 +23,7 @@ Describe what you tested and how.
 - [ ] Not run (explain below)
 - [ ] Manual testing completed
 - [ ] Automated tests updated or added
+- [ ] `make verify` passes inside the DUMB devcontainer
 
 ## Related Issues
 

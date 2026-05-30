@@ -5,7 +5,6 @@ import subprocess
 
 from utils.global_logger import logger
 
-
 _APT_LOCK = threading.Lock()
 
 

@@ -266,7 +266,7 @@ class ArrInstaller:
                             attempt + 1,
                             retries,
                         )
-                        time.sleep(2 ** attempt)
+                        time.sleep(2**attempt)
                 return None, last_error
 
             download_urls = [self.get_download_url(), self.get_fallback_download_url()]
@@ -454,9 +454,7 @@ class ArrInstaller:
                             url, stream=True, allow_redirects=True, timeout=15
                         )
                     if response.status_code >= 400:
-                        raise RuntimeError(
-                            f"HTTP {response.status_code} for {url}"
-                        )
+                        raise RuntimeError(f"HTTP {response.status_code} for {url}")
                     filename = None
                     content_disposition = response.headers.get(
                         "Content-Disposition", ""

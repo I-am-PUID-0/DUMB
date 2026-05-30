@@ -11,7 +11,6 @@ from utils.config_loader import CONFIG_MANAGER
 from typing import Optional
 import json, os, time, threading, urllib.request, urllib.error
 
-
 _SYNC_STATE_FILE = "/config/seerr_sync_state.json"
 _SYNC_THREAD = None
 

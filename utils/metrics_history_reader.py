@@ -118,18 +118,22 @@ def compact_history_items(items):
                     "cpu_count": system.get("cpu_count"),
                     "mem": {"percent": mem.get("percent")} if mem else None,
                     "disk": {"percent": disk.get("percent")} if disk else None,
-                    "disk_io": {
-                        "read_bytes": disk_io.get("read_bytes"),
-                        "write_bytes": disk_io.get("write_bytes"),
-                    }
-                    if disk_io
-                    else None,
-                    "net_io": {
-                        "sent_bytes": net_io.get("sent_bytes"),
-                        "recv_bytes": net_io.get("recv_bytes"),
-                    }
-                    if net_io
-                    else None,
+                    "disk_io": (
+                        {
+                            "read_bytes": disk_io.get("read_bytes"),
+                            "write_bytes": disk_io.get("write_bytes"),
+                        }
+                        if disk_io
+                        else None
+                    ),
+                    "net_io": (
+                        {
+                            "sent_bytes": net_io.get("sent_bytes"),
+                            "recv_bytes": net_io.get("recv_bytes"),
+                        }
+                        if net_io
+                        else None
+                    ),
                 },
                 "dumb_managed": [
                     {
@@ -137,12 +141,18 @@ def compact_history_items(items):
                         "pid": proc.get("pid"),
                         "cpu_percent": proc.get("cpu_percent"),
                         "rss": proc.get("rss"),
-                        "disk_io": {
-                            "read_bytes": (proc.get("disk_io") or {}).get("read_bytes"),
-                            "write_bytes": (proc.get("disk_io") or {}).get("write_bytes"),
-                        }
-                        if proc.get("disk_io")
-                        else None,
+                        "disk_io": (
+                            {
+                                "read_bytes": (proc.get("disk_io") or {}).get(
+                                    "read_bytes"
+                                ),
+                                "write_bytes": (proc.get("disk_io") or {}).get(
+                                    "write_bytes"
+                                ),
+                            }
+                            if proc.get("disk_io")
+                            else None
+                        ),
                     }
                     for proc in (item.get("dumb_managed") or [])
                 ],
@@ -152,12 +162,18 @@ def compact_history_items(items):
                         "pid": proc.get("pid"),
                         "cpu_percent": proc.get("cpu_percent"),
                         "rss": proc.get("rss"),
-                        "disk_io": {
-                            "read_bytes": (proc.get("disk_io") or {}).get("read_bytes"),
-                            "write_bytes": (proc.get("disk_io") or {}).get("write_bytes"),
-                        }
-                        if proc.get("disk_io")
-                        else None,
+                        "disk_io": (
+                            {
+                                "read_bytes": (proc.get("disk_io") or {}).get(
+                                    "read_bytes"
+                                ),
+                                "write_bytes": (proc.get("disk_io") or {}).get(
+                                    "write_bytes"
+                                ),
+                            }
+                            if proc.get("disk_io")
+                            else None
+                        ),
                     }
                     for proc in (item.get("external") or [])
                 ],

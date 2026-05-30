@@ -1597,8 +1597,6 @@ def _build_arr_from_source(process_handler, key, source_dir, binary_path):
         if output_dir != expected_bin_dir:
             os.makedirs(expected_bin_dir, exist_ok=True)
             # Copy all files from output to expected location
-            import shutil
-
             for item in os.listdir(output_dir):
                 src = os.path.join(output_dir, item)
                 dst = os.path.join(expected_bin_dir, item)
@@ -4391,7 +4389,11 @@ def _read_traefik_proxy_admin_package_version(config_dir: str):
         package_version = str((package_data or {}).get("version") or "").strip()
         if not package_version:
             return None
-        return package_version if package_version.startswith("v") else f"v{package_version}"
+        return (
+            package_version
+            if package_version.startswith("v")
+            else f"v{package_version}"
+        )
     except Exception as e:
         logger.debug("Failed to read Traefik Proxy Admin package version: %s", e)
         return None
@@ -4688,7 +4690,11 @@ def setup_traefik_proxy_admin(
                 version=version_value,
             )
             if success:
-                chown_single(version_marker, CONFIG_MANAGER.get("puid"), CONFIG_MANAGER.get("pgid"))
+                chown_single(
+                    version_marker,
+                    CONFIG_MANAGER.get("puid"),
+                    CONFIG_MANAGER.get("pgid"),
+                )
                 logger.info(
                     "Backfilled Traefik Proxy Admin version marker: %s", version_value
                 )

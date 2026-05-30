@@ -138,7 +138,14 @@ class Downloader:
                 else:
                     architecture = None
 
-            elif key in ["sonarr", "radarr", "lidarr", "prowlarr", "readarr", "whisparr"]:
+            elif key in [
+                "sonarr",
+                "radarr",
+                "lidarr",
+                "prowlarr",
+                "readarr",
+                "whisparr",
+            ]:
                 # Arr services use linux-x64, linux-arm64, linux-arm naming convention
                 m = platform.machine().lower()
                 libc_name = platform.libc_ver()[0].lower()
@@ -314,7 +321,9 @@ class Downloader:
             if "x64" in arch_parts:
                 alt_parts = ["linux", "amd64"] if "linux" in arch_parts else ["amd64"]
             elif "arm64" in arch_parts:
-                alt_parts = ["linux", "aarch64"] if "linux" in arch_parts else ["aarch64"]
+                alt_parts = (
+                    ["linux", "aarch64"] if "linux" in arch_parts else ["aarch64"]
+                )
 
             def _scan_assets(mode: str):
                 for asset in assets:
@@ -374,9 +383,7 @@ class Downloader:
             if assets:
                 # Prefer a linux asset if linux was requested, instead of arbitrary fallback
                 linux_assets = [
-                    asset
-                    for asset in assets
-                    if "linux" in asset["name"].lower()
+                    asset for asset in assets if "linux" in asset["name"].lower()
                 ]
                 if linux_assets:
                     asset = linux_assets[0]
@@ -553,9 +560,10 @@ class Downloader:
                             continue
                         try:
                             os.makedirs(os.path.dirname(fpath), exist_ok=True)
-                            with open(fpath, "wb") as dst, z.open(
-                                file_info, "r"
-                            ) as src:
+                            with (
+                                open(fpath, "wb") as dst,
+                                z.open(file_info, "r") as src,
+                            ):
                                 shutil.copyfileobj(src, dst)
                         except Exception as e:
                             self.logger.error(

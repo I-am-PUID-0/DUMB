@@ -9,7 +9,6 @@ import tempfile
 import zipfile
 import threading
 
-
 ARR_SERVICES = [
     "sonarr",
     "radarr",
@@ -108,7 +107,7 @@ def _ensure_custom_indexer_whisparr_caps(filename: str, content: str) -> str:
         )
 
     if filename == "zilean.yml":
-        category_input = f'Category: "{{{{ join .Categories \"," }}}}"'
+        category_input = f'Category: "{{{{ join .Categories "," }}}}"'
         if category_input not in updated:
             needle = 'Episode: "{{ if .Query.Ep }}{{ .Query.Ep }}{{ else }}{{ end }}"'
             updated = updated.replace(
@@ -160,6 +159,7 @@ def ensure_custom_indexers(config_dir: str, zilean_port: int) -> None:
             "https://zileanfortheweebs.midnightignite.me",
         ],
     }
+
     def _write_with_links(path: str, content: str, link_overrides: list[str]) -> None:
         updated = _replace_links_block(content, link_overrides)
         updated = _ensure_custom_indexer_whisparr_caps(os.path.basename(path), updated)
@@ -469,8 +469,12 @@ def _is_application_current(existing: dict, desired: dict) -> bool:
         if (existing.get(key) or "") != (desired.get(key) or ""):
             return False
     # Keep user-managed tags intact: only require DUMB-managed tags to be present.
-    existing_tags = {int(tag) for tag in (existing.get("tags") or []) if isinstance(tag, int)}
-    required_tags = {int(tag) for tag in (desired.get("tags") or []) if isinstance(tag, int)}
+    existing_tags = {
+        int(tag) for tag in (existing.get("tags") or []) if isinstance(tag, int)
+    }
+    required_tags = {
+        int(tag) for tag in (desired.get("tags") or []) if isinstance(tag, int)
+    }
     if not required_tags.issubset(existing_tags):
         return False
     existing_fields = {
@@ -717,7 +721,9 @@ def ensure_zilean_indexer(host: str, token: str, base_url: str, tag_ids: list[in
     desired.pop("minimumSeeders", None)
     existing = _prowlarr_req(_join(host, "/api/v1/indexer"), token, "GET") or []
 
-    def _match_by_definition(existing_items: list, definition_file: str) -> Optional[dict]:
+    def _match_by_definition(
+        existing_items: list, definition_file: str
+    ) -> Optional[dict]:
         for item in existing_items:
             for field in item.get("fields") or []:
                 if (field.get("name") or "").lower() == "definitionfile":
@@ -728,6 +734,7 @@ def ensure_zilean_indexer(host: str, token: str, base_url: str, tag_ids: list[in
 
     match = _match_by_definition(existing, "custom/zilean")
     if match:
+
         def _get_field(fields_list: list, field_name: str) -> Optional[str]:
             for field in fields_list:
                 if (field.get("name") or "").lower() == field_name.lower():
@@ -753,7 +760,11 @@ def ensure_zilean_indexer(host: str, token: str, base_url: str, tag_ids: list[in
             "http://stremthru:8080",
         }
         local_prefixes = ("http://127.0.0.1:", "http://localhost:")
-        if current_base and current_base not in wrong_values and not current_base.startswith(local_prefixes):
+        if (
+            current_base
+            and current_base not in wrong_values
+            and not current_base.startswith(local_prefixes)
+        ):
             logger.debug("Prowlarr Zilean base URL set by user; leaving as-is.")
             return
         _set_field(fields, "baseUrl", base_url)
@@ -779,7 +790,9 @@ def ensure_zilean_indexer(host: str, token: str, base_url: str, tag_ids: list[in
 def ensure_stremthru_indexer(host: str, token: str, tag_ids: list[int]):
     schemas = _get_prowlarr_indexer_schemas(host, token)
     if not schemas:
-        logger.warning("Prowlarr indexer schema not available; skipping StremThru sync.")
+        logger.warning(
+            "Prowlarr indexer schema not available; skipping StremThru sync."
+        )
         return
     schema = _find_indexer_schema(schemas, "stremthru")
     if not schema:
@@ -809,7 +822,9 @@ def ensure_stremthru_indexer(host: str, token: str, tag_ids: list[int]):
         desired["appProfileId"] = app_profile_id
     existing = _prowlarr_req(_join(host, "/api/v1/indexer"), token, "GET") or []
 
-    def _match_by_definition(existing_items: list, definition_file: str) -> Optional[dict]:
+    def _match_by_definition(
+        existing_items: list, definition_file: str
+    ) -> Optional[dict]:
         for item in existing_items:
             for field in item.get("fields") or []:
                 if (field.get("name") or "").lower() == "definitionfile":
@@ -820,6 +835,7 @@ def ensure_stremthru_indexer(host: str, token: str, tag_ids: list[int]):
 
     match = _match_by_definition(existing, "custom/stremthru")
     if match:
+
         def _get_field(fields_list: list, field_name: str) -> Optional[str]:
             for field in fields_list:
                 if (field.get("name") or "").lower() == field_name.lower():
@@ -871,8 +887,12 @@ def _apply_application(host: str, token: str, desired: dict, match: Optional[dic
     if match:
         app_id = match.get("id")
         put_body = desired.copy()
-        existing_tags = [tag for tag in (match.get("tags") or []) if isinstance(tag, int)]
-        desired_tags = [tag for tag in (desired.get("tags") or []) if isinstance(tag, int)]
+        existing_tags = [
+            tag for tag in (match.get("tags") or []) if isinstance(tag, int)
+        ]
+        desired_tags = [
+            tag for tag in (desired.get("tags") or []) if isinstance(tag, int)
+        ]
         # Preserve user-defined tags while ensuring managed tags are present.
         put_body["tags"] = sorted(set(existing_tags + desired_tags))
         put_body["id"] = app_id
@@ -884,8 +904,7 @@ def _apply_application(host: str, token: str, desired: dict, match: Optional[dic
         )
         return True, app_id
     created = (
-        _prowlarr_req(_join(host, "/api/v1/applications"), token, "POST", desired)
-        or {}
+        _prowlarr_req(_join(host, "/api/v1/applications"), token, "POST", desired) or {}
     )
     return True, created.get("id")
 
@@ -939,12 +958,16 @@ def patch_prowlarr_apps() -> Tuple[bool, Optional[str]]:
             logger.warning("Skipping Prowlarr %s: missing API key", inst_key)
             continue
         if not _wait_for_prowlarr(host, token):
-            logger.warning("Prowlarr %s is not responding; skipping app sync.", inst_key)
+            logger.warning(
+                "Prowlarr %s is not responding; skipping app sync.", inst_key
+            )
             continue
 
         schemas = _get_prowlarr_schemas(host, token)
         if not schemas:
-            logger.warning("Prowlarr %s schema not available; skipping app sync.", inst_key)
+            logger.warning(
+                "Prowlarr %s schema not available; skipping app sync.", inst_key
+            )
             continue
         existing_apps = (
             _prowlarr_req(_join(host, "/api/v1/applications"), token, "GET") or []

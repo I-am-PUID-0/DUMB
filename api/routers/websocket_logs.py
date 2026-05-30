@@ -2,7 +2,6 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends
 from utils.dependencies import get_websocket_manager, get_websocket_current_user
 import json
 
-
 websocket_router = APIRouter()
 
 

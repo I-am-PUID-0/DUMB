@@ -94,18 +94,15 @@ def _is_target_process_name(internal_name: str, targets: set[str]) -> bool:
 
 
 def _poke_ffprobe(ffprobe_cmd: list[str], filepath: str, timeout_sec: float, logger):
-    cmd = (
-        ffprobe_cmd
-        + [
-            "-v",
-            "quiet",
-            "-print_format",
-            "json",
-            "-show_format",
-            "-show_streams",
-            filepath,
-        ]
-    )
+    cmd = ffprobe_cmd + [
+        "-v",
+        "quiet",
+        "-print_format",
+        "json",
+        "-show_format",
+        "-show_streams",
+        filepath,
+    ]
     try:
         subprocess.run(
             cmd,

@@ -112,9 +112,10 @@ def _normalize_version(value: Optional[str]) -> Optional[str]:
     value = str(value).strip()
     if not value:
         return None
+    value = value.lower()
     if not value.startswith("v"):
         value = f"v{value}"
-    return value.lower()
+    return value
 
 
 def _parse_entrypoint_port(address: str, fallback: int) -> int:
@@ -711,7 +712,9 @@ def _setup_traefik_locked(
     tpa_config = CONFIG_MANAGER.get("traefik_proxy_admin") or {}
     if tpa_config.get("enabled"):
         tpa_port = tpa_config.get("port", 3004)
-        tpa_provider_endpoint = f"http://127.0.0.1:{tpa_port}/api/traefik/config?dumb_provider=traefik"
+        tpa_provider_endpoint = (
+            f"http://127.0.0.1:{tpa_port}/api/traefik/config?dumb_provider=traefik"
+        )
         static_config["providers"]["http"] = {
             "endpoint": tpa_provider_endpoint,
             "pollInterval": "10s",

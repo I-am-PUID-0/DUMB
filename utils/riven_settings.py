@@ -4,7 +4,6 @@ from utils.core_services import has_core_service
 from json import load, dump, JSONDecodeError
 import os, time, re, requests, urllib.parse
 
-
 dumb_config = CONFIG_MANAGER.config.get("dumb")
 riven_backend_config = CONFIG_MANAGER.config.get("riven_backend")
 riven_frontend_config = CONFIG_MANAGER.config.get("riven_frontend")
@@ -22,11 +21,7 @@ def _sanitize_credential(value):
         return value
     normalized = value.strip()
     decoded = urllib.parse.unquote(normalized)
-    if (
-        len(decoded) >= 2
-        and decoded[0] == decoded[-1]
-        and decoded[0] in {"'", '"'}
-    ):
+    if len(decoded) >= 2 and decoded[0] == decoded[-1] and decoded[0] in {"'", '"'}:
         return decoded[1:-1]
     return decoded
 

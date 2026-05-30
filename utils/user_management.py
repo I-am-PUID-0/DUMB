@@ -182,7 +182,10 @@ def migrate_symlinks():
                 ("/readarr", os.path.join(data_root, "readarr")),
                 ("/whisparr", os.path.join(data_root, "whisparr")),
                 ("/traefik", os.path.join(data_root, "traefik")),
-                ("/traefik-proxy-admin", os.path.join(data_root, "traefik_proxy_admin")),
+                (
+                    "/traefik-proxy-admin",
+                    os.path.join(data_root, "traefik_proxy_admin"),
+                ),
                 ("/cloudflared", os.path.join(data_root, "cloudflared")),
                 ("/neutarr", os.path.join(data_root, "neutarr")),
                 ("/profilarr", os.path.join(data_root, "profilarr")),

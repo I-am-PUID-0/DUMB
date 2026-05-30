@@ -78,9 +78,7 @@ class JellyfinInstaller:
 
             # Step 6: Install jellyfin metapackage
             if version:
-                run_locked(
-                    ["apt", "install", "-y", f"jellyfin={version}"], check=True
-                )
+                run_locked(["apt", "install", "-y", f"jellyfin={version}"], check=True)
             else:
                 run_locked(["apt", "install", "-y", "jellyfin"], check=True)
 

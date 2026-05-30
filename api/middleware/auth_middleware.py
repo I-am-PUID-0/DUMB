@@ -4,7 +4,6 @@ from typing import Optional
 from utils.auth import decode_token
 from utils.auth_config import AuthConfigManager
 
-
 security = HTTPBearer(auto_error=False)
 auth_config = AuthConfigManager()
 

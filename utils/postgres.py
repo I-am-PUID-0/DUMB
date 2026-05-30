@@ -5,7 +5,6 @@ from psycopg2 import sql
 from time import sleep
 import shutil, tempfile
 
-
 config = CONFIG_MANAGER
 user_id = config.get("puid")
 group_id = config.get("pgid")
@@ -507,16 +506,14 @@ def add_pgadmin_server_to_db(pgadmin_db_uri, server_details, timeout=60, interva
         cur = conn.cursor()
         start_time = time.time()
         while time.time() - start_time < timeout:
-            cur.execute(
-                """
+            cur.execute("""
                 SELECT EXISTS (
                     SELECT 1 
                     FROM information_schema.tables 
                     WHERE table_schema = 'public' 
                     AND table_name = 'server'
                 );
-            """
-            )
+            """)
             table_exists = cur.fetchone()[0]
 
             if table_exists:

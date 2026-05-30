@@ -4,7 +4,6 @@ from utils.config_loader import CONFIG_MANAGER
 from utils.metrics_history_reader import read_history, read_history_series
 import time
 
-
 metrics_router = APIRouter()
 
 

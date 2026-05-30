@@ -3,7 +3,6 @@ from utils.config_loader import CONFIG_MANAGER
 import xml.etree.ElementTree as ET
 import os
 
-
 JELLYFIN_PORT_TAGS = (
     "HttpServerPortNumber",
     "PublicPort",
@@ -103,9 +102,7 @@ def patch_jellyfin_config(desired_port: int | None = None):
                         ET.SubElement(elem, "string").text = "veth"
                     else:
                         elem.text = value
-                ET.ElementTree(root).write(
-                    path, encoding="utf-8", xml_declaration=True
-                )
+                ET.ElementTree(root).write(path, encoding="utf-8", xml_declaration=True)
             prefer_network_tags = os.path.basename(path).lower() == "network.xml"
             updated = _patch_xml_port(path, desired_port, prefer_network_tags)
             if updated:

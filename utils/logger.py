@@ -3,8 +3,6 @@ import asyncio, os, re, sys, threading, time, logging
 from logging.handlers import BaseRotatingHandler
 from colorlog import ColoredFormatter
 
-
-
 SENSITIVE_LOG_PATTERNS = [
     re.compile(
         r"(\b(?:CLOUDFLARED_TUNNEL_TOKEN|CF_TUNNEL_TOKEN|TUNNEL_TOKEN)\s*[:=]\s*)[^,\]\s}]+",
@@ -20,6 +18,7 @@ def redact_sensitive_log_data(value):
     for pattern in SENSITIVE_LOG_PATTERNS:
         text = pattern.sub(r"\1[REDACTED]", text)
     return text
+
 
 class SubprocessLogger:
     def __init__(
@@ -222,9 +221,7 @@ class SubprocessLogger:
                         )
                         file_log_func(formatted)
         except ValueError as e:
-            error_message = (
-                f"Error reading subprocess output for {self.key_type}: {e}"
-            )
+            error_message = f"Error reading subprocess output for {self.key_type}: {e}"
             if self.log_to_main:
                 self.logger.error(error_message)
             elif self.file_logger:
@@ -412,15 +409,11 @@ class CustomRotatingFileHandler(BaseRotatingHandler):
             for i in range(self.backupCount - 1, 0, -1):
                 sfn = os.path.join(
                     dir_name,
-                    (
-                        f"{base_filename_without_date}-{rollover_date}_{i}.log"
-                    ),
+                    (f"{base_filename_without_date}-{rollover_date}_{i}.log"),
                 )
                 dfn = os.path.join(
                     dir_name,
-                    (
-                        f"{base_filename_without_date}-{rollover_date}_{i + 1}.log"
-                    ),
+                    (f"{base_filename_without_date}-{rollover_date}_{i + 1}.log"),
                 )
                 if os.path.exists(sfn):
                     self.logger.debug(f"Renaming {sfn} to {dfn}")
@@ -430,9 +423,7 @@ class CustomRotatingFileHandler(BaseRotatingHandler):
 
             dfn = os.path.join(
                 dir_name,
-                (
-                    f"{base_filename_without_date}-{rollover_date}_1.log"
-                ),
+                (f"{base_filename_without_date}-{rollover_date}_1.log"),
             )
             self.logger.debug(f"Renaming {self.baseFilename} to {dfn}")
             if os.path.exists(dfn):
@@ -637,7 +628,9 @@ def get_logger(log_name=None, log_dir=None, websocket_manager=None):
 
 
 def get_subprocess_file_logger(log_file, log_level=None, log_name=None):
-    log_level = (log_level or CONFIG_MANAGER.get("dumb").get("log_level", "INFO")).upper()
+    log_level = (
+        log_level or CONFIG_MANAGER.get("dumb").get("log_level", "INFO")
+    ).upper()
     numeric_level = getattr(logging, log_level, logging.INFO)
     backupCount_env = CONFIG_MANAGER.get("dumb").get("log_count", 2)
     try:

@@ -25,7 +25,8 @@ from api.routers.websocket_status import websocket_status_router
 from api.routers.auth import auth_router
 from api.routers.seerr_sync import seerr_sync_router
 from utils.config_loader import CONFIG_MANAGER
-import threading, tomllib
+from utils.project_metadata import get_project_version
+import threading
 
 
 @asynccontextmanager
@@ -39,12 +40,7 @@ async def lifespan(app: FastAPI):
 
 
 def get_version_from_pyproject(path="pyproject.toml") -> str:
-    try:
-        with open(path, "rb") as f:
-            data = tomllib.load(f)
-            return data["tool"]["poetry"]["version"]
-    except Exception:
-        return "0.0.0"
+    return get_project_version(path)
 
 
 def create_app() -> FastAPI:
