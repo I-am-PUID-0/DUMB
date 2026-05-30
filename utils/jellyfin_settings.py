@@ -1,6 +1,6 @@
 from utils.global_logger import logger
 from utils.config_loader import CONFIG_MANAGER
-import xml.etree.ElementTree as ET
+import defusedxml.ElementTree as ET
 import os
 
 JELLYFIN_PORT_TAGS = (

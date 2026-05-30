@@ -6,7 +6,7 @@ from utils.global_logger import logger
 from utils.user_management import chown_single
 import json
 import os
-import xml.etree.ElementTree as ET
+import defusedxml.ElementTree as ET
 from typing import Any, Dict
 
 ARR_SERVICES = ("sonarr", "radarr", "lidarr", "whisparr")

@@ -7,7 +7,7 @@ from utils.plex import PlexInstaller
 from utils.traefik_setup import setup_traefik
 from utils.user_management import chown_recursive, chown_single
 from utils.apt_lock import run_locked
-import xml.etree.ElementTree as ET
+import defusedxml.ElementTree as ET
 import os, shutil, random, subprocess, re, glob, secrets, shlex, time, urllib.parse, base64, threading, sys, hashlib, json, requests, copy
 
 user_id = CONFIG_MANAGER.get("puid")
@@ -1302,7 +1302,7 @@ def _setup_project(
 def ensure_arr_config(
     app_name: str, config_file: str, port: int, loglevel: str
 ) -> None:
-    import xml.etree.ElementTree as ET
+    import defusedxml.ElementTree as ET
 
     if not os.path.exists(config_file):
         os.makedirs(os.path.dirname(config_file), exist_ok=True)

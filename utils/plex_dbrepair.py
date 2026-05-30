@@ -3,7 +3,7 @@ import shlex
 import subprocess
 import threading
 import time
-import xml.etree.ElementTree as ET
+import defusedxml.ElementTree as ET
 from urllib.parse import urlparse
 
 from plexapi.exceptions import BadRequest, NotFound, Unauthorized

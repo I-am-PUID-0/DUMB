@@ -4,7 +4,7 @@ from utils.core_services import get_core_services, has_core_service
 from utils import nzbdav_db
 from utils.user_management import chown_recursive, chown_single
 from typing import Optional, Tuple
-import xml.etree.ElementTree as ET
+import defusedxml.ElementTree as ET
 import json, os, time, urllib.request, urllib.error
 import threading
 

@@ -23,6 +23,7 @@ requests = ">=2.32.3,<3.0.0"
 packaging = ">=24.2,<27.0"
 ruamel-yaml = ">=0.18.10,<0.20.0"
 colorlog = ">=6.9.0,<7.0.0"
+defusedxml = ">=0.7.1,<1.0.0"
 pydantic = ">=2.11.2,<3.0.0"
 fastapi = "^0.136.0"
 uvicorn = "^0.48.0"
@@ -58,7 +59,7 @@ include = ["api/**/*.py", "utils/**/*.py", "tests/**/*.py", "scripts/**/*.py"]
 [tool.ruff.lint]
 # Start with fatal correctness checks that are feasible on the existing tree.
 # Expand this set as legacy style/import/typing issues are cleaned up.
-select = ["E9", "F63", "F7", "F82", "S102", "S113", "S602"]
+select = ["E9", "F63", "F7", "F82", "S102", "S113", "S314", "S602"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**/*.py" = ["E402"]

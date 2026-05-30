@@ -3,7 +3,7 @@ from utils.config_loader import CONFIG_MANAGER
 from utils.core_services import get_core_services
 from utils.user_management import chown_recursive
 from typing import Optional, Tuple
-import xml.etree.ElementTree as ET
+import defusedxml.ElementTree as ET
 import json, os, time, urllib.request, urllib.error
 import tempfile
 import zipfile

@@ -4,7 +4,7 @@ from utils.core_services import get_core_services, has_core_service
 from utils.versions import Versions
 from collections import OrderedDict
 import os, json, time, threading
-import xml.etree.ElementTree as ET
+import defusedxml.ElementTree as ET
 import urllib.request
 import urllib.error
 from typing import Optional, Tuple

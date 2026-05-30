@@ -3,7 +3,7 @@ from utils.apt_lock import run_locked
 from utils.config_loader import CONFIG_MANAGER
 from utils.versions import Versions
 import os, platform, subprocess, tempfile, requests
-import xml.etree.ElementTree as ET
+import defusedxml.ElementTree as ET
 
 PLEX_REQUEST_TIMEOUT = 10
 PLEX_DOWNLOAD_TIMEOUT = 60
@@ -153,7 +153,7 @@ class PlexInstaller:
 
 
 def perform_plex_claim(claim_token, preferences_path, logger):
-    import os, uuid, hashlib, xml.etree.ElementTree as ET, requests
+    import os, uuid, hashlib, defusedxml.ElementTree as ET, requests
 
     if not os.path.exists(preferences_path):
         os.makedirs(os.path.dirname(preferences_path), exist_ok=True)
