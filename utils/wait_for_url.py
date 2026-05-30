@@ -29,6 +29,14 @@ def _resolve_probe(wait_entry):
     return method, headers
 
 
+def _resolve_timeout(wait_entry):
+    try:
+        timeout = float(wait_entry.get("timeout", 10))
+    except (TypeError, ValueError):
+        return 10
+    return timeout if timeout > 0 else 10
+
+
 def _json_path_exists(payload, path):
     current = payload
     for part in str(path or "").split("."):
@@ -84,6 +92,7 @@ def wait_for_urls(wait_entries, process_name, logger, shutdown_requested):
             continue
         auth = wait_entry.get("auth")
         method, headers = _resolve_probe(wait_entry)
+        timeout = _resolve_timeout(wait_entry)
 
         logger.info(
             "Waiting to start %s until %s is accessible.",
@@ -103,9 +112,12 @@ def wait_for_urls(wait_entries, process_name, logger, shutdown_requested):
                         wait_url,
                         auth=(auth["user"], auth["password"]),
                         headers=headers,
+                        timeout=timeout,
                     )
                 else:
-                    response = requests.request(method, wait_url, headers=headers)
+                    response = requests.request(
+                        method, wait_url, headers=headers, timeout=timeout
+                    )
 
                 if _response_is_ready(response, method, wait_entry, logger, wait_url):
                     expected_json_path = wait_entry.get("expected_json_path")

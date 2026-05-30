@@ -25,9 +25,13 @@ class FakeResponse:
 class FakeLogger:
     def __init__(self):
         self.debug_messages = []
+        self.info_messages = []
 
     def debug(self, *args):
         self.debug_messages.append(args)
+
+    def info(self, *args):
+        self.info_messages.append(args)
 
 
 class WaitForUrlHelperTests(unittest.TestCase):
@@ -66,6 +70,73 @@ class WaitForUrlHelperTests(unittest.TestCase):
         self.assertTrue(wait_for_url._json_path_exists(payload, "status.details.port"))
         self.assertFalse(wait_for_url._json_path_exists(payload, "status.missing"))
         self.assertFalse(wait_for_url._json_path_exists(payload, "status.ready.value"))
+
+    def test_resolve_timeout_defaults_and_validates_values(self):
+        self.assertEqual(wait_for_url._resolve_timeout({}), 10)
+        self.assertEqual(wait_for_url._resolve_timeout({"timeout": 2}), 2)
+        self.assertEqual(wait_for_url._resolve_timeout({"timeout": "2.5"}), 2.5)
+        self.assertEqual(wait_for_url._resolve_timeout({"timeout": 0}), 10)
+        self.assertEqual(wait_for_url._resolve_timeout({"timeout": "nope"}), 10)
+
+    def test_wait_for_urls_passes_timeout_to_requests(self):
+        calls = []
+
+        def fake_request(*args, **kwargs):
+            calls.append((args, kwargs))
+            return FakeResponse(200)
+
+        original_request = wait_for_url.requests.request
+        wait_for_url.requests.request = fake_request
+        try:
+            success, error = wait_for_url.wait_for_urls(
+                [
+                    {
+                        "url": "http://service/health",
+                        "probe_headers": {"X-Test": "yes"},
+                        "timeout": 3,
+                    }
+                ],
+                "Service",
+                FakeLogger(),
+                lambda: False,
+            )
+        finally:
+            wait_for_url.requests.request = original_request
+
+        self.assertTrue(success)
+        self.assertIsNone(error)
+        self.assertEqual(calls[0][0], ("GET", "http://service/health"))
+        self.assertEqual(calls[0][1]["headers"], {"X-Test": "yes"})
+        self.assertEqual(calls[0][1]["timeout"], 3)
+
+    def test_wait_for_urls_passes_timeout_to_authenticated_requests(self):
+        calls = []
+
+        def fake_request(*args, **kwargs):
+            calls.append((args, kwargs))
+            return FakeResponse(200)
+
+        original_request = wait_for_url.requests.request
+        wait_for_url.requests.request = fake_request
+        try:
+            success, error = wait_for_url.wait_for_urls(
+                [
+                    {
+                        "url": "http://service/health",
+                        "auth": {"user": "name", "password": "secret"},
+                    }
+                ],
+                "Service",
+                FakeLogger(),
+                lambda: False,
+            )
+        finally:
+            wait_for_url.requests.request = original_request
+
+        self.assertTrue(success)
+        self.assertIsNone(error)
+        self.assertEqual(calls[0][1]["auth"], ("name", "secret"))
+        self.assertEqual(calls[0][1]["timeout"], 10)
 
     def test_response_ready_accepts_2xx_and_webdav_207(self):
         self.assertTrue(wait_for_url._response_is_ready(FakeResponse(200), "GET"))

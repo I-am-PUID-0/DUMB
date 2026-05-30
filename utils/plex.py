@@ -5,6 +5,9 @@ from utils.versions import Versions
 import os, platform, subprocess, tempfile, requests
 import xml.etree.ElementTree as ET
 
+PLEX_REQUEST_TIMEOUT = 10
+PLEX_DOWNLOAD_TIMEOUT = 60
+
 
 class PlexInstaller:
     def __init__(self):
@@ -51,7 +54,9 @@ class PlexInstaller:
             url += f"&X-Plex-Token={token}"
 
         self.logger.info(f"Fetching Plex version info from: {url}")
-        response = requests.get(url, headers={"User-Agent": "Mozilla/5.0"})
+        response = requests.get(
+            url, headers={"User-Agent": "Mozilla/5.0"}, timeout=PLEX_REQUEST_TIMEOUT
+        )
         if response.status_code != 200:
             raise Exception(
                 f"Failed to fetch version info. Status: {response.status_code}"
@@ -94,7 +99,9 @@ class PlexInstaller:
 
             with tempfile.NamedTemporaryFile(delete=False, suffix=".deb") as tmp_file:
                 self.logger.info(f"Downloading to temporary file: {tmp_file.name}")
-                with requests.get(download_url, stream=True) as r:
+                with requests.get(
+                    download_url, stream=True, timeout=PLEX_DOWNLOAD_TIMEOUT
+                ) as r:
                     r.raise_for_status()
                     for chunk in r.iter_content(chunk_size=8192):
                         tmp_file.write(chunk)

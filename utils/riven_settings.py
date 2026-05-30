@@ -9,6 +9,7 @@ riven_backend_config = CONFIG_MANAGER.config.get("riven_backend")
 riven_frontend_config = CONFIG_MANAGER.config.get("riven_frontend")
 postgres_config = CONFIG_MANAGER.config.get("postgres")
 zilean_config = CONFIG_MANAGER.config.get("zilean")
+RIVEN_SETTINGS_REQUEST_TIMEOUT = 10
 
 
 SENSITIVE_KEY_PATTERN = re.compile(
@@ -274,7 +275,9 @@ def fetch_settings(url, headers, max_retries=10, delay=5):
             logger.info(
                 f"Attempt {attempt + 1}/{max_retries} to fetch settings from {url}"
             )
-            response = requests.get(url, headers=headers)
+            response = requests.get(
+                url, headers=headers, timeout=RIVEN_SETTINGS_REQUEST_TIMEOUT
+            )
             if response.status_code == 200:
                 try:
                     data = response.json()
@@ -429,7 +432,10 @@ def load_settings():
                 # Newer Riven API shape (branch builds): /settings/set/all with nested object.
                 if updated_settings:
                     response = requests.post(
-                        set_all_url, json=updated_settings, headers=headers
+                        set_all_url,
+                        json=updated_settings,
+                        headers=headers,
+                        timeout=RIVEN_SETTINGS_REQUEST_TIMEOUT,
                     )
                     if response.status_code == 200:
                         update_ok = True
@@ -447,7 +453,12 @@ def load_settings():
 
                 # Legacy Riven API shape: /settings/set with [{key, value}, ...] payload.
                 if not update_ok:
-                    response = requests.post(set_url, json=payload, headers=headers)
+                    response = requests.post(
+                        set_url,
+                        json=payload,
+                        headers=headers,
+                        timeout=RIVEN_SETTINGS_REQUEST_TIMEOUT,
+                    )
                     if response.status_code == 200:
                         update_ok = True
                     else:
@@ -458,7 +469,11 @@ def load_settings():
                         )
 
                 if update_ok:
-                    save_response = requests.post(save_url, headers=headers)
+                    save_response = requests.post(
+                        save_url,
+                        headers=headers,
+                        timeout=RIVEN_SETTINGS_REQUEST_TIMEOUT,
+                    )
                     if save_response.status_code == 200:
                         logger.info("Settings saved successfully.")
                     else:
