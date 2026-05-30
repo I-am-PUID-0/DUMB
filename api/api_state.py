@@ -1,6 +1,7 @@
 import os, socket, psutil, threading, time, uuid, json, re
 from json import load
 from utils.config_loader import CONFIG_MANAGER
+from utils.project_metadata import get_project_version
 
 
 class APIState:
@@ -68,15 +69,9 @@ class APIState:
             "/workspace/pyproject.toml",
         )
         for candidate in candidates:
-            try:
-                with open(candidate, "r") as handle:
-                    for line in handle:
-                        stripped = line.strip()
-                        if stripped.startswith("version") and "=" in stripped:
-                            value = stripped.split("=", 1)[1].strip()
-                            return value.strip('"').strip("'") or None
-            except OSError:
-                continue
+            version = get_project_version(candidate, default="")
+            if version:
+                return version
         return None
 
     def _is_dev_version(self, version):
