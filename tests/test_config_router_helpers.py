@@ -115,6 +115,15 @@ class _Logger:
         self.warnings.append(message % args if args else message)
 
 
+class _Request:
+    def __init__(self, scheme="https", host="dumb.example", forwarded_host=None):
+        headers = {"host": host}
+        if forwarded_host:
+            headers["x-forwarded-host"] = forwarded_host
+        self.headers = headers
+        self.url = types.SimpleNamespace(scheme=scheme)
+
+
 def _service_schema():
     return {
         "properties": {
@@ -150,6 +159,54 @@ class ConfigRouterHelperTests(unittest.TestCase):
         self.assertEqual(
             target,
             {"dumb": {"ui": {"log_timestamp": True, "sidebar": {"compact": True}}}},
+        )
+
+    def test_normalize_direct_url_rewrites_local_service_host_to_request_host(self):
+        service = {
+            "direct_url": "http://localhost:8989/",
+            "host": "0.0.0.0",
+            "port": 8989,
+        }
+
+        result = config_router._normalize_direct_url(service, _Request())
+
+        self.assertIs(result, service)
+        self.assertEqual(service["direct_url"], "https://dumb.example:8989/")
+
+    def test_normalize_direct_url_prefers_forwarded_host_without_port(self):
+        service = {
+            "direct_url": "http://127.0.0.1:7878/",
+            "host": "127.0.0.1",
+            "port": 7878,
+        }
+
+        result = config_router._normalize_direct_url(
+            service, _Request(scheme="http", forwarded_host="public.example:443")
+        )
+
+        self.assertIs(result, service)
+        self.assertEqual(service["direct_url"], "http://public.example:7878/")
+
+    def test_normalize_direct_url_preserves_locked_or_remote_urls(self):
+        locked = {
+            "direct_url": "http://localhost:9696/",
+            "direct_url_locked": True,
+            "host": "localhost",
+            "port": 9696,
+        }
+        remote = {
+            "direct_url": "http://service.lan:5055/",
+            "host": "service.lan",
+            "port": 5055,
+        }
+
+        self.assertEqual(
+            config_router._normalize_direct_url(locked, _Request())["direct_url"],
+            "http://localhost:9696/",
+        )
+        self.assertEqual(
+            config_router._normalize_direct_url(remote, _Request())["direct_url"],
+            "http://service.lan:5055/",
         )
 
     def test_find_service_config_finds_nested_instances_and_paths(self):
