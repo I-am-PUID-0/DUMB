@@ -40,10 +40,10 @@ poetry run python -m unittest discover -s tests
 When changing `utils/dumb_config.json`, regenerate `.env.example` before running verification:
 
 ```bash
-poetry run python scripts/generate_env_example.py
+make env-example
 ```
 
-`make verify` checks that `.env.example` is current, but it does not rewrite the file for you.
+`make verify` checks that `.env.example` is current, but it does not rewrite the file for you. Use `make env-check` when you only want to check generated env-file drift.
 
 ## Pull Request Expectations
 

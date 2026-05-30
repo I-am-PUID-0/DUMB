@@ -35,6 +35,7 @@ Link related issues, discussions, or follow-up work.
 - [ ] PR title follows Conventional Commits
 - [ ] Changes are focused and scoped to one logical change
 - [ ] Documentation was updated if behavior changed
+- [ ] `.env.example` was regenerated with `make env-example` if `utils/dumb_config.json` changed
 - [ ] Sensitive values, secrets, and local-only artifacts were not committed
 
 ## Notes
