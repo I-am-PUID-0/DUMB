@@ -1,10 +1,29 @@
 from utils.config_loader import CONFIG_MANAGER as config
 from utils.global_logger import logger
 from concurrent.futures import ThreadPoolExecutor
-import multiprocessing, os, time, grp, pwd, subprocess, shutil
+import multiprocessing, os, time, grp, pwd, subprocess, shutil, secrets
 
 user_id = config.get("puid")
 group_id = config.get("pgid")
+
+
+def _generate_user_password():
+    return secrets.token_urlsafe(18)
+
+
+def _hash_user_password(user_password):
+    result = subprocess.run(
+        ["openssl", "passwd", "-6", "-stdin"],
+        input=user_password,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    return result.stdout.strip()
+
+
+def _set_user_password(username, hashed_password):
+    subprocess.run(["usermod", "-p", hashed_password, username], check=True)
 
 
 def chown_single(path, user_id, group_id):
@@ -244,19 +263,9 @@ def create_system_user(username="DUMB"):
             f"Writing to /etc/passwd took {passwd_write_end - passwd_write_start:.2f} seconds"
         )
 
-        user_password = (
-            subprocess.check_output("openssl rand -base64 12", shell=True)
-            .decode()
-            .strip()
-        )
-        hashed_password = (
-            subprocess.check_output(f"openssl passwd -6 {user_password}", shell=True)
-            .decode()
-            .strip()
-        )
-        subprocess.run(
-            f"usermod -p '{hashed_password}' {username}", shell=True, check=True
-        )
+        user_password = _generate_user_password()
+        hashed_password = _hash_user_password(user_password)
+        _set_user_password(username, hashed_password)
         logger.info(f"Password set for user '{username}'. Stored securely in memory.")
 
         zurg_dir = "/zurg"
