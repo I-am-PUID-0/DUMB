@@ -423,10 +423,21 @@ def write_ini_config(file_path, config_data):
 
 
 def parse_python_config(file_path):
-    exec_env = {}
     with open(file_path, "r") as file:
-        exec(file.read(), {}, exec_env)
-    return {k: v for k, v in exec_env.items() if not k.startswith("__")}
+        tree = ast.parse(file.read(), filename=str(file_path))
+
+    parsed = {}
+    for node in tree.body:
+        if not isinstance(node, ast.Assign) or len(node.targets) != 1:
+            continue
+        target = node.targets[0]
+        if not isinstance(target, ast.Name) or target.id.startswith("__"):
+            continue
+        try:
+            parsed[target.id] = ast.literal_eval(node.value)
+        except (ValueError, SyntaxError):
+            continue
+    return parsed
 
 
 def write_python_config(file_path, config_data):

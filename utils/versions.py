@@ -1,7 +1,25 @@
 from utils.global_logger import logger
 from utils.download import Downloader
 from utils.config_loader import CONFIG_MANAGER
-import os, subprocess, json, re, requests, shlex, urllib.parse
+import os, subprocess, json, re, requests, shlex, urllib.parse, ast
+
+
+def _parse_python_literal_assignments(file_path):
+    with open(file_path, "r") as handle:
+        tree = ast.parse(handle.read(), filename=str(file_path))
+
+    values = {}
+    for node in tree.body:
+        if not isinstance(node, ast.Assign) or len(node.targets) != 1:
+            continue
+        target = node.targets[0]
+        if not isinstance(target, ast.Name):
+            continue
+        try:
+            values[target.id] = ast.literal_eval(node.value)
+        except (ValueError, SyntaxError):
+            continue
+    return values
 
 
 class Versions:
@@ -315,13 +333,12 @@ class Versions:
                         "/pgadmin/venv/lib/python*/site-packages/pgadmin4/version.py"
                     )
                     if version_files:
-                        version_globals = {}
-                        with open(version_files[0], "r") as f:
-                            code = f.read()
-                            exec(code, version_globals)
-                        release = version_globals.get("APP_RELEASE")
-                        revision = version_globals.get("APP_REVISION")
-                        suffix = version_globals.get("APP_SUFFIX", "")
+                        version_values = _parse_python_literal_assignments(
+                            version_files[0]
+                        )
+                        release = version_values.get("APP_RELEASE")
+                        revision = version_values.get("APP_REVISION")
+                        suffix = version_values.get("APP_SUFFIX", "")
                         if release is not None and revision is not None:
                             version = f"{release}.{revision}"
                             if suffix:

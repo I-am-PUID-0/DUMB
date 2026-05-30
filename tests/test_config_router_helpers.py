@@ -293,6 +293,20 @@ class ConfigRouterHelperTests(unittest.TestCase):
 
         self.assertEqual(parsed, {"PORT": 8080, "NAME": "service"})
 
+    def test_parse_python_config_does_not_execute_non_literal_assignments(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            path = Path(temp_dir, "settings.py")
+            marker = Path(temp_dir, "marker")
+            path.write_text(
+                "SAFE = {'port': 8080}\n"
+                f"UNSAFE = open({str(marker)!r}, 'w').write('executed')\n"
+            )
+
+            parsed = config_router.parse_python_config(path)
+
+        self.assertEqual(parsed, {"SAFE": {"port": 8080}})
+        self.assertFalse(marker.exists())
+
     def test_update_config_global_deep_merges_and_persists(self):
         manager = _ConfigManager(
             {
