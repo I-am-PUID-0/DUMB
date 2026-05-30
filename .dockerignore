@@ -1,4 +1,41 @@
-**/*.gitattributes
-**/*.gitignore
-**/*.github
+# Version control and GitHub metadata
+.git
+.gitignore
+.gitattributes
+.github
+
+# Local/editor state
+.devcontainer
+.vscode
+.idea
+*.swp
+*~
+
+# Python caches and test artifacts
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Local virtual environments and package caches
+.venv/
+venv/
+poetry.toml
+
+# Runtime/local config and logs
+.env
+config/
+log/
+logs/
+*.log
+
+# Build output and temporary files
+build/
+dist/
+*.egg-info/
+*.tmp
+*.bak
 *Ubuntu*

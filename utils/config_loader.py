@@ -1,4 +1,4 @@
-import os, shutil, copy, time, tempfile
+import os, shutil, copy, time, tempfile, json
 from json import load, dump, JSONDecodeError
 from jsonschema import validate, ValidationError
 from dotenv import load_dotenv, find_dotenv
@@ -268,7 +268,20 @@ class ConfigManager:
         if isinstance(default, str):
             return value.strip()
 
+        if isinstance(default, list):
+            return self._parse_collection_value(value, default, list)
+
+        if isinstance(default, dict):
+            return self._parse_collection_value(value, default, dict)
+
         return self._cast_value(value, default)
+
+    def _parse_collection_value(self, value, default, expected_type):
+        try:
+            parsed = json.loads(value)
+        except (TypeError, json.JSONDecodeError):
+            return default
+        return parsed if isinstance(parsed, expected_type) else default
 
     def _validate_value(self, key, value):
         if key == "log_level":

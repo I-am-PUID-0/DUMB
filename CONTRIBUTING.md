@@ -35,7 +35,15 @@ PYTHONPYCACHEPREFIX=/tmp/dumb-pycache poetry run python -m compileall -q api uti
 poetry run python -m unittest discover -s tests
 ```
 
-`verify_project.py` checks project metadata, JSON config files, workflow permissions, and test discovery scaffolding. Poetry lock consistency is checked before install. Black and Ruff are required gates. The temp pycache prefix avoids failures from root-owned `__pycache__` directories created by devcontainer/runtime processes.
+`verify_project.py` checks project metadata, JSON config files, `.env.example` sync, workflow permissions, and test discovery scaffolding. Poetry lock consistency is checked before install. Black and Ruff are required gates. The temp pycache prefix avoids failures from root-owned `__pycache__` directories created by devcontainer/runtime processes.
+
+When changing `utils/dumb_config.json`, regenerate `.env.example` before running verification:
+
+```bash
+poetry run python scripts/generate_env_example.py
+```
+
+`make verify` checks that `.env.example` is current, but it does not rewrite the file for you.
 
 ## Pull Request Expectations
 

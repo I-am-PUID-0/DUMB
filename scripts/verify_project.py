@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+import importlib.util
 import json
 import sys
 import tomllib
@@ -51,6 +52,26 @@ def check_json_files() -> None:
             json.load(handle)
 
 
+def check_env_example() -> None:
+    generator_path = ROOT / "scripts" / "generate_env_example.py"
+    spec = importlib.util.spec_from_file_location(
+        "generate_env_example", generator_path
+    )
+    if spec is None or spec.loader is None:
+        fail("unable to load scripts/generate_env_example.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    with module.CONFIG_PATH.open("r", encoding="utf-8") as handle:
+        config = json.load(handle)
+    expected = module.generate_env_example(config)
+    current = module.ENV_EXAMPLE_PATH.read_text(encoding="utf-8")
+    if current != expected:
+        fail(
+            ".env.example is out of date; run `poetry run python scripts/generate_env_example.py`"
+        )
+
+
 def check_workflow_permissions() -> None:
     workflow_dir = ROOT / ".github" / "workflows"
     missing = []
@@ -71,6 +92,7 @@ def main() -> None:
     check_pyproject()
     check_json_files()
     check_release_manifest()
+    check_env_example()
     check_workflow_permissions()
     check_tests_are_importable_package()
     print("project metadata ok")
