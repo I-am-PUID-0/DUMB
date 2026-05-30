@@ -8,8 +8,15 @@ SENSITIVE_LOG_PATTERNS = [
         r"(\b(?:CLOUDFLARED_TUNNEL_TOKEN|CF_TUNNEL_TOKEN|TUNNEL_TOKEN)\s*[:=]\s*)[^,\]\s}]+",
         re.IGNORECASE,
     ),
-    re.compile(r"(\btoken=)[^&\s]+", re.IGNORECASE),
-    re.compile(r"(\btoken\s*[:=]\s*)eyJ[A-Za-z0-9._-]+", re.IGNORECASE),
+    re.compile(r"(\btoken=)(?!\[REDACTED\])[^&\s]+", re.IGNORECASE),
+    re.compile(
+        r"([?&](?:api[_-]?key|apikey|password|secret|token)=)(?!\[REDACTED\])[^&\s]+",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"(\b(?:api[_-]?key|apikey|password|secret|token)\s*[:=]\s*)(?!\[REDACTED\])[^,\]\s}]+",
+        re.IGNORECASE,
+    ),
 ]
 
 
