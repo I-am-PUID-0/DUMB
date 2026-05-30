@@ -1,3 +1,4 @@
+import asyncio
 import sys
 import tempfile
 import types
@@ -83,6 +84,57 @@ def _install_runtime_stubs():
 _install_runtime_stubs()
 
 from api.routers import config as config_router
+
+
+class _ConfigManager:
+    def __init__(self, config, schema):
+        self.config = config
+        self.schema = schema
+        self.saved_process_names = []
+
+    def save_config(self, process_name=None):
+        self.saved_process_names.append(process_name)
+
+    def find_key_for_process(self, process_name):
+        return "sonarr", None
+
+
+class _Logger:
+    def __init__(self):
+        self.errors = []
+        self.infos = []
+        self.warnings = []
+
+    def error(self, message, *args):
+        self.errors.append(message % args if args else message)
+
+    def info(self, message, *args):
+        self.infos.append(message % args if args else message)
+
+    def warning(self, message, *args):
+        self.warnings.append(message % args if args else message)
+
+
+def _service_schema():
+    return {
+        "properties": {
+            "sonarr": {
+                "properties": {
+                    "instances": {
+                        "patternProperties": {
+                            ".*": {
+                                "properties": {
+                                    "process_name": {"type": "string"},
+                                    "port": {"type": "integer"},
+                                    "schema_declared": {"type": "boolean"},
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
 
 
 class ConfigRouterHelperTests(unittest.TestCase):
@@ -183,6 +235,96 @@ class ConfigRouterHelperTests(unittest.TestCase):
             parsed = config_router.parse_python_config(path)
 
         self.assertEqual(parsed, {"PORT": 8080, "NAME": "service"})
+
+    def test_update_config_global_deep_merges_and_persists(self):
+        manager = _ConfigManager(
+            {
+                "dumb": {
+                    "ui": {
+                        "log_timestamp": True,
+                        "sidebar": {"compact_mode": False, "tools_open": True},
+                    }
+                }
+            },
+            {},
+        )
+        config_router.CONFIG_MANAGER = manager
+        request = types.SimpleNamespace(
+            process_name=None,
+            updates={"dumb": {"ui": {"sidebar": {"compact_mode": True}}}},
+        )
+
+        result = asyncio.run(config_router.update_config(request, logger=_Logger()))
+
+        self.assertEqual(result, {"status": "global config updated", "keys": ["dumb"]})
+        self.assertEqual(manager.saved_process_names, [None])
+        self.assertEqual(
+            manager.config,
+            {
+                "dumb": {
+                    "ui": {
+                        "log_timestamp": True,
+                        "sidebar": {"compact_mode": True, "tools_open": True},
+                    }
+                }
+            },
+        )
+
+    def test_update_config_service_allows_schema_declared_new_keys(self):
+        manager = _ConfigManager(
+            {
+                "sonarr": {
+                    "instances": {"default": {"process_name": "Sonarr", "port": 8989}}
+                }
+            },
+            _service_schema(),
+        )
+        config_router.CONFIG_MANAGER = manager
+        request = types.SimpleNamespace(
+            process_name="Sonarr", updates={"schema_declared": True}, persist=False
+        )
+
+        result = asyncio.run(config_router.update_config(request, logger=_Logger()))
+
+        self.assertEqual(
+            result,
+            {
+                "status": "service config updated",
+                "process_name": "Sonarr",
+                "persisted": False,
+            },
+        )
+        self.assertTrue(
+            manager.config["sonarr"]["instances"]["default"]["schema_declared"]
+        )
+        self.assertEqual(manager.saved_process_names, [])
+
+    def test_update_config_service_rejects_keys_outside_config_schema_and_dynamic_set(
+        self,
+    ):
+        manager = _ConfigManager(
+            {
+                "sonarr": {
+                    "instances": {"default": {"process_name": "Sonarr", "port": 8989}}
+                }
+            },
+            _service_schema(),
+        )
+        config_router.CONFIG_MANAGER = manager
+        logger = _Logger()
+        request = types.SimpleNamespace(
+            process_name="Sonarr", updates={"unknown_key": True}, persist=False
+        )
+
+        with self.assertRaises(config_router.HTTPException) as ctx:
+            asyncio.run(config_router.update_config(request, logger=logger))
+
+        self.assertEqual(ctx.exception.status_code, 400)
+        self.assertEqual(ctx.exception.detail, "Invalid configuration key: unknown_key")
+        self.assertNotIn(
+            "unknown_key", manager.config["sonarr"]["instances"]["default"]
+        )
+        self.assertEqual(manager.saved_process_names, [])
 
 
 if __name__ == "__main__":
