@@ -176,7 +176,7 @@ def _ensure_custom_indexer_whisparr_caps(filename: str, content: str) -> str:
         )
         updated = updated.replace(
             'text: "{{ if .Result.category_is_tv_show }}TV{{ else }}Movies{{ end }}"',
-            'text: \'{{ if .Categories }}{{ join .Categories "," }}{{ else }}{{ if .Result.category_is_tv_show }}TV{{ else }}Movies{{ end }}{{ end }}\'',
+            "text: '{{ if .Categories }}{{ join .Categories \",\" }}{{ else }}{{ if .Result.category_is_tv_show }}TV{{ else }}Movies{{ end }}{{ end }}'",
         )
 
     return updated

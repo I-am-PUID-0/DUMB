@@ -153,7 +153,9 @@ class ProwlarrWhisparrCategoryTests(unittest.TestCase):
         self.assertNotIn('end }}" Category:', patched)
         self.assertIn("        Category: '{{ join .Categories \",\" }}'", patched)
         self.assertIn("    XXX: XXX", patched)
-        self.assertIn("args: [\"^$\", '{{ if .Categories }}{{ join .Categories \" \" }}", patched)
+        self.assertIn(
+            'args: ["^$", \'{{ if .Categories }}{{ join .Categories " " }}', patched
+        )
 
     def test_stremthru_definition_gets_xxx_caps_and_paths(self):
         patched = prowlarr_settings._ensure_custom_indexer_whisparr_caps(
@@ -171,7 +173,7 @@ class ProwlarrWhisparrCategoryTests(unittest.TestCase):
 
         self.assertIn("categories: [Movies, XXX]", patched)
         self.assertIn("categories: [TV, XXX]", patched)
-        self.assertIn("text: '{{ if .Categories }}{{ join .Categories \",\" }}", patched)
+        self.assertIn('text: \'{{ if .Categories }}{{ join .Categories "," }}', patched)
 
 
 class ProwlarrPayloadHelperTests(unittest.TestCase):
