@@ -835,7 +835,10 @@
         "log_file": "/log/rclone_w_realdebrid.log",
         "zurg_config_file": "/zurg/RD/config.yml",
         "command": [],
-        "api_key": ""
+        "api_key": "",
+        "username": "",
+        "password": "",
+        "customer_id": ""
       }
     }
   },

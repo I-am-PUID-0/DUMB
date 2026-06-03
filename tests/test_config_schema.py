@@ -87,6 +87,23 @@ class DumbConfigSchemaTests(unittest.TestCase):
 
         self.assertEqual(set(sidebar_defaults), set(sidebar_schema))
 
+    def test_rclone_direct_provider_credentials_are_defaulted_and_schema_declared(
+        self,
+    ):
+        default_instance = next(iter(self.config["rclone"]["instances"].values()))
+        instance_schema = next(
+            iter(
+                self.schema["properties"]["rclone"]["properties"]["instances"][
+                    "patternProperties"
+                ].values()
+            )
+        )["properties"]
+
+        for key in ("username", "password", "customer_id"):
+            with self.subTest(key=key):
+                self.assertIn(key, default_instance)
+                self.assertIn(key, instance_schema)
+
 
 if __name__ == "__main__":
     unittest.main()
