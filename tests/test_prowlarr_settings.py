@@ -15,6 +15,13 @@ class _Logger:
 
 
 def _install_runtime_stubs():
+    import xml.etree.ElementTree as stdlib_et
+
+    defusedxml = types.ModuleType("defusedxml")
+    defusedxml.ElementTree = stdlib_et
+    sys.modules["defusedxml"] = defusedxml
+    sys.modules["defusedxml.ElementTree"] = stdlib_et
+
     global_logger = types.ModuleType("utils.global_logger")
     global_logger.logger = _Logger()
     sys.modules["utils.global_logger"] = global_logger
@@ -45,11 +52,53 @@ ZILEAN_DEFINITION = (
     'filters: - name: replace args: ["movie", "Movies"]'
 )
 
+ZILEAN_MULTILINE_DEFINITION = """id: zilean
+name: Zilean
+caps:
+  categories:
+    Movies: Movies
+    TV: TV
+search:
+  paths:
+    - path: /dmm/filtered
+      method: get
+      inputs:
+        Episode: "{{ if .Query.Ep }}{{ .Query.Ep }}{{ else }}{{ end }}"
+      keywordsfilters:
+        - name: re_replace
+          args: ["^$", "limitless"]
+      fields:
+        category:
+          selector: category
+          filters:
+            - name: replace
+              args: ["movie", "Movies"]
+"""
+
 STREMTHRU_DEFINITION = (
     "id: stremthru name: StremThru caps: categories: Movies: Movies TV: TV "
     "search: paths: - path: /v0/torznab categories: [Movies] "
     "- path: /v0/torznab categories: [TV]"
 )
+
+STREMTHRU_MULTILINE_DEFINITION = """id: stremthru
+name: Stremthru
+caps:
+  categories:
+    Movies: Movies
+    TV: TV
+search:
+  paths:
+    - path: /v0/torrents
+      categories: [Movies]
+    - path: /v0/torrents
+      categories: [TV]
+  fields:
+    category_is_tv_show:
+      text: "{{ .Result.title }}"
+    category:
+      text: "{{ if .Result.category_is_tv_show }}TV{{ else }}Movies{{ end }}"
+"""
 
 
 APPLICATION_SCHEMA = {
@@ -96,6 +145,16 @@ class ProwlarrWhisparrCategoryTests(unittest.TestCase):
         self.assertIn("join .Categories", patched)
         self.assertIn('args: ["xxx", "XXX"]', patched)
 
+    def test_zilean_multiline_definition_keeps_category_yaml_valid(self):
+        patched = prowlarr_settings._ensure_custom_indexer_whisparr_caps(
+            "zilean.yml", ZILEAN_MULTILINE_DEFINITION
+        )
+
+        self.assertNotIn('end }}" Category:', patched)
+        self.assertIn("        Category: '{{ join .Categories \",\" }}'", patched)
+        self.assertIn("    XXX: XXX", patched)
+        self.assertIn("args: [\"^$\", '{{ if .Categories }}{{ join .Categories \" \" }}", patched)
+
     def test_stremthru_definition_gets_xxx_caps_and_paths(self):
         patched = prowlarr_settings._ensure_custom_indexer_whisparr_caps(
             "stremthru.yml", STREMTHRU_DEFINITION
@@ -104,6 +163,15 @@ class ProwlarrWhisparrCategoryTests(unittest.TestCase):
         self.assertIn("XXX: XXX", patched)
         self.assertIn("categories: [Movies, XXX]", patched)
         self.assertIn("categories: [TV, XXX]", patched)
+
+    def test_stremthru_multiline_definition_reports_requested_category(self):
+        patched = prowlarr_settings._ensure_custom_indexer_whisparr_caps(
+            "stremthru.yml", STREMTHRU_MULTILINE_DEFINITION
+        )
+
+        self.assertIn("categories: [Movies, XXX]", patched)
+        self.assertIn("categories: [TV, XXX]", patched)
+        self.assertIn("text: '{{ if .Categories }}{{ join .Categories \",\" }}", patched)
 
 
 class ProwlarrPayloadHelperTests(unittest.TestCase):

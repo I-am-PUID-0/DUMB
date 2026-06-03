@@ -106,16 +106,53 @@ def _ensure_custom_indexer_whisparr_caps(filename: str, content: str) -> str:
             f"{categories_inline} {WHISPARR_CUSTOM_CATEGORY}: {WHISPARR_CUSTOM_CATEGORY}",
             1,
         )
+    elif f"{WHISPARR_CUSTOM_CATEGORY}: {WHISPARR_CUSTOM_CATEGORY}" not in updated:
+        lines = updated.splitlines()
+        in_caps = False
+        in_categories = False
+        categories_indent = ""
+        for index, line in enumerate(lines):
+            stripped = line.strip()
+            indent = line[: len(line) - len(line.lstrip())]
+            if stripped == "caps:":
+                in_caps = True
+                in_categories = False
+                continue
+            if in_caps and stripped == "categories:":
+                in_categories = True
+                categories_indent = indent
+                continue
+            if in_categories and stripped == "TV: TV":
+                lines.insert(
+                    index + 1,
+                    f"{indent}{WHISPARR_CUSTOM_CATEGORY}: {WHISPARR_CUSTOM_CATEGORY}",
+                )
+                trailing_newline = "\n" if updated.endswith("\n") else ""
+                updated = "\n".join(lines) + trailing_newline
+                break
+            if in_categories and indent <= categories_indent and stripped:
+                in_categories = False
+            if in_caps and not in_categories and not line.startswith(" ") and stripped:
+                in_caps = False
 
     if filename == "zilean.yml":
-        category_input = f'Category: "{{{{ join .Categories "," }}}}"'
+        category_input = "Category: '{{ join .Categories \",\" }}'"
         if category_input not in updated:
             needle = 'Episode: "{{ if .Query.Ep }}{{ .Query.Ep }}{{ else }}{{ end }}"'
-            updated = updated.replace(
-                needle,
-                f"{needle} {category_input}",
-                1,
-            )
+            lines = updated.splitlines()
+            for index, line in enumerate(lines):
+                if needle in line:
+                    indent = line[: len(line) - len(line.lstrip())]
+                    lines.insert(index + 1, f"{indent}{category_input}")
+                    trailing_newline = "\n" if updated.endswith("\n") else ""
+                    updated = "\n".join(lines) + trailing_newline
+                    break
+            else:
+                updated = updated.replace(
+                    needle,
+                    f"{needle}\n{category_input}",
+                    1,
+                )
         if 'args: ["xxx", "XXX"]' not in updated:
             needle = '- name: replace args: ["movie", "Movies"]'
             updated = updated.replace(
@@ -123,6 +160,10 @@ def _ensure_custom_indexer_whisparr_caps(filename: str, content: str) -> str:
                 f'{needle} - name: replace args: ["xxx", "XXX"]',
                 1,
             )
+        updated = updated.replace(
+            'args: ["^$", "limitless"]',
+            'args: ["^$", \'{{ if .Categories }}{{ join .Categories " " }}{{ else }}limitless{{ end }}\']',
+        )
 
     if filename == "stremthru.yml":
         updated = updated.replace(
@@ -132,6 +173,10 @@ def _ensure_custom_indexer_whisparr_caps(filename: str, content: str) -> str:
         updated = updated.replace(
             "categories: [TV]",
             f"categories: [TV, {WHISPARR_CUSTOM_CATEGORY}]",
+        )
+        updated = updated.replace(
+            'text: "{{ if .Result.category_is_tv_show }}TV{{ else }}Movies{{ end }}"',
+            'text: \'{{ if .Categories }}{{ join .Categories "," }}{{ else }}{{ if .Result.category_is_tv_show }}TV{{ else }}Movies{{ end }}{{ end }}\'',
         )
 
     return updated
@@ -148,7 +193,8 @@ def ensure_custom_indexers(config_dir: str, zilean_port: int) -> None:
     indexer_root = os.path.join(config_dir, "indexer")
     if os.path.isdir(indexer_root):
         root_dir = indexer_root
-    custom_dir = os.path.join(root_dir, "Definitions", "Custom")
+    definitions_dir = os.path.join(root_dir, "Definitions")
+    custom_dir = os.path.join(definitions_dir, "Custom")
     os.makedirs(custom_dir, exist_ok=True)
     links_map = {
         "stremthru.yml": [
@@ -220,9 +266,9 @@ def ensure_custom_indexers(config_dir: str, zilean_port: int) -> None:
     try:
         user_id = int(CONFIG_MANAGER.get("puid"))
         group_id = int(CONFIG_MANAGER.get("pgid"))
-        chown_recursive(custom_dir, user_id, group_id)
+        chown_recursive(definitions_dir, user_id, group_id)
     except Exception as exc:
-        logger.warning("Failed to update ownership for %s: %s", custom_dir, exc)
+        logger.warning("Failed to update ownership for %s: %s", definitions_dir, exc)
 
 
 def _parse_arr_api_key(config_xml_path: str) -> str:
