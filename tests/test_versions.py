@@ -1,4 +1,5 @@
 import sys
+import tempfile
 import types
 import unittest
 
@@ -73,6 +74,8 @@ _install_runtime_stubs()
 sys.modules.pop("utils.versions", None)
 from utils.versions import Versions
 
+versions_module = sys.modules["utils.versions"]
+
 
 class VersionsHelperTests(unittest.TestCase):
     def setUp(self):
@@ -131,6 +134,29 @@ class VersionsHelperTests(unittest.TestCase):
 
         self.assertIsNone(marker)
         self.assertEqual(error, "Unable to resolve branch head sha (status: 404)")
+
+    def test_altmount_version_check_reads_version_marker(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with open(f"{tmpdir}/version.txt", "w", encoding="utf-8") as handle:
+                handle.write("v0.2.0")
+
+            versions = Versions()
+            original_config_manager = versions_module.CONFIG_MANAGER
+            versions_module.CONFIG_MANAGER = types.SimpleNamespace(
+                get_instance=lambda *args, **kwargs: {"config_dir": tmpdir}
+            )
+            self.addCleanup(
+                lambda: setattr(
+                    versions_module, "CONFIG_MANAGER", original_config_manager
+                )
+            )
+            version, error = versions.version_check(
+                process_name="AltMount",
+                key="altmount",
+            )
+
+            self.assertEqual(version, "v0.2.0")
+            self.assertIsNone(error)
 
 
 if __name__ == "__main__":

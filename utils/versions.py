@@ -489,6 +489,7 @@ class Versions:
                             or key == "huntarr"
                             or key == "seerr"
                             or key == "pulsarr"
+                            or key == "altmount"
                             or key == "traefik_proxy_admin"
                             or key == "cloudflared"
                             or key == "profilarr"
