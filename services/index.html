@@ -1622,6 +1622,8 @@
       
         
       
+        
+      
     
     
     
@@ -1760,6 +1762,34 @@
     
   
     NzbDAV
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="core/altmount/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AltMount
   
 
     
@@ -4474,7 +4504,7 @@
   
 
 
-<h1 id="services-overview">Services Overview<a class="headerlink" href="#services-overview" title="Permanent link">#</a></h1>
+<h1 id="services-overview">Services Overview<a class="headerlink" href="#services-overview" title="Permanent link">&para;</a></h1>
 <p>DUMB is composed of multiple services that work together to provide a complete automated media management system. Services are categorized into:</p>
 <ul>
 <li><a href="../services/dumb/">DUMB Services</a>: Required for system orchestration and user interaction</li>
@@ -4483,7 +4513,7 @@
 <li><a href="../services/optional/">Optional Services</a>: Enhance or simplify workflows but are not required</li>
 </ul>
 <hr />
-<h2 id="how-the-services-work-together">How the Services Work Together<a class="headerlink" href="#how-the-services-work-together" title="Permanent link">#</a></h2>
+<h2 id="how-the-services-work-together">How the Services Work Together<a class="headerlink" href="#how-the-services-work-together" title="Permanent link">&para;</a></h2>
 <p>DUMB is built as a collection of microservices that communicate over internal APIs and shared paths. Below is an example flow:</p>
 <ol>
 <li>
@@ -4496,9 +4526,9 @@
 <li>
 <p><strong>Debrid Orchestration &amp; Content Management</strong></p>
 <ul>
-<li><strong>Riven Backend</strong>,  <strong>CLI Debrid</strong>,  <strong>Plex Debrid</strong>, and  <strong>Decypharr</strong> each serve as a Debrid orchestrator: requesting, managing, and monitoring content acquisition workflows</li>
+<li><strong>Riven Backend</strong>,  <strong>CLI Debrid</strong>, and  <strong>Plex Debrid</strong> serve as Debrid orchestrators; <strong>Decypharr</strong> can serve Debrid, Usenet, or hybrid Arr workflows</li>
 <li>These core services integrate with providers like Trakt, Seerr, and Debrid APIs to manage what content gets fetched</li>
-<li><strong>NzbDAV</strong> provides a WebDAV endpoint and download client integration for NZB workflows</li>
+<li><strong>NzbDAV</strong> and <strong>AltMount</strong> provide WebDAV/download-client style integrations for NZB workflows</li>
 <li><strong>Sonarr/Radarr/Lidarr/Whisparr</strong> manage media queues and organize content from download clients</li>
 <li><strong>Prowlarr</strong> manages indexers and syncs them to the Arrs</li>
 <li><strong>NeutArr</strong> automates backlog and quality-upgrade searches across the Arr stack</li>
@@ -4535,9 +4565,17 @@
 <li><strong>pgAdmin</strong> is a GUI for exploring PostgreSQL databases</li>
 </ul>
 </li>
+<li>
+<p><strong>Access Layer</strong></p>
+<ul>
+<li><strong>Traefik</strong> serves DUMB-owned embedded UI routes from <code>/config/traefik/dynamic/services.yaml</code></li>
+<li><strong>Traefik Proxy Admin</strong> owns user-managed LAN or public host routes through Traefik's HTTP provider</li>
+<li><strong>Cloudflared</strong> can carry Cloudflare Tunnel traffic to DUMB Traefik without direct port forwarding</li>
+</ul>
+</li>
 </ol>
 <hr />
-<h2 id="quick-reference">Quick Reference<a class="headerlink" href="#quick-reference" title="Permanent link">#</a></h2>
+<h2 id="quick-reference">Quick Reference<a class="headerlink" href="#quick-reference" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
@@ -4575,12 +4613,17 @@
 <tr>
 <td><a href="../services/core/decypharr/">Decypharr</a></td>
 <td>Core</td>
-<td>Debrid orchestrator for Arrs via torrent API integration</td>
+<td>Debrid and native Usenet workflow service for Arrs</td>
 </tr>
 <tr>
 <td><a href="../services/core/nzbdav/">NzbDAV</a></td>
 <td>Core</td>
 <td>WebDAV gateway for NZB + Arr download client workflows</td>
+</tr>
+<tr>
+<td><a href="../services/core/altmount/">AltMount</a></td>
+<td>Core</td>
+<td>Alternative Usenet WebDAV and SABnzbd-compatible workflow</td>
 </tr>
 <tr>
 <td><a href="../services/core/plex-media-server/">Plex</a></td>
@@ -4695,14 +4738,14 @@
 </tbody>
 </table>
 <hr />
-<h2 id="tips">Tips<a class="headerlink" href="#tips" title="Permanent link">#</a></h2>
+<h2 id="tips">Tips<a class="headerlink" href="#tips" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Use the onboarding UI to enable only the services you need</li>
 <li>Services will auto-start in dependency order</li>
 <li>Logs and errors can be viewed in the DUMB Frontend</li>
 </ul>
 <hr />
-<h2 id="service-categories">Service Categories<a class="headerlink" href="#service-categories" title="Permanent link">#</a></h2>
+<h2 id="service-categories">Service Categories<a class="headerlink" href="#service-categories" title="Permanent link">&para;</a></h2>
 <ul>
 <li><a href="../services/dumb/">DUMB Services</a></li>
 <li><a href="../services/core/">Core Services</a></li>

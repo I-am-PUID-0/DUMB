@@ -1624,6 +1624,8 @@
       
         
       
+        
+      
     
     
     
@@ -1760,6 +1762,34 @@
     
   
     NzbDAV
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../altmount/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AltMount
   
 
     
@@ -2073,23 +2103,6 @@
       
     </span>
   </a>
-  
-    <nav class="md-nav" aria-label="Configuration in dumb_config.json">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#key-configuration-fields" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Key Configuration Fields
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
@@ -4504,23 +4517,6 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Configuration in dumb_config.json">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#key-configuration-fields" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Key Configuration Fields
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
 </li>
       
         <li class="md-nav__item">
@@ -4664,10 +4660,10 @@
   
 
 
-<h1 id="radarr-core-service">Radarr (Core Service)<a class="headerlink" href="#radarr-core-service" title="Permanent link">#</a></h1>
+<h1 id="radarr-core-service">Radarr (Core Service)<a class="headerlink" href="#radarr-core-service" title="Permanent link">&para;</a></h1>
 <p><strong>Radarr</strong> is a movie manager that automates searching, grabbing, and organizing movies through indexers and download clients.</p>
 <hr />
-<h2 id="service-relationships">Service Relationships<a class="headerlink" href="#service-relationships" title="Permanent link">#</a></h2>
+<h2 id="service-relationships">Service Relationships<a class="headerlink" href="#service-relationships" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
@@ -4686,7 +4682,7 @@
 </tr>
 <tr>
 <td>Optional</td>
-<td>Decypharr, NzbDAV, Prowlarr</td>
+<td>Decypharr, NzbDAV, AltMount, Prowlarr</td>
 </tr>
 <tr>
 <td>Exposes UI</td>
@@ -4695,7 +4691,7 @@
 </tbody>
 </table>
 <hr />
-<h2 id="configuration-in-dumb_configjson">Configuration in <code>dumb_config.json</code><a class="headerlink" href="#configuration-in-dumb_configjson" title="Permanent link">#</a></h2>
+<h2 id="configuration-in-dumb_configjson">Configuration in <code>dumb_config.json</code><a class="headerlink" href="#configuration-in-dumb_configjson" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="nt">&quot;radarr&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;instances&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">    </span><span class="nt">&quot;Default&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
@@ -4725,9 +4721,9 @@
 <span class="w">  </span><span class="p">}</span>
 <span class="p">}</span>
 </code></pre></div>
-<h3 id="key-configuration-fields">Key Configuration Fields<a class="headerlink" href="#key-configuration-fields" title="Permanent link">#</a></h3>
+<h3 id="key-configuration-fields">Key Configuration Fields<a class="headerlink" href="#key-configuration-fields" title="Permanent link">&para;</a></h3>
 <ul>
-<li><code>core_service</code>: Set to <code>decypharr</code>, <code>nzbdav</code>, or a list of both to enable DUMB integration.</li>
+<li><code>core_service</code>: Set to <code>decypharr</code>, <code>nzbdav</code>, <code>altmount</code>, or a list of workflow keys to enable DUMB integration.</li>
 <li><code>use_neutarr</code>: Opt this instance into NeutArr automation.</li>
 <li><code>use_profilarr</code>: Opt this instance into Profilarr auto‑linking.</li>
 <li><code>port</code>: Web UI port (default <code>7878</code>).</li>
@@ -4740,7 +4736,7 @@
 <li><code>config_dir</code>, <code>config_file</code>, <code>log_file</code>: Paths for config and logs.</li>
 </ul>
 <hr />
-<h2 id="repo-based-installs-and-updates">Repo-based installs and updates<a class="headerlink" href="#repo-based-installs-and-updates" title="Permanent link">#</a></h2>
+<h2 id="repo-based-installs-and-updates">Repo-based installs and updates<a class="headerlink" href="#repo-based-installs-and-updates" title="Permanent link">&para;</a></h2>
 <p>Radarr now supports the same repo‑based controls as other DUMB services.</p>
 <ul>
 <li><strong>GitHub releases</strong>: Set <code>release_version_enabled: true</code> with a valid <code>repo_owner</code>/<code>repo_name</code>.</li>
@@ -4748,22 +4744,23 @@
 </ul>
 <p>GitHub sources take priority when enabled and are <strong>not</strong> a fallback. <code>pinned_version</code> only applies to the traditional Arr updater.</p>
 <hr />
-<h2 id="integration-with-dumb">Integration with DUMB<a class="headerlink" href="#integration-with-dumb" title="Permanent link">#</a></h2>
+<h2 id="integration-with-dumb">Integration with DUMB<a class="headerlink" href="#integration-with-dumb" title="Permanent link">&para;</a></h2>
 <ul>
 <li>For Decypharr integration, set <code>core_service</code> to <code>decypharr</code> and follow the <a href="../decypharr/">Decypharr guide</a>.</li>
 <li>For NzbDAV integration, set <code>core_service</code> to <code>nzbdav</code> and follow the <a href="../nzbdav/">NzbDAV guide</a>.</li>
-<li>For combined workflows, set <code>core_service</code> to <code>["decypharr", "nzbdav"]</code>.</li>
+<li>For AltMount integration, set <code>core_service</code> to <code>altmount</code> and follow the <a href="../altmount/">AltMount guide</a>.</li>
+<li>For combined workflows, set <code>core_service</code> to a list such as <code>["decypharr", "nzbdav", "altmount"]</code>.</li>
 <li>Use <a href="../prowlarr/">Prowlarr</a> to centrally manage indexers and sync them to Radarr.</li>
 <li>DUMB enables Arr folder permission updates and applies permissions to configured root folders during integration.</li>
 <li>See <a href="../../../reference/core-service/">Core Service Routing</a> for how <code>core_service</code> affects automation.</li>
 </ul>
 <hr />
-<h2 id="accessing-the-ui">Accessing the UI<a class="headerlink" href="#accessing-the-ui" title="Permanent link">#</a></h2>
+<h2 id="accessing-the-ui">Accessing the UI<a class="headerlink" href="#accessing-the-ui" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Navigate to: <code>http://&lt;host&gt;:7878</code></li>
 </ul>
 <hr />
-<h2 id="resources">Resources<a class="headerlink" href="#resources" title="Permanent link">#</a></h2>
+<h2 id="resources">Resources<a class="headerlink" href="#resources" title="Permanent link">&para;</a></h2>
 <ul>
 <li><a href="https://radarr.video/">Radarr Website</a></li>
 <li><a href="https://github.com/Radarr/Radarr">Radarr GitHub</a></li>

@@ -1616,6 +1616,8 @@
       
         
       
+        
+      
     
     
     
@@ -1751,6 +1753,34 @@
     
   
     NzbDAV
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../services/core/altmount/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AltMount
   
 
     
@@ -4557,35 +4587,36 @@
 
   <h1>About</h1>
 
-<h2 id="about-dumb-debrid-unlimited-media-bridge">About DUMB (Debrid Unlimited Media Bridge)<a class="headerlink" href="#about-dumb-debrid-unlimited-media-bridge" title="Permanent link">#</a></h2>
+<h2 id="about-dumb-debrid-unlimited-media-bridge">About DUMB (Debrid Unlimited Media Bridge)<a class="headerlink" href="#about-dumb-debrid-unlimited-media-bridge" title="Permanent link">&para;</a></h2>
 <p><strong>Debrid Unlimited Media Bridge (DUMB)</strong> is an all-in-one, containerized platform for managing and automating media workflows using premium debrid services (like Real-Debrid) and Usenet. Whether you're looking to automate downloads, organize libraries, mount remote content, or just reduce manual steps, DUMB aims to unify it all into a seamless experience.</p>
 <hr />
-<h2 id="mission">Mission<a class="headerlink" href="#mission" title="Permanent link">#</a></h2>
+<h2 id="mission">Mission<a class="headerlink" href="#mission" title="Permanent link">&para;</a></h2>
 <p>DUMB was created with a single goal:</p>
 <p><strong>Bridge the gap between debrid or Usenet services and traditional media server ecosystems like Plex, Jellyfin, and Emby — with maximum automation and minimal configuration.</strong></p>
 <p>By directly integrating the <strong>media server itself</strong> (e.g. Plex) within the DUMB container, the platform overcomes long-standing issues like broken bind mount propagation, sync delays, and external scan conflicts common in multi-container setups.</p>
 <hr />
-<h2 id="what-makes-dumb-unique">What Makes DUMB Unique?<a class="headerlink" href="#what-makes-dumb-unique" title="Permanent link">#</a></h2>
+<h2 id="what-makes-dumb-unique">What Makes DUMB Unique?<a class="headerlink" href="#what-makes-dumb-unique" title="Permanent link">&para;</a></h2>
 <p>Unlike other solutions that focus on one piece of the puzzle, <strong>DUMB integrates every step</strong> of the media pipeline:</p>
 <ul>
 <li><em>Embedded media servers</em> — Plex, Jellyfin, and Emby run inside the same container, ensuring seamless access to mounted content and full internal control</li>
 <li><em>Service coordination</em> — via the internal DUMB API and real-time config management</li>
-<li><em>Automated acquisition</em> — with core services for discovery and orchestrators like Riven, CLI Debrid, Decypharr, and NzbDAV</li>
+<li><em>Automated acquisition</em> — with core services for discovery and orchestrators like Riven, CLI Debrid, Decypharr, NzbDAV, and AltMount</li>
 <li><em>Cloud storage mounting</em> — through rclone mounts direct to debrid (e.g., Real-Debrid WebDAV) or utilizing Zurg's WebDAV</li>
 <li><em>Arr automation</em> — Sonarr, Radarr, Lidarr, and Whisparr handle queues, renaming, and library organization</li>
 <li><em>Library management</em> — using symlinks, metadata enrichment, and optional server updates</li>
 <li><em>Metadata caching</em> — with Zilean to reduce latency and boost scraping efficiency</li>
-<li><em>Visual control</em> — via the DUMB Frontend for onboarding, live logs, settings, and monitoring</li>
+<li><em>Visual control</em> — via the DUMB Frontend for onboarding, live logs, settings, embedded service UIs, and monitoring</li>
+<li><em>Integrated access layer</em> — DUMB-owned Traefik embedded UI routes, optional Traefik Proxy Admin user routes, and optional Cloudflared ingress through the same Traefik entrypoint</li>
 </ul>
 <p>All services are configured through a centralized file (<code>dumb_config.json</code>) and can be dynamically updated at runtime via the DUMB Frontend.</p>
 <div class="admonition info">
 <p class="admonition-title">Combined workflows</p>
 <p>You can attach a single Arr instance to multiple workflows by setting
-<code>core_service</code> to a list (for example <code>["decypharr", "nzbdav"]</code>). When combined,
+<code>core_service</code> to a list (for example <code>["decypharr", "nzbdav", "altmount"]</code>). When combined,
 DUMB switches Arr root folders to <code>/mnt/debrid/combined_symlinks/&lt;slug&gt;</code>.</p>
 </div>
 <hr />
-<h2 id="architecture-at-a-glance">Architecture at a Glance<a class="headerlink" href="#architecture-at-a-glance" title="Permanent link">#</a></h2>
+<h2 id="architecture-at-a-glance">Architecture at a Glance<a class="headerlink" href="#architecture-at-a-glance" title="Permanent link">&para;</a></h2>
 <p>DUMB is built using a <strong>modular, microservices</strong> architecture, with the following components:</p>
 <table>
 <thead>
@@ -4617,7 +4648,7 @@ DUMB switches Arr root folders to <code>/mnt/debrid/combined_symlinks/&lt;slug&g
 </tr>
 <tr>
 <td><strong>Decypharr</strong></td>
-<td>Debrid workflow for Arr download clients and symlink libraries</td>
+<td>Debrid and native Usenet workflow for Arr download clients and symlink libraries</td>
 </tr>
 <tr>
 <td><strong>NzbDAV</strong></td>
@@ -4651,11 +4682,15 @@ DUMB switches Arr root folders to <code>/mnt/debrid/combined_symlinks/&lt;slug&g
 <td><strong>PostgreSQL / pgAdmin</strong></td>
 <td>Internal databases and optional management UI</td>
 </tr>
+<tr>
+<td><strong>Traefik / TPA / Cloudflared</strong></td>
+<td>Embedded service UI routing, user-managed reverse proxy routes, and optional Cloudflare Tunnel ingress</td>
+</tr>
 </tbody>
 </table>
 <p>You can explore how these services connect in the <a href="../services/">Services Overview</a> page.</p>
 <hr />
-<h2 id="community-driven-development">Community-Driven Development<a class="headerlink" href="#community-driven-development" title="Permanent link">#</a></h2>
+<h2 id="community-driven-development">Community-Driven Development<a class="headerlink" href="#community-driven-development" title="Permanent link">&para;</a></h2>
 <p>DUMB is fully open-source and <strong>community-powered</strong>. While development is led by a single maintainer, contributions of all kinds are welcome — not just code!</p>
 <p>You can help by:</p>
 <ul>
@@ -4667,7 +4702,7 @@ DUMB switches Arr root folders to <code>/mnt/debrid/combined_symlinks/&lt;slug&g
 </ul>
 <p>See the <a href="../contributing/">Contributing Guide</a> for more details.</p>
 <hr />
-<h2 id="learn-more">Learn More<a class="headerlink" href="#learn-more" title="Permanent link">#</a></h2>
+<h2 id="learn-more">Learn More<a class="headerlink" href="#learn-more" title="Permanent link">&para;</a></h2>
 <ul>
 <li><a href="../deployment/">Deployment Options</a></li>
 <li><a href="../services/">Service Configuration</a></li>

@@ -1622,6 +1622,8 @@
       
         
       
+        
+      
     
     
     
@@ -1760,6 +1762,34 @@
     
   
     NzbDAV
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../core/altmount/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AltMount
   
 
     
@@ -2811,23 +2841,6 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Step 6: Add protection before publishing sensitive apps">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#example-basic-auth" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Example: Basic Auth
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
 </li>
       
         <li class="md-nav__item">
@@ -2860,23 +2873,6 @@
       
     </span>
   </a>
-  
-    <nav class="md-nav" aria-label="Configuration settings in dumb_config.json">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#configuration-key-descriptions" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Configuration key descriptions
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
@@ -4730,23 +4726,6 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Step 6: Add protection before publishing sensitive apps">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#example-basic-auth" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Example: Basic Auth
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
 </li>
       
         <li class="md-nav__item">
@@ -4779,23 +4758,6 @@
       
     </span>
   </a>
-  
-    <nav class="md-nav" aria-label="Configuration settings in dumb_config.json">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#configuration-key-descriptions" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Configuration key descriptions
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
@@ -4918,10 +4880,10 @@
   
 
 
-<h1 id="traefik-proxy-admin">Traefik Proxy Admin<a class="headerlink" href="#traefik-proxy-admin" title="Permanent link">#</a></h1>
+<h1 id="traefik-proxy-admin">Traefik Proxy Admin<a class="headerlink" href="#traefik-proxy-admin" title="Permanent link">&para;</a></h1>
 <p>Traefik Proxy Admin (TPA) is an optional DUMB service for managing user-facing reverse proxy routes through the Traefik instance bundled with DUMB. Use it when you want DUMB to keep handling embedded service UIs, while TPA manages public or LAN hostnames for services inside or outside the DUMB container.</p>
 <hr />
-<h2 id="what-tpa-adds">What TPA adds<a class="headerlink" href="#what-tpa-adds" title="Permanent link">#</a></h2>
+<h2 id="what-tpa-adds">What TPA adds<a class="headerlink" href="#what-tpa-adds" title="Permanent link">&para;</a></h2>
 <p>TPA provides:</p>
 <ul>
 <li><strong>User-managed reverse proxy routes</strong> - Create domains, services, middleware choices, and auth rules from a web UI.</li>
@@ -4936,7 +4898,7 @@
 <p>TPA can create public routes to sensitive services. Keep TPA admin auth enabled, protect exposed services with an auth layer, and avoid publishing DUMB or TPA itself unless you understand the risk.</p>
 </div>
 <hr />
-<h2 id="default-port">Default port<a class="headerlink" href="#default-port" title="Permanent link">#</a></h2>
+<h2 id="default-port">Default port<a class="headerlink" href="#default-port" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
@@ -4952,7 +4914,7 @@
 </tbody>
 </table>
 <hr />
-<h2 id="how-dumb-wires-tpa-to-traefik">How DUMB wires TPA to Traefik<a class="headerlink" href="#how-dumb-wires-tpa-to-traefik" title="Permanent link">#</a></h2>
+<h2 id="how-dumb-wires-tpa-to-traefik">How DUMB wires TPA to Traefik<a class="headerlink" href="#how-dumb-wires-tpa-to-traefik" title="Permanent link">&para;</a></h2>
 <p>DUMB keeps two Traefik configuration lanes separate:</p>
 <table>
 <thead>
@@ -4991,7 +4953,7 @@
 </code></pre></div>
 <p>This lets DUMB regenerate embedded UI routes without overwriting TPA-managed external routes.</p>
 <hr />
-<h2 id="step-1-enable-tpa-in-dumb">Step 1: Enable TPA in DUMB<a class="headerlink" href="#step-1-enable-tpa-in-dumb" title="Permanent link">#</a></h2>
+<h2 id="step-1-enable-tpa-in-dumb">Step 1: Enable TPA in DUMB<a class="headerlink" href="#step-1-enable-tpa-in-dumb" title="Permanent link">&para;</a></h2>
 <ol>
 <li>Open the <strong>Traefik Proxy Admin</strong> service page in DUMB.</li>
 <li>Enable the service.</li>
@@ -5001,7 +4963,7 @@
 </ol>
 <p>On first start, DUMB also writes runtime values that TPA needs, including the database URL, admin auth secret, admin cookie mode, Traefik API URL, access log path, and target-test allowlist.</p>
 <hr />
-<h2 id="step-2-create-the-first-admin-account">Step 2: Create the first admin account<a class="headerlink" href="#step-2-create-the-first-admin-account" title="Permanent link">#</a></h2>
+<h2 id="step-2-create-the-first-admin-account">Step 2: Create the first admin account<a class="headerlink" href="#step-2-create-the-first-admin-account" title="Permanent link">&para;</a></h2>
 <p>The first TPA screen asks you to create a local admin account.</p>
 <ol>
 <li>Enter an admin username.</li>
@@ -5015,14 +4977,14 @@
 <p>Start with local admin auth so you have a known-good break-glass login. You can configure admin SSO later from TPA's Security page.</p>
 </div>
 <hr />
-<h2 id="admin-cookie-security">Admin cookie security<a class="headerlink" href="#admin-cookie-security" title="Permanent link">#</a></h2>
+<h2 id="admin-cookie-security">Admin cookie security<a class="headerlink" href="#admin-cookie-security" title="Permanent link">&para;</a></h2>
 <p>DUMB runs TPA with <code>ADMIN_COOKIE_SECURE=false</code> by default. This allows local admin login to work when you open TPA over plain HTTP on a LAN address, such as <code>http://&lt;host&gt;:3004</code>. Without this, browsers can store the secure admin session cookie but refuse to send it back over HTTP, which looks like a successful login that immediately returns to the login page.</p>
 <p>If you expose TPA only through HTTPS and do not need direct HTTP LAN access, you can set:</p>
 <div class="highlight"><pre><span></span><code>ADMIN_COOKIE_SECURE=true
 </code></pre></div>
 <p>Then restart TPA. For public deployments, HTTPS plus secure cookies is preferred. Keep <code>ADMIN_COOKIE_SECURE=false</code> only when you intentionally need local HTTP access.</p>
 <hr />
-<h2 id="step-3-review-global-configuration">Step 3: Review global configuration<a class="headerlink" href="#step-3-review-global-configuration" title="Permanent link">#</a></h2>
+<h2 id="step-3-review-global-configuration">Step 3: Review global configuration<a class="headerlink" href="#step-3-review-global-configuration" title="Permanent link">&para;</a></h2>
 <p>Open <strong>Config</strong> in TPA.</p>
 <p><img alt="TPA global configuration" src="../../../assets/images/traefik-proxy-admin/tpa_config.png" /></p>
 <p>Check these fields first:</p>
@@ -5063,7 +5025,7 @@
 <p>The internal TPA URL is for Traefik-to-TPA traffic. The public TPA URL is for browser/OAuth traffic. They can be different, especially when Cloudflare Tunnel or another external proxy is involved.</p>
 </div>
 <hr />
-<h2 id="step-4-add-a-domain">Step 4: Add a domain<a class="headerlink" href="#step-4-add-a-domain" title="Permanent link">#</a></h2>
+<h2 id="step-4-add-a-domain">Step 4: Add a domain<a class="headerlink" href="#step-4-add-a-domain" title="Permanent link">&para;</a></h2>
 <p>Domains are the base hostnames TPA uses when building service routes.</p>
 <p><img alt="TPA add domain form" src="../../../assets/images/traefik-proxy-admin/tpa_add_domain.png" /></p>
 <ol>
@@ -5076,7 +5038,7 @@
 </ol>
 <p>For Cloudflare Tunnel, make sure Cloudflare DNS and the tunnel route also point matching hostnames at DUMB Traefik. The tunnel terminates public TLS at Cloudflare, then connects to DUMB Traefik. See the <a href="../cloudflared/">Cloudflared guided setup</a>.</p>
 <hr />
-<h2 id="step-5-add-your-first-service-route">Step 5: Add your first service route<a class="headerlink" href="#step-5-add-your-first-service-route" title="Permanent link">#</a></h2>
+<h2 id="step-5-add-your-first-service-route">Step 5: Add your first service route<a class="headerlink" href="#step-5-add-your-first-service-route" title="Permanent link">&para;</a></h2>
 <p>Open <strong>Services</strong>, then select <strong>Add Service</strong>.</p>
 <p><img alt="TPA add service form" src="../../../assets/images/traefik-proxy-admin/tpa_add_service.png" /></p>
 <p>Recommended first test target:</p>
@@ -5134,7 +5096,7 @@
 </table>
 <p>Select <strong>Test</strong> beside the target fields before saving.</p>
 <hr />
-<h2 id="target-reachability-allowlist">Target reachability allowlist<a class="headerlink" href="#target-reachability-allowlist" title="Permanent link">#</a></h2>
+<h2 id="target-reachability-allowlist">Target reachability allowlist<a class="headerlink" href="#target-reachability-allowlist" title="Permanent link">&para;</a></h2>
 <p>TPA target testing is intentionally restricted. By default DUMB sets:</p>
 <div class="highlight"><pre><span></span><code>TARGET_TEST_ALLOW_CIDRS=10.0.0.0/16,172.20.0.0/16,192.168.0.0/16,127.0.0.0/8
 </code></pre></div>
@@ -5171,7 +5133,7 @@
 <p>Do not set the allowlist to <code>0.0.0.0/0</code>. Target tests open outbound TCP connections and should remain limited to networks you intentionally operate.</p>
 </div>
 <hr />
-<h2 id="step-6-add-protection-before-publishing-sensitive-apps">Step 6: Add protection before publishing sensitive apps<a class="headerlink" href="#step-6-add-protection-before-publishing-sensitive-apps" title="Permanent link">#</a></h2>
+<h2 id="step-6-add-protection-before-publishing-sensitive-apps">Step 6: Add protection before publishing sensitive apps<a class="headerlink" href="#step-6-add-protection-before-publishing-sensitive-apps" title="Permanent link">&para;</a></h2>
 <p>TPA can publish a route, but publishing is not the same as protecting it.</p>
 <p>Before exposing sensitive services, configure at least one protection layer:</p>
 <ul>
@@ -5182,7 +5144,7 @@
 <li>The upstream application's own login, if it is strong enough for the exposure model.</li>
 </ul>
 <p>Use stronger protection for admin tools, download clients, dashboards, and anything that can modify your stack.</p>
-<h3 id="example-basic-auth">Example: Basic Auth<a class="headerlink" href="#example-basic-auth" title="Permanent link">#</a></h3>
+<h3 id="example-basic-auth">Example: Basic Auth<a class="headerlink" href="#example-basic-auth" title="Permanent link">&para;</a></h3>
 <p>Basic Auth is a simple first protection layer for low-risk routes and smoke tests. It is not a replacement for a strong app login or SSO on highly sensitive admin tools, but it is useful when you need a quick gate before a service is reachable.</p>
 <p>First create a reusable Basic Auth configuration from <strong>Security</strong>.</p>
 <p><img alt="TPA reusable Basic Auth configuration" src="../../../assets/images/traefik-proxy-admin/tpa_basic_auth.png" /></p>
@@ -5203,7 +5165,7 @@
 <li>Save the service security settings.</li>
 </ol>
 <hr />
-<h2 id="step-7-save-and-validate-the-route">Step 7: Save and validate the route<a class="headerlink" href="#step-7-save-and-validate-the-route" title="Permanent link">#</a></h2>
+<h2 id="step-7-save-and-validate-the-route">Step 7: Save and validate the route<a class="headerlink" href="#step-7-save-and-validate-the-route" title="Permanent link">&para;</a></h2>
 <ol>
 <li>Save the service.</li>
 <li>Open the service hostname in a private browser window.</li>
@@ -5219,7 +5181,7 @@
 <li>Any auth middleware behaves as expected.</li>
 </ul>
 <hr />
-<h2 id="cloudflare-tunnel-handoff">Cloudflare Tunnel handoff<a class="headerlink" href="#cloudflare-tunnel-handoff" title="Permanent link">#</a></h2>
+<h2 id="cloudflare-tunnel-handoff">Cloudflare Tunnel handoff<a class="headerlink" href="#cloudflare-tunnel-handoff" title="Permanent link">&para;</a></h2>
 <p>If publishing through Cloudflare Tunnel:</p>
 <ol>
 <li>Create the TPA service route in TPA.</li>
@@ -5230,7 +5192,7 @@
 </ol>
 <p>Full steps are in the <a href="../cloudflared/">Cloudflared guide</a>.</p>
 <hr />
-<h2 id="configuration-settings-in-dumb_configjson">Configuration settings in <code>dumb_config.json</code><a class="headerlink" href="#configuration-settings-in-dumb_configjson" title="Permanent link">#</a></h2>
+<h2 id="configuration-settings-in-dumb_configjson">Configuration settings in <code>dumb_config.json</code><a class="headerlink" href="#configuration-settings-in-dumb_configjson" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="nt">&quot;traefik_proxy_admin&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;process_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Traefik Proxy Admin&quot;</span><span class="p">,</span>
@@ -5264,7 +5226,7 @@
 <span class="w">  </span><span class="p">}</span>
 <span class="p">}</span>
 </code></pre></div>
-<h3 id="configuration-key-descriptions">Configuration key descriptions<a class="headerlink" href="#configuration-key-descriptions" title="Permanent link">#</a></h3>
+<h3 id="configuration-key-descriptions">Configuration key descriptions<a class="headerlink" href="#configuration-key-descriptions" title="Permanent link">&para;</a></h3>
 <ul>
 <li><strong><code>enabled</code></strong>: Whether to install and start TPA.</li>
 <li><strong><code>port</code></strong>: TPA web UI port.</li>
@@ -5278,7 +5240,7 @@
 <li><strong><code>env.TARGET_TEST_ALLOW_CIDRS</code></strong>: Private CIDR allowlist used by TPA target reachability tests.</li>
 </ul>
 <hr />
-<h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">#</a></h2>
+<h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
@@ -5326,7 +5288,7 @@
 </tbody>
 </table>
 <hr />
-<h2 id="related-links">Related links<a class="headerlink" href="#related-links" title="Permanent link">#</a></h2>
+<h2 id="related-links">Related links<a class="headerlink" href="#related-links" title="Permanent link">&para;</a></h2>
 <ul>
 <li><a href="../cloudflared/">Cloudflared</a></li>
 <li><a href="../../../features/embedded-ui/">Embedded Service UIs</a></li>

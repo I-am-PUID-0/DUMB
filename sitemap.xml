@@ -91,6 +91,9 @@
         <loc>https://dumbarr.com/services/core/nzbdav/</loc>
       </url>
       <url>
+        <loc>https://dumbarr.com/services/core/altmount/</loc>
+      </url>
+      <url>
         <loc>https://dumbarr.com/services/core/plex-media-server/</loc>
       </url>
       <url>
