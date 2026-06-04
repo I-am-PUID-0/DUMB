@@ -4,6 +4,19 @@ from jsonschema import validate, ValidationError
 from dotenv import load_dotenv, find_dotenv
 from collections import OrderedDict
 
+MODULE_FILE = globals().get(
+    "__file__", os.path.join(os.getcwd(), "utils", "config_loader.py")
+)
+REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(MODULE_FILE), ".."))
+DEFAULT_CONFIG_PATH = os.path.join(REPO_ROOT, "utils", "dumb_config.json")
+DEFAULT_SCHEMA_PATH = os.path.join(REPO_ROOT, "utils", "dumb_config_schema.json")
+
+
+def _resolve_existing_path(primary_path, fallback_path):
+    if primary_path and os.path.exists(primary_path):
+        return primary_path
+    return fallback_path
+
 
 class ConfigManager:
     def __init__(
@@ -11,13 +24,23 @@ class ConfigManager:
         file_path="/config/dumb_config.json",
         schema_path="/utils/dumb_config_schema.json",
     ):
+        default_config_path = _resolve_existing_path(
+            "/utils/dumb_config.json", DEFAULT_CONFIG_PATH
+        )
+        schema_path = _resolve_existing_path(schema_path, DEFAULT_SCHEMA_PATH)
+
         if not os.path.exists(file_path):
-            shutil.copyfile("/utils/dumb_config.json", file_path)
+            file_parent = os.path.dirname(os.path.abspath(file_path))
+            if os.path.isdir(file_parent):
+                shutil.copyfile(default_config_path, file_path)
+            elif file_path == "/config/dumb_config.json":
+                file_path = default_config_path
 
         load_dotenv(find_dotenv("/config/.env"))
 
         self.file_path = os.path.abspath(file_path)
         self.schema_path = os.path.abspath(schema_path)
+        self.default_config_path = os.path.abspath(default_config_path)
 
         if not os.path.exists(self.file_path):
             raise FileNotFoundError(f"Config file not found: {self.file_path}")
@@ -104,7 +127,7 @@ class ConfigManager:
 
     def update_config_with_top_level_defaults(self):
         try:
-            with open("/utils/dumb_config.json", "r") as default_file:
+            with open(self.default_config_path, "r") as default_file:
                 default_config = load(default_file, object_pairs_hook=OrderedDict)
 
             existing_config = self._load_config()
@@ -129,7 +152,7 @@ class ConfigManager:
 
     def update_config_with_defaults(self):
         try:
-            with open("/utils/dumb_config.json", "r") as default_file:
+            with open(self.default_config_path, "r") as default_file:
                 default_config = load(default_file, object_pairs_hook=OrderedDict)
 
             existing_config = self._load_config()
