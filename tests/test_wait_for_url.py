@@ -109,6 +109,29 @@ class WaitForUrlHelperTests(unittest.TestCase):
         self.assertEqual(calls[0][1]["headers"], {"X-Test": "yes"})
         self.assertEqual(calls[0][1]["timeout"], 3)
 
+    def test_wait_for_urls_accepts_string_entry(self):
+        calls = []
+
+        def fake_request(*args, **kwargs):
+            calls.append((args, kwargs))
+            return FakeResponse(200)
+
+        original_request = wait_for_url.requests.request
+        wait_for_url.requests.request = fake_request
+        try:
+            success, error = wait_for_url.wait_for_urls(
+                "http://service/live",
+                "Service",
+                FakeLogger(),
+                lambda: False,
+            )
+        finally:
+            wait_for_url.requests.request = original_request
+
+        self.assertTrue(success)
+        self.assertIsNone(error)
+        self.assertEqual(calls[0][0], ("GET", "http://service/live"))
+
     def test_wait_for_urls_passes_timeout_to_authenticated_requests(self):
         calls = []
 

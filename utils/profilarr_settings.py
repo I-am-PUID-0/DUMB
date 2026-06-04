@@ -9,10 +9,28 @@ from utils.config_loader import CONFIG_MANAGER
 from utils.core_services import get_core_services
 from utils.decypharr_settings import _parse_arr_api_key
 from utils.user_management import chown_recursive, chown_single
+from utils.versions import PROFILARR_LEGACY_RELEASE_VERSION
 
 logger = logging.getLogger(__name__)
 
 DEFAULT_PROFILARR_REPO = "https://github.com/johman10/profilarr-trash-guides"
+
+
+def validate_profilarr_legacy_layout(
+    instance_name: str, backend_dir: str
+) -> tuple[bool, str | None]:
+    repo_marker = os.path.join(backend_dir, "app", "main.py")
+    if os.path.isfile(repo_marker):
+        return True, None
+    return (
+        False,
+        (
+            f"Profilarr instance {instance_name} is not using the legacy "
+            "backend/frontend layout supported by this integration. Pin "
+            f"Profilarr to {PROFILARR_LEGACY_RELEASE_VERSION} or disable "
+            "Profilarr until v2 runtime support is added."
+        ),
+    )
 
 
 def _normalize_arr_name(instance_key: str, instance: dict, svc_name: str) -> str:

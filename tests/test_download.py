@@ -57,6 +57,9 @@ def _install_runtime_stubs():
 _install_runtime_stubs()
 
 sys.modules.pop("utils.download", None)
+utils_pkg = sys.modules.get("utils")
+if utils_pkg is not None and hasattr(utils_pkg, "download"):
+    delattr(utils_pkg, "download")
 from utils import download
 
 

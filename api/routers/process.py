@@ -235,6 +235,7 @@ STATIC_URLS_BY_KEY = {
     "seerr": "https://github.com/seerr-team/seerr",
     "profilarr": "https://github.com/Dictionarry-Hub/profilarr",
     "pulsarr": "https://github.com/jamcalli/Pulsarr",
+    "altmount": "https://github.com/javi11/altmount",
     "traefik": "https://traefik.io/",
     "traefik_proxy_admin": "https://github.com/I-am-PUID-0/traefik-proxy-admin",
     "cloudflared": "https://github.com/cloudflare/cloudflared",
@@ -290,6 +291,7 @@ DEFAULT_SERVICE_PORTS = {
     "neutarr": 9705,
     "profilarr": 6868,
     "pulsarr": 3003,
+    "altmount": 8088,
     "traefik_proxy_admin": 3004,
 }
 ## Future support for restricting service port ranges
@@ -318,6 +320,7 @@ CORE_SERVICE_DEPENDENCIES = {
     "neutarr": [],
     "profilarr": [],
     "pulsarr": [],
+    "altmount": [],
 }
 
 
@@ -363,6 +366,7 @@ ONBOARDING_CORE_SERVICE_KEYS = {
     "cli_debrid",
     "decypharr",
     "nzbdav",
+    "altmount",
     "riven_backend",
     "radarr",
     "sonarr",
@@ -384,6 +388,7 @@ CORE_SERVICE_NAMES = {
     "cli_debrid": "CLID",
     "decypharr": "Decypharr",
     "nzbdav": "NzbDAV",
+    "altmount": "AltMount",
     "riven_backend": "Riven",
     "radarr": "Radarr",
     "sonarr": "Sonarr",
@@ -434,10 +439,10 @@ Plex Debrid Service
 Documentation: https://dumbarr.com/services/core/plex-debrid""",
     "decypharr": """\
 Decypharr Service
-- Implementation of QbitTorrent with Multiple Debrid service support.
-- Utilizes Sonarr and Radarr for media requests and management.
-- Provides a WebDAV connection for easy access to media files.
-- Integrates with Rclone for mounting of WebDAV content.
+- Debrid and Usenet workflow service with qBittorrent and Sabnzbd-compatible Arr APIs.
+- Utilizes Sonarr, Radarr, Lidarr, and Whisparr for media requests and management.
+- Provides WebDAV access plus DFS/rclone mount modes for media files.
+- Supports native Usenet in Decypharr 2.0+ without requiring NzbDAV or AltMount.
 
 Documentation: https://dumbarr.com/services/core/decypharr""",
     "nzbdav": """\
@@ -448,6 +453,13 @@ NzbDAV Service
 - Integrates with Rclone for mounting of WebDAV content.
 
 Documentation: https://dumbarr.com/services/core/nzbdav/""",
+    "altmount": """\
+AltMount Service
+- Alternative Usenet-focused WebDAV and SABnzbd-compatible download workflow.
+- Provides a web UI, API, metadata store, and optional rclone mount management.
+- Integrates with Sonarr, Radarr, Lidarr, and Whisparr through AltMount's SABnzbd-compatible API.
+
+Documentation: https://dumbarr.com/services/core/altmount/""",
     "profilarr": """\
 Profilarr
 - Profile and custom format management for Sonarr and Radarr.
@@ -665,11 +677,11 @@ SERVICE_OPTION_DESCRIPTIONS = {
     "setup_email": "Email address pgAdmin4 login.",
     "setup_password": "Password for pgAdmin4 login.",
     "origin": "CORS origin for the service",
-    "mount_type": "Decypharr mount type: dfs, rclone, external_rclone, or none.",
-    "mount_path": "Decypharr mount path for DFS or rclone mounts.",
+    "mount_type": "Mount type for services that expose files: dfs, rclone, external_rclone, or none. AltMount maps dfs to its native FUSE mode.",
+    "mount_path": "Mount path used by services that expose or manage a filesystem mount.",
     "use_neutarr": "If true, auto-configures NeutArr for this Arr instance.",
     "use_profilarr": "If true, auto-configures Profilarr for this Arr instance.",
-    "core_service": "Specifies which core service(s) this service applies to; e.g., decypharr, nzbdav, both (decypharr,nzbdav), or none (blank).",
+    "core_service": "Specifies which core service(s) this service applies to; e.g., decypharr, nzbdav, altmount, combined values (decypharr,nzbdav), or none (blank).",
     "webdav_password": "Password for accessing the NzbDAV WebDAV service. Leave blank to auto-generate.",
     "pinned_version": "The specific binary release version to deploy, or latest.",
     "tunnel_token": "Cloudflare Tunnel token used by cloudflared to connect this DUMB instance to Cloudflare.",
@@ -677,6 +689,23 @@ SERVICE_OPTION_DESCRIPTIONS = {
 
 
 BASIC_FIELDS = set(SERVICE_OPTION_DESCRIPTIONS.keys())
+
+
+def _basic_service_fields(
+    service_key: str, config_block: Dict[str, Any]
+) -> Dict[str, Any]:
+    if not isinstance(config_block, dict):
+        return {}
+    hidden_fields = set()
+    if service_key == "seerr":
+        hidden_fields.add("core_service")
+    return {
+        key: value
+        for key, value in config_block.items()
+        if key in BASIC_FIELDS and key not in hidden_fields
+    }
+
+
 ALIAS_TO_KEY = {v.lower(): k for k, v in CORE_SERVICE_NAMES.items()} | {
     v.lower(): k for k, v in OPTIONAL_SERVICES.items()
 }
@@ -4473,6 +4502,16 @@ def _run_startup(request: UnifiedStartRequest, updater, api_state, logger):
             errors.append({"service": core_service.name, "error": e.detail})
 
     try:
+        from utils.altmount_settings import patch_altmount_arr_integration
+
+        if config.get("altmount", {}).get("enabled"):
+            success, error = patch_altmount_arr_integration()
+            if not success and error:
+                logger.warning("AltMount Arr automation did not complete: %s", error)
+    except Exception as e:
+        logger.warning("Failed to run AltMount Arr automation: %s", e)
+
+    try:
         from utils.neutarr_settings import any_arr_uses_neutarr, patch_neutarr_config
 
         if any_arr_uses_neutarr():
@@ -4533,6 +4572,17 @@ def _run_startup(request: UnifiedStartRequest, updater, api_state, logger):
     CONFIG_MANAGER.save_config()
     CONFIG_MANAGER.reload()
 
+    if errors:
+        logger.error("Core service startup completed with errors: %s", errors)
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "message": "One or more services failed to start during onboarding.",
+                "results": results,
+                "errors": errors,
+            },
+        )
+
     logger.info("Core services started successfully.")
     return {"results": results, "errors": errors}
 
@@ -4576,21 +4626,13 @@ async def get_core_services(
         if supports_instances:
             # Use the first instance as the representative defaults for the core service block
             first_inst_name, first_inst_cfg = next(iter(inst_tmpls.items()))
-            svc_opts[key] = {
-                k: v for k, v in first_inst_cfg.items() if k in BASIC_FIELDS
-            }
+            svc_opts[key] = _basic_service_fields(key, first_inst_cfg)
             # Also surface per-instance defaults so UI can present a selector
             for iname, icfg in inst_tmpls.items():
-                instance_options[iname] = {
-                    k: v for k, v in icfg.items() if k in BASIC_FIELDS
-                }
+                instance_options[iname] = _basic_service_fields(key, icfg)
         else:
             # Singleton template
-            svc_opts[key] = {
-                k: v
-                for k, v in core_block.items()
-                if isinstance(core_block, dict) and k in BASIC_FIELDS
-            }
+            svc_opts[key] = _basic_service_fields(key, core_block)
 
         # Dependencies (keep your current behavior)
         dependencies = _onboarding_core_dependencies(key, core_block)
@@ -4602,14 +4644,10 @@ async def get_core_services(
                     None,
                 ) or next(iter(instances.values()), None)
                 if inst_cfg:
-                    svc_opts[dep] = {
-                        k: v for k, v in inst_cfg.items() if k in BASIC_FIELDS
-                    }
+                    svc_opts[dep] = _basic_service_fields(dep, inst_cfg)
             else:
                 dep_block = default_conf.get(dep, {})
-                svc_opts[dep] = {
-                    k: v for k, v in dep_block.items() if k in BASIC_FIELDS
-                }
+                svc_opts[dep] = _basic_service_fields(dep, dep_block)
 
         # Field descriptions
         svc_opt_desc: Dict[str, Dict[str, str]] = {}
@@ -4731,20 +4769,12 @@ async def get_optional_services(
             if supports_instances:
                 first_inst = next(iter(tmpl_instances.values()), {})
                 if isinstance(first_inst, dict):
-                    svc_opts = {
-                        k: v for k, v in first_inst.items() if k in BASIC_FIELDS
-                    }
+                    svc_opts = _basic_service_fields(key, first_inst)
                 for iname, icfg in tmpl_instances.items():
                     if isinstance(icfg, dict):
-                        instance_options[iname] = {
-                            k: v for k, v in icfg.items() if k in BASIC_FIELDS
-                        }
+                        instance_options[iname] = _basic_service_fields(key, icfg)
         if not svc_opts and isinstance(raw, dict):
-            svc_opts = {
-                k: raw[k]
-                for k in SERVICE_OPTION_DESCRIPTIONS
-                if k in raw and k in BASIC_FIELDS
-            }
+            svc_opts = _basic_service_fields(key, raw)
         if key == "cloudflared" and not str(svc_opts.get("tunnel_token") or "").strip():
             resolved_token = _resolve_cloudflared_tunnel_token()
             if resolved_token:

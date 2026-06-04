@@ -104,6 +104,30 @@ class DumbConfigSchemaTests(unittest.TestCase):
                 self.assertIn(key, default_instance)
                 self.assertIn(key, instance_schema)
 
+    def test_altmount_defaults_are_schema_declared(self):
+        altmount_defaults = self.config["altmount"]
+        altmount_schema = self.schema["properties"]["altmount"]["properties"]
+
+        for key in (
+            "enabled",
+            "process_name",
+            "repo_owner",
+            "repo_name",
+            "pinned_version",
+            "mount_type",
+            "port",
+            "config_dir",
+            "config_file",
+            "metadata_dir",
+            "mount_path",
+            "log_file",
+            "command",
+            "env",
+        ):
+            with self.subTest(key=key):
+                self.assertIn(key, altmount_defaults)
+                self.assertIn(key, altmount_schema)
+
 
 if __name__ == "__main__":
     unittest.main()

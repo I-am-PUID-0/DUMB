@@ -562,6 +562,39 @@
       "allowIframes": "true"
     }
   },
+  "altmount": {
+    "enabled": false,
+    "process_name": "AltMount",
+    "repo_owner": "javi11",
+    "repo_name": "altmount",
+    "pinned_version": "latest",
+    "suppress_logging": false,
+    "log_level": "INFO",
+    "port": 8088,
+    "auto_update": false,
+    "auto_update_interval": 24,
+    "auto_update_start_time": "04:00",
+    "mount_type": "rclone",
+    "config_dir": "/altmount",
+    "config_file": "/altmount/config.yaml",
+    "metadata_dir": "/altmount/metadata",
+    "mount_path": "/mnt/debrid/altmount",
+    "log_file": "/altmount/logs/altmount.log",
+    "command": [
+      "/altmount/altmount",
+      "serve",
+      "--config",
+      "/altmount/config.yaml"
+    ],
+    "env": {
+      "PUID": "{puid}",
+      "PGID": "{pgid}",
+      "PORT": "{port}",
+      "JWT_SECRET": "",
+      "COOKIE_DOMAIN": "localhost",
+      "ALTMOUNT_API_KEY": ""
+    }
+  },
   "neutarr": {
     "instances": {
       "Default": {
@@ -628,8 +661,8 @@
         "process_name": "Profilarr",
         "repo_owner": "Dictionarry-Hub",
         "repo_name": "profilarr",
-        "release_version_enabled": false,
-        "release_version": "latest",
+        "release_version_enabled": true,
+        "release_version": "v1.1.4",
         "branch_enabled": false,
         "branch": "main",
         "suppress_logging": false,

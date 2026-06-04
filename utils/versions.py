@@ -3,6 +3,8 @@ from utils.download import Downloader
 from utils.config_loader import CONFIG_MANAGER
 import os, subprocess, json, re, requests, shlex, urllib.parse, ast
 
+PROFILARR_LEGACY_RELEASE_VERSION = "v1.1.4"
+
 
 def _parse_python_literal_assignments(file_path):
     with open(file_path, "r") as handle:
@@ -100,6 +102,44 @@ class Versions:
             return False, latest_tag, "Invalid version format for comparison"
         return latest_tuple >= base_tuple, latest_tag, None
 
+    @staticmethod
+    def version_marker_path(config_dir: str) -> str:
+        return os.path.join(config_dir, "version.txt")
+
+    @staticmethod
+    def read_version_marker(config_dir: str) -> str | None:
+        try:
+            with open(
+                Versions.version_marker_path(config_dir), "r", encoding="utf-8"
+            ) as handle:
+                return handle.read().strip() or None
+        except OSError:
+            return None
+
+    @staticmethod
+    def normalize_release_version(value: str | None) -> str:
+        value = str(value or "latest").strip()
+        if not value or value.lower() == "latest":
+            return "latest"
+        return value if value.startswith("v") else f"v{value}"
+
+    def resolve_profilarr_release_version(self, instance: dict) -> tuple[str, str]:
+        release_version = str(instance.get("release_version") or "latest").strip()
+        if release_version.lower() != "latest":
+            return release_version, release_version
+
+        repo_owner = str(instance.get("repo_owner") or "").lower()
+        repo_name = str(instance.get("repo_name") or "").lower()
+        if repo_owner == "dictionarry-hub" and repo_name == "profilarr":
+            self.logger.warning(
+                "Profilarr v2 uses a new Deno/SvelteKit runtime. Using %s, the latest "
+                "release compatible with DUMB's legacy Profilarr automation.",
+                PROFILARR_LEGACY_RELEASE_VERSION,
+            )
+            return PROFILARR_LEGACY_RELEASE_VERSION, PROFILARR_LEGACY_RELEASE_VERSION
+
+        return release_version, release_version
+
     def read_arr_version_from_dir(self, key: str, install_dir: str):
         dll_path = os.path.join(
             install_dir, key.capitalize(), f"{key.capitalize()}.Core.dll"
@@ -195,6 +235,14 @@ class Versions:
                     raise ValueError(f"Configuration for {process_name} not found.")
                 version_path = os.path.join(
                     config.get("config_dir", "/pulsarr"), "version.txt"
+                )
+                is_file = True
+            elif key == "altmount":
+                config = CONFIG_MANAGER.get_instance(instance_name, key)
+                if not config:
+                    raise ValueError(f"Configuration for {process_name} not found.")
+                version_path = os.path.join(
+                    config.get("config_dir", "/altmount"), "version.txt"
                 )
                 is_file = True
             elif key == "traefik_proxy_admin":

@@ -3521,6 +3521,99 @@
         "env"
       ]
     },
+    "altmount": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "process_name": {
+          "type": "string"
+        },
+        "repo_owner": {
+          "type": "string"
+        },
+        "repo_name": {
+          "type": "string"
+        },
+        "pinned_version": {
+          "type": "string"
+        },
+        "suppress_logging": {
+          "type": "boolean"
+        },
+        "log_level": {
+          "type": "string"
+        },
+        "port": {
+          "type": "integer"
+        },
+        "auto_update": {
+          "type": "boolean"
+        },
+        "auto_update_interval": {
+          "type": "number"
+        },
+        "auto_update_start_time": {
+          "type": "string",
+          "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+        },
+        "mount_type": {
+          "type": "string",
+          "enum": [
+            "dfs",
+            "rclone",
+            "external_rclone",
+            "none"
+          ]
+        },
+        "config_dir": {
+          "type": "string"
+        },
+        "config_file": {
+          "type": "string"
+        },
+        "metadata_dir": {
+          "type": "string"
+        },
+        "mount_path": {
+          "type": "string"
+        },
+        "log_file": {
+          "type": "string"
+        },
+        "command": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "env": {
+          "type": "object"
+        }
+      },
+      "required": [
+        "enabled",
+        "process_name",
+        "repo_owner",
+        "repo_name",
+        "pinned_version",
+        "suppress_logging",
+        "log_level",
+        "port",
+        "auto_update",
+        "auto_update_interval",
+        "auto_update_start_time",
+        "mount_type",
+        "config_dir",
+        "config_file",
+        "metadata_dir",
+        "mount_path",
+        "log_file",
+        "command",
+        "env"
+      ]
+    },
     "traefik_proxy_admin": {
       "type": "object",
       "properties": {
@@ -3762,6 +3855,7 @@
     "plex",
     "tautulli",
     "pulsarr",
+    "altmount",
     "neutarr",
     "seerr_sync",
     "profilarr",

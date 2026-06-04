@@ -122,6 +122,16 @@ def _collect_arr_entries(decypharr_cfg: dict) -> list:
     return entries
 
 
+COMBINED_ROOT_COMPANION_SERVICES = {"nzbdav", "altmount"}
+
+
+def _uses_combined_root(core_services: list[str]) -> bool:
+    normalized = {str(service or "").strip().lower() for service in core_services}
+    return "decypharr" in normalized and bool(
+        normalized.intersection(COMBINED_ROOT_COMPANION_SERVICES)
+    )
+
+
 def _instance_core_services(svc_name: str, instance_name: str) -> list[str]:
     svc_cfg = CONFIG_MANAGER.get(svc_name) or {}
     instances = (svc_cfg.get("instances") or {}) or {}
@@ -1352,9 +1362,7 @@ def patch_decypharr_config():
                 svc = svc.strip().lower()
                 instance_name = instance_name.strip()
                 core_services = _instance_core_services(svc, instance_name)
-                use_combined = (
-                    "decypharr" in core_services and "nzbdav" in core_services
-                )
+                use_combined = _uses_combined_root(core_services)
                 base_root = (
                     "/mnt/debrid/combined_symlinks"
                     if use_combined

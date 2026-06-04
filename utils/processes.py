@@ -417,6 +417,7 @@ class ProcessHandler:
                 "postgres",
                 "profilarr",
                 "pulsarr",
+                "altmount",
                 "traefik_proxy_admin",
                 "cloudflared",
             }:
@@ -774,7 +775,7 @@ class ProcessHandler:
             policy.update(max_attempts=6, wait_timeout=15)
         elif key in ("postgres",):
             policy.update(max_attempts=6, wait_timeout=15)
-        elif key in ("rclone", "decypharr", "nzbdav", "zurg"):
+        elif key in ("rclone", "decypharr", "nzbdav", "altmount", "zurg"):
             policy.update(max_attempts=4, wait_timeout=12)
         elif key in ("cli_debrid",):
             policy.update(max_attempts=2, wait_timeout=10)
@@ -870,6 +871,7 @@ class ProcessHandler:
                 (
                     "decypharr",
                     "nzbdav",
+                    "altmount",
                     "rclone",
                     "zurg",
                     "plex_debrid",

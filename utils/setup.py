@@ -1122,6 +1122,14 @@ def _setup_project(
             )
             if not success:
                 return False, error
+        if key == "altmount":
+            success, error = setup_altmount(
+                process_handler,
+                install_only=install_phase and not configure_phase,
+                configure_only=configure_phase and not install_phase,
+            )
+            if not success:
+                return False, error
         if key == "traefik_proxy_admin":
             success, error = setup_traefik_proxy_admin(
                 process_handler,
@@ -4733,6 +4741,114 @@ def setup_traefik_proxy_admin(
     return True, None
 
 
+def setup_altmount(
+    process_handler, install_only: bool = False, configure_only: bool = False
+):
+    from utils.altmount_settings import (
+        download_altmount_binary,
+        sync_altmount_managed_config,
+        write_altmount_default_config,
+    )
+
+    config = CONFIG_MANAGER.get("altmount")
+    if not config:
+        return False, "AltMount configuration not found."
+    if not config.get("enabled", False):
+        logger.debug("Skipping disabled AltMount service.")
+        return True, None
+    if install_only and configure_only:
+        return False, "Invalid AltMount setup phase."
+
+    config_dir = config.get("config_dir") or "/altmount"
+    config_file = config.get("config_file") or os.path.join(config_dir, "config.yaml")
+    metadata_dir = config.get("metadata_dir") or os.path.join(config_dir, "metadata")
+    logs_dir = os.path.dirname(
+        config.get("log_file") or os.path.join(config_dir, "logs", "altmount.log")
+    )
+    rclone_dir = os.path.join(config_dir, "rclone")
+    mount_path = config.get("mount_path") or "/mnt/debrid/altmount"
+    mount_type = str(config.get("mount_type") or "").strip().lower()
+    if mount_type not in {"dfs", "rclone", "external_rclone", "none"}:
+        mount_type = "rclone"
+    port_value = str(config.get("port") or 8088)
+    changed = False
+
+    config["config_dir"] = config_dir
+    config["config_file"] = config_file
+    config["metadata_dir"] = metadata_dir
+    config["mount_path"] = mount_path
+    if config.get("mount_type") != mount_type:
+        config["mount_type"] = mount_type
+        changed = True
+    for path_to_create in (config_dir, metadata_dir, logs_dir, rclone_dir, mount_path):
+        os.makedirs(path_to_create, exist_ok=True)
+
+    env = config.get("env", {}) or {}
+    if not env.get("JWT_SECRET"):
+        env["JWT_SECRET"] = secrets.token_urlsafe(48)
+        changed = True
+    if not str(env.get("ALTMOUNT_API_KEY") or "").strip():
+        env["ALTMOUNT_API_KEY"] = secrets.token_urlsafe(32)[:33]
+        changed = True
+    expected_env = {
+        "PUID": str(CONFIG_MANAGER.get("puid")),
+        "PGID": str(CONFIG_MANAGER.get("pgid")),
+        "PORT": port_value,
+        "COOKIE_DOMAIN": env.get("COOKIE_DOMAIN") or "localhost",
+    }
+    for key_name, value in expected_env.items():
+        if env.get(key_name) != value:
+            env[key_name] = value
+            changed = True
+    config["env"] = env
+
+    expected_command = [
+        os.path.join(config_dir, "altmount"),
+        "serve",
+        "--config",
+        config_file,
+    ]
+    if config.get("command") != expected_command:
+        config["command"] = expected_command
+        changed = True
+
+    if config.pop("wait_for_url", None) is not None:
+        changed = True
+
+    altmount_bin = os.path.join(config_dir, "altmount")
+    target_version = versions.normalize_release_version(config.get("pinned_version"))
+    current_version = versions.read_version_marker(config_dir)
+    needs_download = not os.path.isfile(altmount_bin) or not os.access(
+        altmount_bin, os.X_OK
+    )
+    if target_version != "latest" and current_version != target_version:
+        needs_download = True
+    if needs_download and configure_only:
+        return False, f"AltMount binary not found at {altmount_bin}."
+    if needs_download:
+        success, error = download_altmount_binary(config, altmount_bin)
+        if not success:
+            return False, error
+
+    write_altmount_default_config(config)
+    sync_altmount_managed_config(config)
+    _chown_recursive_if_needed(
+        config_dir, CONFIG_MANAGER.get("puid"), CONFIG_MANAGER.get("pgid")
+    )
+    for managed_path in (metadata_dir, logs_dir, rclone_dir, mount_path):
+        _chown_recursive_if_needed(
+            managed_path, CONFIG_MANAGER.get("puid"), CONFIG_MANAGER.get("pgid")
+        )
+    if changed and not install_only:
+        CONFIG_MANAGER.save_config(config.get("process_name", "AltMount"))
+
+    if install_only:
+        return True, None
+
+    logger.info("AltMount setup complete.")
+    return True, None
+
+
 def _read_secret_file(path: str) -> str:
     try:
         with open(path, "r", encoding="utf-8") as handle:
@@ -5160,6 +5276,8 @@ def _patch_profilarr_requirements(backend_dir: str) -> None:
 def setup_profilarr(
     process_handler, install_only: bool = False, configure_only: bool = False
 ):
+    from utils.profilarr_settings import validate_profilarr_legacy_layout
+
     config = CONFIG_MANAGER.get("profilarr", {})
     if not config:
         return False, "Profilarr configuration not found."
@@ -5322,21 +5440,9 @@ def setup_profilarr(
                     version=f"branch:{branch}",
                 )
             else:
-                release_version = instance.get("release_version", "latest")
-                version_to_write = release_version
-                if release_version.lower() == "latest":
-                    latest_version, latest_error = downloader.get_latest_release(
-                        instance.get("repo_owner"),
-                        instance.get("repo_name"),
-                        nightly=False,
-                    )
-                    if latest_version:
-                        version_to_write = latest_version
-                    else:
-                        logger.warning(
-                            "Failed to resolve latest Profilarr version: %s",
-                            latest_error,
-                        )
+                release_version, version_to_write = (
+                    versions.resolve_profilarr_release_version(instance)
+                )
                 success, error = downloader.download_release_version(
                     process_name=instance.get("process_name"),
                     key="profilarr",
@@ -5361,6 +5467,10 @@ def setup_profilarr(
                 CONFIG_MANAGER.get("puid"),
                 CONFIG_MANAGER.get("pgid"),
             )
+
+        success, error = validate_profilarr_legacy_layout(instance_name, backend_dir)
+        if not success:
+            return False, error
 
         config_py = os.path.join(backend_dir, "app", "config", "config.py")
         _ensure_profilarr_config_override(config_py)
@@ -6010,12 +6120,12 @@ def setup_neutarr(
         needs_download = not os.path.isfile(repo_marker)
         if needs_download and configure_only:
             return False, f"NeutArr instance {instance_name} not installed."
-            if needs_download:
-                logger.warning(
-                    "NeutArr instance %s not found at %s. Downloading...",
-                    instance_name,
-                    repo_marker,
-                )
+        if needs_download:
+            logger.warning(
+                "NeutArr instance %s not found at %s. Downloading...",
+                instance_name,
+                repo_marker,
+            )
             exclude_dirs = None
             if instance.get("clear_on_update"):
                 exclude_dirs = instance.get("exclude_dirs", [])

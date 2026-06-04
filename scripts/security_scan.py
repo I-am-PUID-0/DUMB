@@ -34,6 +34,13 @@ IGNORED_DIRS = {
     ".vscode",
 }
 
+IGNORED_ROOT_DIRS = {
+    "config",
+    "data",
+    "log",
+    "logs",
+}
+
 SCAN_EXTENSIONS = {
     ".py",
     ".pyi",
@@ -90,6 +97,15 @@ _LITERAL_TOKEN_RE = re.compile(r"[A-Za-z0-9_.@:/+\-]+")
 
 def _iter_candidate_files(root: Path):
     for current, dirs, files in os.walk(root):
+        current_path = Path(current)
+        try:
+            relative_parts = current_path.relative_to(root).parts
+        except ValueError:
+            relative_parts = current_path.parts
+        if relative_parts and relative_parts[0] in IGNORED_ROOT_DIRS:
+            dirs[:] = []
+            continue
+
         dirs[:] = [
             name
             for name in dirs

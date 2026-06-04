@@ -63,7 +63,9 @@
 
 ## 📜 Description
 
-**Debrid Unlimited Media Bridge (DUMB)** is an All-In-One (AIO) docker image for the unified deployment of the following projects/tools.
+**Debrid Unlimited Media Bridge (DUMB)** is an All-In-One (AIO) Docker image for building and operating a complete automated media stack from one container. It brings together Debrid and Usenet workflows, Arr automation, media servers, request/watchlist tools, service management, logs, metrics, updates, and embedded service UIs behind a guided setup experience.
+
+DUMB is designed to reduce the glue work that usually comes with multi-service media deployments. You can choose the services that fit your workflow, let DUMB wire the required dependencies, manage them from the DUMB dashboard, and optionally expose selected UIs or public routes through the bundled Traefik access layer.
 
 ## 📦 Projects Included
 
@@ -71,6 +73,7 @@
 
 | Project                                                            | Author                                                               | Community / Docs / Support                                                                                                                     | 🍻 Support Dev                                                                                      |
 |--------------------------------------------------------------------|----------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------|
+| [AltMount](https://github.com/javi11/altmount)                    | [javi11](https://github.com/javi11)                                  | [Docs](https://altmount.kipsilabs.top/) • [Issues](https://github.com/javi11/altmount/issues)                                                   | —                                                                                                   |
 | [cli_debrid](https://github.com/godver3/cli_debrid)               | [godver3](https://github.com/godver3)                                | [Discord](https://discord.gg/ynqnXGJ4hU)                                                                                                         | [Sponsor](https://github.com/sponsors/godver3)                                                    |
 | [dmbdb](https://github.com/nicocapalbo/dmbdb)                     | [nicocapalbo](https://github.com/nicocapalbo)                        | [Issues](https://github.com/nicocapalbo/dmbdb/issues)                                                                                           | —                                                                                                   |
 | [Decypharr](https://github.com/sirrobot01/decypharr)              | [Mukhtar Akere](https://github.com/sirrobot01)                       | [Docs](https://sirrobot01.github.io/decypharr/) • [Issues](https://github.com/sirrobot01/decypharr/issues)                                     | [Sponsor](https://github.com/sponsors/sirrobot01)                                                 |
@@ -102,6 +105,18 @@
 ## 🌟 Features
 
 See the DUMB [Docs](https://dumbarr.com/features) for a full list of features and settings.
+
+### Integrated Access Layer
+
+DUMB includes an optional access stack built around Traefik:
+
+| Layer | What it does |
+| ----- | ------------ |
+| DUMB embedded UI routes | DUMB writes Traefik routes for service UIs such as Arrs, AltMount, Pulsarr, and Traefik Proxy Admin under `/service/ui/<service>`. |
+| Traefik Proxy Admin | Lets you create and protect your own host-based reverse proxy routes for services inside or outside DUMB. |
+| cloudflared | Runs the Cloudflare Tunnel connector so Cloudflare public hostnames can reach DUMB Traefik without direct port forwarding. |
+
+This keeps DUMB-owned service UI routing separate from user-managed public routes. You can manage services from the DUMB dashboard, publish only the hostnames you choose through Traefik Proxy Admin, and hand public traffic to Traefik through cloudflared when you do not want to expose local ports.
 
 ## 🐳 Docker Hub
 
@@ -170,15 +185,19 @@ The following table describes the ports used by the container. The mappings are 
 | Container port | Protocol | Description                                                                          |
 | -------------- | -------- | ------------------------------------------------------------------------------------ |
 | `5000`         | TCP      | CLI Debrid -  Web UI accessible at the assigned port                                 |
+| `5001`         | TCP      | CLI Battery - The API is accessible at the assigned port                             |
 | `8000`         | TCP      | DUMB API - The API is accessible at the assigned port                                |
 | `3005`         | TCP      | DUMB frontend -  Web UI accessible at the assigned port                              |
 | `8282`         | TCP      | Decypharr -  Web UI accessible at the assigned port                                  |
 | `8096`         | TCP      | Emby Media Server - Web UI accessible at the assigned port (default HTTP)            |
 | `8096`         | TCP      | Jellyfin Media Server - Web UI accessible at the assigned port (default HTTP)        |
 | `8686`         | TCP      | Lidarr - Web UI accessible at the assigned port                                      |
+| `8088`         | TCP      | AltMount - Web UI/API accessible at the assigned port                                |
 | `3000`         | TCP      | NzbDAV frontend - Web UI accessible at the assigned port                             |
 | `3003`         | TCP      | Pulsarr - Web UI accessible at the assigned port                                     |
 | `3004`         | TCP      | Traefik Proxy Admin - Web UI/API accessible at the assigned port                     |
+| `18080`        | TCP      | Traefik - Reverse proxy entrypoint for embedded UIs and TPA-managed routes           |
+| `18081`        | TCP      | Traefik - Dashboard/API used by Traefik Proxy Admin diagnostics                      |
 | `8080`         | TCP      | NzbDAV backend - The API is accessible at the assigned port                          |
 | `5050`         | TCP      | pgAdmin 4 -  Web UI accessible at the assigned port                                  |
 | `5055`         | TCP      | Seerr - Web UI accessible at the assigned port                                       |
@@ -196,6 +215,8 @@ The following table describes the ports used by the container. The mappings are 
 | `6969`         | TCP      | Whisparr - Web UI accessible at the assigned port                                    |
 | `8182`         | TCP      | Zilean - The API and Web UI (/swagger/index.html) is accessible at the assigned port |
 | `9090`         | TCP      | Zurg -  Web UI accessible at the assigned port                                       |
+
+`cloudflared` does not expose a local web UI port. It opens an outbound Cloudflare Tunnel connection and forwards public hostname traffic to DUMB Traefik.
 
 ## 📂 Data Volumes
 

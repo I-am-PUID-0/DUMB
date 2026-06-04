@@ -155,6 +155,25 @@ class SecretScanTests(unittest.TestCase):
             self.assertEqual(len(findings), 1)
             self.assertTrue(findings[0].path.name == "good.env")
 
+    def test_scan_ignores_runtime_volume_directories(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            runtime_config = root / "data" / "altmount"
+            runtime_config.mkdir(parents=True)
+            runtime_config.joinpath("config.yaml").write_text(
+                "api_key: supersecretkeyvalue_1234567890\n",
+                encoding="utf-8",
+            )
+            root.joinpath("service.env").write_text(
+                "API_TOKEN=supersecretkeyvalue_1234567890\n",
+                encoding="utf-8",
+            )
+
+            findings = security_scan.find_secrets(root)
+
+            self.assertEqual(len(findings), 1)
+            self.assertEqual(findings[0].path.name, "service.env")
+
 
 if __name__ == "__main__":
     unittest.main()

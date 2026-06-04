@@ -209,6 +209,7 @@ def migrate_symlinks():
                 ("/neutarr", os.path.join(data_root, "neutarr")),
                 ("/profilarr", os.path.join(data_root, "profilarr")),
                 ("/pulsarr", os.path.join(data_root, "pulsarr")),
+                ("/altmount", os.path.join(data_root, "altmount")),
             ]
 
             for original_path, data_path in symlink_map:

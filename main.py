@@ -973,6 +973,7 @@ def main():
             "profilarr",
             "decypharr",
             "nzbdav",
+            "altmount",
             "rclone",
             "postgres",
             "traefik_proxy_admin",

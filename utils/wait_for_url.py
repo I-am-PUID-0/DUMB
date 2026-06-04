@@ -85,8 +85,14 @@ def _response_is_ready(response, method, wait_entry=None, logger=None, wait_url=
 
 def wait_for_urls(wait_entries, process_name, logger, shutdown_requested):
     start_time = time.time()
+    if isinstance(wait_entries, str):
+        wait_entries = [{"url": wait_entries}]
+    elif isinstance(wait_entries, dict):
+        wait_entries = [wait_entries]
 
     for wait_entry in wait_entries:
+        if not isinstance(wait_entry, dict):
+            continue
         wait_url = wait_entry.get("url")
         if not wait_url:
             continue
