@@ -1,5 +1,5 @@
 from utils.config_loader import CONFIG_MANAGER
-import asyncio, os, re, sys, threading, time, logging
+import asyncio, os, re, sys, tempfile, threading, time, logging
 from logging.handlers import BaseRotatingHandler
 from colorlog import ColoredFormatter
 
@@ -540,7 +540,11 @@ def get_logger(log_name=None, log_dir=None, websocket_manager=None):
     log_name = log_name or CONFIG_MANAGER.get("dumb").get("log_name", "DUMB")
     log_dir = log_dir or CONFIG_MANAGER.get("dumb").get("log_dir", "/log")
 
-    if not os.path.exists(log_dir):
+    try:
+        if not os.path.exists(log_dir):
+            os.makedirs(log_dir, exist_ok=True)
+    except OSError:
+        log_dir = os.path.join(tempfile.gettempdir(), "dumb-log")
         os.makedirs(log_dir, exist_ok=True)
 
     current_date = time.strftime("%Y-%m-%d")
@@ -575,7 +579,10 @@ def get_logger(log_name=None, log_dir=None, websocket_manager=None):
         backupCount=backupCount,
         maxBytes=max_log_size,
     )
-    os.chmod(log_path, 0o666)
+    try:
+        os.chmod(log_path, 0o666)
+    except OSError:
+        pass
 
     file_formatter = logging.Formatter(
         "%(asctime)s - %(levelname)s - %(message)s", datefmt="%b %e, %Y %H:%M:%S"
