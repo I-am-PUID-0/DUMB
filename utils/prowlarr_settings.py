@@ -167,6 +167,10 @@ def _ensure_custom_indexer_whisparr_caps(filename: str, content: str) -> str:
 
     if filename == "stremthru.yml":
         updated = updated.replace(
+            ':{{ if .Query.Ep }}{{ .Query.Ep }}{{ else }}1{{ end }}"',
+            ":{{ if .Query.Ep }}{{ .Query.Ep }}{{ else }}1{{ end }}",
+        )
+        updated = updated.replace(
             "categories: [Movies]",
             f"categories: [Movies, {WHISPARR_CUSTOM_CATEGORY}]",
         )

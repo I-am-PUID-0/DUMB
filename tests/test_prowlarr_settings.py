@@ -91,7 +91,7 @@ search:
   paths:
     - path: /v0/torrents
       categories: [Movies]
-    - path: /v0/torrents
+    - path: /v0/torrents?sid={{ if .Query.IMDBID }}{{ .Query.IMDBID }}{{ else }}{{ .Config.validate_imdb_tv }}{{ end }}:{{ if .Query.Season }}{{ .Query.Season }}{{ else }}1{{ end }}:{{ if .Query.Ep }}{{ .Query.Ep }}{{ else }}1{{ end }}"
       categories: [TV]
   fields:
     category_is_tv_show:
@@ -176,6 +176,7 @@ class ProwlarrWhisparrCategoryTests(unittest.TestCase):
 
         self.assertIn("categories: [Movies, XXX]", patched)
         self.assertIn("categories: [TV, XXX]", patched)
+        self.assertNotIn('{{ end }}"', patched)
         self.assertIn('text: \'{{ if .Categories }}{{ join .Categories "," }}', patched)
 
 
