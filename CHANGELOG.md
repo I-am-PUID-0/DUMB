@@ -1,5 +1,86 @@
 # Changelog
 
+## [2.6.0](https://github.com/I-am-PUID-0/DUMB/compare/2.5.0...2.6.0) (2026-06-17)
+
+
+### ✨ Features
+
+* **altmount:** add AltMount core service automation ([9b5d2c2](https://github.com/I-am-PUID-0/DUMB/commit/9b5d2c267ff4a19fbbc948372e7bc2a25c0a3fe1))
+* **arr:** add optional PostgreSQL mode for supported Arr services ([934316e](https://github.com/I-am-PUID-0/DUMB/commit/934316eb2bf9bcd8321271f4b84a48d9614bedda)), closes [#156](https://github.com/I-am-PUID-0/DUMB/issues/156)
+* enhance _collect_arr_entries to preserve existing download_uncached state ([b5ff6eb](https://github.com/I-am-PUID-0/DUMB/commit/b5ff6eb4bbefc26e90a68f3c830cb28255ac2a81))
+
+
+### 🐛 Bug Fixes
+
+* **auth:** handle invalid PyJWT tokens ([a601afc](https://github.com/I-am-PUID-0/DUMB/commit/a601afc5b2768019818106b6edf3e5f013dc26b7))
+* **config:** enhance config loading with path resolution and defaults ([76c7f2c](https://github.com/I-am-PUID-0/DUMB/commit/76c7f2c12c1ba67009b30cf423d1ddb0658a7cde))
+* **config:** normalize legacy riven_backend configuration and add validation tests ([b2999ba](https://github.com/I-am-PUID-0/DUMB/commit/b2999baf683e81149c5386add6d527b4fa1e6339))
+* **config:** preserve direct rclone credentials across restarts ([9656b48](https://github.com/I-am-PUID-0/DUMB/commit/9656b485499052a3004c300a2ac16dda96816497))
+* **download:** prevent archive extraction path traversal ([1466afe](https://github.com/I-am-PUID-0/DUMB/commit/1466afe3859b2652514ef95d5d88aecdabf26835))
+* **logger:** improve log directory creation and permissions handling ([0f69c42](https://github.com/I-am-PUID-0/DUMB/commit/0f69c4230f11936cfa8dcfa77e7a9f18e5a5d29e))
+* **logger:** redact common credential fields in subprocess logs ([8804f92](https://github.com/I-am-PUID-0/DUMB/commit/8804f92fc20dd08a55cb8222b6db564d3494b7b8))
+* **prowlarr:** repair custom indexer sync for Whisparr ([b23fa76](https://github.com/I-am-PUID-0/DUMB/commit/b23fa767378e4bf5510339034c1538bb9de38785))
+* **security:** remove shell usage from user password setup ([14e8b9c](https://github.com/I-am-PUID-0/DUMB/commit/14e8b9c4679bef32c09a1a68b40018aedfc334dd))
+* **security:** replace exec parsing with AST literals ([16dd73f](https://github.com/I-am-PUID-0/DUMB/commit/16dd73fd660aaa94130eb27515c0a577b9537ef5))
+* **security:** require timeouts for requests calls ([f2126e1](https://github.com/I-am-PUID-0/DUMB/commit/f2126e188f1f38443d1111f4248ec57345af80b7))
+* **security:** use defusedxml for XML parsing ([a7f59e2](https://github.com/I-am-PUID-0/DUMB/commit/a7f59e2d551e74d13ff043479bb90efa58350944))
+* **security:** validate urllib URL schemes ([6905d7b](https://github.com/I-am-PUID-0/DUMB/commit/6905d7bcc50e5a9c52b4d0c2757c08363ae315b8))
+* **tests:** add unit test for AltMount version check and update version handling ([89ed8f2](https://github.com/I-am-PUID-0/DUMB/commit/89ed8f21c8625fe6d371ab27f980a8907422ea56))
+* update formatting logic in category handling for prowlarr settings ([b5ff6eb](https://github.com/I-am-PUID-0/DUMB/commit/b5ff6eb4bbefc26e90a68f3c830cb28255ac2a81)), closes [#223](https://github.com/I-am-PUID-0/DUMB/issues/223)
+* update query parameter handling in prowlarr settings ([f263cfe](https://github.com/I-am-PUID-0/DUMB/commit/f263cfef12d35f5a57ccc91bafeff75dc6c294ef))
+
+
+### 🤡 Other Changes
+
+* **config:** refresh env example for rclone credentials ([1d09fcc](https://github.com/I-am-PUID-0/DUMB/commit/1d09fcc953c615a167fba60926166935b19b3181))
+* **deps:** add pre-commit dependency to dev group in pyproject.toml ([74b35cb](https://github.com/I-am-PUID-0/DUMB/commit/74b35cb46a2cd3e1a759ca8856776332b6a1b0c9))
+* **deps:** update dependencies ([0579533](https://github.com/I-am-PUID-0/DUMB/commit/057953395329a86ff9fdfd49bd86e0752160fee1))
+* **deps:** update dependencies ([c89031d](https://github.com/I-am-PUID-0/DUMB/commit/c89031dac64829e7cb230595870b452d93499553))
+* **deps:** update dependencies to latest versions ([5e0f224](https://github.com/I-am-PUID-0/DUMB/commit/5e0f2243c1da6450144dc5f3e95fcf347355d622))
+* **deps:** update poetry.lock with new development dependencies ([74b35cb](https://github.com/I-am-PUID-0/DUMB/commit/74b35cb46a2cd3e1a759ca8856776332b6a1b0c9))
+* **docker:** verify required dockerignore patterns ([aa50c5d](https://github.com/I-am-PUID-0/DUMB/commit/aa50c5dcfecbbc95697dc38ddb6678eb53a3f0be))
+* **env:** add make targets for env example generation ([20c5cfb](https://github.com/I-am-PUID-0/DUMB/commit/20c5cfb7a5ebc9d7c0e9e10de399ef78f4474461))
+* **env:** generate env example from config defaults ([1bf4189](https://github.com/I-am-PUID-0/DUMB/commit/1bf418952ff4d0d624c172bdb3e974dca8a0a138))
+* **pre-commit:** create .pre-commit-config.yaml for local hooks ([74b35cb](https://github.com/I-am-PUID-0/DUMB/commit/74b35cb46a2cd3e1a759ca8856776332b6a1b0c9))
+* **security:** add backend security validation gates and hardening tests ([a40a62e](https://github.com/I-am-PUID-0/DUMB/commit/a40a62e36ce00e1c2f4189721959dc493c096214))
+* **security:** add dependency vulnerability audit target ([de80084](https://github.com/I-am-PUID-0/DUMB/commit/de800845dfb234acd2095d12698d209772acec03))
+
+
+### 📖 Documentation
+
+* add Black formatting instructions to contributing guidelines ([b5ff6eb](https://github.com/I-am-PUID-0/DUMB/commit/b5ff6eb4bbefc26e90a68f3c830cb28255ac2a81))
+* add repository agent guidelines ([#230](https://github.com/I-am-PUID-0/DUMB/issues/230)) ([3304d32](https://github.com/I-am-PUID-0/DUMB/commit/3304d32522b3df5e95c826a3ec7b46565a885a3d))
+* **CONTRIBUTING:** update local checks section for pre-commit hooks installation instructions ([74b35cb](https://github.com/I-am-PUID-0/DUMB/commit/74b35cb46a2cd3e1a759ca8856776332b6a1b0c9))
+
+
+### 🚀 CI/CD Pipeline
+
+* **devcontainer:** add pre-commit hooks installation to postCreateCommand ([74b35cb](https://github.com/I-am-PUID-0/DUMB/commit/74b35cb46a2cd3e1a759ca8856776332b6a1b0c9))
+
+
+### 🔧 Testing
+
+* **api:** add API state update notice coverage ([f3db11b](https://github.com/I-am-PUID-0/DUMB/commit/f3db11ba99d47b5ea0c6b845768a90c3d389890c))
+* **auth:** add dependency auth coverage ([53fd30d](https://github.com/I-am-PUID-0/DUMB/commit/53fd30d1a8418e0f91db819d7aea53b161344599))
+* **auth:** add token and password utility coverage ([a601afc](https://github.com/I-am-PUID-0/DUMB/commit/a601afc5b2768019818106b6edf3e5f013dc26b7))
+* **ci:** add backend verification gates and regression coverage ([3dace09](https://github.com/I-am-PUID-0/DUMB/commit/3dace09f3de0d7e71f0c07558fb04211cc4542e1))
+* **ci:** cover project verification guards ([a43de44](https://github.com/I-am-PUID-0/DUMB/commit/a43de44a59250a31ca7ff1a538bc3130068e37ae))
+* **config:** add schema validation coverage ([ca3c1e4](https://github.com/I-am-PUID-0/DUMB/commit/ca3c1e4c1ece275defebd21c5a96ef0bfa1d0fcd))
+* **config:** cover config update validation behavior ([ea992ba](https://github.com/I-am-PUID-0/DUMB/commit/ea992ba37097186a1441a0cc3a0fc2fe3c67f7d1))
+* **config:** cover service UI direct URL normalization ([53f1269](https://github.com/I-am-PUID-0/DUMB/commit/53f1269cd19198cabbb0747467177ae0c504f817))
+* **dependencies:** cover shared dependency wiring ([5ed1bae](https://github.com/I-am-PUID-0/DUMB/commit/5ed1bae3237fb4b1866b54a933c21674474693c0))
+* **download:** add archive extraction traversal coverage ([1466afe](https://github.com/I-am-PUID-0/DUMB/commit/1466afe3859b2652514ef95d5d88aecdabf26835))
+* **logger:** add credential redaction coverage ([8804f92](https://github.com/I-am-PUID-0/DUMB/commit/8804f92fc20dd08a55cb8222b6db564d3494b7b8))
+* **process:** add response sanitizer coverage ([aac58ea](https://github.com/I-am-PUID-0/DUMB/commit/aac58ea8f641dffdb4419c91c1612f58c4aa95c1))
+* **process:** add symlink manifest path guard coverage ([e7bf456](https://github.com/I-am-PUID-0/DUMB/commit/e7bf456f96ae77dbc1bc9263472a17023ade2e4f))
+* **process:** add update notice helper coverage ([168c5cb](https://github.com/I-am-PUID-0/DUMB/commit/168c5cb7e2f6e59f67be43f9d7f373d57faff427))
+* **security:** add CORS compatibility checks and hardening coverage ([637c61e](https://github.com/I-am-PUID-0/DUMB/commit/637c61ef270633d019ca4da135696cf5ed064893))
+
+
+### 🎨 Styles
+
+* **prowlarr:** format Whisparr custom indexer changes ([d249306](https://github.com/I-am-PUID-0/DUMB/commit/d249306324f02b16575cf7f0b1bae75a1ce668a2))
+
 ## [2.5.0](https://github.com/I-am-PUID-0/DUMB/compare/2.4.2...2.5.0) (2026-05-29)
 
 
