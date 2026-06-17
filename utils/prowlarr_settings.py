@@ -136,23 +136,13 @@ def _ensure_custom_indexer_whisparr_caps(filename: str, content: str) -> str:
                 in_caps = False
 
     if filename == "zilean.yml":
-        category_input = "Category: '{{ if .Categories }}{{ join .Categories \",\" }}{{ else }}{{ end }}'"
-        if category_input not in updated:
-            needle = 'Episode: "{{ if .Query.Ep }}{{ .Query.Ep }}{{ else }}{{ end }}"'
-            lines = updated.splitlines()
-            for index, line in enumerate(lines):
-                if needle in line:
-                    indent = line[: len(line) - len(line.lstrip())]
-                    lines.insert(index + 1, f"{indent}{category_input}")
-                    trailing_newline = "\n" if updated.endswith("\n") else ""
-                    updated = "\n".join(lines) + trailing_newline
-                    break
-            else:
-                updated = updated.replace(
-                    needle,
-                    f"{needle}\n{category_input}",
-                    1,
-                )
+        lines = [
+            line
+            for line in updated.splitlines()
+            if not line.strip().startswith("Category:")
+        ]
+        trailing_newline = "\n" if updated.endswith("\n") else ""
+        updated = "\n".join(lines) + trailing_newline
         if 'args: ["xxx", "XXX"]' not in updated:
             needle = '- name: replace args: ["movie", "Movies"]'
             updated = updated.replace(
@@ -160,10 +150,6 @@ def _ensure_custom_indexer_whisparr_caps(filename: str, content: str) -> str:
                 f'{needle} - name: replace args: ["xxx", "XXX"]',
                 1,
             )
-        updated = updated.replace(
-            'args: ["^$", "limitless"]',
-            'args: ["^$", \'{{ if .Categories }}{{ join .Categories " " }}{{ else }}limitless{{ end }}\']',
-        )
 
     if filename == "stremthru.yml":
         updated = updated.replace(

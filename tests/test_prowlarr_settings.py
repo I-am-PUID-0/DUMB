@@ -135,14 +135,14 @@ class ProwlarrWhisparrCategoryTests(unittest.TestCase):
         self.assertNotIn(5000, prowlarr_settings.WHISPARR_SYNC_CATEGORIES)
         self.assertIn(6000, prowlarr_settings.WHISPARR_SYNC_CATEGORIES)
 
-    def test_zilean_definition_gets_xxx_caps_and_query_category(self):
+    def test_zilean_definition_gets_xxx_caps_without_categories_template(self):
         patched = prowlarr_settings._ensure_custom_indexer_whisparr_caps(
             "zilean.yml", ZILEAN_DEFINITION
         )
 
         self.assertIn("XXX: XXX", patched)
-        self.assertIn("Category:", patched)
-        self.assertIn("join .Categories", patched)
+        self.assertNotIn("Category:", patched)
+        self.assertNotIn(".Categories", patched)
         self.assertIn('args: ["xxx", "XXX"]', patched)
 
     def test_zilean_multiline_definition_keeps_category_yaml_valid(self):
@@ -151,14 +151,10 @@ class ProwlarrWhisparrCategoryTests(unittest.TestCase):
         )
 
         self.assertNotIn('end }}" Category:', patched)
-        self.assertIn(
-            "        Category: '{{ if .Categories }}{{ join .Categories \",\" }}{{ else }}{{ end }}'",
-            patched,
-        )
+        self.assertNotIn("Category:", patched)
+        self.assertNotIn(".Categories", patched)
         self.assertIn("    XXX: XXX", patched)
-        self.assertIn(
-            'args: ["^$", \'{{ if .Categories }}{{ join .Categories " " }}', patched
-        )
+        self.assertIn('args: ["^$", "limitless"]', patched)
 
     def test_stremthru_definition_gets_xxx_caps_and_paths(self):
         patched = prowlarr_settings._ensure_custom_indexer_whisparr_caps(
