@@ -131,6 +131,13 @@ def _deep_merge_dict(target: Dict[str, Any], updates: Dict[str, Any]) -> Dict[st
     return target
 
 
+def _normalize_legacy_global_config(config: Dict[str, Any]) -> Dict[str, Any]:
+    riven_backend = config.get("riven_backend")
+    if isinstance(riven_backend, dict) and riven_backend.get("wait_for_dir") is None:
+        riven_backend["wait_for_dir"] = ""
+    return config
+
+
 def load_config_file(config_path):
     yaml = YAML(typ="safe")
     raw_config = None
@@ -621,6 +628,7 @@ async def update_config(
 
     merged_config = copy.deepcopy(CONFIG_MANAGER.config)
     _deep_merge_dict(merged_config, updates)
+    _normalize_legacy_global_config(merged_config)
 
     try:
         validate(instance=merged_config, schema=schema_root)
@@ -634,6 +642,7 @@ async def update_config(
         )
 
     _deep_merge_dict(CONFIG_MANAGER.config, updates)
+    _normalize_legacy_global_config(CONFIG_MANAGER.config)
 
     CONFIG_MANAGER.save_config()
     try:

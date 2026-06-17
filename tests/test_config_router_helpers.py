@@ -125,6 +125,26 @@ class _Request:
         self.url = types.SimpleNamespace(scheme=scheme)
 
 
+def _validate_schema_types(instance, schema):
+    expected_type = schema.get("type")
+    type_map = {
+        "object": dict,
+        "boolean": bool,
+        "string": str,
+        "integer": int,
+        "number": (int, float),
+    }
+    if expected_type and not isinstance(instance, type_map[expected_type]):
+        raise config_router.ValidationError(
+            f"{instance!r} is not of type {expected_type!r}"
+        )
+
+    if isinstance(instance, dict):
+        for key, sub_schema in (schema.get("properties") or {}).items():
+            if key in instance:
+                _validate_schema_types(instance[key], sub_schema)
+
+
 def _service_schema():
     return {
         "properties": {
@@ -341,6 +361,67 @@ class ConfigRouterHelperTests(unittest.TestCase):
                 }
             },
         )
+
+    def test_update_config_global_normalizes_legacy_riven_wait_for_dir(self):
+        manager = _ConfigManager(
+            {
+                "dumb": {
+                    "ui": {
+                        "geek_mode": False,
+                        "sidebar": {"compact_mode": False},
+                    }
+                },
+                "riven_backend": {
+                    "enabled": False,
+                    "wait_for_dir": None,
+                },
+            },
+            {
+                "properties": {
+                    "dumb": {
+                        "type": "object",
+                        "properties": {
+                            "ui": {
+                                "type": "object",
+                                "properties": {
+                                    "geek_mode": {"type": "boolean"},
+                                    "sidebar": {
+                                        "type": "object",
+                                        "properties": {
+                                            "compact_mode": {"type": "boolean"}
+                                        },
+                                    },
+                                },
+                            }
+                        },
+                    },
+                    "riven_backend": {
+                        "type": "object",
+                        "properties": {
+                            "enabled": {"type": "boolean"},
+                            "wait_for_dir": {"type": "string"},
+                        },
+                    },
+                }
+            },
+        )
+        config_router.CONFIG_MANAGER = manager
+        request = types.SimpleNamespace(
+            process_name=None,
+            updates={"dumb": {"ui": {"geek_mode": True}}},
+        )
+        original_validate = config_router.validate
+        try:
+            config_router.validate = _validate_schema_types
+
+            result = asyncio.run(config_router.update_config(request, logger=_Logger()))
+        finally:
+            config_router.validate = original_validate
+
+        self.assertEqual(result, {"status": "global config updated", "keys": ["dumb"]})
+        self.assertEqual(manager.saved_process_names, [None])
+        self.assertEqual(manager.config["dumb"]["ui"]["geek_mode"], True)
+        self.assertEqual(manager.config["riven_backend"]["wait_for_dir"], "")
 
     def test_update_config_global_rejects_unknown_root_keys_when_schema_present(self):
         manager = _ConfigManager(
