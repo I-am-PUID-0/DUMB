@@ -18,6 +18,17 @@ Thanks for contributing to DUMB.
 
 ## Local Checks
 
+The devcontainer installs local Git hooks with `pre-commit` after dependencies are
+installed. Commits and pushes from VS Code or a terminal inside the devcontainer
+run `make verify` before Git accepts the operation.
+
+To install the same hooks manually in an existing checkout:
+
+```bash
+poetry run pre-commit install
+poetry run pre-commit install --hook-type pre-push
+```
+
 Run the lightweight backend checks before opening a PR when touching `api/`, `utils/`, or `tests/`:
 
 ```bash

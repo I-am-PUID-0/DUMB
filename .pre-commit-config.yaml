@@ -1,0 +1,9 @@
+repos:
+  - repo: local
+    hooks:
+      - id: dumb-verify
+        name: DUMB make verify
+        entry: make verify
+        language: system
+        pass_filenames: false
+        stages: [pre-commit, pre-push]
