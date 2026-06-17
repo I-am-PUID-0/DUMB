@@ -4839,7 +4839,7 @@
 <h2 id="testing-expectations">Testing Expectations<a class="headerlink" href="#testing-expectations" title="Permanent link">#</a></h2>
 <p>Before opening a PR:</p>
 <ul>
-<li>Run formatters/linters relevant to changed files.</li>
+<li>Run formatters/linters relevant to changed files. For DUMB backend changes, run <code>make format</code> before <code>make verify</code>; <code>make verify</code> is check-only and does not rewrite Black formatting drift.</li>
 <li>Run focused tests for your change.</li>
 <li>Include manual verification notes when automated tests are not available.</li>
 </ul>
