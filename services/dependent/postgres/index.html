@@ -2453,6 +2453,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Access &amp; Credentials">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#existing-arr-sqlite-instances" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Existing Arr SQLite instances
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -4590,6 +4607,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Access &amp; Credentials">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#existing-arr-sqlite-instances" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Existing Arr SQLite instances
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -4788,7 +4822,8 @@
 <span class="w">    </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;postgres&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="w"> </span><span class="p">},</span>
 <span class="w">    </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;pgadmin&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="w"> </span><span class="p">},</span>
 <span class="w">    </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;zilean&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="w"> </span><span class="p">},</span>
-<span class="w">    </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;riven&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="w"> </span><span class="p">}</span>
+<span class="w">    </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;riven&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="w"> </span><span class="p">},</span>
+<span class="w">    </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;traefik_proxy_admin&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="w"> </span><span class="p">}</span>
 <span class="w">  </span><span class="p">],</span>
 <span class="w">  </span><span class="nt">&quot;config_dir&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/postgres_data&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;config_file&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/postgres_data/postgresql.conf&quot;</span><span class="p">,</span>
@@ -4838,8 +4873,45 @@
 <li><code>pgadmin</code></li>
 <li><code>zilean</code></li>
 <li><code>riven</code></li>
+<li><code>traefik_proxy_admin</code></li>
+<li><code>radarr-main</code> / <code>radarr-log</code> when a Radarr instance has <code>postgres_enabled: true</code></li>
+<li><code>sonarr-main</code> / <code>sonarr-log</code> when a Sonarr instance has <code>postgres_enabled: true</code></li>
+<li><code>lidarr-main</code> / <code>lidarr-log</code> when a Lidarr instance has <code>postgres_enabled: true</code></li>
+<li><code>prowlarr-main</code> / <code>prowlarr-log</code> when a Prowlarr instance has <code>postgres_enabled: true</code></li>
+<li><code>whisparr-main</code> / <code>whisparr-log</code> when a Whisparr instance has <code>postgres_enabled: true</code></li>
 </ul>
 </li>
+</ul>
+<div class="admonition note">
+<p class="admonition-title">Arr PostgreSQL databases</p>
+<p>DUMB creates the main/log databases and writes the matching Arr <code>config.xml</code> entries when <code>postgres_enabled</code> is true on a supported Arr instance. SQLite remains the default for new Arr instances, and PostgreSQL is an explicit opt-in.</p>
+<p>In onboarding, enabling <code>postgres_enabled</code> on Radarr, Sonarr, Lidarr, Prowlarr, or Whisparr automatically enables and starts PostgreSQL as needed. You do not need to select PostgreSQL separately as an optional service.</p>
+</div>
+<div class="admonition danger">
+<p class="admonition-title">Arr PostgreSQL mode is not a migration tool</p>
+<p>DUMB does not copy an existing Arr SQLite database into PostgreSQL. Setting <code>postgres_enabled: true</code> creates/configures PostgreSQL databases and starts the Arr against them; it does not migrate <code>radarr.db</code>, <code>sonarr.db</code>, <code>lidarr.db</code>, <code>prowlarr.db</code>, or <code>whisparr.db</code>.</p>
+<p>If you switch an existing SQLite-backed Arr instance without a manual migration, the app may start against empty PostgreSQL databases and look like a fresh install.</p>
+<p>Upstream Servarr migration notes are community/unsupported for the apps that document them. Treat them as advanced manual recovery/migration guidance, not as a DUMB-supported workflow.</p>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">No known PostgreSQL-to-SQLite migration</p>
+<p>There is no known supported migration path from PostgreSQL back to SQLite for supported Arr services. Treat Arr PostgreSQL mode as a long-term database choice unless you are willing to recreate the affected Arr instance from scratch.</p>
+</div>
+<h3 id="existing-arr-sqlite-instances">Existing Arr SQLite instances<a class="headerlink" href="#existing-arr-sqlite-instances" title="Permanent link">#</a></h3>
+<p>For existing Arr instances, use PostgreSQL mode only after deciding how you want to handle the existing SQLite data:</p>
+<ol>
+<li>Keep SQLite: leave <code>postgres_enabled: false</code>.</li>
+<li>Start fresh on PostgreSQL: back up the Arr config directory, enable <code>postgres_enabled</code>, and accept that the PostgreSQL databases start empty.</li>
+<li>Attempt manual migration: back up the Arr config directory and <code>/postgres_data</code>, stop the Arr, enable PostgreSQL mode, let the Arr initialize the PostgreSQL schema once, stop the Arr again, then follow that Arr's upstream PostgreSQL migration guide.</li>
+</ol>
+<p>DUMB only automates option wiring, database creation, dependency startup, and <code>config.xml</code> PostgreSQL entries. It does not run <code>pgloader</code>, clean seed tables, reset sequences, validate migrated data, or provide rollback from PostgreSQL to SQLite.</p>
+<p>Upstream PostgreSQL setup and migration references:</p>
+<ul>
+<li><a href="https://wiki.servarr.com/radarr/postgres-setup">Radarr PostgreSQL setup</a></li>
+<li><a href="https://wiki.servarr.com/en/sonarr/postgres-setup">Sonarr PostgreSQL setup</a></li>
+<li><a href="https://wiki.servarr.com/lidarr/postgres-setup">Lidarr PostgreSQL setup</a></li>
+<li><a href="https://wiki.servarr.com/prowlarr/postgres-setup">Prowlarr PostgreSQL setup</a></li>
+<li><a href="https://wiki.servarr.com/whisparr/postgres-setup">Whisparr PostgreSQL setup</a></li>
 </ul>
 <div class="admonition note">
 <p class="admonition-title"> Override any of the above using <code>POSTGRES_USER</code>, <code>POSTGRES_PASSWORD</code>, or <code>POSTGRES_DB</code> environment variables.</p>

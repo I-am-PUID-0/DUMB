@@ -2124,6 +2124,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#postgresql-database-mode" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        PostgreSQL database mode
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#repo-based-installs-and-updates" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4554,6 +4565,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#postgresql-database-mode" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        PostgreSQL database mode
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#repo-based-installs-and-updates" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4733,6 +4755,9 @@
 <span class="w">      </span><span class="nt">&quot;core_service&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&quot;</span><span class="p">,</span>
 <span class="w">      </span><span class="nt">&quot;use_neutarr&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
 <span class="w">      </span><span class="nt">&quot;use_profilarr&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;postgres_enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;postgres_main_db&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;postgres_log_db&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&quot;</span><span class="p">,</span>
 <span class="w">      </span><span class="nt">&quot;process_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Radarr&quot;</span><span class="p">,</span>
 <span class="w">      </span><span class="nt">&quot;repo_owner&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Radarr&quot;</span><span class="p">,</span>
 <span class="w">      </span><span class="nt">&quot;repo_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Radarr&quot;</span><span class="p">,</span>
@@ -4760,6 +4785,8 @@
 <li><code>core_service</code>: Set to <code>decypharr</code>, <code>nzbdav</code>, <code>altmount</code>, or a list of workflow keys to enable DUMB integration.</li>
 <li><code>use_neutarr</code>: Opt this instance into NeutArr automation.</li>
 <li><code>use_profilarr</code>: Opt this instance into Profilarr auto‑linking.</li>
+<li><code>postgres_enabled</code>: Opt this instance into DUMB-managed PostgreSQL config. SQLite is the default; set this to <code>true</code> only when you want Radarr to use PostgreSQL.</li>
+<li><code>postgres_main_db</code> / <code>postgres_log_db</code>: Optional database-name overrides. When blank, DUMB uses <code>radarr-main</code> and <code>radarr-log</code> for the default instance, or unique instance-scoped names for additional instances.</li>
 <li><code>port</code>: Web UI port (default <code>7878</code>).</li>
 <li><code>pinned_version</code>: Optional version pin for Radarr updates.</li>
 <li><code>repo_owner</code> / <code>repo_name</code>: GitHub repo used for releases or branch builds.</li>
@@ -4769,6 +4796,28 @@
 <li><code>platforms</code>: Build platforms (auto‑defaults to <code>["dotnet"]</code> when using branches).</li>
 <li><code>config_dir</code>, <code>config_file</code>, <code>log_file</code>: Paths for config and logs.</li>
 </ul>
+<hr />
+<h2 id="postgresql-database-mode">PostgreSQL database mode<a class="headerlink" href="#postgresql-database-mode" title="Permanent link">#</a></h2>
+<p>When <code>postgres_enabled</code> is <code>true</code>, DUMB:</p>
+<ul>
+<li>enables the bundled PostgreSQL service if needed;</li>
+<li>creates the Radarr main/log databases in <code>postgres.databases</code>;</li>
+<li>starts PostgreSQL before Radarr; and</li>
+<li>writes the required <code>PostgresUser</code>, <code>PostgresPassword</code>, <code>PostgresHost</code>, <code>PostgresPort</code>, <code>PostgresMainDb</code>, and <code>PostgresLogDb</code> entries to Radarr's <code>config.xml</code>.</li>
+</ul>
+<p>During onboarding, enabling <code>postgres_enabled</code> for Radarr is enough; you do not need to separately select PostgreSQL as an optional service.</p>
+<div class="admonition danger">
+<p class="admonition-title">This does not migrate existing SQLite data</p>
+<p>Setting <code>postgres_enabled: true</code> changes the database backend Radarr starts with. It does <strong>not</strong> copy <code>radarr.db</code> into PostgreSQL.</p>
+<p>If you enable this on an existing SQLite-backed Radarr instance without doing a manual migration, Radarr can start against fresh PostgreSQL databases and appear empty or newly initialized.</p>
+</div>
+<p>This mode is intended for new Radarr databases unless you are deliberately following Radarr's upstream community migration notes. Radarr's upstream documentation says existing SQLite migration is unsupported and only new PostgreSQL installs are supported. Back up both <code>/radarr/...</code> and <code>/postgres_data</code> before experimenting with an existing instance.</p>
+<p>Manual migration, if you choose to attempt it, is outside DUMB automation. The rough upstream flow is: back up, stop Radarr, enable PostgreSQL mode, let Radarr initialize the PostgreSQL schema once, stop Radarr again, then follow the Radarr <code>pgloader</code> migration guide for the main database.</p>
+<div class="admonition warning">
+<p class="admonition-title">PostgreSQL is not a temporary toggle</p>
+<p>There is no known supported migration path from PostgreSQL back to SQLite for Radarr. Treat <code>postgres_enabled: true</code> as a long-term database choice unless you are willing to recreate the Radarr instance from scratch.</p>
+<p>DUMB does not provide automatic SQLite-to-PostgreSQL or PostgreSQL-to-SQLite migration for Radarr.</p>
+</div>
 <hr />
 <h2 id="repo-based-installs-and-updates">Repo-based installs and updates<a class="headerlink" href="#repo-based-installs-and-updates" title="Permanent link">#</a></h2>
 <p>Radarr now supports the same repo‑based controls as other DUMB services.</p>
@@ -4798,6 +4847,7 @@
 <ul>
 <li><a href="https://radarr.video/">Radarr Website</a></li>
 <li><a href="https://github.com/Radarr/Radarr">Radarr GitHub</a></li>
+<li><a href="https://wiki.servarr.com/radarr/postgres-setup">Radarr PostgreSQL setup</a></li>
 </ul>
 
 
