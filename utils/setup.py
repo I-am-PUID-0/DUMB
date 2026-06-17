@@ -7,6 +7,7 @@ from utils.plex import PlexInstaller
 from utils.traefik_setup import setup_traefik
 from utils.user_management import chown_recursive, chown_single
 from utils.apt_lock import run_locked
+from utils.arr_postgres import apply_arr_postgres_config
 import defusedxml.ElementTree as ET
 import os, shutil, random, subprocess, re, glob, secrets, shlex, time, urllib.parse, base64, threading, sys, hashlib, json, requests, copy
 
@@ -2057,6 +2058,17 @@ def setup_arr_instance(
     port = instance.get("port", 8989)
     loglevel = instance.get("log_level", "INFO").upper()
     ensure_arr_config(process_name, config_file, port, loglevel)
+    try:
+        apply_arr_postgres_config(
+            key,
+            instance_name,
+            instance,
+            config_file,
+            CONFIG_MANAGER.get("postgres", {}) or {},
+        )
+        chown_single(config_file, user_id, group_id)
+    except Exception as exc:
+        return False, f"Failed configuring {process_name} PostgreSQL settings: {exc}"
     instance["command"] = [
         binary_path,
         "--nobrowser",

@@ -1120,6 +1120,19 @@
                 "use_neutarr": {
                   "type": "boolean"
                 },
+                "postgres_enabled": {
+                  "type": "boolean",
+                  "default": false,
+                  "description": "If true, DUMB configures this Lidarr instance to use DUMB PostgreSQL. SQLite remains the default."
+                },
+                "postgres_main_db": {
+                  "type": "string",
+                  "description": "Optional override for the Lidarr PostgreSQL main database name."
+                },
+                "postgres_log_db": {
+                  "type": "string",
+                  "description": "Optional override for the Lidarr PostgreSQL log database name."
+                },
                 "process_name": {
                   "type": "string"
                 },
@@ -1189,6 +1202,9 @@
                 "enabled",
                 "core_service",
                 "use_neutarr",
+                "postgres_enabled",
+                "postgres_main_db",
+                "postgres_log_db",
                 "process_name",
                 "suppress_logging",
                 "auto_update",
@@ -2290,6 +2306,19 @@
                 "enabled": {
                   "type": "boolean"
                 },
+                "postgres_enabled": {
+                  "type": "boolean",
+                  "default": false,
+                  "description": "If true, DUMB configures this Prowlarr instance to use DUMB PostgreSQL. SQLite remains the default."
+                },
+                "postgres_main_db": {
+                  "type": "string",
+                  "description": "Optional override for the Prowlarr PostgreSQL main database name."
+                },
+                "postgres_log_db": {
+                  "type": "string",
+                  "description": "Optional override for the Prowlarr PostgreSQL log database name."
+                },
                 "process_name": {
                   "type": "string"
                 },
@@ -2357,6 +2386,9 @@
               },
               "required": [
                 "enabled",
+                "postgres_enabled",
+                "postgres_main_db",
+                "postgres_log_db",
                 "process_name",
                 "suppress_logging",
                 "auto_update",
@@ -2409,6 +2441,19 @@
                   "type": "boolean",
                   "default": false,
                   "description": "If true, DUMB will auto-link this Arr instance to Profilarr when Profilarr core_service matches."
+                },
+                "postgres_enabled": {
+                  "type": "boolean",
+                  "default": false,
+                  "description": "If true, DUMB configures this Radarr instance to use DUMB PostgreSQL. SQLite remains the default."
+                },
+                "postgres_main_db": {
+                  "type": "string",
+                  "description": "Optional override for the Radarr PostgreSQL main database name."
+                },
+                "postgres_log_db": {
+                  "type": "string",
+                  "description": "Optional override for the Radarr PostgreSQL log database name."
                 },
                 "process_name": {
                   "type": "string"
@@ -2480,6 +2525,9 @@
                 "core_service",
                 "use_neutarr",
                 "use_profilarr",
+                "postgres_enabled",
+                "postgres_main_db",
+                "postgres_log_db",
                 "process_name",
                 "suppress_logging",
                 "auto_update",
@@ -2914,6 +2962,19 @@
                   "default": false,
                   "description": "If true, DUMB will auto-link this Arr instance to Profilarr when Profilarr core_service matches."
                 },
+                "postgres_enabled": {
+                  "type": "boolean",
+                  "default": false,
+                  "description": "If true, DUMB configures this Sonarr instance to use DUMB PostgreSQL. SQLite remains the default."
+                },
+                "postgres_main_db": {
+                  "type": "string",
+                  "description": "Optional override for the Sonarr PostgreSQL main database name."
+                },
+                "postgres_log_db": {
+                  "type": "string",
+                  "description": "Optional override for the Sonarr PostgreSQL log database name."
+                },
                 "process_name": {
                   "type": "string"
                 },
@@ -2990,6 +3051,9 @@
                 "core_service",
                 "use_neutarr",
                 "use_profilarr",
+                "postgres_enabled",
+                "postgres_main_db",
+                "postgres_log_db",
                 "process_name",
                 "suppress_logging",
                 "auto_update",
@@ -3037,6 +3101,19 @@
                 },
                 "use_neutarr": {
                   "type": "boolean"
+                },
+                "postgres_enabled": {
+                  "type": "boolean",
+                  "default": false,
+                  "description": "If true, DUMB configures this Whisparr instance to use DUMB PostgreSQL. SQLite remains the default."
+                },
+                "postgres_main_db": {
+                  "type": "string",
+                  "description": "Optional override for the Whisparr PostgreSQL main database name."
+                },
+                "postgres_log_db": {
+                  "type": "string",
+                  "description": "Optional override for the Whisparr PostgreSQL log database name."
                 },
                 "process_name": {
                   "type": "string"
@@ -3113,6 +3190,9 @@
                 "enabled",
                 "core_service",
                 "use_neutarr",
+                "postgres_enabled",
+                "postgres_main_db",
+                "postgres_log_db",
                 "process_name",
                 "suppress_logging",
                 "auto_update",

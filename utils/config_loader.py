@@ -177,6 +177,23 @@ class ConfigManager:
                         default_config["decypharr"].pop("mount_type", None)
                         default_config["decypharr"].pop("dfs", None)
 
+            # PostgreSQL is an explicit opt-in for Arr services. Existing
+            # SQLite-backed instances must not silently switch databases just
+            # because new option keys were introduced.
+            for arr_key in ("sonarr", "radarr", "lidarr", "prowlarr", "whisparr"):
+                arr_cfg = existing_config.get(arr_key)
+                instances = (
+                    arr_cfg.get("instances", {}) if isinstance(arr_cfg, dict) else {}
+                )
+                if not isinstance(instances, dict):
+                    continue
+                for inst_cfg in instances.values():
+                    if (
+                        isinstance(inst_cfg, dict)
+                        and "postgres_enabled" not in inst_cfg
+                    ):
+                        inst_cfg["postgres_enabled"] = False
+
             merged_config = self._merge_configs(
                 copy.deepcopy(existing_config), default_config
             )

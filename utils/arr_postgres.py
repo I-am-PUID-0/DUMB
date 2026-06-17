@@ -1,0 +1,143 @@
+import os
+import re
+import xml.etree.ElementTree as StdET
+
+import defusedxml.ElementTree as ET
+
+from utils.global_logger import logger
+
+ARR_POSTGRES_KEYS = ("sonarr", "radarr", "lidarr", "prowlarr", "whisparr")
+
+
+def arr_postgres_enabled(instance: dict) -> bool:
+    """Only explicit true opts an Arr instance into PostgreSQL."""
+    return isinstance(instance, dict) and instance.get("postgres_enabled") is True
+
+
+def _slugify_instance_name(instance_name: str) -> str:
+    slug = re.sub(r"[^a-z0-9]+", "_", str(instance_name or "").lower()).strip("_")
+    return slug or "default"
+
+
+def arr_postgres_database_names(
+    key: str, instance_name: str, instance: dict
+) -> tuple[str, str]:
+    main_db = (instance.get("postgres_main_db") or "").strip()
+    log_db = (instance.get("postgres_log_db") or "").strip()
+    if main_db and log_db:
+        return main_db, log_db
+
+    if str(instance_name or "").lower() == "default":
+        default_main = f"{key}-main"
+        default_log = f"{key}-log"
+    else:
+        slug = _slugify_instance_name(instance_name)
+        default_main = f"{key}_{slug}_main"
+        default_log = f"{key}_{slug}_log"
+
+    return main_db or default_main, log_db or default_log
+
+
+def iter_postgres_arr_instances(config_manager):
+    for key in ARR_POSTGRES_KEYS:
+        instances = config_manager.get(key, {}).get("instances", {}) or {}
+        for instance_name, instance in instances.items():
+            if not isinstance(instance, dict):
+                continue
+            if instance.get("enabled") and arr_postgres_enabled(instance):
+                yield key, instance_name, instance
+
+
+def configure_arr_postgres_runtime(config_manager) -> bool:
+    """
+    Enable PostgreSQL and register Arr main/log databases for opted-in instances.
+
+    Returns True when the runtime config changed.
+    """
+    arr_databases: list[str] = []
+    for key, instance_name, instance in iter_postgres_arr_instances(config_manager):
+        main_db, log_db = arr_postgres_database_names(key, instance_name, instance)
+        arr_databases.extend([main_db, log_db])
+
+    if not arr_databases:
+        return False
+
+    postgres_config = config_manager.get("postgres", {}) or {}
+    changed = False
+    if not postgres_config.get("enabled"):
+        postgres_config["enabled"] = True
+        changed = True
+        logger.info("PostgreSQL enabled because Arr PostgreSQL support is configured.")
+
+    databases = postgres_config.setdefault("databases", [])
+    existing_names = {
+        str(db.get("name"))
+        for db in databases
+        if isinstance(db, dict) and db.get("name") is not None
+    }
+    for db_name in arr_databases:
+        if db_name not in existing_names:
+            databases.append({"name": db_name, "enabled": True})
+            existing_names.add(db_name)
+            changed = True
+            logger.info("Registered PostgreSQL database for Arr service: %s", db_name)
+
+    return changed
+
+
+def _set_xml_text(root, tag: str, value) -> bool:
+    value_text = "" if value is None else str(value)
+    elem = root.find(tag)
+    if elem is None:
+        elem = StdET.SubElement(root, tag)
+        elem.text = value_text
+        return True
+    if (elem.text or "") != value_text:
+        elem.text = value_text
+        return True
+    return False
+
+
+def apply_arr_postgres_config(
+    key: str,
+    instance_name: str,
+    instance: dict,
+    config_file: str,
+    postgres_config: dict,
+) -> bool:
+    if not arr_postgres_enabled(instance):
+        return False
+
+    if not os.path.exists(config_file):
+        logger.warning(
+            "[%s] Cannot apply PostgreSQL settings before config.xml exists: %s",
+            instance.get("process_name") or key.capitalize(),
+            config_file,
+        )
+        return False
+
+    main_db, log_db = arr_postgres_database_names(key, instance_name, instance)
+    values = {
+        "PostgresUser": postgres_config.get("user", "DUMB"),
+        "PostgresPassword": postgres_config.get("password", "postgres"),
+        "PostgresPort": postgres_config.get("port", 5432),
+        "PostgresHost": postgres_config.get("host", "127.0.0.1"),
+        "PostgresMainDb": main_db,
+        "PostgresLogDb": log_db,
+    }
+
+    tree = ET.parse(config_file)
+    root = tree.getroot()
+    changed = False
+    for tag, value in values.items():
+        changed = _set_xml_text(root, tag, value) or changed
+
+    if changed:
+        tree.write(config_file, encoding="utf-8", xml_declaration=True)
+        logger.info(
+            "[%s] Updated config.xml for PostgreSQL databases %s and %s.",
+            instance.get("process_name") or key.capitalize(),
+            main_db,
+            log_db,
+        )
+    return changed

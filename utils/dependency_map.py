@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from typing import Callable
 
+from utils.arr_postgres import ARR_POSTGRES_KEYS, arr_postgres_enabled
 from utils.core_services import has_core_service
 
 
@@ -65,6 +66,21 @@ def build_conditional_dependency_map(
     if _service_has_enabled_instance(config_getter("traefik_proxy_admin")):
         deps.setdefault("traefik", set()).add("traefik_proxy_admin")
 
+    for arr_key in ARR_POSTGRES_KEYS:
+        arr_config = config_getter(arr_key)
+        instances = (
+            arr_config.get("instances", {}) or {}
+            if isinstance(arr_config, dict)
+            else {}
+        )
+        if any(
+            isinstance(instance, dict)
+            and instance.get("enabled")
+            and arr_postgres_enabled(instance)
+            for instance in instances.values()
+        ):
+            deps.setdefault(arr_key, set()).add("postgres")
+
     # -- Media-server-conditional deps --
     if _service_has_enabled_instance(config_getter("plex")):
         deps["tautulli"] = {"plex"}
@@ -80,7 +96,7 @@ def build_conditional_dependency_map(
         if _service_has_enabled_instance(config_getter(arr_key)):
             prowlarr_deps.add(arr_key)
     if prowlarr_deps:
-        deps["prowlarr"] = prowlarr_deps
+        deps.setdefault("prowlarr", set()).update(prowlarr_deps)
 
     # -- Profilarr -> enabled arr services --
     profilarr_deps: set[str] = set()

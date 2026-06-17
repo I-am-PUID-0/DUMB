@@ -69,6 +69,38 @@ class ConditionalDependencyMapTests(unittest.TestCase):
 
         self.assertEqual(deps["neutarr"], {"sonarr"})
 
+    def test_arr_postgres_adds_postgres_dependency_only_when_explicitly_enabled(self):
+        deps = self._build(
+            {
+                "sonarr": {
+                    "instances": {"main": {"enabled": True, "postgres_enabled": True}}
+                },
+                "radarr": {
+                    "instances": {
+                        "movies": {"enabled": True, "postgres_enabled": False},
+                        "legacy": {"enabled": True},
+                    }
+                },
+                "lidarr": {
+                    "instances": {"music": {"enabled": True, "postgres_enabled": True}}
+                },
+                "prowlarr": {
+                    "instances": {
+                        "indexers": {"enabled": True, "postgres_enabled": True}
+                    }
+                },
+                "whisparr": {
+                    "instances": {"adult": {"enabled": True, "postgres_enabled": True}}
+                },
+            }
+        )
+
+        self.assertIn("postgres", deps["sonarr"])
+        self.assertIn("postgres", deps["lidarr"])
+        self.assertIn("postgres", deps["prowlarr"])
+        self.assertIn("postgres", deps["whisparr"])
+        self.assertNotIn("postgres", deps.get("radarr", set()))
+
     def test_rclone_dependencies_include_provider_flags_and_core_service_links(self):
         deps = self._build(
             {

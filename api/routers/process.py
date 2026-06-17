@@ -16,6 +16,11 @@ from utils.dependency_map import (
     build_conditional_dependency_map,
     filter_conditional_deps_for_instance,
 )
+from utils.arr_postgres import (
+    arr_postgres_enabled,
+    configure_arr_postgres_runtime,
+)
+from utils.postgres import initialize_postgres_databases
 from utils.versions import Versions
 import json, copy, time, glob, re, socket, errno, psutil, os, threading, fnmatch
 
@@ -681,6 +686,9 @@ SERVICE_OPTION_DESCRIPTIONS = {
     "mount_path": "Mount path used by services that expose or manage a filesystem mount.",
     "use_neutarr": "If true, auto-configures NeutArr for this Arr instance.",
     "use_profilarr": "If true, auto-configures Profilarr for this Arr instance.",
+    "postgres_enabled": "Use DUMB PostgreSQL for this Arr instance. SQLite remains the default.",
+    "postgres_main_db": "Optional PostgreSQL main database name. Leave blank for DUMB's per-instance default.",
+    "postgres_log_db": "Optional PostgreSQL log database name. Leave blank for DUMB's per-instance default.",
     "core_service": "Specifies which core service(s) this service applies to; e.g., decypharr, nzbdav, altmount, combined values (decypharr,nzbdav), or none (blank).",
     "webdav_password": "Password for accessing the NzbDAV WebDAV service. Leave blank to auto-generate.",
     "pinned_version": "The specific binary release version to deploy, or latest.",
@@ -2958,6 +2966,54 @@ def wait_for_process_running(
     return False
 
 
+def ensure_arr_postgres_dependency_running(
+    service_key: str, service_config: dict, updater, api_state, logger
+) -> None:
+    if service_key not in {"sonarr", "radarr", "lidarr", "prowlarr", "whisparr"}:
+        return
+    if not arr_postgres_enabled(service_config):
+        return
+
+    if configure_arr_postgres_runtime(CONFIG_MANAGER):
+        CONFIG_MANAGER.save_config()
+
+    postgres_config = CONFIG_MANAGER.config.get("postgres", {}) or {}
+    postgres_name = postgres_config.get("process_name", "PostgreSQL")
+    logger.info(
+        "Ensuring '%s' is running for %s PostgreSQL mode...",
+        postgres_name,
+        service_config.get("process_name", service_key),
+    )
+    if not wait_for_process_running(api_state, postgres_name):
+        proc, err = updater.auto_update(postgres_name, enable_update=False)
+        if not proc or not wait_for_process_running(api_state, postgres_name):
+            raise HTTPException(
+                500,
+                detail=(
+                    f"{postgres_name} failed to start for "
+                    f"{service_config.get('process_name', service_key)} PostgreSQL mode. "
+                    f"{err or ''}"
+                ).strip(),
+            )
+
+    success, error = initialize_postgres_databases(
+        postgres_config.get("host", "127.0.0.1"),
+        postgres_config.get("port", 5432),
+        postgres_config.get("user", "DUMB"),
+        postgres_config.get("password", "postgres"),
+        postgres_config.get("databases", []),
+    )
+    if not success:
+        raise HTTPException(
+            500,
+            detail=(
+                f"Failed to initialize PostgreSQL databases for "
+                f"{service_config.get('process_name', service_key)} PostgreSQL mode. "
+                f"{error or ''}"
+            ).strip(),
+        )
+
+
 def apply_service_options(config_block, options: dict, logger):
     updated = False
     for key, value in options.items():
@@ -4364,6 +4420,9 @@ def _run_startup(request: UnifiedStartRequest, updater, api_state, logger):
                                 inst_opts.setdefault(k, v)
 
                     apply_service_options(inst_cfg, inst_opts, logger)
+                    ensure_arr_postgres_dependency_running(
+                        config_key, inst_cfg, updater, api_state, logger
+                    )
 
                     proc_name = inst_cfg.get("process_name")
                     if not proc_name:
@@ -4404,6 +4463,9 @@ def _run_startup(request: UnifiedStartRequest, updater, api_state, logger):
                 # singleton case
                 apply_service_options(
                     core_cfg, core_service.service_options.get(config_key, {}), logger
+                )
+                ensure_arr_postgres_dependency_running(
+                    config_key, core_cfg, updater, api_state, logger
                 )
                 proc_name = core_cfg["process_name"]
                 is_running = api_state.get_status(proc_name) == "running"

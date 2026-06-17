@@ -14,6 +14,7 @@ from utils.plex_dbrepair import start_plex_dbrepair_worker
 from utils.ffprobe_monitor import start_ffprobe_monitor
 from utils.setup import setup_project
 from utils.seerr_sync import start_seerr_sync_service
+from utils.arr_postgres import configure_arr_postgres_runtime
 from concurrent.futures import ThreadPoolExecutor, wait, FIRST_COMPLETED, as_completed
 import subprocess, threading, time, os, socket, errno, psutil, json, urllib.parse, sys
 
@@ -899,6 +900,8 @@ def main():
     _apply_prowlarr_waits(config, _collect_arr_ping_waits(config))
     _apply_waits_to_service(config, "tautulli", _build_plex_wait_entries(config))
     _apply_waits_to_service(config, "seerr", _build_media_wait_entries(config))
+    if configure_arr_postgres_runtime(config):
+        config.save_config()
     _preinstall_enabled_services(process_handler, config)
 
     if config.get("dumb", {}).get("api_service", {}).get("enabled"):
