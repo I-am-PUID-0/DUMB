@@ -7,11 +7,59 @@ import defusedxml.ElementTree as ET
 from utils.global_logger import logger
 
 ARR_POSTGRES_KEYS = ("sonarr", "radarr", "lidarr", "prowlarr", "whisparr")
+ARR_POSTGRES_XML_TAGS = (
+    "PostgresUser",
+    "PostgresPassword",
+    "PostgresHost",
+    "PostgresPort",
+    "PostgresMainDb",
+    "PostgresLogDb",
+)
 
 
 def arr_postgres_enabled(instance: dict) -> bool:
     """Only explicit true opts an Arr instance into PostgreSQL."""
     return isinstance(instance, dict) and instance.get("postgres_enabled") is True
+
+
+def read_arr_postgres_xml_values(instance: dict) -> dict[str, str]:
+    if not isinstance(instance, dict):
+        return {}
+    config_file = instance.get("config_file")
+    if not config_file or not os.path.exists(config_file):
+        return {}
+    try:
+        root = ET.parse(config_file).getroot()
+    except Exception as exc:
+        logger.debug(
+            "Unable to inspect Arr PostgreSQL XML config %s: %s", config_file, exc
+        )
+        return {}
+
+    values = {}
+    for tag in ARR_POSTGRES_XML_TAGS:
+        elem = root.find(tag)
+        if elem is not None and elem.text:
+            values[tag] = elem.text.strip()
+    return values
+
+
+def arr_postgres_config_file_enabled(instance: dict) -> bool:
+    values = read_arr_postgres_xml_values(instance)
+    return bool(
+        values.get("PostgresHost")
+        and values.get("PostgresMainDb")
+        and values.get("PostgresLogDb")
+    )
+
+
+def ensure_arr_postgres_enabled_flag(instance_name: str, instance: dict) -> bool:
+    if arr_postgres_enabled(instance):
+        return False
+    if not arr_postgres_config_file_enabled(instance):
+        return False
+    instance["postgres_enabled"] = True
+    return True
 
 
 def _slugify_instance_name(instance_name: str) -> str:
@@ -27,6 +75,10 @@ def arr_postgres_database_names(
     if main_db and log_db:
         return main_db, log_db
 
+    xml_values = read_arr_postgres_xml_values(instance)
+    xml_main_db = (xml_values.get("PostgresMainDb") or "").strip()
+    xml_log_db = (xml_values.get("PostgresLogDb") or "").strip()
+
     if str(instance_name or "").lower() == "default":
         default_main = f"{key}-main"
         default_log = f"{key}-log"
@@ -35,7 +87,7 @@ def arr_postgres_database_names(
         default_main = f"{key}_{slug}_main"
         default_log = f"{key}_{slug}_log"
 
-    return main_db or default_main, log_db or default_log
+    return main_db or xml_main_db or default_main, log_db or xml_log_db or default_log
 
 
 def iter_postgres_arr_instances(config_manager):
@@ -55,15 +107,27 @@ def configure_arr_postgres_runtime(config_manager) -> bool:
     Returns True when the runtime config changed.
     """
     arr_databases: list[str] = []
-    for key, instance_name, instance in iter_postgres_arr_instances(config_manager):
-        main_db, log_db = arr_postgres_database_names(key, instance_name, instance)
-        arr_databases.extend([main_db, log_db])
+    changed = False
+    for key in ARR_POSTGRES_KEYS:
+        instances = config_manager.get(key, {}).get("instances", {}) or {}
+        for instance_name, instance in instances.items():
+            if not isinstance(instance, dict) or not instance.get("enabled"):
+                continue
+            if ensure_arr_postgres_enabled_flag(instance_name, instance):
+                changed = True
+                logger.info(
+                    "Persisted postgres_enabled=true for Arr PostgreSQL instance: %s",
+                    instance.get("process_name") or instance_name,
+                )
+            if not arr_postgres_enabled(instance):
+                continue
+            main_db, log_db = arr_postgres_database_names(key, instance_name, instance)
+            arr_databases.extend([main_db, log_db])
 
     if not arr_databases:
-        return False
+        return changed
 
     postgres_config = config_manager.get("postgres", {}) or {}
-    changed = False
     if not postgres_config.get("enabled"):
         postgres_config["enabled"] = True
         changed = True

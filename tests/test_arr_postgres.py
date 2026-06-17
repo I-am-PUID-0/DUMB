@@ -5,8 +5,10 @@ import unittest
 from utils.arr_postgres import (
     ARR_POSTGRES_KEYS,
     apply_arr_postgres_config,
+    arr_postgres_config_file_enabled,
     arr_postgres_database_names,
     configure_arr_postgres_runtime,
+    ensure_arr_postgres_enabled_flag,
 )
 
 
@@ -83,6 +85,70 @@ class ArrPostgresTests(unittest.TestCase):
             {"name": "radarr-main", "enabled": True},
             cfg.config["postgres"]["databases"],
         )
+
+    def test_config_xml_repairs_missing_enabled_flag(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            config_file = os.path.join(temp_dir, "config.xml")
+            with open(config_file, "w", encoding="utf-8") as handle:
+                handle.write(
+                    "<Config>"
+                    "<PostgresHost>127.0.0.1</PostgresHost>"
+                    "<PostgresMainDb>radarr_existing_main</PostgresMainDb>"
+                    "<PostgresLogDb>radarr_existing_log</PostgresLogDb>"
+                    "</Config>"
+                )
+            instance = {
+                "enabled": True,
+                "postgres_enabled": False,
+                "process_name": "Custom Movies",
+                "config_file": config_file,
+            }
+
+            self.assertTrue(arr_postgres_config_file_enabled(instance))
+            self.assertTrue(ensure_arr_postgres_enabled_flag("Movies", instance))
+            self.assertTrue(instance["postgres_enabled"])
+
+    def test_configure_runtime_repairs_flag_from_config_xml_and_registers_xml_dbs(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            config_file = os.path.join(temp_dir, "config.xml")
+            with open(config_file, "w", encoding="utf-8") as handle:
+                handle.write(
+                    "<Config>"
+                    "<PostgresHost>127.0.0.1</PostgresHost>"
+                    "<PostgresMainDb>radarr_existing_main</PostgresMainDb>"
+                    "<PostgresLogDb>radarr_existing_log</PostgresLogDb>"
+                    "</Config>"
+                )
+            cfg = StubConfig(
+                {
+                    "postgres": {"enabled": False, "databases": []},
+                    "radarr": {
+                        "instances": {
+                            "Movies": {
+                                "enabled": True,
+                                "postgres_enabled": False,
+                                "process_name": "Custom Movies",
+                                "config_file": config_file,
+                            }
+                        }
+                    },
+                }
+            )
+
+            changed = configure_arr_postgres_runtime(cfg)
+
+            self.assertTrue(changed)
+            self.assertTrue(
+                cfg.config["radarr"]["instances"]["Movies"]["postgres_enabled"]
+            )
+            self.assertIn(
+                {"name": "radarr_existing_main", "enabled": True},
+                cfg.config["postgres"]["databases"],
+            )
+            self.assertIn(
+                {"name": "radarr_existing_log", "enabled": True},
+                cfg.config["postgres"]["databases"],
+            )
 
     def test_apply_config_writes_servarr_postgres_elements(self):
         with tempfile.TemporaryDirectory() as temp_dir:

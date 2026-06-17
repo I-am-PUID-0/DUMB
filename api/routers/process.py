@@ -19,6 +19,7 @@ from utils.dependency_map import (
 from utils.arr_postgres import (
     arr_postgres_enabled,
     configure_arr_postgres_runtime,
+    ensure_arr_postgres_enabled_flag,
 )
 from utils.postgres import initialize_postgres_databases
 from utils.versions import Versions
@@ -2972,7 +2973,16 @@ def ensure_arr_postgres_dependency_running(
     if service_key not in {"sonarr", "radarr", "lidarr", "prowlarr", "whisparr"}:
         return
     if not arr_postgres_enabled(service_config):
-        return
+        if ensure_arr_postgres_enabled_flag(
+            service_config.get("process_name") or service_key, service_config
+        ):
+            CONFIG_MANAGER.save_config()
+            logger.info(
+                "Persisted postgres_enabled=true for %s PostgreSQL mode.",
+                service_config.get("process_name", service_key),
+            )
+        else:
+            return
 
     if configure_arr_postgres_runtime(CONFIG_MANAGER):
         CONFIG_MANAGER.save_config()

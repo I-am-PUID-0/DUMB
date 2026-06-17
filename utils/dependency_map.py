@@ -10,7 +10,11 @@ from __future__ import annotations
 
 from typing import Callable
 
-from utils.arr_postgres import ARR_POSTGRES_KEYS, arr_postgres_enabled
+from utils.arr_postgres import (
+    ARR_POSTGRES_KEYS,
+    arr_postgres_config_file_enabled,
+    arr_postgres_enabled,
+)
 from utils.core_services import has_core_service
 
 
@@ -76,7 +80,10 @@ def build_conditional_dependency_map(
         if any(
             isinstance(instance, dict)
             and instance.get("enabled")
-            and arr_postgres_enabled(instance)
+            and (
+                arr_postgres_enabled(instance)
+                or arr_postgres_config_file_enabled(instance)
+            )
             for instance in instances.values()
         ):
             deps.setdefault(arr_key, set()).add("postgres")
