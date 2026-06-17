@@ -710,6 +710,7 @@ jobs:
             RELEASE_NOTES=$(sed -n '/^## \[[0-9]\+\.[0-9]\+\.[0-9]\+\](/,$p' CHANGELOG.md | sed -n '1!{/^## \[/q;p}')
             gh release create ${{ env.VERSION }} \
               --repo ${{ github.repository }} \
+              --target "${GITHUB_SHA}" \
               --title "Release ${{ env.VERSION }}" \
               --notes "$RELEASE_NOTES" \
               --draft=false \
