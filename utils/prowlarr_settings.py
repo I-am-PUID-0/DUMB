@@ -136,7 +136,7 @@ def _ensure_custom_indexer_whisparr_caps(filename: str, content: str) -> str:
                 in_caps = False
 
     if filename == "zilean.yml":
-        category_input = "Category: '{{ join .Categories \",\" }}'"
+        category_input = "Category: '{{ if .Categories }}{{ join .Categories \",\" }}{{ else }}{{ end }}'"
         if category_input not in updated:
             needle = 'Episode: "{{ if .Query.Ep }}{{ .Query.Ep }}{{ else }}{{ end }}"'
             lines = updated.splitlines()

@@ -35,6 +35,16 @@ Run the lightweight backend checks before opening a PR when touching `api/`, `ut
 make verify
 ```
 
+If the Black formatting gate fails, apply the formatter and then re-run verification:
+
+```bash
+make format
+make verify
+```
+
+`make verify` is intentionally check-only so it matches CI and pre-push behavior;
+it reports formatting drift but does not rewrite files.
+
 The underlying commands are:
 
 ```bash

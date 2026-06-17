@@ -74,7 +74,9 @@ def _parse_arr_api_key(config_xml_path: str) -> str:
     return ""
 
 
-def _collect_arr_entries(decypharr_cfg: dict) -> list:
+def _collect_arr_entries(
+    decypharr_cfg: dict, existing_arrs: Optional[list] = None
+) -> list:
     """
     Build the arrs[] list from CONFIG_MANAGER instances of sonarr/radarr/lidarr
     whose core_service list includes "decypharr". Host is always 127.0.0.1 and the
@@ -82,6 +84,12 @@ def _collect_arr_entries(decypharr_cfg: dict) -> list:
     Includes per-instance labeling using instance_name.
     """
     entries = []
+    existing_by_name = {
+        (entry.get("name") or "").strip().lower(): entry
+        for entry in (existing_arrs or [])
+        if isinstance(entry, dict)
+    }
+    has_download_uncached_override = "arrs_download_uncached" in decypharr_cfg
     for svc_name in ("sonarr", "radarr", "lidarr", "whisparr"):
         svc_cfg = CONFIG_MANAGER.get(svc_name) or {}
         instances = (svc_cfg.get("instances") or {}) or {}
@@ -107,15 +115,18 @@ def _collect_arr_entries(decypharr_cfg: dict) -> list:
                 inst.get("instance_name") or inst.get("name") or inst_key or ""
             ).strip()
             label = f"{svc_name}:{inst_name}" if inst_name else svc_name
+            existing_entry = existing_by_name.get(label.strip().lower()) or {}
+            if has_download_uncached_override:
+                download_uncached = bool(decypharr_cfg.get("arrs_download_uncached"))
+            else:
+                download_uncached = bool(existing_entry.get("download_uncached", False))
 
             entries.append(
                 {
                     "name": label,
                     "host": host,
                     "token": token,
-                    "download_uncached": bool(
-                        decypharr_cfg.get("arrs_download_uncached", False)
-                    ),
+                    "download_uncached": download_uncached,
                     "source": "auto",
                 }
             )
@@ -1343,7 +1354,9 @@ def patch_decypharr_config():
         # ---- Build/Sync arrs from CONFIG_MANAGER (sonarr/radarr) ----
         desired_arrs = []
         try:
-            desired_arrs = _collect_arr_entries(decypharr_config)
+            desired_arrs = _collect_arr_entries(
+                decypharr_config, config_data.get("arrs") or []
+            )
             if desired_arrs:
                 if config_data.get("arrs") != desired_arrs:
                     config_data["arrs"] = desired_arrs

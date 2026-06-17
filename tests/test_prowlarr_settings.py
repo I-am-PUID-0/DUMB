@@ -151,7 +151,10 @@ class ProwlarrWhisparrCategoryTests(unittest.TestCase):
         )
 
         self.assertNotIn('end }}" Category:', patched)
-        self.assertIn("        Category: '{{ join .Categories \",\" }}'", patched)
+        self.assertIn(
+            "        Category: '{{ if .Categories }}{{ join .Categories \",\" }}{{ else }}{{ end }}'",
+            patched,
+        )
         self.assertIn("    XXX: XXX", patched)
         self.assertIn(
             'args: ["^$", \'{{ if .Categories }}{{ join .Categories " " }}', patched
