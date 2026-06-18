@@ -574,6 +574,8 @@
       
         
       
+        
+      
     
     
     
@@ -945,23 +947,6 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Configuration in dumb_config.json">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#settings-reference" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Settings reference
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
 </li>
       
         <li class="md-nav__item">
@@ -1012,6 +997,36 @@
     
   
     Metrics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ai-assistant/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-brain" viewBox="0 0 24 24"><path d="M12 18V5M15 13a4.17 4.17 0 0 1-3-4 4.17 4.17 0 0 1-3 4M17.598 6.5A3 3 0 1 0 12 5a3 3 0 1 0-5.598 1.5"/><path d="M17.997 5.125a4 4 0 0 1 2.526 5.77"/><path d="M18 18a4 4 0 0 0 2-7.464"/><path d="M19.967 17.483A4 4 0 1 1 12 18a4 4 0 1 1-7.967-.517"/><path d="M6 18a4 4 0 0 1-2-7.464"/><path d="M6.003 5.125a4 4 0 0 0-2.526 5.77"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    AI Assistant
   
 
     
@@ -3261,6 +3276,8 @@
       
         
       
+        
+      
     
     
     
@@ -3456,6 +3473,36 @@
     
   
     Logs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/ai/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-brain" viewBox="0 0 24 24"><path d="M12 18V5M15 13a4.17 4.17 0 0 1-3-4 4.17 4.17 0 0 1-3 4M17.598 6.5A3 3 0 1 0 12 5a3 3 0 1 0-5.598 1.5"/><path d="M17.997 5.125a4 4 0 0 1 2.526 5.77"/><path d="M18 18a4 4 0 0 0 2-7.464"/><path d="M19.967 17.483A4 4 0 1 1 12 18a4 4 0 1 1-7.967-.517"/><path d="M6 18a4 4 0 0 1-2-7.464"/><path d="M6.003 5.125a4 4 0 0 0-2.526 5.77"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    AI Assistant
   
 
     
@@ -4522,23 +4569,6 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Configuration in dumb_config.json">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#settings-reference" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Settings reference
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
 </li>
       
         <li class="md-nav__item">
@@ -4642,13 +4672,13 @@
   
 
 
-<h1 id="ffprobe-monitor">FFprobe monitor<a class="headerlink" href="#ffprobe-monitor" title="Permanent link">#</a></h1>
+<h1 id="ffprobe-monitor">FFprobe monitor<a class="headerlink" href="#ffprobe-monitor" title="Permanent link">&para;</a></h1>
 <p>The ffprobe monitor watches for stuck <code>ffprobe</code> processes spawned by Sonarr or Radarr and nudges them back to life. This prevents long-running media scans from hanging indefinitely.</p>
 <hr />
-<h2 id="when-it-runs">When it runs<a class="headerlink" href="#when-it-runs" title="Permanent link">#</a></h2>
+<h2 id="when-it-runs">When it runs<a class="headerlink" href="#when-it-runs" title="Permanent link">&para;</a></h2>
 <p>The monitor activates only when at least one Sonarr or Radarr instance is enabled. If neither service is running, the worker stays idle.</p>
 <hr />
-<h2 id="how-it-works">How it works<a class="headerlink" href="#how-it-works" title="Permanent link">#</a></h2>
+<h2 id="how-it-works">How it works<a class="headerlink" href="#how-it-works" title="Permanent link">&para;</a></h2>
 <ol>
 <li>Collects running Sonarr/Radarr process IDs.</li>
 <li>Finds descendant <code>ffprobe</code> processes.</li>
@@ -4656,7 +4686,7 @@
 <li>Re-runs <code>ffprobe</code> on the same input file to release the stuck probe.</li>
 </ol>
 <hr />
-<h2 id="configuration-in-dumb_configjson">Configuration in <code>dumb_config.json</code><a class="headerlink" href="#configuration-in-dumb_configjson" title="Permanent link">#</a></h2>
+<h2 id="configuration-in-dumb_configjson">Configuration in <code>dumb_config.json</code><a class="headerlink" href="#configuration-in-dumb_configjson" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="nt">&quot;dumb&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;ffprobe_monitor&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">    </span><span class="nt">&quot;enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
@@ -4670,7 +4700,7 @@
 <span class="w">  </span><span class="p">}</span>
 <span class="p">}</span>
 </code></pre></div>
-<h3 id="settings-reference">Settings reference<a class="headerlink" href="#settings-reference" title="Permanent link">#</a></h3>
+<h3 id="settings-reference">Settings reference<a class="headerlink" href="#settings-reference" title="Permanent link">&para;</a></h3>
 <table>
 <thead>
 <tr>
@@ -4714,7 +4744,7 @@
 </tbody>
 </table>
 <hr />
-<h2 id="operational-notes">Operational notes<a class="headerlink" href="#operational-notes" title="Permanent link">#</a></h2>
+<h2 id="operational-notes">Operational notes<a class="headerlink" href="#operational-notes" title="Permanent link">&para;</a></h2>
 <div class="admonition warning">
 <p class="admonition-title">Scope</p>
 <p>The monitor only targets ffprobe processes spawned under Sonarr/Radarr. It does not touch other ffprobe instances on the host.</p>
@@ -4724,7 +4754,7 @@
 <p>If your media stack uses a bundled ffprobe, set <code>ffprobe_path</code> to the full binary path.</p>
 </div>
 <hr />
-<h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">#</a></h2>
+<h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h2>
 <ul>
 <li>If ffprobe checks never trigger, verify Sonarr/Radarr instances are enabled and visible to the DUMB process handler.</li>
 <li>If the monitor logs repeated timeouts, lower <code>max_pokes_per_cycle</code> or increase <code>poke_timeout_sec</code>.</li>

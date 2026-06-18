@@ -572,6 +572,8 @@
       
         
       
+        
+      
     
     
     
@@ -887,6 +889,36 @@
     
   
     Metrics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../features/ai-assistant/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-brain" viewBox="0 0 24 24"><path d="M12 18V5M15 13a4.17 4.17 0 0 1-3-4 4.17 4.17 0 0 1-3 4M17.598 6.5A3 3 0 1 0 12 5a3 3 0 1 0-5.598 1.5"/><path d="M17.997 5.125a4 4 0 0 1 2.526 5.77"/><path d="M18 18a4 4 0 0 0 2-7.464"/><path d="M19.967 17.483A4 4 0 1 1 12 18a4 4 0 1 1-7.967-.517"/><path d="M6 18a4 4 0 0 1-2-7.464"/><path d="M6.003 5.125a4 4 0 0 0-2.526 5.77"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    AI Assistant
   
 
     
@@ -3138,6 +3170,8 @@
       
         
       
+        
+      
     
     
     
@@ -3334,6 +3368,36 @@
     
   
     Logs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="ai/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-brain" viewBox="0 0 24 24"><path d="M12 18V5M15 13a4.17 4.17 0 0 1-3-4 4.17 4.17 0 0 1-3 4M17.598 6.5A3 3 0 1 0 12 5a3 3 0 1 0-5.598 1.5"/><path d="M17.997 5.125a4 4 0 0 1 2.526 5.77"/><path d="M18 18a4 4 0 0 0 2-7.464"/><path d="M19.967 17.483A4 4 0 1 1 12 18a4 4 0 1 1-7.967-.517"/><path d="M6 18a4 4 0 0 1-2-7.464"/><path d="M6.003 5.125a4 4 0 0 0-2.526 5.77"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    AI Assistant
   
 
     
@@ -4503,7 +4567,7 @@
   
 
 
-<h1 id="dumb-api">DUMB API<a class="headerlink" href="#dumb-api" title="Permanent link">#</a></h1>
+<h1 id="dumb-api">DUMB API<a class="headerlink" href="#dumb-api" title="Permanent link">&para;</a></h1>
 <p>DUMB includes a built-in REST API and WebSocket server to allow programmatic control of services, logging, and system state.</p>
 <p>The API is enabled and configured using the <code>dumb_config.json</code> under the <code>dumb.api_service</code> section. For example:</p>
 <div class="highlight"><pre><span></span><code><span class="nt">&quot;api_service&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
@@ -4515,7 +4579,7 @@
 <span class="p">}</span>
 </code></pre></div>
 <hr />
-<h2 id="features">Features<a class="headerlink" href="#features" title="Permanent link">#</a></h2>
+<h2 id="features">Features<a class="headerlink" href="#features" title="Permanent link">&para;</a></h2>
 <ul>
 <li><strong>Authentication</strong> - JWT-based user authentication and management</li>
 <li><strong>Health checks</strong> - Container and service health monitoring</li>
@@ -4525,7 +4589,7 @@
 <li><strong>Environment state inspection</strong> - Service and system information</li>
 </ul>
 <hr />
-<h2 id="common-endpoints">Common Endpoints<a class="headerlink" href="#common-endpoints" title="Permanent link">#</a></h2>
+<h2 id="common-endpoints">Common Endpoints<a class="headerlink" href="#common-endpoints" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
@@ -4626,6 +4690,36 @@
 <td>Read service log chunks</td>
 </tr>
 <tr>
+<td>GET</td>
+<td><code>/ai/settings</code></td>
+<td>Read sanitized AI provider settings</td>
+</tr>
+<tr>
+<td>PUT</td>
+<td><code>/ai/settings</code></td>
+<td>Update AI provider settings</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/ai/test</code></td>
+<td>Test current AI provider settings</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/ai/models</code></td>
+<td>List available provider models</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/ai/diagnose</code></td>
+<td>Preview or run AI service diagnostics</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/ai/diagnose-stack</code></td>
+<td>Preview or run stack-wide AI diagnostics</td>
+</tr>
+<tr>
 <td>WS</td>
 <td><code>/ws/logs</code></td>
 <td>Real-time log streaming</td>
@@ -4643,7 +4737,7 @@
 </tbody>
 </table>
 <hr />
-<h2 id="directory-structure">Directory Structure<a class="headerlink" href="#directory-structure" title="Permanent link">#</a></h2>
+<h2 id="directory-structure">Directory Structure<a class="headerlink" href="#directory-structure" title="Permanent link">&para;</a></h2>
 <p>The DUMB API is split into the following modules:</p>
 <table>
 <thead>
@@ -4689,10 +4783,14 @@
 <td><code>seerr_sync.py</code></td>
 <td>Seerr Sync status and failure endpoints</td>
 </tr>
+<tr>
+<td><code>ai.py</code></td>
+<td>AI provider settings and redacted service diagnostics</td>
+</tr>
 </tbody>
 </table>
 <hr />
-<h2 id="api-documentation">API Documentation<a class="headerlink" href="#api-documentation" title="Permanent link">#</a></h2>
+<h2 id="api-documentation">API Documentation<a class="headerlink" href="#api-documentation" title="Permanent link">&para;</a></h2>
 <p>DUMB provides built-in API documentation through two convenient endpoints:</p>
 <ul>
 <li>
@@ -4710,7 +4808,7 @@
 </ul>
 <p>These are helpful for development, debugging, and integrating external systems with DUMB.</p>
 <hr />
-<h2 id="next-steps">Next Steps<a class="headerlink" href="#next-steps" title="Permanent link">#</a></h2>
+<h2 id="next-steps">Next Steps<a class="headerlink" href="#next-steps" title="Permanent link">&para;</a></h2>
 <p>Click on any of the modules in the sidebar to explore endpoint structure, usage examples, and development guidelines for extending the DUMB API:</p>
 <ul>
 <li><a href="auth/">Authentication</a></li>
@@ -4721,6 +4819,7 @@
 <li><a href="websocket/">WebSocket</a></li>
 <li><a href="websocket_logs/">WebSocket Logs</a></li>
 <li><a href="seerr-sync/">Seerr Sync</a></li>
+<li><a href="ai/">AI Assistant</a></li>
 </ul>
 
 

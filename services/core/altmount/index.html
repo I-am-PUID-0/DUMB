@@ -572,6 +572,8 @@
       
         
       
+        
+      
     
     
     
@@ -887,6 +889,36 @@
     
   
     Metrics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../features/ai-assistant/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-brain" viewBox="0 0 24 24"><path d="M12 18V5M15 13a4.17 4.17 0 0 1-3-4 4.17 4.17 0 0 1-3 4M17.598 6.5A3 3 0 1 0 12 5a3 3 0 1 0-5.598 1.5"/><path d="M17.997 5.125a4 4 0 0 1 2.526 5.77"/><path d="M18 18a4 4 0 0 0 2-7.464"/><path d="M19.967 17.483A4 4 0 1 1 12 18a4 4 0 1 1-7.967-.517"/><path d="M6 18a4 4 0 0 1-2-7.464"/><path d="M6.003 5.125a4 4 0 0 0-2.526 5.77"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    AI Assistant
   
 
     
@@ -3287,6 +3319,8 @@
       
         
       
+        
+      
     
     
     
@@ -3482,6 +3516,36 @@
     
   
     Logs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../api/ai/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-brain" viewBox="0 0 24 24"><path d="M12 18V5M15 13a4.17 4.17 0 0 1-3-4 4.17 4.17 0 0 1-3 4M17.598 6.5A3 3 0 1 0 12 5a3 3 0 1 0-5.598 1.5"/><path d="M17.997 5.125a4 4 0 0 1 2.526 5.77"/><path d="M18 18a4 4 0 0 0 2-7.464"/><path d="M19.967 17.483A4 4 0 1 1 12 18a4 4 0 1 1-7.967-.517"/><path d="M6 18a4 4 0 0 1-2-7.464"/><path d="M6.003 5.125a4 4 0 0 0-2.526 5.77"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    AI Assistant
   
 
     
@@ -4702,9 +4766,9 @@
   
 
 
-<h1 id="altmount">AltMount<a class="headerlink" href="#altmount" title="Permanent link">#</a></h1>
+<h1 id="altmount">AltMount<a class="headerlink" href="#altmount" title="Permanent link">&para;</a></h1>
 <p>AltMount is a core Usenet-focused service that can provide a WebDAV interface, SABnzbd-compatible download-client behavior, metadata storage, and optional rclone mount management. In DUMB it is treated as a core Usenet workflow service so guided onboarding can wire Arr instances to it alongside or instead of NzbDAV.</p>
-<h2 id="what-it-provides">What It Provides<a class="headerlink" href="#what-it-provides" title="Permanent link">#</a></h2>
+<h2 id="what-it-provides">What It Provides<a class="headerlink" href="#what-it-provides" title="Permanent link">&para;</a></h2>
 <p>AltMount provides:</p>
 <ul>
 <li>A web UI and API on the configured service port</li>
@@ -4713,7 +4777,7 @@
 <li>Local metadata storage under the configured metadata directory</li>
 <li>Optional rclone mount management from AltMount's own config</li>
 </ul>
-<h2 id="default-ports">Default Ports<a class="headerlink" href="#default-ports" title="Permanent link">#</a></h2>
+<h2 id="default-ports">Default Ports<a class="headerlink" href="#default-ports" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
@@ -4729,7 +4793,7 @@
 </tbody>
 </table>
 <p>DUMB checks <code>http://127.0.0.1:8088/live</code> by default to confirm the service is ready.</p>
-<h2 id="dumb-configuration">DUMB Configuration<a class="headerlink" href="#dumb-configuration" title="Permanent link">#</a></h2>
+<h2 id="dumb-configuration">DUMB Configuration<a class="headerlink" href="#dumb-configuration" title="Permanent link">&para;</a></h2>
 <p>The default DUMB config block looks like this:</p>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;altmount&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
@@ -4778,7 +4842,7 @@
 </tbody>
 </table>
 <p>DUMB stores the same mount-mode values used by Decypharr (<code>dfs</code>, <code>rclone</code>, <code>external_rclone</code>, <code>none</code>) and writes the matching upstream AltMount value into <code>/altmount/config.yaml</code>. AltMount's own UI names these choices Disabled, Internal RClone, AltMount Native, and External RClone.</p>
-<h2 id="first-start">First Start<a class="headerlink" href="#first-start" title="Permanent link">#</a></h2>
+<h2 id="first-start">First Start<a class="headerlink" href="#first-start" title="Permanent link">&para;</a></h2>
 <ol>
 <li>Select <code>AltMount</code> as the Usenet workflow service in guided onboarding, or enable <code>altmount</code> in runtime config.</li>
 <li>Start the service from DUMB.</li>
@@ -4786,7 +4850,7 @@
 <li>Configure providers, SABnzbd behavior, Arr integration, and any advanced rclone settings in AltMount.</li>
 </ol>
 <p>DUMB enables AltMount SABnzbd compatibility, adds linked Arr instances to AltMount config, and registers AltMount as a SABnzbd download client in Arr instances whose <code>core_service</code> includes <code>altmount</code>. The generated first-run config intentionally leaves <code>providers</code> empty. Add provider details in AltMount before expecting download or WebDAV workflows to return content.</p>
-<h2 id="files-and-persistence">Files and Persistence<a class="headerlink" href="#files-and-persistence" title="Permanent link">#</a></h2>
+<h2 id="files-and-persistence">Files and Persistence<a class="headerlink" href="#files-and-persistence" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
@@ -4817,16 +4881,16 @@
 </tr>
 </tbody>
 </table>
-<h2 id="embedded-ui">Embedded UI<a class="headerlink" href="#embedded-ui" title="Permanent link">#</a></h2>
+<h2 id="embedded-ui">Embedded UI<a class="headerlink" href="#embedded-ui" title="Permanent link">&para;</a></h2>
 <p>AltMount is available through the DUMB embedded UI proxy at <code>/service/ui/altmount</code> when enabled. Its root <code>/api/*</code> calls are routed to the AltMount service context so they do not collide with DUMB backend API routes.</p>
-<h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">#</a></h2>
+<h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h2>
 <ul>
 <li>If the service does not start, check <code>/altmount/logs/altmount.log</code> and the DUMB service logs.</li>
 <li>If the UI loads but providers do nothing, verify <code>providers</code> are configured in <code>/altmount/config.yaml</code> or through the AltMount UI.</li>
 <li>If the embedded UI sends API calls to DUMB instead of AltMount, refresh the service page so the embedded UI context cookie is reset.</li>
 <li>If you pin <code>pinned_version</code>, include the release tag format used by upstream, such as <code>v0.2.0</code>.</li>
 </ul>
-<h2 id="related-links">Related Links<a class="headerlink" href="#related-links" title="Permanent link">#</a></h2>
+<h2 id="related-links">Related Links<a class="headerlink" href="#related-links" title="Permanent link">&para;</a></h2>
 <ul>
 <li><a href="https://github.com/javi11/altmount">AltMount repository</a></li>
 <li><a href="https://altmount.kipsilabs.top/">AltMount docs</a></li>
