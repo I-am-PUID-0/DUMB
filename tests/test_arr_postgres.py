@@ -1,7 +1,9 @@
 import os
 import tempfile
 import unittest
+from unittest.mock import patch
 
+from utils import arr_postgres
 from utils.arr_postgres import (
     ARR_POSTGRES_KEYS,
     apply_arr_postgres_config,
@@ -21,6 +23,13 @@ class StubConfig:
 
 
 class ArrPostgresTests(unittest.TestCase):
+    def setUp(self):
+        self.logger_patcher = patch.object(arr_postgres, "logger")
+        self.logger_patcher.start()
+
+    def tearDown(self):
+        self.logger_patcher.stop()
+
     def test_supported_arr_keys_include_all_servarr_postgres_apps_in_dumb(self):
         self.assertEqual(
             ARR_POSTGRES_KEYS,

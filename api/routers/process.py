@@ -4900,4 +4900,5 @@ async def get_capabilities(current_user: str = Depends(get_optional_current_user
         "symlink_backup_schedule": True,
         "symlink_backup_manifest_list": True,
         "symlink_manifest_file_list": True,
+        "ai_diagnostics": True,
     }

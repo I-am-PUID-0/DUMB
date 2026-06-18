@@ -50,6 +50,22 @@
       "grace_period_seconds": 30,
       "services": []
     },
+    "ai": {
+      "enabled": false,
+      "provider": "ollama",
+      "base_url": "http://127.0.0.1:11434",
+      "model": "",
+      "api_key": "",
+      "timeout_sec": 60,
+      "temperature": 0.2,
+      "max_log_chars": 20000,
+      "include_logs": true,
+      "include_service_config": true,
+      "include_dependency_graph": true,
+      "include_docs_context": true,
+      "include_process_list": false,
+      "max_docs_chars": 12000
+    },
     "ffprobe_monitor": {
       "enabled": true,
       "interval_sec": 10,

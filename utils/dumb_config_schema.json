@@ -187,6 +187,87 @@
             "services"
           ]
         },
+        "ai": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "provider": {
+              "type": "string",
+              "enum": [
+                "ollama",
+                "openai",
+                "openai_compatible",
+                "compatible",
+                "litellm",
+                "open_webui",
+                "anthropic",
+                "claude"
+              ]
+            },
+            "base_url": {
+              "type": "string"
+            },
+            "model": {
+              "type": "string"
+            },
+            "api_key": {
+              "type": "string"
+            },
+            "timeout_sec": {
+              "type": "integer",
+              "minimum": 5,
+              "maximum": 300
+            },
+            "temperature": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 2
+            },
+            "max_log_chars": {
+              "type": "integer",
+              "minimum": 1000,
+              "maximum": 200000
+            },
+            "include_logs": {
+              "type": "boolean"
+            },
+            "include_service_config": {
+              "type": "boolean"
+            },
+            "include_dependency_graph": {
+              "type": "boolean"
+            },
+            "include_docs_context": {
+              "type": "boolean"
+            },
+            "include_process_list": {
+              "type": "boolean"
+            },
+            "max_docs_chars": {
+              "type": "integer",
+              "minimum": 1000,
+              "maximum": 60000
+            }
+          },
+          "required": [
+            "enabled",
+            "provider",
+            "base_url",
+            "model",
+            "api_key",
+            "timeout_sec",
+            "temperature",
+            "max_log_chars",
+            "include_logs",
+            "include_service_config",
+            "include_dependency_graph",
+            "include_docs_context",
+            "include_process_list",
+            "max_docs_chars"
+          ]
+        },
         "ffprobe_monitor": {
           "type": "object",
           "properties": {

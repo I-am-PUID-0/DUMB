@@ -24,6 +24,7 @@ from api.routers.websocket_metrics import websocket_metrics_router
 from api.routers.websocket_status import websocket_status_router
 from api.routers.auth import auth_router
 from api.routers.seerr_sync import seerr_sync_router
+from api.routers.ai import ai_router
 from utils.config_loader import CONFIG_MANAGER
 from utils.project_metadata import get_project_version
 import threading
@@ -94,6 +95,7 @@ def create_app() -> FastAPI:
     app.include_router(logs_router, prefix="/logs", tags=["Logs"])
     app.include_router(metrics_router, prefix="/metrics", tags=["Metrics"])
     app.include_router(seerr_sync_router, prefix="/seerr-sync", tags=["Seerr Sync"])
+    app.include_router(ai_router, prefix="/ai", tags=["AI Assistant"])
     app.include_router(websocket_router, prefix="/ws", tags=["WebSocket Logs"])
     app.include_router(
         websocket_metrics_router, prefix="/ws", tags=["WebSocket Metrics"]

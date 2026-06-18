@@ -78,7 +78,11 @@ class MetricsCollectorHelperTests(unittest.TestCase):
             },
         }
 
-        with patch("utils.metrics.os.path.exists", return_value=True):
+        fake_usage = types.SimpleNamespace(total=1000, used=250, percent=25.0)
+        with (
+            patch("utils.metrics.os.path.exists", return_value=True),
+            patch("utils.metrics.psutil.disk_usage", return_value=fake_usage),
+        ):
             result = self.collector._collect_disk_paths(
                 config, extra_paths={"/mnt/debrid"}
             )
