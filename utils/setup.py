@@ -8593,12 +8593,19 @@ def setup_pnpm_environment(process_handler, config_dir):
                     logger.debug("Failed to remove pnpm tmp path %s: %s", path, e)
 
         for attempt in range(5):
-            pnpm_cmd = ["pnpm", "install", "--force"]
+            pnpm_cmd = ["pnpm", "install", "--force", "--no-frozen-lockfile"]
             if use_corepack_pnpm:
-                pnpm_cmd = ["corepack", "pnpm", "install", "--force"]
+                pnpm_cmd = [
+                    "corepack",
+                    "pnpm",
+                    "install",
+                    "--force",
+                    "--no-frozen-lockfile",
+                ]
             env = env or {}
             env.setdefault("PNPM_YES", "1")
             env.setdefault("CI", "1")
+            env.setdefault("npm_config_frozen_lockfile", "false")
             process_handler.start_process("pnpm_install", config_dir, pnpm_cmd, env=env)
             process_handler.wait("pnpm_install")
             if process_handler.returncode == 0:
