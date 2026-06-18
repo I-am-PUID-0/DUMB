@@ -3,6 +3,7 @@ import importlib
 import sys
 import types
 import unittest
+from unittest.mock import patch
 
 _MISSING = object()
 
@@ -266,13 +267,33 @@ class DependencyWiringTests(unittest.TestCase):
         status_manager = object()
         logger = object()
 
-        dependencies.initialize_dependencies(
-            process_handler,
-            updater,
-            websocket_manager,
-            metrics_manager,
-            status_manager,
-            logger,
+        with (
+            patch.object(dependencies, "APIState") as api_state_cls,
+            patch.object(dependencies, "MetricsCollector") as metrics_collector_cls,
+        ):
+            api_state_cls.return_value = types.SimpleNamespace(
+                process_handler=process_handler,
+                logger=logger,
+            )
+            metrics_collector_cls.return_value = types.SimpleNamespace(
+                process_handler=process_handler,
+                logger=logger,
+            )
+
+            dependencies.initialize_dependencies(
+                process_handler,
+                updater,
+                websocket_manager,
+                metrics_manager,
+                status_manager,
+                logger,
+            )
+
+        api_state_cls.assert_called_once_with(
+            process_handler=process_handler, logger=logger
+        )
+        metrics_collector_cls.assert_called_once_with(
+            process_handler=process_handler, logger=logger
         )
 
         self.assertIs(dependencies.get_process_handler(), process_handler)
@@ -283,12 +304,10 @@ class DependencyWiringTests(unittest.TestCase):
         self.assertIs(dependencies.get_logger(), logger)
 
         api_state = dependencies.get_api_state()
-        self.assertIsInstance(api_state, dependencies.APIState)
         self.assertIs(api_state.process_handler, process_handler)
         self.assertIs(api_state.logger, logger)
 
         metrics_collector = dependencies.get_metrics_collector()
-        self.assertIsInstance(metrics_collector, dependencies.MetricsCollector)
         self.assertIs(metrics_collector.process_handler, process_handler)
         self.assertIs(metrics_collector.logger, logger)
 
