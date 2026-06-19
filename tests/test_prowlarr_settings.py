@@ -1,6 +1,10 @@
+import importlib
+import pathlib
 import sys
+import tempfile
 import types
 import unittest
+from unittest import mock
 
 
 class _Logger:
@@ -14,31 +18,44 @@ class _Logger:
         pass
 
 
+def _module_available(name):
+    try:
+        importlib.import_module(name)
+        return True
+    except Exception:
+        return False
+
+
 def _install_runtime_stubs():
     import xml.etree.ElementTree as stdlib_et
 
-    defusedxml = types.ModuleType("defusedxml")
-    defusedxml.ElementTree = stdlib_et
-    sys.modules["defusedxml"] = defusedxml
-    sys.modules["defusedxml.ElementTree"] = stdlib_et
+    if not _module_available("defusedxml.ElementTree"):
+        defusedxml = types.ModuleType("defusedxml")
+        defusedxml.ElementTree = stdlib_et
+        sys.modules["defusedxml"] = defusedxml
+        sys.modules["defusedxml.ElementTree"] = stdlib_et
 
-    global_logger = types.ModuleType("utils.global_logger")
-    global_logger.logger = _Logger()
-    sys.modules["utils.global_logger"] = global_logger
+    if not _module_available("utils.global_logger"):
+        global_logger = types.ModuleType("utils.global_logger")
+        global_logger.logger = _Logger()
+        sys.modules["utils.global_logger"] = global_logger
 
-    config_loader = types.ModuleType("utils.config_loader")
-    config_loader.CONFIG_MANAGER = types.SimpleNamespace(
-        get=lambda *args, **kwargs: None
-    )
-    sys.modules["utils.config_loader"] = config_loader
+    if not _module_available("utils.config_loader"):
+        config_loader = types.ModuleType("utils.config_loader")
+        config_loader.CONFIG_MANAGER = types.SimpleNamespace(
+            get=lambda *args, **kwargs: None
+        )
+        sys.modules["utils.config_loader"] = config_loader
 
-    core_services = types.ModuleType("utils.core_services")
-    core_services.get_core_services = lambda _config: []
-    sys.modules["utils.core_services"] = core_services
+    if not _module_available("utils.core_services"):
+        core_services = types.ModuleType("utils.core_services")
+        core_services.get_core_services = lambda _config: []
+        sys.modules["utils.core_services"] = core_services
 
-    user_management = types.ModuleType("utils.user_management")
-    user_management.chown_recursive = lambda *args, **kwargs: None
-    sys.modules["utils.user_management"] = user_management
+    if not _module_available("utils.user_management"):
+        user_management = types.ModuleType("utils.user_management")
+        user_management.chown_recursive = lambda *args, **kwargs: None
+        sys.modules["utils.user_management"] = user_management
 
 
 _install_runtime_stubs()
@@ -129,11 +146,43 @@ INDEXER_SCHEMA = {
 }
 
 
+TORZNAB_INDEXER_SCHEMA = {
+    "implementation": "Torznab",
+    "implementationName": "Generic Torznab",
+    "configContract": "TorznabSettings",
+    "infoLink": "https://wiki.servarr.com/prowlarr/supported-indexers#generic-torznab",
+    "protocol": "torrent",
+    "fields": [
+        {"name": "baseUrl", "value": "https://old.invalid"},
+        {"name": "apiPath", "value": "/old"},
+        {"name": "apiKey", "value": "old-key"},
+    ],
+}
+
+
 class ProwlarrWhisparrCategoryTests(unittest.TestCase):
-    def test_whisparr_sync_categories_are_adult_only(self):
-        self.assertNotIn(2000, prowlarr_settings.WHISPARR_SYNC_CATEGORIES)
-        self.assertNotIn(5000, prowlarr_settings.WHISPARR_SYNC_CATEGORIES)
+
+    def test_prune_duplicate_custom_indexers_removes_legacy_elfhosted_copy(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            duplicate = pathlib.Path(temp_dir) / "elfhosted-internal.yml"
+            canonical = pathlib.Path(temp_dir) / "elfhosted-torrentio.yml"
+            content = (
+                "---\n"
+                "id: torrentio-internal\n"
+                "name: ElfHosted Customer Internal Torrentio/Knightcrawler Indexer\n"
+            )
+            duplicate.write_text(content)
+            canonical.write_text(content)
+
+            prowlarr_settings._prune_duplicate_custom_indexers(temp_dir)
+
+            self.assertFalse(duplicate.exists())
+            self.assertTrue(canonical.exists())
+
+    def test_whisparr_sync_categories_include_adult_and_generic_torznab_caps(self):
         self.assertIn(6000, prowlarr_settings.WHISPARR_SYNC_CATEGORIES)
+        self.assertIn(2000, prowlarr_settings.WHISPARR_SYNC_CATEGORIES)
+        self.assertIn(5000, prowlarr_settings.WHISPARR_SYNC_CATEGORIES)
 
     def test_zilean_definition_gets_xxx_caps_without_categories_template(self):
         patched = prowlarr_settings._ensure_custom_indexer_whisparr_caps(
@@ -156,24 +205,36 @@ class ProwlarrWhisparrCategoryTests(unittest.TestCase):
         self.assertIn("    XXX: XXX", patched)
         self.assertIn('args: ["^$", "limitless"]', patched)
 
-    def test_stremthru_definition_gets_xxx_caps_and_paths(self):
+    def test_stremthru_definition_uses_numeric_caps_and_paths(self):
         patched = prowlarr_settings._ensure_custom_indexer_whisparr_caps(
             "stremthru.yml", STREMTHRU_DEFINITION
         )
 
         self.assertIn("XXX: XXX", patched)
-        self.assertIn("categories: [Movies, XXX]", patched)
-        self.assertIn("categories: [TV, XXX]", patched)
+        self.assertIn("categories: [2000]", patched)
+        self.assertIn("categories: [5000]", patched)
+        self.assertNotIn("categories: [Movies, XXX]", patched)
+        self.assertNotIn("categories: [TV, XXX]", patched)
 
     def test_stremthru_multiline_definition_reports_requested_category(self):
         patched = prowlarr_settings._ensure_custom_indexer_whisparr_caps(
             "stremthru.yml", STREMTHRU_MULTILINE_DEFINITION
         )
 
-        self.assertIn("categories: [Movies, XXX]", patched)
-        self.assertIn("categories: [TV, XXX]", patched)
-        self.assertNotIn('{{ end }}"', patched)
-        self.assertIn('text: \'{{ if .Categories }}{{ join .Categories "," }}', patched)
+        self.assertIn("categorymappings:", patched)
+        self.assertIn("{id: 2000, cat: Movies", patched)
+        self.assertIn("{id: 5000, cat: TV", patched)
+        self.assertIn("{id: 6000, cat: XXX", patched)
+        self.assertIn("categories: [2000]", patched)
+        self.assertIn("categories: [5000]", patched)
+        self.assertNotIn("categories: [Movies, XXX]", patched)
+        self.assertNotIn("categories: [TV, XXX]", patched)
+        self.assertNotIn('{{ end }}"\n      categories:', patched)
+        self.assertNotIn(".Categories", patched)
+        self.assertIn(
+            'text: "{{ if .Result.category_is_tv_show }}5000{{ else }}2000{{ end }}"',
+            patched,
+        )
 
 
 class ProwlarrPayloadHelperTests(unittest.TestCase):
@@ -301,6 +362,107 @@ class ProwlarrPayloadHelperTests(unittest.TestCase):
         self.assertEqual(fields["baseUrl"], "http://127.0.0.1:8182")
         self.assertEqual(fields["definitionFile"], "Custom/zilean")
         self.assertEqual(fields["apiUrl"], "http://127.0.0.1:8182")
+
+    def test_ensure_stremthru_updates_existing_indexer_missing_managed_tag(self):
+        schema = {
+            **INDEXER_SCHEMA,
+            "definitionName": "stremthru",
+        }
+        existing = {
+            "id": 99,
+            "name": "StremThru",
+            "enable": True,
+            "implementation": "Cardigann",
+            "configContract": "CardigannSettings",
+            "tags": [],
+            "fields": [
+                {
+                    "name": "baseUrl",
+                    "value": "https://stremthru.13377001.xyz/v0/torznab",
+                },
+                {"name": "definitionFile", "value": "Custom/stremthru"},
+                {
+                    "name": "apiUrl",
+                    "value": "https://stremthru.13377001.xyz/v0/torznab",
+                },
+            ],
+        }
+        requests = []
+
+        def fake_req(url, token, method="GET", body=None):
+            requests.append((url, token, method, body))
+            if method == "GET" and url.endswith("/api/v1/indexer"):
+                return [existing]
+            return {}
+
+        with (
+            mock.patch.object(
+                prowlarr_settings,
+                "_get_prowlarr_indexer_schemas",
+                return_value=[schema],
+            ),
+            mock.patch.object(
+                prowlarr_settings, "_get_default_app_profile_id", return_value=None
+            ),
+            mock.patch.object(prowlarr_settings, "_prowlarr_req", side_effect=fake_req),
+        ):
+            prowlarr_settings.ensure_stremthru_indexer(
+                "http://127.0.0.1:9696", "token", [12]
+            )
+
+        puts = [request for request in requests if request[2] == "PUT"]
+        self.assertEqual(len(puts), 1)
+        self.assertTrue(puts[0][0].endswith("/api/v1/indexer/99"))
+        self.assertEqual(puts[0][3]["tags"], [12])
+
+    def test_find_generic_torznab_schema_prefers_generic_torznab(self):
+        self.assertIs(
+            prowlarr_settings._find_generic_torznab_schema(
+                [INDEXER_SCHEMA, TORZNAB_INDEXER_SCHEMA]
+            ),
+            TORZNAB_INDEXER_SCHEMA,
+        )
+
+    def test_build_zilean_torznab_payload_uses_native_torznab_endpoint(self):
+        payload = prowlarr_settings._build_zilean_torznab_payload(
+            TORZNAB_INDEXER_SCHEMA,
+            "http://127.0.0.1:8182/",
+            tag_ids=[12],
+        )
+        fields = {field["name"]: field["value"] for field in payload["fields"]}
+
+        self.assertEqual(payload["name"], "Zilean")
+        self.assertEqual(payload["implementation"], "Torznab")
+        self.assertEqual(payload["configContract"], "TorznabSettings")
+        self.assertEqual(payload["protocol"], "torrent")
+        self.assertIsNone(payload["definitionFile"])
+        self.assertEqual(payload["tags"], [12])
+        self.assertEqual(fields["baseUrl"], "http://127.0.0.1:8182/torznab")
+        self.assertEqual(fields["apiPath"], "/api")
+        self.assertEqual(fields["apiKey"], "")
+
+    def test_find_existing_zilean_indexer_matches_current_and_legacy_custom(self):
+        current = {
+            "name": "Managed Zilean",
+            "fields": [{"name": "baseUrl", "value": "http://127.0.0.1:8182/torznab/"}],
+        }
+        legacy = {
+            "name": "Legacy",
+            "fields": [{"name": "definitionFile", "value": "Custom/zilean"}],
+        }
+
+        self.assertIs(
+            prowlarr_settings._find_existing_zilean_indexer(
+                [current], "http://127.0.0.1:8182/torznab"
+            ),
+            current,
+        )
+        self.assertIs(
+            prowlarr_settings._find_existing_zilean_indexer(
+                [legacy], "http://127.0.0.1:8182/torznab"
+            ),
+            legacy,
+        )
 
 
 if __name__ == "__main__":

@@ -40,6 +40,28 @@ WHISPARR_SYNC_CATEGORIES = [
     6070,
     6080,
     6090,
+    # Zilean's native Torznab endpoint advertises generic Movies/TV caps.
+    # Include them so Prowlarr can sync it to Whisparr without failing category validation.
+    2000,
+    2010,
+    2020,
+    2030,
+    2040,
+    2045,
+    2050,
+    2060,
+    2070,
+    2080,
+    5000,
+    5010,
+    5020,
+    5030,
+    5040,
+    5045,
+    5050,
+    5060,
+    5070,
+    5080,
 ]
 
 WHISPARR_CUSTOM_CATEGORY = "XXX"
@@ -52,9 +74,63 @@ CUSTOM_INDEXER_REPO_ZIP = (
     "https://github.com/dreulavelle/Prowlarr-Indexers/archive/refs/heads/main.zip"
 )
 
+# The upstream bundle currently includes both filenames with the same Cardigann id/name.
+# Keeping both makes Prowlarr reject one definition and can orphan managed indexers.
+CUSTOM_INDEXER_DUPLICATE_FILES = {
+    "elfhosted-internal.yml": "elfhosted-torrentio.yml",
+}
+
 _INDEXER_SCHEMA_LOGGED = False
 _CUSTOM_INDEXER_SYNC_LOCK = threading.Lock()
 _CUSTOM_INDEXER_SYNC_TS = 0.0
+
+
+def _read_custom_indexer_identity(path: str) -> tuple[str, str]:
+    indexer_id = ""
+    indexer_name = ""
+    try:
+        with open(path, "r") as handle:
+            for line in handle:
+                stripped = line.strip()
+                if stripped.startswith("id:") and not indexer_id:
+                    indexer_id = stripped.split(":", 1)[1].strip().strip("\"'")
+                elif stripped.startswith("name:") and not indexer_name:
+                    indexer_name = stripped.split(":", 1)[1].strip().strip("\"'")
+                if indexer_id and indexer_name:
+                    break
+    except OSError:
+        return "", ""
+    return indexer_id, indexer_name
+
+
+def _prune_duplicate_custom_indexers(custom_dir: str) -> None:
+    for duplicate, canonical in CUSTOM_INDEXER_DUPLICATE_FILES.items():
+        duplicate_path = os.path.join(custom_dir, duplicate)
+        canonical_path = os.path.join(custom_dir, canonical)
+        if not os.path.exists(duplicate_path) or not os.path.exists(canonical_path):
+            continue
+        duplicate_identity = _read_custom_indexer_identity(duplicate_path)
+        canonical_identity = _read_custom_indexer_identity(canonical_path)
+        if duplicate_identity != canonical_identity or not any(duplicate_identity):
+            logger.warning(
+                "Keeping Prowlarr custom indexer %s because it no longer duplicates %s.",
+                duplicate,
+                canonical,
+            )
+            continue
+        try:
+            os.remove(duplicate_path)
+            logger.info(
+                "Removed duplicate Prowlarr custom indexer definition %s; using %s.",
+                duplicate,
+                canonical,
+            )
+        except OSError as exc:
+            logger.warning(
+                "Failed to remove duplicate Prowlarr custom indexer %s: %s",
+                duplicate,
+                exc,
+            )
 
 
 def _replace_links_block(content: str, links: list[str]) -> str:
@@ -156,17 +232,40 @@ def _ensure_custom_indexer_whisparr_caps(filename: str, content: str) -> str:
             ':{{ if .Query.Ep }}{{ .Query.Ep }}{{ else }}1{{ end }}"',
             ":{{ if .Query.Ep }}{{ .Query.Ep }}{{ else }}1{{ end }}",
         )
+        if "  categorymappings:" not in updated:
+            category_map = "\n".join(
+                [
+                    "  categorymappings:",
+                    "    - {id: 2000, cat: Movies, desc: Movies}",
+                    "    - {id: 5000, cat: TV, desc: TV}",
+                    "    - {id: 6000, cat: XXX, desc: XXX}",
+                ]
+            )
+            updated = updated.replace(
+                "  categories:\n    Movies: Movies\n    TV: TV\n    XXX: XXX",
+                category_map,
+            )
+            updated = updated.replace(
+                "  categories:\n    Movies: Movies\n    TV: TV",
+                category_map,
+            )
         updated = updated.replace(
-            "categories: [Movies]",
             f"categories: [Movies, {WHISPARR_CUSTOM_CATEGORY}]",
+            "categories: [2000]",
         )
+        updated = updated.replace("categories: [Movies]", "categories: [2000]")
         updated = updated.replace(
-            "categories: [TV]",
             f"categories: [TV, {WHISPARR_CUSTOM_CATEGORY}]",
+            "categories: [5000]",
+        )
+        updated = updated.replace("categories: [TV]", "categories: [5000]")
+        updated = updated.replace(
+            "text: '{{ if .Categories }}{{ join .Categories \",\" }}{{ else }}{{ if .Result.category_is_tv_show }}TV{{ else }}Movies{{ end }}{{ end }}'",
+            'text: "{{ if .Result.category_is_tv_show }}5000{{ else }}2000{{ end }}"',
         )
         updated = updated.replace(
             'text: "{{ if .Result.category_is_tv_show }}TV{{ else }}Movies{{ end }}"',
-            "text: '{{ if .Categories }}{{ join .Categories \",\" }}{{ else }}{{ if .Result.category_is_tv_show }}TV{{ else }}Movies{{ end }}{{ end }}'",
+            'text: "{{ if .Result.category_is_tv_show }}5000{{ else }}2000{{ end }}"',
         )
 
     return updated
@@ -253,6 +352,8 @@ def ensure_custom_indexers(config_dir: str, zilean_port: int) -> None:
             logger.warning(
                 "Failed to sync Prowlarr custom indexer %s: %s", filename, exc
             )
+    _prune_duplicate_custom_indexers(custom_dir)
+
     try:
         user_id = int(CONFIG_MANAGER.get("puid"))
         group_id = int(CONFIG_MANAGER.get("pgid"))
@@ -458,6 +559,24 @@ def _find_indexer_schema(schemas: list, indexer_name: str) -> Optional[dict]:
         definition = (item.get("definitionName") or "").lower()
         desc = (item.get("description") or "").lower()
         if target in (impl, name, display, definition) or target in desc:
+            return item
+    return None
+
+
+def _find_generic_torznab_schema(schemas: list) -> Optional[dict]:
+    for item in schemas:
+        impl = (item.get("implementation") or "").lower()
+        name = (item.get("implementationName") or item.get("name") or "").lower()
+        contract = (item.get("configContract") or "").lower()
+        values = (impl, name, contract)
+        if any("torznab" in value for value in values) and "generic" in name:
+            return item
+    for item in schemas:
+        impl = (item.get("implementation") or "").lower()
+        name = (item.get("implementationName") or item.get("name") or "").lower()
+        contract = (item.get("configContract") or "").lower()
+        values = (impl, name, contract)
+        if any("torznab" in value for value in values):
             return item
     return None
 
@@ -697,6 +816,59 @@ def _build_indexer_payload(
     return payload
 
 
+def _build_zilean_torznab_payload(
+    schema: dict,
+    base_url: str,
+    tag_ids: Optional[list[int]] = None,
+    enabled: bool = True,
+) -> dict:
+    torznab_url = f"{base_url.rstrip('/')}/torznab"
+    overrides = {
+        "baseUrl": torznab_url,
+        "url": torznab_url,
+        "host": torznab_url,
+        "apiPath": "/api",
+        "apiUrl": "/api",
+        "apiKey": "",
+    }
+    fields = _build_fields_from_schema(schema, overrides)
+    protocol = (schema.get("protocol") or "").lower()
+    return {
+        "name": "Zilean",
+        "enable": enabled,
+        "priority": 25,
+        "appProfileId": 0,
+        "protocol": protocol or "torrent",
+        "implementation": schema.get("implementation"),
+        "implementationName": schema.get("implementationName"),
+        "configContract": schema.get("configContract"),
+        "infoLink": schema.get("infoLink"),
+        "minimumSeeders": 1,
+        "definitionFile": None,
+        "tags": tag_ids or [],
+        "fields": fields,
+    }
+
+
+def _find_existing_zilean_indexer(existing: list, torznab_url: str) -> Optional[dict]:
+    if not existing:
+        return None
+    for item in existing:
+        if (item.get("name") or "").strip().lower() == "zilean":
+            return item
+    torznab_url = (torznab_url or "").rstrip("/").lower()
+    for item in existing:
+        fields = item.get("fields") or []
+        for field in fields:
+            name = (field.get("name") or "").lower()
+            value = (field.get("value") or "").strip().rstrip("/").lower()
+            if name in {"baseurl", "url", "host"} and value == torznab_url:
+                return item
+            if name == "definitionfile" and "custom/zilean" in value:
+                return item
+    return None
+
+
 def _get_default_app_profile_id(host: str, token: str) -> Optional[int]:
     for path in ("/api/v1/appProfile", "/api/v1/appprofile", "/api/v3/appProfile"):
         try:
@@ -733,13 +905,13 @@ def ensure_zilean_indexer(host: str, token: str, base_url: str, tag_ids: list[in
     if not schemas:
         logger.warning("Prowlarr indexer schema not available; skipping Zilean sync.")
         return
-    schema = _find_indexer_schema(schemas, "zilean")
+    schema = _find_generic_torznab_schema(schemas)
     if not schema:
         _log_indexer_schema_names(schemas)
-        logger.warning("Prowlarr could not find schema for Zilean.")
+        logger.warning("Prowlarr could not find Generic Torznab schema for Zilean.")
         return
     logger.debug(
-        "Prowlarr Zilean schema: %s",
+        "Prowlarr Zilean Torznab schema: %s",
         {
             "implementation": schema.get("implementation"),
             "implementationName": schema.get("implementationName"),
@@ -749,79 +921,21 @@ def ensure_zilean_indexer(host: str, token: str, base_url: str, tag_ids: list[in
             "fields": [f.get("name") for f in (schema.get("fields") or [])],
         },
     )
-    desired = _build_indexer_payload(
-        schema, "Zilean", base_url, tag_ids=tag_ids, enabled=True
+    desired = _build_zilean_torznab_payload(
+        schema, base_url, tag_ids=tag_ids, enabled=True
     )
     app_profile_id = _get_default_app_profile_id(host, token)
     if app_profile_id:
         desired["appProfileId"] = app_profile_id
     desired.pop("minimumSeeders", None)
     existing = _prowlarr_req(_join(host, "/api/v1/indexer"), token, "GET") or []
-
-    def _match_by_definition(
-        existing_items: list, definition_file: str
-    ) -> Optional[dict]:
-        for item in existing_items:
-            for field in item.get("fields") or []:
-                if (field.get("name") or "").lower() == "definitionfile":
-                    value = (field.get("value") or "").lower()
-                    if definition_file.lower() in value:
-                        return item
-        return None
-
-    match = _match_by_definition(existing, "custom/zilean")
-    if match:
-
-        def _get_field(fields_list: list, field_name: str) -> Optional[str]:
-            for field in fields_list:
-                if (field.get("name") or "").lower() == field_name.lower():
-                    return field.get("value") or ""
-            return ""
-
-        def _set_field(fields_list: list, field_name: str, value) -> None:
-            for field in fields_list:
-                if (field.get("name") or "").lower() == field_name.lower():
-                    field["value"] = value
-                    return
-            fields_list.append({"name": field_name, "value": value})
-
-        fields = match.get("fields") or []
-        current_base = _get_field(fields, "baseUrl")
-        current_base = (current_base or "").strip()
-        if current_base == base_url:
-            logger.debug("Prowlarr Zilean base URL already set; leaving as-is.")
-            return
-        wrong_values = {
-            "",
-            "https://stremthru.13377001.xyz/v0/torznab",
-            "http://stremthru:8080",
-        }
-        local_prefixes = ("http://127.0.0.1:", "http://localhost:")
-        if (
-            current_base
-            and current_base not in wrong_values
-            and not current_base.startswith(local_prefixes)
-        ):
-            logger.debug("Prowlarr Zilean base URL set by user; leaving as-is.")
-            return
-        _set_field(fields, "baseUrl", base_url)
-        _set_field(fields, "definitionFile", "Custom/zilean")
-        put_body = match.copy()
-        put_body["fields"] = fields
-        if not put_body.get("definitionFile"):
-            put_body["definitionFile"] = "Custom/zilean"
-        put_body["baseUrl"] = base_url
-        _prowlarr_req(
-            _join(host, f"/api/v1/indexer/{match.get('id')}"),
-            token,
-            "PUT",
-            put_body,
-        )
-        logger.info("Prowlarr updated Zilean base URL.")
+    match = _find_existing_zilean_indexer(existing, f"{base_url.rstrip('/')}/torznab")
+    if match and _is_indexer_current(match, desired):
+        logger.debug("Prowlarr Zilean Torznab indexer already current.")
         return
-    ok, _ = _apply_indexer(host, token, desired, None)
+    ok, _ = _apply_indexer(host, token, desired, match)
     if ok:
-        logger.info("Prowlarr created Zilean indexer.")
+        logger.info("Prowlarr synchronized Zilean Torznab indexer.")
 
 
 def ensure_stremthru_indexer(host: str, token: str, tag_ids: list[int]):
@@ -849,7 +963,7 @@ def ensure_stremthru_indexer(host: str, token: str, tag_ids: list[int]):
     )
     desired = _build_indexer_payload(
         schema,
-        "StremThru",
+        schema.get("name") or "Stremthru",
         "https://stremthru.13377001.xyz/v0/torznab",
         tag_ids=tag_ids,
         enabled=True,
@@ -895,7 +1009,12 @@ def ensure_stremthru_indexer(host: str, token: str, tag_ids: list[int]):
             "https://zileanfortheweebs.midnightignite.me",
         }
         if current_base and current_base.strip().lower() == stremthru_url.lower():
-            logger.debug("Prowlarr StremThru base URL already set; leaving as-is.")
+            if _is_indexer_current(match, desired):
+                logger.debug("Prowlarr StremThru indexer already current.")
+                return
+            ok, _ = _apply_indexer(host, token, desired, match)
+            if ok:
+                logger.info("Prowlarr synchronized StremThru indexer.")
             return
         if current_base and current_base.strip() not in wrong_values:
             logger.debug("Prowlarr StremThru base URL set by user; leaving as-is.")
@@ -907,13 +1026,9 @@ def ensure_stremthru_indexer(host: str, token: str, tag_ids: list[int]):
         if not put_body.get("definitionFile"):
             put_body["definitionFile"] = "Custom/stremthru"
         put_body["baseUrl"] = stremthru_url
-        _prowlarr_req(
-            _join(host, f"/api/v1/indexer/{match.get('id')}"),
-            token,
-            "PUT",
-            put_body,
-        )
-        logger.info("Prowlarr updated StremThru base URL.")
+        ok, _ = _apply_indexer(host, token, desired, put_body)
+        if ok:
+            logger.info("Prowlarr synchronized StremThru indexer.")
         return
     ok, _ = _apply_indexer(host, token, desired, None)
     if ok:
