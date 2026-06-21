@@ -1,5 +1,26 @@
 # Changelog
 
+## [2.7.0](https://github.com/I-am-PUID-0/DUMB/compare/2.6.0...2.7.0) (2026-06-21)
+
+
+### ✨ Features
+
+* **ai:** add optional AI diagnostics backend ([aa96de6](https://github.com/I-am-PUID-0/DUMB/commit/aa96de612bf3af7c45817799db9ab2df6caa47ed))
+
+
+### 🐛 Bug Fixes
+
+* **arr_postgres:** implement flag management for PostgreSQL instances and add tests ([5a165c0](https://github.com/I-am-PUID-0/DUMB/commit/5a165c08ecb1c541233f63339fb4b9e541f49258))
+* **pnpm:** allow lockfile refresh during runtime installation ([f2c10dd](https://github.com/I-am-PUID-0/DUMB/commit/f2c10ddde80f9070736b501836d096ab40c2c474))
+* **prowlarr:** enhance custom indexer handling and add Zilean Torznab support ([f454ce8](https://github.com/I-am-PUID-0/DUMB/commit/f454ce8304db639a978b610b5544b06bfdbb42f9))
+* **prowlarr:** remove category handling from Zilean definition processing ([80f503a](https://github.com/I-am-PUID-0/DUMB/commit/80f503a8965c6be852c5bd3c4370b90a53ab0ab1))
+* **release:** add target SHA to release creation command ([f8ac1e7](https://github.com/I-am-PUID-0/DUMB/commit/f8ac1e747611d94e0857af2e987831f00f5eccce))
+
+
+### 🛠️ Build System
+
+* **deps:** bump actions/checkout from 6.0.3 to 7.0.0 ([#235](https://github.com/I-am-PUID-0/DUMB/issues/235)) ([dcff3c1](https://github.com/I-am-PUID-0/DUMB/commit/dcff3c134f010d34632e9cf875993d4f7307d516))
+
 ## [2.6.0](https://github.com/I-am-PUID-0/DUMB/compare/2.5.0...2.6.0) (2026-06-17)
 
 
