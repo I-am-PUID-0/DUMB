@@ -20,7 +20,7 @@ jobs:
 
       - name: Restore previous tags from cache
         id: cache-latest-tags
-        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.05
+        uses: actions/cache@2c8a9bd7457de244a408f35966fab2fb45fda9c8 # v6.0.0.06.0.0
         with:
           path: latest-tags.txt
           key: latest-tags-${{ github.ref_name }}-${{ github.run_id }}
