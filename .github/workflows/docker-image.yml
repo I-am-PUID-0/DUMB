@@ -504,6 +504,11 @@ jobs:
           NODE_VERSION=$(docker exec $CONTAINER_ID node -v 2>/dev/null || echo "Not Installed")
           PNPM_VERSION=$(docker exec $CONTAINER_ID pnpm -v 2>/dev/null || echo "Not Installed")
           RCLONE_VERSION=$(docker exec $CONTAINER_ID rclone version | head -n 1 | grep -oP 'v[0-9]+\.[0-9]+\.[0-9]+' 2>/dev/null || echo "Not Installed")
+          if [[ "$NODE_VERSION" != v24.* ]]; then
+            echo "Expected Node.js 24.x in the release image, found: $NODE_VERSION" >&2
+            docker stop $CONTAINER_ID
+            exit 1
+          fi
           echo "PSQL_VERSION=$PSQL_VERSION" >> $GITHUB_ENV
           echo "PGADMIN_VERSION=$PGADMIN_VERSION" >> $GITHUB_ENV
           echo "NODE_VERSION=$NODE_VERSION" >> $GITHUB_ENV

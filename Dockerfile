@@ -31,8 +31,8 @@ RUN apt-get update && \
     update-alternatives --install /usr/bin/pip pip /usr/bin/pip3 1 && \
     ln -sf /usr/lib/$(uname -m)-linux-gnu/libpython3.11.so.1 /usr/local/lib/libpython3.11.so.1 && \
     ln -sf /usr/lib/$(uname -m)-linux-gnu/libpython3.11.so.1.0 /usr/local/lib/libpython3.11.so.1.0 && \
-    # Node.js 22.x + global npm / pnpm (used by multiple builders)
-    curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
+    # Node.js 24.x + global npm / pnpm (used by multiple builders)
+    curl -fsSL https://deb.nodesource.com/setup_24.x | bash - && \
     apt-get install -y --no-install-recommends nodejs && \
     npm install -g npm@10 pnpm@latest-10 && \
     # clean
