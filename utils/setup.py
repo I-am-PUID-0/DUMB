@@ -3196,12 +3196,17 @@ def _write_nzbdav_start_script(config_dir, backend_command, frontend_dir, backen
     script_lines = [
         "#!/bin/sh",
         "set -e",
+        'BACKEND_PID=""',
+        'FRONTEND_PID=""',
         f'BACKEND_PORT="${{BACKEND_PORT:-{backend_port}}}"',
         'BACKEND_URL="${BACKEND_URL:-http://127.0.0.1:$BACKEND_PORT}"',
         "export BACKEND_URL",
-        f"{backend_cmd} --db-migration",
-        f"{backend_cmd} &",
-        "BACKEND_PID=$!",
+        "terminate() {",
+        '  if [ -n "$BACKEND_PID" ]; then kill "$BACKEND_PID" 2>/dev/null || true; fi',
+        '  if [ -n "$FRONTEND_PID" ]; then kill "$FRONTEND_PID" 2>/dev/null || true; fi',
+        "  wait || true",
+        "}",
+        "trap terminate TERM INT",
     ]
     if frontend_dir:
         script_lines.extend(
@@ -3213,26 +3218,40 @@ def _write_nzbdav_start_script(config_dir, backend_command, frontend_dir, backen
         )
     script_lines.extend(
         [
-            "terminate() {",
-            '  if [ -n "$BACKEND_PID" ]; then kill "$BACKEND_PID" 2>/dev/null || true; fi',
-            '  if [ -n "$FRONTEND_PID" ]; then kill "$FRONTEND_PID" 2>/dev/null || true; fi',
-            "  wait",
-            "}",
-            "trap terminate TERM INT",
+            "set +e",
+            f"{backend_cmd} --db-migration",
+            "MIGRATION_EXIT_CODE=$?",
+            "set -e",
+            'if [ "$MIGRATION_EXIT_CODE" -ne 0 ]; then',
         ]
     )
     if frontend_dir:
         script_lines.extend(
             [
-                "wait $BACKEND_PID",
-                "EXIT_CODE=$?",
-                "kill $FRONTEND_PID 2>/dev/null || true",
-                "wait $FRONTEND_PID 2>/dev/null || true",
-                "exit $EXIT_CODE",
+                '  kill "$FRONTEND_PID" 2>/dev/null || true',
+                '  wait "$FRONTEND_PID" 2>/dev/null || true',
             ]
         )
-    else:
-        script_lines.append("wait $BACKEND_PID")
+    script_lines.extend(
+        [
+            '  exit "$MIGRATION_EXIT_CODE"',
+            "fi",
+            f"{backend_cmd} &",
+            "BACKEND_PID=$!",
+            "set +e",
+            'wait "$BACKEND_PID"',
+            "EXIT_CODE=$?",
+            "set -e",
+        ]
+    )
+    if frontend_dir:
+        script_lines.extend(
+            [
+                'kill "$FRONTEND_PID" 2>/dev/null || true',
+                'wait "$FRONTEND_PID" 2>/dev/null || true',
+            ]
+        )
+    script_lines.append('exit "$EXIT_CODE"')
 
     with open(script_path, "w") as f:
         f.write("\n".join(script_lines) + "\n")
