@@ -109,9 +109,6 @@
         <loc>https://dumbarr.com/services/core/seerr/</loc>
       </url>
       <url>
-        <loc>https://dumbarr.com/services/core/plex-debrid/</loc>
-      </url>
-      <url>
         <loc>https://dumbarr.com/services/core/riven-backend/</loc>
       </url>
       <url>
@@ -278,9 +275,6 @@
       </url>
       <url>
         <loc>https://dumbarr.com/faq/plex/</loc>
-      </url>
-      <url>
-        <loc>https://dumbarr.com/faq/plex-debrid/</loc>
       </url>
       <url>
         <loc>https://dumbarr.com/faq/postgres/</loc>

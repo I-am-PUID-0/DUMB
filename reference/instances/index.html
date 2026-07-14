@@ -1648,8 +1648,6 @@
       
         
       
-        
-      
     
     
     
@@ -1933,36 +1931,6 @@
     
   
     Seerr
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../services/core/plex-debrid/" class="md-nav__link">
-        
-  
-  
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-film" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M7 3v18M3 7.5h4M3 12h18M3 16.5h4M17 3v18M17 7.5h4M17 16.5h4"/></svg>
-  
-  <span class="md-ellipsis">
-    
-  
-    Plex Debrid
   
 
     
@@ -3879,8 +3847,6 @@
       
         
       
-        
-      
     
     
     
@@ -4155,36 +4121,6 @@
     
   
     Plex
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../faq/plex-debrid/" class="md-nav__link">
-        
-  
-  
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-film" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M7 3v18M3 7.5h4M3 12h18M3 16.5h4M17 3v18M17 7.5h4M17 16.5h4"/></svg>
-  
-  <span class="md-ellipsis">
-    
-  
-    Plex Debrid
   
 
     
@@ -4650,10 +4586,10 @@
   
 
 
-<h1 id="multi-instance-configuration">Multi-instance configuration<a class="headerlink" href="#multi-instance-configuration" title="Permanent link">#</a></h1>
+<h1 id="multi-instance-configuration">Multi-instance configuration<a class="headerlink" href="#multi-instance-configuration" title="Permanent link">&para;</a></h1>
 <p>Several DUMB services support multiple instances (for example Sonarr, Radarr, Lidarr, Whisparr, and rclone). This guide shows how to configure instances safely.</p>
 <hr />
-<h2 id="instance-pattern">Instance pattern<a class="headerlink" href="#instance-pattern" title="Permanent link">#</a></h2>
+<h2 id="instance-pattern">Instance pattern<a class="headerlink" href="#instance-pattern" title="Permanent link">&para;</a></h2>
 <p>Services that support instances use an <code>instances</code> map keyed by a friendly name:</p>
 <div class="highlight"><pre><span></span><code><span class="nt">&quot;sonarr&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;instances&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
@@ -4677,7 +4613,7 @@
 <span class="p">}</span>
 </code></pre></div>
 <hr />
-<h2 id="best-practices">Best practices<a class="headerlink" href="#best-practices" title="Permanent link">#</a></h2>
+<h2 id="best-practices">Best practices<a class="headerlink" href="#best-practices" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Assign unique ports per instance to avoid collisions.</li>
 <li>Use distinct <code>config_dir</code> and <code>log_file</code> paths.</li>
@@ -4685,7 +4621,7 @@
 <li>Set <code>core_service</code> when integrating with Decypharr, NzbDAV, or AltMount (single value, list, or comma-separated).</li>
 </ul>
 <hr />
-<h2 id="rclone-instances">rclone instances<a class="headerlink" href="#rclone-instances" title="Permanent link">#</a></h2>
+<h2 id="rclone-instances">rclone instances<a class="headerlink" href="#rclone-instances" title="Permanent link">&para;</a></h2>
 <p>rclone also uses an <code>instances</code> map for different mount targets:</p>
 <div class="highlight"><pre><span></span><code><span class="nt">&quot;rclone&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;instances&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
@@ -4701,7 +4637,7 @@
 <span class="p">}</span>
 </code></pre></div>
 <hr />
-<h2 id="related-pages">Related pages<a class="headerlink" href="#related-pages" title="Permanent link">#</a></h2>
+<h2 id="related-pages">Related pages<a class="headerlink" href="#related-pages" title="Permanent link">&para;</a></h2>
 <ul>
 <li><a href="../../services/">Services overview</a></li>
 <li><a href="../../features/configuration/">Configuration guide</a></li>
