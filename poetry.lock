@@ -909,14 +909,14 @@ files = [
 
 [[package]]
 name = "plexapi"
-version = "4.18.1"
+version = "4.18.2"
 description = "Python bindings for the Plex API."
 optional = false
 python-versions = ">=3.10"
 groups = ["main"]
 files = [
-    {file = "plexapi-4.18.1-py3-none-any.whl", hash = "sha256:d8330cee337bc55dc006c392a58b3259239d787a32cbe4064b50a9b07a6e0b35"},
-    {file = "plexapi-4.18.1.tar.gz", hash = "sha256:deba96e94b8b51fc0b042334ebbd48a14e407efd33f281a5d8e9897f9e5dba5f"},
+    {file = "plexapi-4.18.2-py3-none-any.whl", hash = "sha256:7ff9f30db57af08407500b2d59e5e57d674d2aa6082dce418086019abb5b8f78"},
+    {file = "plexapi-4.18.2.tar.gz", hash = "sha256:865a90cf44193e750605dec35fc6e1038a15b6f0bda5b3e1779bbe286f7e1da1"},
 ]
 
 [package.dependencies]
@@ -2100,4 +2100,4 @@ test = ["pytest", "pytest-cov"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11,<4.0"
-content-hash = "2c57787af64eec876cf2f78ae091771dad65e738aa47e1cd3fd9caa34f385c24"
+content-hash = "b6dfc37e331c6e57be1e6c4b1648f43cae95e5c4412c2667404acab74bd14098"
