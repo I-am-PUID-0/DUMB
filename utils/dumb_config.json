@@ -758,37 +758,6 @@
       }
     }
   },
-  "plex_debrid": {
-    "enabled": false,
-    "process_name": "Plex Debrid",
-    "repo_owner": "elfhosted",
-    "repo_name": "plex_debrid",
-    "branch_enabled": false,
-    "branch": "main",
-    "suppress_logging": false,
-    "log_level": "INFO",
-    "auto_update": false,
-    "auto_update_interval": 24,
-    "auto_update_start_time": "04:00",
-    "clear_on_update": true,
-    "exclude_dirs": [
-      "/plex_debrid/config"
-    ],
-    "platforms": [
-      "python"
-    ],
-    "command": [
-      "/plex_debrid/venv/bin/python",
-      "main.py",
-      "-service",
-      "--config-dir",
-      "./config"
-    ],
-    "config_dir": "/plex_debrid",
-    "config_file": "/plex_debrid/config/settings.json",
-    "log_file": "/plex_debrid/config/plex_debrid.log",
-    "env": {}
-  },
   "postgres": {
     "enabled": false,
     "process_name": "PostgreSQL",

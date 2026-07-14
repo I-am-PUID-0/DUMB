@@ -91,19 +91,7 @@ RUN echo "store-dir=./.pnpm-store\nchild-concurrency=1\nfetch-retries=10\nfetch-
     pnpm install --reporter=verbose && pnpm run build --log-level verbose
 
 ####################################################################################################################################################
-# Stage 5: plex_debrid-builder
-####################################################################################################################################################
-FROM base AS plex_debrid-builder
-ARG PLEX_DEBRID_TAG
-RUN curl -L https://github.com/elfhosted/plex_debrid/archive/refs/heads/main.zip -o plex_debrid.zip && \
-    unzip plex_debrid.zip && mkdir -p /plex_debrid && mv plex_debrid-main/* /plex_debrid && rm -rf plex_debrid.zip plex_debrid-main
-ADD https://raw.githubusercontent.com/I-am-PUID-0/pd_zurg/master/plex_debrid_/settings-default.json /plex_debrid/settings-default.json
-RUN python3.11 -m venv /plex_debrid/venv && \
-    /plex_debrid/venv/bin/python -m pip install --upgrade pip && \
-    /plex_debrid/venv/bin/python -m pip install -r /plex_debrid/requirements.txt
-
-####################################################################################################################################################
-# Stage 6: cli_debrid-builder
+# Stage 5: cli_debrid-builder
 ####################################################################################################################################################
 FROM base AS cli_debrid-builder
 ARG CLI_DEBRID_TAG
@@ -114,7 +102,7 @@ RUN python3.11 -m venv /cli_debrid/venv && \
     /cli_debrid/venv/bin/python -m pip install -r /cli_debrid/requirements-linux.txt
 
 ####################################################################################################################################################
-# Stage 7: requirements-builder
+# Stage 6: requirements-builder
 ####################################################################################################################################################
 FROM base AS requirements-builder
 COPY pyproject.toml poetry.lock ./
@@ -126,7 +114,7 @@ RUN python3.11 -m venv /venv && \
     pip install --upgrade --force-reinstall "cffi>=1.16,<3.0" "cryptography>=48.0.1,<49.0.0"
 
 ####################################################################################################################################################
-# Stage 8: final-stage
+# Stage 7: final-stage
 ####################################################################################################################################################
 FROM base AS final-stage
 ARG TARGETARCH
@@ -143,7 +131,6 @@ COPY --from=systemstats-builder /usr/share/postgresql/16/extension/system_stats*
 COPY --from=systemstats-builder /usr/lib/postgresql/16/lib/system_stats.so /usr/lib/postgresql/16/lib/
 COPY --from=zilean-builder /zilean /zilean
 COPY --from=dumb-frontend-builder /dumb/frontend /dumb/frontend
-COPY --from=plex_debrid-builder /plex_debrid /plex_debrid
 COPY --from=cli_debrid-builder /cli_debrid /cli_debrid
 COPY --from=rclone/rclone:latest /usr/local/bin/rclone /usr/local/bin/rclone
 

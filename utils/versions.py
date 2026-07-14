@@ -410,9 +410,6 @@ class Versions:
                     return None, "rclone binary not found"
                 except Exception as e:
                     return None, f"Error reading rclone version: {e}"
-            elif key == "plex_debrid":
-                version_path = "/plex_debrid/ui/ui_settings.py"
-                is_file = True
             elif key == "traefik":
                 try:
                     command = CONFIG_MANAGER.get("traefik", {}).get("command")
@@ -461,7 +458,6 @@ class Versions:
                         elif (
                             key == "riven_backend"
                             or key == "dumb_api_service"
-                            or key == "plex_debrid"
                             or key == "neutarr"
                         ):
                             for line in f:

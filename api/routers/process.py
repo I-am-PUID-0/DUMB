@@ -310,7 +310,6 @@ SERVICE_PORT_RANGES = {
 CORE_SERVICE_DEPENDENCIES = {
     "riven_backend": ["zurg", "rclone", "postgres"],
     "cli_debrid": ["zurg", "rclone", "cli_battery", "phalanx_db"],
-    "plex_debrid": ["zurg", "rclone"],
     "decypharr": ["rclone"],
     "nzbdav": ["rclone"],
     "plex": [],
@@ -382,7 +381,6 @@ ONBOARDING_CORE_SERVICE_KEYS = {
     "seerr",
     "neutarr",
     "profilarr",
-    "plex_debrid",
 }
 # Temporarily hide not-ready services from onboarding core selection.
 ONBOARDING_HIDDEN_CORE_SERVICES = {"bazarr"}
@@ -419,7 +417,6 @@ CORE_SERVICE_NAMES = {
     "dumb_frontend": "DUMB Frontend",
     "cli_battery": "CLI Battery",
     "phalanx_db": "Phalanx DB",
-    "plex_debrid": "Plex Debrid",
 }
 
 CORE_SERVICE_DESCRIPTIONS = {
@@ -437,12 +434,6 @@ CLI Debrid Service
 - Requires CLI Battery for metadata and optionally Phalanx DB for decentralized metadata.
 
 Documentation: https://dumbarr.com/services/core/cli-debrid""",
-    "plex_debrid": """\
-Plex Debrid Service
-- Not fully implemented yet, but intended for users with an existing Plex Debrid setup.
-- Users will need to copy an existing Plex Debrid settings.json file to `.../plex_debrid` mount directory.
-
-Documentation: https://dumbarr.com/services/core/plex-debrid""",
     "decypharr": """\
 Decypharr Service
 - Debrid and Usenet workflow service with qBittorrent and Sabnzbd-compatible Arr APIs.
@@ -652,7 +643,6 @@ Documentation: https://dumbarr.com/services/optional/cloudflared""",
 CORE_SERVICE_DEBRID_PROVIDERS = {
     "riven_backend": ["RealDebrid"],
     "cli_debrid": ["RealDebrid"],
-    "plex_debrid": ["RealDebrid"],
     "decypharr": ["RealDebrid", "AllDebrid", "Debrid Link", "TorBox"],
 }
 

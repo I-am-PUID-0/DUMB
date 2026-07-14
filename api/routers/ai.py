@@ -229,7 +229,6 @@ SERVICE_DOC_PATHS = {
     "nzbdav": "services/core/nzbdav.md",
     "pgadmin": "services/optional/pgadmin.md",
     "plex": "services/core/plex-media-server.md",
-    "plex_debrid": "services/core/plex-debrid.md",
     "postgres": "services/dependent/postgres.md",
     "profilarr": "services/core/profilarr.md",
     "prowlarr": "services/core/prowlarr.md",

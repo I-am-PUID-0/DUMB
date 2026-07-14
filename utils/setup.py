@@ -235,9 +235,6 @@ def _fetch_github_branch_head_sha(
 
 
 def setup_release_version(process_handler, config, process_name, key):
-    if key == "plex_debrid":
-        return False, "Release version not supported for plex_debrid."
-
     logger.info(f"Using release version {config['release_version']} for {process_name}")
 
     if key in [
@@ -581,13 +578,6 @@ def additional_setup(process_handler, process_name, config, key):
                 False,
                 f"Failed to set up environment for {process_name}: {error}",
             )
-
-    if key == "plex_debrid":
-        success, error = chown_recursive(
-            os.path.join(config["config_dir"], "config"), user_id, group_id
-        )
-        if not success:
-            return False, error
 
     if key == "cli_debrid":
         utilities_dir = os.path.join(config["config_dir"], "utilities")
@@ -1174,11 +1164,6 @@ def _setup_project(
 
         if configure_phase and key == "pgadmin":
             success, error = postgres.pgadmin_setup(process_handler)
-            if not success:
-                return False, error
-
-        if configure_phase and key == "plex_debrid":
-            success, error = plex_debrid_setup()
             if not success:
                 return False, error
 
@@ -3447,39 +3432,6 @@ def build_decypharr_dev(process_handler, config):
         return True, None
     except Exception as e:
         return False, f"Error during Decypharr development environment setup: {e}"
-
-
-def plex_debrid_setup():
-    config = CONFIG_MANAGER.get("plex_debrid")
-    if not config:
-        return False, "Configuration for Plex Debrid not found."
-
-    if not os.path.exists(config["config_file"]):
-        logger.debug(
-            f"Copying settings-default.json from {config['config_dir']} to {config['config_file']}"
-        )
-        shutil.copy(
-            os.path.join(config["config_dir"], "settings-default.json"),
-            config["config_file"],
-        )
-        chown_recursive(os.path.join(config["config_dir"], "config"), user_id, group_id)
-
-    trakt_file = os.path.join(config["config_dir"], "content", "services", "trakt.py")
-    if os.path.exists(trakt_file):
-        with open(trakt_file, "r") as f:
-            trakt_contents = f.read()
-
-        updated_trakt_contents = re.sub(
-            r'env_file\s*=\s*[\'"]\.env[\'"]',
-            'env_file = "./config/.env"',
-            trakt_contents,
-        )
-
-        with open(trakt_file, "w") as f:
-            f.write(updated_trakt_contents)
-
-        logger.debug("Updated env_file path in trakt.py to './config/.env'")
-    return True, None
 
 
 def dumb_frontend_setup():

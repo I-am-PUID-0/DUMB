@@ -2153,95 +2153,6 @@
         "instances"
       ]
     },
-    "plex_debrid": {
-      "type": "object",
-      "properties": {
-        "enabled": {
-          "type": "boolean"
-        },
-        "process_name": {
-          "type": "string"
-        },
-        "repo_owner": {
-          "type": "string"
-        },
-        "repo_name": {
-          "type": "string"
-        },
-        "branch_enabled": {
-          "type": "boolean"
-        },
-        "branch": {
-          "type": "string"
-        },
-        "suppress_logging": {
-          "type": "boolean"
-        },
-        "log_level": {
-          "type": "string"
-        },
-        "auto_update": {
-          "type": "boolean"
-        },
-        "auto_update_interval": {
-          "type": "number"
-        },
-        "auto_update_start_time": {
-          "type": "string",
-          "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
-        },
-        "clear_on_update": {
-          "type": "boolean"
-        },
-        "exclude_dirs": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        },
-        "platforms": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        },
-        "command": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        },
-        "config_dir": {
-          "type": "string"
-        },
-        "log_file": {
-          "type": "string"
-        },
-        "env": {
-          "type": "object"
-        }
-      },
-      "required": [
-        "enabled",
-        "process_name",
-        "repo_owner",
-        "repo_name",
-        "branch_enabled",
-        "branch",
-        "suppress_logging",
-        "log_level",
-        "auto_update",
-        "auto_update_interval",
-        "auto_update_start_time",
-        "clear_on_update",
-        "exclude_dirs",
-        "platforms",
-        "command",
-        "config_dir",
-        "log_file",
-        "env"
-      ]
-    },
     "postgres": {
       "type": "object",
       "properties": {
@@ -4021,7 +3932,6 @@
     "seerr_sync",
     "profilarr",
     "seerr",
-    "plex_debrid",
     "postgres",
     "pgadmin",
     "prowlarr",

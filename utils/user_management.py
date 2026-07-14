@@ -184,7 +184,6 @@ def migrate_symlinks():
                 ("/postgres_data", os.path.join(data_root, "postgres")),
                 ("/pgadmin/data", os.path.join(data_root, "pgadmin")),
                 ("/zilean/app/data", os.path.join(data_root, "zilean")),
-                ("/plex_debrid/config", os.path.join(data_root, "plex_debrid")),
                 ("/cli_debrid/data", os.path.join(data_root, "cli_debrid")),
                 ("/phalanx_db/data", os.path.join(data_root, "phalanx_db")),
                 ("/decypharr", os.path.join(data_root, "decypharr")),
@@ -275,7 +274,6 @@ def create_system_user(username="DUMB"):
         debrid_mount_base_dir = "/mnt/debrid"
         riven_dir = "/riven/backend/data"
         zilean_dir = "/zilean/app/data"
-        plex_debrid_dir = "/plex_debrid/config"
         cli_debrid_dir = "/cli_debrid/data"
         cli_debrid_utilities_dir = "/cli_debrid/utilities"
 
@@ -305,7 +303,6 @@ def create_system_user(username="DUMB"):
         chown_recursive(riven_dir, user_id, group_id)
         chown_recursive(home_dir, user_id, group_id)
         chown_recursive(zilean_dir, user_id, group_id)
-        chown_recursive(plex_debrid_dir, user_id, group_id)
         chown_recursive(cli_debrid_dir, user_id, group_id)
         chown_recursive(cli_debrid_utilities_dir, user_id, group_id)
 

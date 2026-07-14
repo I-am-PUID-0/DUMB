@@ -982,7 +982,6 @@ def main():
             "traefik_proxy_admin",
             "pgadmin",
             "zilean",
-            "plex_debrid",
             "phalanx_db",
             "cli_debrid",
             "cli_battery",

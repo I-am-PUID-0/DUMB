@@ -874,7 +874,6 @@ class ProcessHandler:
                     "altmount",
                     "rclone",
                     "zurg",
-                    "plex_debrid",
                     "cli_debrid",
                     "cli_battery",
                     "cloudflared",
