@@ -181,6 +181,17 @@ RUN --mount=type=cache,target=/root/.cache/pip,sharing=shared \
       "requests>=2.33.0" \
       "urllib3>=2.7.0" \
       "Werkzeug>=3.0.6" && \
+    # nyaapy 0.7 caps lxml below 6, but its HTML parsing remains compatible.
+    # Override the stale metadata so lxml includes the CVE-2026-41066 fix.
+    NYAAPY_METADATA="$(find /cli_debrid/venv/lib/python3.11/site-packages \
+      -path '*/nyaapy-*.dist-info/METADATA' -print -quit)" && \
+    test -n "${NYAAPY_METADATA}" && \
+    sed -i 's/lxml (>=5.2.2,<6.0.0)/lxml (>=5.2.2,<7.0.0)/' "${NYAAPY_METADATA}" && \
+    grep -q 'Requires-Dist: lxml (>=5.2.2,<7.0.0)' "${NYAAPY_METADATA}" && \
+    /cli_debrid/venv/bin/python -m pip install --upgrade --no-deps \
+      "lxml>=6.1.0,<7.0.0" && \
+    /cli_debrid/venv/bin/python -c \
+      'import lxml, nyaapy; from bs4 import BeautifulSoup; assert BeautifulSoup("<p>ok</p>", "lxml").p.text == "ok"' && \
     /cli_debrid/venv/bin/python -m pip check && \
     find /cli_debrid/venv/lib/python3.11/site-packages -type d \
       \( -name tests -o -name test \) -prune -exec rm -rf '{}' + && \
