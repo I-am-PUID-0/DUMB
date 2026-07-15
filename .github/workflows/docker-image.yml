@@ -75,6 +75,12 @@ jobs:
       CLI_DEBRID_TAG: ${{ steps.resolve_inputs.outputs.CLI_DEBRID_TAG }}
       RCLONE_TAG: ${{ steps.resolve_inputs.outputs.RCLONE_TAG }}
       ZURG_REF: ${{ steps.resolve_inputs.outputs.ZURG_REF }}
+      GO_VERSION: ${{ steps.resolve_inputs.outputs.GO_VERSION }}
+      NPM_VERSION: ${{ steps.resolve_inputs.outputs.NPM_VERSION }}
+      PNPM_VERSION: ${{ steps.resolve_inputs.outputs.PNPM_VERSION }}
+      PGADMIN_VERSION: ${{ steps.resolve_inputs.outputs.PGADMIN_VERSION }}
+      POETRY_VERSION: ${{ steps.resolve_inputs.outputs.POETRY_VERSION }}
+      APT_REFRESH: ${{ steps.resolve_inputs.outputs.APT_REFRESH }}
     steps:
       - name: Resolve reproducible build inputs
         id: resolve_inputs
@@ -96,6 +102,13 @@ jobs:
             github_api "https://api.github.com/repos/$1/releases/latest" | jq -er '.tag_name'
           }
 
+          public_json() {
+            curl --fail --silent --show-error --location \
+              --retry 3 --retry-all-errors \
+              -H "Accept: application/json" \
+              "$1"
+          }
+
           SYS_STATS_TAG=$(latest_tag EnterpriseDB/system_stats)
           ZILEAN_TAG=$(latest_tag iPromKnight/zilean)
           DUMB_FRONTEND_TAG=$(latest_tag nicocapalbo/dmbdb)
@@ -103,8 +116,16 @@ jobs:
           RCLONE_RELEASE=$(latest_tag rclone/rclone)
           RCLONE_TAG=${RCLONE_RELEASE#v}
           ZURG_REF=$(github_api https://api.github.com/repos/debridmediamanager/zurg-testing/commits/main | jq -er '.sha')
+          GO_VERSION=$(public_json 'https://go.dev/dl/?mode=json' | jq -er '.[0].version | sub("^go"; "")')
+          NPM_VERSION=$(public_json https://registry.npmjs.org/npm | \
+            jq -r '.versions | keys[] | select(test("^12\\.[0-9]+\\.[0-9]+$"))' | sort -V | tail -n 1)
+          PNPM_VERSION=$(public_json https://registry.npmjs.org/pnpm | jq -er '.["dist-tags"]["latest-10"]')
+          PGADMIN_VERSION=$(public_json https://pypi.org/pypi/pgadmin4/json | jq -er '.info.version')
+          POETRY_VERSION=$(public_json https://pypi.org/pypi/poetry/json | jq -er '.info.version')
+          APT_REFRESH=$(date -u +%Y-%m-%d)
 
-          for name in SYS_STATS_TAG ZILEAN_TAG DUMB_FRONTEND_TAG CLI_DEBRID_TAG RCLONE_TAG ZURG_REF; do
+          for name in SYS_STATS_TAG ZILEAN_TAG DUMB_FRONTEND_TAG CLI_DEBRID_TAG RCLONE_TAG ZURG_REF \
+            GO_VERSION NPM_VERSION PNPM_VERSION PGADMIN_VERSION POETRY_VERSION APT_REFRESH; do
             value=${!name}
             [[ -n "$value" && "$value" != "null" ]] || { echo "Failed to resolve $name" >&2; exit 1; }
             echo "$name=$value" >> "$GITHUB_OUTPUT"
@@ -132,30 +153,10 @@ jobs:
           username: ${{ env.DOCKER_USER }}
           password: ${{ env.DOCKER_PASS }}
 
-      - name: Prepare unified local cache
-        shell: bash
-        run: |
-          set -Eeuo pipefail
-          CACHE_ROOT="/home/docker/buildx-cache/${GITHUB_REPOSITORY}"
-          CACHE_DIR="${CACHE_ROOT}/unified"
-          LEGACY_CACHE="${CACHE_ROOT}/${BRANCH_NAME}/final"
-          mkdir -p "$CACHE_ROOT"
-          if [[ ! -f "${CACHE_DIR}/index.json" && -f "${LEGACY_CACHE}/index.json" ]]; then
-            echo "Migrating legacy ${BRANCH_NAME} final cache into the unified cache"
-            rm -rf "$CACHE_DIR"
-            mv "$LEGACY_CACHE" "$CACHE_DIR"
-          fi
-          echo "CACHE_DIR=$CACHE_DIR" >> "$GITHUB_ENV"
-          if [[ -f "${CACHE_DIR}/index.json" ]]; then
-            echo "CACHE_FROM=type=local,src=${CACHE_DIR}" >> "$GITHUB_ENV"
-            du -sh "$CACHE_DIR" || true
-          else
-            echo "CACHE_FROM=" >> "$GITHUB_ENV"
-            echo "No existing cache found; this architecture will populate it"
-          fi
-
       - uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
         with:
+          name: ci
+          cleanup: false
           buildkitd-config-inline: |
             [worker.oci]
               max-parallelism = 4
@@ -172,8 +173,6 @@ jobs:
           outputs: type=registry,name=docker.io/${{ env.DOCKER_USER }}/${{ env.REPO_NAME }},push-by-digest=true,oci-mediatypes=true,compression=zstd
           provenance: true
           sbom: ${{ github.ref_name == 'master' }}
-          cache-from: ${{ env.CACHE_FROM }}
-          cache-to: type=local,dest=${{ env.CACHE_DIR }},mode=max
           build-args: |
             SYS_STATS_TAG=${{ needs.fetch-latest-tags.outputs.SYS_STATS_TAG }}
             ZILEAN_TAG=${{ needs.fetch-latest-tags.outputs.ZILEAN_TAG }}
@@ -181,11 +180,13 @@ jobs:
             CLI_DEBRID_TAG=${{ needs.fetch-latest-tags.outputs.CLI_DEBRID_TAG }}
             RCLONE_TAG=${{ needs.fetch-latest-tags.outputs.RCLONE_TAG }}
             ZURG_REF=${{ needs.fetch-latest-tags.outputs.ZURG_REF }}
+            GO_VERSION=${{ needs.fetch-latest-tags.outputs.GO_VERSION }}
+            NPM_VERSION=${{ needs.fetch-latest-tags.outputs.NPM_VERSION }}
+            PNPM_VERSION=${{ needs.fetch-latest-tags.outputs.PNPM_VERSION }}
+            PGADMIN_VERSION=${{ needs.fetch-latest-tags.outputs.PGADMIN_VERSION }}
+            POETRY_VERSION=${{ needs.fetch-latest-tags.outputs.POETRY_VERSION }}
+            APT_REFRESH=${{ needs.fetch-latest-tags.outputs.APT_REFRESH }}
             DEV_VERSION=${{ needs.setup.outputs.DEV_VERSION }}
-
-      - name: Report unified cache size
-        if: always()
-        run: du -sh "${CACHE_DIR}" || true
 
   build-arm64-digest:
     name: Build linux/arm64 → Docker Hub (by digest)
@@ -209,30 +210,10 @@ jobs:
           username: ${{ env.DOCKER_USER }}
           password: ${{ env.DOCKER_PASS }}
 
-      - name: Prepare unified local cache
-        shell: bash
-        run: |
-          set -Eeuo pipefail
-          CACHE_ROOT="/home/docker/buildx-cache/${GITHUB_REPOSITORY}"
-          CACHE_DIR="${CACHE_ROOT}/unified"
-          LEGACY_CACHE="${CACHE_ROOT}/${BRANCH_NAME}/final"
-          mkdir -p "$CACHE_ROOT"
-          if [[ ! -f "${CACHE_DIR}/index.json" && -f "${LEGACY_CACHE}/index.json" ]]; then
-            echo "Migrating legacy ${BRANCH_NAME} final cache into the unified cache"
-            rm -rf "$CACHE_DIR"
-            mv "$LEGACY_CACHE" "$CACHE_DIR"
-          fi
-          echo "CACHE_DIR=$CACHE_DIR" >> "$GITHUB_ENV"
-          if [[ -f "${CACHE_DIR}/index.json" ]]; then
-            echo "CACHE_FROM=type=local,src=${CACHE_DIR}" >> "$GITHUB_ENV"
-            du -sh "$CACHE_DIR" || true
-          else
-            echo "CACHE_FROM=" >> "$GITHUB_ENV"
-            echo "No existing cache found; this architecture will populate it"
-          fi
-
       - uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
         with:
+          name: ci
+          cleanup: false
           buildkitd-config-inline: |
             [worker.oci]
               max-parallelism = 8
@@ -249,8 +230,6 @@ jobs:
           outputs: type=registry,name=docker.io/${{ env.DOCKER_USER }}/${{ env.REPO_NAME }},push-by-digest=true,oci-mediatypes=true,compression=zstd
           provenance: true
           sbom: ${{ github.ref_name == 'master' }}
-          cache-from: ${{ env.CACHE_FROM }}
-          cache-to: type=local,dest=${{ env.CACHE_DIR }},mode=max
           build-args: |
             SYS_STATS_TAG=${{ needs.fetch-latest-tags.outputs.SYS_STATS_TAG }}
             ZILEAN_TAG=${{ needs.fetch-latest-tags.outputs.ZILEAN_TAG }}
@@ -258,12 +237,13 @@ jobs:
             CLI_DEBRID_TAG=${{ needs.fetch-latest-tags.outputs.CLI_DEBRID_TAG }}
             RCLONE_TAG=${{ needs.fetch-latest-tags.outputs.RCLONE_TAG }}
             ZURG_REF=${{ needs.fetch-latest-tags.outputs.ZURG_REF }}
+            GO_VERSION=${{ needs.fetch-latest-tags.outputs.GO_VERSION }}
+            NPM_VERSION=${{ needs.fetch-latest-tags.outputs.NPM_VERSION }}
+            PNPM_VERSION=${{ needs.fetch-latest-tags.outputs.PNPM_VERSION }}
+            PGADMIN_VERSION=${{ needs.fetch-latest-tags.outputs.PGADMIN_VERSION }}
+            POETRY_VERSION=${{ needs.fetch-latest-tags.outputs.POETRY_VERSION }}
+            APT_REFRESH=${{ needs.fetch-latest-tags.outputs.APT_REFRESH }}
             DEV_VERSION=${{ needs.setup.outputs.DEV_VERSION }}
-
-      - name: Report unified cache size
-        if: always()
-        run: du -sh "${CACHE_DIR}" || true
-
 
   build-and-push:
     needs: [setup, fetch-latest-tags, build-amd64-digest, build-arm64-digest]
@@ -380,7 +360,7 @@ jobs:
           echo "\`${DOCKER_TAGS_ALL}\`" >> $GITHUB_STEP_SUMMARY
 
   cleanup-cache:
-    name: Prune local buildx cache
+    name: Prune persistent BuildKit and legacy local cache
     needs: [ setup, build-amd64-digest, build-arm64-digest ]
     if: >
       always() &&
@@ -392,6 +372,20 @@ jobs:
         arch: [ X64, ARM64 ]
     runs-on: [ "self-hosted", "Linux", "${{ matrix.arch }}" ]
     steps:
+      - name: Prune old persistent BuildKit records
+        shell: bash
+        env:
+          BUILDER_NAME: ci
+        run: |
+          set -Eeuo pipefail
+          if ! docker buildx inspect "${BUILDER_NAME}" >/dev/null 2>&1; then
+            echo "Builder ${BUILDER_NAME} does not exist yet; nothing to prune"
+            exit 0
+          fi
+          docker buildx du --builder "${BUILDER_NAME}"
+          docker buildx prune --builder "${BUILDER_NAME}" --force --filter until=168h
+          docker buildx du --builder "${BUILDER_NAME}"
+
       - name: Ensure tools are present
         shell: bash
         run: |
