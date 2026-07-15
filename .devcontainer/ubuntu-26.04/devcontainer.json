@@ -1,6 +1,6 @@
 {
   "name": "DUMB Ubuntu 26.04 Test",
-  "image": "iampuid0/dumb:ubuntu-26.04@sha256:f64e570e8cfdc71b3272641d7c0e5f478264c4c318533fb49769e789d32229ac",
+  "image": "iampuid0/dumb:ubuntu-26.04",
   "workspaceFolder": "/workspace",
   "remoteEnv": {
     "PATH": "/venv/bin:${containerEnv:PATH}",
