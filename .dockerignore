@@ -28,6 +28,7 @@ poetry.toml
 # Runtime/local config and logs
 .env
 config/
+data/
 log/
 logs/
 *.log

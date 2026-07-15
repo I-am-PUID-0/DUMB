@@ -1,7 +1,6 @@
 name: Docker Image CI
 env:
-  SKIP_QEMU_SETUP: 'true'
-  DOCKER_BUILD_RECORD_UPLOAD: false 
+  DOCKER_BUILD_RECORD_UPLOAD: false
 on:
   workflow_dispatch:
   pull_request:
@@ -14,7 +13,9 @@ on:
       - '.gitignore'
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  # Both architecture pools use shared host-local Docker/cache resources. Do not
+  # let dev and release builds contend with each other on the same servers.
+  group: ${{ github.workflow }}-${{ github.repository }}
   cancel-in-progress: false
 
 permissions:
@@ -22,6 +23,10 @@ permissions:
 
 jobs:
   setup:
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.pull_request.merged == true &&
+      startsWith(github.event.pull_request.title, 'chore(master): release '))
     runs-on: ubuntu-latest
     outputs:
       VERSION: ${{ steps.setup_env_vars.outputs.VERSION }}
@@ -64,216 +69,52 @@ jobs:
       startsWith(github.event.pull_request.title, 'chore(master): release '))
     runs-on: ubuntu-latest
     outputs:
-      PGAGENT_TAG: ${{ steps.fetch_pgagent_tag.outputs.PGAGENT_TAG }}
-      SYS_STATS_TAG: ${{ steps.fetch_sys_stats_tag.outputs.SYS_STATS_TAG }}
-      ZILEAN_TAG: ${{ steps.fetch_zilean_tag.outputs.ZILEAN_TAG }}
-      DUMB_FRONTEND_TAG: ${{ steps.fetch_dumb_frontend_tag.outputs.DUMB_FRONTEND_TAG }}
-      CLI_DEBRID_TAG: ${{ steps.fetch_cli_debrid_tag.outputs.CLI_DEBRID_TAG }}
+      SYS_STATS_TAG: ${{ steps.resolve_inputs.outputs.SYS_STATS_TAG }}
+      ZILEAN_TAG: ${{ steps.resolve_inputs.outputs.ZILEAN_TAG }}
+      DUMB_FRONTEND_TAG: ${{ steps.resolve_inputs.outputs.DUMB_FRONTEND_TAG }}
+      CLI_DEBRID_TAG: ${{ steps.resolve_inputs.outputs.CLI_DEBRID_TAG }}
+      RCLONE_TAG: ${{ steps.resolve_inputs.outputs.RCLONE_TAG }}
+      ZURG_REF: ${{ steps.resolve_inputs.outputs.ZURG_REF }}
     steps:
-      - name: Fetch latest pgAgent release tag
-        id: fetch_pgagent_tag
+      - name: Resolve reproducible build inputs
+        id: resolve_inputs
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          PGAGENT_TAG=$(curl -s https://api.github.com/repos/pgadmin-org/pgagent/releases/latest | jq -r .tag_name)
-          echo "PGAGENT_TAG=$PGAGENT_TAG" >> $GITHUB_OUTPUT
+          set -Eeuo pipefail
 
-      - name: Fetch latest system_stats release tag
-        id: fetch_sys_stats_tag
-        run: |
-          SYS_STATS_TAG=$(curl -s https://api.github.com/repos/EnterpriseDB/system_stats/releases/latest | jq -r .tag_name)
-          echo "SYS_STATS_TAG=$SYS_STATS_TAG" >> $GITHUB_OUTPUT
+          github_api() {
+            curl --fail --silent --show-error --location \
+              --retry 3 --retry-all-errors \
+              -H "Accept: application/vnd.github+json" \
+              -H "Authorization: Bearer ${GH_TOKEN}" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              "$1"
+          }
 
-      - name: Fetch latest zilean release tag
-        id: fetch_zilean_tag
-        run: |
-          ZILEAN_TAG=$(curl -s https://api.github.com/repos/iPromKnight/zilean/releases/latest | jq -r .tag_name)
-          echo "ZILEAN_TAG=$ZILEAN_TAG" >> $GITHUB_OUTPUT
+          latest_tag() {
+            github_api "https://api.github.com/repos/$1/releases/latest" | jq -er '.tag_name'
+          }
 
-      - name: Fetch latest dmbdb release tag
-        id: fetch_dumb_frontend_tag
-        run: |
-          DUMB_FRONTEND_TAG=$(curl -s https://api.github.com/repos/nicocapalbo/dmbdb/releases/latest | jq -r .tag_name)
-          echo "DUMB_FRONTEND_TAG=$DUMB_FRONTEND_TAG" >> $GITHUB_OUTPUT
+          SYS_STATS_TAG=$(latest_tag EnterpriseDB/system_stats)
+          ZILEAN_TAG=$(latest_tag iPromKnight/zilean)
+          DUMB_FRONTEND_TAG=$(latest_tag nicocapalbo/dmbdb)
+          CLI_DEBRID_TAG=$(latest_tag godver3/cli_debrid)
+          RCLONE_RELEASE=$(latest_tag rclone/rclone)
+          RCLONE_TAG=${RCLONE_RELEASE#v}
+          ZURG_REF=$(github_api https://api.github.com/repos/debridmediamanager/zurg-testing/commits/main | jq -er '.sha')
 
-      - name: Fetch latest cli_debrid release tag
-        id: fetch_cli_debrid_tag
-        run: |
-          CLI_DEBRID_TAG=$(curl -s https://api.github.com/repos/godver3/cli_debrid/releases/latest | jq -r .tag_name)
-          echo "CLI_DEBRID_TAG=$CLI_DEBRID_TAG" >> $GITHUB_OUTPUT
-
-  build-base-arch:
-    needs: setup
-    strategy:
-      matrix: { arch: [ X64, ARM64 ] }
-    runs-on: [ "self-hosted", "Linux", "${{ matrix.arch }}" ]
-    env:
-      BRANCH_NAME: ${{ needs.setup.outputs.BRANCH_NAME }}
-      PLATFORM: ${{ matrix.arch == 'X64' && 'linux/amd64' || 'linux/arm64' }}
-    steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-      - uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
-      - name: Build base stage (native ${{ env.PLATFORM }})
-        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
-        with:
-          context: .
-          file: ./Dockerfile
-          target: base
-          platforms: ${{ env.PLATFORM }}
-          cache-from: type=local,src=/home/docker/buildx-cache/${{ github.repository }}/${{ env.BRANCH_NAME }}/base
-          cache-to:   type=local,dest=/home/docker/buildx-cache/${{ github.repository }}/${{ env.BRANCH_NAME }}/base,mode=max
-          push: false
-
-  build-zilean-arch:
-    needs: [setup, fetch-latest-tags, build-base-arch]
-    strategy:
-      matrix: { arch: [ X64, ARM64 ] }
-    runs-on: [ "self-hosted", "Linux", "${{ matrix.arch }}" ]
-    env:
-      BRANCH_NAME: ${{ needs.setup.outputs.BRANCH_NAME }}
-      PLATFORM: ${{ matrix.arch == 'X64' && 'linux/amd64' || 'linux/arm64' }}
-    steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-      - uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
-      - name: Build zilean-builder (native ${{ env.PLATFORM }})
-        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
-        with:
-          context: .
-          file: ./Dockerfile
-          target: zilean-builder
-          platforms: ${{ env.PLATFORM }}
-          build-args: ZILEAN_TAG=${{ needs.fetch-latest-tags.outputs.ZILEAN_TAG }}
-          cache-from: |
-            type=local,src=/home/docker/buildx-cache/${{ github.repository }}/${{ env.BRANCH_NAME }}/base
-            type=local,src=/home/docker/buildx-cache/${{ github.repository }}/${{ env.BRANCH_NAME }}/zilean
-          cache-to:   type=local,dest=/home/docker/buildx-cache/${{ github.repository }}/${{ env.BRANCH_NAME }}/zilean,mode=max
-          push: false
-
-  build-pgadmin-arch:
-    needs: [setup, fetch-latest-tags, build-base-arch]
-    strategy:
-      matrix: { arch: [ X64, ARM64 ] }
-    runs-on: [ "self-hosted", "Linux", "${{ matrix.arch }}" ]
-    env:
-      BRANCH_NAME: ${{ needs.setup.outputs.BRANCH_NAME }}
-      PLATFORM: ${{ matrix.arch == 'X64' && 'linux/amd64' || 'linux/arm64' }}
-    steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-      - uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
-      - name: Build pgadmin-builder (native ${{ env.PLATFORM }})
-        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
-        with:
-          context: .
-          file: ./Dockerfile
-          target: pgadmin-builder
-          platforms: ${{ env.PLATFORM }}
-          cache-from: |
-            type=local,src=/home/docker/buildx-cache/${{ github.repository }}/${{ env.BRANCH_NAME }}/base
-            type=local,src=/home/docker/buildx-cache/${{ github.repository }}/${{ env.BRANCH_NAME }}/pgadmin
-          cache-to:   type=local,dest=/home/docker/buildx-cache/${{ github.repository }}/${{ env.BRANCH_NAME }}/pgadmin,mode=max
-          push: false
-
-  build-systemstats-arch:
-    needs: [setup, fetch-latest-tags, build-base-arch]
-    strategy:
-      matrix: { arch: [ X64, ARM64 ] }
-    runs-on: [ "self-hosted", "Linux", "${{ matrix.arch }}" ]
-    env:
-      BRANCH_NAME: ${{ needs.setup.outputs.BRANCH_NAME }}
-      PLATFORM: ${{ matrix.arch == 'X64' && 'linux/amd64' || 'linux/arm64' }}
-    steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-      - uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
-      - name: Build systemstats-builder (native ${{ env.PLATFORM }})
-        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
-        with:
-          context: .
-          file: ./Dockerfile
-          target: systemstats-builder
-          platforms: ${{ env.PLATFORM }}
-          build-args: SYS_STATS_TAG=${{ needs.fetch-latest-tags.outputs.SYS_STATS_TAG }}
-          cache-from: |
-            type=local,src=/home/docker/buildx-cache/${{ github.repository }}/${{ env.BRANCH_NAME }}/base
-            type=local,src=/home/docker/buildx-cache/${{ github.repository }}/${{ env.BRANCH_NAME }}/systemstats
-          cache-to:   type=local,dest=/home/docker/buildx-cache/${{ github.repository }}/${{ env.BRANCH_NAME }}/systemstats,mode=max
-          push: false
-
-  build-dumb-frontend-arch:
-    needs: [setup, fetch-latest-tags, build-base-arch]
-    strategy:
-      matrix: { arch: [ X64, ARM64 ] }
-    runs-on: [ "self-hosted", "Linux", "${{ matrix.arch }}" ]
-    env:
-      BRANCH_NAME: ${{ needs.setup.outputs.BRANCH_NAME }}
-      PLATFORM: ${{ matrix.arch == 'X64' && 'linux/amd64' || 'linux/arm64' }}
-    steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-      - uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
-      - name: Build dumb-frontend-builder (native ${{ env.PLATFORM }})
-        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
-        with:
-          context: .
-          file: ./Dockerfile
-          target: dumb-frontend-builder
-          platforms: ${{ env.PLATFORM }}
-          build-args: DUMB_FRONTEND_TAG=${{ needs.fetch-latest-tags.outputs.DUMB_FRONTEND_TAG }}
-          cache-from: |
-            type=local,src=/home/docker/buildx-cache/${{ github.repository }}/${{ env.BRANCH_NAME }}/base
-            type=local,src=/home/docker/buildx-cache/${{ github.repository }}/${{ env.BRANCH_NAME }}/dumb-frontend
-          cache-to:   type=local,dest=/home/docker/buildx-cache/${{ github.repository }}/${{ env.BRANCH_NAME }}/dumb-frontend,mode=max
-          push: false
-
-  build-cli-debrid-arch:
-    needs: [setup, fetch-latest-tags, build-base-arch]
-    strategy:
-      matrix: { arch: [ X64, ARM64 ] }
-    runs-on: [ "self-hosted", "Linux", "${{ matrix.arch }}" ]
-    env:
-      BRANCH_NAME: ${{ needs.setup.outputs.BRANCH_NAME }}
-      PLATFORM: ${{ matrix.arch == 'X64' && 'linux/amd64' || 'linux/arm64' }}
-    steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-      - uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
-      - name: Build cli_debrid-builder (native ${{ env.PLATFORM }})
-        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
-        with:
-          context: .
-          file: ./Dockerfile
-          target: cli_debrid-builder
-          platforms: ${{ env.PLATFORM }}
-          build-args: CLI_DEBRID_TAG=${{ needs.fetch-latest-tags.outputs.CLI_DEBRID_TAG }}
-          cache-from: |
-            type=local,src=/home/docker/buildx-cache/${{ github.repository }}/${{ env.BRANCH_NAME }}/base
-            type=local,src=/home/docker/buildx-cache/${{ github.repository }}/${{ env.BRANCH_NAME }}/cli-debrid
-          cache-to:   type=local,dest=/home/docker/buildx-cache/${{ github.repository }}/${{ env.BRANCH_NAME }}/cli-debrid,mode=max
-          push: false
-
-  build-requirements-arch:
-    needs: [setup, fetch-latest-tags, build-base-arch]
-    strategy:
-      matrix: { arch: [ X64, ARM64 ] }
-    runs-on: [ "self-hosted", "Linux", "${{ matrix.arch }}" ]
-    env:
-      BRANCH_NAME: ${{ needs.setup.outputs.BRANCH_NAME }}
-      PLATFORM: ${{ matrix.arch == 'X64' && 'linux/amd64' || 'linux/arm64' }}
-    steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-      - uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
-      - name: Build requirements-builder (native ${{ env.PLATFORM }})
-        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
-        with:
-          context: .
-          file: ./Dockerfile
-          target: requirements-builder
-          platforms: ${{ env.PLATFORM }}
-          cache-from: |
-            type=local,src=/home/docker/buildx-cache/${{ github.repository }}/${{ env.BRANCH_NAME }}/base
-            type=local,src=/home/docker/buildx-cache/${{ github.repository }}/${{ env.BRANCH_NAME }}/requirements
-          cache-to:   type=local,dest=/home/docker/buildx-cache/${{ github.repository }}/${{ env.BRANCH_NAME }}/requirements,mode=max
-          push: false
+          for name in SYS_STATS_TAG ZILEAN_TAG DUMB_FRONTEND_TAG CLI_DEBRID_TAG RCLONE_TAG ZURG_REF; do
+            value=${!name}
+            [[ -n "$value" && "$value" != "null" ]] || { echo "Failed to resolve $name" >&2; exit 1; }
+            echo "$name=$value" >> "$GITHUB_OUTPUT"
+          done
 
   build-amd64-digest:
     name: Build linux/amd64 → Docker Hub (by digest)
-    needs: [setup, fetch-latest-tags, build-base-arch, build-zilean-arch, build-pgadmin-arch, build-systemstats-arch, build-dumb-frontend-arch, build-cli-debrid-arch, build-requirements-arch]
+    needs: [setup, fetch-latest-tags]
     runs-on: [ self-hosted, Linux, X64 ]
+    timeout-minutes: 120
     permissions: { contents: read, packages: write }
     env:
       REPO_NAME:        ${{ needs.setup.outputs.REPO_NAME }}
@@ -291,7 +132,33 @@ jobs:
           username: ${{ env.DOCKER_USER }}
           password: ${{ env.DOCKER_PASS }}
 
+      - name: Prepare unified local cache
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          CACHE_ROOT="/home/docker/buildx-cache/${GITHUB_REPOSITORY}"
+          CACHE_DIR="${CACHE_ROOT}/unified"
+          LEGACY_CACHE="${CACHE_ROOT}/${BRANCH_NAME}/final"
+          mkdir -p "$CACHE_ROOT"
+          if [[ ! -f "${CACHE_DIR}/index.json" && -f "${LEGACY_CACHE}/index.json" ]]; then
+            echo "Migrating legacy ${BRANCH_NAME} final cache into the unified cache"
+            rm -rf "$CACHE_DIR"
+            mv "$LEGACY_CACHE" "$CACHE_DIR"
+          fi
+          echo "CACHE_DIR=$CACHE_DIR" >> "$GITHUB_ENV"
+          if [[ -f "${CACHE_DIR}/index.json" ]]; then
+            echo "CACHE_FROM=type=local,src=${CACHE_DIR}" >> "$GITHUB_ENV"
+            du -sh "$CACHE_DIR" || true
+          else
+            echo "CACHE_FROM=" >> "$GITHUB_ENV"
+            echo "No existing cache found; this architecture will populate it"
+          fi
+
       - uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
+        with:
+          buildkitd-config-inline: |
+            [worker.oci]
+              max-parallelism = 4
 
       - name: Build & push by digest (amd64) with cache
         id: push
@@ -302,31 +169,29 @@ jobs:
           target: final-stage
           platforms: linux/amd64
           push: true
-          outputs: type=registry,name=docker.io/${{ env.DOCKER_USER }}/${{ env.REPO_NAME }},push-by-digest=true,oci-mediatypes=true,compression=zstd,force-compression=true
+          outputs: type=registry,name=docker.io/${{ env.DOCKER_USER }}/${{ env.REPO_NAME }},push-by-digest=true,oci-mediatypes=true,compression=zstd
           provenance: true
-          sbom: true
-          cache-from: |
-            type=local,src=/home/docker/buildx-cache/${{ github.repository }}/${{ env.BRANCH_NAME }}/base
-            type=local,src=/home/docker/buildx-cache/${{ github.repository }}/${{ env.BRANCH_NAME }}/final
-            type=local,src=/home/docker/buildx-cache/${{ github.repository }}/${{ env.BRANCH_NAME }}/zilean
-            type=local,src=/home/docker/buildx-cache/${{ github.repository }}/${{ env.BRANCH_NAME }}/pgadmin
-            type=local,src=/home/docker/buildx-cache/${{ github.repository }}/${{ env.BRANCH_NAME }}/systemstats
-            type=local,src=/home/docker/buildx-cache/${{ github.repository }}/${{ env.BRANCH_NAME }}/dumb-frontend
-            type=local,src=/home/docker/buildx-cache/${{ github.repository }}/${{ env.BRANCH_NAME }}/cli-debrid
-            type=local,src=/home/docker/buildx-cache/${{ github.repository }}/${{ env.BRANCH_NAME }}/requirements
-          cache-to: type=local,dest=/home/docker/buildx-cache/${{ github.repository }}/${{ env.BRANCH_NAME }}/final,mode=max
+          sbom: ${{ github.ref_name == 'master' }}
+          cache-from: ${{ env.CACHE_FROM }}
+          cache-to: type=local,dest=${{ env.CACHE_DIR }},mode=max
           build-args: |
-            PGAGENT_TAG=${{ needs.fetch-latest-tags.outputs.PGAGENT_TAG }}
             SYS_STATS_TAG=${{ needs.fetch-latest-tags.outputs.SYS_STATS_TAG }}
             ZILEAN_TAG=${{ needs.fetch-latest-tags.outputs.ZILEAN_TAG }}
             DUMB_FRONTEND_TAG=${{ needs.fetch-latest-tags.outputs.DUMB_FRONTEND_TAG }}
             CLI_DEBRID_TAG=${{ needs.fetch-latest-tags.outputs.CLI_DEBRID_TAG }}
+            RCLONE_TAG=${{ needs.fetch-latest-tags.outputs.RCLONE_TAG }}
+            ZURG_REF=${{ needs.fetch-latest-tags.outputs.ZURG_REF }}
             DEV_VERSION=${{ needs.setup.outputs.DEV_VERSION }}
+
+      - name: Report unified cache size
+        if: always()
+        run: du -sh "${CACHE_DIR}" || true
 
   build-arm64-digest:
     name: Build linux/arm64 → Docker Hub (by digest)
-    needs: [setup, fetch-latest-tags, build-base-arch, build-zilean-arch, build-pgadmin-arch, build-systemstats-arch, build-dumb-frontend-arch, build-cli-debrid-arch, build-requirements-arch]
+    needs: [setup, fetch-latest-tags]
     runs-on: [ self-hosted, Linux, ARM64 ]
+    timeout-minutes: 120
     permissions: { contents: read, packages: write }
     env:
       REPO_NAME:        ${{ needs.setup.outputs.REPO_NAME }}
@@ -344,7 +209,33 @@ jobs:
           username: ${{ env.DOCKER_USER }}
           password: ${{ env.DOCKER_PASS }}
 
+      - name: Prepare unified local cache
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          CACHE_ROOT="/home/docker/buildx-cache/${GITHUB_REPOSITORY}"
+          CACHE_DIR="${CACHE_ROOT}/unified"
+          LEGACY_CACHE="${CACHE_ROOT}/${BRANCH_NAME}/final"
+          mkdir -p "$CACHE_ROOT"
+          if [[ ! -f "${CACHE_DIR}/index.json" && -f "${LEGACY_CACHE}/index.json" ]]; then
+            echo "Migrating legacy ${BRANCH_NAME} final cache into the unified cache"
+            rm -rf "$CACHE_DIR"
+            mv "$LEGACY_CACHE" "$CACHE_DIR"
+          fi
+          echo "CACHE_DIR=$CACHE_DIR" >> "$GITHUB_ENV"
+          if [[ -f "${CACHE_DIR}/index.json" ]]; then
+            echo "CACHE_FROM=type=local,src=${CACHE_DIR}" >> "$GITHUB_ENV"
+            du -sh "$CACHE_DIR" || true
+          else
+            echo "CACHE_FROM=" >> "$GITHUB_ENV"
+            echo "No existing cache found; this architecture will populate it"
+          fi
+
       - uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
+        with:
+          buildkitd-config-inline: |
+            [worker.oci]
+              max-parallelism = 8
 
       - name: Build & push by digest (arm64) with cache
         id: push
@@ -355,26 +246,23 @@ jobs:
           target: final-stage
           platforms: linux/arm64
           push: true
-          outputs: type=registry,name=docker.io/${{ env.DOCKER_USER }}/${{ env.REPO_NAME }},push-by-digest=true,oci-mediatypes=true,compression=zstd,force-compression=true
+          outputs: type=registry,name=docker.io/${{ env.DOCKER_USER }}/${{ env.REPO_NAME }},push-by-digest=true,oci-mediatypes=true,compression=zstd
           provenance: true
-          sbom: true
-          cache-from: |
-            type=local,src=/home/docker/buildx-cache/${{ github.repository }}/${{ env.BRANCH_NAME }}/base
-            type=local,src=/home/docker/buildx-cache/${{ github.repository }}/${{ env.BRANCH_NAME }}/final
-            type=local,src=/home/docker/buildx-cache/${{ github.repository }}/${{ env.BRANCH_NAME }}/zilean
-            type=local,src=/home/docker/buildx-cache/${{ github.repository }}/${{ env.BRANCH_NAME }}/pgadmin
-            type=local,src=/home/docker/buildx-cache/${{ github.repository }}/${{ env.BRANCH_NAME }}/systemstats
-            type=local,src=/home/docker/buildx-cache/${{ github.repository }}/${{ env.BRANCH_NAME }}/dumb-frontend
-            type=local,src=/home/docker/buildx-cache/${{ github.repository }}/${{ env.BRANCH_NAME }}/cli-debrid
-            type=local,src=/home/docker/buildx-cache/${{ github.repository }}/${{ env.BRANCH_NAME }}/requirements
-          cache-to: type=local,dest=/home/docker/buildx-cache/${{ github.repository }}/${{ env.BRANCH_NAME }}/final,mode=max
+          sbom: ${{ github.ref_name == 'master' }}
+          cache-from: ${{ env.CACHE_FROM }}
+          cache-to: type=local,dest=${{ env.CACHE_DIR }},mode=max
           build-args: |
-            PGAGENT_TAG=${{ needs.fetch-latest-tags.outputs.PGAGENT_TAG }}
             SYS_STATS_TAG=${{ needs.fetch-latest-tags.outputs.SYS_STATS_TAG }}
             ZILEAN_TAG=${{ needs.fetch-latest-tags.outputs.ZILEAN_TAG }}
             DUMB_FRONTEND_TAG=${{ needs.fetch-latest-tags.outputs.DUMB_FRONTEND_TAG }}
             CLI_DEBRID_TAG=${{ needs.fetch-latest-tags.outputs.CLI_DEBRID_TAG }}
+            RCLONE_TAG=${{ needs.fetch-latest-tags.outputs.RCLONE_TAG }}
+            ZURG_REF=${{ needs.fetch-latest-tags.outputs.ZURG_REF }}
             DEV_VERSION=${{ needs.setup.outputs.DEV_VERSION }}
+
+      - name: Report unified cache size
+        if: always()
+        run: du -sh "${CACHE_DIR}" || true
 
 
   build-and-push:
@@ -494,7 +382,11 @@ jobs:
   cleanup-cache:
     name: Prune local buildx cache
     needs: [ setup, build-amd64-digest, build-arm64-digest ]
-    if: always()
+    if: >
+      always() &&
+      (github.event_name == 'workflow_dispatch' ||
+      (github.event.pull_request.merged == true &&
+      startsWith(github.event.pull_request.title, 'chore(master): release ')))
     strategy:
       matrix:
         arch: [ X64, ARM64 ]
@@ -511,7 +403,6 @@ jobs:
       - name: Show cache size → prune → show again
         shell: bash
         env:
-          BRANCH_NAME: ${{ needs.setup.outputs.BRANCH_NAME }}
           KEEP_MANIFESTS: "1"
           MAX_DELETE_RATIO: "0.60"
           DRY_RUN: "false"
@@ -528,13 +419,13 @@ jobs:
           }' ERR
 
           ROOT_BASE="${RUNNER_CACHE_ROOT:-/home/docker/buildx-cache}"
-          ROOT="${ROOT_BASE}/${GITHUB_REPOSITORY}/${BRANCH_NAME}"
+          ROOT="${ROOT_BASE}/${GITHUB_REPOSITORY}"
           LOCK="${ROOT_BASE}/.prune.lock"
 
           echo "🖥️ Host: $(hostname) | Label: ${{ matrix.arch }}"
           echo "📁 Cache root: $ROOT"
 
-          [[ -d "$ROOT" ]] || { echo "No cache dir for this branch — nothing to prune."; exit 0; }
+          [[ -d "$ROOT/unified" ]] || { echo "No unified cache — nothing to prune."; exit 0; }
 
           echo "📊 Cache *before* prune:"
           du -x -h --max-depth=1 "$ROOT" | sort -hr | head -n 20 || true
@@ -548,7 +439,7 @@ jobs:
             | (if $L==0 then [] else $m[(clamp0($L-($n))):$L] end)
             | .[]? | (.digest // empty) | sub("^sha256:";"")'
 
-          for STAGE_DIR in "$ROOT"/*/ ; do
+          for STAGE_DIR in "$ROOT/unified/" ; do
             [[ -f "${STAGE_DIR}index.json" ]] || continue
             echo "::group::⏳  Pruning $(basename "$STAGE_DIR")"
 

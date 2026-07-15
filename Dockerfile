@@ -1,3 +1,7 @@
+# syntax=docker/dockerfile:1.7
+
+ARG RCLONE_TAG=latest
+
 ####################################################################################################################################################
 # Stage 0: base (Ubuntu 24.04 with common tooling)
 ####################################################################################################################################################
@@ -8,7 +12,11 @@ ENV DEBIAN_FRONTEND=noninteractive \
     PATH="/usr/lib/postgresql/16/bin:$PATH"
 
 # ---- Common packages & language runtimes ----------------------------------------------------------------------------------------------------------
-RUN apt-get update && \
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
+    --mount=type=cache,target=/root/.npm,sharing=locked \
+    rm -f /etc/apt/apt.conf.d/docker-clean && \
+    apt-get update && \
     # minimal helpers first
     apt-get install -y software-properties-common curl wget gnupg2 lsb-release ca-certificates && \
     # language / toolchain PPAs
@@ -34,9 +42,7 @@ RUN apt-get update && \
     # Node.js 24.x + global npm / pnpm (used by multiple builders)
     curl -fsSL https://deb.nodesource.com/setup_24.x | bash - && \
     apt-get install -y --no-install-recommends nodejs && \
-    npm install -g npm@10 pnpm@latest-10 && \
-    # clean
-    rm -rf /var/lib/apt/lists/*
+    npm install -g npm@10 pnpm@latest-10
 
 # make Postgres client binaries available in login shells
 RUN echo "export PATH=/usr/lib/postgresql/16/bin:\$PATH" > /etc/profile.d/postgresql.sh
@@ -46,7 +52,8 @@ RUN echo "export PATH=/usr/lib/postgresql/16/bin:\$PATH" >> /root/.bashrc
 # Stage 1: pgadmin-builder
 ####################################################################################################################################################
 FROM base AS pgadmin-builder
-RUN python3.11 -m venv /pgadmin/venv && \
+RUN --mount=type=cache,target=/root/.cache/pip,sharing=locked \
+    python3.11 -m venv /pgadmin/venv && \
     /pgadmin/venv/bin/python -m pip install --upgrade pip && \
     /pgadmin/venv/bin/python -m pip install pgadmin4
 
@@ -71,7 +78,9 @@ FROM base AS zilean-builder
 ARG TARGETARCH
 ARG ZILEAN_TAG
 WORKDIR /tmp
-RUN curl -L https://github.com/iPromKnight/zilean/archive/refs/tags/${ZILEAN_TAG}.zip -o zilean.zip && \
+RUN --mount=type=cache,target=/root/.cache/pip,sharing=locked \
+    --mount=type=cache,target=/root/.nuget/packages,sharing=locked \
+    curl -L https://github.com/iPromKnight/zilean/archive/refs/tags/${ZILEAN_TAG}.zip -o zilean.zip && \
     unzip zilean.zip && mv zilean-* /zilean && echo ${ZILEAN_TAG} > /zilean/version.txt && \
     cd /zilean && dotnet restore -a ${TARGETARCH} && \
     cd /zilean/src/Zilean.ApiService && dotnet publish -c Release --no-restore -a ${TARGETARCH} -o /zilean/app/ && \
@@ -87,8 +96,16 @@ ARG DUMB_FRONTEND_TAG
 RUN curl -L https://github.com/nicocapalbo/dmbdb/archive/refs/tags/${DUMB_FRONTEND_TAG}.zip -o dumb-frontend.zip && \
     unzip dumb-frontend.zip && mkdir -p /dumb/frontend && mv dmbdb*/* /dumb/frontend && rm dumb-frontend.zip
 WORKDIR /dumb/frontend
-RUN echo "store-dir=./.pnpm-store\nchild-concurrency=1\nfetch-retries=10\nfetch-retry-factor=3\nfetch-retry-mintimeout=15000" > /dumb/frontend/.npmrc && \
-    pnpm install --reporter=verbose && pnpm run build --log-level verbose
+RUN --mount=type=cache,target=/root/.local/share/pnpm/store,sharing=locked \
+    printf '%s\n' \
+      'store-dir=/root/.local/share/pnpm/store' \
+      'child-concurrency=1' \
+      'fetch-retries=10' \
+      'fetch-retry-factor=3' \
+      'fetch-retry-mintimeout=15000' > /dumb/frontend/.npmrc && \
+    pnpm install --reporter=verbose && \
+    pnpm run build --log-level verbose && \
+    rm -rf node_modules .nuxt node-compile-cache .pnpm-store
 
 ####################################################################################################################################################
 # Stage 5: cli_debrid-builder
@@ -97,7 +114,8 @@ FROM base AS cli_debrid-builder
 ARG CLI_DEBRID_TAG
 RUN curl -L https://github.com/godver3/cli_debrid/archive/refs/tags/${CLI_DEBRID_TAG}.zip -o cli_debrid.zip && \
     unzip cli_debrid.zip && mkdir -p /cli_debrid && mv cli_debrid-*/* /cli_debrid && rm -rf cli_debrid.zip cli_debrid-*/*
-RUN python3.11 -m venv /cli_debrid/venv && \
+RUN --mount=type=cache,target=/root/.cache/pip,sharing=locked \
+    python3.11 -m venv /cli_debrid/venv && \
     /cli_debrid/venv/bin/python -m pip install --upgrade pip && \
     /cli_debrid/venv/bin/python -m pip install -r /cli_debrid/requirements-linux.txt
 
@@ -106,7 +124,8 @@ RUN python3.11 -m venv /cli_debrid/venv && \
 ####################################################################################################################################################
 FROM base AS requirements-builder
 COPY pyproject.toml poetry.lock ./
-RUN python3.11 -m venv /venv && \
+RUN --mount=type=cache,target=/root/.cache/pip,sharing=locked \
+    python3.11 -m venv /venv && \
     . /venv/bin/activate && \
     pip install --upgrade pip && pip install poetry && \
     poetry config virtualenvs.create false && poetry install --no-root && \
@@ -116,9 +135,12 @@ RUN python3.11 -m venv /venv && \
 ####################################################################################################################################################
 # Stage 7: final-stage
 ####################################################################################################################################################
+FROM rclone/rclone:${RCLONE_TAG} AS rclone-binary
+
 FROM base AS final-stage
 ARG TARGETARCH
 ARG DEV_VERSION
+ARG ZURG_REF=main
 LABEL name="DUMB" \
       description="Debrid Unlimited Media Bridge" \
       url="https://github.com/I-am-PUID-0/DUMB" \
@@ -132,11 +154,11 @@ COPY --from=systemstats-builder /usr/lib/postgresql/16/lib/system_stats.so /usr/
 COPY --from=zilean-builder /zilean /zilean
 COPY --from=dumb-frontend-builder /dumb/frontend /dumb/frontend
 COPY --from=cli_debrid-builder /cli_debrid /cli_debrid
-COPY --from=rclone/rclone:latest /usr/local/bin/rclone /usr/local/bin/rclone
+COPY --from=rclone-binary /usr/local/bin/rclone /usr/local/bin/rclone
 
 # Zurg default config tweaks
-ADD https://raw.githubusercontent.com/debridmediamanager/zurg-testing/main/config.yml /zurg/
-ADD https://raw.githubusercontent.com/debridmediamanager/zurg-testing/main/scripts/plex_update.sh /zurg/
+ADD https://raw.githubusercontent.com/debridmediamanager/zurg-testing/${ZURG_REF}/config.yml /zurg/
+ADD https://raw.githubusercontent.com/debridmediamanager/zurg-testing/${ZURG_REF}/scripts/plex_update.sh /zurg/
 RUN sed -i 's/^on_library_update: sh plex_update.sh.*$/# &/' /zurg/config.yml
 
 # Project code
