@@ -1,0 +1,58 @@
+{
+  "name": "DUMB Ubuntu 26.04 Test",
+  "image": "iampuid0/dumb:ubuntu-26.04@sha256:f64e570e8cfdc71b3272641d7c0e5f478264c4c318533fb49769e789d32229ac",
+  "workspaceFolder": "/workspace",
+  "remoteEnv": {
+    "PATH": "/venv/bin:${containerEnv:PATH}",
+    "VIRTUAL_ENV": "/venv"
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "ms-python.black-formatter"
+      ],
+      "settings": {
+        "terminal.integrated.defaultProfile.linux": "bash",
+        "python.formatting.provider": "black",
+        "editor.formatOnSave": true,
+        "python.defaultInterpreterPath": "/venv/bin/python",
+        "git.path": "/usr/bin/git"
+      }
+    }
+  },
+  "forwardPorts": [
+    3005,
+    8000,
+    3000,
+    9090,
+    5050,
+    8182,
+    8282,
+    32400
+  ],
+  "mounts": [
+    "source=${localWorkspaceFolder},target=/workspace,type=bind",
+    "source=${localWorkspaceFolder}/main.py,target=/main.py,type=bind",
+    "source=${localWorkspaceFolder}/utils,target=/utils,type=bind",
+    "source=dumb-ubuntu-2604-data,target=/data,type=volume",
+    "source=dumb-ubuntu-2604-log,target=/log,type=volume",
+    "source=dumb-ubuntu-2604-config,target=/config,type=volume",
+    "source=dumb-ubuntu-2604-debrid,target=/mnt/debrid,type=volume",
+    "source=codex-home,target=/root/.codex,type=volume",
+    "source=claude-home,target=/root/.claude,type=volume"
+  ],
+  "runArgs": [
+    "--name=dumb_dev_ubuntu_2604",
+    "--hostname=dumb_dev_ubuntu_2604",
+    "--dns=8.8.8.8",
+    "--dns=8.8.4.4",
+    "--device=/dev/fuse:/dev/fuse:rwm",
+    "--cap-add=SYS_ADMIN",
+    "--security-opt=apparmor:unconfined",
+    "--shm-size=128m",
+    "--pull=always"
+  ],
+  "postCreateCommand": "apt update && apt install -y gcc python3.11-dev libpq-dev && curl -sSL https://install.python-poetry.org | /usr/bin/python - && install -d /usr/local/bin && printf '#!/bin/sh\\nexec /root/.local/bin/poetry \"$@\"\\n' > /usr/local/bin/poetry && chmod +x /usr/local/bin/poetry && . /venv/bin/activate && poetry config virtualenvs.create false && poetry install --no-root --with dev && /venv/bin/python -m pip install --upgrade --force-reinstall \"cffi>=1.16,<3.0\" \"cryptography>=48.0.1,<49.0.0\" && git config --global --add safe.directory /workspace && poetry run pre-commit install && poetry run pre-commit install --hook-type pre-push",
+  "postStartCommand": "grep -qxF '. /venv/bin/activate' /root/.bashrc || printf '\\n. /venv/bin/activate\\n' >> /root/.bashrc"
+}

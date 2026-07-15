@@ -90,6 +90,20 @@ RUN --mount=type=cache,target=/root/.cache/pip,sharing=shared \
     python3.11 -m venv /pgadmin/venv && \
     /pgadmin/venv/bin/python -m pip install --upgrade pip setuptools wheel && \
     /pgadmin/venv/bin/python -m pip install "pgadmin4==${PGADMIN_VERSION}" && \
+    # pgAdmin 9.16 pins setuptools to 82.x on Python >3.9, but setuptools 83
+    # contains the CVE-2026-59890 fix and remains runtime-compatible. Widen
+    # the installed package metadata before upgrading so pip check remains a
+    # meaningful compatibility gate.
+    PGADMIN_METADATA="$(find /pgadmin/venv/lib/python3.11/site-packages \
+      -path '*/pgadmin4-*.dist-info/METADATA' -print -quit)" && \
+    test -n "${PGADMIN_METADATA}" && \
+    sed -i 's/setuptools==82\.\*/setuptools>=83,<84/' "${PGADMIN_METADATA}" && \
+    grep -q 'Requires-Dist: setuptools>=83,<84; python_version > "3.9"' "${PGADMIN_METADATA}" && \
+    /pgadmin/venv/bin/python -m pip install --upgrade --no-deps \
+      "setuptools>=83,<84" && \
+    /pgadmin/venv/bin/python -m pip check && \
+    /pgadmin/venv/bin/python -c \
+      'import importlib.metadata, pgadmin4; assert importlib.metadata.version("setuptools").startswith("83.")' && \
     find /pgadmin/venv/lib/python3.11/site-packages -type d \
       \( -name tests -o -name test \) -prune -exec rm -rf '{}' +
 
@@ -180,6 +194,7 @@ RUN --mount=type=cache,target=/root/.cache/pip,sharing=shared \
     /cli_debrid/venv/bin/python -m pip install -r /cli_debrid/requirements-linux.txt && \
     /cli_debrid/venv/bin/python -m pip install --upgrade \
       "certifi>=2026.5.20" \
+      "Flask>=3.1.3,<4" \
       "Flask-Cors>=6.0.0" \
       "idna>=3.7" \
       "Markdown>=3.8.1" \
@@ -198,7 +213,7 @@ RUN --mount=type=cache,target=/root/.cache/pip,sharing=shared \
     /cli_debrid/venv/bin/python -m pip install --upgrade --no-deps \
       "lxml>=6.1.0,<7.0.0" && \
     /cli_debrid/venv/bin/python -c \
-      'import lxml, nyaapy; from bs4 import BeautifulSoup; assert BeautifulSoup("<p>ok</p>", "lxml").p.text == "ok"' && \
+      'import flask, flask_cors, flask_login, flask_sqlalchemy, lxml, nyaapy; from bs4 import BeautifulSoup; assert BeautifulSoup("<p>ok</p>", "lxml").p.text == "ok"' && \
     /cli_debrid/venv/bin/python -m pip check && \
     find /cli_debrid/venv/lib/python3.11/site-packages -type d \
       \( -name tests -o -name test \) -prune -exec rm -rf '{}' + && \
