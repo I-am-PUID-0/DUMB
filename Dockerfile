@@ -8,9 +8,9 @@ FROM mcr.microsoft.com/dotnet/aspnet:9.0-noble AS dotnet-runtime
 FROM mcr.microsoft.com/dotnet/sdk:9.0-noble AS dotnet-sdk
 
 ####################################################################################################################################################
-# Stage 0: base (Ubuntu 24.04 with common tooling)
+# Stage 0: base (Ubuntu 26.04 with common tooling)
 ####################################################################################################################################################
-FROM ubuntu:24.04 AS base
+FROM ubuntu:26.04 AS base
 
 ARG APT_REFRESH=manual
 ARG NPM_VERSION=12.0.1
@@ -22,7 +22,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
     PATH="/usr/local/go/bin:/usr/lib/postgresql/16/bin:$PATH"
 
 COPY --from=go-runtime /usr/local/go /usr/local/go
-COPY --from=go-runtime /etc/ssl/certs /etc/ssl/certs
+COPY --from=go-runtime /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 COPY --from=dotnet-runtime /usr/share/dotnet /usr/share/dotnet
 
 # ---- Common packages & language runtimes ----------------------------------------------------------------------------------------------------------
@@ -30,6 +30,11 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/root/.npm,sharing=locked \
     echo "Refreshing APT metadata for ${APT_REFRESH}" && \
     rm -f /etc/apt/apt.conf.d/docker-clean && \
+    # Ubuntu 26.04's minimal image has the HTTPS method but not the
+    # ca-certificates package. Point APT at the bootstrapped bundle explicitly
+    # until the current Ubuntu package is installed during this layer.
+    printf '%s\n' 'Acquire::https::CaInfo "/etc/ssl/certs/ca-certificates.crt";' \
+      > /etc/apt/apt.conf.d/99https-ca-info && \
     # ARM runners in particular can have port 80 blocked while HTTPS remains
     # reachable. Use HTTPS for Ubuntu before the first metadata refresh.
     sed -i 's#http://ports.ubuntu.com#https://ports.ubuntu.com#g; s#http://archive.ubuntu.com#https://archive.ubuntu.com#g; s#http://security.ubuntu.com#https://security.ubuntu.com#g' \
@@ -42,8 +47,10 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     # language / toolchain PPAs
     add-apt-repository ppa:deadsnakes/ppa -y && \
     # PostgreSQL APT repo
-    wget -qO- https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add - && \
-    echo "deb https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list && \
+    install -d -m 0755 /etc/apt/keyrings && \
+    wget -qO /etc/apt/keyrings/postgresql.asc https://www.postgresql.org/media/keys/ACCC4CF8.asc && \
+    echo "deb [signed-by=/etc/apt/keyrings/postgresql.asc] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" \
+      > /etc/apt/sources.list.d/pgdg.list && \
     rm -rf /var/lib/apt/lists/* && \
     apt-get -o Acquire::Retries=5 -o Acquire::https::Timeout=30 -o APT::Update::Error-Mode=any update && \
     # core build/runtime packages shared by almost every stage
