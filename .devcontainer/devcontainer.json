@@ -1,9 +1,18 @@
 {
   "name": "DUMB Dev Container",
-  "image": "iampuid0/dumb:dev",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": "..",
+    "options": [
+      "--pull"
+    ],
+    "args": {
+      "DUMB_IMAGE": "iampuid0/dumb:dev"
+    }
+  },
   "workspaceFolder": "/workspace",
   "remoteEnv": {
-    "PATH": "/venv/bin:${containerEnv:PATH}",
+    "PATH": "/opt/poetry/bin:/venv/bin:${containerEnv:PATH}",
     "VIRTUAL_ENV": "/venv"
   },
   "customizations": {
@@ -50,9 +59,8 @@
     "--device=/dev/fuse:/dev/fuse:rwm",
     "--cap-add=SYS_ADMIN",
     "--security-opt=apparmor:unconfined",
-    "--shm-size=128m",
-    "--pull=always"
+    "--shm-size=128m"
   ],
-  "postCreateCommand": "apt update && apt install -y gcc python3.11-dev libpq-dev && curl -sSL https://install.python-poetry.org | /usr/bin/python - && install -d /usr/local/bin && printf '#!/bin/sh\\nexec /root/.local/bin/poetry \"$@\"\\n' > /usr/local/bin/poetry && chmod +x /usr/local/bin/poetry && . /venv/bin/activate && poetry config virtualenvs.create false && poetry install --no-root --with dev && /venv/bin/python -m pip install --upgrade --force-reinstall \"cffi>=1.16,<3.0\" \"cryptography>=48.0.1,<49.0.0\" && git config --global --add safe.directory /workspace && poetry run pre-commit install && poetry run pre-commit install --hook-type pre-push",
-  "postStartCommand": "grep -qxF '. /venv/bin/activate' /root/.bashrc || printf '\\n. /venv/bin/activate\\n' >> /root/.bashrc"
+  "postCreateCommand": "bash .devcontainer/setup-workspace.sh",
+  "postAttachCommand": "bash .devcontainer/setup-workspace.sh"
 }
