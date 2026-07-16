@@ -12,13 +12,13 @@
         <meta name="author" content="DUMB Team">
       
       
-        <link rel="canonical" href="https://dumbarr.com/deployment/qnap/">
+        <link rel="canonical" href="https://dumbarr.com/features/arr-postgres-migration/">
       
       
-        <link rel="prev" href="../synology/">
+        <link rel="prev" href="../auto-update/">
       
       
-        <link rel="next" href="../truenas/">
+        <link rel="next" href="../symlinks/">
       
       
         
@@ -29,7 +29,7 @@
     
     
       
-        <title>Deploy with QNAP - Debrid Unlimited Media Bridge</title>
+        <title>Arr SQLite to PostgreSQL Migration - Debrid Unlimited Media Bridge</title>
       
     
     
@@ -115,6 +115,11 @@
     <label class="md-overlay" for="__drawer"></label>
     <div data-md-component="skip">
       
+        
+        <a href="#arr-sqlite-to-postgresql-migration" class="md-skip">
+          Skip to content
+        </a>
+      
     </div>
     <div data-md-component="announce">
       
@@ -155,7 +160,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Deploy with QNAP
+              Arr SQLite to PostgreSQL Migration
             
           </span>
         </div>
@@ -263,11 +268,13 @@
   
   
   
+    
+  
   
     
     
-      <li class="md-tabs__item">
-        <a href="../../features/" class="md-tabs__link">
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../" class="md-tabs__link">
           
   
   Features
@@ -339,13 +346,11 @@
   
   
   
-    
-  
   
     
     
-      <li class="md-tabs__item md-tabs__item--active">
-        <a href="../" class="md-tabs__link">
+      <li class="md-tabs__item">
+        <a href="../../deployment/" class="md-tabs__link">
           
   
   Deployment
@@ -538,6 +543,8 @@
       
   
   
+    
+  
   
   
     
@@ -575,22 +582,23 @@
     
     
       
+        
+        
+      
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
       
         
         
-          
-        
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../features/" class="md-nav__link ">
+            <a href="../" class="md-nav__link ">
               
   
   
@@ -610,13 +618,13 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_2" id="__nav_2_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_2" id="__nav_2_label" tabindex="">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_2">
             <span class="md-nav__icon md-icon"></span>
             
@@ -636,7 +644,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/configuration/" class="md-nav__link">
+      <a href="../configuration/" class="md-nav__link">
         
   
   
@@ -666,7 +674,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/usage/" class="md-nav__link">
+      <a href="../usage/" class="md-nav__link">
         
   
   
@@ -696,7 +704,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/authentication/" class="md-nav__link">
+      <a href="../authentication/" class="md-nav__link">
         
   
   
@@ -726,7 +734,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/auto-restart/" class="md-nav__link">
+      <a href="../auto-restart/" class="md-nav__link">
         
   
   
@@ -756,7 +764,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/auto-update/" class="md-nav__link">
+      <a href="../auto-update/" class="md-nav__link">
         
   
   
@@ -783,10 +791,37 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../../features/arr-postgres-migration/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Arr PostgreSQL Migration
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -802,6 +837,93 @@
   
 
       </a>
+      
+        
+
+
+<nav class="md-nav md-nav--secondary" aria-label="On this page">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      On this page
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#what-the-tool-automates" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What the tool automates
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#recommended-flow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Recommended flow
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#application-logs-are-optional" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Application logs are optional
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#rollback-behavior" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Rollback behavior
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#postgresql-backups-after-migration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        PostgreSQL backups after migration
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#supported-scope" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Supported scope
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -814,7 +936,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/symlinks/" class="md-nav__link">
+      <a href="../symlinks/" class="md-nav__link">
         
   
   
@@ -844,7 +966,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/seerr-sync/" class="md-nav__link">
+      <a href="../seerr-sync/" class="md-nav__link">
         
   
   
@@ -874,7 +996,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/ffprobe-monitor/" class="md-nav__link">
+      <a href="../ffprobe-monitor/" class="md-nav__link">
         
   
   
@@ -904,7 +1026,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/metrics/" class="md-nav__link">
+      <a href="../metrics/" class="md-nav__link">
         
   
   
@@ -934,7 +1056,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/ai-assistant/" class="md-nav__link">
+      <a href="../ai-assistant/" class="md-nav__link">
         
   
   
@@ -964,7 +1086,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/embedded-ui/" class="md-nav__link">
+      <a href="../embedded-ui/" class="md-nav__link">
         
   
   
@@ -2802,8 +2924,6 @@
       
   
   
-    
-  
   
   
     
@@ -2835,23 +2955,22 @@
     
     
       
-        
-        
-      
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" checked>
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6" >
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../" class="md-nav__link ">
+            <a href="../../deployment/" class="md-nav__link ">
               
   
   
@@ -2871,13 +2990,13 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_6" id="__nav_6_label" tabindex="">
+              <label class="md-nav__link " for="__nav_6" id="__nav_6_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_6">
             <span class="md-nav__icon md-icon"></span>
             
@@ -2897,7 +3016,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../docker/" class="md-nav__link">
+      <a href="../../deployment/docker/" class="md-nav__link">
         
   
   
@@ -2927,7 +3046,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../portainer/" class="md-nav__link">
+      <a href="../../deployment/portainer/" class="md-nav__link">
         
   
   
@@ -2957,7 +3076,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../unraid/" class="md-nav__link">
+      <a href="../../deployment/unraid/" class="md-nav__link">
         
   
   
@@ -2987,7 +3106,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../wsl/" class="md-nav__link">
+      <a href="../../deployment/wsl/" class="md-nav__link">
         
   
   
@@ -3017,7 +3136,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../proxmox/" class="md-nav__link">
+      <a href="../../deployment/proxmox/" class="md-nav__link">
         
   
   
@@ -3047,7 +3166,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../synology/" class="md-nav__link">
+      <a href="../../deployment/synology/" class="md-nav__link">
         
   
   
@@ -3074,17 +3193,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../../deployment/qnap/" class="md-nav__link">
         
   
   
@@ -3102,7 +3214,6 @@
   
 
       </a>
-      
     </li>
   
 
@@ -3115,7 +3226,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../truenas/" class="md-nav__link">
+      <a href="../../deployment/truenas/" class="md-nav__link">
         
   
   
@@ -3145,7 +3256,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../dockge/" class="md-nav__link">
+      <a href="../../deployment/dockge/" class="md-nav__link">
         
   
   
@@ -4425,6 +4536,82 @@
   
   
   
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      On this page
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#what-the-tool-automates" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What the tool automates
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#recommended-flow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Recommended flow
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#application-logs-are-optional" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Application logs are optional
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#rollback-behavior" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Rollback behavior
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#postgresql-backups-after-migration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        PostgreSQL backups after migration
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#supported-scope" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Supported scope
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
   
 </nav>
                   </div>
@@ -4470,7 +4657,7 @@
         <a href="../" class="md-path__link">
           
   <span class="md-ellipsis">
-    Deployment
+    Features
   </span>
 
         </a>
@@ -4487,7 +4674,7 @@
                 
                   
   
-    <a href="https://github.com/I-am-PUID-0/DUMB_docs/edit/master/docs/deployment/qnap.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+    <a href="https://github.com/I-am-PUID-0/DUMB_docs/edit/master/docs/features/arr-postgres-migration.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
       
       <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-file-pen" viewBox="0 0 24 24"><path d="M12.659 22H18a2 2 0 0 0 2-2V8a2.4 2.4 0 0 0-.706-1.706l-3.588-3.588A2.4 2.4 0 0 0 14 2H6a2 2 0 0 0-2 2v9.34"/><path d="M14 2v5a1 1 0 0 0 1 1h5M10.378 12.622a1 1 0 0 1 3 3.003L8.36 20.637a2 2 0 0 1-.854.506l-2.867.837a.5.5 0 0 1-.62-.62l.836-2.869a2 2 0 0 1 .506-.853z"/></svg>
     </a>
@@ -4496,16 +4683,95 @@
     
       
     
-    <a href="https://github.com/I-am-PUID-0/DUMB_docs/raw/master/docs/deployment/qnap.md" title="View source of this page" class="md-content__button md-icon">
+    <a href="https://github.com/I-am-PUID-0/DUMB_docs/raw/master/docs/features/arr-postgres-migration.md" title="View source of this page" class="md-content__button md-icon">
       
       <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-file-code-2" viewBox="0 0 24 24"><path d="M4 12.15V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.706.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2h-3.35"/><path d="M14 2v5a1 1 0 0 0 1 1h5M5 16l-3 3 3 3M9 22l3-3-3-3"/></svg>
     </a>
   
 
 
-  <h1>Deploy with QNAP</h1>
-
-
+<h1 id="arr-sqlite-to-postgresql-migration">Arr SQLite to PostgreSQL Migration<a class="headerlink" href="#arr-sqlite-to-postgresql-migration" title="Permanent link">&para;</a></h1>
+<p>DUMB provides a guarded migration tool for moving an existing <strong>Sonarr or Radarr</strong> instance from SQLite to DUMB's PostgreSQL service. The tool is available from the instance's service page under <strong>Database Migration</strong>.</p>
+<p>This is deliberately separate from <code>postgres_enabled</code>. Turning that setting on directly changes the database backend but does not copy existing data.</p>
+<div class="admonition danger">
+<p class="admonition-title">Servarr considers this unsupported</p>
+<p>Sonarr and Radarr document SQLite-to-PostgreSQL migration as unsupported and may not assist with failures. DUMB adds backups, rehearsal, validation, and rollback controls, but it cannot turn the migration into an upstream-supported operation.</p>
+</div>
+<h2 id="what-the-tool-automates">What the tool automates<a class="headerlink" href="#what-the-tool-automates" title="Permanent link">&para;</a></h2>
+<p>The workflow:</p>
+<ol>
+<li>Confirms that the instance is enabled, currently uses SQLite, meets the supported version floor, and has healthy SQLite files.</li>
+<li>Verifies PostgreSQL connectivity, database-creation privileges, and backup space.</li>
+<li>Creates consistent SQLite backups with SQLite's backup API and verifies the copies.</li>
+<li>Creates the instance's PostgreSQL main/log databases.</li>
+<li>Briefly starts the Arr against PostgreSQL when the current binary needs to initialize its schema.</li>
+<li>Imports data into that Arr-created schema using DUMB's native data-only importer.</li>
+<li>Resets PostgreSQL sequences dynamically and compares every imported table's row count with SQLite.</li>
+<li>During cutover, persists <code>postgres_enabled: true</code> only after import validation succeeds.</li>
+<li>Automatically restores the original <code>config.xml</code> and SQLite mode if cutover fails.</li>
+</ol>
+<p>Job state and backups are stored under:</p>
+<div class="highlight"><pre><span></span><code>/config/arr-postgres-migration/
+├── jobs/
+└── backups/
+</code></pre></div>
+<p>The original SQLite databases are not deleted.</p>
+<h2 id="recommended-flow">Recommended flow<a class="headerlink" href="#recommended-flow" title="Permanent link">&para;</a></h2>
+<h3 id="1-run-preflight">1. Run preflight<a class="headerlink" href="#1-run-preflight" title="Permanent link">&para;</a></h3>
+<p>Open the Sonarr or Radarr service page, select <strong>Database Migration</strong>, and review every check. A failed check blocks the job. Warnings require review but may be expected, such as an Arr version that could not be read from its logs or PostgreSQL databases that already contain an initialized schema.</p>
+<h3 id="2-run-a-rehearsal">2. Run a rehearsal<a class="headerlink" href="#2-run-a-rehearsal" title="Permanent link">&para;</a></h3>
+<p>Rehearsal is the default and is required by dmbdb before it enables cutover.</p>
+<p>A rehearsal:</p>
+<ul>
+<li>takes a consistent SQLite snapshot;</li>
+<li>initializes the current Arr PostgreSQL schema in isolated staging databases;</li>
+<li>imports into temporary rehearsal databases;</li>
+<li>validates all table counts and important library counts;</li>
+<li>removes the rehearsal databases; and</li>
+<li>leaves the service using SQLite.</li>
+</ul>
+<p>Schema initialization causes a short service interruption. The longer rehearsal import then runs against isolated staging databases while the production instance is back on SQLite.</p>
+<h3 id="3-review-results">3. Review results<a class="headerlink" href="#3-review-results" title="Permanent link">&para;</a></h3>
+<p>The panel shows the current stage, percentage, detailed event history, imported tables/rows, and important library counts. Do not proceed if the rehearsal fails or automatically rolls back.</p>
+<h3 id="4-run-guarded-cutover">4. Run guarded cutover<a class="headerlink" href="#4-run-guarded-cutover" title="Permanent link">&para;</a></h3>
+<p>Cutover stops the selected Arr, creates a new cold SQLite backup, resets the named PostgreSQL target databases, imports and validates the fresh snapshot, then switches the instance to PostgreSQL.</p>
+<p>Downtime depends primarily on SQLite database size and storage speed. Do not restart DUMB or the Arr during this job.</p>
+<h3 id="5-validate-the-application">5. Validate the application<a class="headerlink" href="#5-validate-the-application" title="Permanent link">&para;</a></h3>
+<p>After cutover, check:</p>
+<ul>
+<li>series/movies and file counts;</li>
+<li>root folders;</li>
+<li>quality profiles and custom formats;</li>
+<li>indexers and download clients;</li>
+<li>recent history; and</li>
+<li>a harmless write, such as saving an unchanged setting.</li>
+</ul>
+<p>Keep the SQLite backup until the PostgreSQL deployment and its backup schedule have been proven.</p>
+<h2 id="application-logs-are-optional">Application logs are optional<a class="headerlink" href="#application-logs-are-optional" title="Permanent link">&para;</a></h2>
+<p>The main Arr database contains configuration, library state, and history. <code>logs.db</code> contains application log entries and can be very large.</p>
+<p>Leave <strong>Migrate the Arr log database too</strong> disabled unless old application log entries are important. When disabled, the PostgreSQL log database starts fresh and cutover is faster.</p>
+<h2 id="rollback-behavior">Rollback behavior<a class="headerlink" href="#rollback-behavior" title="Permanent link">&para;</a></h2>
+<p>For a completed cutover, the panel can restore the preserved pre-cutover <code>config.xml</code>, set <code>postgres_enabled: false</code>, and restart the instance against SQLite.</p>
+<div class="admonition warning">
+<p class="admonition-title">Rollback is not reverse migration</p>
+<p>Changes made after PostgreSQL cutover are not copied back into SQLite. Roll back promptly if validation fails. A later rollback can lose settings, library changes, history, or other writes made while PostgreSQL was active.</p>
+</div>
+<p>An interrupted job is marked as interrupted after the DUMB API restarts. Inspect the job and restore SQLite before retrying.</p>
+<h2 id="postgresql-backups-after-migration">PostgreSQL backups after migration<a class="headerlink" href="#postgresql-backups-after-migration" title="Permanent link">&para;</a></h2>
+<p>Sonarr and Radarr built-in backups do not include PostgreSQL data. Configure scheduled <code>pg_dump</code> backups for both the main and log databases after cutover. Keep <code>/postgres_data</code> protected by normal host/container backups as well.</p>
+<h2 id="supported-scope">Supported scope<a class="headerlink" href="#supported-scope" title="Permanent link">&para;</a></h2>
+<p>The guided importer initially supports:</p>
+<ul>
+<li>Sonarr <code>4.0.0.615</code> or newer</li>
+<li>Radarr <code>4.1.0.6133</code> or newer</li>
+<li>DUMB-managed PostgreSQL with a role that has <code>CREATEDB</code> and superuser privileges</li>
+</ul>
+<p>Lidarr, Prowlarr, and Whisparr can use <code>postgres_enabled</code>, but the guided migration tool does not migrate their existing SQLite data yet.</p>
+<p>Upstream references:</p>
+<ul>
+<li><a href="https://wiki.servarr.com/en/sonarr/postgres-setup">Sonarr PostgreSQL setup</a></li>
+<li><a href="https://wiki.servarr.com/radarr/postgres-setup">Radarr PostgreSQL setup</a></li>
+</ul>
 
 
 
@@ -4546,7 +4812,7 @@
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../synology/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Synology">
+          <a href="../auto-update/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Auto-update">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-arrow-left" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7M19 12H5"/></svg>
@@ -4556,20 +4822,20 @@
                 Previous
               </span>
               <div class="md-ellipsis">
-                Synology
+                Auto-update
               </div>
             </div>
           </a>
         
         
           
-          <a href="../truenas/" class="md-footer__link md-footer__link--next" aria-label="Next: TrueNAS">
+          <a href="../symlinks/" class="md-footer__link md-footer__link--next" aria-label="Next: Symlink Operations">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                TrueNAS
+                Symlink Operations
               </div>
             </div>
             <div class="md-footer__button md-icon">

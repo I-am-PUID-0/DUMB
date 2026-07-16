@@ -574,6 +574,8 @@
       
         
       
+        
+      
     
     
     
@@ -769,6 +771,34 @@
     
   
     Auto-update
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../features/arr-postgres-migration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Arr PostgreSQL Migration
   
 
     
@@ -3385,6 +3415,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#arr-postgresql-migration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Arr PostgreSQL Migration
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#related-files" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4507,6 +4548,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#arr-postgresql-migration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Arr PostgreSQL Migration
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#related-files" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4982,6 +5034,38 @@ flowchart TD
 <span class="p">}</span>
 </code></pre></div>
 <hr />
+<h2 id="arr-postgresql-migration">Arr PostgreSQL Migration<a class="headerlink" href="#arr-postgresql-migration" title="Permanent link">&para;</a></h2>
+<p>These endpoints power the guarded Sonarr/Radarr SQLite-to-PostgreSQL workflow. See <a href="../../features/arr-postgres-migration/">Arr SQLite to PostgreSQL Migration</a> for operator guidance and limitations.</p>
+<h3 id="get-processarr-postgres-migrationpreflight"><code>GET /process/arr-postgres-migration/preflight</code><a class="headerlink" href="#get-processarr-postgres-migrationpreflight" title="Permanent link">&para;</a></h3>
+<p>Query parameter: <code>process_name</code>.</p>
+<p>Returns non-mutating SQLite integrity, Arr version, PostgreSQL connectivity/role, target database, and backup-space checks. <code>ready</code> is false when any blocking check fails. The response never includes the PostgreSQL password.</p>
+<h3 id="post-processarr-postgres-migrationstart"><code>POST /process/arr-postgres-migration/start</code><a class="headerlink" href="#post-processarr-postgres-migrationstart" title="Permanent link">&para;</a></h3>
+<p>Queues a persisted rehearsal or cutover job.</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;process_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Sonarr NzbDAV&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;mode&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;rehearsal&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;include_logs&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;confirmation&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;MIGRATE Sonarr NzbDAV&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;acknowledge_unsupported&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;acknowledge_backup&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;acknowledge_target_reset&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span>
+<span class="p">}</span>
+</code></pre></div>
+<p><code>mode</code> must be <code>rehearsal</code> or <code>cutover</code>. The backend requires every acknowledgement and exact confirmation text. Jobs and detailed stage events persist under <code>/config/arr-postgres-migration/jobs</code>.</p>
+<h3 id="get-processarr-postgres-migrationstatus"><code>GET /process/arr-postgres-migration/status</code><a class="headerlink" href="#get-processarr-postgres-migrationstatus" title="Permanent link">&para;</a></h3>
+<p>Query parameter: <code>job_id</code>.</p>
+<p>Returns stage, percentage, recent detailed events, result counts, errors, and rollback state for one job.</p>
+<h3 id="get-processarr-postgres-migrationlatest"><code>GET /process/arr-postgres-migration/latest</code><a class="headerlink" href="#get-processarr-postgres-migrationlatest" title="Permanent link">&para;</a></h3>
+<p>Query parameter: <code>process_name</code>.</p>
+<p>Returns the most recently updated migration job for that service so dmbdb can resume visibility after navigation or refresh.</p>
+<h3 id="post-processarr-postgres-migrationrollback"><code>POST /process/arr-postgres-migration/rollback</code><a class="headerlink" href="#post-processarr-postgres-migrationrollback" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;job_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;example-job-id&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;confirmation&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ROLLBACK Sonarr NzbDAV&quot;</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>Restores the job's preserved <code>config.xml</code>, persists <code>postgres_enabled: false</code>, and restarts the service against SQLite when it was running. This does not reverse-copy changes made after PostgreSQL cutover.</p>
+<hr />
 <h3 id="get-processcapabilities"><code>GET /process/capabilities</code><a class="headerlink" href="#get-processcapabilities" title="Permanent link">&para;</a></h3>
 <p>Returns backend capabilities and feature flags. Used by the frontend to determine available features.</p>
 <h4 id="example-response_6">Example Response:<a class="headerlink" href="#example-response_6" title="Permanent link">&para;</a></h4>
@@ -5002,7 +5086,10 @@ flowchart TD
 <span class="w">  </span><span class="nt">&quot;symlink_manifest_compare&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;symlink_backup_schedule&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;symlink_backup_manifest_list&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;symlink_manifest_file_list&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span>
+<span class="w">  </span><span class="nt">&quot;symlink_manifest_file_list&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;arr_postgres_migration&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;arr_postgres_migration_rehearsal&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;arr_postgres_migration_rollback&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span>
 <span class="p">}</span>
 </code></pre></div>
 <table>
@@ -5080,6 +5167,18 @@ flowchart TD
 <tr>
 <td><code>symlink_manifest_file_list</code></td>
 <td>Whether <code>/process/symlink-manifest-files</code> is available</td>
+</tr>
+<tr>
+<td><code>arr_postgres_migration</code></td>
+<td>Whether guarded Sonarr/Radarr SQLite-to-PostgreSQL migration routes are available</td>
+</tr>
+<tr>
+<td><code>arr_postgres_migration_rehearsal</code></td>
+<td>Whether isolated rehearsal imports are supported</td>
+</tr>
+<tr>
+<td><code>arr_postgres_migration_rollback</code></td>
+<td>Whether jobs can restore preserved SQLite configuration</td>
 </tr>
 </tbody>
 </table>

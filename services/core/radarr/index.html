@@ -574,6 +574,8 @@
       
         
       
+        
+      
     
     
     
@@ -769,6 +771,34 @@
     
   
     Auto-update
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../features/arr-postgres-migration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Arr PostgreSQL Migration
   
 
     
@@ -4809,12 +4839,12 @@
 <p>Setting <code>postgres_enabled: true</code> changes the database backend Radarr starts with. It does <strong>not</strong> copy <code>radarr.db</code> into PostgreSQL.</p>
 <p>If you enable this on an existing SQLite-backed Radarr instance without doing a manual migration, Radarr can start against fresh PostgreSQL databases and appear empty or newly initialized.</p>
 </div>
-<p>This mode is intended for new Radarr databases unless you are deliberately following Radarr's upstream community migration notes. Radarr's upstream documentation says existing SQLite migration is unsupported and only new PostgreSQL installs are supported. Back up both <code>/radarr/...</code> and <code>/postgres_data</code> before experimenting with an existing instance.</p>
-<p>Manual migration, if you choose to attempt it, is outside DUMB automation. The rough upstream flow is: back up, stop Radarr, enable PostgreSQL mode, let Radarr initialize the PostgreSQL schema once, stop Radarr again, then follow the Radarr <code>pgloader</code> migration guide for the main database.</p>
+<p>For an existing instance, use the <strong>Database Migration</strong> tool on its service page. Run a rehearsal first, review its table-count validation, and only then start guarded cutover. See <a href="../../../features/arr-postgres-migration/">Arr SQLite to PostgreSQL Migration</a>.</p>
+<p>Radarr's upstream documentation still classifies existing SQLite migration as unsupported. Back up <code>/radarr/...</code> and <code>/postgres_data</code> before proceeding, even when using DUMB's guarded workflow.</p>
 <div class="admonition warning">
 <p class="admonition-title">PostgreSQL is not a temporary toggle</p>
 <p>There is no known supported migration path from PostgreSQL back to SQLite for Radarr. Treat <code>postgres_enabled: true</code> as a long-term database choice unless you are willing to recreate the Radarr instance from scratch.</p>
-<p>DUMB does not provide automatic SQLite-to-PostgreSQL or PostgreSQL-to-SQLite migration for Radarr.</p>
+<p>DUMB preserves the pre-cutover SQLite database and can restore its configuration, but it does not copy later PostgreSQL changes back into SQLite.</p>
 </div>
 <hr />
 <h2 id="repo-based-installs-and-updates">Repo-based installs and updates<a class="headerlink" href="#repo-based-installs-and-updates" title="Permanent link">&para;</a></h2>

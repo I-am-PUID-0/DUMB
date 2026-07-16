@@ -574,6 +574,8 @@
       
         
       
+        
+      
     
     
     
@@ -769,6 +771,34 @@
     
   
     Auto-update
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../features/arr-postgres-migration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Arr PostgreSQL Migration
   
 
     
@@ -4626,6 +4656,26 @@
 <td>GET</td>
 <td><code>/process/capabilities</code></td>
 <td>Get backend feature flags</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/process/arr-postgres-migration/preflight</code></td>
+<td>Check Sonarr/Radarr migration readiness</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/process/arr-postgres-migration/start</code></td>
+<td>Start a rehearsal or guarded cutover</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/process/arr-postgres-migration/status</code></td>
+<td>Poll migration progress and validation</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/process/arr-postgres-migration/rollback</code></td>
+<td>Restore preserved SQLite configuration</td>
 </tr>
 <tr>
 <td>GET</td>

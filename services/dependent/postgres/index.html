@@ -574,6 +574,8 @@
       
         
       
+        
+      
     
     
     
@@ -769,6 +771,34 @@
     
   
     Auto-update
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../features/arr-postgres-migration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Arr PostgreSQL Migration
   
 
     
@@ -4774,10 +4804,10 @@
 <p>In onboarding, enabling <code>postgres_enabled</code> on Radarr, Sonarr, Lidarr, Prowlarr, or Whisparr automatically enables and starts PostgreSQL as needed. You do not need to select PostgreSQL separately as an optional service.</p>
 </div>
 <div class="admonition danger">
-<p class="admonition-title">Arr PostgreSQL mode is not a migration tool</p>
+<p class="admonition-title">The PostgreSQL toggle is not a migration tool</p>
 <p>DUMB does not copy an existing Arr SQLite database into PostgreSQL. Setting <code>postgres_enabled: true</code> creates/configures PostgreSQL databases and starts the Arr against them; it does not migrate <code>radarr.db</code>, <code>sonarr.db</code>, <code>lidarr.db</code>, <code>prowlarr.db</code>, or <code>whisparr.db</code>.</p>
 <p>If you switch an existing SQLite-backed Arr instance without a manual migration, the app may start against empty PostgreSQL databases and look like a fresh install.</p>
-<p>Upstream Servarr migration notes are community/unsupported for the apps that document them. Treat them as advanced manual recovery/migration guidance, not as a DUMB-supported workflow.</p>
+<p>For existing Sonarr and Radarr instances, use DUMB's separate <a href="../../../features/arr-postgres-migration/">guided SQLite-to-PostgreSQL migration tool</a>. Upstream Servarr still classifies this migration as unsupported.</p>
 </div>
 <div class="admonition warning">
 <p class="admonition-title">No known PostgreSQL-to-SQLite migration</p>
@@ -4788,9 +4818,10 @@
 <ol>
 <li>Keep SQLite: leave <code>postgres_enabled: false</code>.</li>
 <li>Start fresh on PostgreSQL: back up the Arr config directory, enable <code>postgres_enabled</code>, and accept that the PostgreSQL databases start empty.</li>
-<li>Attempt manual migration: back up the Arr config directory and <code>/postgres_data</code>, stop the Arr, enable PostgreSQL mode, let the Arr initialize the PostgreSQL schema once, stop the Arr again, then follow that Arr's upstream PostgreSQL migration guide.</li>
+<li>Guided migration for Sonarr/Radarr: open the instance service page, select <strong>Database Migration</strong>, complete a rehearsal, and review its validation before cutover.</li>
+<li>Attempt manual migration for another supported Arr: back up the Arr config directory and <code>/postgres_data</code>, initialize the PostgreSQL schema, then follow that Arr's upstream migration notes.</li>
 </ol>
-<p>DUMB only automates option wiring, database creation, dependency startup, and <code>config.xml</code> PostgreSQL entries. It does not run <code>pgloader</code>, clean seed tables, reset sequences, validate migrated data, or provide rollback from PostgreSQL to SQLite.</p>
+<p>DUMB's guided tool automates consistent SQLite backups, Arr schema initialization, native data-only import, dynamic sequence repair, table-count validation, progress reporting, and configuration rollback for Sonarr and Radarr. Lidarr, Prowlarr, and Whisparr remain manual.</p>
 <p>Upstream PostgreSQL setup and migration references:</p>
 <ul>
 <li><a href="https://wiki.servarr.com/radarr/postgres-setup">Radarr PostgreSQL setup</a></li>

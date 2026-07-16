@@ -574,6 +574,8 @@
       
         
       
+        
+      
     
     
     
@@ -769,6 +771,34 @@
     
   
     Auto-update
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../features/arr-postgres-migration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Arr PostgreSQL Migration
   
 
     
@@ -1230,6 +1260,17 @@
     <span class="md-ellipsis">
       
         Status and controls
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#database-migration-panel" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Database Migration panel
       
     </span>
   </a>
@@ -4617,6 +4658,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#database-migration-panel" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Database Migration panel
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#dependency-graph-view" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4833,6 +4885,7 @@ auto-restart policies, auto-update scheduling, and configuration editors.</p>
 <li>On-demand update checks and auto-update scheduling</li>
 <li>Seerr Sync controls when viewing a Seerr instance</li>
 <li>Symlink Job Center (for symlink-capable services) with active jobs, recent history, retry, and failure clearing</li>
+<li>Guided SQLite-to-PostgreSQL rehearsal/cutover panel on Sonarr and Radarr instances</li>
 <li>Sidebar operator QoL controls (quick filters, saved views, compact mode, and command palette)</li>
 </ul>
 <hr />
@@ -4850,6 +4903,22 @@ config key and process name in monospace.</p>
 <p class="admonition-title">API service controls</p>
 <p>The DUMB API service does not show Start/Stop/Restart controls in the UI.</p>
 </div>
+<hr />
+<h2 id="database-migration-panel">Database Migration panel<a class="headerlink" href="#database-migration-panel" title="Permanent link">&para;</a></h2>
+<p>On Sonarr and Radarr service pages, <strong>Database Migration</strong> opens a guided SQLite-to-PostgreSQL workflow when the backend advertises the <code>arr_postgres_migration</code> capability.</p>
+<p>The panel provides:</p>
+<ul>
+<li>non-mutating readiness checks;</li>
+<li>visible SQLite sizes and PostgreSQL target names;</li>
+<li>rehearsal before cutover;</li>
+<li>optional application-log migration;</li>
+<li>exact acknowledgement and confirmation gates;</li>
+<li>persistent stage/percentage/event progress;</li>
+<li>imported library row-count results; and</li>
+<li>explicit SQLite rollback when a cutover backup is available.</li>
+</ul>
+<p>The frontend requires a successful rehearsal before enabling its cutover choice. Closing or navigating away from the panel does not cancel the backend job; reopening the service page resumes the latest job display.</p>
+<p>See <a href="../../features/arr-postgres-migration/">Arr SQLite to PostgreSQL Migration</a> before using it in production.</p>
 <hr />
 <h2 id="dependency-graph-view">Dependency graph view<a class="headerlink" href="#dependency-graph-view" title="Permanent link">&para;</a></h2>
 <p>On the <strong>DUMB Config</strong> tab, use the <strong>Dependencies</strong> action to open a pop-out dependency graph panel that:</p>
@@ -5047,6 +5116,7 @@ is allowlisted for logs:</p>
 <li>Manual refresh</li>
 <li>Download logs</li>
 </ul>
+<p>Service-aware parsing promotes inner application metadata when a service wraps its own log format. Bazarr rows use Bazarr's real timestamp and severity, preserve useful logger names such as <code>waitress</code>, and group SQL/parameters/traceback continuation lines into the originating error instead of showing each physical line as a current-time <code>INFO</code> row.</p>
 <h3 id="special-log-tabs">Special log tabs<a class="headerlink" href="#special-log-tabs" title="Permanent link">&para;</a></h3>
 <ul>
 <li><strong>Traefik Access Logs</strong> appear on the Traefik service page.</li>
