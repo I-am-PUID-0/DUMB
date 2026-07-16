@@ -2458,6 +2458,8 @@
       
         
       
+        
+      
     
     
     
@@ -2593,6 +2595,36 @@
     
   
     Tautulli
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/optional/bazarr/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-captions" viewBox="0 0 24 24"><rect width="18" height="14" x="3" y="5" rx="2" ry="2"/><path d="M7 15h4m4 0h2M7 11h2m4 0h4"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    Bazarr
   
 
     
@@ -4741,7 +4773,7 @@ flowchart TD
 <p class="admonition-title">Notes</p>
 <ul>
 <li>Dependencies like Zurg or rclone are created using templates and attached to the calling core service.</li>
-<li>Optional services such as <code>pgadmin</code>, <code>zilean</code>, <code>pulsarr</code>, <code>traefik_proxy_admin</code>, or <code>cloudflared</code> are started only if included.</li>
+<li>Optional services such as <code>pgadmin</code>, <code>zilean</code>, <code>bazarr</code>, <code>pulsarr</code>, <code>traefik_proxy_admin</code>, or <code>cloudflared</code> are started only if included.</li>
 <li><code>debrid_key</code> is injected into Zurg or Decypharr as needed.</li>
 <li><code>service_options</code> can override config values such as <code>log_level</code>, <code>port</code>, or <code>enabled</code>.</li>
 <li>Any startup errors appear in the <code>errors</code> list.</li>
@@ -4760,7 +4792,7 @@ flowchart TD
 <li>inferred links from <code>wait_for_mounts</code> by matching required mount paths to provider service mount points</li>
 <li>rclone provider links (<code>zurg_enabled</code>, <code>decypharr_enabled</code>, <code>key_type=nzbdav</code>) to reflect WebDAV provider dependencies directly</li>
 <li>non-core hard dependency map for service-specific startup requirements (for example <code>riven_frontend -&gt; riven_backend</code>, <code>zilean -&gt; postgres</code>, <code>pgadmin -&gt; postgres</code>)</li>
-<li>conditional startup dependencies from the backend startup ordering logic -- config-aware dependencies like <code>tautulli -&gt; plex</code> (when plex is enabled), <code>prowlarr -&gt; sonarr/radarr</code> (when those arrs are enabled), <code>neutarr -&gt; sonarr</code> (when sonarr has <code>use_neutarr</code> enabled), etc. For instance-scoped services (<code>rclone</code>, <code>zurg</code>), conditional deps are filtered per-instance so that only the specific associated instances are shown (for example, a rclone instance with <code>zurg_enabled</code> only shows its own zurg instance, not zurg instances belonging to other rclone configurations)</li>
+<li>conditional startup dependencies from the backend startup ordering logic -- config-aware dependencies like <code>tautulli -&gt; plex</code> (when plex is enabled), <code>bazarr -&gt; sonarr/radarr</code> (when those Arrs are enabled), <code>prowlarr -&gt; sonarr/radarr</code> (when those Arrs are enabled), <code>neutarr -&gt; sonarr</code> (when Sonarr has <code>use_neutarr</code> enabled), etc. For instance-scoped services (<code>rclone</code>, <code>zurg</code>), conditional deps are filtered per-instance so that only the specific associated instances are shown (for example, a rclone instance with <code>zurg_enabled</code> only shows its own zurg instance, not zurg instances belonging to other rclone configurations)</li>
 <li>documented integration links (soft linkage, <code>scope=all</code> only) -- for example <code>seerr -&gt; sonarr/radarr</code> request routing</li>
 <li>per-process status state used by the frontend dependency graph panel</li>
 <li><code>dependency_truth_table</code> describing the 12 dependency signal types and whether each is treated as hard dependency vs linkage</li>
