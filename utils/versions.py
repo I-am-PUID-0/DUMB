@@ -323,9 +323,14 @@ class Versions:
                     raise ValueError(f"Configuration for {process_name} not found.")
                 version_path = config.get("version_path", "/emby/version.txt")
                 is_file = True
-            ### update this once bazarr is implemented
             elif key == "bazarr":
-                return None, "Bazarr version check not implemented"
+                config = CONFIG_MANAGER.get_instance(instance_name, key)
+                if not config:
+                    raise ValueError(f"Configuration for {process_name} not found.")
+                version_path = os.path.join(
+                    config.get("config_dir", "/opt/bazarr"), "VERSION"
+                )
+                is_file = True
 
             elif key in (
                 "sonarr",
@@ -482,6 +487,7 @@ class Versions:
                             or key == "decypharr"
                             or key == "nzbdav"
                             or key == "tautulli"
+                            or key == "bazarr"
                             or key == "huntarr"
                             or key == "seerr"
                             or key == "pulsarr"

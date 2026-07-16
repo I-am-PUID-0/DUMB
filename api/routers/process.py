@@ -318,7 +318,6 @@ CORE_SERVICE_DEPENDENCIES = {
     "sonarr": [],
     "radarr": [],
     "lidarr": [],
-    "bazarr": [],
     "prowlarr": [],
     "whisparr": [],
     "seerr": [],
@@ -383,7 +382,7 @@ ONBOARDING_CORE_SERVICE_KEYS = {
     "profilarr",
 }
 # Temporarily hide not-ready services from onboarding core selection.
-ONBOARDING_HIDDEN_CORE_SERVICES = {"bazarr"}
+ONBOARDING_HIDDEN_CORE_SERVICES = set()
 
 CORE_SERVICE_NAMES = {
     "plex": "Plex Media Server",
@@ -521,14 +520,6 @@ Lidarr
 - Supports multiple instances for different user profiles or libraries.
 
 Documentation: https://dumbarr.com/services/core/lidarr""",
-    "bazarr": """\
-Bazarr
-- Subtitle management and automation tool.
-- Monitors your media library and automatically downloads subtitles.
-- Integrates with Sonarr, Radarr, and Lidarr for seamless subtitle management.
-- Supports multiple subtitle providers and languages.
-
-Documentation: https://dumbarr.com/services/core/bazarr""",
     "prowlarr": """\
 Prowlarr
 - Indexer manager and proxy for Sonarr, Radarr, Lidarr, and other media management tools.
@@ -566,7 +557,7 @@ NeutArr
 Documentation: https://dumbarr.com/services/core/neutarr/""",
 }
 
-OPTIONAL_POST_CORE = ["riven_frontend", "cloudflared"]
+OPTIONAL_POST_CORE = ["riven_frontend", "bazarr", "cloudflared"]
 
 OPTIONAL_SERVICES = {
     "zilean": "Zilean",
@@ -574,6 +565,7 @@ OPTIONAL_SERVICES = {
     "postgres": "Postgres",
     "riven_frontend": "Riven Frontend",
     "tautulli": "Tautulli",
+    "bazarr": "Bazarr",
     "pulsarr": "Pulsarr",
     "traefik_proxy_admin": "Traefik Proxy Admin",
     "cloudflared": "Cloudflared",
@@ -616,6 +608,13 @@ Tautulli
 - Provides alerts, newsletters, and watch history insights.
 
 Documentation: https://github.com/Tautulli/Tautulli""",
+    "bazarr": """\
+Bazarr
+- Downloads and manages subtitles for movies and TV episodes.
+- Connects to Sonarr and Radarr and uses the same media paths inside DUMB.
+- Supports automatic searches, subtitle upgrades, and many subtitle providers.
+
+Documentation: https://dumbarr.com/services/optional/bazarr""",
     "pulsarr": """\
 Pulsarr
 - Monitors Plex watchlists and routes requested movies/shows to Radarr and Sonarr.

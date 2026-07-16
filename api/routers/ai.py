@@ -239,6 +239,7 @@ SERVICE_DOC_PATHS = {
     "seerr": "services/core/seerr.md",
     "sonarr": "services/core/sonarr.md",
     "tautulli": "services/optional/tautulli.md",
+    "bazarr": "services/optional/bazarr.md",
     "traefik_proxy_admin": "services/optional/traefik-proxy-admin.md",
     "whisparr": "services/core/whisparr.md",
     "zilean": "services/optional/zilean.md",

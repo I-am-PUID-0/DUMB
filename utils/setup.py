@@ -2101,92 +2101,61 @@ def setup_bazarr(
     try:
         if install_only and configure_only:
             return False, "Invalid Bazarr setup phase."
-
-        def setup_bazarr_instance(instance_name, instance):
-            if not instance.get("enabled", False):
-                logger.debug(f"Skipping disabled Bazarr instance: {instance_name}")
-                return True, None
-            instance_config_dir = instance.get("config_dir") or (
-                f"/bazarr/{instance_name.lower()}/config"
-            )
-            instance_config_file = instance.get("config_file") or (
-                os.path.join(instance_config_dir, "config.yaml")
-            )
-            install_path = f"/opt/bazarr/{instance_name.lower()}"
-            if not os.path.exists(instance_config_dir):
-                logger.debug(
-                    f"Creating Bazarr instance {instance_name} config directory: {instance_config_dir}"
-                )
-                os.makedirs(instance_config_dir, exist_ok=True)
-                chown_recursive(instance_config_dir, user_id, group_id)
-            ### check if the bazarr.py file exists in the install_path
-            bazarr_py_path = os.path.join(install_path, "bazarr.py")
-            needs_download = not os.path.exists(bazarr_py_path)
-            if needs_download and configure_only:
-                return False, f"Bazarr instance {instance_name} not installed."
-            if needs_download:
-                logger.warning(
-                    f"Bazarr instance {instance_name} not found at {install_path}. Downloading..."
-                )
-                os.makedirs(install_path, exist_ok=True)
-                chown_recursive(install_path, user_id, group_id)
-                if not instance.get("branch_enabled"):
-                    release, error = downloader.get_latest_release(
-                        repo_owner=instance.get("repo_owner"),
-                        repo_name=instance.get("repo_name"),
-                    )
-                    if not release:
-                        return False, f"Failed to get latest release: {error}"
-
-                    success, error = downloader.download_release_version(
-                        process_name=instance.get("process_name"),
-                        key="bazarr",
-                        repo_owner=instance.get("repo_owner"),
-                        repo_name=instance.get("repo_name"),
-                        release_version=release,
-                        target_dir=install_path,
-                    )
-                    if not success:
-                        return False, f"Failed to download Bazarr: {error}"
-                    platforms = instance.get("platforms", [])
-                    success, error = setup_environment(
-                        process_handler, "bazarr", platforms, install_path
-                    )
-                    if not success:
-                        return (
-                            False,
-                            f"Failed to set up environment for Bazarr instance {instance_name}: {error}",
-                        )
-                    success, error = setup_pnpm_environment(
-                        process_handler, f"{install_path}/frontend"
-                    )
-                    if not success:
-                        return (
-                            False,
-                            f"Failed to set up pnpm environment for Bazarr instance {instance_name}: {error}",
-                        )
-                    chown_recursive(install_path, user_id, group_id)
-
-            if install_only:
-                return True, None
-
-            instance["command"] = [
-                f"{install_path}/venv/bin/python",
-                f"{bazarr_py_path}",
-                f"-c {instance_config_dir}",
-                f"-p {instance.get('port')}",
-            ]
-            instance["env"] = {"NO_UPDATE": "true"}
-            logger.info(f"Bazarr instance '{instance_name}' setup complete.")
+        if not config.get("enabled"):
+            logger.debug("Skipping disabled Bazarr service.")
             return True, None
 
-        for instance_name, instance in config.get("instances", {}).items():
-            if instance.get("enabled"):
-                logger.info(f"Setting up enabled Bazarr instance: {instance_name}")
-                success, error = setup_bazarr_instance(instance_name, instance)
-                if not success:
-                    return False, error
-        logger.info("All Bazarr instances set up successfully.")
+        install_path = config.get("config_dir", "/opt/bazarr")
+        data_dir = os.path.dirname(
+            config.get("config_file", "/bazarr/data/config.yaml")
+        )
+        bazarr_py_path = os.path.join(install_path, "bazarr.py")
+
+        if not os.path.isfile(bazarr_py_path):
+            if configure_only:
+                return False, f"Bazarr is not installed at {bazarr_py_path}."
+            logger.warning(
+                "Bazarr is not installed. Downloading the configured release."
+            )
+            success, error = setup_release_version(
+                process_handler,
+                config,
+                config.get("process_name", "Bazarr"),
+                "bazarr",
+            )
+            if not success:
+                return False, f"Failed to install Bazarr: {error}"
+
+        if not os.path.isfile(bazarr_py_path):
+            return False, f"Bazarr install did not create {bazarr_py_path}."
+
+        # Bazarr downloads its architecture-specific archive helper on first
+        # start. Keep the application tree root-owned, but make that narrow
+        # runtime directory writable by DUMB's configured service user.
+        runtime_bin_dir = os.path.join(install_path, "bin")
+        os.makedirs(runtime_bin_dir, exist_ok=True)
+        success, error = chown_recursive(runtime_bin_dir, user_id, group_id)
+        if not success:
+            return False, error
+
+        if install_only:
+            return True, None
+
+        os.makedirs(data_dir, exist_ok=True)
+        success, error = chown_recursive(data_dir, user_id, group_id)
+        if not success:
+            return False, error
+
+        config["command"] = [
+            os.path.join(install_path, "venv", "bin", "python"),
+            bazarr_py_path,
+            "--config",
+            data_dir,
+            "--port",
+            str(config.get("port", 6767)),
+        ]
+        config["env"] = {**(config.get("env") or {}), "NO_UPDATE": "true"}
+        logger.info("Bazarr setup complete.")
         return True, None
     except Exception as e:
         return False, f"Error during Bazarr setup: {e}"

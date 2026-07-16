@@ -190,6 +190,7 @@ def migrate_symlinks():
                 ("/nzbdav", os.path.join(data_root, "nzbdav")),
                 ("/plex", os.path.join(data_root, "plex")),
                 ("/tautulli", os.path.join(data_root, "tautulli")),
+                ("/bazarr", os.path.join(data_root, "bazarr")),
                 ("/seerr", os.path.join(data_root, "seerr")),
                 ("/jellyfin", os.path.join(data_root, "jellyfin")),
                 ("/emby", os.path.join(data_root, "emby")),

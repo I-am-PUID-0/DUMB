@@ -51,6 +51,7 @@ class ConditionalDependencyMapTests(unittest.TestCase):
         self.assertEqual(deps["seerr"], {"plex"})
         self.assertEqual(deps["prowlarr"], {"sonarr", "whisparr"})
         self.assertEqual(deps["profilarr"], {"sonarr", "whisparr"})
+        self.assertEqual(deps["bazarr"], {"sonarr"})
 
     def test_neutarr_depends_only_on_arr_instances_with_use_neutarr(self):
         deps = self._build(

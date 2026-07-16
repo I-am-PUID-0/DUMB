@@ -992,6 +992,7 @@ def main():
             "emby",
             "tautulli",
             "seerr",
+            "bazarr",
             "pulsarr",
             "cloudflared",
         ]

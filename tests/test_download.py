@@ -136,6 +136,41 @@ class DownloaderHelperTests(unittest.TestCase):
             self.downloader.find_asset_download_url(release_info), ("zipball", None)
         )
 
+    def test_bazarr_release_extracts_flat_asset_without_wrapper_directory(self):
+        release_info = {
+            "tag_name": "v1.6.0",
+            "assets": [
+                {
+                    "id": 42,
+                    "name": "bazarr.zip",
+                    "browser_download_url": "https://example.test/bazarr.zip",
+                }
+            ],
+        }
+        with (
+            patch.object(
+                self.downloader,
+                "fetch_github_release_info",
+                return_value=(release_info, None),
+            ),
+            patch.object(
+                self.downloader,
+                "download_and_extract",
+                return_value=(True, None),
+            ) as extract,
+        ):
+            success, error = self.downloader.download_release_version(
+                process_name="Bazarr",
+                key="bazarr",
+                repo_owner="morpheus65535",
+                repo_name="bazarr",
+                release_version="v1.6.0",
+                target_dir="/opt/bazarr",
+            )
+
+        self.assertTrue(success, error)
+        self.assertIsNone(extract.call_args.args[2])
+
     def test_handle_rate_limits_uses_retry_after_header(self):
         with patch.object(download.time, "sleep") as sleep:
             handled = self.downloader.handle_rate_limits(

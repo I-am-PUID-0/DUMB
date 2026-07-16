@@ -58,8 +58,6 @@ class Update:
             return None, f"Error resolving branch head sha: {e}"
 
     def supports_manual_update(self, key, config):
-        if key in {"bazarr"}:
-            return False
         if key in {
             "plex",
             "jellyfin",
@@ -1401,11 +1399,6 @@ class Update:
                     process_name,
                 )
 
-        if key in ["bazarr"]:
-            enable_update = False
-            self.logger.info(
-                f"Automatic updates are not yet supported for {process_name} ({key})."
-            )
         if enable_update:
             self.logger.info(
                 f"Automatic updates set to {format_time(self.auto_update_interval(process_name, config))} for {process_name}"

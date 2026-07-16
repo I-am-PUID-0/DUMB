@@ -105,6 +105,14 @@ def build_conditional_dependency_map(
     if prowlarr_deps:
         deps.setdefault("prowlarr", set()).update(prowlarr_deps)
 
+    # Bazarr consumes Sonarr/Radarr libraries and their shared media paths.
+    bazarr_deps: set[str] = set()
+    for arr_key in ("sonarr", "radarr"):
+        if _service_has_enabled_instance(config_getter(arr_key)):
+            bazarr_deps.add(arr_key)
+    if bazarr_deps:
+        deps["bazarr"] = bazarr_deps
+
     # -- Profilarr -> enabled arr services --
     profilarr_deps: set[str] = set()
     for arr_key in ("sonarr", "radarr", "lidarr", "whisparr"):

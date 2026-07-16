@@ -544,6 +544,41 @@
     "log_file": "/tautulli/data/logs/tautulli.log",
     "env": {}
   },
+  "bazarr": {
+    "enabled": false,
+    "process_name": "Bazarr",
+    "repo_owner": "morpheus65535",
+    "repo_name": "bazarr",
+    "release_version_enabled": false,
+    "release_version": "latest",
+    "suppress_logging": false,
+    "log_level": "INFO",
+    "port": 6767,
+    "auto_update": false,
+    "auto_update_interval": 24,
+    "auto_update_start_time": "04:00",
+    "clear_on_update": true,
+    "exclude_dirs": [
+      "/opt/bazarr/venv"
+    ],
+    "platforms": [
+      "python"
+    ],
+    "command": [
+      "/opt/bazarr/venv/bin/python",
+      "/opt/bazarr/bazarr.py",
+      "--config",
+      "/bazarr/data",
+      "--port",
+      "{port}"
+    ],
+    "config_dir": "/opt/bazarr",
+    "config_file": "/bazarr/data/config.yaml",
+    "log_file": "/bazarr/data/log/bazarr.log",
+    "env": {
+      "NO_UPDATE": "true"
+    }
+  },
   "pulsarr": {
     "enabled": false,
     "process_name": "Pulsarr",

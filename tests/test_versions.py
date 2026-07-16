@@ -158,6 +158,29 @@ class VersionsHelperTests(unittest.TestCase):
             self.assertEqual(version, "v0.2.0")
             self.assertIsNone(error)
 
+    def test_bazarr_version_check_reads_release_marker(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with open(f"{tmpdir}/VERSION", "w", encoding="utf-8") as handle:
+                handle.write("v1.6.0")
+
+            versions = Versions()
+            original_config_manager = versions_module.CONFIG_MANAGER
+            versions_module.CONFIG_MANAGER = types.SimpleNamespace(
+                get_instance=lambda *args, **kwargs: {"config_dir": tmpdir}
+            )
+            self.addCleanup(
+                lambda: setattr(
+                    versions_module, "CONFIG_MANAGER", original_config_manager
+                )
+            )
+            version, error = versions.version_check(
+                process_name="Bazarr",
+                key="bazarr",
+            )
+
+            self.assertEqual(version, "v1.6.0")
+            self.assertIsNone(error)
+
 
 if __name__ == "__main__":
     unittest.main()

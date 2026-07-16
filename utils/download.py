@@ -150,14 +150,30 @@ class Downloader:
                 logger.error(error)
                 return False, error
 
-            if zip_folder_name is None:
+            # Bazarr's release asset is a flat bazarr.zip, not a GitHub source
+            # archive wrapped in an owner-repository directory.
+            if zip_folder_name is None and key != "bazarr":
                 zip_folder_name = f"{repo_owner}-{repo_name}*"
 
-            download_url, asset_id = self.find_asset_download_url(
-                release_info, architecture
-            )
+            if key == "bazarr":
+                bazarr_asset = next(
+                    (
+                        asset
+                        for asset in release_info.get("assets", [])
+                        if asset.get("name", "").lower() == "bazarr.zip"
+                    ),
+                    None,
+                )
+                download_url = (
+                    bazarr_asset.get("browser_download_url") if bazarr_asset else None
+                )
+                asset_id = bazarr_asset.get("id") if bazarr_asset else None
+            else:
+                download_url, asset_id = self.find_asset_download_url(
+                    release_info, architecture
+                )
             if not download_url:
-                return False, error
+                return False, f"No release asset found for {process_name}."
 
             if asset_id:
                 headers = self.get_headers()
