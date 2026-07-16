@@ -22,6 +22,13 @@ The devcontainer installs local Git hooks with `pre-commit` after dependencies a
 installed. Commits and pushes from VS Code or a terminal inside the devcontainer
 run `make verify` before Git accepts the operation.
 
+The devcontainer does not assign a maintainer identity. On create/attach it keeps
+an existing repository-local identity, or copies a complete global identity into
+the bind-mounted checkout so it survives container rebuilds. For a new checkout,
+configure your own identity once with `git config --local user.name` and
+`git config --local user.email`, or provide both `GIT_USER_NAME` and
+`GIT_USER_EMAIL` as explicit devcontainer environment values.
+
 To install the same hooks manually in an existing checkout:
 
 ```bash
