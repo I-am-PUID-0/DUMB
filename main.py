@@ -986,7 +986,9 @@ def main():
                         )
                         last_writer_cfg = writer_cfg
 
-                    snapshot = collector.snapshot()
+                    snapshot = collector.snapshot(
+                        database_details=False, database_refresh=True
+                    )
                     writer.write(snapshot)
                 else:
                     writer = None

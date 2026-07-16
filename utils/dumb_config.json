@@ -122,7 +122,13 @@
       "history_retention_days": 7,
       "history_max_file_mb": 50,
       "history_max_total_mb": 100,
-      "history_dir": "/config/metrics"
+      "history_dir": "/config/metrics",
+      "database_health": {
+        "enabled": false,
+        "interval_sec": 60,
+        "log_tail_bytes": 262144,
+        "services": {}
+      }
     }
   },
   "traefik": {

@@ -474,6 +474,60 @@
             },
             "history_dir": {
               "type": "string"
+            },
+            "database_health": {
+              "type": "object",
+              "properties": {
+                "enabled": {
+                  "type": "boolean",
+                  "default": false,
+                  "description": "Enable opt-in database health collection for configured services."
+                },
+                "interval_sec": {
+                  "type": "integer",
+                  "minimum": 15,
+                  "maximum": 3600,
+                  "default": 60
+                },
+                "log_tail_bytes": {
+                  "type": "integer",
+                  "minimum": 16384,
+                  "maximum": 4194304,
+                  "default": 262144
+                },
+                "services": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "object",
+                    "properties": {
+                      "enabled": {
+                        "type": "boolean",
+                        "default": false
+                      },
+                      "mode": {
+                        "type": "string",
+                        "enum": [
+                          "standard",
+                          "enhanced"
+                        ],
+                        "default": "standard"
+                      }
+                    },
+                    "required": [
+                      "enabled",
+                      "mode"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              },
+              "required": [
+                "enabled",
+                "interval_sec",
+                "log_tail_bytes",
+                "services"
+              ],
+              "additionalProperties": false
             }
           },
           "required": [
@@ -482,7 +536,8 @@
             "history_retention_days",
             "history_max_file_mb",
             "history_max_total_mb",
-            "history_dir"
+            "history_dir",
+            "database_health"
           ]
         }
       },

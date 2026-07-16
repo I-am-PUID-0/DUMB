@@ -15,6 +15,32 @@ async def get_metrics_snapshot(
     return collector.snapshot()
 
 
+@metrics_router.get("/database-health")
+async def get_database_health(
+    refresh: bool = Query(default=False),
+    process_name: str | None = Query(default=None),
+    collector=Depends(get_metrics_collector),
+    current_user: str = Depends(get_optional_current_user),
+):
+    if refresh:
+        service_id = (
+            collector.database_health.service_id_for_process(
+                CONFIG_MANAGER.config, process_name
+            )
+            if process_name
+            else None
+        )
+        if not process_name or service_id:
+            collector.database_health.invalidate(service_id)
+    result = collector.database_health.snapshot(
+        CONFIG_MANAGER.config,
+        details=True,
+        refresh_if_stale=True,
+        process_name=process_name,
+    )
+    return result
+
+
 @metrics_router.get("/history")
 async def get_metrics_history(
     since: float | None = Query(default=None),

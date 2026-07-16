@@ -99,6 +99,10 @@ class MetricsHistoryReaderTests(unittest.TestCase):
                 "dumb_managed": [
                     {"name": "prowlarr", "pid": 123, "cpu_percent": 1.5, "rss": 2048}
                 ],
+                "database_health": {
+                    "enabled": True,
+                    "services": [{"id": "prowlarr:Default", "score": 20}],
+                },
             },
             {
                 "timestamp": 2,
@@ -117,6 +121,10 @@ class MetricsHistoryReaderTests(unittest.TestCase):
 
         self.assertEqual(compact[0]["system"]["mem"], {"percent": 50})
         self.assertEqual(compact[0]["dumb_managed"][0]["name"], "prowlarr")
+        self.assertEqual(
+            compact[0]["database_health"]["services"][0]["id"],
+            "prowlarr:Default",
+        )
         self.assertEqual(series["cpu"], [10, 20])
         self.assertEqual(series["disk_read_rate"], [None, 60.0])
         self.assertEqual(series["net_recv_rate"], [None, 60.0])

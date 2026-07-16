@@ -177,6 +177,7 @@ def compact_history_items(items):
                     }
                     for proc in (item.get("external") or [])
                 ],
+                "database_health": item.get("database_health"),
             }
         )
     return compacted

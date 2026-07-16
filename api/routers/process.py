@@ -5035,5 +5035,6 @@ async def get_capabilities(current_user: str = Depends(get_optional_current_user
         "arr_postgres_migration": True,
         "arr_postgres_migration_rehearsal": True,
         "arr_postgres_migration_rollback": True,
+        "database_health_metrics": True,
         "ai_diagnostics": True,
     }

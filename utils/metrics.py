@@ -2,6 +2,8 @@ import os
 import time
 import psutil
 
+from utils.database_health import DatabaseHealthCollector
+
 
 class MetricsCollector:
     def __init__(self, process_handler, logger):
@@ -11,8 +13,13 @@ class MetricsCollector:
         self.container_start_time = self._get_container_start_time()
         self._cgroup_last_cpu_usage = None
         self._cgroup_last_cpu_time = None
+        self.database_health = DatabaseHealthCollector(logger=logger)
 
-    def snapshot(self, external_limit=20):
+    def snapshot(
+        self, external_limit=20, database_details=True, database_refresh=False
+    ):
+        from utils.config_loader import CONFIG_MANAGER
+
         now = time.time()
         managed = self._collect_managed_processes()
         managed_pids = {entry["pid"] for entry in managed if entry.get("pid")}
@@ -22,6 +29,11 @@ class MetricsCollector:
             "system": self._collect_system_metrics(),
             "dumb_managed": managed,
             "external": external,
+            "database_health": self.database_health.snapshot(
+                CONFIG_MANAGER.config,
+                details=database_details,
+                refresh_if_stale=database_refresh,
+            ),
         }
 
     def _collect_system_metrics(self):
