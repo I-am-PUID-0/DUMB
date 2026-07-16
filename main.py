@@ -10,6 +10,7 @@ from utils.auto_update import Update
 from utils.dependencies import initialize_dependencies
 from utils.core_services import get_core_services, has_core_service
 from utils.dependency_map import build_conditional_dependency_map
+from utils.startup import start_control_plane_before_preinstall
 from utils.plex_dbrepair import start_plex_dbrepair_worker
 from utils.ffprobe_monitor import start_ffprobe_monitor
 from utils.setup import setup_project
@@ -252,6 +253,7 @@ def _apply_global_port_reservations(config_manager) -> None:
 
 
 def start_configured_process(config_obj, updater, key_name, exit_on_error=True):
+    all_started = True
     try:
         if "instances" in config_obj:
             any_enabled = False
@@ -260,13 +262,15 @@ def start_configured_process(config_obj, updater, key_name, exit_on_error=True):
                     process_name = instance.get("process_name", name)
                     auto = instance.get("auto_update", False)
                     success, error = updater.auto_update(process_name, auto)
-                    if not success and error:
-                        logger.error(
-                            "Startup for %s failed (instance %s): %s",
-                            process_name,
-                            name,
-                            error,
-                        )
+                    if not success:
+                        all_started = False
+                        if error:
+                            logger.error(
+                                "Startup for %s failed (instance %s): %s",
+                                process_name,
+                                name,
+                                error,
+                            )
                     any_enabled = True
             if key_name in {"profilarr", "sonarr", "radarr"}:
                 _run_profilarr_sync_retries(key_name)
@@ -276,8 +280,10 @@ def start_configured_process(config_obj, updater, key_name, exit_on_error=True):
             process_name = config_obj.get("process_name", key_name)
             auto = config_obj.get("auto_update", False)
             success, error = updater.auto_update(process_name, auto)
-            if not success and error:
-                logger.error("Startup for %s failed: %s", process_name, error)
+            if not success:
+                all_started = False
+                if error:
+                    logger.error("Startup for %s failed: %s", process_name, error)
             if key_name in {"profilarr", "sonarr", "radarr"}:
                 _run_profilarr_sync_retries(key_name)
         else:
@@ -286,6 +292,8 @@ def start_configured_process(config_obj, updater, key_name, exit_on_error=True):
         logger.error(f"An error occurred in setup for {key_name}: {e}")
         if exit_on_error:
             raise
+        return False
+    return all_started
 
 
 def _healthcheck_command():
@@ -819,6 +827,37 @@ def _preinstall_enabled_services(process_handler, config_manager) -> None:
     process_handler.preinstall_complete = True
 
 
+def _start_control_plane_and_preinstall(
+    process_handler, updater, config_manager
+) -> None:
+    dumb_config = config_manager.get("dumb", {})
+    api_config = dumb_config.get("api_service", {})
+
+    def _start_api() -> None:
+        start_fastapi_process()
+        api_name = api_config.get("process_name", "DUMB API")
+        process_handler.register_external_process(api_name, os.getpid())
+
+    frontend_config = dumb_config.get("frontend", {})
+    start_control_plane_before_preinstall(
+        api_enabled=bool(api_config.get("enabled")),
+        start_api=_start_api,
+        frontend_config=frontend_config,
+        start_frontend=lambda: start_configured_process(
+            frontend_config, updater, "frontend"
+        ),
+        preinstall_services=lambda: _preinstall_enabled_services(
+            process_handler, config_manager
+        ),
+        frontend_deferred=lambda reason: logger.info(
+            "%s Deferring startup until after preinstall.", reason
+        ),
+        frontend_starting_early=lambda: logger.info(
+            "Starting the installed DUMB Frontend before service preinstall."
+        ),
+    )
+
+
 def _build_dependency_map(config_manager) -> dict[str, set[str]]:
     return build_conditional_dependency_map(lambda key: config_manager.get(key, {}))
 
@@ -902,17 +941,8 @@ def main():
     _apply_waits_to_service(config, "seerr", _build_media_wait_entries(config))
     if configure_arr_postgres_runtime(config):
         config.save_config()
-    _preinstall_enabled_services(process_handler, config)
-
-    if config.get("dumb", {}).get("api_service", {}).get("enabled"):
-        start_fastapi_process()
-        api_cfg = config.get("dumb", {}).get("api_service", {})
-        api_name = api_cfg.get("process_name", "DUMB API")
-        process_handler.register_external_process(api_name, os.getpid())
-
     try:
-        dumb_config = config.get("dumb", {})
-        start_configured_process(dumb_config.get("frontend", {}), updater, "frontend")
+        _start_control_plane_and_preinstall(process_handler, updater, config)
     except Exception:
         process_handler.shutdown(exit_code=1)
 
