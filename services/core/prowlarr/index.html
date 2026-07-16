@@ -2241,6 +2241,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#installation-troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Installation troubleshooting
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#resources" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4637,6 +4648,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#installation-troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Installation troubleshooting
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#resources" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4907,6 +4929,24 @@ the intended Arr apps.</p>
 <ul>
 <li>Navigate to: <code>http://&lt;host&gt;:9696</code></li>
 </ul>
+<hr />
+<h2 id="installation-troubleshooting">Installation troubleshooting<a class="headerlink" href="#installation-troubleshooting" title="Permanent link">&para;</a></h2>
+<p>Before extracting an Arr archive, DUMB validates that <code>tar</code> can read the full
+gzip archive and logs both the downloaded archive size and free space in the
+installation filesystem. If validation or extraction fails, the structured
+DUMB error includes <code>tar</code>'s stderr, its exit status, the archive size, and the
+available space. Messages such as <code>unexpected end of file</code>, <code>No space left on
+device</code>, <code>Permission denied</code>, or <code>Read-only file system</code> therefore remain
+visible even when <code>/opt/prowlarr</code> is ephemeral.</p>
+<p>A Prowlarr preinstall failure no longer shuts down the DUMB API or Frontend.
+DUMB records the failure, completes the remaining preinstall work, and retries
+Prowlarr during normal service startup. If the retry also fails, Prowlarr stays
+stopped while the DUMB control plane remains available for logs and service
+management.</p>
+<p>For repeated extraction failures, check the Docker host's storage and inode
+capacity at its Docker root directory. A full container removal/recreation
+deletes the failed archive under <code>/opt</code>, so preserve the complete DUMB log when
+requesting support.</p>
 <hr />
 <h2 id="resources">Resources<a class="headerlink" href="#resources" title="Permanent link">&para;</a></h2>
 <ul>

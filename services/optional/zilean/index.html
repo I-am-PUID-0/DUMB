@@ -4761,6 +4761,7 @@
 <h2 id="tips">Tips<a class="headerlink" href="#tips" title="Permanent link">&para;</a></h2>
 <ul>
 <li>The first-time run of Zilean can take a long time; see the <a href="../../../faq/zilean/#why-is-zilean-spamming-my-logs">Zilean FAQ</a> for more info.</li>
+<li>Runtime Zilean rebuilds use an on-demand managed .NET 10 SDK. See the <a href="../../../faq/zilean/#why-does-dotnet-restore-say-that-no-net-sdks-were-found">Zilean SDK troubleshooting guide</a> if restore reports exit code <code>145</code> or no installed SDK.</li>
 <li>Logs from Zilean can be accessed via DUMB’s Frontend or directly from <code>/log/zilean.log</code>.</li>
 <li>If Zilean fails to bind, check for existing services on port <code>8182</code>.</li>
 <li>Use the <code>clear_on_update</code> and <code>exclude_dirs</code> settings to preserve persistent data.</li>

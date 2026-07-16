@@ -4593,6 +4593,19 @@
 <div class="admonition note">
 <p class="admonition-title">Depending on the system, the first-time run can take hours to days.</p>
 </div>
+<h3 id="why-does-dotnet-restore-say-that-no-net-sdks-were-found">Why does <code>dotnet restore</code> say that no .NET SDKs were found?<a class="headerlink" href="#why-does-dotnet-restore-say-that-no-net-sdks-were-found" title="Permanent link">&para;</a></h3>
+<p>The production DUMB image intentionally contains the .NET runtime without the
+full build SDK. The prebuilt Zilean service does not need an SDK to run. DUMB
+downloads a managed local .NET 10 SDK under <code>/zilean/.dotnet-sdk</code> only when a
+release, branch, or fork must be rebuilt inside the running container.</p>
+<p>Current DUMB startup verifies that the selected <code>dotnet</code> executable exposes the
+required SDK immediately before restore and logs both the SDK major and binary
+path. If restore still returns the runtime-only error (normally exit code 145),
+DUMB resets the managed local SDK and retries once. A persistent failure remains
+visible in DUMB logs while the DUMB API and Frontend stay available.</p>
+<p>When reporting this issue, include the lines before <code>dotnet_env_restore</code> that
+contain <code>Using .NET SDK</code> or <code>Retrying zilean restore</code>. A container recreated from
+an older cached <code>dev</code> image should be pulled again before retesting.</p>
 
 
 
