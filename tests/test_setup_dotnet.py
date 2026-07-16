@@ -165,6 +165,79 @@ class SetupDotnetTests(unittest.TestCase):
             self.assertEqual(env["DOTNET_ROOT"], str(install_root))
             self.assertEqual(env["DUMB_DOTNET_BIN"], dotnet_cmd)
 
+    def test_partial_nzbdav_environment_preserves_system_path(self):
+        class RestoreHandler:
+            def __init__(self):
+                self.calls = []
+                self.returncode = None
+                self.stderr = ""
+                self.stdout = ""
+
+            def start_process(self, name, config_dir, command, env=None):
+                self.calls.append((name, config_dir, command, env.copy()))
+                return True, None
+
+            def wait(self, _name):
+                self.returncode = 0
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            project_path = Path(temp_dir, "NzbWebDAV.csproj")
+            project_path.write_text(
+                "<Project><PropertyGroup>"
+                "<TargetFramework>net10.0</TargetFramework>"
+                "</PropertyGroup></Project>",
+                encoding="utf-8",
+            )
+            handler = RestoreHandler()
+            partial_env = {
+                "HOME": temp_dir,
+                "DOTNET_CLI_HOME": str(Path(temp_dir, ".dotnet")),
+                "NUGET_PACKAGES": str(Path(temp_dir, ".nuget", "packages")),
+            }
+
+            with (
+                patch.dict(setup.os.environ, {"PATH": "/bin:/usr/bin"}, clear=False),
+                patch.object(setup, "_dotnet_sdk_major", return_value=10),
+            ):
+                success, error = setup.setup_dotnet_environment(
+                    handler,
+                    "nzbdav",
+                    temp_dir,
+                    project_paths=[],
+                    restore_project_path=str(project_path),
+                    env=partial_env,
+                )
+
+            self.assertTrue(success, error)
+            restore_env = handler.calls[0][3]
+            self.assertEqual(restore_env["PATH"], "/bin:/usr/bin")
+            self.assertEqual(restore_env["HOME"], temp_dir)
+            self.assertEqual(
+                restore_env["DOTNET_CLI_HOME"], str(Path(temp_dir, ".dotnet"))
+            )
+
+    def test_sdk_installer_uses_absolute_bash_path(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            env = {"PATH": "/managed-sdk"}
+            response = SimpleNamespace(
+                text="#!/usr/bin/env bash\n",
+                raise_for_status=lambda: None,
+            )
+            completed = SimpleNamespace(returncode=0, stdout="", stderr="")
+
+            with (
+                patch.object(setup.requests, "get", return_value=response),
+                patch.object(
+                    setup.subprocess, "run", return_value=completed
+                ) as run_process,
+                patch.object(setup, "_dotnet_sdk_major", return_value=10),
+                patch.object(setup, "chown_single"),
+            ):
+                success, error, _ = setup._ensure_local_dotnet_sdk(temp_dir, env, 10)
+
+            self.assertTrue(success, error)
+            self.assertEqual(run_process.call_args_list[0].args[0][0], "/bin/bash")
+
 
 if __name__ == "__main__":
     unittest.main()

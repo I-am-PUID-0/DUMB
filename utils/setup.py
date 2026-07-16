@@ -8135,7 +8135,7 @@ def _ensure_local_dotnet_sdk(
         )
 
     install_cmd = [
-        "bash",
+        "/bin/bash",
         script_path,
         "--channel",
         f"{required_major}.0",
@@ -8189,7 +8189,9 @@ def setup_dotnet_environment(
 ):
     try:
         logger.info(f"Setting up .NET environment in {config_dir}")
-        env = (env or os.environ.copy()).copy()
+        process_env = os.environ.copy()
+        process_env.update(env or {})
+        env = process_env
         dotnet_cmd = env.get("DUMB_DOTNET_BIN") or "dotnet"
         if key == "zilean":
             try:
