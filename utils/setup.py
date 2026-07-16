@@ -8087,21 +8087,37 @@ def _dotnet_sdk_major(dotnet_cmd, env):
         return None
 
 
-def _ensure_local_dotnet_sdk(config_dir, env, required_major):
+def _ensure_local_dotnet_sdk(
+    config_dir, env, required_major, force_reinstall: bool = False
+):
     install_root = os.path.join(config_dir, ".dotnet-sdk")
     script_path = os.path.join(install_root, "dotnet-install.sh")
     dotnet_cmd = os.path.join(install_root, "dotnet")
 
+    if force_reinstall and os.path.isdir(install_root):
+        logger.warning(
+            "Resetting the managed local .NET SDK at %s before retry.", install_root
+        )
+        with os.scandir(install_root) as entries:
+            for entry in entries:
+                try:
+                    if entry.is_dir(follow_symlinks=False):
+                        shutil.rmtree(entry.path)
+                    else:
+                        os.unlink(entry.path)
+                except OSError as e:
+                    return False, f"Failed resetting local .NET SDK: {e}", None
+
     os.makedirs(install_root, exist_ok=True)
     chown_single(install_root, user_id, group_id)
+    env["DOTNET_ROOT"] = install_root
+    env["PATH"] = f"{install_root}:{env.get('PATH', '')}"
+    env["DUMB_DOTNET_BIN"] = dotnet_cmd
 
     existing_major = (
         _dotnet_sdk_major(dotnet_cmd, env) if os.path.isfile(dotnet_cmd) else None
     )
     if existing_major is not None and existing_major >= required_major:
-        env["DOTNET_ROOT"] = install_root
-        env["PATH"] = f"{install_root}:{env.get('PATH', '')}"
-        env["DUMB_DOTNET_BIN"] = dotnet_cmd
         return True, None, dotnet_cmd
 
     try:
@@ -8159,9 +8175,6 @@ def _ensure_local_dotnet_sdk(config_dir, env, required_major):
             None,
         )
 
-    env["DOTNET_ROOT"] = install_root
-    env["PATH"] = f"{install_root}:{env.get('PATH', '')}"
-    env["DUMB_DOTNET_BIN"] = dotnet_cmd
     return True, None, dotnet_cmd
 
 
@@ -8222,15 +8235,93 @@ def setup_dotnet_environment(
                 return False, error
             dotnet_cmd = local_dotnet_cmd
 
-        process_handler.start_process(
-            "dotnet_env_restore",
-            config_dir,
-            [dotnet_cmd, "restore", restore_target, "/nodeReuse:false"],
-            env=env,
+        selected_major = _dotnet_sdk_major(dotnet_cmd, env)
+        if required_major is not None and (
+            selected_major is None or selected_major < required_major
+        ):
+            return (
+                False,
+                f"Selected dotnet executable {dotnet_cmd} does not expose the required .NET SDK {required_major}.",
+            )
+        logger.info(
+            "Using .NET SDK %s from %s for %s restore.",
+            selected_major if selected_major is not None else "unknown",
+            dotnet_cmd,
+            key,
         )
-        process_handler.wait("dotnet_env_restore")
-        if process_handler.returncode != 0:
-            return False, f"Error running dotnet restore: {process_handler.stderr}"
+
+        def _restore_with(selected_dotnet_cmd):
+            success, start_error = process_handler.start_process(
+                "dotnet_env_restore",
+                config_dir,
+                [
+                    selected_dotnet_cmd,
+                    "restore",
+                    restore_target,
+                    "/nodeReuse:false",
+                ],
+                env=env,
+            )
+            if not success:
+                details = (
+                    process_handler.stderr
+                    or process_handler.stdout
+                    or start_error
+                    or "dotnet restore failed before producing output"
+                )
+                return False, details, process_handler.returncode
+            process_handler.wait("dotnet_env_restore")
+            if process_handler.returncode != 0:
+                details = (
+                    process_handler.stderr
+                    or process_handler.stdout
+                    or f"dotnet restore exited with code {process_handler.returncode}"
+                )
+                return False, details, process_handler.returncode
+            return True, None, process_handler.returncode
+
+        restore_success, restore_error, restore_returncode = _restore_with(dotnet_cmd)
+        if (
+            not restore_success
+            and required_major is not None
+            and (
+                restore_returncode == 145
+                or "no .net sdks were found" in str(restore_error).lower()
+                or "application 'restore' does not exist" in str(restore_error).lower()
+            )
+        ):
+            logger.warning(
+                ".NET restore could not find an SDK through %s. Reinstalling the managed local SDK %s and retrying once.",
+                dotnet_cmd,
+                required_major,
+            )
+            success, error, repaired_dotnet_cmd = _ensure_local_dotnet_sdk(
+                config_dir,
+                env,
+                required_major,
+                force_reinstall=True,
+            )
+            if not success:
+                return False, error
+            repaired_major = _dotnet_sdk_major(repaired_dotnet_cmd, env)
+            if repaired_major is None or repaired_major < required_major:
+                return (
+                    False,
+                    f"Repaired dotnet executable {repaired_dotnet_cmd} does not expose the required .NET SDK {required_major}.",
+                )
+            dotnet_cmd = repaired_dotnet_cmd
+            logger.info(
+                "Retrying %s restore with repaired .NET SDK %s from %s.",
+                key,
+                repaired_major,
+                dotnet_cmd,
+            )
+            restore_success, restore_error, restore_returncode = _restore_with(
+                dotnet_cmd
+            )
+
+        if not restore_success:
+            return False, f"Error running dotnet restore: {restore_error}"
         if project_paths is None:
             project_paths = []
         for project_path in project_paths:

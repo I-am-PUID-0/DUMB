@@ -1,5 +1,5 @@
 from utils.global_logger import logger
-import platform, subprocess, os, re, requests, json, time
+import platform, subprocess, os, re, requests, json, time, shutil
 
 
 class ArrInstaller:
@@ -20,6 +20,92 @@ class ArrInstaller:
         self.install_dir = install_dir or f"/opt/{self.app_name}"
         self.repo_owner = repo_owner
         self.repo_name = repo_name
+
+    @staticmethod
+    def _format_bytes(value):
+        try:
+            size = float(value)
+        except (TypeError, ValueError):
+            return "unknown"
+        units = ("B", "KiB", "MiB", "GiB", "TiB")
+        for unit in units:
+            if abs(size) < 1024 or unit == units[-1]:
+                return f"{size:.1f} {unit}"
+            size /= 1024
+        return f"{size:.1f} TiB"
+
+    def _archive_storage_details(self, archive_path):
+        try:
+            archive_size = os.path.getsize(archive_path)
+        except OSError:
+            archive_size = None
+        try:
+            free_space = shutil.disk_usage(self.install_dir).free
+        except OSError:
+            free_space = None
+        return archive_size, free_space
+
+    def _log_archive_storage(self, archive_path):
+        archive_size, free_space = self._archive_storage_details(archive_path)
+        logger.info(
+            "%s archive %s is %s (%s bytes); free space in %s is %s (%s bytes).",
+            self.app_name_cap,
+            os.path.basename(archive_path),
+            self._format_bytes(archive_size),
+            archive_size if archive_size is not None else "unknown",
+            self.install_dir,
+            self._format_bytes(free_space),
+            free_space if free_space is not None else "unknown",
+        )
+        return archive_size, free_space
+
+    def _run_tar(self, operation, archive_path, command):
+        result = subprocess.run(
+            command,
+            check=False,
+            cwd=self.install_dir,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+        if result.returncode == 0:
+            return
+
+        archive_size, free_space = self._archive_storage_details(archive_path)
+        stderr = (result.stderr or "").strip() or "tar produced no stderr output"
+        raise RuntimeError(
+            f"{self.app_name_cap} archive {operation} failed for "
+            f"{os.path.basename(archive_path)} (tar exit {result.returncode}; "
+            f"archive size {self._format_bytes(archive_size)} "
+            f"[{archive_size if archive_size is not None else 'unknown'} bytes]; "
+            f"free space {self._format_bytes(free_space)} "
+            f"[{free_space if free_space is not None else 'unknown'} bytes]): {stderr}"
+        )
+
+    def _validate_archive(self, archive_path):
+        self._run_tar(
+            "validation",
+            archive_path,
+            ["tar", "tzf", archive_path],
+        )
+
+    def _extract_archive(self, archive_path):
+        self._run_tar(
+            "extraction",
+            archive_path,
+            [
+                "tar",
+                "xzf",
+                archive_path,
+                "--no-same-owner",
+                "--no-same-permissions",
+            ],
+        )
+
+    def _validate_and_extract_archive(self, archive_path):
+        self._validate_archive(archive_path)
+        self._log_archive_storage(archive_path)
+        self._extract_archive(archive_path)
 
     def get_download_url(self):
         arch = platform.machine()
@@ -405,18 +491,9 @@ class ArrInstaller:
                             continue
                     raise FileNotFoundError("Downloaded archive not found.")
 
-            subprocess.run(
-                [
-                    "tar",
-                    "xzf",
-                    tarball,
-                    "--no-same-owner",
-                    "--no-same-permissions",
-                ],
-                check=True,
-                cwd=self.install_dir,
-            )
-            os.remove(os.path.join(self.install_dir, tarball))
+            archive_path = os.path.join(self.install_dir, tarball)
+            self._validate_and_extract_archive(archive_path)
+            os.remove(archive_path)
             binary_path = os.path.join(
                 self.install_dir, self.app_name_cap, self.app_name_cap
             )

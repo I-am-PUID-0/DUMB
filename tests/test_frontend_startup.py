@@ -5,6 +5,7 @@ from pathlib import Path
 
 from utils.startup import (
     frontend_start_readiness,
+    run_parallel_preinstall,
     start_control_plane_before_preinstall,
 )
 
@@ -94,6 +95,22 @@ class FrontendStartupTests(unittest.TestCase):
             )
 
         self.assertEqual(events, ["api", "preinstall", "frontend"])
+
+    def test_parallel_preinstall_reports_failure_without_raising(self):
+        attempted = []
+
+        def install_target(_key, name):
+            attempted.append(name)
+            if name == "Prowlarr":
+                raise RuntimeError("archive validation failed")
+
+        failures = run_parallel_preinstall(
+            [("prowlarr", "Prowlarr"), ("sonarr", "Sonarr")],
+            install_target,
+        )
+
+        self.assertCountEqual(attempted, ["Prowlarr", "Sonarr"])
+        self.assertEqual(failures, {"Prowlarr": "archive validation failed"})
 
 
 if __name__ == "__main__":

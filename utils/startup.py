@@ -2,6 +2,7 @@ import json
 import os
 import shlex
 from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 
 def frontend_entrypoint_exists(frontend_config: dict) -> bool:
@@ -92,3 +93,26 @@ def start_control_plane_before_preinstall(
 
     if not frontend_started_early:
         start_frontend()
+
+
+def run_parallel_preinstall(
+    targets: list[tuple[str, str]],
+    install_target: Callable[[str, str], None],
+    max_workers: int = 4,
+) -> dict[str, str]:
+    if not targets:
+        return {}
+
+    failures = {}
+    worker_count = min(max_workers, max(1, len(targets)))
+    with ThreadPoolExecutor(max_workers=worker_count) as executor:
+        futures = {
+            executor.submit(install_target, key, name): name for key, name in targets
+        }
+        for future in as_completed(futures):
+            name = futures[future]
+            try:
+                future.result()
+            except Exception as error:
+                failures[name] = str(error)
+    return failures

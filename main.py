@@ -10,13 +10,13 @@ from utils.auto_update import Update
 from utils.dependencies import initialize_dependencies
 from utils.core_services import get_core_services, has_core_service
 from utils.dependency_map import build_conditional_dependency_map
-from utils.startup import start_control_plane_before_preinstall
+from utils.startup import run_parallel_preinstall, start_control_plane_before_preinstall
 from utils.plex_dbrepair import start_plex_dbrepair_worker
 from utils.ffprobe_monitor import start_ffprobe_monitor
 from utils.setup import setup_project
 from utils.seerr_sync import start_seerr_sync_service
 from utils.arr_postgres import configure_arr_postgres_runtime
-from concurrent.futures import ThreadPoolExecutor, wait, FIRST_COMPLETED, as_completed
+from concurrent.futures import ThreadPoolExecutor, wait, FIRST_COMPLETED
 import subprocess, threading, time, os, socket, errno, psutil, json, urllib.parse, sys
 
 
@@ -788,12 +788,13 @@ def _collect_preinstall_targets(config_manager) -> list[tuple[str, str]]:
     return targets
 
 
-def _preinstall_enabled_services(process_handler, config_manager) -> None:
+def _preinstall_enabled_services(process_handler, config_manager) -> dict[str, str]:
     targets = _collect_preinstall_targets(config_manager)
     if not targets:
-        return
+        process_handler.preinstall_failures = {}
+        process_handler.preinstall_complete = True
+        return {}
     logger.info("Pre-installing enabled services before startup.")
-    max_workers = min(4, max(1, len(targets)))
 
     def _run_preinstall(key: str, name: str) -> None:
         if process_handler.shutting_down:
@@ -811,20 +812,21 @@ def _preinstall_enabled_services(process_handler, config_manager) -> None:
             process_handler.preinstalled_processes.add(name)
             logger.info("Preinstall done: %s", name)
 
-    with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        futures = {
-            executor.submit(_run_preinstall, key, name): name for key, name in targets
-        }
-        for future in as_completed(futures):
-            name = futures[future]
-            try:
-                future.result()
-            except Exception as e:
-                logger.error("Pre-install failed for %s: %s", name, e)
-                process_handler.shutdown(exit_code=1)
-                raise
-    logger.info("Pre-install phase complete.")
+    failures = run_parallel_preinstall(targets, _run_preinstall)
+    process_handler.preinstall_failures = dict(failures)
+    for name, error in failures.items():
+        logger.error("Pre-install failed for %s: %s", name, error)
+
     process_handler.preinstall_complete = True
+    if failures:
+        logger.warning(
+            "Pre-install phase completed with %s failure(s). DUMB API and Frontend will remain available; failed services will retry during normal startup: %s",
+            len(failures),
+            ", ".join(sorted(failures)),
+        )
+    else:
+        logger.info("Pre-install phase complete.")
+    return failures
 
 
 def _start_control_plane_and_preinstall(

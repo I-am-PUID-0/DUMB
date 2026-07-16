@@ -42,6 +42,7 @@ class ProcessHandler:
         self.auto_restart_thread = None
         self.preinstall_complete = False
         self.preinstalled_processes = set()
+        self.preinstall_failures = {}
 
     def _get_thread_state(self):
         state = getattr(self._thread_state, "state", None)
