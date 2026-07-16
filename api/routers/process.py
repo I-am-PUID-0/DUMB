@@ -49,6 +49,23 @@ class RescheduleSymlinkBackupRequest(BaseModel):
     process_name: str
 
 
+class ArrPostgresMigrationStartRequest(BaseModel):
+    process_name: str
+    mode: str = "rehearsal"
+    include_logs: bool = False
+    confirmation: str
+    acknowledge_unsupported: bool = False
+    acknowledge_backup: bool = False
+    acknowledge_target_reset: bool = False
+    model_config = ConfigDict(extra="forbid")
+
+
+class ArrPostgresMigrationRollbackRequest(BaseModel):
+    job_id: str
+    confirmation: str
+    model_config = ConfigDict(extra="forbid")
+
+
 class SymlinkRewriteRule(BaseModel):
     from_prefix: str
     to_prefix: str
@@ -2510,6 +2527,132 @@ async def reschedule_symlink_backup(
     return payload
 
 
+@process_router.get("/arr-postgres-migration/preflight")
+async def arr_postgres_migration_preflight(
+    process_name: str = Query(..., description="Sonarr or Radarr process name"),
+    api_state=Depends(get_api_state),
+    logger=Depends(get_logger),
+    current_user: str = Depends(get_optional_current_user),
+):
+    from utils.arr_postgres_migration import (
+        ArrPostgresMigrationError,
+        build_arr_postgres_preflight,
+    )
+
+    try:
+        return await run_in_threadpool(
+            build_arr_postgres_preflight,
+            CONFIG_MANAGER,
+            process_name,
+            api_state,
+        )
+    except ArrPostgresMigrationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from None
+    except Exception:
+        logger.error("Arr PostgreSQL migration preflight failed for %s", process_name)
+        raise HTTPException(
+            status_code=500,
+            detail="Migration preflight failed. Check DUMB and PostgreSQL logs.",
+        ) from None
+
+
+@process_router.post("/arr-postgres-migration/start")
+async def arr_postgres_migration_start(
+    request: ArrPostgresMigrationStartRequest,
+    process_handler=Depends(get_process_handler),
+    api_state=Depends(get_api_state),
+    logger=Depends(get_logger),
+    current_user: str = Depends(get_optional_current_user),
+):
+    from utils.arr_postgres_migration import (
+        ARR_POSTGRES_MIGRATION_MANAGER,
+        ArrPostgresMigrationError,
+    )
+
+    if not process_handler or not api_state:
+        raise HTTPException(status_code=500, detail="Runtime state is unavailable.")
+    try:
+        return await run_in_threadpool(
+            ARR_POSTGRES_MIGRATION_MANAGER.create_job,
+            CONFIG_MANAGER,
+            process_handler,
+            api_state,
+            logger,
+            request.process_name,
+            request.mode,
+            bool(request.include_logs),
+            request.confirmation,
+            bool(request.acknowledge_unsupported),
+            bool(request.acknowledge_backup),
+            bool(request.acknowledge_target_reset),
+        )
+    except ArrPostgresMigrationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from None
+    except Exception:
+        logger.error(
+            "Failed to queue Arr PostgreSQL migration for %s", request.process_name
+        )
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to queue the migration. Check DUMB logs.",
+        ) from None
+
+
+@process_router.get("/arr-postgres-migration/status")
+def arr_postgres_migration_status(
+    job_id: str = Query(..., description="Migration job ID"),
+    current_user: str = Depends(get_optional_current_user),
+):
+    from utils.arr_postgres_migration import ARR_POSTGRES_MIGRATION_MANAGER
+
+    payload = ARR_POSTGRES_MIGRATION_MANAGER.get_job(job_id)
+    if not payload:
+        raise HTTPException(status_code=404, detail="Migration job not found.")
+    return payload
+
+
+@process_router.get("/arr-postgres-migration/latest")
+def arr_postgres_migration_latest(
+    process_name: str = Query(..., description="Sonarr or Radarr process name"),
+    current_user: str = Depends(get_optional_current_user),
+):
+    from utils.arr_postgres_migration import ARR_POSTGRES_MIGRATION_MANAGER
+
+    return {"job": ARR_POSTGRES_MIGRATION_MANAGER.latest_job(process_name)}
+
+
+@process_router.post("/arr-postgres-migration/rollback")
+async def arr_postgres_migration_rollback(
+    request: ArrPostgresMigrationRollbackRequest,
+    process_handler=Depends(get_process_handler),
+    api_state=Depends(get_api_state),
+    logger=Depends(get_logger),
+    current_user: str = Depends(get_optional_current_user),
+):
+    from utils.arr_postgres_migration import (
+        ARR_POSTGRES_MIGRATION_MANAGER,
+        ArrPostgresMigrationError,
+    )
+
+    try:
+        return await run_in_threadpool(
+            ARR_POSTGRES_MIGRATION_MANAGER.rollback_job,
+            request.job_id,
+            request.confirmation,
+            CONFIG_MANAGER,
+            process_handler,
+            api_state,
+        )
+    except ArrPostgresMigrationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from None
+    except Exception:
+        logger.error("Arr PostgreSQL migration rollback failed")
+        raise HTTPException(
+            status_code=500,
+            detail="Rollback failed. Check DUMB logs and the job backup directory.",
+        ) from None
+
+
 @process_router.post("/symlink-repair")
 async def symlink_repair(
     request: SymlinkRepairRequest,
@@ -4889,5 +5032,8 @@ async def get_capabilities(current_user: str = Depends(get_optional_current_user
         "symlink_backup_schedule": True,
         "symlink_backup_manifest_list": True,
         "symlink_manifest_file_list": True,
+        "arr_postgres_migration": True,
+        "arr_postgres_migration_rehearsal": True,
+        "arr_postgres_migration_rollback": True,
         "ai_diagnostics": True,
     }
