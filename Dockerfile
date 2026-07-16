@@ -5,7 +5,7 @@ ARG GO_VERSION=1.26.5
 
 FROM golang:${GO_VERSION}-bookworm AS go-runtime
 FROM mcr.microsoft.com/dotnet/aspnet:9.0-noble AS dotnet-runtime
-FROM mcr.microsoft.com/dotnet/sdk:9.0-noble AS dotnet-sdk
+FROM mcr.microsoft.com/dotnet/sdk:10.0-noble AS dotnet-sdk
 
 ####################################################################################################################################################
 # Stage 0: base (Ubuntu 26.04 with common tooling)
