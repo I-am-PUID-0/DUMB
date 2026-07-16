@@ -83,6 +83,33 @@ class DatabaseHealthCollectorTests(unittest.TestCase):
             self.assertEqual(result["services"][0]["databases"], [])
             self.assertEqual(collector._cache, {})
 
+    def test_changed_storage_override_does_not_reuse_old_score(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            Path(temp_dir, "db.sqlite").touch()
+            log_path = Path(temp_dir) / "nzbdav.log"
+            log_path.touch()
+            collector = DatabaseHealthCollector()
+            config = _config(temp_dir, str(log_path))
+            storage = {
+                "mount_point": temp_dir,
+                "fs_type": "nfs4",
+                "source": "server:/data",
+                "network": True,
+            }
+            with patch("utils.database_health._storage_for_path", return_value=storage):
+                first = collector.snapshot(config)["services"][0]
+                config["dumb"]["metrics"]["database_health"]["services"]["nzbdav"][
+                    "ignore_network_storage"
+                ] = True
+                waiting = collector.snapshot(config, refresh_if_stale=False)[
+                    "services"
+                ][0]
+                refreshed = collector.snapshot(config)["services"][0]
+
+            self.assertEqual(first["score"], 35)
+            self.assertEqual(waiting["pressure"], "collecting")
+            self.assertEqual(refreshed["score"], 0)
+
     def test_enhanced_mode_uses_bounded_read_only_sqlite_probe(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             db_path = Path(temp_dir) / "db.sqlite"
@@ -161,6 +188,49 @@ class DatabaseHealthCollectorTests(unittest.TestCase):
 
             self.assertGreaterEqual(service["score"], 20)
             self.assertIn("local storage", service["recommendation"])
+
+    def test_network_storage_is_scored_once_per_mount(self):
+        storage = {
+            "mount_point": "/config",
+            "fs_type": "nfs4",
+            "source": "server:/config",
+            "network": True,
+        }
+        score, reasons = DatabaseHealthCollector._score(
+            {
+                "collected_at": 100,
+                "log_signals": {},
+                "databases": [
+                    {"role": "main", "storage": storage},
+                    {"role": "metrics", "storage": storage},
+                ],
+            }
+        )
+
+        self.assertEqual(score, 35)
+        self.assertEqual(len(reasons), 1)
+        self.assertIn("main, metrics", reasons[0])
+
+    def test_network_storage_can_be_ignored_without_hiding_storage_details(self):
+        storage = {
+            "mount_point": "/config",
+            "fs_type": "nfs4",
+            "source": "server:/config",
+            "network": True,
+        }
+        result = {
+            "provider": "sqlite",
+            "ignore_network_storage": True,
+            "collected_at": 100,
+            "log_signals": {},
+            "databases": [{"role": "main", "storage": storage}],
+        }
+
+        score, reasons = DatabaseHealthCollector._score(result)
+
+        self.assertEqual(score, 0)
+        self.assertEqual(reasons, [])
+        self.assertTrue(result["databases"][0]["storage"]["network"])
 
 
 if __name__ == "__main__":

@@ -117,6 +117,9 @@ class DatabaseHealthCollector:
                 mode = str(service_cfg.get("mode") or "standard").lower()
                 if mode not in {"standard", "enhanced"}:
                     mode = "standard"
+                ignore_network_storage = (
+                    service_cfg.get("ignore_network_storage") is True
+                )
 
                 if not monitoring_enabled:
                     disabled = self._disabled_result(candidate, globally_enabled, mode)
@@ -126,12 +129,21 @@ class DatabaseHealthCollector:
                     continue
 
                 cached = self._cache.get(candidate["id"])
-                if cached and now - float(cached.get("collected_at") or 0) < interval:
+                cache_matches_config = bool(
+                    cached
+                    and cached.get("mode") == mode
+                    and bool(cached.get("ignore_network_storage"))
+                    == ignore_network_storage
+                )
+                if (
+                    cache_matches_config
+                    and now - float(cached.get("collected_at") or 0) < interval
+                ):
                     result = dict(cached)
                 elif not refresh_if_stale:
                     result = (
                         dict(cached)
-                        if cached
+                        if cache_matches_config
                         else self._waiting_result(candidate, mode)
                     )
                 else:
@@ -139,12 +151,14 @@ class DatabaseHealthCollector:
                         candidate,
                         config,
                         mode=mode,
+                        ignore_network_storage=ignore_network_storage,
                         log_tail_bytes=log_tail_bytes,
                         now=now,
                     )
                     self._cache[candidate["id"]] = result
                 result["monitoring_enabled"] = True
                 result["mode"] = mode
+                result["ignore_network_storage"] = ignore_network_storage
                 services.append(result if details else self._compact_result(result))
 
         monitored = [item for item in services if item.get("monitoring_enabled")]
@@ -233,7 +247,15 @@ class DatabaseHealthCollector:
             "databases": [],
         }
 
-    def _collect_service(self, candidate, config, mode, log_tail_bytes, now):
+    def _collect_service(
+        self,
+        candidate,
+        config,
+        mode,
+        ignore_network_storage,
+        log_tail_bytes,
+        now,
+    ):
         service = candidate["service_config"]
         log_signals = self._collect_log_signals(service.get("log_file"), log_tail_bytes)
         result = {
@@ -244,6 +266,7 @@ class DatabaseHealthCollector:
             "provider": candidate["provider"],
             "monitoring_enabled": True,
             "mode": mode,
+            "ignore_network_storage": ignore_network_storage,
             "collected_at": now,
             "log_signals": log_signals,
             "databases": [],
@@ -567,13 +590,29 @@ class DatabaseHealthCollector:
             score += 45
             reasons.append("PostgreSQL deadlock messages were observed.")
 
-        for database in result.get("databases") or []:
-            storage = database.get("storage") or {}
-            if storage.get("network"):
-                score += 35
-                reasons.append(
-                    f"{database.get('role', 'Database').title()} SQLite storage is on {storage.get('fs_type') or 'a network filesystem'}."
+        if not result.get("ignore_network_storage"):
+            network_storage = {}
+            for database in result.get("databases") or []:
+                storage = database.get("storage") or {}
+                if not storage.get("network"):
+                    continue
+                storage_key = (
+                    storage.get("mount_point"),
+                    storage.get("fs_type"),
+                    storage.get("source"),
                 )
+                network_storage.setdefault(storage_key, []).append(
+                    str(database.get("role") or "database")
+                )
+            for (mount_point, fs_type, _source), roles in network_storage.items():
+                score += 35
+                role_label = ", ".join(dict.fromkeys(roles))
+                reasons.append(
+                    f"SQLite database storage ({role_label}) is on "
+                    f"{fs_type or 'a network filesystem'} at {mount_point or 'an unknown mount point'}."
+                )
+
+        for database in result.get("databases") or []:
             wal_size = int(database.get("wal_size_bytes") or 0)
             db_size = int(database.get("size_bytes") or 0)
             if wal_size >= 256 * 1024 * 1024:
@@ -646,7 +685,7 @@ class DatabaseHealthCollector:
             return "Passive monitoring is active. Enable enhanced mode for bounded PostgreSQL statistics queries."
         if not reasons:
             return "No database pressure indicators have been observed. Keep the current provider and continue collecting a representative workload."
-        if any(
+        if not result.get("ignore_network_storage") and any(
             (database.get("storage") or {}).get("network")
             for database in result.get("databases") or []
         ):
@@ -688,6 +727,7 @@ class DatabaseHealthCollector:
                 "provider",
                 "monitoring_enabled",
                 "mode",
+                "ignore_network_storage",
                 "pressure",
                 "score",
                 "collected_at",

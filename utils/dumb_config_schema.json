@@ -511,6 +511,11 @@
                           "enhanced"
                         ],
                         "default": "standard"
+                      },
+                      "ignore_network_storage": {
+                        "type": "boolean",
+                        "default": false,
+                        "description": "Continue reporting network storage but exclude it from this service's pressure score and recommendation."
                       }
                     },
                     "required": [
