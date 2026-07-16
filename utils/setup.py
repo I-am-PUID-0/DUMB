@@ -8,6 +8,7 @@ from utils.traefik_setup import setup_traefik
 from utils.user_management import chown_recursive, chown_single
 from utils.apt_lock import run_locked
 from utils.arr_postgres import apply_arr_postgres_config
+from utils.zilean_dotnet import prepare_zilean_for_net10
 import defusedxml.ElementTree as ET
 import os, shutil, random, subprocess, re, glob, secrets, shlex, time, urllib.parse, base64, threading, sys, hashlib, json, requests, copy
 
@@ -7465,6 +7466,13 @@ def clear_directory(directory_path, exclude_dirs=None, retries=3, delay=2):
         logger.debug(f"Adding venv path to exclude_dirs: {venv_path}")
         exclude_dirs.append(venv_path)
 
+    dotnet_sdk_path = os.path.abspath(os.path.join(directory_path, ".dotnet-sdk"))
+    if os.path.exists(dotnet_sdk_path) and not any(
+        os.path.abspath(ex) == dotnet_sdk_path for ex in exclude_dirs
+    ):
+        logger.debug(f"Adding local .NET SDK path to exclude_dirs: {dotnet_sdk_path}")
+        exclude_dirs.append(dotnet_sdk_path)
+
     exclude_dirs = {os.path.abspath(exclude_dir) for exclude_dir in exclude_dirs}
     directory_path = os.path.abspath(directory_path)
     logger.debug(f"Excluding directories: {exclude_dirs}")
@@ -8201,13 +8209,34 @@ def setup_dotnet_environment(
         logger.info(f"Setting up .NET environment in {config_dir}")
         env = (env or os.environ.copy()).copy()
         dotnet_cmd = env.get("DUMB_DOTNET_BIN") or "dotnet"
+        if key == "zilean":
+            try:
+                changed_files = prepare_zilean_for_net10(config_dir)
+                if changed_files:
+                    logger.info(
+                        "Prepared %s Zilean source file(s) for .NET 10.",
+                        len(changed_files),
+                    )
+                else:
+                    logger.info("Zilean source already targets .NET 10.")
+            except ValueError as e:
+                return False, f"Unable to prepare Zilean for .NET 10: {e}"
+            if project_paths is None:
+                project_paths = [
+                    os.path.join(config_dir, "src/Zilean.ApiService"),
+                    os.path.join(config_dir, "src/Zilean.Scraper"),
+                ]
         nuget_packages = os.path.join(config_dir, ".nuget", "packages")
         os.makedirs(nuget_packages, exist_ok=True)
         chown_single(os.path.join(config_dir, ".nuget"), user_id, group_id)
         chown_single(nuget_packages, user_id, group_id)
         env.setdefault("NUGET_PACKAGES", nuget_packages)
         restore_target = restore_project_path or config_dir
-        required_major = _required_dotnet_sdk_major(project_paths, restore_target)
+        required_major = (
+            10
+            if key == "zilean"
+            else _required_dotnet_sdk_major(project_paths, restore_target)
+        )
         current_major = _dotnet_sdk_major(dotnet_cmd, env)
         if required_major is not None and (
             current_major is None or current_major < required_major
@@ -8235,11 +8264,6 @@ def setup_dotnet_environment(
             return False, f"Error running dotnet restore: {process_handler.stderr}"
         if project_paths is None:
             project_paths = []
-            if key == "zilean":
-                project_paths = [
-                    os.path.join(config_dir, "src/Zilean.ApiService"),
-                    os.path.join(config_dir, "src/Zilean.Scraper"),
-                ]
         for project_path in project_paths:
             if os.path.exists(project_path):
                 logger.info(f"Publishing .NET project {project_path}")
@@ -8266,6 +8290,25 @@ def setup_dotnet_environment(
                     return (
                         False,
                         f"Error publishing .NET project {project_path}: {process_handler.stderr}",
+                    )
+
+        if key == "zilean":
+            zilean_output = output_dir or os.path.join(config_dir, "app")
+            for runtime_config in (
+                "zilean-api.runtimeconfig.json",
+                "scraper.runtimeconfig.json",
+            ):
+                runtime_config_path = os.path.join(zilean_output, runtime_config)
+                try:
+                    with open(runtime_config_path, "r", encoding="utf-8") as f:
+                        runtime_data = json.load(f)
+                    target_framework = runtime_data["runtimeOptions"]["tfm"]
+                except (OSError, KeyError, TypeError, json.JSONDecodeError) as e:
+                    return False, f"Unable to verify {runtime_config}: {e}"
+                if target_framework != "net10.0":
+                    return (
+                        False,
+                        f"{runtime_config} targets {target_framework}, expected net10.0",
                     )
 
         logger.info(f".NET environment setup complete")

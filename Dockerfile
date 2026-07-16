@@ -4,8 +4,8 @@ ARG RCLONE_TAG=latest
 ARG GO_VERSION=1.26.5
 
 FROM golang:${GO_VERSION}-bookworm AS go-runtime
-FROM mcr.microsoft.com/dotnet/aspnet:9.0-noble AS dotnet-runtime
-FROM mcr.microsoft.com/dotnet/sdk:9.0-noble AS dotnet-sdk
+FROM mcr.microsoft.com/dotnet/aspnet:10.0-noble AS dotnet-runtime
+FROM mcr.microsoft.com/dotnet/sdk:10.0-noble AS dotnet-sdk
 
 ####################################################################################################################################################
 # Stage 0: base (Ubuntu 26.04 with common tooling)
@@ -137,23 +137,19 @@ COPY --from=dotnet-sdk /usr/share/dotnet /usr/share/dotnet
 FROM dotnet-build-base AS zilean-builder
 ARG TARGETARCH
 ARG ZILEAN_TAG
-ARG KUBERNETES_CLIENT_VERSION=17.0.14
-ARG OPENTELEMETRY_VERSION=1.15.3
+COPY utils/zilean_dotnet.py /tmp/zilean_dotnet.py
 WORKDIR /tmp
 RUN --mount=type=cache,target=/root/.cache/pip,sharing=shared \
     --mount=type=cache,target=/root/.nuget/packages,sharing=locked \
     curl -L https://github.com/iPromKnight/zilean/archive/refs/tags/${ZILEAN_TAG}.zip -o zilean.zip && \
     unzip zilean.zip && mv zilean-* /zilean && echo ${ZILEAN_TAG} > /zilean/version.txt && \
-    sed -i -E \
-      's#(<PackageVersion Include="KubernetesClient" Version=")[^"]+(" */>)#\1'"${KUBERNETES_CLIENT_VERSION}"'\2#' \
-      /zilean/Directory.Packages.props && \
-    sed -i '/<Project>/a\  <PropertyGroup>\n    <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>\n  </PropertyGroup>' \
-      /zilean/Directory.Packages.props && \
-    sed -i '/<ItemGroup>/a\    <PackageVersion Include="OpenTelemetry.Api" Version="'"${OPENTELEMETRY_VERSION}"'" />\n    <PackageVersion Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="'"${OPENTELEMETRY_VERSION}"'" />' \
-      /zilean/Directory.Packages.props && \
+    # Use the same compatibility transform as runtime release/branch installs.
+    python3 /tmp/zilean_dotnet.py /zilean && \
     cd /zilean && dotnet restore -a ${TARGETARCH} && \
     cd /zilean/src/Zilean.ApiService && dotnet publish -c Release --no-restore -a ${TARGETARCH} -o /zilean/app/ && \
     cd /zilean/src/Zilean.Scraper && dotnet publish -c Release --no-restore -a ${TARGETARCH} -o /zilean/app/ && \
+    grep -q '"tfm": "net10.0"' /zilean/app/zilean-api.runtimeconfig.json && \
+    grep -q '"tfm": "net10.0"' /zilean/app/scraper.runtimeconfig.json && \
     cd /zilean && python3.11 -m venv /zilean/venv && . /zilean/venv/bin/activate && \
     pip install --upgrade pip setuptools wheel && pip install -r /zilean/requirements.txt && \
     find /zilean/venv/lib/python3.11/site-packages -type d \
