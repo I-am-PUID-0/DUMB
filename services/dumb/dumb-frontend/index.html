@@ -1702,6 +1702,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#startup-behavior" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Startup behavior
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#frontend-usage-guides" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4587,6 +4598,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#startup-behavior" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Startup behavior
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#frontend-usage-guides" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4796,6 +4818,21 @@ and metrics in a single interface.</p>
 </ul>
 </li>
 </ul>
+<h2 id="startup-behavior">Startup behavior<a class="headerlink" href="#startup-behavior" title="Permanent link">&para;</a></h2>
+<p>DUMB starts its API before the enabled-service preinstall phase. When the
+frontend runtime is already built and its configured version does not require a
+new install, DUMB also starts the frontend before that phase. This makes the UI
+available while the remaining services are still being prepared and started.</p>
+<p>Frontend startup remains after the service preinstall phase when any of the
+following applies:</p>
+<ul>
+<li>The configured frontend entrypoint is missing.</li>
+<li>A branch install is enabled.</li>
+<li>A floating release such as <code>latest</code>, <code>nightly</code>, or <code>prerelease</code> must be resolved.</li>
+<li>The installed frontend version does not match the configured release version.</li>
+</ul>
+<p>In those cases, DUMB keeps the existing install/update path and starts the
+frontend after its runtime is ready.</p>
 <h2 id="frontend-usage-guides">Frontend usage guides<a class="headerlink" href="#frontend-usage-guides" title="Permanent link">&para;</a></h2>
 <p>For UI walkthroughs, use the frontend section:</p>
 <ul>

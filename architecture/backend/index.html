@@ -4823,6 +4823,9 @@ flowchart TD
 <li>Executes setup/install steps</li>
 <li>Applies service-specific configuration reconciliation</li>
 <li>Resolves startup dependency order and post-core services</li>
+<li>Starts the DUMB API immediately and starts an already-installed DUMB Frontend
+  before enabled-service preinstall, so the control plane remains available
+  during longer service preparation</li>
 <li>Applies auto-update scheduling</li>
 <li>Enforces shutdown ordering</li>
 </ul>
