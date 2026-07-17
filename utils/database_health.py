@@ -1,10 +1,10 @@
-"""Service-aware, read-only database health collection for DUMB metrics.
+"""Service-aware, read-only database/store health collection for DUMB metrics.
 
-The collector intentionally observes databases without performing maintenance.
-Standard mode reads files, storage placement/capacity/inodes, and new log
-messages. Enhanced mode adds bounded, read-only SQLite/PostgreSQL metadata
-probes. It never runs integrity checks, VACUUM, checkpoints, ANALYZE, or
-application SQL queries.
+The collector intentionally observes SQL databases and application-owned
+persistent stores without performing maintenance. Standard mode reads files,
+storage placement/capacity/inodes, and new log messages. Enhanced mode adds
+bounded, read-only SQLite/PostgreSQL metadata probes where supported. It never
+runs integrity checks, VACUUM, checkpoints, ANALYZE, or application SQL queries.
 """
 
 from __future__ import annotations
@@ -16,6 +16,9 @@ import threading
 import time
 from pathlib import Path
 from typing import Any
+from urllib.parse import unquote, urlparse
+
+import yaml
 
 ARR_DATABASE_FILES = {
     "sonarr": "sonarr.db",
@@ -24,7 +27,38 @@ ARR_DATABASE_FILES = {
     "prowlarr": "prowlarr.db",
     "whisparr": "whisparr.db",
 }
-SUPPORTED_SERVICE_KEYS = set(ARR_DATABASE_FILES) | {"nzbdav", "bazarr", "plex"}
+SQLITE_SERVICE_KEYS = {
+    "altmount",
+    "bazarr",
+    "cli_battery",
+    "cli_debrid",
+    "emby",
+    "jellyfin",
+    "nzbdav",
+    "plex",
+    "profilarr",
+    "pulsarr",
+    "seerr",
+    "tautulli",
+}
+POSTGRES_SERVICE_DATABASES = {
+    "pgadmin": "pgadmin",
+    "riven_backend": "riven",
+    "traefik_proxy_admin": "traefik_proxy_admin",
+    "zilean": "zilean",
+}
+CUSTOM_STORE_PROVIDERS = {
+    "decypharr": "append-log",
+    "phalanx_db": "hyperbee",
+    "zurg": "zurg-state",
+}
+SUPPORTED_SERVICE_KEYS = (
+    set(ARR_DATABASE_FILES)
+    | SQLITE_SERVICE_KEYS
+    | set(POSTGRES_SERVICE_DATABASES)
+    | set(CUSTOM_STORE_PROVIDERS)
+    | {"postgres"}
+)
 NETWORK_FILESYSTEMS = {
     "9p",
     "ceph",
@@ -203,11 +237,7 @@ class DatabaseHealthCollector:
             "config_key": key,
             "instance_name": instance_name,
             "process_name": service.get("process_name") or instance_name or key.title(),
-            "provider": (
-                "postgresql"
-                if key in ARR_DATABASE_FILES and service.get("postgres_enabled") is True
-                else "sqlite"
-            ),
+            "provider": _provider_for_service(key, service),
             "service_config": service,
         }
 
@@ -276,7 +306,7 @@ class DatabaseHealthCollector:
             result["databases"] = self._collect_postgres_databases(
                 candidate, config, enhanced=mode == "enhanced"
             )
-        else:
+        elif candidate["provider"] == "sqlite":
             paths = self._sqlite_paths(candidate)
             result["databases"] = [
                 self._collect_sqlite_file(
@@ -290,6 +320,17 @@ class DatabaseHealthCollector:
                 result["probe_notice"] = (
                     "Plex stays in passive mode because its customized SQLite build "
                     "should not be probed continuously while the media server is running."
+                )
+        else:
+            result["databases"] = [
+                self._collect_persistent_store(role, path)
+                for role, path in self._persistent_store_paths(candidate)
+            ]
+            if mode == "enhanced":
+                result["probe_notice"] = (
+                    f"{candidate['provider']} is not a SQL provider. Enhanced mode "
+                    "keeps passive file, directory, filesystem, and log telemetry; "
+                    "DUMB does not open or query this application-owned store."
                 )
 
         score, reasons = self._score(result)
@@ -338,7 +379,120 @@ class DatabaseHealthCollector:
                 os.path.dirname(main), "com.plexapp.plugins.library.blobs.db"
             )
             return [("library", main), ("blobs", blobs)]
+        if key == "tautulli":
+            return [("main", os.path.join(config_dir, "data", "tautulli.db"))]
+        if key == "profilarr":
+            env = service.get("env") or {}
+            data_dir = str(
+                env.get("PROFILARR_CONFIG_DIR") or os.path.join(config_dir, "config")
+            )
+            return [("main", os.path.join(data_dir, "profilarr.db"))]
+        if key == "pulsarr":
+            env = service.get("env") or {}
+            return [
+                (
+                    "main",
+                    str(
+                        env.get("dbPath")
+                        or os.path.join(config_dir, "data", "db", "pulsarr.db")
+                    ),
+                )
+            ]
+        if key == "seerr":
+            env = service.get("env") or {}
+            data_dir = str(
+                env.get("CONFIG_DIRECTORY") or os.path.join(config_dir, "config")
+            )
+            return [("main", os.path.join(data_dir, "db", "db.sqlite3"))]
+        if key == "altmount":
+            database = _altmount_database_config(service)
+            return [
+                (
+                    "main",
+                    str(
+                        database.get("path") or os.path.join(config_dir, "altmount.db")
+                    ),
+                )
+            ]
+        if key in {"cli_debrid", "cli_battery"}:
+            env = service.get("env") or {}
+            data_dir = str(
+                env.get("USER_DB_CONTENT")
+                or os.path.join(config_dir, "data", "db_content")
+            )
+            if key == "cli_battery":
+                return [("battery", os.path.join(data_dir, "cli_battery.db"))]
+            return [
+                ("media", os.path.join(data_dir, "media_items.db")),
+                ("watch history", os.path.join(data_dir, "watch_history.db")),
+            ]
+        if key == "jellyfin":
+            return _discovered_sqlite_paths(
+                os.path.join(config_dir, "data"),
+                fallback=("library", os.path.join(config_dir, "data", "library.db")),
+            )
+        if key == "emby":
+            return _discovered_sqlite_paths(
+                os.path.join(config_dir, "data"),
+                fallback=("library", os.path.join(config_dir, "data", "library.db")),
+            )
         return []
+
+    @staticmethod
+    def _persistent_store_paths(candidate) -> list[tuple[str, str]]:
+        key = candidate["config_key"]
+        service = candidate["service_config"]
+        config_dir = str(service.get("config_dir") or "")
+        if key == "decypharr":
+            database_dir = os.path.join(config_dir, "db")
+            return [
+                (name.replace("_", " "), os.path.join(database_dir, f"{name}.db"))
+                for name in (
+                    "entries",
+                    "queue",
+                    "items",
+                    "repair_state",
+                    "repair_runs",
+                )
+            ]
+        if key == "phalanx_db":
+            return [
+                (
+                    "autobase",
+                    os.path.join(config_dir, "data", "autobase_storage_v4"),
+                )
+            ]
+        if key == "zurg":
+            return [("state directory", os.path.join(config_dir, "data"))]
+        return []
+
+    @staticmethod
+    def _collect_persistent_store(role: str, path: str):
+        exists = os.path.exists(path)
+        result: dict[str, Any] = {
+            "role": role,
+            "path": path,
+            "exists": exists,
+            "enhanced_probe": False,
+            "store_kind": "directory" if os.path.isdir(path) else "file",
+        }
+        if not exists:
+            result["notice"] = "Persistent store is not present yet."
+            return result
+        try:
+            if os.path.isdir(path):
+                size, file_count, truncated = _bounded_directory_size(path)
+                result["size_bytes"] = size
+                result["file_count"] = file_count
+                result["scan_truncated"] = truncated
+            else:
+                result["size_bytes"] = os.path.getsize(path)
+            result["storage"] = _storage_for_path(path)
+        except OSError as exc:
+            result["error"] = (
+                f"Unable to inspect persistent store: {exc.strerror or exc}"
+            )
+        return result
 
     def _collect_sqlite_file(self, role: str, path: str, enhanced: bool):
         result: dict[str, Any] = {
@@ -387,33 +541,91 @@ class DatabaseHealthCollector:
         return result
 
     def _collect_postgres_databases(self, candidate, config, enhanced):
-        from utils.arr_postgres import arr_postgres_database_names
-
-        key = candidate["config_key"]
-        instance_name = candidate["instance_name"] or "Default"
-        service = candidate["service_config"]
-        names = arr_postgres_database_names(key, instance_name, service)
-        storage = self._postgres_storage(config)
+        specs = self._postgres_specs(candidate, config)
+        storage = (
+            self._postgres_storage(config)
+            if any(_uses_local_postgres(spec.get("connection")) for spec in specs)
+            else None
+        )
         if not enhanced:
             return [
                 {
-                    "role": role,
-                    "name": name,
+                    "role": spec["role"],
+                    "name": spec["name"],
                     "exists": None,
                     "enhanced_probe": False,
-                    **({"storage": storage} if storage else {}),
+                    **(
+                        {"storage": storage}
+                        if storage and _uses_local_postgres(spec.get("connection"))
+                        else {}
+                    ),
                     "notice": "Enable enhanced mode for bounded PostgreSQL statistics queries.",
                 }
-                for role, name in zip(("main", "logs"), names)
+                for spec in specs
             ]
         databases = [
-            self._collect_postgres_database(candidate["id"], role, name, config)
-            for role, name in zip(("main", "logs"), names)
+            self._collect_postgres_database(
+                candidate["id"],
+                spec["role"],
+                spec["name"],
+                config,
+                connection_settings=spec.get("connection"),
+            )
+            for spec in specs
         ]
         if storage:
-            for database in databases:
-                database["storage"] = storage
+            for database, spec in zip(databases, specs):
+                if _uses_local_postgres(spec.get("connection")):
+                    database["storage"] = storage
         return databases
+
+    @staticmethod
+    def _postgres_specs(candidate, config):
+        key = candidate["config_key"]
+        service = candidate["service_config"]
+        if key in ARR_DATABASE_FILES:
+            from utils.arr_postgres import arr_postgres_database_names
+
+            names = arr_postgres_database_names(
+                key, candidate["instance_name"] or "Default", service
+            )
+            return [
+                {"role": role, "name": name, "connection": None}
+                for role, name in zip(("main", "logs"), names)
+            ]
+        if key == "postgres":
+            databases = service.get("databases") or []
+            specs = [
+                {
+                    "role": "cluster database",
+                    "name": str(database.get("name") or "").strip(),
+                    "connection": None,
+                }
+                for database in databases
+                if isinstance(database, dict)
+                and database.get("enabled") is True
+                and str(database.get("name") or "").strip()
+            ]
+            return specs or [
+                {"role": "cluster database", "name": "postgres", "connection": None}
+            ]
+        if key in POSTGRES_SERVICE_DATABASES:
+            return [
+                {
+                    "role": "main",
+                    "name": POSTGRES_SERVICE_DATABASES[key],
+                    "connection": None,
+                }
+            ]
+
+        connection = _service_postgres_connection(key, service, config)
+        return [
+            {
+                "role": "main",
+                "name": str(connection.get("database") or key),
+                "connection": connection,
+            }
+        ]
 
     @staticmethod
     def _postgres_storage(config):
@@ -426,7 +638,9 @@ class DatabaseHealthCollector:
             return None
         return _storage_for_path(config_dir)
 
-    def _collect_postgres_database(self, service_id, role, database, config):
+    def _collect_postgres_database(
+        self, service_id, role, database, config, connection_settings=None
+    ):
         result: dict[str, Any] = {
             "role": role,
             "name": database,
@@ -438,15 +652,24 @@ class DatabaseHealthCollector:
             import psycopg2
 
             pg = config.get("postgres") or {}
-            connection = psycopg2.connect(
-                dbname=database,
-                user=pg.get("user", "DUMB"),
-                password=pg.get("password", "postgres"),
-                host=pg.get("host", "127.0.0.1"),
-                port=int(pg.get("port", 5432)),
-                connect_timeout=2,
-                application_name="dumb_database_health",
-            )
+            settings = connection_settings or {}
+            if settings.get("dsn"):
+                connection = psycopg2.connect(
+                    settings["dsn"],
+                    dbname=database,
+                    connect_timeout=2,
+                    application_name="dumb_database_health",
+                )
+            else:
+                connection = psycopg2.connect(
+                    dbname=database,
+                    user=settings.get("user") or pg.get("user", "DUMB"),
+                    password=settings.get("password") or pg.get("password", "postgres"),
+                    host=settings.get("host") or pg.get("host", "127.0.0.1"),
+                    port=int(settings.get("port") or pg.get("port", 5432)),
+                    connect_timeout=2,
+                    application_name="dumb_database_health",
+                )
             try:
                 connection.autocommit = True
                 with connection.cursor() as cursor:
@@ -723,6 +946,12 @@ class DatabaseHealthCollector:
 
     @staticmethod
     def _pressure_label(result, score):
+        if score >= 70:
+            return "critical"
+        if score >= 45:
+            return "high"
+        if score >= 20:
+            return "moderate"
         databases = result.get("databases") or []
         if databases and not any(db.get("exists") is True for db in databases):
             if (
@@ -730,13 +959,9 @@ class DatabaseHealthCollector:
                 and result.get("mode") == "standard"
             ):
                 return "observing"
+            if result.get("provider") in set(CUSTOM_STORE_PROVIDERS.values()):
+                return "observing"
             return "unavailable"
-        if score >= 70:
-            return "critical"
-        if score >= 45:
-            return "high"
-        if score >= 20:
-            return "moderate"
         return "healthy"
 
     @staticmethod
@@ -749,6 +974,8 @@ class DatabaseHealthCollector:
                 and result.get("mode") == "standard"
             ):
                 return "Passive monitoring is active. Enable enhanced mode for bounded PostgreSQL statistics queries."
+            if result.get("provider") in set(CUSTOM_STORE_PROVIDERS.values()):
+                return "Passive store monitoring is active. DUMB will report file, directory, filesystem, and log pressure without opening the application-owned store."
             return "No database pressure indicators have been observed. Keep the current provider and continue collecting a representative workload."
         storage_entries = [
             database.get("storage") or {} for database in result.get("databases") or []
@@ -768,7 +995,9 @@ class DatabaseHealthCollector:
             (database.get("storage") or {}).get("network")
             for database in result.get("databases") or []
         ):
-            return "Move SQLite to local storage before treating PostgreSQL as the first performance fix."
+            if result.get("provider") == "sqlite":
+                return "Move SQLite to local storage before treating PostgreSQL as the first performance fix."
+            return "Move the persistent store to local storage before evaluating provider-specific performance changes."
         if result.get("provider") == "sqlite" and any(
             token in " ".join(reasons).lower() for token in ("lock", "busy", "timeout")
         ):
@@ -788,6 +1017,9 @@ class DatabaseHealthCollector:
                         "exists",
                         "size_bytes",
                         "wal_size_bytes",
+                        "file_count",
+                        "scan_truncated",
+                        "store_kind",
                         "probe_ms",
                         "lock_waiters",
                         "deadlocks_delta",
@@ -818,6 +1050,156 @@ class DatabaseHealthCollector:
             },
             "databases": databases,
         }
+
+
+def _provider_for_service(key: str, service: dict[str, Any]) -> str:
+    if key in ARR_DATABASE_FILES:
+        return "postgresql" if service.get("postgres_enabled") is True else "sqlite"
+    if key in POSTGRES_SERVICE_DATABASES or key == "postgres":
+        return "postgresql"
+    if key == "pulsarr":
+        env = service.get("env") or {}
+        return (
+            "postgresql"
+            if str(env.get("dbType") or "sqlite").strip().lower() == "postgres"
+            else "sqlite"
+        )
+    if key == "seerr":
+        env = service.get("env") or {}
+        return (
+            "postgresql"
+            if str(env.get("DB_TYPE") or "sqlite").strip().lower() == "postgres"
+            else "sqlite"
+        )
+    if key == "altmount":
+        database = _altmount_database_config(service)
+        return (
+            "postgresql"
+            if str(database.get("type") or "sqlite").strip().lower() == "postgres"
+            else "sqlite"
+        )
+    return CUSTOM_STORE_PROVIDERS.get(key, "sqlite")
+
+
+def _altmount_database_config(service: dict[str, Any]) -> dict[str, Any]:
+    config_file = str(service.get("config_file") or "")
+    if config_file and os.path.isfile(config_file):
+        try:
+            with open(config_file, "r", encoding="utf-8") as handle:
+                parsed = yaml.safe_load(handle) or {}
+            database = parsed.get("database") or {}
+            if isinstance(database, dict):
+                return database
+        except (OSError, ValueError, TypeError, yaml.YAMLError):
+            pass
+    return {}
+
+
+def _service_postgres_connection(key, service, config):
+    del config
+    env = service.get("env") or {}
+    if key == "pulsarr":
+        dsn = str(env.get("dbConnectionString") or "").strip()
+        if dsn:
+            return {"dsn": dsn, "database": _dsn_database(dsn) or "pulsarr"}
+        return {
+            "host": env.get("dbHost") or "127.0.0.1",
+            "port": env.get("dbPort") or 5432,
+            "user": env.get("dbUser"),
+            "password": env.get("dbPassword"),
+            "database": env.get("dbName") or "pulsarr",
+        }
+    if key == "seerr":
+        return {
+            "host": env.get("DB_HOST") or env.get("DB_SOCKET_PATH") or "127.0.0.1",
+            "port": env.get("DB_PORT") or 5432,
+            "user": env.get("DB_USER"),
+            "password": env.get("DB_PASS"),
+            "database": env.get("DB_NAME") or "seerr",
+        }
+    if key == "altmount":
+        database = _altmount_database_config(service)
+        dsn = str(database.get("dsn") or "").strip()
+        return {"dsn": dsn, "database": _dsn_database(dsn) or "altmount"}
+    return {"database": key}
+
+
+def _dsn_database(dsn: str) -> str | None:
+    try:
+        parsed = urlparse(dsn)
+        database = unquote(parsed.path.lstrip("/"))
+        return database or None
+    except (TypeError, ValueError):
+        return None
+
+
+def _uses_local_postgres(connection: dict[str, Any] | None) -> bool:
+    if not connection:
+        return True
+    host = connection.get("host")
+    if connection.get("dsn"):
+        try:
+            host = urlparse(str(connection["dsn"])).hostname
+        except ValueError:
+            return False
+    return str(host or "127.0.0.1").strip().lower() in {
+        "127.0.0.1",
+        "localhost",
+        "0.0.0.0",
+        "::1",
+    }
+
+
+def _discovered_sqlite_paths(
+    root: str,
+    fallback: tuple[str, str],
+    limit: int = 32,
+    directory_limit: int = 256,
+) -> list[tuple[str, str]]:
+    paths = []
+    visited = 0
+    for current, directories, files in os.walk(root, followlinks=False):
+        directories.sort()
+        visited += 1
+        if visited >= directory_limit:
+            directories.clear()
+        for filename in sorted(files):
+            if filename.lower().endswith((".db", ".sqlite", ".sqlite3")):
+                paths.append(os.path.join(current, filename))
+                if len(paths) >= limit:
+                    break
+        if len(paths) >= limit:
+            break
+    if not paths:
+        return [fallback]
+    return [
+        (
+            os.path.splitext(os.path.relpath(path, root))[0].replace(os.sep, " / "),
+            path,
+        )
+        for path in paths
+    ]
+
+
+def _bounded_directory_size(path: str, max_files: int = 5000):
+    total = 0
+    file_count = 0
+    pending = [path]
+    truncated = False
+    while pending:
+        current = pending.pop()
+        with os.scandir(current) as entries:
+            for entry in entries:
+                if entry.is_dir(follow_symlinks=False):
+                    pending.append(entry.path)
+                    continue
+                if not entry.is_file(follow_symlinks=False):
+                    continue
+                total += entry.stat(follow_symlinks=False).st_size
+                file_count += 1
+                if file_count >= max_files:
+                    return total, file_count, True
+    return total, file_count, truncated
 
 
 def _storage_for_path(path: str) -> dict[str, Any]:
@@ -925,6 +1307,8 @@ def _counter_delta(current, previous):
 
 def _safe_error(exc):
     message = str(exc).replace("\n", " ").strip()
+    message = re.sub(r"(?i)(postgres(?:ql)?://[^:\s/]+:)[^@\s]+@", r"\1***@", message)
+    message = re.sub(r"(?i)(password\s*[=:]\s*)[^;\s]+", r"\1***", message)
     return message[:240] if message else exc.__class__.__name__
 
 

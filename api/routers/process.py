@@ -22,6 +22,7 @@ from utils.arr_postgres import (
     ensure_arr_postgres_enabled_flag,
 )
 from utils.postgres import initialize_postgres_databases
+from utils.database_health import SUPPORTED_SERVICE_KEYS
 from utils.versions import Versions
 import json, copy, time, glob, re, socket, errno, psutil, os, threading, fnmatch
 
@@ -5036,5 +5037,6 @@ async def get_capabilities(current_user: str = Depends(get_optional_current_user
         "arr_postgres_migration_rehearsal": True,
         "arr_postgres_migration_rollback": True,
         "database_health_metrics": True,
+        "database_health_service_keys": sorted(SUPPORTED_SERVICE_KEYS),
         "ai_diagnostics": True,
     }

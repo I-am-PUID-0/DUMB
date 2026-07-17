@@ -5,7 +5,11 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from utils.database_health import DatabaseHealthCollector, _storage_for_path
+from utils.database_health import (
+    SUPPORTED_SERVICE_KEYS,
+    DatabaseHealthCollector,
+    _storage_for_path,
+)
 
 
 def _config(config_dir, log_file, service_settings=None, mode="standard"):
@@ -314,6 +318,222 @@ class DatabaseHealthCollectorTests(unittest.TestCase):
         )
 
         self.assertIn("Free inodes", recommendation)
+
+    def test_discovers_sql_postgres_and_custom_store_services(self):
+        collector = DatabaseHealthCollector()
+        config = {
+            "dumb": {"metrics": {"database_health": {"enabled": False}}},
+            "cli_debrid": {"enabled": True, "process_name": "CLI Debrid"},
+            "decypharr": {"enabled": True, "process_name": "Decypharr"},
+            "riven_backend": {"enabled": True, "process_name": "Riven Backend"},
+            "zurg": {
+                "instances": {
+                    "RealDebrid": {
+                        "enabled": True,
+                        "process_name": "Zurg RealDebrid",
+                    }
+                }
+            },
+        }
+
+        result = collector.snapshot(config)
+        providers = {
+            service["id"]: service["provider"] for service in result["services"]
+        }
+
+        self.assertEqual(result["supported_count"], 4)
+        self.assertEqual(providers["cli_debrid"], "sqlite")
+        self.assertEqual(providers["decypharr"], "append-log")
+        self.assertEqual(providers["riven_backend"], "postgresql")
+        self.assertEqual(providers["zurg:RealDebrid"], "zurg-state")
+
+    def test_zurg_json_state_is_observed_without_sqlite_probe(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            data_dir = Path(temp_dir) / "data"
+            data_dir.mkdir()
+            state_path = data_dir / "fixers.json"
+            state_path.write_text('{"pending": []}\n', encoding="utf-8")
+            collector = DatabaseHealthCollector()
+            config = {
+                "dumb": {
+                    "metrics": {
+                        "database_health": {
+                            "enabled": True,
+                            "services": {
+                                "zurg:RealDebrid": {
+                                    "enabled": True,
+                                    "mode": "enhanced",
+                                }
+                            },
+                        }
+                    }
+                },
+                "zurg": {
+                    "instances": {
+                        "RealDebrid": {
+                            "enabled": True,
+                            "process_name": "Zurg RealDebrid",
+                            "config_dir": temp_dir,
+                        }
+                    }
+                },
+            }
+
+            service = collector.snapshot(config)["services"][0]
+            store = service["databases"][0]
+
+            self.assertEqual(service["provider"], "zurg-state")
+            self.assertEqual(service["pressure"], "healthy")
+            self.assertEqual(store["path"], str(data_dir))
+            self.assertEqual(store["file_count"], 1)
+            self.assertEqual(store["size_bytes"], state_path.stat().st_size)
+            self.assertFalse(store["enhanced_probe"])
+            self.assertIn("not a SQL provider", service["probe_notice"])
+
+    def test_cli_debrid_discovers_each_sqlite_database(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            for filename in ("media_items.db", "watch_history.db"):
+                sqlite3.connect(Path(temp_dir) / filename).close()
+            collector = DatabaseHealthCollector()
+            candidate = collector._candidate(
+                "cli_debrid",
+                {"env": {"USER_DB_CONTENT": temp_dir}},
+                None,
+            )
+
+            paths = collector._sqlite_paths(candidate)
+
+            self.assertEqual(
+                paths,
+                [
+                    ("media", str(Path(temp_dir) / "media_items.db")),
+                    ("watch history", str(Path(temp_dir) / "watch_history.db")),
+                ],
+            )
+
+    def test_altmount_detects_postgres_dsn_from_application_config(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            config_path = Path(temp_dir) / "config.yaml"
+            config_path.write_text(
+                "database:\n"
+                "  type: postgres\n"
+                "  dsn: postgresql://altmount:secret@db.example/altmount_prod\n",
+                encoding="utf-8",
+            )
+            collector = DatabaseHealthCollector()
+            candidate = collector._candidate(
+                "altmount", {"config_file": str(config_path)}, None
+            )
+
+            specs = collector._postgres_specs(candidate, {})
+
+            self.assertEqual(candidate["provider"], "postgresql")
+            self.assertEqual(specs[0]["name"], "altmount_prod")
+            self.assertEqual(
+                specs[0]["connection"]["dsn"],
+                "postgresql://altmount:secret@db.example/altmount_prod",
+            )
+
+    def test_media_server_discovers_multiple_sqlite_files(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            data_dir = Path(temp_dir) / "data"
+            data_dir.mkdir()
+            sqlite3.connect(data_dir / "library.db").close()
+            sqlite3.connect(data_dir / "activitylog.db").close()
+            collector = DatabaseHealthCollector()
+            candidate = collector._candidate("jellyfin", {"config_dir": temp_dir}, None)
+
+            paths = collector._sqlite_paths(candidate)
+
+            self.assertEqual(len(paths), 2)
+            self.assertEqual(
+                {Path(path).name for _, path in paths},
+                {"library.db", "activitylog.db"},
+            )
+
+    def test_postgres_service_lists_enabled_cluster_databases(self):
+        collector = DatabaseHealthCollector()
+        candidate = collector._candidate(
+            "postgres",
+            {
+                "databases": [
+                    {"name": "postgres", "enabled": True},
+                    {"name": "disabled", "enabled": False},
+                    {"name": "zilean", "enabled": True},
+                ]
+            },
+            None,
+        )
+
+        specs = collector._postgres_specs(candidate, {})
+
+        self.assertEqual([spec["name"] for spec in specs], ["postgres", "zilean"])
+
+    def test_provider_neutral_services_detect_postgres_settings(self):
+        collector = DatabaseHealthCollector()
+        cases = (
+            (
+                "pulsarr",
+                {
+                    "env": {
+                        "dbType": "postgres",
+                        "dbHost": "db.example",
+                        "dbName": "pulsarr_prod",
+                    }
+                },
+                "pulsarr_prod",
+            ),
+            (
+                "seerr",
+                {
+                    "env": {
+                        "DB_TYPE": "postgres",
+                        "DB_HOST": "db.example",
+                        "DB_NAME": "seerr_prod",
+                    }
+                },
+                "seerr_prod",
+            ),
+        )
+
+        for key, service, expected_database in cases:
+            with self.subTest(key=key):
+                candidate = collector._candidate(key, service, None)
+                specs = collector._postgres_specs(candidate, {})
+                self.assertEqual(candidate["provider"], "postgresql")
+                self.assertEqual(specs[0]["name"], expected_database)
+
+    def test_supported_inventory_includes_every_confirmed_store_service(self):
+        self.assertEqual(
+            SUPPORTED_SERVICE_KEYS,
+            {
+                "altmount",
+                "bazarr",
+                "cli_battery",
+                "cli_debrid",
+                "decypharr",
+                "emby",
+                "jellyfin",
+                "lidarr",
+                "nzbdav",
+                "pgadmin",
+                "phalanx_db",
+                "plex",
+                "postgres",
+                "profilarr",
+                "prowlarr",
+                "pulsarr",
+                "radarr",
+                "riven_backend",
+                "seerr",
+                "sonarr",
+                "tautulli",
+                "traefik_proxy_admin",
+                "whisparr",
+                "zilean",
+                "zurg",
+            },
+        )
 
 
 if __name__ == "__main__":
