@@ -5084,6 +5084,9 @@ conflicts manually before restarting a single service.</p>
 </div>
 <hr />
 <h2 id="troubleshooting-tips">Troubleshooting Tips<a class="headerlink" href="#troubleshooting-tips" title="Permanent link">&para;</a></h2>
+<h3 id="assess-sqlite-pressure">Assess SQLite pressure<a class="headerlink" href="#assess-sqlite-pressure" title="Permanent link">&para;</a></h3>
+<p>NzbDAV currently stores its operational and metrics data in SQLite. DUMB can optionally monitor both databases from <strong>Metrics → Settings → Database Health Monitoring</strong> or the NzbDAV service page's <strong>Database Health</strong> panel.</p>
+<p>Start with <strong>Standard / passive</strong> mode and collect through normal imports, health checks, and playback. Use <strong>Enhanced / read-only probes</strong> when you also want bounded SQLite metadata latency. Repeated lock/busy/timeout errors, sustained WAL growth, slow probes, or network-filesystem placement are stronger reasons to investigate PostgreSQL than database size alone. See <a href="../../../features/metrics/#database-health-monitoring">Metrics Collection</a> for the safety boundary and interpretation guidance.</p>
 <div class="admonition warning">
 <p class="admonition-title">Permission changes</p>
 <p>DUMB updates Arr media-management permissions to enable chmod operations (folder <code>777</code>, file <code>666</code>).
@@ -5093,6 +5096,12 @@ If you manage permissions manually, review these settings after integration.</p>
 <li>If rclone fails to authenticate, verify <code>WEBDAV_USER</code>/<code>WEBDAV_PASSWORD</code> and restart the container.</li>
 <li>If Arr download clients are not created, confirm each Arr instance is enabled and has a readable <code>config.xml</code> for API key discovery.</li>
 <li>If Arr root folders are missing, verify <code>core_service</code> includes <code>nzbdav</code> and the Arr API is reachable.</li>
+<li>Runtime NzbDAV builds use an on-demand managed .NET SDK. DUMB merges the
+  NzbDAV-specific build variables with the container environment so system tools
+  remain available, and invokes <code>/bin/bash</code> explicitly when installing the SDK.
+  An error such as <code>No such file or directory: 'bash'</code> indicates an image that
+  predates this fix and should be retested after pulling a fixed tag and
+  recreating the container.</li>
 <li>Check <code>/log</code> for NzbDAV startup errors, and ensure <code>frontend_port</code>/<code>backend_port</code> are not already in use.</li>
 </ul>
 <hr />

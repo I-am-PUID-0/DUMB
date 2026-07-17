@@ -1319,6 +1319,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#database-health" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Database health
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#system-information" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4647,6 +4658,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#database-health" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Database health
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#system-information" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4811,6 +4833,7 @@
 <li><strong>Real-time gauges</strong> - Current resource usage</li>
 <li><strong>Historical charts</strong> - Usage trends over time</li>
 <li><strong>Process details</strong> - Per-service resource consumption</li>
+<li><strong>Database health</strong> - Optional SQLite/PostgreSQL pressure summaries</li>
 <li><strong>System information</strong> - Container and host details</li>
 </ul>
 <p><img alt="Metrics dashboard" src="../../assets/images/frontend/metrics.png" /></p>
@@ -5019,6 +5042,24 @@
 </table>
 <p>Sort by any column to identify resource-intensive services.</p>
 <hr />
+<h2 id="database-health">Database health<a class="headerlink" href="#database-health" title="Permanent link">&para;</a></h2>
+<p>Supported, enabled services appear in the <strong>Database Health</strong> table on the Metrics page. Monitoring remains off until configured from <strong>Metrics → Settings</strong> or the service page's <strong>Database Health</strong> panel.</p>
+<p>The Database Health section appears immediately above <strong>System</strong> at the bottom of the live Metrics content. Click or keyboard-activate any service row to expand or collapse its full details. Expanded details match the service-page panel and include the recommendation, score reasons, database paths/names, provider metadata, filesystem capacity, inode pressure, read-only/network state, probe results, and observed log signals. Column headers, settings, status badges, and detail fields include tooltips, and the section links directly to the Database Health documentation.</p>
+<p>The table shows:</p>
+<ul>
+<li>database provider and current pressure classification;</li>
+<li>combined database and SQLite WAL size;</li>
+<li>database-related log-signal count;</li>
+<li>bounded read-only probe latency when Enhanced mode is enabled;</li>
+<li>a service-specific recommendation.</li>
+<li>filesystem byte usage/free space, inode usage/free inodes, and read-only state in the expanded details.</li>
+</ul>
+<p>Use <strong>Standard / passive</strong> for the lowest overhead. Use <strong>Enhanced / read-only probes</strong> when you need SQLite page/WAL metadata or PostgreSQL statistics. Plex is always collected passively while running, even if Enhanced is selected.</p>
+<p>Enable <strong>Ignore network storage score</strong> for an individual service when its NFS/SMB placement is intentional. The filesystem remains visible in the service details, but it no longer raises the pressure score or replaces recommendations derived from the remaining metrics.</p>
+<p>The override excludes only network placement. Low free space, high inode usage, read-only storage, WAL growth, log errors, probe latency, locks, deadlocks, and long-running transactions continue to affect the result.</p>
+<p>Pressure classifications are <code>healthy</code>, <code>observing</code>, <code>moderate</code>, <code>high</code>, <code>critical</code>, <code>unavailable</code>, or <code>disabled</code>. Collect through representative imports, scans, health checks, and playback before deciding whether PostgreSQL would help.</p>
+<p>Open <strong>How to read Database Health</strong> for an in-product explanation of observed signals, score bands, and limitations. Database Health is evidence rather than a benchmark: it cannot profile individual SQL queries, prove root cause, predict an exact provider speedup, guarantee every transient event was captured, repair databases, or replace backups and application-native diagnostics.</p>
+<hr />
 <h2 id="system-information">System information<a class="headerlink" href="#system-information" title="Permanent link">&para;</a></h2>
 <h3 id="container-details">Container details<a class="headerlink" href="#container-details" title="Permanent link">&para;</a></h3>
 <table>
@@ -5150,9 +5191,14 @@
 <td>90%</td>
 <td>Settings <span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"/></svg></span> Preferences</td>
 </tr>
+<tr>
+<td>Database Health</td>
+<td>Off; selectable Moderate/High/Critical minimum</td>
+<td>Metrics header or Metrics Settings <span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"/></svg></span> Database Health Monitoring</td>
+</tr>
 </tbody>
 </table>
-<p>Alerts appear as banners at the top of the dashboard when thresholds are exceeded.</p>
+<p>Alerts appear as banners when thresholds are exceeded and on the global Metrics indicator. <strong>DB health</strong> / <strong>Include Database Health in alerts</strong> is optional and browser-local; enabling it does not enable collection for any service or alter its pressure score.</p>
 <hr />
 <h2 id="api-access">API access<a class="headerlink" href="#api-access" title="Permanent link">&para;</a></h2>
 <p>Metrics are also available via the REST API:</p>
@@ -5161,6 +5207,9 @@ curl<span class="w"> </span>http://localhost:8000/api/metrics
 
 <span class="c1"># Historical metrics</span>
 curl<span class="w"> </span>http://localhost:8000/api/metrics/history?start<span class="o">=</span><span class="m">2025</span>-01-01<span class="p">&amp;</span><span class="nv">end</span><span class="o">=</span><span class="m">2025</span>-01-15
+
+<span class="c1"># Database health, optionally forcing a fresh collection</span>
+curl<span class="w"> </span><span class="s2">&quot;http://localhost:8000/api/metrics/database-health?process_name=NzbDAV&amp;refresh=true&quot;</span>
 </code></pre></div>
 <p>See the <a href="../../api/websocket/">WebSocket API</a> documentation for real-time streaming.</p>
 <hr />

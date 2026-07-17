@@ -4833,6 +4833,7 @@
 <li><strong>Real-time monitoring</strong> - Live CPU, memory, disk, and network stats</li>
 <li><strong>Historical tracking</strong> - Time-series data storage for trend analysis</li>
 <li><strong>Per-process metrics</strong> - Resource usage by individual service</li>
+<li><strong>Optional database health</strong> - Per-service SQLite/PostgreSQL pressure indicators</li>
 <li><strong>WebSocket streaming</strong> - Push updates to connected clients</li>
 <li><strong>cgroup awareness</strong> - Accurate reporting in containerized environments</li>
 </ul>
@@ -4912,7 +4913,23 @@
 <span class="w">    </span><span class="nt">&quot;history_retention_days&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">7</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;history_max_file_mb&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">50</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;history_max_total_mb&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">100</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;history_dir&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/config/metrics&quot;</span>
+<span class="w">    </span><span class="nt">&quot;history_dir&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/config/metrics&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;database_health&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">&quot;enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;interval_sec&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">60</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;log_tail_bytes&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">262144</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;services&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nt">&quot;nzbdav&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">          </span><span class="nt">&quot;enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">          </span><span class="nt">&quot;mode&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;standard&quot;</span><span class="p">,</span>
+<span class="w">          </span><span class="nt">&quot;ignore_network_storage&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span>
+<span class="w">        </span><span class="p">},</span>
+<span class="w">        </span><span class="nt">&quot;sonarr:Default&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">          </span><span class="nt">&quot;enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">          </span><span class="nt">&quot;mode&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;enhanced&quot;</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">      </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
 <span class="w">  </span><span class="p">}</span>
 <span class="p">}</span>
 </code></pre></div>
@@ -4961,8 +4978,91 @@
 <td><code>/config/metrics</code></td>
 <td>Directory for history files</td>
 </tr>
+<tr>
+<td><code>database_health.enabled</code></td>
+<td><code>false</code></td>
+<td>Enable the database-health collector; individual services must still opt in</td>
+</tr>
+<tr>
+<td><code>database_health.interval_sec</code></td>
+<td><code>60</code></td>
+<td>Seconds between database collections (15-3600)</td>
+</tr>
+<tr>
+<td><code>database_health.log_tail_bytes</code></td>
+<td><code>262144</code></td>
+<td>Maximum new/recent service-log bytes examined per collection</td>
+</tr>
+<tr>
+<td><code>database_health.services</code></td>
+<td><code>{}</code></td>
+<td>Per-service/instance settings keyed by the ID reported in <code>/api/metrics</code></td>
+</tr>
 </tbody>
 </table>
+<h3 id="database-health-monitoring">Database Health Monitoring<a class="headerlink" href="#database-health-monitoring" title="Permanent link">&para;</a></h3>
+<p>Database Health Monitoring is disabled by default and enabled independently for each service. It currently recognizes NzbDAV, Plex, Bazarr, and Sonarr/Radarr/Lidarr/Prowlarr/Whisparr instances.</p>
+<p>Two modes are available:</p>
+<table>
+<thead>
+<tr>
+<th>Mode</th>
+<th>Continuous observations</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Standard</strong></td>
+<td>Database/WAL/SHM size, filesystem type and placement, byte capacity/free space, inode usage/free inodes, read-only state, and service-log lock/busy/timeout/I/O signals</td>
+</tr>
+<tr>
+<td><strong>Enhanced</strong></td>
+<td>Standard signals plus bounded, read-only SQLite metadata or PostgreSQL statistics queries</td>
+</tr>
+</tbody>
+</table>
+<p>Each service can set <code>ignore_network_storage: true</code> when its storage placement is intentional. DUMB continues to report the detected filesystem, but excludes that network mount from the service's pressure score and recommendation. Other evidence—including WAL growth, lock/busy/timeout errors, probe latency, deadlocks, and long transactions—continues to affect the result.</p>
+<p>Filesystem capacity and inode observations are grouped by mount, so a service with multiple databases on one filesystem is not penalized repeatedly. DUMB also reports local DUMB-managed PostgreSQL storage; an external PostgreSQL host's filesystem cannot be observed from inside DUMB. The network-storage override affects only the network-placement penalty—low free space, inode exhaustion, and read-only state remain active indicators.</p>
+<p>Automatic collection never runs <code>VACUUM</code>, <code>ANALYZE</code>, a WAL checkpoint, an integrity check, a repair, a migration, or an application data query. Plex remains passive even if Enhanced is selected because Plex uses a customized SQLite build and its live library database is treated conservatively.</p>
+<div class="admonition warning">
+<p class="admonition-title">Interpret the result as evidence, not a benchmark</p>
+<p>DUMB observes databases from outside the managed application. It cannot profile individual application queries, prove root cause, predict a PostgreSQL percentage improvement, guarantee that short-lived events were captured, repair a database, replace backups, or replace application-native diagnostics. A <code>healthy</code> result means DUMB observed no configured external pressure indicators during the collection window; it is not an integrity guarantee.</p>
+</div>
+<p>The pressure score considers recent database-related log errors, network-filesystem placement unless explicitly ignored, filesystem fullness, inode pressure, read-only mounts, WAL growth, read-only probe latency, PostgreSQL lock waiters/deadlocks, and long-running transactions. Filesystem fullness begins contributing at 90%, inode usage begins contributing at 90%, and increasingly severe thresholds contribute more evidence. If SQLite is on NFS/SMB or another network filesystem, local storage is normally preferred; use the per-service override only when you intentionally want to assess the remaining signals independently.</p>
+<p>Pressure classifications use these score bands:</p>
+<table>
+<thead>
+<tr>
+<th>Classification</th>
+<th>Score</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Healthy</strong></td>
+<td>0-19</td>
+<td>No configured pressure indicator, or only low-weight evidence, was observed</td>
+</tr>
+<tr>
+<td><strong>Moderate</strong></td>
+<td>20-44</td>
+<td>Evidence deserves continued observation and workload correlation</td>
+</tr>
+<tr>
+<td><strong>High</strong></td>
+<td>45-69</td>
+<td>Strong evidence warrants investigation</td>
+</tr>
+<tr>
+<td><strong>Critical</strong></td>
+<td>70-100</td>
+<td>Multiple or severe indicators require prompt investigation</td>
+</tr>
+</tbody>
+</table>
+<p><code>observing</code>, <code>collecting</code>, <code>unavailable</code>, and <code>disabled</code> describe collection state rather than a scored pressure band.</p>
+<p>Compact database-health samples are included in normal metrics history without storing database paths or storage-source details.</p>
 <hr />
 <h2 id="real-time-streaming">Real-time streaming<a class="headerlink" href="#real-time-streaming" title="Permanent link">&para;</a></h2>
 <p>Metrics are streamed via WebSocket at <code>/ws/metrics</code>:</p>
@@ -5074,6 +5174,11 @@ curl<span class="w"> </span><span class="s2">&quot;http://localhost:8000/api/met
 <div class="highlight"><pre><span></span><code>GET<span class="w"> </span>/api/metrics
 </code></pre></div>
 <p>Returns the current metrics snapshot.</p>
+<h3 id="database-health">Database health<a class="headerlink" href="#database-health" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>GET<span class="w"> </span>/api/metrics/database-health
+GET<span class="w"> </span>/api/metrics/database-health?process_name<span class="o">=</span>NzbDAV<span class="p">&amp;</span><span class="nv">refresh</span><span class="o">=</span><span class="nb">true</span>
+</code></pre></div>
+<p>The optional <code>process_name</code> filter returns one service. <code>refresh=true</code> invalidates cached database probes before collecting; normal <code>/api/metrics</code> and WebSocket snapshots reuse the configured slower database interval.</p>
 <h3 id="historical-metrics">Historical metrics<a class="headerlink" href="#historical-metrics" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code>GET<span class="w"> </span>/api/metrics/history
 </code></pre></div>
@@ -5113,6 +5218,7 @@ curl<span class="w"> </span><span class="s2">&quot;http://localhost:8000/api/met
 <li>Historical line charts</li>
 <li>Per-process resource table</li>
 <li>System information panel</li>
+<li>Database Health immediately above System, with expandable per-service details</li>
 </ul>
 <h3 id="dashboard-alerts">Dashboard alerts<a class="headerlink" href="#dashboard-alerts" title="Permanent link">&para;</a></h3>
 <p>Configure thresholds in Settings to show alerts:</p>
@@ -5136,9 +5242,13 @@ curl<span class="w"> </span><span class="s2">&quot;http://localhost:8000/api/met
 <td>Disk</td>
 <td>90%</td>
 </tr>
+<tr>
+<td>Database Health</td>
+<td>Disabled by default; optional Moderate, High, or Critical minimum</td>
+</tr>
 </tbody>
 </table>
-<p>Alerts appear as banners when thresholds are exceeded.</p>
+<p>Alerts appear as banners when thresholds are exceeded. Database Health alert inclusion and its minimum pressure level are browser-local preferences, matching the existing CPU, memory, and disk alert controls; they do not change collection or scoring.</p>
 <hr />
 <h2 id="data-retention">Data retention<a class="headerlink" href="#data-retention" title="Permanent link">&para;</a></h2>
 <h3 id="automatic-cleanup">Automatic cleanup<a class="headerlink" href="#automatic-cleanup" title="Permanent link">&para;</a></h3>

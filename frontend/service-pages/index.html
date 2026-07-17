@@ -4997,6 +4997,8 @@ config key and process name in monospace.</p>
 </table>
 <p>Click <strong>Refresh</strong> to re-fetch metrics on demand. Metrics are fetched once when entering a
 service page with Geek Mode active.</p>
+<h3 id="database-health-panel">Database Health panel<a class="headerlink" href="#database-health-panel" title="Permanent link">&para;</a></h3>
+<p>Supported database-backed services expose <strong>Database Health</strong> independently of Geek Mode. The panel can opt that service into Standard or Enhanced collection, display database/WAL/storage and log-pressure evidence, optionally exclude intentional network storage from scoring, and link to both the full documentation and stack-wide Metrics view. Storage details include byte capacity/free space, inode usage/free inodes, network placement, and read-only state. Shared <strong>How to read Database Health</strong> guidance explains score bands, safe collection behavior, and diagnostic limitations, while field and control tooltips provide shorter contextual help. Collection is read-only; maintenance, migration, integrity, and repair operations are never triggered from this panel.</p>
 <hr />
 <h2 id="auto-restart-policy">Auto-restart policy<a class="headerlink" href="#auto-restart-policy" title="Permanent link">&para;</a></h2>
 <p>Configure the global auto-restart behavior:</p>
