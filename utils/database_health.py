@@ -1,9 +1,10 @@
 """Service-aware, read-only database health collection for DUMB metrics.
 
 The collector intentionally observes databases without performing maintenance.
-Standard mode reads files, storage placement, and new log messages. Enhanced
-mode adds bounded, read-only SQLite/PostgreSQL metadata probes. It never runs
-integrity checks, VACUUM, checkpoints, ANALYZE, or application SQL queries.
+Standard mode reads files, storage placement/capacity/inodes, and new log
+messages. Enhanced mode adds bounded, read-only SQLite/PostgreSQL metadata
+probes. It never runs integrity checks, VACUUM, checkpoints, ANALYZE, or
+application SQL queries.
 """
 
 from __future__ import annotations
@@ -392,6 +393,7 @@ class DatabaseHealthCollector:
         instance_name = candidate["instance_name"] or "Default"
         service = candidate["service_config"]
         names = arr_postgres_database_names(key, instance_name, service)
+        storage = self._postgres_storage(config)
         if not enhanced:
             return [
                 {
@@ -399,14 +401,30 @@ class DatabaseHealthCollector:
                     "name": name,
                     "exists": None,
                     "enhanced_probe": False,
+                    **({"storage": storage} if storage else {}),
                     "notice": "Enable enhanced mode for bounded PostgreSQL statistics queries.",
                 }
                 for role, name in zip(("main", "logs"), names)
             ]
-        return [
+        databases = [
             self._collect_postgres_database(candidate["id"], role, name, config)
             for role, name in zip(("main", "logs"), names)
         ]
+        if storage:
+            for database in databases:
+                database["storage"] = storage
+        return databases
+
+    @staticmethod
+    def _postgres_storage(config):
+        postgres = config.get("postgres") or {}
+        host = str(postgres.get("host") or "127.0.0.1").strip().lower()
+        if host not in {"127.0.0.1", "localhost", "0.0.0.0", "::1"}:
+            return None
+        config_dir = str(postgres.get("config_dir") or "/postgres_data")
+        if not os.path.exists(config_dir):
+            return None
+        return _storage_for_path(config_dir)
 
     def _collect_postgres_database(self, service_id, role, database, config):
         result: dict[str, Any] = {
@@ -590,27 +608,71 @@ class DatabaseHealthCollector:
             score += 45
             reasons.append("PostgreSQL deadlock messages were observed.")
 
-        if not result.get("ignore_network_storage"):
-            network_storage = {}
-            for database in result.get("databases") or []:
-                storage = database.get("storage") or {}
-                if not storage.get("network"):
-                    continue
-                storage_key = (
-                    storage.get("mount_point"),
-                    storage.get("fs_type"),
-                    storage.get("source"),
-                )
-                network_storage.setdefault(storage_key, []).append(
-                    str(database.get("role") or "database")
-                )
-            for (mount_point, fs_type, _source), roles in network_storage.items():
+        storage_groups = {}
+        for database in result.get("databases") or []:
+            storage = database.get("storage") or {}
+            if not storage:
+                continue
+            storage_key = (
+                storage.get("mount_point"),
+                storage.get("fs_type"),
+                storage.get("source"),
+            )
+            group = storage_groups.setdefault(
+                storage_key, {"storage": storage, "roles": []}
+            )
+            group["roles"].append(str(database.get("role") or "database"))
+
+        for group in storage_groups.values():
+            storage = group["storage"]
+            roles = group["roles"]
+            mount_point = storage.get("mount_point") or "an unknown mount point"
+            role_label = ", ".join(dict.fromkeys(roles))
+            if storage.get("network") and not result.get("ignore_network_storage"):
                 score += 35
-                role_label = ", ".join(dict.fromkeys(roles))
                 reasons.append(
-                    f"SQLite database storage ({role_label}) is on "
-                    f"{fs_type or 'a network filesystem'} at {mount_point or 'an unknown mount point'}."
+                    f"Database storage ({role_label}) is on "
+                    f"{storage.get('fs_type') or 'a network filesystem'} at {mount_point}."
                 )
+            if storage.get("read_only") is True:
+                score += 60
+                reasons.append(f"Database storage at {mount_point} is read-only.")
+
+            used_percent = storage.get("used_percent")
+            if isinstance(used_percent, (int, float)):
+                if used_percent >= 98:
+                    score += 35
+                    reasons.append(
+                        f"Database storage at {mount_point} is at least 98% full."
+                    )
+                elif used_percent >= 95:
+                    score += 25
+                    reasons.append(
+                        f"Database storage at {mount_point} is at least 95% full."
+                    )
+                elif used_percent >= 90:
+                    score += 10
+                    reasons.append(
+                        f"Database storage at {mount_point} is at least 90% full."
+                    )
+
+            inode_used_percent = storage.get("inode_used_percent")
+            if isinstance(inode_used_percent, (int, float)):
+                if inode_used_percent >= 98:
+                    score += 45
+                    reasons.append(
+                        f"Database storage at {mount_point} has at least 98% of its inodes in use."
+                    )
+                elif inode_used_percent >= 95:
+                    score += 30
+                    reasons.append(
+                        f"Database storage at {mount_point} has at least 95% of its inodes in use."
+                    )
+                elif inode_used_percent >= 90:
+                    score += 15
+                    reasons.append(
+                        f"Database storage at {mount_point} has at least 90% of its inodes in use."
+                    )
 
         for database in result.get("databases") or []:
             wal_size = int(database.get("wal_size_bytes") or 0)
@@ -681,10 +743,27 @@ class DatabaseHealthCollector:
     def _recommendation(result, reasons):
         if result.get("pressure") == "unavailable":
             return "The configured database is unavailable or has not been created yet."
-        if result.get("provider") == "postgresql" and result.get("mode") == "standard":
-            return "Passive monitoring is active. Enable enhanced mode for bounded PostgreSQL statistics queries."
         if not reasons:
+            if (
+                result.get("provider") == "postgresql"
+                and result.get("mode") == "standard"
+            ):
+                return "Passive monitoring is active. Enable enhanced mode for bounded PostgreSQL statistics queries."
             return "No database pressure indicators have been observed. Keep the current provider and continue collecting a representative workload."
+        storage_entries = [
+            database.get("storage") or {} for database in result.get("databases") or []
+        ]
+        if any(storage.get("read_only") is True for storage in storage_entries):
+            return "Restore writable database storage before troubleshooting database-engine performance."
+        if any(
+            float(storage.get("inode_used_percent") or 0) >= 90
+            for storage in storage_entries
+        ):
+            return "Free inodes on the database filesystem before evaluating database-engine changes."
+        if any(
+            float(storage.get("used_percent") or 0) >= 90 for storage in storage_entries
+        ):
+            return "Free space on the database filesystem before evaluating database-engine changes."
         if not result.get("ignore_network_storage") and any(
             (database.get("storage") or {}).get("network")
             for database in result.get("databases") or []
@@ -768,6 +847,47 @@ def _storage_for_path(path: str) -> dict[str, Any]:
         pass
     fs_type = str(best.get("fs_type") or "").lower()
     best["network"] = fs_type in NETWORK_FILESYSTEMS or fs_type.startswith("fuse.sshfs")
+    try:
+        filesystem = os.statvfs(resolved)
+        block_size = filesystem.f_frsize or filesystem.f_bsize
+        total_bytes = int(filesystem.f_blocks * block_size)
+        free_bytes = max(int(filesystem.f_bavail * block_size), 0)
+        used_bytes = max(
+            int((filesystem.f_blocks - filesystem.f_bfree) * block_size), 0
+        )
+        usable_bytes = used_bytes + free_bytes
+        total_inodes = int(filesystem.f_files)
+        inode_counts_available = (
+            total_inodes > 0
+            and int(filesystem.f_ffree) >= 0
+            and int(filesystem.f_favail) >= 0
+        )
+        free_inodes = int(filesystem.f_favail) if inode_counts_available else None
+        used_inodes = (
+            max(total_inodes - int(filesystem.f_ffree), 0)
+            if inode_counts_available
+            else None
+        )
+        usable_inodes = used_inodes + free_inodes if inode_counts_available else None
+        best.update(
+            {
+                "total_bytes": total_bytes,
+                "free_bytes": free_bytes,
+                "used_percent": (
+                    round(used_bytes / usable_bytes * 100, 2) if usable_bytes else None
+                ),
+                "total_inodes": total_inodes if inode_counts_available else None,
+                "free_inodes": free_inodes,
+                "inode_used_percent": (
+                    round(used_inodes / usable_inodes * 100, 2)
+                    if usable_inodes
+                    else None
+                ),
+                "read_only": bool(filesystem.f_flag & getattr(os, "ST_RDONLY", 1)),
+            }
+        )
+    except OSError:
+        pass
     return best
 
 

@@ -5,7 +5,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from utils.database_health import DatabaseHealthCollector
+from utils.database_health import DatabaseHealthCollector, _storage_for_path
 
 
 def _config(config_dir, log_file, service_settings=None, mode="standard"):
@@ -231,6 +231,89 @@ class DatabaseHealthCollectorTests(unittest.TestCase):
         self.assertEqual(score, 0)
         self.assertEqual(reasons, [])
         self.assertTrue(result["databases"][0]["storage"]["network"])
+
+    def test_filesystem_capacity_and_inode_pressure_are_scored_once_per_mount(self):
+        storage = {
+            "mount_point": "/config",
+            "fs_type": "ext4",
+            "source": "/dev/example",
+            "network": False,
+            "used_percent": 99.0,
+            "inode_used_percent": 99.0,
+            "read_only": False,
+        }
+
+        score, reasons = DatabaseHealthCollector._score(
+            {
+                "collected_at": 100,
+                "log_signals": {},
+                "databases": [
+                    {"role": "main", "storage": storage},
+                    {"role": "logs", "storage": storage},
+                ],
+            }
+        )
+
+        self.assertEqual(score, 80)
+        self.assertEqual(len(reasons), 2)
+        self.assertTrue(any("98% full" in reason for reason in reasons))
+        self.assertTrue(any("98% of its inodes" in reason for reason in reasons))
+
+    def test_ignoring_network_storage_keeps_inode_pressure_active(self):
+        storage = {
+            "mount_point": "/config",
+            "fs_type": "nfs4",
+            "source": "server:/config",
+            "network": True,
+            "used_percent": 20.0,
+            "inode_used_percent": 96.0,
+            "read_only": False,
+        }
+
+        score, reasons = DatabaseHealthCollector._score(
+            {
+                "ignore_network_storage": True,
+                "collected_at": 100,
+                "log_signals": {},
+                "databases": [{"role": "main", "storage": storage}],
+            }
+        )
+
+        self.assertEqual(score, 30)
+        self.assertEqual(len(reasons), 1)
+        self.assertIn("inodes", reasons[0])
+
+    def test_storage_inspection_reports_capacity_inode_and_read_only_state(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            storage = _storage_for_path(temp_dir)
+
+        self.assertIsInstance(storage.get("free_bytes"), int)
+        self.assertIsInstance(storage.get("used_percent"), float)
+        self.assertIn("free_inodes", storage)
+        self.assertIn("inode_used_percent", storage)
+        self.assertIsInstance(storage.get("read_only"), bool)
+
+    def test_postgres_passive_recommendation_prioritizes_filesystem_pressure(self):
+        result = {
+            "provider": "postgresql",
+            "mode": "standard",
+            "pressure": "high",
+            "databases": [
+                {
+                    "role": "main",
+                    "storage": {
+                        "mount_point": "/postgres_data",
+                        "inode_used_percent": 96.0,
+                    },
+                }
+            ],
+        }
+
+        recommendation = DatabaseHealthCollector._recommendation(
+            result, ["Database storage has at least 95% of its inodes in use."]
+        )
+
+        self.assertIn("Free inodes", recommendation)
 
 
 if __name__ == "__main__":
