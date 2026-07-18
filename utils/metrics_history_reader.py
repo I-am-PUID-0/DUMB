@@ -64,16 +64,18 @@ def _parse_history_date(name):
     return date_str
 
 
-def _read_history_file(path):
+def _read_history_file(path, on_decode_error=None):
     try:
-        with open(path, "r") as f:
-            for line in f:
+        with open(path, "r", encoding="utf-8") as f:
+            for line_number, line in enumerate(f, start=1):
                 line = line.strip()
                 if not line:
                     continue
                 try:
                     yield json.loads(line)
-                except json.JSONDecodeError:
+                except json.JSONDecodeError as error:
+                    if callable(on_decode_error):
+                        on_decode_error(path, line_number, error)
                     continue
     except FileNotFoundError:
         return
@@ -108,6 +110,7 @@ def compact_history_items(items):
         system = item.get("system") or {}
         mem = system.get("mem") or {}
         disk = system.get("disk") or {}
+        inode = system.get("inode") or {}
         disk_io = system.get("disk_io") or {}
         net_io = system.get("net_io") or {}
         compacted.append(
@@ -118,6 +121,7 @@ def compact_history_items(items):
                     "cpu_count": system.get("cpu_count"),
                     "mem": {"percent": mem.get("percent")} if mem else None,
                     "disk": {"percent": disk.get("percent")} if disk else None,
+                    "inode": {"percent": inode.get("percent")} if inode else None,
                     "disk_io": (
                         {
                             "read_bytes": disk_io.get("read_bytes"),
@@ -207,6 +211,7 @@ def build_history_series(items):
     cpu = []
     mem = []
     disk = []
+    inode = []
     disk_read = []
     disk_write = []
     net_sent = []
@@ -217,6 +222,7 @@ def build_history_series(items):
         cpu.append(system.get("cpu_percent"))
         mem.append((system.get("mem") or {}).get("percent"))
         disk.append((system.get("disk") or {}).get("percent"))
+        inode.append((system.get("inode") or {}).get("percent"))
         disk_io = system.get("disk_io") or {}
         net_io = system.get("net_io") or {}
         disk_read.append(disk_io.get("read_bytes"))
@@ -228,6 +234,7 @@ def build_history_series(items):
         "cpu": cpu,
         "mem": mem,
         "disk": disk,
+        "inode": inode,
         "disk_read_rate": _build_rate_series(disk_read, timestamps),
         "disk_write_rate": _build_rate_series(disk_write, timestamps),
         "net_sent_rate": _build_rate_series(net_sent, timestamps),
@@ -251,6 +258,7 @@ def compute_history_stats(items):
         "cpu": _series_stats(series.get("cpu", [])),
         "mem": _series_stats(series.get("mem", [])),
         "disk": _series_stats(series.get("disk", [])),
+        "inode": _series_stats(series.get("inode", [])),
         "disk_read_rate": _series_stats(series.get("disk_read_rate", [])),
         "disk_write_rate": _series_stats(series.get("disk_write_rate", [])),
         "net_sent_rate": _series_stats(series.get("net_sent_rate", [])),
@@ -267,6 +275,33 @@ def read_history_series(
     bucket_seconds=None,
     max_points=600,
 ):
+    items, truncated = read_history(
+        history_dir=history_dir,
+        since=since,
+        full=full,
+        limit=limit,
+        default_hours=default_hours,
+    )
+    return prepare_history_series(
+        items,
+        truncated=truncated,
+        since=since,
+        full=full,
+        default_hours=default_hours,
+        bucket_seconds=bucket_seconds,
+        max_points=max_points,
+    )
+
+
+def prepare_history_series(
+    items,
+    truncated=False,
+    since=None,
+    full=False,
+    default_hours=6,
+    bucket_seconds=None,
+    max_points=600,
+):
     range_seconds = None
     if since is not None:
         range_seconds = max(time.time() - since, 1)
@@ -279,13 +314,6 @@ def read_history_series(
             bucket_seconds = auto_bucket
         else:
             bucket_seconds = max(bucket_seconds, auto_bucket)
-    items, truncated = read_history(
-        history_dir=history_dir,
-        since=since,
-        full=full,
-        limit=limit,
-        default_hours=default_hours,
-    )
     selected = _downsample_history_items(
         items, bucket_seconds=bucket_seconds, max_points=max_points
     )

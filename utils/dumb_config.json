@@ -123,11 +123,38 @@
       "history_max_file_mb": 50,
       "history_max_total_mb": 100,
       "history_dir": "/config/metrics",
+      "storage": {
+        "provider": "sqlite",
+        "sqlite_path": "/config/metrics/metrics.sqlite",
+        "migrate_jsonl": true,
+        "postgresql": {
+          "database": "dumb_metrics",
+          "schema": "public",
+          "local_retention_days": 7,
+          "retry_interval_sec": 60
+        }
+      },
       "database_health": {
         "enabled": false,
         "interval_sec": 60,
         "log_tail_bytes": 262144,
         "services": {}
+      }
+    },
+    "notifications": {
+      "enabled": false,
+      "monitor_interval_sec": 30,
+      "history_retention_days": 30,
+      "max_attempts": 3,
+      "retry_base_sec": 30,
+      "destinations": [],
+      "thresholds": {
+        "cpu_percent": 85,
+        "memory_percent": 85,
+        "disk_percent": 90,
+        "inode_percent": 90,
+        "database_pressure": "high",
+        "duration_sec": 60
       }
     }
   },

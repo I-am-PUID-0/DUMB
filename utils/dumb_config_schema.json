@@ -475,6 +475,68 @@
             "history_dir": {
               "type": "string"
             },
+            "storage": {
+              "type": "object",
+              "properties": {
+                "provider": {
+                  "type": "string",
+                  "enum": [
+                    "sqlite",
+                    "postgresql"
+                  ],
+                  "default": "sqlite"
+                },
+                "sqlite_path": {
+                  "type": "string",
+                  "default": "/config/metrics/metrics.sqlite"
+                },
+                "migrate_jsonl": {
+                  "type": "boolean",
+                  "default": true
+                },
+                "postgresql": {
+                  "type": "object",
+                  "properties": {
+                    "database": {
+                      "type": "string",
+                      "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
+                      "default": "dumb_metrics"
+                    },
+                    "schema": {
+                      "type": "string",
+                      "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
+                      "default": "public"
+                    },
+                    "local_retention_days": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 3650,
+                      "default": 7
+                    },
+                    "retry_interval_sec": {
+                      "type": "integer",
+                      "minimum": 15,
+                      "maximum": 3600,
+                      "default": 60
+                    }
+                  },
+                  "required": [
+                    "database",
+                    "schema",
+                    "local_retention_days",
+                    "retry_interval_sec"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "required": [
+                "provider",
+                "sqlite_path",
+                "migrate_jsonl",
+                "postgresql"
+              ],
+              "additionalProperties": false
+            },
             "database_health": {
               "type": "object",
               "properties": {
@@ -542,8 +604,185 @@
             "history_max_file_mb",
             "history_max_total_mb",
             "history_dir",
+            "storage",
             "database_health"
           ]
+        },
+        "notifications": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": false
+            },
+            "monitor_interval_sec": {
+              "type": "integer",
+              "minimum": 15,
+              "maximum": 3600,
+              "default": 30
+            },
+            "history_retention_days": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 3650,
+              "default": 30
+            },
+            "max_attempts": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 10,
+              "default": 3
+            },
+            "retry_base_sec": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 3600,
+              "default": 30
+            },
+            "destinations": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 120
+                  },
+                  "enabled": {
+                    "type": "boolean"
+                  },
+                  "provider": {
+                    "type": "string",
+                    "enum": [
+                      "apprise",
+                      "webhook"
+                    ]
+                  },
+                  "url": {
+                    "type": "string",
+                    "maxLength": 4096
+                  },
+                  "verify_tls": {
+                    "type": "boolean"
+                  },
+                  "headers": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "string"
+                    }
+                  },
+                  "minimum_severity": {
+                    "type": "string",
+                    "enum": [
+                      "info",
+                      "success",
+                      "warning",
+                      "critical"
+                    ]
+                  },
+                  "event_types": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "uniqueItems": true
+                  },
+                  "service_names": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "uniqueItems": true
+                  },
+                  "cooldown_sec": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 604800
+                  },
+                  "send_recovery": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "id",
+                  "name",
+                  "enabled",
+                  "provider",
+                  "url",
+                  "verify_tls",
+                  "headers",
+                  "minimum_severity",
+                  "event_types",
+                  "service_names",
+                  "cooldown_sec",
+                  "send_recovery"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "thresholds": {
+              "type": "object",
+              "properties": {
+                "cpu_percent": {
+                  "type": "number",
+                  "minimum": 1,
+                  "maximum": 100
+                },
+                "memory_percent": {
+                  "type": "number",
+                  "minimum": 1,
+                  "maximum": 100
+                },
+                "disk_percent": {
+                  "type": "number",
+                  "minimum": 1,
+                  "maximum": 100
+                },
+                "inode_percent": {
+                  "type": "number",
+                  "minimum": 1,
+                  "maximum": 100
+                },
+                "database_pressure": {
+                  "type": "string",
+                  "enum": [
+                    "moderate",
+                    "high",
+                    "critical"
+                  ]
+                },
+                "duration_sec": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 86400
+                }
+              },
+              "required": [
+                "cpu_percent",
+                "memory_percent",
+                "disk_percent",
+                "inode_percent",
+                "database_pressure",
+                "duration_sec"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "enabled",
+            "monitor_interval_sec",
+            "history_retention_days",
+            "max_attempts",
+            "retry_base_sec",
+            "destinations",
+            "thresholds"
+          ],
+          "additionalProperties": false
         }
       },
       "required": [
@@ -562,7 +801,8 @@
         "ffprobe_monitor",
         "api_service",
         "frontend",
-        "metrics"
+        "metrics",
+        "notifications"
       ]
     },
     "traefik": {

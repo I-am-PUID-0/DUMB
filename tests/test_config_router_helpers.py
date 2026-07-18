@@ -168,6 +168,80 @@ def _service_schema():
 
 
 class ConfigRouterHelperTests(unittest.TestCase):
+    def test_redact_notification_secrets_returns_copy(self):
+        original = {
+            "dumb": {
+                "notifications": {
+                    "destinations": [
+                        {
+                            "id": "ops",
+                            "url": "https://example.invalid/secret",
+                            "headers": {"Authorization": "secret"},
+                        }
+                    ]
+                }
+            }
+        }
+
+        result = config_router._redact_notification_secrets(original)
+        destination = result["dumb"]["notifications"]["destinations"][0]
+
+        self.assertEqual(destination["url"], "")
+        self.assertEqual(destination["headers"], {})
+        self.assertNotIn("url_configured", destination)
+        self.assertNotIn("headers_configured", destination)
+        self.assertEqual(
+            original["dumb"]["notifications"]["destinations"][0]["url"],
+            "https://example.invalid/secret",
+        )
+
+    def test_redacted_notification_round_trip_preserves_stored_secrets(self):
+        current = {
+            "dumb": {
+                "notifications": {
+                    "destinations": [
+                        {
+                            "id": "ops",
+                            "url": "https://example.invalid/secret",
+                            "headers": {"Authorization": "secret"},
+                        }
+                    ]
+                }
+            }
+        }
+        updates = config_router._redact_notification_secrets(current)
+
+        result = config_router._preserve_redacted_notification_secrets(updates, current)
+        destination = result["dumb"]["notifications"]["destinations"][0]
+
+        self.assertEqual(destination["url"], "https://example.invalid/secret")
+        self.assertEqual(destination["headers"], {"Authorization": "secret"})
+
+    def test_notification_secret_preservation_strips_dedicated_api_markers(self):
+        current = {
+            "dumb": {
+                "notifications": {
+                    "destinations": [
+                        {
+                            "id": "ops",
+                            "url": "https://example.invalid/secret",
+                            "headers": {"Authorization": "secret"},
+                        }
+                    ]
+                }
+            }
+        }
+        updates = config_router._redact_notification_secrets(current)
+        destination = updates["dumb"]["notifications"]["destinations"][0]
+        destination["url_configured"] = True
+        destination["headers_configured"] = True
+
+        result = config_router._preserve_redacted_notification_secrets(updates, current)
+        destination = result["dumb"]["notifications"]["destinations"][0]
+
+        self.assertNotIn("url_configured", destination)
+        self.assertNotIn("headers_configured", destination)
+
     def test_deep_merge_dict_preserves_sibling_nested_keys(self):
         target = {
             "dumb": {"ui": {"log_timestamp": True, "sidebar": {"compact": False}}}

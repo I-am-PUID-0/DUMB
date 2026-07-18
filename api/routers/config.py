@@ -138,6 +138,58 @@ def _normalize_legacy_global_config(config: Dict[str, Any]) -> Dict[str, Any]:
     return config
 
 
+def _redact_notification_secrets(config: Dict[str, Any]) -> Dict[str, Any]:
+    safe = copy.deepcopy(config)
+    destinations = (
+        safe.get("dumb", {}).get("notifications", {}).get("destinations", [])
+        if isinstance(safe, dict)
+        else []
+    )
+    for destination in destinations:
+        if not isinstance(destination, dict):
+            continue
+        destination["url"] = ""
+        destination["headers"] = {}
+    return safe
+
+
+def _preserve_redacted_notification_secrets(
+    updates: Dict[str, Any], current_config: Dict[str, Any]
+) -> Dict[str, Any]:
+    """Preserve stored notification secrets in a redacted config round trip."""
+    safe_updates = copy.deepcopy(updates)
+    notifications = (safe_updates.get("dumb", {}) or {}).get("notifications")
+    if not isinstance(notifications, dict):
+        return safe_updates
+    destinations = notifications.get("destinations")
+    if not isinstance(destinations, list):
+        return safe_updates
+
+    current_destinations = (
+        (current_config.get("dumb", {}) or {})
+        .get("notifications", {})
+        .get("destinations", [])
+    )
+    current_by_id = {
+        destination.get("id"): destination
+        for destination in current_destinations
+        if isinstance(destination, dict) and destination.get("id")
+    }
+    for destination in destinations:
+        if not isinstance(destination, dict):
+            continue
+        destination.pop("url_configured", None)
+        destination.pop("headers_configured", None)
+        current = current_by_id.get(destination.get("id"))
+        if not isinstance(current, dict):
+            continue
+        if not str(destination.get("url") or "").strip():
+            destination["url"] = current.get("url", "")
+        if not destination.get("headers"):
+            destination["headers"] = copy.deepcopy(current.get("headers", {}))
+    return safe_updates
+
+
 def load_config_file(config_path):
     yaml = YAML(typ="safe")
     raw_config = None
@@ -507,7 +559,7 @@ async def get_config(
             raise HTTPException(status_code=404, detail="Service not found")
         return service_cfg
 
-    return CONFIG_MANAGER.config
+    return _redact_notification_secrets(CONFIG_MANAGER.config)
 
 
 @config_router.post("/")
@@ -606,7 +658,9 @@ async def update_config(
             "persisted": persist,
         }
 
-    updates = request.updates
+    updates = _preserve_redacted_notification_secrets(
+        request.updates, CONFIG_MANAGER.config
+    )
     if not updates:
         raise HTTPException(
             status_code=400, detail="No updates provided for global config."

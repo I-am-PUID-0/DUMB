@@ -6,6 +6,7 @@ from utils.logger import (
 )
 from utils.config_loader import CONFIG_MANAGER
 from utils.wait_for_url import wait_for_urls
+from utils.notifications import notify_event
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from contextlib import contextmanager
 import shlex, os, time, signal, threading, subprocess, sys, uvicorn, socket, psutil, requests
@@ -40,6 +41,7 @@ class ProcessHandler:
         self.auto_restart_state = {}
         self.auto_restart_lock = threading.Lock()
         self.auto_restart_thread = None
+        self._intentional_stop_pids = set()
         self.preinstall_complete = False
         self.preinstalled_processes = set()
         self.preinstall_failures = {}
@@ -189,6 +191,13 @@ class ProcessHandler:
                     else:
                         success, error = setup_project(self, process_name)
                     if not success:
+                        notify_event(
+                            "service.start.failed",
+                            "critical",
+                            f"Failed to start {process_name}",
+                            f"DUMB could not complete service setup: {redact_sensitive_log_data(str(error))}",
+                            service_name=process_name,
+                        )
                         return False, f"Failed to set up {process_name}: {error}"
 
         try:
@@ -492,6 +501,14 @@ class ProcessHandler:
 
             success, error = self._check_immediate_exit_and_log(process, process_name)
             if not success:
+                notify_event(
+                    "service.start.failed",
+                    "critical",
+                    f"{process_name} exited during startup",
+                    error
+                    or "The service exited before its startup grace period completed.",
+                    service_name=process_name,
+                )
                 return False, error
 
             self.logger.info(f"{process_name} process started with PID: {process.pid}")
@@ -512,6 +529,11 @@ class ProcessHandler:
                 "description": process_description,
                 "process_obj": process,
                 "start_time": time.time(),
+                # Only configured, long-running DUMB services should generate
+                # unexpected-stop notifications and Auto-restart handling.
+                # Setup/build helpers use the same process runner but are
+                # intentionally short-lived and are awaited by their caller.
+                "managed_service": bool(key),
             }
             self.process_names[internal_name] = process
 
@@ -520,6 +542,13 @@ class ProcessHandler:
             return True, None
 
         except Exception as e:
+            notify_event(
+                "service.start.failed",
+                "critical",
+                f"Failed to start {process_name}",
+                redact_sensitive_log_data(str(e)),
+                service_name=process_name,
+            )
             return False, f"Error running subprocess for {process_name}: {e}"
 
     def _check_immediate_exit_and_log(
@@ -579,6 +608,9 @@ class ProcessHandler:
                 process_name = process_info.get("name")
                 internal_name = process_info.get("internal_name", process_name)
                 process_obj = process_info.get("process_obj")
+                managed_service = bool(process_info.get("managed_service"))
+                intentional_stop = pid in self._intentional_stop_pids
+                self._intentional_stop_pids.discard(pid)
                 exit_code = None
                 if process_obj:
                     exit_code = process_obj.returncode
@@ -588,11 +620,24 @@ class ProcessHandler:
                     f"Reaped zombie process with PID: {pid}, "
                     f"Description: {process_info.get('description', 'Unknown')}"
                 )
-                if process_name:
+                if (
+                    process_name
+                    and managed_service
+                    and not intentional_stop
+                    and not self.shutting_down
+                ):
                     reason = (
                         f"Exited with code {exit_code}"
                         if exit_code is not None
                         else "Exited"
+                    )
+                    notify_event(
+                        "service.stopped.unexpectedly",
+                        "critical",
+                        f"{process_name} stopped unexpectedly",
+                        reason,
+                        service_name=process_name,
+                        metadata={"exit_code": exit_code},
                     )
                     self._maybe_schedule_restart(process_name, reason)
             except ChildProcessError:
@@ -636,6 +681,7 @@ class ProcessHandler:
             self._update_running_processes_file()
 
     def stop_process(self, process_name, disable_restart=True):
+        intentional_pid = None
         try:
             process_description = process_name
             self.logger.info(f"Initiating shutdown for {process_description}")
@@ -647,6 +693,8 @@ class ProcessHandler:
             )
             process = self.process_names.get(internal_name)
             if process:
+                intentional_pid = process.pid
+                self._intentional_stop_pids.add(intentional_pid)
                 policy_name = process_name
                 if (
                     internal_name in self.process_names
@@ -711,6 +759,9 @@ class ProcessHandler:
             self.logger.error(
                 f"Error occurred while stopping {process_description}: {e}"
             )
+        finally:
+            if intentional_pid is not None:
+                self._intentional_stop_pids.discard(intentional_pid)
 
     def shutdown_threads(self, *args, **kwargs):
         self.logger.debug(
@@ -1137,6 +1188,14 @@ class ProcessHandler:
             count = state["unhealthy_count"]
             if count >= threshold:
                 state["unhealthy_count"] = 0
+                notify_event(
+                    "service.unhealthy",
+                    "critical",
+                    f"{process_name} is unhealthy",
+                    reason or "The configured health check threshold was reached.",
+                    service_name=process_name,
+                    metadata={"unhealthy_threshold": threshold},
+                )
                 return True
         return False
 
@@ -1183,6 +1242,14 @@ class ProcessHandler:
                 self.logger.warning(
                     f"Auto-restart suppressed for {process_name}: restart limit reached."
                 )
+                notify_event(
+                    "service.auto_restart.suppressed",
+                    "critical",
+                    f"Auto-restart suppressed for {process_name}",
+                    "The configured restart limit was reached. Manual intervention may be required.",
+                    service_name=process_name,
+                    metadata={"reason": reason},
+                )
                 return
             if state["pending"]:
                 return
@@ -1212,6 +1279,14 @@ class ProcessHandler:
                 state["restart_attempts"] += 1
                 state["recent_attempts"].append(time.time())
 
+            notify_event(
+                "service.auto_restart.attempt",
+                "warning",
+                f"Auto-restarting {process_name}",
+                f"DUMB is attempting to restart the service after: {reason}",
+                service_name=process_name,
+            )
+
             success, error = self.start_process(process_name)
             with self.auto_restart_lock:
                 state = self._get_restart_state(process_name)
@@ -1229,8 +1304,22 @@ class ProcessHandler:
                 self.logger.warning(
                     f"Auto-restarted {process_name} after failure: {reason}"
                 )
+                notify_event(
+                    "service.auto_restart.succeeded",
+                    "success",
+                    f"Auto-restart succeeded for {process_name}",
+                    f"The service recovered after: {reason}",
+                    service_name=process_name,
+                )
             else:
                 self.logger.error(f"Auto-restart failed for {process_name}: {error}")
+                notify_event(
+                    "service.auto_restart.failed",
+                    "critical",
+                    f"Auto-restart failed for {process_name}",
+                    redact_sensitive_log_data(str(error or "Unknown restart failure")),
+                    service_name=process_name,
+                )
 
         threading.Thread(
             target=do_restart, daemon=True, name=f"auto-restart-{process_name}"

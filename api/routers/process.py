@@ -2331,7 +2331,6 @@ def update_notices(
 async def update_check(
     request: UpdateCheckRequest,
     updater=Depends(get_updater),
-    api_state=Depends(get_api_state),
     current_user: str = Depends(get_optional_current_user),
 ):
     if not request.process_name:
@@ -2342,8 +2341,6 @@ async def update_check(
     payload = await run_in_threadpool(
         updater.manual_update_check, request.process_name, bool(request.force)
     )
-    if api_state and payload:
-        api_state.set_update_status(request.process_name, payload)
     return payload
 
 
@@ -2351,7 +2348,6 @@ async def update_check(
 async def update_install(
     request: UpdateInstallRequest,
     updater=Depends(get_updater),
-    api_state=Depends(get_api_state),
     current_user: str = Depends(get_optional_current_user),
 ):
     if not request.process_name:
@@ -2365,8 +2361,6 @@ async def update_install(
         bool(request.allow_override),
         request.target,
     )
-    if api_state and payload:
-        api_state.set_update_status(request.process_name, payload)
     return payload
 
 
@@ -5037,6 +5031,9 @@ async def get_capabilities(current_user: str = Depends(get_optional_current_user
         "arr_postgres_migration_rehearsal": True,
         "arr_postgres_migration_rollback": True,
         "database_health_metrics": True,
+        "metrics_history_storage": True,
+        "metrics_history_hot_activation": True,
         "database_health_service_keys": sorted(SUPPORTED_SERVICE_KEYS),
+        "notifications": True,
         "ai_diagnostics": True,
     }

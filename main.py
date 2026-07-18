@@ -3,7 +3,6 @@ from utils.global_logger import logger, websocket_manager
 from utils import user_management
 from api.api_service import start_fastapi_process
 from api.connection_manager import ConnectionManager
-from utils.metrics_history import MetricsHistoryWriter
 from utils.project_metadata import get_project_version
 from utils.processes import ProcessHandler
 from utils.auto_update import Update
@@ -11,11 +10,14 @@ from utils.dependencies import initialize_dependencies
 from utils.core_services import get_core_services, has_core_service
 from utils.dependency_map import build_conditional_dependency_map
 from utils.startup import run_parallel_preinstall, start_control_plane_before_preinstall
+from utils.notifications import notify_event
 from utils.plex_dbrepair import start_plex_dbrepair_worker
 from utils.ffprobe_monitor import start_ffprobe_monitor
 from utils.setup import setup_project
 from utils.seerr_sync import start_seerr_sync_service
 from utils.arr_postgres import configure_arr_postgres_runtime
+from utils.postgres import stop_existing_postgres_for_data_directory
+from utils.metrics_postgres import ensure_metrics_postgres_config
 from concurrent.futures import ThreadPoolExecutor, wait, FIRST_COMPLETED
 import subprocess, threading, time, os, socket, errno, psutil, json, urllib.parse, sys
 
@@ -816,6 +818,13 @@ def _preinstall_enabled_services(process_handler, config_manager) -> dict[str, s
     process_handler.preinstall_failures = dict(failures)
     for name, error in failures.items():
         logger.error("Pre-install failed for %s: %s", name, error)
+        notify_event(
+            "service.preinstall.failed",
+            "critical",
+            f"Pre-install failed for {name}",
+            str(error),
+            service_name=name,
+        )
 
     process_handler.preinstall_complete = True
     if failures:
@@ -823,6 +832,14 @@ def _preinstall_enabled_services(process_handler, config_manager) -> dict[str, s
             "Pre-install phase completed with %s failure(s). DUMB API and Frontend will remain available; failed services will retry during normal startup: %s",
             len(failures),
             ", ".join(sorted(failures)),
+        )
+        notify_event(
+            "dumb.startup.degraded",
+            "critical",
+            "DUMB startup completed with degraded services",
+            "The control plane remains available. Failed services will retry during normal startup: "
+            + ", ".join(sorted(failures)),
+            metadata={"failed_services": sorted(failures)},
         )
     else:
         logger.info("Pre-install phase complete.")
@@ -935,6 +952,20 @@ def main():
         logger.error(f"An error occurred while creating system user: {e}")
         process_handler.shutdown(exit_code=1)
 
+    if ensure_metrics_postgres_config(config):
+        config.save_config()
+        logger.info("Enabled PostgreSQL and registered the metrics history database.")
+
+    postgres_config = config.get("postgres", {}) or {}
+    if postgres_config.get("enabled"):
+        success, error = stop_existing_postgres_for_data_directory(
+            postgres_config.get("config_dir", "/postgres_data"),
+            postgres_config.get("user", "DUMB"),
+        )
+        if not success:
+            logger.error("PostgreSQL startup safety check failed: %s", error)
+            process_handler.shutdown(exit_code=1)
+
     _apply_global_port_reservations(config)
     mount_paths = _collect_mount_paths(config)
     _apply_mount_waits(config, mount_paths)
@@ -953,20 +984,18 @@ def main():
             cfg_root = config.config if hasattr(config, "config") else config
             return (cfg_root.get("dumb", {}) or {}).get("metrics", {})
 
-        from utils.dependencies import get_metrics_collector
+        from utils.dependencies import (
+            get_metrics_collector,
+            get_metrics_history_manager,
+        )
 
         collector = get_metrics_collector()
-        writer = None
-        last_writer_cfg = None
+        history_manager = get_metrics_history_manager()
         while True:
             try:
                 metrics_cfg = _get_metrics_cfg()
                 enabled = metrics_cfg.get("history_enabled", True)
                 interval = metrics_cfg.get("history_interval_sec", 5)
-                retention_days = metrics_cfg.get("history_retention_days", 7)
-                max_file_mb = metrics_cfg.get("history_max_file_mb", 50)
-                max_total_mb = metrics_cfg.get("history_max_total_mb", 100)
-                history_dir = metrics_cfg.get("history_dir", "/config/metrics")
 
                 try:
                     interval = float(interval)
@@ -974,25 +1003,11 @@ def main():
                     interval = 5.0
                 interval = max(0.5, interval)
 
-                writer_cfg = (history_dir, retention_days, max_file_mb, max_total_mb)
                 if enabled:
-                    if writer is None or writer_cfg != last_writer_cfg:
-                        writer = MetricsHistoryWriter(
-                            base_dir=history_dir,
-                            retention_days=retention_days,
-                            max_file_mb=max_file_mb,
-                            max_total_mb=max_total_mb,
-                            logger=logger,
-                        )
-                        last_writer_cfg = writer_cfg
-
                     snapshot = collector.snapshot(
                         database_details=False, database_refresh=True
                     )
-                    writer.write(snapshot)
-                else:
-                    writer = None
-                    last_writer_cfg = None
+                    history_manager.write(snapshot)
             except Exception as e:
                 logger.error(f"Metrics history worker error: {e}")
             time.sleep(interval)

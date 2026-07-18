@@ -86,6 +86,7 @@ class MetricsCollector:
                 "percent": disk_usage.percent,
                 "path": "/",
             },
+            "inode": self._collect_inode_usage("/"),
             "disk_io": {
                 "read_bytes": disk_io.read_bytes if disk_io else 0,
                 "write_bytes": disk_io.write_bytes if disk_io else 0,
@@ -163,6 +164,7 @@ class MetricsCollector:
                 "percent": disk_usage.percent,
                 "path": "/",
             },
+            "inode": self._collect_inode_usage("/"),
             "disk_io": {
                 "read_bytes": disk_io.get("read_bytes", 0),
                 "write_bytes": disk_io.get("write_bytes", 0),
@@ -178,6 +180,29 @@ class MetricsCollector:
             "boot_time": psutil.boot_time(),
             "container_start_time": self.container_start_time,
         }
+
+    def _collect_inode_usage(self, path):
+        try:
+            stats = os.statvfs(path)
+            total = int(stats.f_files or 0)
+            free = int(stats.f_ffree or 0)
+            used = max(0, total - free)
+            percent = (used / total * 100.0) if total else None
+            return {
+                "total": total,
+                "used": used,
+                "free": free,
+                "percent": percent,
+                "path": path,
+            }
+        except OSError:
+            return {
+                "total": None,
+                "used": None,
+                "free": None,
+                "percent": None,
+                "path": path,
+            }
 
     def _cgroup_available(self):
         return os.path.exists("/sys/fs/cgroup/cpu.stat")

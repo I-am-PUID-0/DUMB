@@ -248,17 +248,21 @@ class Update:
         key, instance_name = CONFIG_MANAGER.find_key_for_process(process_name)
         config = CONFIG_MANAGER.get_instance(instance_name, key)
         if not config:
-            return {
+            payload = {
                 "status": "error",
                 "reason": "config_not_found",
                 "message": f"Configuration for {process_name} not found.",
             }
+            self._safe_record_update_status(process_name, payload)
+            return payload
         if not self.supports_manual_update(key, config):
-            return {
+            payload = {
                 "status": "unsupported",
                 "reason": "unsupported",
                 "message": f"Manual updates are not supported for {process_name}.",
             }
+            self._safe_record_update_status(process_name, payload)
+            return payload
 
         with self.updating:
             payload = self._manual_update_check_internal(
@@ -828,17 +832,21 @@ class Update:
         key, instance_name = CONFIG_MANAGER.find_key_for_process(process_name)
         config = CONFIG_MANAGER.get_instance(instance_name, key)
         if not config:
-            return {
+            payload = {
                 "status": "error",
                 "reason": "config_not_found",
                 "message": f"Configuration for {process_name} not found.",
             }
+            self._safe_record_update_status(process_name, payload)
+            return payload
         if not self.supports_manual_update(key, config):
-            return {
+            payload = {
                 "status": "unsupported",
                 "reason": "unsupported",
                 "message": f"Manual updates are not supported for {process_name}.",
             }
+            self._safe_record_update_status(process_name, payload)
+            return payload
 
         block_reason = self._get_update_block_reason(config)
         if block_reason and not allow_override:

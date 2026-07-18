@@ -2,6 +2,7 @@ import os, socket, psutil, threading, time, uuid, json, re
 from json import load
 from utils.config_loader import CONFIG_MANAGER
 from utils.project_metadata import get_project_version
+from utils.notifications import notify_event
 
 
 class APIState:
@@ -208,6 +209,36 @@ class APIState:
 
         if update_payload.get("status") == "updated":
             self._record_applied_update_notice(process_name, update_payload, previous)
+            notify_event(
+                "update.succeeded",
+                "success",
+                f"Update completed for {process_name}",
+                update_payload.get("message")
+                or f"{process_name} was updated successfully.",
+                service_name=process_name,
+            )
+        elif update_payload.get("status") == "update_available" and (
+            not isinstance(previous, dict)
+            or previous.get("status") != "update_available"
+            or previous.get("available_version")
+            != update_payload.get("available_version")
+        ):
+            notify_event(
+                "update.available",
+                "info",
+                f"Update available for {process_name}",
+                update_payload.get("message")
+                or f"Version {update_payload.get('available_version') or 'unknown'} is available.",
+                service_name=process_name,
+            )
+        elif update_payload.get("status") in {"error", "failed"}:
+            notify_event(
+                "update.failed",
+                "critical",
+                f"Update operation failed for {process_name}",
+                update_payload.get("message") or "Review DUMB logs for details.",
+                service_name=process_name,
+            )
 
     def get_update_status(self, process_name):
         normalized = self._normalize_process_name(process_name)
@@ -308,14 +339,37 @@ class APIState:
     def update_symlink_job(self, job_id, updates):
         if not job_id or not isinstance(updates, dict):
             return None
+        terminal_payload = None
         with self._symlink_job_cache_lock:
             payload = self._symlink_job_cache.get(job_id)
             if not payload:
                 return None
+            previous_status = str(payload.get("status") or "").strip().lower()
             payload.update(updates)
             payload["updated_at"] = int(time.time())
             self._symlink_job_cache[job_id] = payload
-            return dict(payload)
+            next_status = str(payload.get("status") or "").strip().lower()
+            if next_status in {"completed", "error"} and next_status != previous_status:
+                terminal_payload = dict(payload)
+            result = dict(payload)
+        if terminal_payload:
+            process_name = terminal_payload.get("process_name") or "DUMB"
+            operation = terminal_payload.get("operation") or "symlink job"
+            succeeded = terminal_payload.get("status") == "completed"
+            notify_event(
+                "symlink.job.succeeded" if succeeded else "symlink.job.failed",
+                "success" if succeeded else "critical",
+                f"Symlink {operation} {'completed' if succeeded else 'failed'} for {process_name}",
+                (
+                    "The background symlink operation completed successfully."
+                    if succeeded
+                    else terminal_payload.get("error")
+                    or "Review DUMB logs for details."
+                ),
+                service_name=process_name,
+                metadata={"job_id": job_id, "operation": operation},
+            )
+        return result
 
     def get_symlink_job(self, job_id):
         if not job_id:

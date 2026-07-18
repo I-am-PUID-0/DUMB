@@ -1,6 +1,6 @@
 from utils.global_logger import logger
 from utils.config_loader import CONFIG_MANAGER
-import psycopg2, time, os, subprocess, json, glob
+import psycopg2, time, os, subprocess, json, glob, shlex, signal
 from psycopg2 import sql
 from time import sleep
 import shutil, tempfile
@@ -162,6 +162,138 @@ def remove_postgres_lock_files(postgres_host, postgres_port, postgres_user):
             logger.warning(f"Removed stale PostgreSQL socket/lock file at {path}.")
         except OSError as e:
             logger.warning(f"Failed to remove PostgreSQL socket/lock file {path}: {e}")
+    return True, None
+
+
+def stop_existing_postgres_for_data_directory(postgres_config_dir, postgres_user):
+    """Stop only a live PostgreSQL postmaster that owns this exact data directory."""
+    pid_path = os.path.join(postgres_config_dir, "postmaster.pid")
+    if not os.path.exists(pid_path):
+        matches = []
+        expected_dir = os.path.realpath(postgres_config_dir)
+        for cmdline_path in glob.glob("/proc/[0-9]*/cmdline"):
+            try:
+                with open(cmdline_path, "rb") as handle:
+                    arguments = [
+                        value.decode("utf-8", errors="replace")
+                        for value in handle.read().split(b"\0")
+                        if value
+                    ]
+                if not arguments or "postgres" not in os.path.basename(arguments[0]):
+                    continue
+                data_directory = None
+                for index, argument in enumerate(arguments):
+                    if argument == "-D" and index + 1 < len(arguments):
+                        data_directory = arguments[index + 1]
+                        break
+                    if argument.startswith("--pgdata="):
+                        data_directory = argument.split("=", 1)[1]
+                        break
+                if not data_directory:
+                    continue
+                if os.path.realpath(data_directory) == expected_dir:
+                    matches.append(int(cmdline_path.split("/")[2]))
+            except (OSError, ValueError):
+                continue
+
+        if not matches:
+            return True, None
+        if len(matches) > 1:
+            return (
+                False,
+                "Refusing orphan PostgreSQL cleanup: multiple parent processes "
+                f"claim data directory {postgres_config_dir}: {matches}.",
+            )
+
+        orphan_pid = matches[0]
+        logger.warning(
+            "Found PostgreSQL PID %s using %s without postmaster.pid; requesting "
+            "a fast shutdown before DUMB startup.",
+            orphan_pid,
+            postgres_config_dir,
+        )
+        try:
+            os.kill(orphan_pid, signal.SIGINT)
+        except ProcessLookupError:
+            return True, None
+        except PermissionError as exc:
+            return False, f"Unable to stop orphan PostgreSQL PID {orphan_pid}: {exc}"
+
+        deadline = time.time() + 30
+        while time.time() < deadline:
+            try:
+                os.kill(orphan_pid, 0)
+            except ProcessLookupError:
+                logger.info("Orphan PostgreSQL server stopped cleanly.")
+                return True, None
+            except PermissionError:
+                pass
+            time.sleep(0.25)
+        return (
+            False,
+            f"Orphan PostgreSQL PID {orphan_pid} did not stop within 30 seconds.",
+        )
+
+    try:
+        with open(pid_path, encoding="utf-8") as handle:
+            lines = [line.strip() for line in handle.readlines()]
+        postmaster_pid = int(lines[0])
+        recorded_dir = lines[1] if len(lines) > 1 else ""
+    except (OSError, ValueError, IndexError) as exc:
+        return False, f"Unable to validate PostgreSQL postmaster.pid: {exc}"
+
+    try:
+        os.kill(postmaster_pid, 0)
+        process_alive = True
+    except ProcessLookupError:
+        process_alive = False
+    except PermissionError:
+        process_alive = True
+
+    expected_dir = os.path.realpath(postgres_config_dir)
+    recorded_dir = os.path.realpath(recorded_dir) if recorded_dir else ""
+    if not process_alive:
+        logger.warning(
+            "Removing stale PostgreSQL postmaster.pid for %s; PID %s is not running.",
+            postgres_config_dir,
+            postmaster_pid,
+        )
+        os.remove(pid_path)
+        return True, None
+
+    try:
+        with open(f"/proc/{postmaster_pid}/comm", encoding="utf-8") as handle:
+            process_name = handle.read().strip().lower()
+    except OSError:
+        process_name = ""
+
+    if recorded_dir != expected_dir or "postgres" not in process_name:
+        return (
+            False,
+            "Refusing to stop PID "
+            f"{postmaster_pid}: postmaster.pid does not identify a PostgreSQL "
+            f"server for {postgres_config_dir}.",
+        )
+
+    logger.warning(
+        "Found an existing PostgreSQL server for %s (PID %s); stopping it "
+        "cleanly before DUMB startup.",
+        postgres_config_dir,
+        postmaster_pid,
+    )
+    stop_command = (
+        f"pg_ctl -D {shlex.quote(postgres_config_dir)} " "stop -m fast -w -t 30"
+    )
+    result = subprocess.run(
+        ["su", "-", postgres_user, "-s", "/bin/bash", "-c", stop_command],
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        detail = (result.stderr or result.stdout or "pg_ctl stop failed").strip()
+        return False, f"Failed to stop existing PostgreSQL server: {detail}"
+
+    logger.info("Existing PostgreSQL server stopped cleanly.")
     return True, None
 
 
@@ -1010,8 +1142,11 @@ def postgres_setup(process_handler=None):
         except subprocess.CalledProcessError as e:
             return False, f"Error setting permissions for {postgres_config_dir}: {e}"
 
-        if os.path.exists(os.path.join(postgres_config_dir, "postmaster.pid")):
-            os.remove(os.path.join(postgres_config_dir, "postmaster.pid"))
+        success, error = stop_existing_postgres_for_data_directory(
+            postgres_config_dir, postgres_user
+        )
+        if not success:
+            return False, error
 
         success, error = initialize_postgres_config_dir_directory(
             process_handler, postgres_config_dir, postgres_user, postgres_password

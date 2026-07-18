@@ -250,7 +250,8 @@ ARG ZURG_REF=main
 LABEL name="DUMB" \
       description="Debrid Unlimited Media Bridge" \
       url="https://github.com/I-am-PUID-0/DUMB" \
-      maintainer="I-am-PUID-0"
+      maintainer="I-am-PUID-0" \
+      org.opencontainers.image.licenses="GPL-3.0-only"
 
 # Copy artifacts from builder stages ---------------------------------------------------------------------------------------------------------------
 COPY --from=requirements-builder /venv /venv
@@ -270,6 +271,7 @@ ADD https://raw.githubusercontent.com/debridmediamanager/zurg-testing/${ZURG_REF
 RUN sed -i 's/^on_library_update: sh plex_update.sh.*$/# &/' /zurg/config.yml
 
 # Project code
+COPY LICENSE THIRD_PARTY_NOTICES.md /usr/share/doc/dumb/
 COPY . /./
 
 ENV XDG_CONFIG_HOME=/config \

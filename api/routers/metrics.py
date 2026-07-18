@@ -1,7 +1,19 @@
-from fastapi import APIRouter, Depends, Query
-from utils.dependencies import get_metrics_collector, get_optional_current_user
+from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.concurrency import run_in_threadpool
+from utils.dependencies import (
+    get_api_state,
+    get_logger,
+    get_metrics_collector,
+    get_metrics_history_manager,
+    get_optional_current_user,
+    get_process_handler,
+)
 from utils.config_loader import CONFIG_MANAGER
-from utils.metrics_history_reader import read_history, read_history_series
+from utils.metrics_history_reader import prepare_history_series
+from utils.metrics_postgres import (
+    MetricsPostgresActivationError,
+    activate_metrics_postgresql,
+)
 import time
 
 metrics_router = APIRouter()
@@ -46,18 +58,14 @@ async def get_metrics_history(
     since: float | None = Query(default=None),
     full: bool = Query(default=False),
     limit: int = Query(default=5000),
+    history_manager=Depends(get_metrics_history_manager),
     current_user: str = Depends(get_optional_current_user),
 ):
-    history_dir = (
-        CONFIG_MANAGER.get("dumb", {})
-        .get("metrics", {})
-        .get("history_dir", "/config/metrics")
-    )
     if since is None and not full:
         since = time.time() - (6 * 60 * 60)
 
-    items, truncated = read_history(
-        history_dir=history_dir,
+    items, truncated = await run_in_threadpool(
+        history_manager.read,
         since=since,
         full=full,
         limit=limit,
@@ -73,21 +81,25 @@ async def get_metrics_history_series(
     limit: int = Query(default=5000),
     bucket_seconds: int | None = Query(default=None),
     max_points: int = Query(default=600),
+    history_manager=Depends(get_metrics_history_manager),
     current_user: str = Depends(get_optional_current_user),
 ):
-    history_dir = (
-        CONFIG_MANAGER.get("dumb", {})
-        .get("metrics", {})
-        .get("history_dir", "/config/metrics")
-    )
     if since is None and not full:
         since = time.time() - (6 * 60 * 60)
 
-    items, series, truncated, stats, bucket_seconds = read_history_series(
-        history_dir=history_dir,
+    items, truncated = await run_in_threadpool(
+        history_manager.read,
         since=since,
         full=full,
         limit=limit,
+        default_hours=6,
+    )
+    items, series, truncated, stats, bucket_seconds = await run_in_threadpool(
+        prepare_history_series,
+        items,
+        truncated=truncated,
+        since=since,
+        full=full,
         default_hours=6,
         bucket_seconds=bucket_seconds,
         max_points=max_points,
@@ -101,3 +113,58 @@ async def get_metrics_history_series(
         "stats": stats,
         "bucket_seconds": bucket_seconds,
     }
+
+
+@metrics_router.get("/history/storage")
+async def get_metrics_history_storage(
+    probe_postgresql: bool = Query(default=False),
+    history_manager=Depends(get_metrics_history_manager),
+    current_user: str = Depends(get_optional_current_user),
+):
+    return await run_in_threadpool(
+        history_manager.status, probe_postgresql=probe_postgresql
+    )
+
+
+@metrics_router.post("/history/migrate")
+async def migrate_metrics_history(
+    force: bool = Query(default=False),
+    history_manager=Depends(get_metrics_history_manager),
+    current_user: str = Depends(get_optional_current_user),
+):
+    return await run_in_threadpool(history_manager.migrate_legacy, force=force)
+
+
+@metrics_router.post("/history/storage/activate-postgresql")
+async def activate_metrics_history_postgresql(
+    process_handler=Depends(get_process_handler),
+    api_state=Depends(get_api_state),
+    history_manager=Depends(get_metrics_history_manager),
+    logger=Depends(get_logger),
+    current_user: str = Depends(get_optional_current_user),
+):
+    try:
+        return await run_in_threadpool(
+            activate_metrics_postgresql,
+            CONFIG_MANAGER,
+            process_handler,
+            api_state,
+            history_manager,
+            logger,
+        )
+    except MetricsPostgresActivationError as exc:
+        logger.error(
+            "PostgreSQL Metrics activation failed during %s: %s",
+            exc.stage,
+            exc,
+        )
+        status_code = 409 if exc.stage == "busy" else 503
+        raise HTTPException(
+            status_code=status_code,
+            detail=(
+                "PostgreSQL Metrics activation is already running."
+                if exc.stage == "busy"
+                else f"PostgreSQL Metrics activation failed during {exc.stage}. "
+                "SQLite remains active; check the DUMB logs and retry."
+            ),
+        ) from None

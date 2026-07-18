@@ -1,14 +1,15 @@
 import asyncio
 import json
 from fastapi import APIRouter, Depends, WebSocket
+from fastapi.concurrency import run_in_threadpool
 from starlette.websockets import WebSocketDisconnect
 from utils.dependencies import (
     get_metrics_collector,
+    get_metrics_history_manager,
     get_metrics_manager,
     get_websocket_current_user,
 )
-from utils.config_loader import CONFIG_MANAGER
-from utils.metrics_history_reader import read_history, read_history_series
+from utils.metrics_history_reader import prepare_history_series
 
 websocket_metrics_router = APIRouter()
 _publisher_task = None
@@ -21,6 +22,7 @@ _latest_snapshot = None
 async def websocket_metrics(
     websocket: WebSocket,
     collector=Depends(get_metrics_collector),
+    history_manager=Depends(get_metrics_history_manager),
     metrics_manager=Depends(get_metrics_manager),
     current_user: str = Depends(get_websocket_current_user),
 ):
@@ -43,16 +45,19 @@ async def websocket_metrics(
     await metrics_manager.connect(websocket)
     try:
         if bootstrap:
-            history_dir = (
-                CONFIG_MANAGER.get("dumb", {})
-                .get("metrics", {})
-                .get("history_dir", "/config/metrics")
-            )
-            items, series, truncated, stats, bucket_seconds = read_history_series(
-                history_dir=history_dir,
+            items, truncated = await run_in_threadpool(
+                history_manager.read,
                 since=history_since,
                 full=history_full,
                 limit=history_limit,
+                default_hours=6,
+            )
+            items, series, truncated, stats, bucket_seconds = await run_in_threadpool(
+                prepare_history_series,
+                items,
+                truncated=truncated,
+                since=history_since,
+                full=history_full,
                 default_hours=6,
                 bucket_seconds=history_bucket,
                 max_points=history_points,
@@ -72,13 +77,8 @@ async def websocket_metrics(
                 )
             )
         elif history_enabled:
-            history_dir = (
-                CONFIG_MANAGER.get("dumb", {})
-                .get("metrics", {})
-                .get("history_dir", "/config/metrics")
-            )
-            items, truncated = read_history(
-                history_dir=history_dir,
+            items, truncated = await run_in_threadpool(
+                history_manager.read,
                 since=history_since,
                 full=history_full,
                 limit=history_limit,

@@ -23,7 +23,7 @@
       src="https://img.shields.io/github/issues/I-am-PUID-0/DUMB?style=for-the-badge"
     />
   </a>
-  <a href="https://github.com/I-am-PUID-0/DUMB/blob/master/COPYING">
+  <a href="https://github.com/I-am-PUID-0/DUMB/blob/master/LICENSE">
     <img
       alt="License"
       src="https://img.shields.io/github/license/I-am-PUID-0/DUMB?style=for-the-badge"
@@ -63,7 +63,7 @@
 
 ## 📜 Description
 
-**Debrid Unlimited Media Bridge (DUMB)** is an All-In-One (AIO) Docker image for building and operating a complete automated media stack from one container. It brings together Debrid and Usenet workflows, Arr automation, media servers, request/watchlist tools, service management, logs, metrics, updates, and embedded service UIs behind a guided setup experience.
+**Debrid Unlimited Media Bridge (DUMB)** is an All-In-One (AIO) Docker image for building and operating a complete automated media stack from one container. It brings together Debrid and Usenet workflows, Arr automation, media servers, request/watchlist tools, service management, logs, metrics, notifications, updates, and embedded service UIs behind a guided setup experience.
 
 DUMB is designed to reduce the glue work that usually comes with multi-service media deployments. You can choose the services that fit your workflow, let DUMB wire the required dependencies, manage them from the DUMB dashboard, and optionally expose selected UIs or public routes through the bundled Traefik access layer.
 
@@ -102,9 +102,22 @@ DUMB is designed to reduce the glue work that usually comes with multi-service m
 | [Zilean](https://github.com/iPromKnight/zilean)                   | [iPromKnight](https://github.com/iPromKnight)                        | [Docs](https://ipromknight.github.io/zilean/) • [Issues](https://github.com/iPromKnight/zilean/issues)                                         | [Sponsor](https://ko-fi.com/W7W616IBNG)                                                                                                   |
 | [Zurg](https://github.com/debridmediamanager/zurg-testing)        | [yowmamasita](https://github.com/yowmamasita)                        | [Wiki](https://github.com/debridmediamanager/zurg-testing/wiki)                                                                                 | [Sponsor](https://github.com/sponsors/debridmediamanager)                                         |
 
+## ⚖️ Licensing
+
+DUMB is licensed under [GNU GPLv3](LICENSE). Copyright and license notices for
+third-party components redistributed in the container image are collected in
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). Package-manager and runtime
+license files are also retained in their standard locations inside the image.
+
 ## 🌟 Features
 
 See the DUMB [Docs](https://dumbarr.com/features) for a full list of features and settings.
+
+### Monitoring and Notifications
+
+DUMB provides stack-wide metrics, database-health diagnostics, and an optional backend notification system. Metrics history uses compressed local SQLite storage by default and can optionally use DUMB-managed PostgreSQL with automatic in-place provisioning, SQLite continuity, and replay. Notifications can be routed by event type, severity, and service to multiple destinations using generic JSON webhooks or [Apprise](https://github.com/caronc/apprise) service URLs. Apprise runs as an embedded library inside DUMB and normally connects directly to the configured provider; messages are not relayed through appriseit.com and no separate Apprise account or server is required. The persistent delivery queue supports retries, cooldowns, recovery messages, delivery history, and resource-pressure alerts for CPU, memory, disk space, and inodes.
+
+Notifications are disabled by default and are configured from **Settings → Notifications**. The official [Apprise URL Builder](https://appriseit.com/url-builder/) can help construct provider URLs. See the [Notifications guide](https://dumbarr.com/features/notifications/) for supported events, provider setup, security guidance, and limitations. See [Metrics](https://dumbarr.com/features/metrics/) for monitoring and database-health details.
 
 ### Integrated Access Layer
 

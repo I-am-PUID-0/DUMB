@@ -27,6 +27,21 @@ def initialize_dependencies(
     _shared_instances["metrics_collector"] = MetricsCollector(
         process_handler=process_handler, logger=logger
     )
+    from utils.config_loader import CONFIG_MANAGER
+    from utils.metrics_history_store import MetricsHistoryManager
+
+    _shared_instances["metrics_history_manager"] = MetricsHistoryManager(
+        config_manager=CONFIG_MANAGER,
+        logger=logger,
+    )
+    from utils.notifications import NotificationManager
+
+    _shared_instances["notification_manager"] = NotificationManager(
+        process_handler=process_handler,
+        metrics_collector=_shared_instances["metrics_collector"],
+        logger=logger,
+    )
+    _shared_instances["notification_manager"].start()
 
 
 def get_process_handler() -> ProcessHandler:
@@ -59,6 +74,14 @@ def get_api_state() -> APIState:
 
 def get_metrics_collector() -> MetricsCollector:
     return _shared_instances["metrics_collector"]
+
+
+def get_metrics_history_manager():
+    return _shared_instances["metrics_history_manager"]
+
+
+def get_notification_manager():
+    return _shared_instances["notification_manager"]
 
 
 def resolve_path(path_str: str) -> Path:

@@ -93,6 +93,7 @@ class MetricsHistoryReaderTests(unittest.TestCase):
                     "cpu_count": 4,
                     "mem": {"percent": 50, "extra": "drop"},
                     "disk": {"percent": 70},
+                    "inode": {"percent": 80, "extra": "drop"},
                     "disk_io": {"read_bytes": 100, "write_bytes": 200},
                     "net_io": {"sent_bytes": 300, "recv_bytes": 400},
                 },
@@ -110,6 +111,7 @@ class MetricsHistoryReaderTests(unittest.TestCase):
                     "cpu_percent": 20,
                     "mem": {"percent": 60},
                     "disk": {"percent": 71},
+                    "inode": {"percent": 81},
                     "disk_io": {"read_bytes": 160, "write_bytes": 260},
                     "net_io": {"sent_bytes": 330, "recv_bytes": 460},
                 },
@@ -120,12 +122,14 @@ class MetricsHistoryReaderTests(unittest.TestCase):
         series = metrics_history_reader.build_history_series(items)
 
         self.assertEqual(compact[0]["system"]["mem"], {"percent": 50})
+        self.assertEqual(compact[0]["system"]["inode"], {"percent": 80})
         self.assertEqual(compact[0]["dumb_managed"][0]["name"], "prowlarr")
         self.assertEqual(
             compact[0]["database_health"]["services"][0]["id"],
             "prowlarr:Default",
         )
         self.assertEqual(series["cpu"], [10, 20])
+        self.assertEqual(series["inode"], [80, 81])
         self.assertEqual(series["disk_read_rate"], [None, 60.0])
         self.assertEqual(series["net_recv_rate"], [None, 60.0])
 

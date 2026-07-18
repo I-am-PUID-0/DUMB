@@ -360,6 +360,12 @@ jobs:
           IMAGE_TAG: temp-local-image
         run: |
           CONTAINER_ID=$(docker run -d --rm --entrypoint /bin/sh $IMAGE_TAG -c "sleep 60")
+          docker exec $CONTAINER_ID test -s /usr/share/doc/dumb/LICENSE
+          docker exec $CONTAINER_ID test -s /usr/share/doc/dumb/THIRD_PARTY_NOTICES.md
+          docker exec $CONTAINER_ID grep -q "## Apprise" /usr/share/doc/dumb/THIRD_PARTY_NOTICES.md
+          docker exec $CONTAINER_ID grep -q "## rclone" /usr/share/doc/dumb/THIRD_PARTY_NOTICES.md
+          docker exec $CONTAINER_ID grep -q "## EnterpriseDB system_stats" /usr/share/doc/dumb/THIRD_PARTY_NOTICES.md
+          docker exec $CONTAINER_ID grep -q "## pgAdmin 4" /usr/share/doc/dumb/THIRD_PARTY_NOTICES.md
           PSQL_VERSION=$(docker exec $CONTAINER_ID psql --version | awk '{print $3}')
           PGADMIN_VERSION=$(docker exec $CONTAINER_ID /pgadmin/venv/bin/python -c "import importlib.metadata; print(importlib.metadata.version('pgadmin4'))" 2>/dev/null || echo "Not Installed")
           NODE_VERSION=$(docker exec $CONTAINER_ID node -v 2>/dev/null || echo "Not Installed")
