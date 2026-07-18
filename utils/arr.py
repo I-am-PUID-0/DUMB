@@ -1,5 +1,5 @@
 from utils.global_logger import logger
-import platform, subprocess, os, re, requests, json, time, shutil
+import platform, subprocess, os, re, requests, json, time, shutil, tarfile
 
 
 class ArrInstaller:
@@ -76,11 +76,10 @@ class ArrInstaller:
         runtime_hint = ""
         if "function not implemented" in stderr.lower():
             runtime_hint = (
-                "Container filesystem operations returned ENOSYS (Function not "
-                "implemented). This usually indicates an incompatible container "
-                "runtime/seccomp profile or unsupported Docker backing filesystem; "
-                "updating Docker/containerd/runc and verifying Docker storage is "
-                "required rather than re-downloading the archive. "
+                "GNU tar received ENOSYS (Function not implemented) while creating "
+                "archive files. Ubuntu 26.04's security-hardened tar uses openat2 "
+                "during extraction, which may be unavailable through an older host "
+                "kernel, container runtime, or seccomp profile. "
             )
         raise RuntimeError(
             f"{self.app_name_cap} archive {operation} failed for "
@@ -100,17 +99,37 @@ class ArrInstaller:
         )
 
     def _extract_archive(self, archive_path):
-        self._run_tar(
-            "extraction",
-            archive_path,
-            [
-                "tar",
-                "xzf",
+        try:
+            self._run_tar(
+                "extraction",
                 archive_path,
-                "--no-same-owner",
-                "--no-same-permissions",
-            ],
-        )
+                [
+                    "tar",
+                    "xzf",
+                    archive_path,
+                    "--no-same-owner",
+                    "--no-same-permissions",
+                ],
+            )
+        except RuntimeError as exc:
+            if "function not implemented" not in str(exc).lower():
+                raise
+            logger.warning(
+                "%s GNU tar extraction could not use openat2 through the host "
+                "runtime. Retrying with Python's security-filtered extractor.",
+                self.app_name_cap,
+            )
+            try:
+                self._extract_archive_with_python(archive_path)
+            except (OSError, tarfile.TarError, ValueError) as fallback_error:
+                raise RuntimeError(
+                    f"{exc} Security-filtered Python extraction also failed: "
+                    f"{fallback_error}"
+                ) from fallback_error
+
+    def _extract_archive_with_python(self, archive_path):
+        with tarfile.open(archive_path, mode="r:gz") as archive:
+            archive.extractall(path=self.install_dir, filter="data")
 
     def _validate_and_extract_archive(self, archive_path):
         self._validate_archive(archive_path)

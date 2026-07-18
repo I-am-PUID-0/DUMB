@@ -1,4 +1,6 @@
+import io
 import subprocess
+import tarfile
 import tempfile
 import unittest
 from pathlib import Path
@@ -71,7 +73,7 @@ class ArrInstallerArchiveTests(unittest.TestCase):
             self.assertIn("No space left on device", message)
             self.assertIn("free space 0.0 B [0 bytes]", message)
 
-    def test_extraction_classifies_enosys_as_runtime_or_storage_failure(self):
+    def test_extraction_retries_enosys_with_security_filtered_python(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             installer, archive_path = self._installer_and_archive(temp_dir)
             result = subprocess.CompletedProcess(
@@ -87,14 +89,70 @@ class ArrInstallerArchiveTests(unittest.TestCase):
                     "disk_usage",
                     return_value=SimpleNamespace(free=512 * 1024 * 1024),
                 ),
+                patch.object(installer, "_extract_archive_with_python") as fallback,
+            ):
+                installer._extract_archive(str(archive_path))
+
+            fallback.assert_called_once_with(str(archive_path))
+
+    def test_enosys_error_preserves_tar_and_fallback_failures(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            installer, archive_path = self._installer_and_archive(temp_dir)
+            result = subprocess.CompletedProcess(
+                args=["tar"],
+                returncode=2,
+                stderr="tar: Prowlarr/de-DE: Cannot mkdir: Function not implemented",
+            )
+
+            with (
+                patch.object(arr.subprocess, "run", return_value=result),
+                patch.object(
+                    installer,
+                    "_extract_archive_with_python",
+                    side_effect=tarfile.ReadError("invalid gzip archive"),
+                ),
             ):
                 with self.assertRaises(RuntimeError) as raised:
                     installer._extract_archive(str(archive_path))
 
             message = str(raised.exception)
-            self.assertIn("Container filesystem operations returned ENOSYS", message)
-            self.assertIn("container runtime/seccomp profile", message)
-            self.assertIn("rather than re-downloading the archive", message)
+            self.assertIn("Ubuntu 26.04's security-hardened tar uses openat2", message)
+            self.assertIn("Security-filtered Python extraction also failed", message)
+            self.assertIn("invalid gzip archive", message)
+
+    def test_python_fallback_rejects_archive_path_traversal(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            install_dir = Path(temp_dir) / "install"
+            install_dir.mkdir()
+            archive_path = install_dir / "unsafe.tar.gz"
+            installer = arr.ArrInstaller("prowlarr", install_dir=str(install_dir))
+            payload = b"must stay inside extraction root"
+            member = tarfile.TarInfo("../outside.txt")
+            member.size = len(payload)
+            with tarfile.open(archive_path, mode="w:gz") as archive:
+                archive.addfile(member, io.BytesIO(payload))
+
+            with self.assertRaises(tarfile.FilterError):
+                installer._extract_archive_with_python(str(archive_path))
+
+            self.assertFalse((Path(temp_dir) / "outside.txt").exists())
+
+    def test_python_fallback_extracts_safe_executable(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            archive_path = Path(temp_dir) / "safe.tar.gz"
+            installer = arr.ArrInstaller("prowlarr", install_dir=temp_dir)
+            payload = b"prowlarr binary"
+            member = tarfile.TarInfo("Prowlarr/Prowlarr")
+            member.mode = 0o755
+            member.size = len(payload)
+            with tarfile.open(archive_path, mode="w:gz") as archive:
+                archive.addfile(member, io.BytesIO(payload))
+
+            installer._extract_archive_with_python(str(archive_path))
+
+            binary_path = Path(temp_dir) / "Prowlarr" / "Prowlarr"
+            self.assertEqual(binary_path.read_bytes(), payload)
+            self.assertTrue(binary_path.stat().st_mode & 0o100)
 
     def test_archive_is_validated_and_storage_logged_before_extraction(self):
         with tempfile.TemporaryDirectory() as temp_dir:
