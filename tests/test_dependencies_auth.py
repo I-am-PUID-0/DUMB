@@ -266,10 +266,18 @@ class DependencyWiringTests(unittest.TestCase):
         metrics_manager = object()
         status_manager = object()
         logger = object()
+        config_manager = object()
 
         with (
             patch.object(dependencies, "APIState") as api_state_cls,
             patch.object(dependencies, "MetricsCollector") as metrics_collector_cls,
+            patch("utils.config_loader.CONFIG_MANAGER", config_manager),
+            patch(
+                "utils.metrics_history_store.MetricsHistoryManager"
+            ) as metrics_history_manager_cls,
+            patch(
+                "utils.notifications.NotificationManager"
+            ) as notification_manager_cls,
         ):
             api_state_cls.return_value = types.SimpleNamespace(
                 process_handler=process_handler,
@@ -295,6 +303,16 @@ class DependencyWiringTests(unittest.TestCase):
         metrics_collector_cls.assert_called_once_with(
             process_handler=process_handler, logger=logger
         )
+        metrics_history_manager_cls.assert_called_once_with(
+            config_manager=config_manager,
+            logger=logger,
+        )
+        notification_manager_cls.assert_called_once_with(
+            process_handler=process_handler,
+            metrics_collector=metrics_collector_cls.return_value,
+            logger=logger,
+        )
+        notification_manager_cls.return_value.start.assert_called_once_with()
 
         self.assertIs(dependencies.get_process_handler(), process_handler)
         self.assertIs(dependencies.get_updater(), updater)
@@ -310,6 +328,14 @@ class DependencyWiringTests(unittest.TestCase):
         metrics_collector = dependencies.get_metrics_collector()
         self.assertIs(metrics_collector.process_handler, process_handler)
         self.assertIs(metrics_collector.logger, logger)
+        self.assertIs(
+            dependencies.get_metrics_history_manager(),
+            metrics_history_manager_cls.return_value,
+        )
+        self.assertIs(
+            dependencies.get_notification_manager(),
+            notification_manager_cls.return_value,
+        )
 
     def test_shared_instance_getters_raise_key_error_before_initialization(self):
         with self.assertRaises(KeyError):

@@ -111,25 +111,19 @@ license files are also retained in their standard locations inside the image.
 
 ## 🌟 Features
 
-See the DUMB [Docs](https://dumbarr.com/features) for a full list of features and settings.
+DUMB provides a guided, single-container control plane for configurable media
+stacks, including:
 
-### Monitoring and Notifications
+- Debrid and Usenet workflows, Arr automation, media servers, and request tools
+- Service installation, configuration, lifecycle management, logs, health checks,
+  updates, and recovery automation
+- Embedded service UIs with optional Traefik and Cloudflare access tooling
+- Metrics, database-health diagnostics, alerts, notifications, and operator
+  migration or repair utilities
 
-DUMB provides stack-wide metrics, database-health diagnostics, and an optional backend notification system. Metrics history uses compressed local SQLite storage by default and can optionally use DUMB-managed PostgreSQL with automatic in-place provisioning, SQLite continuity, and replay. Notifications can be routed by event type, severity, and service to multiple destinations using generic JSON webhooks or [Apprise](https://github.com/caronc/apprise) service URLs. Apprise runs as an embedded library inside DUMB and normally connects directly to the configured provider; messages are not relayed through appriseit.com and no separate Apprise account or server is required. The persistent delivery queue supports retries, cooldowns, recovery messages, delivery history, and resource-pressure alerts for CPU, memory, disk space, and inodes.
-
-Notifications are disabled by default and are configured from **Settings → Notifications**. The official [Apprise URL Builder](https://appriseit.com/url-builder/) can help construct provider URLs. See the [Notifications guide](https://dumbarr.com/features/notifications/) for supported events, provider setup, security guidance, and limitations. See [Metrics](https://dumbarr.com/features/metrics/) for monitoring and database-health details.
-
-### Integrated Access Layer
-
-DUMB includes an optional access stack built around Traefik:
-
-| Layer | What it does |
-| ----- | ------------ |
-| DUMB embedded UI routes | DUMB writes Traefik routes for service UIs such as Arrs, AltMount, Pulsarr, and Traefik Proxy Admin under `/service/ui/<service>`. |
-| Traefik Proxy Admin | Lets you create and protect your own host-based reverse proxy routes for services inside or outside DUMB. |
-| cloudflared | Runs the Cloudflare Tunnel connector so Cloudflare public hostnames can reach DUMB Traefik without direct port forwarding. |
-
-This keeps DUMB-owned service UI routing separate from user-managed public routes. You can manage services from the DUMB dashboard, publish only the hostnames you choose through Traefik Proxy Admin, and hand public traffic to Traefik through cloudflared when you do not want to expose local ports.
+This README intentionally keeps the overview brief. See the DUMB
+[Features documentation](https://dumbarr.com/features/) for the comprehensive
+capability, configuration, and settings reference.
 
 ## 🐳 Docker Hub
 
