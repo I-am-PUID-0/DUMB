@@ -576,6 +576,8 @@
       
         
       
+        
+      
     
     
     
@@ -919,6 +921,36 @@
     
   
     Metrics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../features/notifications/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-bell-ring" viewBox="0 0 24 24"><path d="M10.268 21a2 2 0 0 0 3.464 0M22 8c0-2.3-.8-4.3-2-6M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326M4 2C2.8 3.7 2 5.7 2 8"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    Notifications
   
 
     
@@ -2551,6 +2583,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#database-health-visibility" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Database Health visibility
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#resources" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3320,6 +3363,10 @@
       
         
       
+        
+      
+        
+      
     
     
     
@@ -3515,6 +3562,66 @@
     
   
     Logs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../api/metrics/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-activity" viewBox="0 0 24 24"><path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    Metrics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../api/notifications/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-bell" viewBox="0 0 24 24"><path d="M10.268 21a2 2 0 0 0 3.464 0M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    Notifications
   
 
     
@@ -4593,6 +4700,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#database-health-visibility" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Database Health visibility
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#resources" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4847,6 +4965,10 @@
 <li>Avoid using the same port or overlapping directories across instances</li>
 </ul>
 </div>
+<hr />
+<h2 id="database-health-visibility">Database Health visibility<a class="headerlink" href="#database-health-visibility" title="Permanent link">&para;</a></h2>
+<p>Each enabled Zurg instance appears in DUMB's optional <a href="../../../features/metrics/#database-health-monitoring">Database Health monitoring</a>. The public Zurg build calls its live in-memory torrent catalog a database, but that catalog is not an exposed SQLite or PostgreSQL file. DUMB therefore labels Zurg as <code>zurg-state</code> and uses a bounded, passive sample of the instance's <code>data/</code> directory—including <code>fixers.json</code> in the public build—to report state size, file count, filesystem pressure, and any available database-related log signals without assuming that version-specific files are SQLite.</p>
+<p>Standard and Enhanced modes are both passive for Zurg. DUMB does not open the state files, query the live torrent catalog, repair Zurg state, or claim that state-directory pressure represents end-to-end Zurg performance.</p>
 <hr />
 <h2 id="resources">Resources<a class="headerlink" href="#resources" title="Permanent link">&para;</a></h2>
 <ul>

@@ -576,6 +576,8 @@
       
         
       
+        
+      
     
     
     
@@ -919,6 +921,36 @@
     
   
     Metrics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../features/notifications/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-bell-ring" viewBox="0 0 24 24"><path d="M10.268 21a2 2 0 0 0 3.464 0M22 8c0-2.3-.8-4.3-2-6M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326M4 2C2.8 3.7 2 5.7 2 8"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    Notifications
   
 
     
@@ -3407,6 +3439,10 @@
       
         
       
+        
+      
+        
+      
     
     
     
@@ -3602,6 +3638,66 @@
     
   
     Logs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/metrics/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-activity" viewBox="0 0 24 24"><path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    Metrics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/notifications/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-bell" viewBox="0 0 24 24"><path d="M10.268 21a2 2 0 0 0 3.464 0M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    Notifications
   
 
     
@@ -4996,9 +5092,13 @@ config key and process name in monospace.</p>
 </tbody>
 </table>
 <p>Click <strong>Refresh</strong> to re-fetch metrics on demand. Metrics are fetched once when entering a
-service page with Geek Mode active.</p>
+service page with Geek Mode active. For supported database- or persistent-store-backed
+services, the Geek Mode panel also shows a compact <strong>Database Health</strong> summary with the
+provider, pressure score, collection mode, store/WAL size, observed signal count, and
+current recommendation. <strong>Full details</strong> opens the complete per-service Database Health
+panel. Refreshing Process Metrics also refreshes this Database Health summary.</p>
 <h3 id="database-health-panel">Database Health panel<a class="headerlink" href="#database-health-panel" title="Permanent link">&para;</a></h3>
-<p>Supported database-backed services expose <strong>Database Health</strong> independently of Geek Mode. The panel can opt that service into Standard or Enhanced collection, display database/WAL/storage and log-pressure evidence, optionally exclude intentional network storage from scoring, and link to both the full documentation and stack-wide Metrics view. Storage details include byte capacity/free space, inode usage/free inodes, network placement, and read-only state. Shared <strong>How to read Database Health</strong> guidance explains score bands, safe collection behavior, and diagnostic limitations, while field and control tooltips provide shorter contextual help. Collection is read-only; maintenance, migration, integrity, and repair operations are never triggered from this panel.</p>
+<p>Supported database- or persistent-store-backed services expose the full <strong>Database Health</strong> panel independently of Geek Mode, while Geek Mode also includes its compact summary in Process Metrics. The backend advertises the supported service keys so the panel stays aligned as adapters are added. Neither opening Geek Mode nor viewing the summary enables collection; monitoring remains an explicit per-service choice. The full panel can opt that service into Standard or Enhanced collection, display database/store/WAL/storage and log-pressure evidence, optionally exclude intentional network storage from scoring, and link to both the full documentation and stack-wide Metrics view. Storage details include byte capacity/free space, inode usage/free inodes, network placement, and read-only state. Shared <strong>How to read Database Health</strong> guidance explains score bands, safe collection behavior, and diagnostic limitations, while field and control tooltips provide shorter contextual help. Collection is read-only; maintenance, migration, integrity, and repair operations are never triggered from this panel. Non-SQL formats such as the Zurg state directory, Decypharr append logs, and Phalanx Hyperbee remain passive-only even when Enhanced is selected.</p>
 <hr />
 <h2 id="auto-restart-policy">Auto-restart policy<a class="headerlink" href="#auto-restart-policy" title="Permanent link">&para;</a></h2>
 <p>Configure the global auto-restart behavior:</p>

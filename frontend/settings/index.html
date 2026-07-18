@@ -576,6 +576,8 @@
       
         
       
+        
+      
     
     
     
@@ -939,6 +941,36 @@
   
   
     <li class="md-nav__item">
+      <a href="../../features/notifications/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-bell-ring" viewBox="0 0 24 24"><path d="M10.268 21a2 2 0 0 0 3.464 0M22 8c0-2.3-.8-4.3-2-6M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326M4 2C2.8 3.7 2 5.7 2 8"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    Notifications
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../features/ai-assistant/" class="md-nav__link">
         
   
@@ -1241,6 +1273,17 @@
     <span class="md-ellipsis">
       
         Embedded service UIs
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#notifications" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Notifications
       
     </span>
   </a>
@@ -3341,6 +3384,10 @@
       
         
       
+        
+      
+        
+      
     
     
     
@@ -3536,6 +3583,66 @@
     
   
     Logs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/metrics/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-activity" viewBox="0 0 24 24"><path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    Metrics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/notifications/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-bell" viewBox="0 0 24 24"><path d="M10.268 21a2 2 0 0 0 3.464 0M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    Notifications
   
 
     
@@ -4603,6 +4710,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#notifications" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Notifications
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#token-settings" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4742,14 +4860,19 @@
 <h2 id="overview">Overview<a class="headerlink" href="#overview" title="Permanent link">&para;</a></h2>
 <p>The Settings page is organized into sections:</p>
 <ul>
-<li><strong>Authentication</strong> - Enable/disable auth, manage users</li>
-<li><strong>Tokens</strong> - API keys and service tokens</li>
+<li><strong>Appearance</strong> - Frontend color theme</li>
+<li><strong>About</strong> - Installed service and frontend versions</li>
+<li><strong>Onboarding</strong> - Restart the guided setup wizard</li>
 <li><strong>Embedded UIs</strong> - Service UI toggle</li>
-<li><strong>Preferences</strong> - UI customization</li>
+<li><strong>Notifications</strong> - Outbound destinations, event routing, thresholds, tests, and delivery history</li>
+<li><strong>Tokens</strong> - API keys and service tokens</li>
+<li><strong>Log Timestamp Format</strong> - Date order, clock format, and zero-padding preferences</li>
 <li><strong>Advanced</strong> - Geek Mode and debug-level UI options</li>
-<li><strong>Onboarding</strong> - Reset setup wizard</li>
-<li><strong>About</strong> - Version and contributor information</li>
+<li><strong>Authentication</strong> - Enable or disable auth and manage users when supported</li>
+<li><strong>Support</strong> - Project community, source, documentation, and image links</li>
+<li><strong>Contributors</strong> - Project contributor links</li>
 </ul>
+<p>Every top-level section can be expanded or collapsed from its heading. Sections start expanded for existing and first-time users, and each browser remembers the open/closed state independently for the next visit. Collapsing a section changes only the page layout; it does not disable, reset, or stop the feature inside it.</p>
 <h3 id="settings-menu">Settings menu<a class="headerlink" href="#settings-menu" title="Permanent link">&para;</a></h3>
 <p>The settings menu also includes quick links for:</p>
 <ul>
@@ -4811,6 +4934,24 @@ onboarding flow only re-offers non-instance services when they are disabled in t
 </table>
 <p>When enabled, the Settings page shows how many UI-capable services are detected. Service pages include an embedded UI tab, a direct link button, and a full-window toggle for iframes.</p>
 <p><img alt="Embedded UI settings" class="shadow" src="../../assets/images/frontend/embedded_ui_settings.png" /></p>
+<hr />
+<h2 id="notifications">Notifications<a class="headerlink" href="#notifications" title="Permanent link">&para;</a></h2>
+<p>The Notifications section appears when the connected backend reports the <code>notifications</code> capability. It manages backend-owned outbound notifications independently from browser-local Metrics alert banners.</p>
+<p>From this section you can:</p>
+<ul>
+<li>Enable or disable outbound delivery globally</li>
+<li>Configure monitoring, history retention, retry, and persistent-condition thresholds</li>
+<li>Add multiple Apprise or generic webhook destinations</li>
+<li>Route destinations by severity, event type, and one or more currently enabled services selected from a dropdown; disabled template services and unknown names are excluded, and saving pauses if enabled-service discovery is unavailable</li>
+<li>Configure cooldown and recovery behavior</li>
+<li>Save and test an individual destination</li>
+<li>Send a manual operator message</li>
+<li>Review or clear completed delivery history</li>
+</ul>
+<p>Saved destination URLs and webhook headers are not returned to the browser. The UI displays whether a secret is configured; leave a blank secret field unchanged to preserve it.</p>
+<p>Each event-routing choice shows its runtime severity, trigger, and prerequisites. The section warns when the selected minimum severity filters otherwise-selected events; the default <strong>Warning</strong> minimum excludes normal <code>Success</code> events such as a successful Auto-restart. A service-down guidance callout distinguishes unexpected exits from the dashboard's ordinary <code>Stopped</code> display and links directly to Auto-restart configuration. Setup/build helper subprocesses are not treated as managed-service exits. Update-available notices are emitted only when a service first enters that state or its available version changes. <strong>Save &amp; test</strong> explains that its one-time test bypasses enable switches and routing filters, while normal manual messages still skip disabled destinations.</p>
+<p>The setup screen also explains that Apprise is an embedded DUMB library, not a third-party relay: normal provider URLs are delivered directly from the DUMB container. It identifies <code>apprise://</code> and <code>apprises://</code> as the explicit Apprise API-server exception and links the official Apprise URL Builder beside the destination controls.</p>
+<p>See <a href="../../features/notifications/">Notifications</a> for provider setup, event behavior, payloads, security guidance, and troubleshooting.</p>
 <hr />
 <h2 id="token-settings">Token settings<a class="headerlink" href="#token-settings" title="Permanent link">&para;</a></h2>
 <h3 id="plex-token">Plex token<a class="headerlink" href="#plex-token" title="Permanent link">&para;</a></h3>
@@ -4887,11 +5028,14 @@ onboarding flow only re-offers non-instance services when they are disabled in t
 <li>Container summary: CPU cores, total RAM, used RAM</li>
 <li>Restart history: total count, last exit reason, last restart timestamp</li>
 <li>Refresh button to re-fetch metrics on demand</li>
+<li>A compact <strong>Database Health</strong> subsection for supported services, including provider, pressure score, collection mode, store/WAL size, observed signal count, recommendation, documentation, and a link to the full per-service panel</li>
 </ul>
+<p>Geek Mode exposes the Database Health summary but does not automatically enable collection. Database Health remains read-only and opt-in per service.</p>
 <p><strong>Dashboard ServiceCard badges:</strong></p>
 <ul>
 <li>CPU% badge per service, color-coded by usage level</li>
 <li>Memory RSS badge per service</li>
+<li>Database Health pressure and score badge for services explicitly opted into monitoring, with provider, mode, score, and recommendation in its tooltip</li>
 <li>Metrics polled every 5 seconds while Geek Mode is active</li>
 </ul>
 <p>Geek Mode is disabled by default. Toggle it from the <strong>Advanced</strong> section on the Settings page.</p>

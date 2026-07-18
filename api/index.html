@@ -576,6 +576,8 @@
       
         
       
+        
+      
     
     
     
@@ -919,6 +921,36 @@
     
   
     Metrics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../features/notifications/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-bell-ring" viewBox="0 0 24 24"><path d="M10.268 21a2 2 0 0 0 3.464 0M22 8c0-2.3-.8-4.3-2-6M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326M4 2C2.8 3.7 2 5.7 2 8"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    Notifications
   
 
     
@@ -3202,6 +3234,10 @@
       
         
       
+        
+      
+        
+      
     
     
     
@@ -3398,6 +3434,66 @@
     
   
     Logs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="metrics/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-activity" viewBox="0 0 24 24"><path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    Metrics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="notifications/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-bell" viewBox="0 0 24 24"><path d="M10.268 21a2 2 0 0 0 3.464 0M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    Notifications
   
 
     
@@ -4583,8 +4679,10 @@
 <li><strong>Health checks</strong> - Container and service health monitoring</li>
 <li><strong>Process management</strong> - Start, stop, restart services</li>
 <li><strong>Real-time streaming</strong> - WebSocket endpoints for logs, status, and metrics</li>
+<li><strong>Metrics history storage</strong> - SQLite history, optional PostgreSQL, migration, compression, and fallback status</li>
 <li><strong>Configuration</strong> - View and update settings (in-memory and persistent)</li>
 <li><strong>Environment state inspection</strong> - Service and system information</li>
+<li><strong>Notifications</strong> - Configure destinations, send tests/manual messages, and inspect persistent delivery history</li>
 </ul>
 <hr />
 <h2 id="common-endpoints">Common Endpoints<a class="headerlink" href="#common-endpoints" title="Permanent link">&para;</a></h2>
@@ -4738,6 +4836,61 @@
 <td>Preview or run stack-wide AI diagnostics</td>
 </tr>
 <tr>
+<td>GET</td>
+<td><code>/notifications/config</code></td>
+<td>Read redacted notification settings</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/notifications/config</code></td>
+<td>Update notification settings while preserving redacted secrets</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/notifications/test</code></td>
+<td>Test a saved notification destination</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/notifications/send</code></td>
+<td>Queue a manual notification</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/notifications/history</code></td>
+<td>Read persistent delivery history</td>
+</tr>
+<tr>
+<td>DELETE</td>
+<td><code>/notifications/history</code></td>
+<td>Clear completed notification history</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/metrics/history</code></td>
+<td>Read provider-neutral metrics history</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/metrics/history_series</code></td>
+<td>Read compact/downsampled chart history</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/metrics/history/storage</code></td>
+<td>Inspect SQLite/PostgreSQL status and sizing</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/metrics/history/migrate</code></td>
+<td>Import preserved legacy JSONL history</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/metrics/history/storage/activate-postgresql</code></td>
+<td>Provision and activate PostgreSQL Metrics history</td>
+</tr>
+<tr>
 <td>WS</td>
 <td><code>/ws/logs</code></td>
 <td>Real-time log streaming</td>
@@ -4805,6 +4958,14 @@
 <td><code>ai.py</code></td>
 <td>AI provider settings and redacted service diagnostics</td>
 </tr>
+<tr>
+<td><code>notifications.py</code></td>
+<td>Notification configuration, tests, manual messages, and delivery history</td>
+</tr>
+<tr>
+<td><code>metrics.py</code></td>
+<td>Current metrics, Database Health, provider-neutral history, storage status, and migration</td>
+</tr>
 </tbody>
 </table>
 <hr />
@@ -4838,6 +4999,8 @@
 <li><a href="websocket_logs/">WebSocket Logs</a></li>
 <li><a href="seerr-sync/">Seerr Sync</a></li>
 <li><a href="ai/">AI Assistant</a></li>
+<li><a href="notifications/">Notifications</a></li>
+<li><a href="metrics/">Metrics</a></li>
 </ul>
 
 

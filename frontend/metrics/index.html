@@ -576,6 +576,8 @@
       
         
       
+        
+      
     
     
     
@@ -919,6 +921,36 @@
     
   
     Metrics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../features/notifications/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-bell-ring" viewBox="0 0 24 24"><path d="M10.268 21a2 2 0 0 0 3.464 0M22 8c0-2.3-.8-4.3-2-6M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326M4 2C2.8 3.7 2 5.7 2 8"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    Notifications
   
 
     
@@ -3385,6 +3417,10 @@
       
         
       
+        
+      
+        
+      
     
     
     
@@ -3580,6 +3616,66 @@
     
   
     Logs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/metrics/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-activity" viewBox="0 0 24 24"><path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    Metrics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/notifications/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-bell" viewBox="0 0 24 24"><path d="M10.268 21a2 2 0 0 0 3.464 0M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    Notifications
   
 
     
@@ -4833,7 +4929,7 @@
 <li><strong>Real-time gauges</strong> - Current resource usage</li>
 <li><strong>Historical charts</strong> - Usage trends over time</li>
 <li><strong>Process details</strong> - Per-service resource consumption</li>
-<li><strong>Database health</strong> - Optional SQLite/PostgreSQL pressure summaries</li>
+<li><strong>Database health</strong> - Optional SQL and persistent-store pressure summaries</li>
 <li><strong>System information</strong> - Container and host details</li>
 </ul>
 <p><img alt="Metrics dashboard" src="../../assets/images/frontend/metrics.png" /></p>
@@ -4949,6 +5045,26 @@
 </tr>
 </tbody>
 </table>
+<h3 id="inode-usage">Inode usage<a class="headerlink" href="#inode-usage" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Metric</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Used / free / total</strong></td>
+<td>Filesystem entries consumed and remaining</td>
+</tr>
+<tr>
+<td><strong>Usage %</strong></td>
+<td>Percentage of available inodes in use</td>
+</tr>
+</tbody>
+</table>
+<p>The <strong>Disk &amp; inodes</strong> card shows current inode pressure and a zoomable inode-history chart alongside disk capacity and I/O. Inodes represent filesystem entries for files and directories, so a filesystem can reach 100% inode usage and reject new files even when byte capacity remains. Inode percentage is also included in JSON/CSV history exports.</p>
 <h3 id="network-io">Network I/O<a class="headerlink" href="#network-io" title="Permanent link">&para;</a></h3>
 <table>
 <thead>
@@ -5043,18 +5159,19 @@
 <p>Sort by any column to identify resource-intensive services.</p>
 <hr />
 <h2 id="database-health">Database health<a class="headerlink" href="#database-health" title="Permanent link">&para;</a></h2>
-<p>Supported, enabled services appear in the <strong>Database Health</strong> table on the Metrics page. Monitoring remains off until configured from <strong>Metrics → Settings</strong> or the service page's <strong>Database Health</strong> panel.</p>
+<p>Only services explicitly opted into Database Health monitoring appear in the <strong>Database Health</strong> table on the Metrics page. Supported services with monitoring disabled remain available in <strong>Metrics → Settings</strong> and the service page's <strong>Database Health</strong> panel so they can be enabled, but they are omitted from the results table. When no services are monitored, the section shows a concise empty state with a <strong>Configure</strong> action instead of disabled service rows.</p>
 <p>The Database Health section appears immediately above <strong>System</strong> at the bottom of the live Metrics content. Click or keyboard-activate any service row to expand or collapse its full details. Expanded details match the service-page panel and include the recommendation, score reasons, database paths/names, provider metadata, filesystem capacity, inode pressure, read-only/network state, probe results, and observed log signals. Column headers, settings, status badges, and detail fields include tooltips, and the section links directly to the Database Health documentation.</p>
 <p>The table shows:</p>
 <ul>
-<li>database provider and current pressure classification;</li>
-<li>combined database and SQLite WAL size;</li>
+<li>detected SQL provider or custom store format and current pressure classification;</li>
+<li>combined database/store and SQLite WAL size;</li>
 <li>database-related log-signal count;</li>
 <li>bounded read-only probe latency when Enhanced mode is enabled;</li>
 <li>a service-specific recommendation.</li>
 <li>filesystem byte usage/free space, inode usage/free inodes, and read-only state in the expanded details.</li>
 </ul>
-<p>Use <strong>Standard / passive</strong> for the lowest overhead. Use <strong>Enhanced / read-only probes</strong> when you need SQLite page/WAL metadata or PostgreSQL statistics. Plex is always collected passively while running, even if Enhanced is selected.</p>
+<p>Use <strong>Standard / passive</strong> for the lowest overhead. Use <strong>Enhanced / read-only probes</strong> when you need SQLite page/WAL metadata or PostgreSQL statistics. Plex is always collected passively while running, even if Enhanced is selected. Decypharr append-log stores, Phalanx DB Hyperbee data, and the Zurg state directory are also passive-only; Enhanced does not open or query those formats.</p>
+<p>The supported set includes the Arrs, NzbDAV, Bazarr, Plex, CLI Debrid/Battery, Emby, Jellyfin, Profilarr, Tautulli, AltMount, Pulsarr, Seerr, PostgreSQL, pgAdmin, Riven Backend, Zilean, Traefik Proxy Admin, Decypharr, Phalanx DB, and Zurg. DUMB detects SQLite versus PostgreSQL for provider-neutral services and keeps multi-instance entries separate.</p>
 <p>Enable <strong>Ignore network storage score</strong> for an individual service when its NFS/SMB placement is intentional. The filesystem remains visible in the service details, but it no longer raises the pressure score or replaces recommendations derived from the remaining metrics.</p>
 <p>The override excludes only network placement. Low free space, high inode usage, read-only storage, WAL growth, log errors, probe latency, locks, deadlocks, and long-running transactions continue to affect the result.</p>
 <p>Pressure classifications are <code>healthy</code>, <code>observing</code>, <code>moderate</code>, <code>high</code>, <code>critical</code>, <code>unavailable</code>, or <code>disabled</code>. Collect through representative imports, scans, health checks, and playback before deciding whether PostgreSQL would help.</p>
@@ -5158,12 +5275,37 @@
 <td>Aggregation interval</td>
 </tr>
 <tr>
-<td><strong>Max File Size</strong></td>
-<td>50 MB</td>
-<td>Per-file storage limit</td>
+<td><strong>History read backend</strong></td>
+<td>SQLite</td>
+<td>Serve history from local SQLite or optional DUMB-managed PostgreSQL</td>
+</tr>
+<tr>
+<td><strong>Max local SQLite size</strong></td>
+<td>100 MB</td>
+<td>Bounds the compressed local history/continuity payloads</td>
+</tr>
+<tr>
+<td><strong>SQLite continuity path</strong></td>
+<td><code>/config/metrics/metrics.sqlite</code></td>
+<td>Persistent local history database and PostgreSQL write-ahead continuity buffer</td>
 </tr>
 </tbody>
 </table>
+<h3 id="history-storage-status">History storage status<a class="headerlink" href="#history-storage-status" title="Permanent link">&para;</a></h3>
+<p>Open <strong>Metrics → Settings → History Storage</strong> to see:</p>
+<ul>
+<li>the configured and currently active provider;</li>
+<li>whether automatic SQLite fallback is active;</li>
+<li>local and PostgreSQL sample counts and allocated size;</li>
+<li>the local compressed-to-original JSON ratio;</li>
+<li>retained legacy JSONL files and import state;</li>
+<li>the latest safe PostgreSQL connection error.</li>
+</ul>
+<p>PostgreSQL is not merely a backup. When selected, synchronized, and healthy, it is the active history query and retention backend. SQLite is written first as a bounded write-ahead continuity buffer so live charts remain available when PostgreSQL is stopped or restarting. Retained local samples are replayed when PostgreSQL reconnects.</p>
+<p>On current backends, choosing PostgreSQL only changes the draft selection. The panel explicitly prompts the user to click <strong>Apply &amp; activate PostgreSQL</strong>; nothing is provisioned until that button is used. Apply enables PostgreSQL if necessary, creates the dedicated database, starts or reuses the managed process, synchronizes retained samples, and switches history reads without restarting DUMB. During the operation the panel displays activation progress. Afterward, a persistent <strong>PostgreSQL cutover complete</strong> notice confirms that PostgreSQL is serving history reads while SQLite remains the continuity buffer.</p>
+<p>If any step fails, the panel keeps SQLite active and returns to the pending state so <strong>Apply &amp; activate PostgreSQL</strong> can be used to retry. For backward compatibility, dmbdb shows <strong>Apply</strong> plus restart guidance instead when the connected backend does not advertise hot activation support.</p>
+<p>Use <strong>Import JSONL now</strong> to force a fresh scan for history created by older DUMB releases. The import is timestamp-idempotent, detects files added after an earlier completed migration, and does not delete the source files. <strong>Refresh / probe</strong> performs an operator-requested PostgreSQL connection test without waiting for the normal retry interval.</p>
+<p>See <a href="../../features/metrics/#metrics-history-storage">Metrics history storage</a> for configuration, sizing, migration, fallback, and rollback details.</p>
 <hr />
 <h2 id="alert-thresholds">Alert thresholds<a class="headerlink" href="#alert-thresholds" title="Permanent link">&para;</a></h2>
 <p>Configure when alerts appear on the dashboard:</p>
@@ -5192,6 +5334,11 @@
 <td>Settings <span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"/></svg></span> Preferences</td>
 </tr>
 <tr>
+<td>Inodes</td>
+<td>90%</td>
+<td>Metrics header warning controls</td>
+</tr>
+<tr>
 <td>Database Health</td>
 <td>Off; selectable Moderate/High/Critical minimum</td>
 <td>Metrics header or Metrics Settings <span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"/></svg></span> Database Health Monitoring</td>
@@ -5199,14 +5346,18 @@
 </tbody>
 </table>
 <p>Alerts appear as banners when thresholds are exceeded and on the global Metrics indicator. <strong>DB health</strong> / <strong>Include Database Health in alerts</strong> is optional and browser-local; enabling it does not enable collection for any service or alter its pressure score.</p>
+<p>These browser alerts are separate from <a href="../../features/notifications/">backend notifications</a>. Backend notifications continue operating without an open browser and have their own persistent thresholds, cooldowns, recovery handling, and delivery history.</p>
 <hr />
 <h2 id="api-access">API access<a class="headerlink" href="#api-access" title="Permanent link">&para;</a></h2>
 <p>Metrics are also available via the REST API:</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># Current metrics snapshot</span>
 curl<span class="w"> </span>http://localhost:8000/api/metrics
 
-<span class="c1"># Historical metrics</span>
-curl<span class="w"> </span>http://localhost:8000/api/metrics/history?start<span class="o">=</span><span class="m">2025</span>-01-01<span class="p">&amp;</span><span class="nv">end</span><span class="o">=</span><span class="m">2025</span>-01-15
+<span class="c1"># Historical metrics newer than a Unix timestamp</span>
+curl<span class="w"> </span><span class="s2">&quot;http://localhost:8000/api/metrics/history?since=1784300000&amp;limit=5000&quot;</span>
+
+<span class="c1"># Storage, migration, and fallback status</span>
+curl<span class="w"> </span><span class="s2">&quot;http://localhost:8000/api/metrics/history/storage?probe_postgresql=true&quot;</span>
 
 <span class="c1"># Database health, optionally forcing a fresh collection</span>
 curl<span class="w"> </span><span class="s2">&quot;http://localhost:8000/api/metrics/database-health?process_name=NzbDAV&amp;refresh=true&quot;</span>

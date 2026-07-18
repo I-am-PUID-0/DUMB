@@ -12,13 +12,13 @@
         <meta name="author" content="DUMB Team">
       
       
-        <link rel="canonical" href="https://dumbarr.com/deployment/truenas/">
+        <link rel="canonical" href="https://dumbarr.com/api/metrics/">
       
       
-        <link rel="prev" href="../qnap/">
+        <link rel="prev" href="../logs/">
       
       
-        <link rel="next" href="../dockge/">
+        <link rel="next" href="../notifications/">
       
       
         
@@ -29,7 +29,7 @@
     
     
       
-        <title>Deploy with TrueNAS - Debrid Unlimited Media Bridge</title>
+        <title>Metrics API - Debrid Unlimited Media Bridge</title>
       
     
     
@@ -115,6 +115,11 @@
     <label class="md-overlay" for="__drawer"></label>
     <div data-md-component="skip">
       
+        
+        <a href="#metrics-api" class="md-skip">
+          Skip to content
+        </a>
+      
     </div>
     <div data-md-component="announce">
       
@@ -155,7 +160,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Deploy with TrueNAS
+              Metrics API
             
           </span>
         </div>
@@ -339,13 +344,11 @@
   
   
   
-    
-  
   
     
     
-      <li class="md-tabs__item md-tabs__item--active">
-        <a href="../" class="md-tabs__link">
+      <li class="md-tabs__item">
+        <a href="../../deployment/" class="md-tabs__link">
           
   
   Deployment
@@ -360,11 +363,13 @@
   
   
   
+    
+  
   
     
     
-      <li class="md-tabs__item">
-        <a href="../../api/" class="md-tabs__link">
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../" class="md-tabs__link">
           
   
   API
@@ -2834,6 +2839,372 @@
       
   
   
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../deployment/" class="md-nav__link ">
+              
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-server" viewBox="0 0 24 24"><rect width="20" height="8" x="2" y="2" rx="2" ry="2"/><rect width="20" height="8" x="2" y="14" rx="2" ry="2"/><path d="M6 6h.01M6 18h.01"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    Deployment
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_6" id="__nav_6_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Deployment
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../deployment/docker/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path fill="currentColor" d="M349.9 236.3h-66.1v-59.4h66.1zm0-204.3h-66.1v60.7h66.1zm78.2 144.8H362v59.4h66.1zm-156.3-72.1h-66.1v60.1h66.1zm78.1 0h-66.1v60.1h66.1zm276.8 100c-14.4-9.7-47.6-13.2-73.1-8.4-3.3-24-16.7-44.9-41.1-63.7l-14-9.3-9.3 14c-18.4 27.8-23.4 73.6-3.7 103.8-8.7 4.7-25.8 11.1-48.4 10.7H2.4c-8.7 50.8 5.8 116.8 44 162.1 37.1 43.9 92.7 66.2 165.4 66.2 157.4 0 273.9-72.5 328.4-204.2 21.4.4 67.6.1 91.3-45.2 1.5-2.5 6.6-13.2 8.5-17.1zm-511.1-27.9h-66v59.4h66.1v-59.4zm78.1 0h-66.1v59.4h66.1zm78.1 0h-66.1v59.4h66.1zm-78.1-72.1h-66.1v60.1h66.1z"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    Docker
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../deployment/portainer/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12.504 0v1.023l-.01-.015-6.106 3.526H3.417v.751h5.359v3.638h1.942V5.284h1.786V15.7c.027 0 .54-.01.751.091V5.285h.531v10.608c.293.147.55.312.751.54V5.286h6.046v-.75h-1.267l-6.061-3.5V0zm0 1.87v2.664H7.889zm.751.031 4.56 2.633h-4.56zM9.142 5.285h1.21v1.686h-1.21zm-4.736 2.73v1.951h1.942v-1.95zm2.19 0v1.951h1.941v-1.95zm-2.19 2.171v1.951h1.942v-1.95zm2.19 0v1.951h1.941v-1.95zm2.18 0v1.951h1.942v-1.95zM4.36 12.43a3.73 3.73 0 0 0-.494 1.851c0 1.227.604 2.308 1.52 2.986.239-.064.477-.1.724-.11.1 0 .165.01.266.019.284-1.191 1.383-1.988 2.665-1.988.724 0 1.438.201 1.924.668.229-.476.302-1.007.302-1.575 0-.65-.165-1.292-.494-1.85zm4.828 3.16c-1.21 0-2.226.844-2.492 1.97a1 1 0 0 0-.275-.009 2.56 2.56 0 0 0-2.564 2.556 2.565 2.565 0 0 0 3.096 2.5A2.58 2.58 0 0 0 9.233 24c.862 0 1.622-.43 2.09-1.081a2.557 2.557 0 0 0 4.186-1.97c0-.567-.193-1.099-.504-1.52a2.557 2.557 0 0 0-3.866-2.94 2.57 2.57 0 0 0-1.951-.898z"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    Portainer
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../deployment/unraid/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M11.406 8.528h1.17v6.926h-1.17zM1.17 15.454H0V8.528h1.17zm4.534.828h1.17v2.645h-1.17zm-2.86-2.969h1.169v4.282h-1.17zm5.703 0h1.17v4.282h-1.17zM22.83 8.528H24v6.926h-1.17zm-4.534-.81h-1.17V5.073h1.17zm2.86 2.95h-1.169V6.406h1.17zm-5.72 0h-1.17V6.406h1.17z"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    Unraid
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../deployment/wsl/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path fill="currentColor" d="m0 93.7 183.6-25.3v177.4H0zm0 324.6 183.6 25.3V268.4H0zm203.8 28L448 480V268.4H203.8zm0-380.6v180.1H448V32z"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    WSL
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../deployment/proxmox/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4.928 1.825c-1.09.553-1.09.64-.07 1.78 5.655 6.295 7.004 7.782 7.107 7.782.139.017 7.971-8.542 8.058-8.801.034-.07-.208-.312-.519-.536-.415-.312-.864-.433-1.712-.467-1.59-.104-2.144.242-4.115 2.455-.899 1.003-1.66 1.833-1.66 1.833-.017 0-.76-.813-1.642-1.798S8.473 2.1 8.127 1.91c-.796-.45-2.421-.484-3.2-.086zM1.297 4.367C.45 4.695 0 5.007 0 5.248c0 .121 1.331 1.678 2.94 3.459 1.625 1.78 2.939 3.268 2.939 3.302s-1.331 1.522-2.94 3.303C1.314 17.11.017 18.683.035 18.822c.086.467 1.504 1.055 2.541 1.055 1.678-.018 2.058-.312 5.603-4.202 1.78-1.954 3.233-3.614 3.233-3.666 0-.069-1.435-1.694-3.199-3.63-2.3-2.508-3.423-3.632-3.96-3.874-.812-.398-2.126-.467-2.956-.138m18.467.12c-.502.26-1.764 1.505-3.943 3.891-1.763 1.937-3.199 3.562-3.199 3.631 0 .07 1.453 1.712 3.234 3.666 3.544 3.89 3.925 4.184 5.602 4.202 1.038 0 2.455-.588 2.542-1.055.017-.156-1.28-1.712-2.905-3.493-1.608-1.78-2.94-3.285-2.94-3.32s1.332-1.539 2.94-3.32C22.72 6.91 24.017 5.352 24 5.214c-.087-.45-1.366-.968-2.473-1.038-.795-.034-1.21.035-1.763.312zM7.954 16.973c-2.144 2.369-3.908 4.374-3.943 4.46-.034.07.208.312.52.537.414.311.864.432 1.711.467 1.574.103 2.161-.26 4.15-2.508.864-.968 1.608-1.78 1.625-1.78s.761.812 1.643 1.798c2.023 2.248 2.559 2.576 4.132 2.49.848-.035 1.297-.156 1.712-.467.311-.225.553-.467.519-.536-.087-.26-7.92-8.819-8.058-8.801-.069 0-1.867 1.954-4.011 4.34"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    Proxmox
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../deployment/synology/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m13.44 8.927-.889.37.056.117a.6.6 0 0 1 .212-.054q.076.001.126.046.05.042.072.16.022.119.022.634v2.736q0 .284-.042.381a.3.3 0 0 1-.118.142q-.079.046-.286.045v.12h1.481v-.12q-.231 0-.32-.048a.3.3 0 0 1-.126-.142q-.04-.09-.04-.378V8.927zm-11.722.34q-.494 0-.84.147-.35.15-.534.436a1.1 1.1 0 0 0-.185.612q0 .508.393.864.276.252.968.422.537.135.688.191a.7.7 0 0 1 .31.183q.087.106.088.259 0 .232-.21.41-.212.175-.628.176-.393 0-.625-.197-.23-.199-.307-.619L0 12.23q.084.72.517 1.096.434.378 1.244.378.556-.002.93-.156a1.26 1.26 0 0 0 .781-1.169 1.3 1.3 0 0 0-.171-.684 1.2 1.2 0 0 0-.472-.437q-.3-.16-.927-.31-.628-.147-.79-.286a.326.326 0 0 1 .009-.524q.21-.157.586-.156.361 0 .542.145.181.147.237.471l.864-.028q-.019-.591-.425-.949-.407-.353-1.208-.353zm21.808.33a.475.475 0 1 0-.002.95.475.475 0 0 0 .002-.95m0 .072a.4.4 0 0 1 .401.403c0 .116-.05.22-.128.294l-.086-.135a.4.4 0 0 0-.065-.078.2.2 0 0 0-.048-.03.2.2 0 0 0 .127-.057.14.14 0 0 0 .043-.109.2.2 0 0 0-.025-.091.13.13 0 0 0-.067-.055.3.3 0 0 0-.123-.02h-.266v.606h.08v-.268h.091q.03 0 .045.003.02.005.036.014.018.014.04.043.023.03.059.083l.08.125h.043a.4.4 0 0 1-.237.08.405.405 0 0 1-.404-.405c0-.224.18-.403.404-.403m-.157.191h.191q.067 0 .097.027a.09.09 0 0 1 .03.07.1.1 0 0 1-.016.055.08.08 0 0 1-.047.035.2.2 0 0 1-.085.013h-.17zm-15.037.6q-.616-.001-1.023.514v-.455h-.754v3.105h.814v-1.401c0-.348.022-.583.063-.713a.6.6 0 0 1 .234-.306.67.67 0 0 1 .385-.118q.167 0 .287.082.119.08.17.229.055.148.054.646v1.581h.816V11.7a2.5 2.5 0 0 0-.046-.55.9.9 0 0 0-.16-.343.83.83 0 0 0-.341-.25 1.3 1.3 0 0 0-.499-.097m2.65 0a1.7 1.7 0 0 0-.826.2 1.4 1.4 0 0 0-.571.586 1.7 1.7 0 0 0-.202.793q0 .534.202.904.201.374.588.566.388.194.814.194.69-.001 1.144-.463.455-.464.455-1.167 0-.697-.451-1.156-.449-.457-1.154-.457zm7.315.05q-.527 0-.865.323a1.02 1.02 0 0 0-.336.77q0 .29.147.534c.1.162.24.285.423.379q-.334.281-.429.44a.55.55 0 0 0-.092.271q0 .102.071.184t.24.187a10 10 0 0 0-.329.355c-.113.145-.19.253-.226.336a.4.4 0 0 0-.034.157q0 .178.246.343.437.284 1.071.284.825 0 1.337-.477.349-.326.35-.694a.61.61 0 0 0-.183-.45.84.84 0 0 0-.49-.227 9 9 0 0 0-.878-.053 4 4 0 0 1-.46-.027q-.159-.023-.212-.075-.056-.054-.056-.112a.4.4 0 0 1 .05-.159.9.9 0 0 1 .186-.221q.234.072.459.07.54 0 .864-.301a.96.96 0 0 0 .323-.722q0-.37-.187-.61h.394c.097 0 .15-.002.167-.01a.06.06 0 0 0 .035-.025.3.3 0 0 0 .018-.12.2.2 0 0 0-.02-.105.1.1 0 0 0-.033-.028 1 1 0 0 0-.166-.008h-.639a1.3 1.3 0 0 0-.746-.21zm-2.752 0q-.378 0-.714.194a1.44 1.44 0 0 0-.546.61 1.8 1.8 0 0 0-.205.825q0 .571.34 1.03a1.29 1.29 0 0 0 1.09.543q.419 0 .76-.211.344-.21.54-.627.194-.414.194-.821 0-.577-.354-1.022a1.34 1.34 0 0 0-1.105-.522zm-12.182.009 1.174 3.113a1.2 1.2 0 0 1-.21.431q-.135.168-.419.167-.154 0-.344-.04l.067.645q.228.05.464.052.232-.001.418-.052a1 1 0 0 0 .31-.138.9.9 0 0 0 .224-.234 2.2 2.2 0 0 0 .205-.414l.199-.545 1.085-2.985h-.844l-.722 2.204-.74-2.204zm16.631.078v.122a.8.8 0 0 1 .245.091q.052.043.136.157.108.152.158.255l1.088 2.275-.213.526q-.119.292-.236.393-.118.103-.217.104a1 1 0 0 1-.167-.05 1 1 0 0 0-.3-.07c-.105 0-.19.025-.25.084a.29.29 0 0 0-.092.22q0 .146.126.257a.46.46 0 0 0 .322.112q.27.002.56-.223.29-.224.469-.664l1.226-3.014a1.6 1.6 0 0 1 .113-.254.6.6 0 0 1 .145-.146.5.5 0 0 1 .188-.053v-.122h-.978v.122q.14 0 .197.023a.17.17 0 0 1 .083.057.15.15 0 0 1 .023.087q0 .136-.056.271l-.675 1.671-.737-1.53q-.11-.225-.11-.356a.21.21 0 0 1 .074-.16.35.35 0 0 1 .224-.063h.068v-.122zm-1.753.08q.26.001.43.217.224.293.224.815 0 .398-.16.584a.52.52 0 0 1-.41.188.53.53 0 0 1-.43-.216q-.223-.286-.223-.802c0-.268.054-.461.163-.59a.52.52 0 0 1 .406-.197zm-2.798.054q.362-.002.598.312.346.46.346 1.263 0 .643-.209.905a.65.65 0 0 1-.528.264q-.429-.002-.691-.477c-.174-.32-.263-.695-.263-1.135q0-.406.11-.669a.73.73 0 0 1 .285-.361.67.67 0 0 1 .352-.102m-4.463.395q.323.001.543.247.216.244.216.703 0 .468-.216.712a.7.7 0 0 1-.543.248.7.7 0 0 1-.542-.248q-.22-.242-.22-.708 0-.463.22-.707a.7.7 0 0 1 .542-.247m6.66 2.498q.398.056 1.142.08.51.01.68.083t.17.241q0 .235-.282.442-.284.208-.874.208-.622-.001-.951-.204-.191-.115-.19-.277c0-.078.024-.169.076-.26a1.5 1.5 0 0 1 .228-.313z"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    Synology
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../deployment/qnap/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M1.316 9.955Q0 9.955 0 11.018v1.95q0 1.057 1.316 1.057h2.57c0-.006.15.005.378-.029-.215-.309-.612-.643-.983-.912l-.068-.049h-1.6v-2.113h2.131v1.793c.64.2 1.08.455 1.379.7q.075-.194.076-.446v-1.951q0-1.005-1.176-1.06v-.003zm4.965.053q-.232 0-.357.13c-.147.154-.117.347-.131.354v3.518h1.445l-.011-2.406c.006-.036.032-.088.142-.075 0 0 .043.002.06.034.28.445 2.104 2.447 2.104 2.447h1.5v-4.002H9.57v2.328c-.022.053-.095.044-.13.006-.259-.4-1.251-1.764-1.569-2.2-.02-.024-.125-.134-.355-.134Zm6.584 0q-.549 0-.844.23a.77.77 0 0 0-.302.639v3.133h1.527v-1.067h2.14v1.067h1.53v-3.133q0-.407-.297-.639-.296-.23-.846-.23zm5.918 0q-.549 0-.846.232a.77.77 0 0 0-.302.62v3.15h1.53v-1.045h2.47q1.007.001 1.008-.809v-1.283q-.002-.462-.248-.664c-.28-.222-.743-.188-.704-.201zm4.725.072a.47.47 0 0 0 .023.94.47.47 0 0 0 .469-.47.47.47 0 0 0-.469-.47zm.002.068h.021c.222.001.4.182.4.403a.4.4 0 0 1-.4.398.4.4 0 0 1-.4-.398c0-.214.167-.391.379-.403m-.19.141v.533h.073v-.236q.06-.001.12.002c.033.007.065.046.07.05.044.059.08.123.12.184h.088l-.092-.144a.4.4 0 0 0-.058-.07.2.2 0 0 0-.043-.028.2.2 0 0 0 .113-.049.144.144 0 0 0 .014-.175c-.022-.036-.056-.067-.166-.067zm.073.059h.168c.15 0 .134.14.058.168-.074.019-.151.006-.226.01zm-10.147.7h2.14v1.159h-2.14zm5.897 0h1.943v1.038h-1.943zm-16.358 1.54c.48.304 1.352.907 1.64 1.457h1.089c-.186-.331-.814-1.13-2.729-1.457"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    QNAP
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../deployment/truenas/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M24 10.049v5.114l-10.949 6.324v-5.114zm-24 0v5.114l10.956 6.324v-5.114zm12.004-.605-4.433 2.559 4.433 2.559 4.429-2.559zm10.952-1.207-9.905-5.723v5.118l5.473 3.164zm-12-.605V2.513L1.044 8.236l4.432 2.555z"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    TrueNAS
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../deployment/dockge/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-box" viewBox="0 0 24 24"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5M12 22V12"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    Dockge
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
     
   
   
@@ -2843,6 +3214,10 @@
       
         
           
+        
+      
+        
+      
         
       
         
@@ -2879,389 +3254,11 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" checked>
         
           
           <div class="md-nav__link md-nav__container">
             <a href="../" class="md-nav__link ">
-              
-  
-  
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-server" viewBox="0 0 24 24"><rect width="20" height="8" x="2" y="2" rx="2" ry="2"/><rect width="20" height="8" x="2" y="14" rx="2" ry="2"/><path d="M6 6h.01M6 18h.01"/></svg>
-  
-  <span class="md-ellipsis">
-    
-  
-    Deployment
-  
-
-    
-  </span>
-  
-  
-
-            </a>
-            
-              
-              <label class="md-nav__link " for="__nav_6" id="__nav_6_label" tabindex="">
-                <span class="md-nav__icon md-icon"></span>
-              </label>
-            
-          </div>
-        
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="true">
-          <label class="md-nav__title" for="__nav_6">
-            <span class="md-nav__icon md-icon"></span>
-            
-  
-    Deployment
-  
-
-          </label>
-          <ul class="md-nav__list" data-md-scrollfix>
-            
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../docker/" class="md-nav__link">
-        
-  
-  
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path fill="currentColor" d="M349.9 236.3h-66.1v-59.4h66.1zm0-204.3h-66.1v60.7h66.1zm78.2 144.8H362v59.4h66.1zm-156.3-72.1h-66.1v60.1h66.1zm78.1 0h-66.1v60.1h66.1zm276.8 100c-14.4-9.7-47.6-13.2-73.1-8.4-3.3-24-16.7-44.9-41.1-63.7l-14-9.3-9.3 14c-18.4 27.8-23.4 73.6-3.7 103.8-8.7 4.7-25.8 11.1-48.4 10.7H2.4c-8.7 50.8 5.8 116.8 44 162.1 37.1 43.9 92.7 66.2 165.4 66.2 157.4 0 273.9-72.5 328.4-204.2 21.4.4 67.6.1 91.3-45.2 1.5-2.5 6.6-13.2 8.5-17.1zm-511.1-27.9h-66v59.4h66.1v-59.4zm78.1 0h-66.1v59.4h66.1zm78.1 0h-66.1v59.4h66.1zm-78.1-72.1h-66.1v60.1h66.1z"/></svg>
-  
-  <span class="md-ellipsis">
-    
-  
-    Docker
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../portainer/" class="md-nav__link">
-        
-  
-  
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12.504 0v1.023l-.01-.015-6.106 3.526H3.417v.751h5.359v3.638h1.942V5.284h1.786V15.7c.027 0 .54-.01.751.091V5.285h.531v10.608c.293.147.55.312.751.54V5.286h6.046v-.75h-1.267l-6.061-3.5V0zm0 1.87v2.664H7.889zm.751.031 4.56 2.633h-4.56zM9.142 5.285h1.21v1.686h-1.21zm-4.736 2.73v1.951h1.942v-1.95zm2.19 0v1.951h1.941v-1.95zm-2.19 2.171v1.951h1.942v-1.95zm2.19 0v1.951h1.941v-1.95zm2.18 0v1.951h1.942v-1.95zM4.36 12.43a3.73 3.73 0 0 0-.494 1.851c0 1.227.604 2.308 1.52 2.986.239-.064.477-.1.724-.11.1 0 .165.01.266.019.284-1.191 1.383-1.988 2.665-1.988.724 0 1.438.201 1.924.668.229-.476.302-1.007.302-1.575 0-.65-.165-1.292-.494-1.85zm4.828 3.16c-1.21 0-2.226.844-2.492 1.97a1 1 0 0 0-.275-.009 2.56 2.56 0 0 0-2.564 2.556 2.565 2.565 0 0 0 3.096 2.5A2.58 2.58 0 0 0 9.233 24c.862 0 1.622-.43 2.09-1.081a2.557 2.557 0 0 0 4.186-1.97c0-.567-.193-1.099-.504-1.52a2.557 2.557 0 0 0-3.866-2.94 2.57 2.57 0 0 0-1.951-.898z"/></svg>
-  
-  <span class="md-ellipsis">
-    
-  
-    Portainer
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../unraid/" class="md-nav__link">
-        
-  
-  
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M11.406 8.528h1.17v6.926h-1.17zM1.17 15.454H0V8.528h1.17zm4.534.828h1.17v2.645h-1.17zm-2.86-2.969h1.169v4.282h-1.17zm5.703 0h1.17v4.282h-1.17zM22.83 8.528H24v6.926h-1.17zm-4.534-.81h-1.17V5.073h1.17zm2.86 2.95h-1.169V6.406h1.17zm-5.72 0h-1.17V6.406h1.17z"/></svg>
-  
-  <span class="md-ellipsis">
-    
-  
-    Unraid
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../wsl/" class="md-nav__link">
-        
-  
-  
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path fill="currentColor" d="m0 93.7 183.6-25.3v177.4H0zm0 324.6 183.6 25.3V268.4H0zm203.8 28L448 480V268.4H203.8zm0-380.6v180.1H448V32z"/></svg>
-  
-  <span class="md-ellipsis">
-    
-  
-    WSL
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../proxmox/" class="md-nav__link">
-        
-  
-  
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4.928 1.825c-1.09.553-1.09.64-.07 1.78 5.655 6.295 7.004 7.782 7.107 7.782.139.017 7.971-8.542 8.058-8.801.034-.07-.208-.312-.519-.536-.415-.312-.864-.433-1.712-.467-1.59-.104-2.144.242-4.115 2.455-.899 1.003-1.66 1.833-1.66 1.833-.017 0-.76-.813-1.642-1.798S8.473 2.1 8.127 1.91c-.796-.45-2.421-.484-3.2-.086zM1.297 4.367C.45 4.695 0 5.007 0 5.248c0 .121 1.331 1.678 2.94 3.459 1.625 1.78 2.939 3.268 2.939 3.302s-1.331 1.522-2.94 3.303C1.314 17.11.017 18.683.035 18.822c.086.467 1.504 1.055 2.541 1.055 1.678-.018 2.058-.312 5.603-4.202 1.78-1.954 3.233-3.614 3.233-3.666 0-.069-1.435-1.694-3.199-3.63-2.3-2.508-3.423-3.632-3.96-3.874-.812-.398-2.126-.467-2.956-.138m18.467.12c-.502.26-1.764 1.505-3.943 3.891-1.763 1.937-3.199 3.562-3.199 3.631 0 .07 1.453 1.712 3.234 3.666 3.544 3.89 3.925 4.184 5.602 4.202 1.038 0 2.455-.588 2.542-1.055.017-.156-1.28-1.712-2.905-3.493-1.608-1.78-2.94-3.285-2.94-3.32s1.332-1.539 2.94-3.32C22.72 6.91 24.017 5.352 24 5.214c-.087-.45-1.366-.968-2.473-1.038-.795-.034-1.21.035-1.763.312zM7.954 16.973c-2.144 2.369-3.908 4.374-3.943 4.46-.034.07.208.312.52.537.414.311.864.432 1.711.467 1.574.103 2.161-.26 4.15-2.508.864-.968 1.608-1.78 1.625-1.78s.761.812 1.643 1.798c2.023 2.248 2.559 2.576 4.132 2.49.848-.035 1.297-.156 1.712-.467.311-.225.553-.467.519-.536-.087-.26-7.92-8.819-8.058-8.801-.069 0-1.867 1.954-4.011 4.34"/></svg>
-  
-  <span class="md-ellipsis">
-    
-  
-    Proxmox
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../synology/" class="md-nav__link">
-        
-  
-  
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m13.44 8.927-.889.37.056.117a.6.6 0 0 1 .212-.054q.076.001.126.046.05.042.072.16.022.119.022.634v2.736q0 .284-.042.381a.3.3 0 0 1-.118.142q-.079.046-.286.045v.12h1.481v-.12q-.231 0-.32-.048a.3.3 0 0 1-.126-.142q-.04-.09-.04-.378V8.927zm-11.722.34q-.494 0-.84.147-.35.15-.534.436a1.1 1.1 0 0 0-.185.612q0 .508.393.864.276.252.968.422.537.135.688.191a.7.7 0 0 1 .31.183q.087.106.088.259 0 .232-.21.41-.212.175-.628.176-.393 0-.625-.197-.23-.199-.307-.619L0 12.23q.084.72.517 1.096.434.378 1.244.378.556-.002.93-.156a1.26 1.26 0 0 0 .781-1.169 1.3 1.3 0 0 0-.171-.684 1.2 1.2 0 0 0-.472-.437q-.3-.16-.927-.31-.628-.147-.79-.286a.326.326 0 0 1 .009-.524q.21-.157.586-.156.361 0 .542.145.181.147.237.471l.864-.028q-.019-.591-.425-.949-.407-.353-1.208-.353zm21.808.33a.475.475 0 1 0-.002.95.475.475 0 0 0 .002-.95m0 .072a.4.4 0 0 1 .401.403c0 .116-.05.22-.128.294l-.086-.135a.4.4 0 0 0-.065-.078.2.2 0 0 0-.048-.03.2.2 0 0 0 .127-.057.14.14 0 0 0 .043-.109.2.2 0 0 0-.025-.091.13.13 0 0 0-.067-.055.3.3 0 0 0-.123-.02h-.266v.606h.08v-.268h.091q.03 0 .045.003.02.005.036.014.018.014.04.043.023.03.059.083l.08.125h.043a.4.4 0 0 1-.237.08.405.405 0 0 1-.404-.405c0-.224.18-.403.404-.403m-.157.191h.191q.067 0 .097.027a.09.09 0 0 1 .03.07.1.1 0 0 1-.016.055.08.08 0 0 1-.047.035.2.2 0 0 1-.085.013h-.17zm-15.037.6q-.616-.001-1.023.514v-.455h-.754v3.105h.814v-1.401c0-.348.022-.583.063-.713a.6.6 0 0 1 .234-.306.67.67 0 0 1 .385-.118q.167 0 .287.082.119.08.17.229.055.148.054.646v1.581h.816V11.7a2.5 2.5 0 0 0-.046-.55.9.9 0 0 0-.16-.343.83.83 0 0 0-.341-.25 1.3 1.3 0 0 0-.499-.097m2.65 0a1.7 1.7 0 0 0-.826.2 1.4 1.4 0 0 0-.571.586 1.7 1.7 0 0 0-.202.793q0 .534.202.904.201.374.588.566.388.194.814.194.69-.001 1.144-.463.455-.464.455-1.167 0-.697-.451-1.156-.449-.457-1.154-.457zm7.315.05q-.527 0-.865.323a1.02 1.02 0 0 0-.336.77q0 .29.147.534c.1.162.24.285.423.379q-.334.281-.429.44a.55.55 0 0 0-.092.271q0 .102.071.184t.24.187a10 10 0 0 0-.329.355c-.113.145-.19.253-.226.336a.4.4 0 0 0-.034.157q0 .178.246.343.437.284 1.071.284.825 0 1.337-.477.349-.326.35-.694a.61.61 0 0 0-.183-.45.84.84 0 0 0-.49-.227 9 9 0 0 0-.878-.053 4 4 0 0 1-.46-.027q-.159-.023-.212-.075-.056-.054-.056-.112a.4.4 0 0 1 .05-.159.9.9 0 0 1 .186-.221q.234.072.459.07.54 0 .864-.301a.96.96 0 0 0 .323-.722q0-.37-.187-.61h.394c.097 0 .15-.002.167-.01a.06.06 0 0 0 .035-.025.3.3 0 0 0 .018-.12.2.2 0 0 0-.02-.105.1.1 0 0 0-.033-.028 1 1 0 0 0-.166-.008h-.639a1.3 1.3 0 0 0-.746-.21zm-2.752 0q-.378 0-.714.194a1.44 1.44 0 0 0-.546.61 1.8 1.8 0 0 0-.205.825q0 .571.34 1.03a1.29 1.29 0 0 0 1.09.543q.419 0 .76-.211.344-.21.54-.627.194-.414.194-.821 0-.577-.354-1.022a1.34 1.34 0 0 0-1.105-.522zm-12.182.009 1.174 3.113a1.2 1.2 0 0 1-.21.431q-.135.168-.419.167-.154 0-.344-.04l.067.645q.228.05.464.052.232-.001.418-.052a1 1 0 0 0 .31-.138.9.9 0 0 0 .224-.234 2.2 2.2 0 0 0 .205-.414l.199-.545 1.085-2.985h-.844l-.722 2.204-.74-2.204zm16.631.078v.122a.8.8 0 0 1 .245.091q.052.043.136.157.108.152.158.255l1.088 2.275-.213.526q-.119.292-.236.393-.118.103-.217.104a1 1 0 0 1-.167-.05 1 1 0 0 0-.3-.07c-.105 0-.19.025-.25.084a.29.29 0 0 0-.092.22q0 .146.126.257a.46.46 0 0 0 .322.112q.27.002.56-.223.29-.224.469-.664l1.226-3.014a1.6 1.6 0 0 1 .113-.254.6.6 0 0 1 .145-.146.5.5 0 0 1 .188-.053v-.122h-.978v.122q.14 0 .197.023a.17.17 0 0 1 .083.057.15.15 0 0 1 .023.087q0 .136-.056.271l-.675 1.671-.737-1.53q-.11-.225-.11-.356a.21.21 0 0 1 .074-.16.35.35 0 0 1 .224-.063h.068v-.122zm-1.753.08q.26.001.43.217.224.293.224.815 0 .398-.16.584a.52.52 0 0 1-.41.188.53.53 0 0 1-.43-.216q-.223-.286-.223-.802c0-.268.054-.461.163-.59a.52.52 0 0 1 .406-.197zm-2.798.054q.362-.002.598.312.346.46.346 1.263 0 .643-.209.905a.65.65 0 0 1-.528.264q-.429-.002-.691-.477c-.174-.32-.263-.695-.263-1.135q0-.406.11-.669a.73.73 0 0 1 .285-.361.67.67 0 0 1 .352-.102m-4.463.395q.323.001.543.247.216.244.216.703 0 .468-.216.712a.7.7 0 0 1-.543.248.7.7 0 0 1-.542-.248q-.22-.242-.22-.708 0-.463.22-.707a.7.7 0 0 1 .542-.247m6.66 2.498q.398.056 1.142.08.51.01.68.083t.17.241q0 .235-.282.442-.284.208-.874.208-.622-.001-.951-.204-.191-.115-.19-.277c0-.078.024-.169.076-.26a1.5 1.5 0 0 1 .228-.313z"/></svg>
-  
-  <span class="md-ellipsis">
-    
-  
-    Synology
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../qnap/" class="md-nav__link">
-        
-  
-  
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M1.316 9.955Q0 9.955 0 11.018v1.95q0 1.057 1.316 1.057h2.57c0-.006.15.005.378-.029-.215-.309-.612-.643-.983-.912l-.068-.049h-1.6v-2.113h2.131v1.793c.64.2 1.08.455 1.379.7q.075-.194.076-.446v-1.951q0-1.005-1.176-1.06v-.003zm4.965.053q-.232 0-.357.13c-.147.154-.117.347-.131.354v3.518h1.445l-.011-2.406c.006-.036.032-.088.142-.075 0 0 .043.002.06.034.28.445 2.104 2.447 2.104 2.447h1.5v-4.002H9.57v2.328c-.022.053-.095.044-.13.006-.259-.4-1.251-1.764-1.569-2.2-.02-.024-.125-.134-.355-.134Zm6.584 0q-.549 0-.844.23a.77.77 0 0 0-.302.639v3.133h1.527v-1.067h2.14v1.067h1.53v-3.133q0-.407-.297-.639-.296-.23-.846-.23zm5.918 0q-.549 0-.846.232a.77.77 0 0 0-.302.62v3.15h1.53v-1.045h2.47q1.007.001 1.008-.809v-1.283q-.002-.462-.248-.664c-.28-.222-.743-.188-.704-.201zm4.725.072a.47.47 0 0 0 .023.94.47.47 0 0 0 .469-.47.47.47 0 0 0-.469-.47zm.002.068h.021c.222.001.4.182.4.403a.4.4 0 0 1-.4.398.4.4 0 0 1-.4-.398c0-.214.167-.391.379-.403m-.19.141v.533h.073v-.236q.06-.001.12.002c.033.007.065.046.07.05.044.059.08.123.12.184h.088l-.092-.144a.4.4 0 0 0-.058-.07.2.2 0 0 0-.043-.028.2.2 0 0 0 .113-.049.144.144 0 0 0 .014-.175c-.022-.036-.056-.067-.166-.067zm.073.059h.168c.15 0 .134.14.058.168-.074.019-.151.006-.226.01zm-10.147.7h2.14v1.159h-2.14zm5.897 0h1.943v1.038h-1.943zm-16.358 1.54c.48.304 1.352.907 1.64 1.457h1.089c-.186-.331-.814-1.13-2.729-1.457"/></svg>
-  
-  <span class="md-ellipsis">
-    
-  
-    QNAP
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-    
-  
-  
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
-        
-  
-  
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M24 10.049v5.114l-10.949 6.324v-5.114zm-24 0v5.114l10.956 6.324v-5.114zm12.004-.605-4.433 2.559 4.433 2.559 4.429-2.559zm10.952-1.207-9.905-5.723v5.118l5.473 3.164zm-12-.605V2.513L1.044 8.236l4.432 2.555z"/></svg>
-  
-  <span class="md-ellipsis">
-    
-  
-    TrueNAS
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-      
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../dockge/" class="md-nav__link">
-        
-  
-  
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-box" viewBox="0 0 24 24"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5M12 22V12"/></svg>
-  
-  <span class="md-ellipsis">
-    
-  
-    Dockge
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-          </ul>
-        </nav>
-      
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    
-    
-      
-        
-          
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-    
-    
-    
-      
-      
-        
-      
-    
-    
-    <li class="md-nav__item md-nav__item--nested">
-      
-        
-        
-          
-        
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_7" >
-        
-          
-          <div class="md-nav__link md-nav__container">
-            <a href="../../api/" class="md-nav__link ">
               
   
   
@@ -3281,13 +3278,13 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_7" id="__nav_7_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_7" id="__nav_7_label" tabindex="">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_7">
             <span class="md-nav__icon md-icon"></span>
             
@@ -3307,7 +3304,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/auth/" class="md-nav__link">
+      <a href="../auth/" class="md-nav__link">
         
   
   
@@ -3337,7 +3334,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/health/" class="md-nav__link">
+      <a href="../health/" class="md-nav__link">
         
   
   
@@ -3367,7 +3364,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/process/" class="md-nav__link">
+      <a href="../process/" class="md-nav__link">
         
   
   
@@ -3397,7 +3394,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/config/" class="md-nav__link">
+      <a href="../config/" class="md-nav__link">
         
   
   
@@ -3427,7 +3424,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/logs/" class="md-nav__link">
+      <a href="../logs/" class="md-nav__link">
         
   
   
@@ -3454,10 +3451,39 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../../api/metrics/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-activity" viewBox="0 0 24 24"><path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    Metrics
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -3475,6 +3501,115 @@
   
 
       </a>
+      
+        
+
+
+<nav class="md-nav md-nav--secondary" aria-label="On this page">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      On this page
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#current-snapshot" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Current snapshot
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#database-health" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Database Health
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#raw-history" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Raw history
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#chart-history" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chart history
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#storage-status" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Storage status
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#import-legacy-jsonl" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Import legacy JSONL
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#activate-postgresql-storage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Activate PostgreSQL storage
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#failure-behavior" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Failure behavior
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -3487,7 +3622,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/notifications/" class="md-nav__link">
+      <a href="../notifications/" class="md-nav__link">
         
   
   
@@ -3517,7 +3652,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/ai/" class="md-nav__link">
+      <a href="../ai/" class="md-nav__link">
         
   
   
@@ -3547,7 +3682,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/seerr-sync/" class="md-nav__link">
+      <a href="../seerr-sync/" class="md-nav__link">
         
   
   
@@ -3577,7 +3712,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/websocket/" class="md-nav__link">
+      <a href="../websocket/" class="md-nav__link">
         
   
   
@@ -3607,7 +3742,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/websocket_logs/" class="md-nav__link">
+      <a href="../websocket_logs/" class="md-nav__link">
         
   
   
@@ -4521,6 +4656,104 @@
   
   
   
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      On this page
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#current-snapshot" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Current snapshot
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#database-health" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Database Health
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#raw-history" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Raw history
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#chart-history" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chart history
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#storage-status" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Storage status
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#import-legacy-jsonl" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Import legacy JSONL
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#activate-postgresql-storage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Activate PostgreSQL storage
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#failure-behavior" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Failure behavior
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
   
 </nav>
                   </div>
@@ -4566,7 +4799,7 @@
         <a href="../" class="md-path__link">
           
   <span class="md-ellipsis">
-    Deployment
+    API
   </span>
 
         </a>
@@ -4583,7 +4816,7 @@
                 
                   
   
-    <a href="https://github.com/I-am-PUID-0/DUMB_docs/edit/master/docs/deployment/truenas.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+    <a href="https://github.com/I-am-PUID-0/DUMB_docs/edit/master/docs/api/metrics.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
       
       <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-file-pen" viewBox="0 0 24 24"><path d="M12.659 22H18a2 2 0 0 0 2-2V8a2.4 2.4 0 0 0-.706-1.706l-3.588-3.588A2.4 2.4 0 0 0 14 2H6a2 2 0 0 0-2 2v9.34"/><path d="M14 2v5a1 1 0 0 0 1 1h5M10.378 12.622a1 1 0 0 1 3 3.003L8.36 20.637a2 2 0 0 1-.854.506l-2.867.837a.5.5 0 0 1-.62-.62l.836-2.869a2 2 0 0 1 .506-.853z"/></svg>
     </a>
@@ -4592,16 +4825,94 @@
     
       
     
-    <a href="https://github.com/I-am-PUID-0/DUMB_docs/raw/master/docs/deployment/truenas.md" title="View source of this page" class="md-content__button md-icon">
+    <a href="https://github.com/I-am-PUID-0/DUMB_docs/raw/master/docs/api/metrics.md" title="View source of this page" class="md-content__button md-icon">
       
       <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-file-code-2" viewBox="0 0 24 24"><path d="M4 12.15V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.706.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2h-3.35"/><path d="M14 2v5a1 1 0 0 0 1 1h5M5 16l-3 3 3 3M9 22l3-3-3-3"/></svg>
     </a>
   
 
 
-  <h1>Deploy with TrueNAS</h1>
-
-
+<h1 id="metrics-api">Metrics API<a class="headerlink" href="#metrics-api" title="Permanent link">&para;</a></h1>
+<p>The Metrics API provides live snapshots, database-health observations, historical series, storage status, and legacy-history migration. Authentication follows the normal DUMB API configuration.</p>
+<h2 id="current-snapshot">Current snapshot<a class="headerlink" href="#current-snapshot" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><span class="err">GET /api/metrics</span>
+</code></pre></div>
+<p>Returns current system, managed-process, external-process, and configured Database Health data.</p>
+<h2 id="database-health">Database Health<a class="headerlink" href="#database-health" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><span class="err">GET /api/metrics/database-health</span>
+<span class="err">GET /api/metrics/database-health?process_name=NzbDAV&amp;refresh=true</span>
+</code></pre></div>
+<p><code>process_name</code> limits the response to one managed service. <code>refresh=true</code> invalidates the cached bounded probe before collection.</p>
+<h2 id="raw-history">Raw history<a class="headerlink" href="#raw-history" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><span class="err">GET /api/metrics/history?since=1784300000&amp;limit=5000</span>
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>since</code></td>
+<td>Six hours ago</td>
+<td>Earliest Unix timestamp</td>
+</tr>
+<tr>
+<td><code>full</code></td>
+<td><code>false</code></td>
+<td>Read without the default lower time bound</td>
+</tr>
+<tr>
+<td><code>limit</code></td>
+<td><code>5000</code></td>
+<td>Maximum snapshots returned</td>
+</tr>
+</tbody>
+</table>
+<p>The response contains ordered <code>items</code> and a <code>truncated</code> indicator. The configured database backend is transparent to clients.</p>
+<h2 id="chart-history">Chart history<a class="headerlink" href="#chart-history" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><span class="err">GET /api/metrics/history_series?since=1784300000&amp;bucket_seconds=60&amp;max_points=600</span>
+</code></pre></div>
+<p>This endpoint returns compact items, timestamps, CPU/memory/disk/inode percentage series, derived disk/network rate series, summary statistics, truncation state, and the effective bucket size. DUMB automatically increases the bucket size when necessary to honor <code>max_points</code>.</p>
+<h2 id="storage-status">Storage status<a class="headerlink" href="#storage-status" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><span class="err">GET /api/metrics/history/storage</span>
+<span class="err">GET /api/metrics/history/storage?probe_postgresql=true</span>
+</code></pre></div>
+<p>The response reports:</p>
+<ul>
+<li><code>configured_provider</code>: <code>sqlite</code> or <code>postgresql</code>;</li>
+<li><code>active_provider</code>: provider currently serving history reads;</li>
+<li><code>fallback_active</code>: whether PostgreSQL is configured but SQLite is active;</li>
+<li><code>last_error</code> and <code>last_postgresql_success</code>;</li>
+<li>SQLite sample range, raw/compressed bytes, file allocation, and compression ratio;</li>
+<li>PostgreSQL sample range and relation allocation when reachable;</li>
+<li>preserved JSONL file count/size and import result.</li>
+</ul>
+<p><code>probe_postgresql=true</code> bypasses the reconnect backoff for a deliberate operator test. It does not disable SQLite fallback or expose PostgreSQL credentials.</p>
+<h2 id="import-legacy-jsonl">Import legacy JSONL<a class="headerlink" href="#import-legacy-jsonl" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><span class="err">POST /api/metrics/history/migrate</span>
+<span class="err">POST /api/metrics/history/migrate?force=true</span>
+</code></pre></div>
+<p>The import reads legacy <code>metrics-YYYYMMDD-NNN.jsonl</code> files from the configured history directory and upserts snapshots into SQLite by timestamp. It is safe to repeat and preserves source files. DUMB records the migration as complete only when every line decodes and every batch writes successfully. A malformed JSONL record or partial write returns <code>completed: false</code> with a nonzero <code>skipped</code> count and remains retryable on the next import or DUMB startup. Without <code>force=true</code>, only a completed migration returns its recorded result without rescanning all files. When PostgreSQL is configured, a rescan requires a full idempotent SQLite-to-PostgreSQL reconciliation before PostgreSQL can resume serving history reads; this also backfills imported samples older than PostgreSQL's current newest row.</p>
+<h2 id="activate-postgresql-storage">Activate PostgreSQL storage<a class="headerlink" href="#activate-postgresql-storage" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><span class="err">POST /api/metrics/history/storage/activate-postgresql</span>
+</code></pre></div>
+<p>After <code>dumb.metrics.storage.provider</code> has been saved as <code>postgresql</code>, this endpoint performs restart-free activation:</p>
+<ol>
+<li>Enables DUMB-managed PostgreSQL and registers the configured Metrics database.</li>
+<li>Starts PostgreSQL when stopped, or reuses the running process.</li>
+<li>Creates enabled databases when needed.</li>
+<li>Replays the retained SQLite continuity buffer into PostgreSQL.</li>
+<li>Promotes PostgreSQL as the active history-read provider only after synchronization succeeds.</li>
+</ol>
+<p>The response includes <code>status</code>, <code>provider</code>, <code>database</code>, <code>postgres_enabled</code>, <code>postgres_running</code>, <code>postgres_started</code>, <code>postgres_reused</code>, <code>synced_samples</code>, and the resulting provider status. <code>postgres_started</code> means this request launched PostgreSQL; <code>postgres_reused</code> means it was already running. Concurrent activation returns <code>409</code>. Provisioning or synchronization failure returns <code>503</code> with a safe stage description; detailed errors remain in DUMB logs, and SQLite remains active.</p>
+<p>Clients should gate this call on the <code>metrics_history_hot_activation</code> process capability. Older backends require the normal DUMB restart to provision PostgreSQL.</p>
+<h2 id="failure-behavior">Failure behavior<a class="headerlink" href="#failure-behavior" title="Permanent link">&para;</a></h2>
+<p>In PostgreSQL mode, each new sample is committed to SQLite before PostgreSQL synchronization. PostgreSQL read/write failures change the active provider to SQLite. The complete retained SQLite window is idempotently reconciled after PostgreSQL recovers, and PostgreSQL is promoted only after that succeeds.</p>
+<p>Notification persistence is separate and never moves to PostgreSQL. See <a href="../notifications/">Notifications API</a>.</p>
 
 
 
@@ -4642,7 +4953,7 @@
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../qnap/" class="md-footer__link md-footer__link--prev" aria-label="Previous: QNAP">
+          <a href="../logs/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Logs">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-arrow-left" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7M19 12H5"/></svg>
@@ -4652,20 +4963,20 @@
                 Previous
               </span>
               <div class="md-ellipsis">
-                QNAP
+                Logs
               </div>
             </div>
           </a>
         
         
           
-          <a href="../dockge/" class="md-footer__link md-footer__link--next" aria-label="Next: Dockge">
+          <a href="../notifications/" class="md-footer__link md-footer__link--next" aria-label="Next: Notifications">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Dockge
+                Notifications
               </div>
             </div>
             <div class="md-footer__button md-icon">

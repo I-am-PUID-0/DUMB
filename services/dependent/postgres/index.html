@@ -576,6 +576,8 @@
       
         
       
+        
+      
     
     
     
@@ -919,6 +921,36 @@
     
   
     Metrics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../features/notifications/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-bell-ring" viewBox="0 0 24 24"><path d="M10.268 21a2 2 0 0 0 3.464 0M22 8c0-2.3-.8-4.3-2-6M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326M4 2C2.8 3.7 2 5.7 2 8"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    Notifications
   
 
     
@@ -3331,6 +3363,10 @@
       
         
       
+        
+      
+        
+      
     
     
     
@@ -3526,6 +3562,66 @@
     
   
     Logs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../api/metrics/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-activity" viewBox="0 0 24 24"><path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    Metrics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../api/notifications/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-bell" viewBox="0 0 24 24"><path d="M10.268 21a2 2 0 0 0 3.464 0M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    Notifications
   
 
     
@@ -4790,6 +4886,7 @@
 <li><code>zilean</code></li>
 <li><code>riven</code></li>
 <li><code>traefik_proxy_admin</code></li>
+<li><code>dumb_metrics</code> when PostgreSQL is selected under <strong>Metrics → Settings → History Storage</strong></li>
 <li><code>radarr-main</code> / <code>radarr-log</code> when a Radarr instance has <code>postgres_enabled: true</code></li>
 <li><code>sonarr-main</code> / <code>sonarr-log</code> when a Sonarr instance has <code>postgres_enabled: true</code></li>
 <li><code>lidarr-main</code> / <code>lidarr-log</code> when a Lidarr instance has <code>postgres_enabled: true</code></li>
@@ -4889,6 +4986,9 @@ DROP<span class="w"> </span>DATABASE<span class="w"> </span>riven<span class="p"
 <li>Ensure you mount <code>/postgres_data</code> if you want persistent databases.</li>
 <li><a href="../../optional/pgadmin/">pgAdmin</a> is the easiest way to visually explore and manage PostgreSQL.</li>
 </ul>
+<h3 id="pre-existing-shared-memory-block">Pre-existing shared memory block<a class="headerlink" href="#pre-existing-shared-memory-block" title="Permanent link">&para;</a></h3>
+<p>If an older DUMB process leaves PostgreSQL running inside the same container, the old server may continue owning <code>/postgres_data</code> and its original port. Starting another postmaster against that directory produces <code>pre-existing shared memory block ... is still in use</code> and a hint to terminate old server processes.</p>
+<p>Current DUMB startup reads <code>postmaster.pid</code>, verifies that the referenced live process is PostgreSQL for the exact configured data directory, and requests a fast clean <code>pg_ctl</code> shutdown before reserving ports. If an older DUMB release already removed the PID file, startup scans PostgreSQL parent command lines and acts only when exactly one process has <code>-D</code> pointing to that same canonical data directory. It refuses ambiguous matches. DUMB never blindly removes a live PID file or deletes a shared-memory segment. If the safety check refuses a PID, inspect the complete error and process ownership rather than using <code>ipcrm</code>; the refusal means DUMB could not prove that the process was safe to stop.</p>
 <hr />
 <h2 id="more-info">More Info<a class="headerlink" href="#more-info" title="Permanent link">&para;</a></h2>
 <ul>

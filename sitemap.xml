@@ -37,6 +37,9 @@
         <loc>https://dumbarr.com/features/metrics/</loc>
       </url>
       <url>
+        <loc>https://dumbarr.com/features/notifications/</loc>
+      </url>
+      <url>
         <loc>https://dumbarr.com/features/ai-assistant/</loc>
       </url>
       <url>
@@ -227,6 +230,12 @@
       </url>
       <url>
         <loc>https://dumbarr.com/api/logs/</loc>
+      </url>
+      <url>
+        <loc>https://dumbarr.com/api/metrics/</loc>
+      </url>
+      <url>
+        <loc>https://dumbarr.com/api/notifications/</loc>
       </url>
       <url>
         <loc>https://dumbarr.com/api/ai/</loc>
