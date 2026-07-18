@@ -73,13 +73,23 @@ class ArrInstaller:
 
         archive_size, free_space = self._archive_storage_details(archive_path)
         stderr = (result.stderr or "").strip() or "tar produced no stderr output"
+        runtime_hint = ""
+        if "function not implemented" in stderr.lower():
+            runtime_hint = (
+                "Container filesystem operations returned ENOSYS (Function not "
+                "implemented). This usually indicates an incompatible container "
+                "runtime/seccomp profile or unsupported Docker backing filesystem; "
+                "updating Docker/containerd/runc and verifying Docker storage is "
+                "required rather than re-downloading the archive. "
+            )
         raise RuntimeError(
             f"{self.app_name_cap} archive {operation} failed for "
             f"{os.path.basename(archive_path)} (tar exit {result.returncode}; "
             f"archive size {self._format_bytes(archive_size)} "
             f"[{archive_size if archive_size is not None else 'unknown'} bytes]; "
             f"free space {self._format_bytes(free_space)} "
-            f"[{free_space if free_space is not None else 'unknown'} bytes]): {stderr}"
+            f"[{free_space if free_space is not None else 'unknown'} bytes]): "
+            f"{runtime_hint}{stderr}"
         )
 
     def _validate_archive(self, archive_path):

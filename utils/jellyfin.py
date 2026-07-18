@@ -36,18 +36,16 @@ class JellyfinInstaller:
             run_locked(["apt", "update"], check=True)
             run_locked(["apt", "install", "-y", "gnupg", "curl"], check=True)
 
-            # Step 2: Add universe repo
-            with open("/etc/os-release") as f:
-                os_release = f.read().lower()
-            if "ubuntu" in os_release:
-                run_locked(["add-apt-repository", "-y", "universe"], check=True)
+            # The DUMB Ubuntu base already enables the universe component. Do not
+            # depend on add-apt-repository here: its package is intentionally
+            # removed from the runtime image after build-time repository setup.
 
-            # Step 3: Create keyring and download GPG key
+            # Step 2: Create keyring and download GPG key
             os.makedirs("/etc/apt/keyrings", exist_ok=True)
             with apt_lock():
                 self.download_and_install_jellyfin_gpg_key()
 
-            # Step 4: Create sources file
+            # Step 3: Create sources file
             version_os = subprocess.check_output(
                 ["awk", "-F=", "/^ID=/{print $2}"],
                 text=True,
@@ -73,16 +71,16 @@ class JellyfinInstaller:
             with open("/etc/apt/sources.list.d/jellyfin.sources", "w") as f:
                 f.write(sources_content)
 
-            # Step 5: Update apt
+            # Step 4: Update apt
             run_locked(["apt", "update"], check=True)
 
-            # Step 6: Install jellyfin metapackage
+            # Step 5: Install jellyfin metapackage
             if version:
                 run_locked(["apt", "install", "-y", f"jellyfin={version}"], check=True)
             else:
                 run_locked(["apt", "install", "-y", "jellyfin"], check=True)
 
-            # Step 7: Ensure web client is available
+            # Step 6: Ensure web client is available
             expected_web_path = "/usr/lib/jellyfin/bin/jellyfin-web"
             real_web_path = "/usr/share/jellyfin/web"
             if not os.path.exists(expected_web_path):

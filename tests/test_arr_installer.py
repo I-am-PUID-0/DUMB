@@ -71,6 +71,31 @@ class ArrInstallerArchiveTests(unittest.TestCase):
             self.assertIn("No space left on device", message)
             self.assertIn("free space 0.0 B [0 bytes]", message)
 
+    def test_extraction_classifies_enosys_as_runtime_or_storage_failure(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            installer, archive_path = self._installer_and_archive(temp_dir)
+            result = subprocess.CompletedProcess(
+                args=["tar"],
+                returncode=2,
+                stderr="tar: Prowlarr/de-DE: Cannot mkdir: Function not implemented",
+            )
+
+            with (
+                patch.object(arr.subprocess, "run", return_value=result),
+                patch.object(
+                    arr.shutil,
+                    "disk_usage",
+                    return_value=SimpleNamespace(free=512 * 1024 * 1024),
+                ),
+            ):
+                with self.assertRaises(RuntimeError) as raised:
+                    installer._extract_archive(str(archive_path))
+
+            message = str(raised.exception)
+            self.assertIn("Container filesystem operations returned ENOSYS", message)
+            self.assertIn("container runtime/seccomp profile", message)
+            self.assertIn("rather than re-downloading the archive", message)
+
     def test_archive_is_validated_and_storage_logged_before_extraction(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             installer, archive_path = self._installer_and_archive(temp_dir)

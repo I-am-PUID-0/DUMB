@@ -407,10 +407,7 @@ def setup_branch_version(process_handler, config, process_name, key):
                 os.path.join(target_dir, "pyproject.toml")
             ) and os.path.isfile(os.path.join(target_dir, "venv", "bin", "python"))
         if service_key == "riven_frontend":
-            build_path = os.path.join(target_dir, "build")
-            return os.path.isfile(os.path.join(target_dir, "package.json")) and (
-                os.path.isfile(build_path) or os.path.isdir(build_path)
-            )
+            return _riven_frontend_runtime_ready(target_dir)
         if service_key == "decypharr":
             return os.path.isfile(
                 os.path.join(target_dir, "decypharr")
@@ -600,8 +597,22 @@ def _needs_riven_bootstrap(key, config_dir):
     if key == "riven_backend":
         return not os.path.isfile(os.path.join(config_dir, "pyproject.toml"))
     if key == "riven_frontend":
-        return not os.path.isfile(os.path.join(config_dir, "package.json"))
+        return not _riven_frontend_runtime_ready(config_dir)
     return False
+
+
+def _riven_frontend_runtime_ready(config_dir: str) -> bool:
+    """Return whether Riven has both source metadata and a runnable build."""
+    if not config_dir or not os.path.isfile(os.path.join(config_dir, "package.json")):
+        return False
+
+    build_path = os.path.join(config_dir, "build")
+    if os.path.isfile(build_path):
+        try:
+            return os.path.getsize(build_path) > 0
+        except OSError:
+            return False
+    return os.path.isfile(os.path.join(build_path, "index.js"))
 
 
 def _maybe_patch_riven_plexapi_dependency(
@@ -5149,6 +5160,41 @@ def setup_pulsarr(
 
     if install_only:
         return True, None
+
+    migration_script = os.path.join(config_dir, "migrations", "migrate.ts")
+    if not os.path.isfile(migration_script):
+        return False, f"Pulsarr migration script not found at {migration_script}."
+
+    migration_env = os.environ.copy()
+    migration_env.update(config.get("env", {}) or {})
+    migration_env["BUN_INSTALL"] = os.getenv("BUN_INSTALL", "/config/.bun")
+    migration_env["PATH"] = (
+        f"{os.path.dirname(bun_bin)}:{migration_env.get('PATH', '')}"
+    )
+    logger.info("Running Pulsarr database migrations before startup.")
+    started, start_error = process_handler.start_process(
+        "bun_migrate",
+        config_dir,
+        [bun_bin, "run", "--bun", "migrations/migrate.ts"],
+        env=migration_env,
+    )
+    if not started:
+        migration_error = (
+            start_error
+            or process_handler.stderr
+            or process_handler.stdout
+            or "unknown error"
+        )
+        return False, f"Pulsarr database migration failed: {migration_error}"
+    process_handler.wait("bun_migrate")
+    if process_handler.returncode != 0:
+        migration_error = (
+            process_handler.stderr or process_handler.stdout or "unknown error"
+        )
+        return False, f"Pulsarr database migration failed: {migration_error}"
+    _chown_recursive_if_needed(
+        data_dir, CONFIG_MANAGER.get("puid"), CONFIG_MANAGER.get("pgid")
+    )
 
     logger.info("Pulsarr setup complete.")
     return True, None
