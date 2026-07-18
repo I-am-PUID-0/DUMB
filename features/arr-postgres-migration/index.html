@@ -876,6 +876,67 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Recommended flow">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-run-preflight" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Run preflight
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-run-a-rehearsal" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Run a rehearsal
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-review-results" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Review results
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-run-guarded-cutover" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Run guarded cutover
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5-validate-the-application" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Validate the application
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -4661,6 +4722,67 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Recommended flow">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-run-preflight" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Run preflight
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-run-a-rehearsal" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Run a rehearsal
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-review-results" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Review results
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-run-guarded-cutover" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Run guarded cutover
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5-validate-the-application" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Validate the application
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -4786,14 +4908,14 @@
   
 
 
-<h1 id="arr-sqlite-to-postgresql-migration">Arr SQLite to PostgreSQL Migration<a class="headerlink" href="#arr-sqlite-to-postgresql-migration" title="Permanent link">&para;</a></h1>
+<h1 id="arr-sqlite-to-postgresql-migration">Arr SQLite to PostgreSQL Migration<a class="headerlink" href="#arr-sqlite-to-postgresql-migration" title="Permanent link">#</a></h1>
 <p>DUMB provides a guarded migration tool for moving an existing <strong>Sonarr or Radarr</strong> instance from SQLite to DUMB's PostgreSQL service. The tool is available from the instance's service page under <strong>Database Migration</strong>.</p>
 <p>This is deliberately separate from <code>postgres_enabled</code>. Turning that setting on directly changes the database backend but does not copy existing data.</p>
 <div class="admonition danger">
 <p class="admonition-title">Servarr considers this unsupported</p>
 <p>Sonarr and Radarr document SQLite-to-PostgreSQL migration as unsupported and may not assist with failures. DUMB adds backups, rehearsal, validation, and rollback controls, but it cannot turn the migration into an upstream-supported operation.</p>
 </div>
-<h2 id="what-the-tool-automates">What the tool automates<a class="headerlink" href="#what-the-tool-automates" title="Permanent link">&para;</a></h2>
+<h2 id="what-the-tool-automates">What the tool automates<a class="headerlink" href="#what-the-tool-automates" title="Permanent link">#</a></h2>
 <p>The workflow:</p>
 <ol>
 <li>Confirms that the instance is enabled, currently uses SQLite, meets the supported version floor, and has healthy SQLite files.</li>
@@ -4812,10 +4934,10 @@
 └── backups/
 </code></pre></div>
 <p>The original SQLite databases are not deleted.</p>
-<h2 id="recommended-flow">Recommended flow<a class="headerlink" href="#recommended-flow" title="Permanent link">&para;</a></h2>
-<h3 id="1-run-preflight">1. Run preflight<a class="headerlink" href="#1-run-preflight" title="Permanent link">&para;</a></h3>
+<h2 id="recommended-flow">Recommended flow<a class="headerlink" href="#recommended-flow" title="Permanent link">#</a></h2>
+<h3 id="1-run-preflight">1. Run preflight<a class="headerlink" href="#1-run-preflight" title="Permanent link">#</a></h3>
 <p>Open the Sonarr or Radarr service page, select <strong>Database Migration</strong>, and review every check. A failed check blocks the job. Warnings require review but may be expected, such as an Arr version that could not be read from its logs or PostgreSQL databases that already contain an initialized schema.</p>
-<h3 id="2-run-a-rehearsal">2. Run a rehearsal<a class="headerlink" href="#2-run-a-rehearsal" title="Permanent link">&para;</a></h3>
+<h3 id="2-run-a-rehearsal">2. Run a rehearsal<a class="headerlink" href="#2-run-a-rehearsal" title="Permanent link">#</a></h3>
 <p>Rehearsal is the default and is required by dmbdb before it enables cutover.</p>
 <p>A rehearsal:</p>
 <ul>
@@ -4827,12 +4949,12 @@
 <li>leaves the service using SQLite.</li>
 </ul>
 <p>Schema initialization causes a short service interruption. The longer rehearsal import then runs against isolated staging databases while the production instance is back on SQLite.</p>
-<h3 id="3-review-results">3. Review results<a class="headerlink" href="#3-review-results" title="Permanent link">&para;</a></h3>
+<h3 id="3-review-results">3. Review results<a class="headerlink" href="#3-review-results" title="Permanent link">#</a></h3>
 <p>The panel shows the current stage, percentage, detailed event history, imported tables/rows, and important library counts. Do not proceed if the rehearsal fails or automatically rolls back.</p>
-<h3 id="4-run-guarded-cutover">4. Run guarded cutover<a class="headerlink" href="#4-run-guarded-cutover" title="Permanent link">&para;</a></h3>
+<h3 id="4-run-guarded-cutover">4. Run guarded cutover<a class="headerlink" href="#4-run-guarded-cutover" title="Permanent link">#</a></h3>
 <p>Cutover stops the selected Arr, creates a new cold SQLite backup, resets the named PostgreSQL target databases, imports and validates the fresh snapshot, then switches the instance to PostgreSQL.</p>
 <p>Downtime depends primarily on SQLite database size and storage speed. Do not restart DUMB or the Arr during this job.</p>
-<h3 id="5-validate-the-application">5. Validate the application<a class="headerlink" href="#5-validate-the-application" title="Permanent link">&para;</a></h3>
+<h3 id="5-validate-the-application">5. Validate the application<a class="headerlink" href="#5-validate-the-application" title="Permanent link">#</a></h3>
 <p>After cutover, check:</p>
 <ul>
 <li>series/movies and file counts;</li>
@@ -4843,19 +4965,19 @@
 <li>a harmless write, such as saving an unchanged setting.</li>
 </ul>
 <p>Keep the SQLite backup until the PostgreSQL deployment and its backup schedule have been proven.</p>
-<h2 id="application-logs-are-optional">Application logs are optional<a class="headerlink" href="#application-logs-are-optional" title="Permanent link">&para;</a></h2>
+<h2 id="application-logs-are-optional">Application logs are optional<a class="headerlink" href="#application-logs-are-optional" title="Permanent link">#</a></h2>
 <p>The main Arr database contains configuration, library state, and history. <code>logs.db</code> contains application log entries and can be very large.</p>
 <p>Leave <strong>Migrate the Arr log database too</strong> disabled unless old application log entries are important. When disabled, the PostgreSQL log database starts fresh and cutover is faster.</p>
-<h2 id="rollback-behavior">Rollback behavior<a class="headerlink" href="#rollback-behavior" title="Permanent link">&para;</a></h2>
+<h2 id="rollback-behavior">Rollback behavior<a class="headerlink" href="#rollback-behavior" title="Permanent link">#</a></h2>
 <p>For a completed cutover, the panel can restore the preserved pre-cutover <code>config.xml</code>, set <code>postgres_enabled: false</code>, and restart the instance against SQLite.</p>
 <div class="admonition warning">
 <p class="admonition-title">Rollback is not reverse migration</p>
 <p>Changes made after PostgreSQL cutover are not copied back into SQLite. Roll back promptly if validation fails. A later rollback can lose settings, library changes, history, or other writes made while PostgreSQL was active.</p>
 </div>
 <p>An interrupted job is marked as interrupted after the DUMB API restarts. Inspect the job and restore SQLite before retrying.</p>
-<h2 id="postgresql-backups-after-migration">PostgreSQL backups after migration<a class="headerlink" href="#postgresql-backups-after-migration" title="Permanent link">&para;</a></h2>
+<h2 id="postgresql-backups-after-migration">PostgreSQL backups after migration<a class="headerlink" href="#postgresql-backups-after-migration" title="Permanent link">#</a></h2>
 <p>Sonarr and Radarr built-in backups do not include PostgreSQL data. Configure scheduled <code>pg_dump</code> backups for both the main and log databases after cutover. Keep <code>/postgres_data</code> protected by normal host/container backups as well.</p>
-<h2 id="supported-scope">Supported scope<a class="headerlink" href="#supported-scope" title="Permanent link">&para;</a></h2>
+<h2 id="supported-scope">Supported scope<a class="headerlink" href="#supported-scope" title="Permanent link">#</a></h2>
 <p>The guided importer initially supports:</p>
 <ul>
 <li>Sonarr <code>4.0.0.615</code> or newer</li>

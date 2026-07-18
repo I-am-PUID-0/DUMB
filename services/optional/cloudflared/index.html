@@ -2954,6 +2954,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Configuration reference">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#configuration-key-descriptions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Configuration key descriptions
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -4818,6 +4835,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Configuration reference">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#configuration-key-descriptions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Configuration key descriptions
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -4928,7 +4962,7 @@
   
 
 
-<h1 id="cloudflared">Cloudflared<a class="headerlink" href="#cloudflared" title="Permanent link">&para;</a></h1>
+<h1 id="cloudflared">Cloudflared<a class="headerlink" href="#cloudflared" title="Permanent link">#</a></h1>
 <p>Cloudflared is an optional DUMB service that runs the Cloudflare Tunnel connector inside the DUMB container. It lets public Cloudflare hostname traffic reach DUMB's built-in Traefik entrypoint without opening router ports directly to the internet.</p>
 <p>The intended flow is:</p>
 <pre class="mermaid"><code>flowchart LR
@@ -4939,7 +4973,7 @@
     D --&gt; F[DUMB embedded UI route]</code></pre>
 <p>Cloudflared gets traffic to Traefik. Traefik still decides which local service receives the request.</p>
 <hr />
-<h2 id="before-you-start">Before you start<a class="headerlink" href="#before-you-start" title="Permanent link">&para;</a></h2>
+<h2 id="before-you-start">Before you start<a class="headerlink" href="#before-you-start" title="Permanent link">#</a></h2>
 <p>You need:</p>
 <ul>
 <li>A Cloudflare account.</li>
@@ -4954,7 +4988,7 @@
 <p>Cloudflared does not make an app private by itself. It only creates the tunnel. Keep TPA auth, service auth, Cloudflare Access, or the upstream app's own authentication enabled for anything exposed publicly.</p>
 </div>
 <hr />
-<h2 id="step-1-add-your-domain-to-cloudflare">Step 1: Add your domain to Cloudflare<a class="headerlink" href="#step-1-add-your-domain-to-cloudflare" title="Permanent link">&para;</a></h2>
+<h2 id="step-1-add-your-domain-to-cloudflare">Step 1: Add your domain to Cloudflare<a class="headerlink" href="#step-1-add-your-domain-to-cloudflare" title="Permanent link">#</a></h2>
 <p>If your domain is already active in Cloudflare, skip to <a href="#step-2-create-a-cloudflare-tunnel">Step 2</a>.</p>
 <ol>
 <li>Create or sign in to a Cloudflare account.</li>
@@ -4966,7 +5000,7 @@
 </ol>
 <p>This nameserver change is what lets Cloudflare answer DNS for your domain and route public hostnames through Tunnel.</p>
 <hr />
-<h2 id="step-2-create-a-cloudflare-tunnel">Step 2: Create a Cloudflare Tunnel<a class="headerlink" href="#step-2-create-a-cloudflare-tunnel" title="Permanent link">&para;</a></h2>
+<h2 id="step-2-create-a-cloudflare-tunnel">Step 2: Create a Cloudflare Tunnel<a class="headerlink" href="#step-2-create-a-cloudflare-tunnel" title="Permanent link">#</a></h2>
 <p>In Cloudflare, go to <strong>Zero Trust</strong> -&gt; <strong>Networks</strong> -&gt; <strong>Connectors</strong> -&gt; <strong>Cloudflare Tunnels</strong>, then create a new tunnel.</p>
 <p><img alt="Create a Cloudflare tunnel" src="../../../assets/images/cloudflared/create_cf_tunnel.png" /></p>
 <p>Give the tunnel a simple name such as <code>DUMB</code>. Choose a <strong>cloudflared</strong> tunnel. DUMB uses a remotely-managed, token-based tunnel, so you do not need to run the Cloudflare install command on the host.</p>
@@ -4976,7 +5010,7 @@
 <p>Anyone with the token can run a connector for that tunnel. Store it only in DUMB's Cloudflared service config and rotate it in Cloudflare if it is exposed.</p>
 </div>
 <hr />
-<h2 id="step-3-enable-cloudflared-in-dumb">Step 3: Enable Cloudflared in DUMB<a class="headerlink" href="#step-3-enable-cloudflared-in-dumb" title="Permanent link">&para;</a></h2>
+<h2 id="step-3-enable-cloudflared-in-dumb">Step 3: Enable Cloudflared in DUMB<a class="headerlink" href="#step-3-enable-cloudflared-in-dumb" title="Permanent link">#</a></h2>
 <p>In dmbdb, open the <strong>Cloudflared</strong> service page.</p>
 <ol>
 <li>Enable the service.</li>
@@ -4993,7 +5027,7 @@ SUMMARY: Environment is healthy
 <p>On the first run, Cloudflare will show "Tunnel connected successfully." You can then click <strong>Continue</strong>.</p>
 <p><img alt="Cloudflare tunnel ready screen" src="../../../assets/images/cloudflared/create_cf_tunnel_ready.png" /></p>
 <hr />
-<h2 id="step-4-create-the-public-hostname-route">Step 4: Create the public hostname route<a class="headerlink" href="#step-4-create-the-public-hostname-route" title="Permanent link">&para;</a></h2>
+<h2 id="step-4-create-the-public-hostname-route">Step 4: Create the public hostname route<a class="headerlink" href="#step-4-create-the-public-hostname-route" title="Permanent link">#</a></h2>
 <p>Cloudflare has two tunnel views. The account-level <strong>Tunnels</strong> page may show a simplified route editor. For the full origin settings, open the tunnel action menu and choose <strong>Manage in Zero Trust</strong>.</p>
 <p>In Zero Trust:</p>
 <ol>
@@ -5013,7 +5047,7 @@ SUMMARY: Environment is healthy
 <p>Cloudflare may display the final service as <code>https://localhost:18080</code>.</p>
 <p><img alt="Cloudflare tunnel application route" src="../../../assets/images/cloudflared/cf_app_route.png" /></p>
 <hr />
-<h2 id="step-5-enable-no-tls-verify">Step 5: Enable No TLS Verify<a class="headerlink" href="#step-5-enable-no-tls-verify" title="Permanent link">&para;</a></h2>
+<h2 id="step-5-enable-no-tls-verify">Step 5: Enable No TLS Verify<a class="headerlink" href="#step-5-enable-no-tls-verify" title="Permanent link">#</a></h2>
 <p>Because DUMB Traefik is the HTTPS origin for the tunnel, Cloudflared connects to Traefik over HTTPS inside the container. Traefik's local/default certificate is not expected to validate as <code>localhost</code>, so the route needs Cloudflare's <strong>No TLS Verify</strong> origin setting.</p>
 <p>Open <strong>Origin request and connection settings</strong> -&gt; <strong>TLS</strong>, then enable <strong>No TLS Verify</strong>.</p>
 <p><img alt="Cloudflare No TLS Verify setting" src="../../../assets/images/cloudflared/cf_no_tls_verify.png" /></p>
@@ -5042,7 +5076,7 @@ SUMMARY: Environment is healthy
 </table>
 <p>The HTTPS origin is important when TPA-generated routers use TLS. If the Cloudflare route points to <code>http://localhost:18080</code>, Traefik may receive the request but return 404 because the TLS router does not match. If the route points to <code>https://localhost:18080</code> without <strong>No TLS Verify</strong>, Cloudflare may return 502 because Cloudflared rejects the local Traefik certificate.</p>
 <hr />
-<h2 id="step-6-add-dns-records">Step 6: Add DNS records<a class="headerlink" href="#step-6-add-dns-records" title="Permanent link">&para;</a></h2>
+<h2 id="step-6-add-dns-records">Step 6: Add DNS records<a class="headerlink" href="#step-6-add-dns-records" title="Permanent link">#</a></h2>
 <p>For a single hostname, Cloudflare may create the DNS record for you when you save the tunnel route.</p>
 <p>For a wildcard route, Cloudflare may warn that no DNS record will be created automatically. In that case, add the DNS record manually:</p>
 <table>
@@ -5069,7 +5103,7 @@ SUMMARY: Environment is healthy
 <p>A wildcard tunnel route sends matching subdomains to DUMB Traefik. TPA still needs a matching service route for each public hostname. If Cloudflare reaches Traefik but TPA has no matching router, Traefik will return 404.</p>
 </div>
 <hr />
-<h2 id="step-7-publish-a-service-with-tpa">Step 7: Publish a service with TPA<a class="headerlink" href="#step-7-publish-a-service-with-tpa" title="Permanent link">&para;</a></h2>
+<h2 id="step-7-publish-a-service-with-tpa">Step 7: Publish a service with TPA<a class="headerlink" href="#step-7-publish-a-service-with-tpa" title="Permanent link">#</a></h2>
 <p>In <strong>Traefik Proxy Admin</strong>:</p>
 <ol>
 <li>Create or edit a domain matching your Cloudflare zone.</li>
@@ -5082,7 +5116,7 @@ SUMMARY: Environment is healthy
 </ol>
 <p>For a quick smoke test, use a deliberately harmless test target or a temporary service that does not expose admin controls or personal data. Avoid using DUMB, TPA, or other admin surfaces as your first public test unless they are already protected by the auth model you intend to keep.</p>
 <hr />
-<h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h2>
+<h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">#</a></h2>
 <table>
 <thead>
 <tr>
@@ -5125,7 +5159,7 @@ SUMMARY: Environment is healthy
 </tbody>
 </table>
 <hr />
-<h2 id="configuration-reference">Configuration reference<a class="headerlink" href="#configuration-reference" title="Permanent link">&para;</a></h2>
+<h2 id="configuration-reference">Configuration reference<a class="headerlink" href="#configuration-reference" title="Permanent link">#</a></h2>
 <div class="highlight"><pre><span></span><code><span class="nt">&quot;cloudflared&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;process_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Cloudflared&quot;</span><span class="p">,</span>
@@ -5148,7 +5182,7 @@ SUMMARY: Environment is healthy
 <span class="w">  </span><span class="p">}</span>
 <span class="p">}</span>
 </code></pre></div>
-<h3 id="configuration-key-descriptions">Configuration key descriptions<a class="headerlink" href="#configuration-key-descriptions" title="Permanent link">&para;</a></h3>
+<h3 id="configuration-key-descriptions">Configuration key descriptions<a class="headerlink" href="#configuration-key-descriptions" title="Permanent link">#</a></h3>
 <ul>
 <li><strong><code>enabled</code></strong>: Whether to install and start cloudflared.</li>
 <li><strong><code>pinned_version</code></strong>: Cloudflared release version, or <code>latest</code>.</li>
@@ -5157,7 +5191,7 @@ SUMMARY: Environment is healthy
 <li><strong><code>log_file</code></strong>: DUMB-managed log path for cloudflared output.</li>
 </ul>
 <hr />
-<h2 id="related-links">Related links<a class="headerlink" href="#related-links" title="Permanent link">&para;</a></h2>
+<h2 id="related-links">Related links<a class="headerlink" href="#related-links" title="Permanent link">#</a></h2>
 <ul>
 <li><a href="../traefik-proxy-admin/">Traefik Proxy Admin</a></li>
 <li><a href="../../../features/embedded-ui/">Embedded Service UIs</a></li>
