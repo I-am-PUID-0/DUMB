@@ -7,7 +7,11 @@ from utils.dependencies import (
     get_notification_manager,
     get_optional_current_user,
 )
-from utils.notifications import SEVERITY_RANK, SUPPORTED_EVENT_TYPES
+from utils.notifications import (
+    SEVERITY_RANK,
+    SUPPORTED_EVENT_TYPES,
+    NotificationStorageUnavailableError,
+)
 
 notifications_router = APIRouter()
 
@@ -67,6 +71,8 @@ def test_notification_destination(
 ):
     try:
         return manager.send_test(request.destination_id, request.title, request.body)
+    except NotificationStorageUnavailableError as error:
+        raise HTTPException(status_code=503, detail=str(error)) from None
     except ValueError as error:
         raise HTTPException(status_code=400, detail=str(error)) from None
 
@@ -79,12 +85,15 @@ def send_manual_notification(
 ):
     if request.severity not in SEVERITY_RANK:
         raise HTTPException(status_code=400, detail="Unsupported severity.")
-    queued = manager.send_manual(
-        request.title,
-        request.body,
-        severity=request.severity,
-        destination_ids=request.destination_ids,
-    )
+    try:
+        queued = manager.send_manual(
+            request.title,
+            request.body,
+            severity=request.severity,
+            destination_ids=request.destination_ids,
+        )
+    except NotificationStorageUnavailableError as error:
+        raise HTTPException(status_code=503, detail=str(error)) from None
     if not queued:
         raise HTTPException(
             status_code=400,
@@ -101,7 +110,12 @@ def get_notification_history(
     manager=Depends(get_notification_manager),
     current_user: str = Depends(get_optional_current_user),
 ):
-    return {"items": manager.history(limit=limit, status=status, event_type=event_type)}
+    try:
+        return {
+            "items": manager.history(limit=limit, status=status, event_type=event_type)
+        }
+    except NotificationStorageUnavailableError as error:
+        raise HTTPException(status_code=503, detail=str(error)) from None
 
 
 @notifications_router.delete("/history")
@@ -109,4 +123,7 @@ def clear_notification_history(
     manager=Depends(get_notification_manager),
     current_user: str = Depends(get_optional_current_user),
 ):
-    return {"deleted": manager.clear_history()}
+    try:
+        return {"deleted": manager.clear_history()}
+    except NotificationStorageUnavailableError as error:
+        raise HTTPException(status_code=503, detail=str(error)) from None

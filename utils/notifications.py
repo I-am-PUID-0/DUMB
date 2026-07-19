@@ -58,6 +58,15 @@ DEFAULT_NOTIFICATION_CONFIG = {
     },
 }
 
+_STORAGE_INITIALIZATION_ATTEMPTS = 4
+_STORAGE_INITIALIZATION_TIMEOUT_SECONDS = 1
+_STORAGE_RETRY_BASE_SECONDS = 0.25
+_STORAGE_RETRY_INTERVAL_SECONDS = 5
+
+
+class NotificationStorageUnavailableError(RuntimeError):
+    pass
+
 
 def _enabled_process_names(config=None):
     source = (
@@ -139,23 +148,37 @@ class NotificationManager:
         self._monitor_thread = None
         self._conditions = {}
         self._last_prune = 0
-        self._initialize_storage()
+        self._storage_ready = False
+        self._storage_error = None
+        self._storage_retry_at = 0.0
+        self._storage_unavailable_logged = False
+        initial_attempts = (
+            _STORAGE_INITIALIZATION_ATTEMPTS
+            if _notification_config().get("enabled")
+            else 1
+        )
+        self._initialize_storage(attempts=initial_attempts)
 
-    def _connect(self):
-        connection = sqlite3.connect(self.db_path, timeout=15)
+    def _connect(self, timeout=15):
+        connection = sqlite3.connect(self.db_path, timeout=timeout)
         connection.row_factory = sqlite3.Row
+        connection.execute(f"PRAGMA busy_timeout = {max(0, int(timeout * 1000))}")
         return connection
 
-    def _initialize_storage(self):
-        os.makedirs(self.base_dir, exist_ok=True)
-        os.makedirs(self.apprise_storage_path, exist_ok=True)
-        try:
-            os.chmod(self.base_dir, 0o700)
-        except OSError:
-            pass
-        with self._db_lock, self._connect() as connection:
-            connection.executescript("""
-                PRAGMA journal_mode=WAL;
+    @staticmethod
+    def _is_lock_error(error):
+        message = str(error or "").lower()
+        return "locked" in message or "busy" in message
+
+    def _initialize_storage_once(self):
+        with self._connect(
+            timeout=_STORAGE_INITIALIZATION_TIMEOUT_SECONDS
+        ) as connection:
+            current_mode = connection.execute("PRAGMA journal_mode").fetchone()
+            if not current_mode or str(current_mode[0]).lower() != "wal":
+                connection.execute("PRAGMA journal_mode = WAL")
+            connection.execute("PRAGMA synchronous = NORMAL")
+            connection.execute("""
                 CREATE TABLE IF NOT EXISTS deliveries (
                     id TEXT PRIMARY KEY,
                     event_id TEXT NOT NULL,
@@ -176,18 +199,24 @@ class NotificationManager:
                     created_at REAL NOT NULL,
                     updated_at REAL NOT NULL,
                     sent_at REAL
-                );
+                )
+                """)
+            connection.execute("""
                 CREATE INDEX IF NOT EXISTS idx_deliveries_due
-                    ON deliveries(status, next_attempt_at);
+                ON deliveries(status, next_attempt_at)
+                """)
+            connection.execute("""
                 CREATE INDEX IF NOT EXISTS idx_deliveries_created
-                    ON deliveries(created_at DESC);
+                ON deliveries(created_at DESC)
+                """)
+            connection.execute("""
                 CREATE TABLE IF NOT EXISTS delivery_state (
                     state_key TEXT PRIMARY KEY,
                     active INTEGER NOT NULL DEFAULT 0,
                     last_sent_at REAL,
                     last_value TEXT,
                     updated_at REAL NOT NULL
-                );
+                )
                 """)
             columns = {
                 row[1]
@@ -204,10 +233,105 @@ class NotificationManager:
                     "ALTER TABLE deliveries ADD COLUMN bypass_destination_enabled "
                     "INTEGER NOT NULL DEFAULT 0"
                 )
+
+    def _initialize_storage(self, attempts=_STORAGE_INITIALIZATION_ATTEMPTS):
+        os.makedirs(self.base_dir, exist_ok=True)
+        os.makedirs(self.apprise_storage_path, exist_ok=True)
+        try:
+            os.chmod(self.base_dir, 0o700)
+        except OSError:
+            pass
+        last_error = None
+        attempts = max(1, int(attempts or 1))
+        for attempt in range(1, attempts + 1):
+            try:
+                with self._db_lock:
+                    if self._storage_ready:
+                        return True
+                    self._initialize_storage_once()
+                    recovered = self._storage_error is not None
+                    self._storage_ready = True
+                    self._storage_error = None
+                    self._storage_retry_at = 0.0
+                    self._storage_unavailable_logged = False
+                if recovered:
+                    self._log(
+                        "info",
+                        "Notification SQLite storage recovered; queued delivery "
+                        "and history are available again.",
+                    )
+                break
+            except sqlite3.OperationalError as error:
+                if not self._is_lock_error(error):
+                    raise
+                last_error = error
+                if attempt < attempts:
+                    time.sleep(_STORAGE_RETRY_BASE_SECONDS * (2 ** (attempt - 1)))
+        else:
+            with self._db_lock:
+                if self._storage_ready:
+                    return True
+                self._storage_ready = False
+                self._storage_error = _safe_error(last_error)
+                self._storage_retry_at = (
+                    time.monotonic() + _STORAGE_RETRY_INTERVAL_SECONDS
+                )
+                should_log = not self._storage_unavailable_logged
+                self._storage_unavailable_logged = True
+            if should_log:
+                self._log(
+                    "warning",
+                    "Notification SQLite storage is locked after %s attempt(s). "
+                    "DUMB startup will continue and notification storage will retry "
+                    "in the background: %s",
+                    attempts,
+                    self._storage_error,
+                )
+            return False
         try:
             os.chmod(self.db_path, 0o600)
         except OSError:
             pass
+        return True
+
+    def _ensure_storage_ready(self, force=False):
+        if self._storage_ready:
+            return True
+        if not force and time.monotonic() < self._storage_retry_at:
+            return False
+        return self._initialize_storage(attempts=1)
+
+    def _handle_runtime_storage_error(self, error):
+        if not isinstance(error, sqlite3.OperationalError) or not self._is_lock_error(
+            error
+        ):
+            return False
+        with self._db_lock:
+            self._storage_ready = False
+            self._storage_error = _safe_error(error)
+            self._storage_retry_at = time.monotonic() + _STORAGE_RETRY_INTERVAL_SECONDS
+            should_log = not self._storage_unavailable_logged
+            self._storage_unavailable_logged = True
+        if should_log:
+            self._log(
+                "warning",
+                "Notification SQLite storage became locked. Delivery and history "
+                "are paused while background recovery continues: %s",
+                self._storage_error,
+            )
+        return True
+
+    @staticmethod
+    def _storage_unavailable_exception():
+        return NotificationStorageUnavailableError(
+            "Notification storage is temporarily unavailable because its SQLite "
+            "database is locked. DUMB will retry automatically."
+        )
+
+    def _require_storage(self):
+        if self._ensure_storage_ready(force=True):
+            return
+        raise self._storage_unavailable_exception()
 
     def start(self):
         if self._worker_thread and self._worker_thread.is_alive():
@@ -221,7 +345,14 @@ class NotificationManager:
         )
         self._worker_thread.start()
         self._monitor_thread.start()
-        self._log("info", "Notification utility initialized.")
+        if self._storage_ready:
+            self._log("info", "Notification utility initialized.")
+        else:
+            self._log(
+                "warning",
+                "Notification utility started in degraded mode while SQLite "
+                "storage recovery is pending.",
+            )
 
     def _log(self, level, message, *args):
         handler = getattr(self.logger, level, None)
@@ -359,6 +490,10 @@ class NotificationManager:
         config = _notification_config()
         if not force and not config.get("enabled"):
             return []
+        if not self._ensure_storage_ready(force=force):
+            if force:
+                raise self._storage_unavailable_exception()
+            return []
         severity = severity if severity in SEVERITY_RANK else "info"
         title = redact_sensitive_log_data(str(title or "DUMB notification"))
         body = redact_sensitive_log_data(str(body or ""))
@@ -428,35 +563,49 @@ class NotificationManager:
         return queued
 
     def send_test(self, destination_id, title=None, body=None):
-        queued = self.emit(
-            "manual",
-            "info",
-            title or "DUMB notification test",
-            body or "Your DUMB notification destination is configured correctly.",
-            destination_ids=[destination_id],
-            force=True,
-            include_disabled_destinations=True,
-        )
-        if not queued:
-            raise ValueError("Destination was not found or has no configured URL.")
-        deadline = time.time() + 15
-        while time.time() < deadline:
-            result = self.get_delivery(queued[0])
-            if result and result.get("status") in ("sent", "failed", "retrying"):
-                return result
-            time.sleep(0.1)
-        return self.get_delivery(queued[0])
+        try:
+            queued = self.emit(
+                "manual",
+                "info",
+                title or "DUMB notification test",
+                body or "Your DUMB notification destination is configured correctly.",
+                destination_ids=[destination_id],
+                force=True,
+                include_disabled_destinations=True,
+            )
+            if not queued:
+                raise ValueError("Destination was not found or has no configured URL.")
+            deadline = time.time() + 15
+            while time.time() < deadline:
+                result = self.get_delivery(queued[0])
+                if result and result.get("status") in (
+                    "sent",
+                    "failed",
+                    "retrying",
+                ):
+                    return result
+                time.sleep(0.1)
+            return self.get_delivery(queued[0])
+        except sqlite3.OperationalError as error:
+            if self._handle_runtime_storage_error(error):
+                raise self._storage_unavailable_exception() from None
+            raise
 
     def send_manual(self, title, body, severity="info", destination_ids=None):
-        return self.emit(
-            "manual",
-            severity,
-            title,
-            body,
-            destination_ids=destination_ids,
-            force=True,
-            include_disabled_destinations=False,
-        )
+        try:
+            return self.emit(
+                "manual",
+                severity,
+                title,
+                body,
+                destination_ids=destination_ids,
+                force=True,
+                include_disabled_destinations=False,
+            )
+        except sqlite3.OperationalError as error:
+            if self._handle_runtime_storage_error(error):
+                raise self._storage_unavailable_exception() from None
+            raise
 
     def _destination_matches(
         self,
@@ -575,13 +724,20 @@ class NotificationManager:
             )
 
     def get_delivery(self, delivery_id):
-        with self._db_lock, self._connect() as connection:
-            row = connection.execute(
-                "SELECT * FROM deliveries WHERE id = ?", (delivery_id,)
-            ).fetchone()
+        self._require_storage()
+        try:
+            with self._db_lock, self._connect() as connection:
+                row = connection.execute(
+                    "SELECT * FROM deliveries WHERE id = ?", (delivery_id,)
+                ).fetchone()
+        except sqlite3.OperationalError as error:
+            if self._handle_runtime_storage_error(error):
+                raise self._storage_unavailable_exception() from None
+            raise
         return self._serialize_row(row) if row else None
 
     def history(self, limit=100, status=None, event_type=None):
+        self._require_storage()
         clauses = []
         params = []
         if status:
@@ -592,18 +748,30 @@ class NotificationManager:
             params.append(event_type)
         where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
         params.append(max(1, min(int(limit), 500)))
-        with self._db_lock, self._connect() as connection:
-            rows = connection.execute(
-                f"SELECT * FROM deliveries {where} ORDER BY created_at DESC LIMIT ?",
-                params,
-            ).fetchall()
+        try:
+            with self._db_lock, self._connect() as connection:
+                rows = connection.execute(
+                    f"SELECT * FROM deliveries {where} "
+                    "ORDER BY created_at DESC LIMIT ?",
+                    params,
+                ).fetchall()
+        except sqlite3.OperationalError as error:
+            if self._handle_runtime_storage_error(error):
+                raise self._storage_unavailable_exception() from None
+            raise
         return [self._serialize_row(row) for row in rows]
 
     def clear_history(self):
-        with self._db_lock, self._connect() as connection:
-            cursor = connection.execute(
-                "DELETE FROM deliveries WHERE status NOT IN ('queued', 'retrying')"
-            )
+        self._require_storage()
+        try:
+            with self._db_lock, self._connect() as connection:
+                cursor = connection.execute(
+                    "DELETE FROM deliveries WHERE status NOT IN ('queued', 'retrying')"
+                )
+        except sqlite3.OperationalError as error:
+            if self._handle_runtime_storage_error(error):
+                raise self._storage_unavailable_exception() from None
+            raise
         return cursor.rowcount
 
     def _serialize_row(self, row):
@@ -620,13 +788,18 @@ class NotificationManager:
             try:
                 self._deliver_due()
             except Exception as error:
-                self._log(
-                    "error", "Notification delivery loop failed: %s", _safe_error(error)
-                )
+                if not self._handle_runtime_storage_error(error):
+                    self._log(
+                        "error",
+                        "Notification delivery loop failed: %s",
+                        _safe_error(error),
+                    )
             self._wake_event.wait(timeout=1)
             self._wake_event.clear()
 
     def _deliver_due(self):
+        if not self._ensure_storage_ready():
+            return
         now = time.time()
         enabled = 1 if _notification_config().get("enabled") else 0
         with self._db_lock, self._connect() as connection:
@@ -773,13 +946,16 @@ class NotificationManager:
         while not self._stop_event.is_set():
             config = _notification_config()
             interval = max(15, int(config.get("monitor_interval_sec", 30) or 30))
-            if config.get("enabled"):
+            if config.get("enabled") and self._ensure_storage_ready():
                 try:
                     self._collect_monitored_conditions(config)
                 except Exception as error:
-                    self._log(
-                        "error", "Notification monitor failed: %s", _safe_error(error)
-                    )
+                    if not self._handle_runtime_storage_error(error):
+                        self._log(
+                            "error",
+                            "Notification monitor failed: %s",
+                            _safe_error(error),
+                        )
                 if time.time() - self._last_prune > 3600:
                     self._prune_history(config)
             self._stop_event.wait(interval)
@@ -964,11 +1140,22 @@ def notify_event(
     manager = get_notification_manager()
     if not manager:
         return []
-    return manager.emit(
-        event_type,
-        severity,
-        title,
-        body,
-        service_name=service_name,
-        metadata=metadata,
-    )
+    try:
+        return manager.emit(
+            event_type,
+            severity,
+            title,
+            body,
+            service_name=service_name,
+            metadata=metadata,
+        )
+    except Exception as error:
+        if not manager._handle_runtime_storage_error(error):
+            manager._log(
+                "error",
+                "Notification event %s could not be queued without affecting the "
+                "originating DUMB operation: %s",
+                event_type,
+                _safe_error(error),
+            )
+        return []

@@ -1,11 +1,16 @@
+import sqlite3
+import sys
 import tempfile
 import time
 import types
 import unittest
-import sys
 from unittest.mock import Mock, patch
 
-from utils.notifications import NotificationManager
+from utils.notifications import (
+    NotificationManager,
+    NotificationStorageUnavailableError,
+    notify_event,
+)
 
 
 class FakeConfigManager:
@@ -259,6 +264,98 @@ class NotificationManagerTests(unittest.TestCase):
 
         self.assertEqual(replacement.get_delivery(delivery_id)["status"], "sent")
         replacement.shutdown()
+
+    def test_locked_storage_is_nonfatal_and_recovers_in_background(self):
+        with (
+            patch.object(
+                NotificationManager,
+                "_initialize_storage_once",
+                side_effect=sqlite3.OperationalError("database is locked"),
+            ) as initialize,
+            patch("utils.notifications.time.sleep"),
+        ):
+            locked_manager = NotificationManager(
+                process_handler=Mock(),
+                metrics_collector=FakeMetricsCollector(),
+                logger=self.logger,
+                base_dir=self.temp_dir.name,
+            )
+
+            self.assertFalse(locked_manager._storage_ready)
+            self.assertEqual(initialize.call_count, 4)
+            self.assertEqual(
+                locked_manager.emit(
+                    "service.start.failed", "critical", "Failure", "Details"
+                ),
+                [],
+            )
+            with self.assertRaises(NotificationStorageUnavailableError):
+                locked_manager.send_manual("Manual", "Details")
+
+            initialize.side_effect = None
+            self.assertTrue(locked_manager._ensure_storage_ready(force=True))
+            self.assertTrue(locked_manager._storage_ready)
+
+        self.logger.warning.assert_any_call(
+            "Notification SQLite storage is locked after %s attempt(s). "
+            "DUMB startup will continue and notification storage will retry "
+            "in the background: %s",
+            4,
+            "database is locked",
+        )
+        self.logger.info.assert_any_call(
+            "Notification SQLite storage recovered; queued delivery "
+            "and history are available again."
+        )
+
+    def test_disabled_notifications_do_not_delay_startup_with_lock_retries(self):
+        self.config["enabled"] = False
+        with (
+            patch.object(
+                NotificationManager,
+                "_initialize_storage_once",
+                side_effect=sqlite3.OperationalError("database is locked"),
+            ) as initialize,
+            patch("utils.notifications.time.sleep") as sleep,
+        ):
+            manager = NotificationManager(
+                process_handler=Mock(),
+                metrics_collector=FakeMetricsCollector(),
+                logger=self.logger,
+                base_dir=self.temp_dir.name,
+            )
+
+        self.assertFalse(manager._storage_ready)
+        self.assertEqual(initialize.call_count, 1)
+        sleep.assert_not_called()
+
+    def test_automatic_notification_lock_does_not_break_originating_operation(self):
+        with (
+            patch(
+                "utils.notifications.get_notification_manager",
+                return_value=self.manager,
+            ),
+            patch.object(
+                self.manager,
+                "emit",
+                side_effect=sqlite3.OperationalError("database table is locked"),
+            ),
+        ):
+            result = notify_event(
+                "service.start.failed",
+                "critical",
+                "Failure",
+                "Details",
+                service_name="Example Service",
+            )
+
+        self.assertEqual(result, [])
+        self.assertFalse(self.manager._storage_ready)
+        self.logger.warning.assert_called_with(
+            "Notification SQLite storage became locked. Delivery and history "
+            "are paused while background recovery continues: %s",
+            "database table is locked",
+        )
 
     def test_cooldown_records_suppressed_delivery(self):
         self.config["destinations"][0]["cooldown_sec"] = 300
