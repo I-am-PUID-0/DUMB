@@ -1,5 +1,68 @@
 # Changelog
 
+## [2.8.0](https://github.com/I-am-PUID-0/DUMB/compare/2.7.0...2.8.0) (2026-07-20)
+
+
+### ✨ Features
+
+* **arr:** add guided SQLite-to-PostgreSQL migration workflow ([bbee474](https://github.com/I-am-PUID-0/DUMB/commit/bbee474a3cc6ab00440e39c01060003d3175af85))
+* **bazarr:** add optional managed deployment ([60f833a](https://github.com/I-am-PUID-0/DUMB/commit/60f833a3fd90cbfdc670482e005f1e42affa0b6e)), closes [#55](https://github.com/I-am-PUID-0/DUMB/issues/55)
+* **database-health:** monitor all supported service data stores ([0818bb3](https://github.com/I-am-PUID-0/DUMB/commit/0818bb35501d58680d523b0d9e7b008e6b5a59f6))
+* **devcontainer:** enhance Git identity configuration in setup script and update contributing guidelines ([3bd0aa5](https://github.com/I-am-PUID-0/DUMB/commit/3bd0aa51dfd42c63468b8491298fc73e56f277de))
+* **metrics:** add database filesystem pressure telemetry ([5b4e53a](https://github.com/I-am-PUID-0/DUMB/commit/5b4e53ab958f089704db82b1a068070ab2120908))
+* **metrics:** add opt-in per-service database health monitoring ([c367b97](https://github.com/I-am-PUID-0/DUMB/commit/c367b976061ac93d9c475a968a27b8e81fca9f14))
+* **metrics:** allow per-service network storage score overrides ([e564fa0](https://github.com/I-am-PUID-0/DUMB/commit/e564fa0e0ec9a25a99edd4a582e9d36b23e5cb6e))
+* **nzbdav:** default to maintained fork and expose migration progress ([62e5afb](https://github.com/I-am-PUID-0/DUMB/commit/62e5afb56e9b525c3451301812b1aae0ef3a9f99))
+* **observability:** add persistent metrics and notifications ([4b09566](https://github.com/I-am-PUID-0/DUMB/commit/4b095661331c46c21d805a24f97f69323e7b0faf))
+* **startup:** start the control plane before service preinstall ([99b6399](https://github.com/I-am-PUID-0/DUMB/commit/99b639982f5e237f6a8f054d362940fdd0d1ab95))
+
+
+### 🐛 Bug Fixes
+
+* **arr:** recover from Ubuntu 26.04 openat2 extraction failures ([cd584fd](https://github.com/I-am-PUID-0/DUMB/commit/cd584fdc325feb1bb7e1611ee17bb9d7b1a317bf))
+* **build:** update fixable Python dependencies for Ubuntu 26.04 ([e5980f2](https://github.com/I-am-PUID-0/DUMB/commit/e5980f20388504d06ec664be97848874a0bc92c7))
+* **dependencies:** update lxml version constraint to include CVE-2026-41066 fix ([991d0b1](https://github.com/I-am-PUID-0/DUMB/commit/991d0b12e53d443a977fc2fe29c263ce24867255))
+* **devcontainer:** update image reference to remove digest for Ubuntu 26.04 ([c2abf6e](https://github.com/I-am-PUID-0/DUMB/commit/c2abf6ee7c9ed44e5decef3e57d3d81cc65053ae))
+* **dotnet:** preserve system PATH for managed SDK installs ([c93e294](https://github.com/I-am-PUID-0/DUMB/commit/c93e294af48ab2027dc36afc70ac55f77c1e4915))
+* **notifications:** prevent SQLite locks from aborting DUMB startup ([7d53d4c](https://github.com/I-am-PUID-0/DUMB/commit/7d53d4c047eb65244a4cf34c4ab3f600d7a77adf))
+* **setup:** harden service installation and startup recovery ([af34ace](https://github.com/I-am-PUID-0/DUMB/commit/af34acedaf9e834906bfb39088957fef5bcb8114))
+* **startup:** preserve control plane and harden service preinstall failures ([8d5db22](https://github.com/I-am-PUID-0/DUMB/commit/8d5db22eefa44e1cfbe10ddd0050b5b39adc2b1d))
+* **zilean:** support .NET 10 across image and runtime installs ([9b7ba3c](https://github.com/I-am-PUID-0/DUMB/commit/9b7ba3c8caee4721c9216afe47285284a69d16b0))
+
+
+### 🤡 Other Changes
+
+* **deps:** add setuptools version 83.0.0 to project dependencies ([6610aed](https://github.com/I-am-PUID-0/DUMB/commit/6610aede10346603a3beac99db60e0b7b4849f03))
+* **deps:** update dependencies ([3ab2515](https://github.com/I-am-PUID-0/DUMB/commit/3ab25152870636b3a4077a465c974f83fab06f2e))
+* **deps:** update dependencies ([56ae437](https://github.com/I-am-PUID-0/DUMB/commit/56ae43798298ade7d109c33c1151a1908b556374))
+* **deps:** update dependencies ([5753d4d](https://github.com/I-am-PUID-0/DUMB/commit/5753d4d0999bce519c6499e7e5b66c7c416339e0))
+* **deps:** update dependencies ([4bacf62](https://github.com/I-am-PUID-0/DUMB/commit/4bacf62c16c6f0b3237999d19c18d21dca4f64a8))
+* **docker:** enhance Dockerfile and CI workflow with additional version arguments and improved caching ([52cd3e2](https://github.com/I-am-PUID-0/DUMB/commit/52cd3e26ccb38c66ac629dc58656092e410788f0))
+* **docker:** enhance Dockerfile with caching and update workflow for unified cache management ([005825e](https://github.com/I-am-PUID-0/DUMB/commit/005825e6dca47efe0740f9f848e1fafdd1a9e5c1))
+* **docker:** integrate shared BuildKit for improved caching and build verification ([f8ae4ab](https://github.com/I-am-PUID-0/DUMB/commit/f8ae4ab3fcabc2e3c82026ba35e8ad6613b0a32e))
+* **docker:** update base image to Ubuntu 26.04 and adjust APT configuration ([9947a5d](https://github.com/I-am-PUID-0/DUMB/commit/9947a5d9afba37f31bb6c6461edebf4016c195ee))
+
+
+### 📖 Documentation
+
+* **readme:** simplify the feature overview ([4438512](https://github.com/I-am-PUID-0/DUMB/commit/44385129e218277b1d918c93c31e46340448f384))
+
+
+### 🚀 CI/CD Pipeline
+
+* **devcontainer:** refactor Dockerfile and setup workspace script; remove old Ubuntu 26.04 config ([0fe2439](https://github.com/I-am-PUID-0/DUMB/commit/0fe24394e59086fa63a075c540e52235b0058b4a))
+
+
+### 🛠️ Refactors
+
+* remove plex_debrid integration and related configurations ([5c6caca](https://github.com/I-am-PUID-0/DUMB/commit/5c6caca8e18ba4a56af32ff0e59d6f630a965a2a))
+
+
+### 🛠️ Build System
+
+* **deps:** update Python and GitHub Actions dependencies ([e740466](https://github.com/I-am-PUID-0/DUMB/commit/e740466a00a3e9beb6280a190f21ae9f0c688577))
+* **node:** upgrade shared runtime to Node.js 24 ([8930825](https://github.com/I-am-PUID-0/DUMB/commit/8930825aa0abbc2e354e147c2017af991d006fa8))
+
 ## [2.7.0](https://github.com/I-am-PUID-0/DUMB/compare/2.6.0...2.7.0) (2026-06-21)
 
 
