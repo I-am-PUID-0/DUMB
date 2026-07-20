@@ -102,6 +102,11 @@ class ConditionalDependencyMapTests(unittest.TestCase):
         self.assertIn("postgres", deps["whisparr"])
         self.assertNotIn("postgres", deps.get("radarr", set()))
 
+    def test_mediastorm_has_managed_postgres_dependency(self):
+        deps = self._build({"mediastorm": {"enabled": True}})
+
+        self.assertEqual(deps["mediastorm"], {"postgres"})
+
     def test_rclone_dependencies_include_provider_flags_and_core_service_links(self):
         deps = self._build(
             {

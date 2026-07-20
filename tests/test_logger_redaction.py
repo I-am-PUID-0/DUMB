@@ -46,6 +46,19 @@ class LoggerRedactionTests(unittest.TestCase):
             "password: [REDACTED] apiKey=[REDACTED] secret=[REDACTED] token=[REDACTED]",
         )
 
+    def test_redacts_mediastorm_generated_credentials(self):
+        webdav_line = "WebDAV credentials: novastream / generated-password"
+        homepage_line = "Homepage API key: generated-api-key"
+
+        self.assertEqual(
+            redact_sensitive_log_data(webdav_line),
+            "WebDAV credentials: novastream / [REDACTED]",
+        )
+        self.assertEqual(
+            redact_sensitive_log_data(homepage_line),
+            "Homepage API key: [REDACTED]",
+        )
+
     def test_preserves_non_sensitive_text(self):
         line = "INFO normal startup message"
 

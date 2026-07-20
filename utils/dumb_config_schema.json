@@ -4091,6 +4091,111 @@
         "env"
       ]
     },
+    "mediastorm": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "process_name": {
+          "type": "string"
+        },
+        "repo_owner": {
+          "type": "string"
+        },
+        "repo_name": {
+          "type": "string"
+        },
+        "release_version_enabled": {
+          "type": "boolean"
+        },
+        "release_version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^(?:latest|v?\\d+\\.\\d+\\.\\d+(?:-?\\d{8})?|[A-Fa-f0-9]{40}|sha256:[a-f0-9]{64})$"
+        },
+        "suppress_logging": {
+          "type": "boolean"
+        },
+        "log_level": {
+          "type": "string"
+        },
+        "port": {
+          "type": "integer"
+        },
+        "auto_update": {
+          "type": "boolean"
+        },
+        "auto_update_interval": {
+          "type": "number"
+        },
+        "auto_update_start_time": {
+          "type": "string",
+          "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+        },
+        "config_dir": {
+          "type": "string"
+        },
+        "log_file": {
+          "type": "string"
+        },
+        "wait_for_tcp": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "host": {
+                "type": "string"
+              },
+              "port": {
+                "type": "integer"
+              },
+              "timeout": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "name",
+              "host",
+              "port",
+              "timeout"
+            ]
+          }
+        },
+        "command": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "env": {
+          "type": "object"
+        }
+      },
+      "required": [
+        "enabled",
+        "process_name",
+        "repo_owner",
+        "repo_name",
+        "release_version_enabled",
+        "release_version",
+        "suppress_logging",
+        "log_level",
+        "port",
+        "auto_update",
+        "auto_update_interval",
+        "auto_update_start_time",
+        "config_dir",
+        "log_file",
+        "wait_for_tcp",
+        "command",
+        "env"
+      ]
+    },
     "altmount": {
       "type": "object",
       "properties": {
@@ -4427,6 +4532,7 @@
     "bazarr",
     "pulsarr",
     "maintainerr",
+    "mediastorm",
     "altmount",
     "neutarr",
     "seerr_sync",

@@ -42,6 +42,7 @@ def _title_part(part: str) -> str:
         "bazarr": "Bazarr",
         "pulsarr": "Pulsarr",
         "maintainerr": "Maintainerr",
+        "mediastorm": "MediaStorm",
         "tautulli": "Tautulli",
         "seerr": "Seerr",
         "traefik": "Traefik",

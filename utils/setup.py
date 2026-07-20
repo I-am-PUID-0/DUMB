@@ -9,6 +9,13 @@ from utils.user_management import chown_recursive, chown_single
 from utils.apt_lock import run_locked
 from utils.arr_postgres import apply_arr_postgres_config
 from utils.zilean_dotnet import prepare_zilean_for_net10
+from utils.mediastorm_installer import (
+    MediaStormInstallError,
+    install_mediastorm_runtime,
+    mediastorm_install_selector,
+    mediastorm_runtime_ready,
+    mediastorm_runtime_matches_selection,
+)
 import defusedxml.ElementTree as ET
 import os, shutil, random, subprocess, re, glob, secrets, shlex, time, urllib.parse, base64, threading, sys, hashlib, json, requests, copy
 
@@ -17,6 +24,9 @@ group_id = CONFIG_MANAGER.get("pgid")
 downloader = Downloader()
 versions = Versions()
 _INSTALL_LOCKS = {}
+_MEDIASTORM_RUNTIME_LINK_DIR = "/"
+_MEDIASTORM_PYTHON_LINK = "/.venv"
+_MEDIASTORM_LOG_DIR = "/log"
 
 
 def _get_install_lock(key: str) -> threading.Lock:
@@ -237,6 +247,30 @@ def _fetch_github_branch_head_sha(
 
 def setup_release_version(process_handler, config, process_name, key):
     logger.info(f"Using release version {config['release_version']} for {process_name}")
+
+    if key == "mediastorm":
+        requested_version = str(config.get("release_version") or "latest")
+        if requested_version.lower() == "latest":
+            requested_version, error = downloader.get_latest_release(
+                config["repo_owner"], config["repo_name"]
+            )
+            if error:
+                return False, error
+        try:
+            result = install_mediastorm_runtime(config, requested_version)
+        except MediaStormInstallError as exc:
+            return False, str(exc)
+        success, error = chown_recursive(result["runtime_dir"], user_id, group_id)
+        if not success:
+            return False, error
+        logger.info(
+            "Installed MediaStorm %s from OCI image %s:%s@%s.",
+            result["version"],
+            "godver3/mediastorm",
+            result["oci_reference"],
+            result["image_digest"],
+        )
+        return True, None
 
     if key in [
         "bazarr",
@@ -857,7 +891,20 @@ def _setup_project(
                                 error,
                             )
                             current_version = "0.0.0"
-                        if current_version != requested_version:
+                        release_matches = current_version == requested_version
+                        if key == "mediastorm":
+                            try:
+                                selector = mediastorm_install_selector(config)
+                                runtime_dir = os.path.join(
+                                    config.get("config_dir", "/mediastorm"),
+                                    "runtime",
+                                )
+                                release_matches = mediastorm_runtime_matches_selection(
+                                    runtime_dir, selector
+                                )
+                            except MediaStormInstallError:
+                                release_matches = False
+                        if not release_matches:
                             logger.info(
                                 f"Installing requested version for {process_name}: {requested_version} (current: {current_version})"
                             )
@@ -1165,6 +1212,14 @@ def _setup_project(
                 return False, error
         if key == "maintainerr":
             success, error = setup_maintainerr(
+                process_handler,
+                install_only=install_phase and not configure_phase,
+                configure_only=configure_phase and not install_phase,
+            )
+            if not success:
+                return False, error
+        if key == "mediastorm":
+            success, error = setup_mediastorm(
                 process_handler,
                 install_only=install_phase and not configure_phase,
                 configure_only=configure_phase and not install_phase,
@@ -5332,6 +5387,159 @@ def setup_maintainerr(
         CONFIG_MANAGER.save_config(config.get("process_name", "Maintainerr"))
 
     logger.info("Maintainerr setup complete.")
+    return True, None
+
+
+def _ensure_mediastorm_runtime_link(
+    source: str, target: str
+) -> tuple[bool, str | None]:
+    if not os.path.exists(source):
+        return False, f"Bundled MediaStorm runtime asset not found: {source}"
+    if os.path.islink(target):
+        if os.readlink(target) == source:
+            return True, None
+        os.unlink(target)
+    elif os.path.exists(target):
+        return (
+            False,
+            f"Cannot install MediaStorm runtime link over existing path: {target}",
+        )
+    os.symlink(source, target)
+    return True, None
+
+
+def setup_mediastorm(
+    process_handler, install_only: bool = False, configure_only: bool = False
+):
+    del process_handler
+    config = CONFIG_MANAGER.get("mediastorm")
+    if not config:
+        return False, "MediaStorm configuration not found."
+    if not config.get("enabled", False):
+        logger.debug("Skipping disabled MediaStorm service.")
+        return True, None
+    if install_only and configure_only:
+        return False, "Invalid MediaStorm setup phase."
+
+    config_dir = config.get("config_dir") or "/mediastorm"
+    runtime_dir = os.path.join(config_dir, "runtime")
+    binary_path = os.path.join(runtime_dir, "mediastorm")
+    web_dir = os.path.join(runtime_dir, "web")
+    iroh_dir = os.path.join(runtime_dir, "iroh")
+    python_venv = os.path.join(runtime_dir, "python-venv")
+    config["config_dir"] = config_dir
+    os.makedirs(config_dir, exist_ok=True)
+    os.makedirs(_MEDIASTORM_LOG_DIR, exist_ok=True)
+
+    try:
+        install_selector = mediastorm_install_selector(config)
+    except MediaStormInstallError as exc:
+        return False, str(exc)
+    runtime_matches_selection = mediastorm_runtime_matches_selection(
+        runtime_dir, install_selector
+    )
+    if not mediastorm_runtime_ready(runtime_dir) or not runtime_matches_selection:
+        if configure_only:
+            return (
+                False,
+                "MediaStorm runtime is missing or does not match the selected version; "
+                "run the install phase.",
+            )
+        requested_version = str(config.get("release_version") or "latest")
+        if requested_version.lower() == "latest":
+            requested_version, error = downloader.get_latest_release(
+                config["repo_owner"], config["repo_name"]
+            )
+            if error:
+                return False, error
+        try:
+            result = install_mediastorm_runtime(config, requested_version)
+        except MediaStormInstallError as exc:
+            return False, str(exc)
+        success, error = chown_recursive(result["runtime_dir"], user_id, group_id)
+        if not success:
+            return False, error
+        logger.info(
+            "Installed MediaStorm %s from OCI image %s:%s@%s.",
+            result["version"],
+            "godver3/mediastorm",
+            result["oci_reference"],
+            result["image_digest"],
+        )
+
+    _chown_recursive_if_needed(config_dir, user_id, group_id)
+
+    for script_name in (
+        "parse_title.py",
+        "parse_title_batch.py",
+        "search_subtitles.py",
+        "download_subtitle.py",
+        "detect_credits.py",
+    ):
+        success, error = _ensure_mediastorm_runtime_link(
+            os.path.join(runtime_dir, "scripts", script_name),
+            os.path.join(_MEDIASTORM_RUNTIME_LINK_DIR, script_name),
+        )
+        if not success:
+            return False, error
+    success, error = _ensure_mediastorm_runtime_link(
+        python_venv, _MEDIASTORM_PYTHON_LINK
+    )
+    if not success:
+        return False, error
+
+    changed = False
+    if _ensure_postgres_enabled():
+        changed = True
+    if _ensure_postgres_database_config("mediastorm"):
+        changed = True
+
+    postgres_config = CONFIG_MANAGER.get("postgres") or {}
+    postgres_host = postgres_config.get("host", "127.0.0.1")
+    postgres_port = int(postgres_config.get("port", 5432) or 5432)
+    expected_wait_for_tcp = [
+        {
+            "name": "PostgreSQL",
+            "host": postgres_host,
+            "port": postgres_port,
+            "timeout": 2,
+        }
+    ]
+    if config.get("wait_for_tcp") != expected_wait_for_tcp:
+        config["wait_for_tcp"] = expected_wait_for_tcp
+        changed = True
+
+    expected_command = [binary_path, "--port", str(config.get("port", 7777))]
+    if config.get("command") != expected_command:
+        config["command"] = expected_command
+        changed = True
+
+    env = config.get("env") or {}
+    inherited_path = os.environ.get("PATH", "")
+    expected_env = {
+        "STRMR_CONFIG": os.path.join(config_dir, "settings.json"),
+        "STRMR_WEB_APP_DIR": web_dir,
+        "MEDIASTORM_IROH_DIRECT_DIR": iroh_dir,
+        "DATABASE_URL": _postgres_database_url("mediastorm"),
+        "PATH": f"{python_venv}/bin:{runtime_dir}/bin:{inherited_path}",
+        "LIBGL_ALWAYS_SOFTWARE": "1",
+        "VK_ICD_FILENAMES": "/usr/share/vulkan/icd.d/lavapipe_icd.json",
+    }
+    for env_key, value in expected_env.items():
+        if env.get(env_key) != value:
+            env[env_key] = value
+            changed = True
+    config["env"] = env
+
+    expected_log_file = os.path.join(_MEDIASTORM_LOG_DIR, "mediastorm.log")
+    if config.get("log_file") != expected_log_file:
+        config["log_file"] = expected_log_file
+        changed = True
+
+    if changed and not install_only:
+        CONFIG_MANAGER.save_config(config.get("process_name", "MediaStorm"))
+
+    logger.info("MediaStorm setup complete.")
     return True, None
 
 

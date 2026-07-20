@@ -210,6 +210,7 @@ def migrate_symlinks():
                 ("/profilarr", os.path.join(data_root, "profilarr")),
                 ("/pulsarr", os.path.join(data_root, "pulsarr")),
                 ("/maintainerr", os.path.join(data_root, "maintainerr")),
+                ("/mediastorm", os.path.join(data_root, "mediastorm")),
                 ("/altmount", os.path.join(data_root, "altmount")),
             ]
 

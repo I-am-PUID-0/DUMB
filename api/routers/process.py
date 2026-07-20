@@ -231,6 +231,7 @@ NON_CORE_HARD_DEPENDENCIES = {
     "riven_frontend": ["riven_backend"],
     "zilean": ["postgres"],
     "pgadmin": ["postgres"],
+    "mediastorm": ["postgres"],
     "traefik_proxy_admin": ["postgres"],
     "cloudflared": ["traefik"],
 }
@@ -260,6 +261,7 @@ STATIC_URLS_BY_KEY = {
     "profilarr": "https://github.com/Dictionarry-Hub/profilarr",
     "pulsarr": "https://github.com/jamcalli/Pulsarr",
     "maintainerr": "https://github.com/Maintainerr/Maintainerr",
+    "mediastorm": "https://github.com/godver3/mediastorm",
     "altmount": "https://github.com/javi11/altmount",
     "traefik": "https://traefik.io/",
     "traefik_proxy_admin": "https://github.com/I-am-PUID-0/traefik-proxy-admin",
@@ -295,6 +297,7 @@ SPONSORSHIP_URLS_BY_KEY = {
     "profilarr": "https://github.com/sponsors/Dictionarry-Hub",
     "pulsarr": "https://ko-fi.com/jamcalli",
     "maintainerr": "https://opencollective.com/maintainerr",
+    "mediastorm": "https://github.com/sponsors/godver3",
     "traefik": "https://github.com/sponsors/traefik",
     "traefik_proxy_admin": "https://github.com/sponsors/I-am-PUID-0",
     "cloudflared": "https://github.com/sponsors/cloudflare",
@@ -318,6 +321,7 @@ DEFAULT_SERVICE_PORTS = {
     "profilarr": 6868,
     "pulsarr": 3003,
     "maintainerr": 6246,
+    "mediastorm": 7777,
     "altmount": 8088,
     "traefik_proxy_admin": 3004,
 }
@@ -423,6 +427,7 @@ CORE_SERVICE_NAMES = {
     "neutarr": "NeutArr",
     "profilarr": "Profilarr",
     "maintainerr": "Maintainerr",
+    "mediastorm": "MediaStorm",
     "bazarr": "Bazarr",
     "tautulli": "Tautulli",
     "pgadmin": "pgAdmin",
@@ -579,7 +584,13 @@ NeutArr
 Documentation: https://dumbarr.com/services/core/neutarr/""",
 }
 
-OPTIONAL_POST_CORE = ["riven_frontend", "bazarr", "maintainerr", "cloudflared"]
+OPTIONAL_POST_CORE = [
+    "riven_frontend",
+    "bazarr",
+    "maintainerr",
+    "mediastorm",
+    "cloudflared",
+]
 
 OPTIONAL_SERVICES = {
     "zilean": "Zilean",
@@ -590,6 +601,7 @@ OPTIONAL_SERVICES = {
     "bazarr": "Bazarr",
     "pulsarr": "Pulsarr",
     "maintainerr": "Maintainerr",
+    "mediastorm": "MediaStorm",
     "traefik_proxy_admin": "Traefik Proxy Admin",
     "cloudflared": "Cloudflared",
 }
@@ -652,6 +664,14 @@ Maintainerr
 - Can unmonitor or delete Arr media, clear Seerr requests, and remove files after a configurable delay.
 
 Documentation: https://dumbarr.com/services/optional/maintainerr""",
+    "mediastorm": """\
+MediaStorm
+- Fully self-hosted streaming server for Debrid, Torrent, and Usenet sources.
+- Includes an admin UI and browser player plus native mobile and TV clients.
+- Uses DUMB-managed PostgreSQL for accounts, watch history, and playback state.
+- First admin login uses username `admin` and password `admin`; change this public default immediately.
+
+Documentation: https://dumbarr.com/services/optional/mediastorm""",
     "traefik_proxy_admin": """\
 Traefik Proxy Admin
 - Optional DUMB-hosted admin panel for creating user-managed Traefik reverse proxy routes.
@@ -4994,6 +5014,17 @@ async def get_optional_services(
         svc_opt_desc = {
             field: SERVICE_OPTION_DESCRIPTIONS[field] for field in svc_opts.keys()
         }
+        if key == "mediastorm":
+            if "release_version_enabled" in svc_opt_desc:
+                svc_opt_desc["release_version_enabled"] = (
+                    "Pin MediaStorm to the OCI release_version instead of following latest."
+                )
+            if "release_version" in svc_opt_desc:
+                svc_opt_desc["release_version"] = (
+                    "MediaStorm OCI version: latest, a release tag such as 1.5.0, "
+                    "a GitHub release such as v1.5.0-20260711, a full commit SHA, "
+                    "or a sha256 digest."
+                )
         instance_opt_desc: Dict[str, Dict[str, str]] = {}
         if supports_instances:
             for iname, opts in instance_options.items():

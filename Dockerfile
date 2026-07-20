@@ -57,7 +57,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     apt-get install -y --no-install-recommends \
       build-essential libxml2-utils git jq tzdata nano locales python3 \
       python3.11 python3.11-venv python3.11-dev python3.12 python3.12-venv python3.12-dev libffi-dev libpython3.11 libpq-dev \
-      fuse3 ffmpeg mesa-va-drivers openssl unzip pkg-config \
+      fuse3 ffmpeg mesa-va-drivers mesa-vulkan-drivers openssl unzip pkg-config \
       libcairo2-dev libpango1.0-dev libjpeg-dev libgif-dev libpixman-1-dev librsvg2-dev \
       postgresql-client-16 postgresql-16 postgresql-contrib-16 pgagent \
       htop bash && \
@@ -265,6 +265,10 @@ COPY --from=zilean-builder /zilean/version.txt /zilean/version.txt
 COPY --from=dumb-frontend-builder /dumb/frontend /dumb/frontend
 COPY --from=cli_debrid-builder /cli_debrid /cli_debrid
 COPY --from=rclone-binary /usr/local/bin/rclone /usr/local/bin/rclone
+
+RUN LAVAPIPE_ICD="$(find /usr/share/vulkan/icd.d -name 'lvp_icd*.json' -print -quit)" && \
+    test -n "$LAVAPIPE_ICD" && \
+    ln -sf "$LAVAPIPE_ICD" /usr/share/vulkan/icd.d/lavapipe_icd.json
 
 # Zurg default config tweaks
 ADD https://raw.githubusercontent.com/debridmediamanager/zurg-testing/${ZURG_REF}/config.yml /zurg/

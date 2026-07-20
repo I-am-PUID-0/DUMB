@@ -503,6 +503,15 @@ class DatabaseHealthCollectorTests(unittest.TestCase):
                 self.assertEqual(candidate["provider"], "postgresql")
                 self.assertEqual(specs[0]["name"], expected_database)
 
+    def test_mediastorm_uses_managed_postgres_database(self):
+        collector = DatabaseHealthCollector()
+        candidate = collector._candidate("mediastorm", {}, None)
+
+        specs = collector._postgres_specs(candidate, {})
+
+        self.assertEqual(candidate["provider"], "postgresql")
+        self.assertEqual(specs[0]["name"], "mediastorm")
+
     def test_supported_inventory_includes_every_confirmed_store_service(self):
         self.assertEqual(
             SUPPORTED_SERVICE_KEYS,
@@ -516,6 +525,7 @@ class DatabaseHealthCollectorTests(unittest.TestCase):
                 "jellyfin",
                 "lidarr",
                 "maintainerr",
+                "mediastorm",
                 "nzbdav",
                 "pgadmin",
                 "phalanx_db",

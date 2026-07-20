@@ -1044,6 +1044,7 @@ def main():
             "bazarr",
             "pulsarr",
             "maintainerr",
+            "mediastorm",
             "cloudflared",
         ]
         _migrate_huntarr_to_neutarr(config)

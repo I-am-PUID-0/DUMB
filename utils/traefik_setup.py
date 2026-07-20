@@ -39,6 +39,7 @@ UI_SERVICE_DEFS = [
     {"name": "profilarr", "config_key": "profilarr"},
     {"name": "pulsarr", "config_key": "pulsarr"},
     {"name": "maintainerr", "config_key": "maintainerr"},
+    {"name": "mediastorm", "config_key": "mediastorm", "path": "/admin"},
     {"name": "altmount", "config_key": "altmount"},
     {"name": "pgadmin4", "config_key": "pgadmin"},
     {"name": "prowlarr", "config_key": "prowlarr"},

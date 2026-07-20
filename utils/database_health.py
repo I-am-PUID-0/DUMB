@@ -44,6 +44,7 @@ SQLITE_SERVICE_KEYS = {
 }
 POSTGRES_SERVICE_DATABASES = {
     "pgadmin": "pgadmin",
+    "mediastorm": "mediastorm",
     "riven_backend": "riven",
     "traefik_proxy_admin": "traefik_proxy_admin",
     "zilean": "zilean",

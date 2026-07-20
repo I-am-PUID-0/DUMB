@@ -5,6 +5,10 @@ from colorlog import ColoredFormatter
 
 SENSITIVE_LOG_PATTERNS = [
     re.compile(
+        r"(\bWebDAV\s+credentials\s*:\s*[^/\r\n]*?/\s*)(?!\[REDACTED\])\S+",
+        re.IGNORECASE,
+    ),
+    re.compile(
         r"(\b(?:CLOUDFLARED_TUNNEL_TOKEN|CF_TUNNEL_TOKEN|TUNNEL_TOKEN)\s*[:=]\s*)[^,\]\s}]+",
         re.IGNORECASE,
     ),
@@ -14,7 +18,7 @@ SENSITIVE_LOG_PATTERNS = [
         re.IGNORECASE,
     ),
     re.compile(
-        r"(\b(?:api[_-]?key|apikey|password|secret|token)\s*[:=]\s*)(?!\[REDACTED\])[^,\]\s}]+",
+        r"(\b(?:api[ _-]?key|apikey|password|secret|token)\s*[:=]\s*)(?!\[REDACTED\])[^,\]\s}]+",
         re.IGNORECASE,
     ),
 ]

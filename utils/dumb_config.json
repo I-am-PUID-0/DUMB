@@ -685,6 +685,44 @@
       "UV_USE_IO_URING": "0"
     }
   },
+  "mediastorm": {
+    "enabled": false,
+    "process_name": "MediaStorm",
+    "repo_owner": "godver3",
+    "repo_name": "mediastorm",
+    "release_version_enabled": false,
+    "release_version": "latest",
+    "suppress_logging": false,
+    "log_level": "INFO",
+    "port": 7777,
+    "auto_update": false,
+    "auto_update_interval": 24,
+    "auto_update_start_time": "04:00",
+    "config_dir": "/mediastorm",
+    "log_file": "/log/mediastorm.log",
+    "wait_for_tcp": [
+      {
+        "name": "PostgreSQL",
+        "host": "127.0.0.1",
+        "port": 5432,
+        "timeout": 2
+      }
+    ],
+    "command": [
+      "/mediastorm/runtime/mediastorm",
+      "--port",
+      "7777"
+    ],
+    "env": {
+      "STRMR_CONFIG": "/mediastorm/settings.json",
+      "STRMR_WEB_APP_DIR": "/mediastorm/runtime/web",
+      "MEDIASTORM_IROH_DIRECT_DIR": "/mediastorm/runtime/iroh",
+      "DATABASE_URL": "",
+      "PATH": "/mediastorm/runtime/python-venv/bin:/mediastorm/runtime/bin:/usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+      "LIBGL_ALWAYS_SOFTWARE": "1",
+      "VK_ICD_FILENAMES": "/usr/share/vulkan/icd.d/lavapipe_icd.json"
+    }
+  },
   "altmount": {
     "enabled": false,
     "process_name": "AltMount",

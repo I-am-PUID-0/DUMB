@@ -12,6 +12,11 @@ from utils.plex import PlexInstaller
 from utils.arr import ArrInstaller
 from utils.jellyfin import JellyfinInstaller
 from utils.config_loader import CONFIG_MANAGER
+from utils.mediastorm_installer import (
+    MediaStormInstallError,
+    mediastorm_install_selector,
+    mediastorm_runtime_matches_selection,
+)
 from utils.wait_for_url import wait_for_urls
 from datetime import datetime
 from glob import glob
@@ -1328,6 +1333,15 @@ class Update:
             requested_lower = requested_release.lower()
             if not requested_release:
                 return True
+            if key == "mediastorm":
+                try:
+                    selector = mediastorm_install_selector(config)
+                except MediaStormInstallError:
+                    return True
+                runtime_dir = os.path.join(
+                    config.get("config_dir", "/mediastorm"), "runtime"
+                )
+                return not mediastorm_runtime_matches_selection(runtime_dir, selector)
             if (
                 requested_lower in {"latest", "prerelease"}
                 or "nightly" in requested_lower

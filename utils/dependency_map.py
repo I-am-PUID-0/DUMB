@@ -63,6 +63,7 @@ def build_conditional_dependency_map(
         "riven_frontend": {"riven_backend"},
         "zilean": {"postgres"},
         "pgadmin": {"postgres"},
+        "mediastorm": {"postgres"},
         "traefik_proxy_admin": {"postgres"},
         "cloudflared": {"traefik"},
     }
