@@ -10,7 +10,7 @@ from utils.dependencies import (
     get_optional_current_user,
 )
 from utils.config_loader import CONFIG_MANAGER, find_service_config
-from utils.setup import setup_project
+from utils.setup import ensure_managed_postgres_database, setup_project
 from utils.core_services import has_core_service
 from utils.dependency_map import (
     build_conditional_dependency_map,
@@ -4041,11 +4041,26 @@ def _run_startup(request: UnifiedStartRequest, updater, api_state, logger):
     #
     # 2) Pre-start “must-have” services (e.g. Postgres)
     #
-    if any(s in ["zilean", "pgadmin"] for s in optional_services):
+    postgres_required_optionals = {
+        "zilean",
+        "pgadmin",
+        "mediastorm",
+        "traefik_proxy_admin",
+    }
+    selected_postgres_optionals = set(optional_services) & postgres_required_optionals
+    if selected_postgres_optionals:
         pg = config["postgres"]
         if not pg.get("enabled"):
             pg["enabled"] = True
             CONFIG_MANAGER.save_config()
+        managed_databases = {
+            "mediastorm": "mediastorm",
+            "traefik_proxy_admin": "traefik_proxy_admin",
+        }
+        for service_key in sorted(selected_postgres_optionals):
+            database_name = managed_databases.get(service_key)
+            if database_name:
+                ensure_managed_postgres_database(database_name)
         pg_name = pg["process_name"]
         is_running = api_state.get_status(pg_name) == "running"
         _reserve_config_port(
@@ -4058,8 +4073,31 @@ def _run_startup(request: UnifiedStartRequest, updater, api_state, logger):
         )
         logger.info(f"Ensuring '{pg_name}' is running for optional service(s)...")
         if not wait_for_process_running(api_state, pg_name):
-            updater.auto_update(pg_name, enable_update=False)
-            wait_for_process_running(api_state, pg_name)
+            proc, err = updater.auto_update(pg_name, enable_update=False)
+            if not proc or not wait_for_process_running(api_state, pg_name):
+                raise HTTPException(
+                    500,
+                    detail=(
+                        f"{pg_name} failed to start for optional service setup. "
+                        f"{err or ''}"
+                    ).strip(),
+                )
+
+        success, error = initialize_postgres_databases(
+            pg.get("host", "127.0.0.1"),
+            pg.get("port", 5432),
+            pg.get("user", "DUMB"),
+            pg.get("password", "postgres"),
+            pg.get("databases", []),
+        )
+        if not success:
+            raise HTTPException(
+                500,
+                detail=(
+                    "Failed to initialize PostgreSQL databases for optional "
+                    f"service setup. {error or ''}"
+                ).strip(),
+            )
 
     #
     # 3) Start any “optional pre-core” services (those NOT in OPTIONAL_POST_CORE)

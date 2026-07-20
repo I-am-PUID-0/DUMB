@@ -4252,6 +4252,46 @@ def _ensure_postgres_database_config(database_name: str) -> bool:
     return True
 
 
+def ensure_managed_postgres_database(database_name: str) -> bool:
+    """Register a DUMB-managed database for setup/start orchestration."""
+    return _ensure_postgres_database_config(database_name)
+
+
+def _initialize_postgres_databases_if_running() -> tuple[bool, str | None]:
+    """Apply newly registered databases without restarting a live PostgreSQL."""
+    postgres_config = CONFIG_MANAGER.get("postgres") or {}
+    host = postgres_config.get("host", "127.0.0.1")
+    port = int(postgres_config.get("port", 5432) or 5432)
+    user = postgres_config.get("user", "DUMB")
+    try:
+        readiness = subprocess.run(
+            ["pg_isready", "-U", str(user), "-h", str(host), "-p", str(port)],
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+    except (OSError, subprocess.SubprocessError) as exc:
+        logger.debug(
+            "Unable to probe PostgreSQL before database reconciliation: %s", exc
+        )
+        return True, None
+
+    if readiness.returncode != 0:
+        logger.debug(
+            "PostgreSQL is not accepting connections; registered databases will be "
+            "created when PostgreSQL starts."
+        )
+        return True, None
+
+    return postgres.initialize_postgres_databases(
+        host,
+        port,
+        user,
+        postgres_config.get("password", "postgres"),
+        postgres_config.get("databases", []),
+    )
+
+
 def _postgres_database_url(database_name: str) -> str:
     postgres_config = CONFIG_MANAGER.get("postgres") or {}
     host = postgres_config.get("host", "127.0.0.1")
@@ -4559,6 +4599,9 @@ def setup_traefik_proxy_admin(
         changed = True
     if _ensure_postgres_database_config("traefik_proxy_admin"):
         changed = True
+    success, error = _initialize_postgres_databases_if_running()
+    if not success:
+        return False, error
 
     postgres_config = CONFIG_MANAGER.get("postgres") or {}
     postgres_host = postgres_config.get("host", "127.0.0.1")
@@ -5501,6 +5544,9 @@ def setup_mediastorm(
         changed = True
     if _ensure_postgres_database_config("mediastorm"):
         changed = True
+    success, error = _initialize_postgres_databases_if_running()
+    if not success:
+        return False, error
 
     postgres_config = CONFIG_MANAGER.get("postgres") or {}
     postgres_host = postgres_config.get("host", "127.0.0.1")

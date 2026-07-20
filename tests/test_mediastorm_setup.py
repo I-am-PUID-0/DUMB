@@ -2,7 +2,7 @@ import os
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 from utils import setup
 
@@ -66,6 +66,11 @@ class MediaStormSetupTests(unittest.TestCase):
                 ) as ensure_database,
                 patch.object(
                     setup,
+                    "_initialize_postgres_databases_if_running",
+                    return_value=(True, None),
+                ) as initialize_databases,
+                patch.object(
+                    setup,
                     "_postgres_database_url",
                     return_value="postgresql://user:pass@db:5433/mediastorm",
                 ),
@@ -102,6 +107,7 @@ class MediaStormSetupTests(unittest.TestCase):
                 os.readlink(links_dir / "parse_title.py"),
             )
             ensure_database.assert_called_once_with("mediastorm")
+            initialize_databases.assert_called_once_with()
             save_config.assert_called_once_with("MediaStorm")
 
     def test_missing_runtime_requests_install_phase(self):
@@ -160,6 +166,11 @@ class MediaStormSetupTests(unittest.TestCase):
                 ),
                 patch.object(
                     setup,
+                    "_initialize_postgres_databases_if_running",
+                    return_value=(True, None),
+                ),
+                patch.object(
+                    setup,
                     "_postgres_database_url",
                     return_value="postgresql://db/mediastorm",
                 ),
@@ -180,6 +191,73 @@ class MediaStormSetupTests(unittest.TestCase):
 
             self.assertTrue(success, error)
             install.assert_called_once()
+
+    def test_running_postgres_reconciles_newly_registered_databases(self):
+        postgres_config = {
+            "host": "127.0.0.1",
+            "port": 5432,
+            "user": "DUMB",
+            "password": "secret",
+            "databases": [{"name": "mediastorm", "enabled": True}],
+        }
+        with (
+            patch.object(setup.CONFIG_MANAGER, "get", return_value=postgres_config),
+            patch.object(
+                setup.subprocess,
+                "run",
+                return_value=Mock(returncode=0),
+            ) as readiness,
+            patch.object(
+                setup.postgres,
+                "initialize_postgres_databases",
+                return_value=(True, None),
+            ) as initialize_databases,
+        ):
+            success, error = setup._initialize_postgres_databases_if_running()
+
+        self.assertTrue(success, error)
+        readiness.assert_called_once_with(
+            [
+                "pg_isready",
+                "-U",
+                "DUMB",
+                "-h",
+                "127.0.0.1",
+                "-p",
+                "5432",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+        initialize_databases.assert_called_once_with(
+            "127.0.0.1",
+            5432,
+            "DUMB",
+            "secret",
+            postgres_config["databases"],
+        )
+
+    def test_stopped_postgres_defers_database_reconciliation(self):
+        with (
+            patch.object(
+                setup.CONFIG_MANAGER,
+                "get",
+                return_value={"host": "127.0.0.1", "port": 5432},
+            ),
+            patch.object(
+                setup.subprocess,
+                "run",
+                return_value=Mock(returncode=1),
+            ),
+            patch.object(
+                setup.postgres, "initialize_postgres_databases"
+            ) as initialize_databases,
+        ):
+            success, error = setup._initialize_postgres_databases_if_running()
+
+        self.assertTrue(success, error)
+        initialize_databases.assert_not_called()
 
     def test_release_update_installs_verified_oci_runtime(self):
         config = {
