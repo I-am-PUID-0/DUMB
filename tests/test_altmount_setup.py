@@ -3,12 +3,13 @@ import tarfile
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import mock_open, patch
 
 from utils import altmount_settings
 from utils import setup as setup_module
 from utils.altmount_settings import (
     download_altmount_binary,
+    prepare_altmount_mount_path,
     sync_altmount_managed_config,
     write_altmount_default_config,
 )
@@ -217,6 +218,109 @@ arrs:
             self.assertEqual("v0.3.2", release_config["pinned_version"])
             self.assertEqual(str(target_bin), downloaded_path)
             self.assertEqual("latest", config["pinned_version"])
+
+    def test_prepare_mount_path_unmounts_existing_internal_mount(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            mount_path = Path(tmpdir) / "mount"
+            mount_path.mkdir()
+            completed = type(
+                "CompletedProcess",
+                (),
+                {"returncode": 0, "stdout": "", "stderr": ""},
+            )()
+
+            with (
+                patch.object(
+                    altmount_settings,
+                    "_altmount_mount_filesystem",
+                    return_value="fuse.rclone",
+                ),
+                patch.object(
+                    altmount_settings.subprocess,
+                    "run",
+                    return_value=completed,
+                ) as unmount,
+            ):
+                success, error = prepare_altmount_mount_path(
+                    str(mount_path), "rclone", cleanup_internal_mount=True
+                )
+
+            self.assertTrue(success, error)
+            unmount.assert_called_once_with(
+                ["umount", str(mount_path)],
+                capture_output=True,
+                text=True,
+                timeout=15,
+            )
+
+    def test_mount_filesystem_reads_exact_mountinfo_entry(self):
+        mountinfo = (
+            "42 31 0:123 / /mnt/debrid/altmount rw,nosuid shared:7 - "
+            "fuse.rclone rclone rw\n"
+        )
+
+        with patch("builtins.open", mock_open(read_data=mountinfo)):
+            filesystem = altmount_settings._altmount_mount_filesystem(
+                "/mnt/debrid/altmount"
+            )
+
+        self.assertEqual("fuse.rclone", filesystem)
+
+    def test_prepare_mount_path_preserves_external_rclone_mount(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            mount_path = Path(tmpdir) / "mount"
+            mount_path.mkdir()
+
+            with (
+                patch.object(
+                    altmount_settings,
+                    "_altmount_mount_filesystem",
+                    return_value="fuse.rclone",
+                ),
+                patch.object(altmount_settings.subprocess, "run") as unmount,
+            ):
+                success, error = prepare_altmount_mount_path(
+                    str(mount_path),
+                    "external_rclone",
+                    cleanup_internal_mount=True,
+                )
+
+            self.assertTrue(success, error)
+            unmount.assert_not_called()
+
+    def test_prepare_mount_path_preserves_non_fuse_bind_mount(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            mount_path = Path(tmpdir) / "mount"
+            mount_path.mkdir()
+
+            with (
+                patch.object(
+                    altmount_settings,
+                    "_altmount_mount_filesystem",
+                    return_value="ext4",
+                ),
+                patch.object(altmount_settings.subprocess, "run") as unmount,
+            ):
+                success, error = prepare_altmount_mount_path(
+                    str(mount_path), "rclone", cleanup_internal_mount=True
+                )
+
+            self.assertTrue(success, error)
+            unmount.assert_not_called()
+
+    def test_prepare_mount_path_reports_dangling_symlink_without_removing_it(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            mount_path = Path(tmpdir) / "mount"
+            missing_target = Path(tmpdir) / "missing"
+            mount_path.symlink_to(missing_target, target_is_directory=True)
+
+            success, error = prepare_altmount_mount_path(
+                str(mount_path), "rclone", cleanup_internal_mount=True
+            )
+
+            self.assertFalse(success)
+            self.assertIn("dangling symbolic link", error)
+            self.assertTrue(mount_path.is_symlink())
 
 
 if __name__ == "__main__":

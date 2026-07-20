@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import shutil
+import subprocess
 import tarfile
 import threading
 import time
@@ -144,6 +145,115 @@ def _upsert_arr_instance(instances: list[Any], entry: dict[str, Any]) -> bool:
 def _normalize_mount_type(config: dict[str, Any]) -> str:
     mount_type = str(config.get("mount_type") or "").strip().lower()
     return mount_type if mount_type in ALTMOUNT_MOUNT_TYPES else "rclone"
+
+
+def _altmount_mount_filesystem(path: str) -> str | None:
+    normalized_path = os.path.normpath(os.path.abspath(path))
+    try:
+        with open("/proc/self/mountinfo", "r", encoding="utf-8") as handle:
+            for line in handle:
+                left, separator, right = line.partition(" - ")
+                if not separator:
+                    continue
+                fields = left.split()
+                if len(fields) < 5:
+                    continue
+                mount_path = (
+                    fields[4]
+                    .replace("\\040", " ")
+                    .replace("\\011", "\t")
+                    .replace("\\012", "\n")
+                    .replace("\\134", "\\")
+                )
+                if os.path.normpath(mount_path) == normalized_path:
+                    filesystem_fields = right.split()
+                    return filesystem_fields[0].lower() if filesystem_fields else None
+    except OSError as exc:
+        logger.debug("Could not inspect mountinfo for %s: %s", path, exc)
+    return None
+
+
+def prepare_altmount_mount_path(
+    mount_path: str,
+    mount_type: str,
+    *,
+    cleanup_internal_mount: bool = False,
+) -> tuple[bool, str | None]:
+    normalized_mount_type = str(mount_type or "").strip().lower()
+    internal_mount = normalized_mount_type in {"dfs", "rclone"}
+    mounted_filesystem = _altmount_mount_filesystem(mount_path)
+    fuse_mount = mounted_filesystem == "fuse" or str(mounted_filesystem).startswith(
+        "fuse."
+    )
+
+    if cleanup_internal_mount and internal_mount and fuse_mount:
+        logger.info(
+            "Unmounting existing AltMount %s mount at %s before setup.",
+            normalized_mount_type,
+            mount_path,
+        )
+        try:
+            result = subprocess.run(
+                ["umount", mount_path],
+                capture_output=True,
+                text=True,
+                timeout=15,
+            )
+        except (OSError, subprocess.TimeoutExpired) as exc:
+            return False, f"Failed to unmount existing AltMount mount: {exc}"
+        if result.returncode != 0:
+            detail = (result.stderr or result.stdout or "unknown error").strip()
+            return (
+                False,
+                "AltMount mount path {} is already mounted and could not be "
+                "unmounted before setup: {}. Stop processes using the path and "
+                "unmount it on the Docker host before retrying.".format(
+                    mount_path, detail
+                ),
+            )
+
+    if (
+        cleanup_internal_mount
+        and internal_mount
+        and mounted_filesystem
+        and not fuse_mount
+    ):
+        logger.debug(
+            "Preserving non-FUSE mount at AltMount path %s (filesystem=%s).",
+            mount_path,
+            mounted_filesystem,
+        )
+
+    if os.path.lexists(mount_path):
+        if os.path.isdir(mount_path):
+            return True, None
+        if os.path.islink(mount_path):
+            try:
+                target = os.readlink(mount_path)
+            except OSError:
+                target = "unknown"
+            return (
+                False,
+                "AltMount mount path {} is a dangling symbolic link to {}. "
+                "Correct or remove the host entry before retrying.".format(
+                    mount_path, target
+                ),
+            )
+        return (
+            False,
+            "AltMount mount path {} exists but is not a directory. Correct or "
+            "remove the host entry before retrying.".format(mount_path),
+        )
+
+    try:
+        os.makedirs(mount_path, exist_ok=True)
+    except OSError as exc:
+        return (
+            False,
+            "Failed to create AltMount mount path {}: {}. Check for a stale or "
+            "unreachable host mount before retrying.".format(mount_path, exc),
+        )
+    return True, None
 
 
 def _altmount_config_mount_type(config: dict[str, Any]) -> str:

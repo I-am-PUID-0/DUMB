@@ -4811,6 +4811,7 @@ def setup_altmount(
 ):
     from utils.altmount_settings import (
         download_altmount_binary,
+        prepare_altmount_mount_path,
         sync_altmount_managed_config,
         write_altmount_default_config,
     )
@@ -4845,8 +4846,15 @@ def setup_altmount(
     if config.get("mount_type") != mount_type:
         config["mount_type"] = mount_type
         changed = True
-    for path_to_create in (config_dir, metadata_dir, logs_dir, rclone_dir, mount_path):
+    for path_to_create in (config_dir, metadata_dir, logs_dir, rclone_dir):
         os.makedirs(path_to_create, exist_ok=True)
+    success, error = prepare_altmount_mount_path(
+        mount_path,
+        mount_type,
+        cleanup_internal_mount=install_only,
+    )
+    if not success:
+        return False, error
 
     env = config.get("env", {}) or {}
     if not env.get("JWT_SECRET"):
