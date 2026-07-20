@@ -68,8 +68,13 @@ class MaintainerrSetupTests(unittest.TestCase):
             root = Path(temp_dir)
             self._source_tree(root)
             process_handler = FakeProcessHandler()
+            yarn_cache_root = root / ".yarn-cache"
 
             with (
+                patch.dict(
+                    os.environ,
+                    {"DUMB_YARN_CACHE_ROOT": str(yarn_cache_root)},
+                ),
                 patch.object(setup, "_chown_recursive_if_needed"),
                 patch.object(
                     setup, "chown_recursive", return_value=(True, None)
@@ -102,6 +107,10 @@ class MaintainerrSetupTests(unittest.TestCase):
             )
             rebuild_env = process_handler.started[-1][1]["env"]
             self.assertEqual("true", rebuild_env["npm_config_build_from_source"])
+            self.assertEqual(
+                str(yarn_cache_root / "maintainerr"),
+                rebuild_env["YARN_GLOBAL_FOLDER"],
+            )
             staged_html = (
                 root / "apps" / "server" / "dist" / "ui" / "index.html"
             ).read_text(encoding="utf-8")

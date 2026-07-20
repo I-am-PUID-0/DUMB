@@ -5137,7 +5137,8 @@ def _build_maintainerr(process_handler, config_dir: str) -> tuple[bool, str | No
     with open(ui_env_path, "w", encoding="utf-8") as handle:
         handle.write("\n".join(env_lines) + "\n")
 
-    yarn_cache_dir = "/config/.yarn-cache/maintainerr"
+    yarn_cache_root = os.getenv("DUMB_YARN_CACHE_ROOT", "/config/.yarn-cache")
+    yarn_cache_dir = os.path.join(yarn_cache_root, "maintainerr")
     os.makedirs(yarn_cache_dir, exist_ok=True)
     _chown_recursive_if_needed(yarn_cache_dir, user_id, group_id)
     ownership_ok, ownership_error = chown_recursive(config_dir, user_id, group_id)
