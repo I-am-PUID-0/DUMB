@@ -1191,6 +1191,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#the-notification-database-is-locked" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The notification database is locked
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -4959,6 +4970,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#the-notification-database-is-locked" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The notification database is locked
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -5262,6 +5284,15 @@
 </tbody>
 </table>
 <p>History is stored in <code>/config/notifications/notifications.sqlite</code>. Completed records older than <code>history_retention_days</code> are removed automatically. Clearing history from the UI does not delete queued or retrying deliveries.</p>
+<p>Notification storage is optional to DUMB startup. If SQLite is temporarily
+locked while the container starts, DUMB retries schema initialization and then
+starts the API and frontend in a notification-degraded state instead of exiting.
+The delivery worker continues retrying the existing database in the background;
+DUMB does not delete <code>notifications.sqlite</code>, its WAL files, queued deliveries, or
+history. Existing delivery attempts are not consumed while storage is
+unavailable. A new automatic event cannot be persisted while the queue remains
+locked, so DUMB logs the queue failure and allows the originating service or
+startup operation to continue.</p>
 <h2 id="what-it-cannot-guarantee">What it cannot guarantee<a class="headerlink" href="#what-it-cannot-guarantee" title="Permanent link">#</a></h2>
 <ul>
 <li>A provider accepting a message does not guarantee a phone, email client, or chat application displayed it.</li>
@@ -5291,6 +5322,15 @@
 <li>For <code>Service unhealthy</code> and Auto-restart events, confirm Auto-restart is enabled globally and for the exact service.</li>
 <li>To receive successful Auto-restart/update/symlink events, set minimum severity to <strong>Success</strong> or <strong>Info</strong>.</li>
 </ol>
+<h3 id="the-notification-database-is-locked">The notification database is locked<a class="headerlink" href="#the-notification-database-is-locked" title="Permanent link">#</a></h3>
+<p>When startup reports that notification SQLite storage is locked, DUMB keeps the
+control plane available and retries automatically. Notification history, tests,
+and manual delivery can temporarily return HTTP <code>503</code> until recovery completes.</p>
+<p>If the condition does not recover, check that only one DUMB container uses the
+same <code>/config</code> directory and that <code>/config/notifications</code> is on storage with
+working SQLite file locking. Do not delete <code>notifications.sqlite-wal</code> or
+<code>notifications.sqlite-shm</code> while any DUMB process is running. Preserve the
+database files and logs when requesting support.</p>
 <h2 id="related-pages">Related pages<a class="headerlink" href="#related-pages" title="Permanent link">#</a></h2>
 <ul>
 <li><a href="../../frontend/settings/">Settings</a></li>

@@ -4982,6 +4982,10 @@
 
 <h1 id="notifications-api">Notifications API<a class="headerlink" href="#notifications-api" title="Permanent link">#</a></h1>
 <p>Notification endpoints are available under <code>/api/notifications</code>. They follow the same optional authentication behavior as the other protected DUMB API routes.</p>
+<p>If the persistent notification SQLite database is temporarily locked, DUMB
+continues running and retries storage initialization in the background. Endpoints
+that require queue or history access return HTTP <code>503</code> until storage recovers;
+configuration and supported-event discovery remain available.</p>
 <h2 id="configuration">Configuration<a class="headerlink" href="#configuration" title="Permanent link">#</a></h2>
 <h3 id="get-apinotificationsconfig"><code>GET /api/notifications/config</code><a class="headerlink" href="#get-apinotificationsconfig" title="Permanent link">#</a></h3>
 <p>Returns notification settings with destination URLs and headers removed. Each destination includes <code>url_configured</code> and <code>headers_configured</code> booleans.</p>
