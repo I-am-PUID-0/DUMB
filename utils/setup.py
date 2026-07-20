@@ -252,6 +252,17 @@ def setup_release_version(process_handler, config, process_name, key):
 
     os.makedirs(target_dir, exist_ok=True)
 
+    if key == "altmount":
+        from utils.altmount_settings import download_altmount_binary
+
+        release_config = dict(config)
+        release_config["pinned_version"] = config["release_version"]
+        altmount_bin = os.path.join(target_dir, "altmount")
+        success, error = download_altmount_binary(release_config, altmount_bin)
+        if not success:
+            return False, f"Failed to download release: {error}"
+        return additional_setup(process_handler, process_name, config, key)
+
     if config.get("clear_on_update"):
         exclude_dirs = config.get("exclude_dirs", [])
         success, error = clear_directory(target_dir, exclude_dirs)

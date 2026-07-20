@@ -6,6 +6,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from utils import altmount_settings
+from utils import setup as setup_module
 from utils.altmount_settings import (
     download_altmount_binary,
     sync_altmount_managed_config,
@@ -182,6 +183,40 @@ arrs:
                 "v0.2.0",
                 "https://example.test/altmount.tar.gz",
             )
+
+    def test_release_update_uses_altmount_binary_asset_installer(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            target_bin = Path(tmpdir) / "altmount"
+            target_bin.write_text("old binary", encoding="utf-8")
+            config = {
+                "config_dir": tmpdir,
+                "repo_owner": "javi11",
+                "repo_name": "altmount",
+                "pinned_version": "latest",
+                "release_version": "v0.3.2",
+            }
+
+            with (
+                patch.object(
+                    altmount_settings,
+                    "download_altmount_binary",
+                    return_value=(True, None),
+                ) as binary_download,
+                patch.object(
+                    setup_module.downloader, "download_release_version"
+                ) as generic_download,
+            ):
+                success, error = setup_module.setup_release_version(
+                    object(), config, "AltMount", "altmount"
+                )
+
+            self.assertTrue(success, error)
+            generic_download.assert_not_called()
+            binary_download.assert_called_once()
+            release_config, downloaded_path = binary_download.call_args.args
+            self.assertEqual("v0.3.2", release_config["pinned_version"])
+            self.assertEqual(str(target_bin), downloaded_path)
+            self.assertEqual("latest", config["pinned_version"])
 
 
 if __name__ == "__main__":
