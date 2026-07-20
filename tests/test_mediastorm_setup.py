@@ -107,6 +107,7 @@ class MediaStormSetupTests(unittest.TestCase):
     def test_missing_runtime_requests_install_phase(self):
         with (
             tempfile.TemporaryDirectory() as temp_dir,
+            patch.object(setup, "_MEDIASTORM_LOG_DIR", temp_dir),
             patch.object(
                 setup.CONFIG_MANAGER,
                 "get",
