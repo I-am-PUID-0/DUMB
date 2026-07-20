@@ -259,6 +259,7 @@ STATIC_URLS_BY_KEY = {
     "seerr": "https://github.com/seerr-team/seerr",
     "profilarr": "https://github.com/Dictionarry-Hub/profilarr",
     "pulsarr": "https://github.com/jamcalli/Pulsarr",
+    "maintainerr": "https://github.com/Maintainerr/Maintainerr",
     "altmount": "https://github.com/javi11/altmount",
     "traefik": "https://traefik.io/",
     "traefik_proxy_admin": "https://github.com/I-am-PUID-0/traefik-proxy-admin",
@@ -293,6 +294,7 @@ SPONSORSHIP_URLS_BY_KEY = {
     "seerr": "https://opencollective.com/seerr",
     "profilarr": "https://github.com/sponsors/Dictionarry-Hub",
     "pulsarr": "https://ko-fi.com/jamcalli",
+    "maintainerr": "https://opencollective.com/maintainerr",
     "traefik": "https://github.com/sponsors/traefik",
     "traefik_proxy_admin": "https://github.com/sponsors/I-am-PUID-0",
     "cloudflared": "https://github.com/sponsors/cloudflare",
@@ -315,6 +317,7 @@ DEFAULT_SERVICE_PORTS = {
     "neutarr": 9705,
     "profilarr": 6868,
     "pulsarr": 3003,
+    "maintainerr": 6246,
     "altmount": 8088,
     "traefik_proxy_admin": 3004,
 }
@@ -419,6 +422,7 @@ CORE_SERVICE_NAMES = {
     "seerr": "Seerr",
     "neutarr": "NeutArr",
     "profilarr": "Profilarr",
+    "maintainerr": "Maintainerr",
     "bazarr": "Bazarr",
     "tautulli": "Tautulli",
     "pgadmin": "pgAdmin",
@@ -575,7 +579,7 @@ NeutArr
 Documentation: https://dumbarr.com/services/core/neutarr/""",
 }
 
-OPTIONAL_POST_CORE = ["riven_frontend", "bazarr", "cloudflared"]
+OPTIONAL_POST_CORE = ["riven_frontend", "bazarr", "maintainerr", "cloudflared"]
 
 OPTIONAL_SERVICES = {
     "zilean": "Zilean",
@@ -585,6 +589,7 @@ OPTIONAL_SERVICES = {
     "tautulli": "Tautulli",
     "bazarr": "Bazarr",
     "pulsarr": "Pulsarr",
+    "maintainerr": "Maintainerr",
     "traefik_proxy_admin": "Traefik Proxy Admin",
     "cloudflared": "Cloudflared",
 }
@@ -640,6 +645,13 @@ Pulsarr
 - Designed for fast Plex-first request automation.
 
 Documentation: https://dumbarr.com/services/optional/pulsarr""",
+    "maintainerr": """\
+Maintainerr
+- Builds rules and media-server collections for content that is ready for review or removal.
+- Integrates with Plex, Jellyfin, Emby, Sonarr, Radarr, Seerr, and Tautulli.
+- Can unmonitor or delete Arr media, clear Seerr requests, and remove files after a configurable delay.
+
+Documentation: https://dumbarr.com/services/optional/maintainerr""",
     "traefik_proxy_admin": """\
 Traefik Proxy Admin
 - Optional DUMB-hosted admin panel for creating user-managed Traefik reverse proxy routes.

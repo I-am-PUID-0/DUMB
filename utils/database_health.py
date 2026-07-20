@@ -34,6 +34,7 @@ SQLITE_SERVICE_KEYS = {
     "cli_debrid",
     "emby",
     "jellyfin",
+    "maintainerr",
     "nzbdav",
     "plex",
     "profilarr",
@@ -398,6 +399,10 @@ class DatabaseHealthCollector:
                     ),
                 )
             ]
+        if key == "maintainerr":
+            env = service.get("env") or {}
+            data_dir = str(env.get("DATA_DIR") or os.path.join(config_dir, "data"))
+            return [("main", os.path.join(data_dir, "maintainerr.sqlite"))]
         if key == "seerr":
             env = service.get("env") or {}
             data_dir = str(

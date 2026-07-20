@@ -38,6 +38,7 @@ UI_SERVICE_DEFS = [
     {"name": "seerr", "config_key": "seerr"},
     {"name": "profilarr", "config_key": "profilarr"},
     {"name": "pulsarr", "config_key": "pulsarr"},
+    {"name": "maintainerr", "config_key": "maintainerr"},
     {"name": "altmount", "config_key": "altmount"},
     {"name": "pgadmin4", "config_key": "pgadmin"},
     {"name": "prowlarr", "config_key": "prowlarr"},

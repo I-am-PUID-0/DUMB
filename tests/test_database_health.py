@@ -515,6 +515,7 @@ class DatabaseHealthCollectorTests(unittest.TestCase):
                 "emby",
                 "jellyfin",
                 "lidarr",
+                "maintainerr",
                 "nzbdav",
                 "pgadmin",
                 "phalanx_db",

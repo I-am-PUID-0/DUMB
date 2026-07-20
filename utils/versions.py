@@ -237,6 +237,14 @@ class Versions:
                     config.get("config_dir", "/pulsarr"), "version.txt"
                 )
                 is_file = True
+            elif key == "maintainerr":
+                config = CONFIG_MANAGER.get_instance(instance_name, key)
+                if not config:
+                    raise ValueError(f"Configuration for {process_name} not found.")
+                version_path = os.path.join(
+                    config.get("config_dir", "/maintainerr"), "version.txt"
+                )
+                is_file = True
             elif key == "altmount":
                 config = CONFIG_MANAGER.get_instance(instance_name, key)
                 if not config:
@@ -491,6 +499,7 @@ class Versions:
                             or key == "huntarr"
                             or key == "seerr"
                             or key == "pulsarr"
+                            or key == "maintainerr"
                             or key == "altmount"
                             or key == "traefik_proxy_admin"
                             or key == "cloudflared"
@@ -553,6 +562,10 @@ class Versions:
                 version_path = version_path or "/pulsarr/version.txt"
                 with open(version_path, "w") as f:
                     f.write(version)
+            elif key == "maintainerr":
+                version_path = version_path or "/maintainerr/version.txt"
+                with open(version_path, "w") as f:
+                    f.write(version)
             elif key == "traefik_proxy_admin":
                 version_path = version_path or "/traefik-proxy-admin/version.txt"
                 with open(version_path, "w") as f:
@@ -591,7 +604,7 @@ class Versions:
     ):
         try:
             config = self._get_service_config_for_compare(key, instance_name)
-            if key in ("decypharr", "nzbdav", "neutarr") and bool(
+            if key in ("decypharr", "nzbdav", "neutarr", "maintainerr") and bool(
                 config.get("branch_enabled")
             ):
                 branch_name = (config.get("branch") or "main").strip() or "main"

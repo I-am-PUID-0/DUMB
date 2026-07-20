@@ -1043,6 +1043,7 @@ def main():
             "seerr",
             "bazarr",
             "pulsarr",
+            "maintainerr",
             "cloudflared",
         ]
         _migrate_huntarr_to_neutarr(config)

@@ -649,6 +649,42 @@
       "allowIframes": "true"
     }
   },
+  "maintainerr": {
+    "enabled": false,
+    "process_name": "Maintainerr",
+    "repo_owner": "Maintainerr",
+    "repo_name": "Maintainerr",
+    "release_version_enabled": false,
+    "release_version": "latest",
+    "branch_enabled": false,
+    "branch": "development",
+    "suppress_logging": false,
+    "log_level": "INFO",
+    "port": 6246,
+    "auto_update": false,
+    "auto_update_interval": 24,
+    "auto_update_start_time": "04:00",
+    "clear_on_update": true,
+    "exclude_dirs": [
+      "/maintainerr/data"
+    ],
+    "platforms": [],
+    "command": [
+      "node",
+      "apps/server/dist/main.js"
+    ],
+    "config_dir": "/maintainerr",
+    "log_file": "/maintainerr/data/logs/maintainerr.log",
+    "env": {
+      "NODE_ENV": "production",
+      "UI_HOSTNAME": "0.0.0.0",
+      "UI_PORT": "{port}",
+      "DATA_DIR": "/maintainerr/data",
+      "BASE_PATH": "",
+      "VERSION_TAG": "stable",
+      "UV_USE_IO_URING": "0"
+    }
+  },
   "altmount": {
     "enabled": false,
     "process_name": "AltMount",

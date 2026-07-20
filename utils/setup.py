@@ -335,6 +335,13 @@ def setup_release_version(process_handler, config, process_name, key):
             version_path=os.path.join(config["config_dir"], "version.txt"),
             version=config["release_version"],
         )
+    elif key == "maintainerr":
+        versions.version_write(
+            process_name,
+            key,
+            version_path=os.path.join(config["config_dir"], "version.txt"),
+            version=config["release_version"],
+        )
     elif key in {"traefik_proxy_admin", "cloudflared", "neutarr"}:
         versions.version_write(
             process_name,
@@ -425,6 +432,10 @@ def setup_branch_version(process_handler, config, process_name, key):
             return has_output and os.path.isfile(
                 os.path.join(target_dir, "version.txt")
             )
+        if service_key == "maintainerr":
+            return _maintainerr_runtime_ready(target_dir) and os.path.isfile(
+                os.path.join(target_dir, "version.txt")
+            )
         return False
 
     if key in [
@@ -449,7 +460,13 @@ def setup_branch_version(process_handler, config, process_name, key):
         if not branch_url:
             return False, f"Failed to fetch branch {config['branch']}"
 
-        if key in {"riven_backend", "riven_frontend", "decypharr", "nzbdav"}:
+        if key in {
+            "riven_backend",
+            "riven_frontend",
+            "decypharr",
+            "nzbdav",
+            "maintainerr",
+        }:
             current_sha, sha_error = _fetch_branch_head_sha(
                 config["repo_owner"], config["repo_name"], config["branch"]
             )
@@ -509,7 +526,7 @@ def setup_branch_version(process_handler, config, process_name, key):
         if not success:
             return False, f"Failed to download branch: {error}"
 
-        if key in {"nzbdav", "neutarr", "pulsarr"}:
+        if key in {"nzbdav", "neutarr", "pulsarr", "maintainerr"}:
             branch_name = (config.get("branch") or "main").strip() or "main"
             branch_sha, branch_sha_error = _fetch_branch_head_sha(
                 config["repo_owner"], config["repo_name"], branch_name
@@ -536,7 +553,14 @@ def setup_branch_version(process_handler, config, process_name, key):
         if not success:
             return False, error
 
-        if key in {"riven_backend", "riven_frontend", "decypharr", "nzbdav", "neutarr"}:
+        if key in {
+            "riven_backend",
+            "riven_frontend",
+            "decypharr",
+            "nzbdav",
+            "neutarr",
+            "maintainerr",
+        }:
             current_sha, _ = _fetch_branch_head_sha(
                 config["repo_owner"], config["repo_name"], config["branch"]
             )
@@ -594,6 +618,8 @@ def additional_setup(process_handler, process_name, config, key):
 def _needs_riven_bootstrap(key, config_dir):
     if not config_dir:
         return False
+    if key == "maintainerr":
+        return not os.path.isfile(os.path.join(config_dir, "package.json"))
     if key == "riven_backend":
         return not os.path.isfile(os.path.join(config_dir, "pyproject.toml"))
     if key == "riven_frontend":
@@ -748,7 +774,8 @@ def _setup_project(
                 ):
                     config["release_version"] = "latest"
                 logger.info(
-                    "Riven not found at %s; bootstrapping release %s",
+                    "%s runtime not found at %s; bootstrapping release %s",
+                    process_name,
                     config.get("config_dir"),
                     config.get("release_version"),
                 )
@@ -1119,6 +1146,14 @@ def _setup_project(
                 return False, error
         if key == "pulsarr":
             success, error = setup_pulsarr(
+                process_handler,
+                install_only=install_phase and not configure_phase,
+                configure_only=configure_phase and not install_phase,
+            )
+            if not success:
+                return False, error
+        if key == "maintainerr":
+            success, error = setup_maintainerr(
                 process_handler,
                 install_only=install_phase and not configure_phase,
                 configure_only=configure_phase and not install_phase,
@@ -4992,6 +5027,299 @@ def setup_cloudflared(
         return True, None
 
     logger.info("Cloudflared setup complete.")
+    return True, None
+
+
+def _maintainerr_runtime_ready(config_dir: str) -> bool:
+    return os.path.isfile(os.path.join(config_dir, "package.json")) and os.path.isfile(
+        os.path.join(config_dir, "apps", "server", "dist", "main.js")
+    )
+
+
+def _maintainerr_package_version(config_dir: str) -> str | None:
+    for package_path in (
+        os.path.join(config_dir, "apps", "server", "package.json"),
+        os.path.join(config_dir, "package.json"),
+    ):
+        if not os.path.isfile(package_path):
+            continue
+        try:
+            with open(package_path, "r", encoding="utf-8") as handle:
+                version = str((json.load(handle) or {}).get("version") or "").strip()
+            if version:
+                return version
+        except (OSError, ValueError, TypeError) as exc:
+            logger.debug(
+                "Failed reading Maintainerr version from %s: %s", package_path, exc
+            )
+    return None
+
+
+def _relocate_maintainerr_runtime_paths(
+    config_dir: str, server_dist: str
+) -> tuple[bool, str | None]:
+    replacements = (
+        (
+            b"/opt/app/apps/server/dist/database/migrations",
+            os.path.join(server_dist, "database", "migrations").encode("utf-8"),
+        ),
+        (b"/opt/data", os.path.join(config_dir, "data").encode("utf-8")),
+    )
+    for root, _, filenames in os.walk(server_dist):
+        for filename in filenames:
+            if not filename.endswith((".js", ".cjs", ".mjs")):
+                continue
+            asset_path = os.path.join(root, filename)
+            try:
+                with open(asset_path, "rb") as handle:
+                    content = handle.read()
+                relocated = content
+                for upstream_path, installed_path in replacements:
+                    relocated = relocated.replace(upstream_path, installed_path)
+                if relocated == content:
+                    continue
+                with open(asset_path, "wb") as handle:
+                    handle.write(relocated)
+            except OSError as exc:
+                return (
+                    False,
+                    f"Failed relocating Maintainerr runtime path in {asset_path}: {exc}",
+                )
+    return True, None
+
+
+def _run_maintainerr_yarn_command(
+    process_handler, config_dir: str, process_key: str, args: list[str], env: dict
+) -> tuple[bool, str | None]:
+    yarn_releases = sorted(
+        glob.glob(os.path.join(config_dir, ".yarn", "releases", "yarn-*.cjs"))
+    )
+    if not yarn_releases:
+        return False, "Maintainerr's pinned Yarn runtime was not found."
+
+    command = [shutil.which("node") or "node", yarn_releases[-1], *args]
+    started, start_error = process_handler.start_process(
+        process_key, config_dir, command, env=env
+    )
+    if not started:
+        return False, start_error or f"Failed to start {' '.join(args)}"
+    process_handler.wait(process_key)
+    if process_handler.returncode != 0:
+        detail = (
+            process_handler.stderr
+            or process_handler.stdout
+            or f"exit code {process_handler.returncode}"
+        )
+        return False, str(detail).strip()
+    return True, None
+
+
+def _build_maintainerr(process_handler, config_dir: str) -> tuple[bool, str | None]:
+    package_json = os.path.join(config_dir, "package.json")
+    if not os.path.isfile(package_json):
+        return False, f"Maintainerr source was not found at {package_json}."
+
+    ui_dir = os.path.join(config_dir, "apps", "ui")
+    server_dir = os.path.join(config_dir, "apps", "server")
+    if not os.path.isdir(ui_dir) or not os.path.isdir(server_dir):
+        return False, "Maintainerr apps/ui or apps/server source directory is missing."
+
+    ui_env_path = os.path.join(ui_dir, ".env")
+    env_lines = []
+    if os.path.isfile(ui_env_path):
+        with open(ui_env_path, "r", encoding="utf-8") as handle:
+            env_lines = [
+                line
+                for line in handle.read().splitlines()
+                if not line.startswith("VITE_BASE_PATH=")
+            ]
+    env_lines.append("VITE_BASE_PATH=/__PATH_PREFIX__")
+    with open(ui_env_path, "w", encoding="utf-8") as handle:
+        handle.write("\n".join(env_lines) + "\n")
+
+    yarn_cache_dir = "/config/.yarn-cache/maintainerr"
+    os.makedirs(yarn_cache_dir, exist_ok=True)
+    _chown_recursive_if_needed(yarn_cache_dir, user_id, group_id)
+    ownership_ok, ownership_error = chown_recursive(config_dir, user_id, group_id)
+    if not ownership_ok:
+        return False, ownership_error
+
+    env = os.environ.copy()
+    env.update(
+        {
+            "HOME": config_dir,
+            "YARN_ENABLE_GLOBAL_CACHE": "true",
+            "YARN_ENABLE_TELEMETRY": "0",
+            "YARN_GLOBAL_FOLDER": yarn_cache_dir,
+        }
+    )
+    commands = (
+        ("maintainerr_yarn_install", ["install", "--immutable"]),
+        ("maintainerr_yarn_build", ["run", "build"]),
+        (
+            "maintainerr_yarn_focus",
+            ["workspaces", "focus", "--all", "--production"],
+        ),
+        ("maintainerr_yarn_rebuild_canvas", ["rebuild", "canvas"]),
+    )
+    for process_key, args in commands:
+        command_env = env
+        if process_key == "maintainerr_yarn_rebuild_canvas":
+            command_env = env.copy()
+            command_env["npm_config_build_from_source"] = "true"
+        success, error = _run_maintainerr_yarn_command(
+            process_handler, config_dir, process_key, args, command_env
+        )
+        if not success:
+            return False, f"Maintainerr {' '.join(args)} failed: {error}"
+
+    ui_dist = os.path.join(ui_dir, "dist")
+    server_dist = os.path.join(server_dir, "dist")
+    if not os.path.isdir(ui_dist) or not os.path.isfile(
+        os.path.join(server_dist, "main.js")
+    ):
+        return (
+            False,
+            "Maintainerr build completed without the expected UI/server output.",
+        )
+
+    server_ui = os.path.join(server_dist, "ui")
+    if os.path.isdir(server_ui):
+        shutil.rmtree(server_ui)
+    shutil.copytree(ui_dist, server_ui)
+
+    server_assets = os.path.join(server_dir, "assets")
+    dist_assets = os.path.join(server_dist, "assets")
+    if os.path.isdir(server_assets):
+        if os.path.isdir(dist_assets):
+            shutil.rmtree(dist_assets)
+        shutil.copytree(server_assets, dist_assets)
+
+    placeholder = b"/__PATH_PREFIX__"
+    for root, _, filenames in os.walk(server_ui):
+        for filename in filenames:
+            asset_path = os.path.join(root, filename)
+            try:
+                with open(asset_path, "rb") as handle:
+                    content = handle.read()
+                if placeholder not in content:
+                    continue
+                with open(asset_path, "wb") as handle:
+                    handle.write(content.replace(placeholder, b""))
+            except OSError as exc:
+                return (
+                    False,
+                    f"Failed preparing Maintainerr UI asset {asset_path}: {exc}",
+                )
+
+    success, error = _relocate_maintainerr_runtime_paths(config_dir, server_dist)
+    if not success:
+        return False, error
+
+    _chown_recursive_if_needed(config_dir, user_id, group_id)
+    return True, None
+
+
+def setup_maintainerr(
+    process_handler, install_only: bool = False, configure_only: bool = False
+):
+    config = CONFIG_MANAGER.get("maintainerr")
+    if not config:
+        return False, "Maintainerr configuration not found."
+    if not config.get("enabled", False):
+        logger.debug("Skipping disabled Maintainerr service.")
+        return True, None
+    if install_only and configure_only:
+        return False, "Invalid Maintainerr setup phase."
+
+    config_dir = config.get("config_dir") or "/maintainerr"
+    data_dir = os.path.join(config_dir, "data")
+    logs_dir = os.path.join(data_dir, "logs")
+    config["config_dir"] = config_dir
+    os.makedirs(logs_dir, exist_ok=True)
+    _chown_recursive_if_needed(config_dir, user_id, group_id)
+
+    changed = False
+    expected_exclude = os.path.join(config_dir, "data")
+    exclude_dirs = config.get("exclude_dirs") or []
+    rewritten_excludes = [
+        (
+            value.replace("/maintainerr", config_dir, 1)
+            if isinstance(value, str) and value.startswith("/maintainerr")
+            else value
+        )
+        for value in exclude_dirs
+    ]
+    if expected_exclude not in rewritten_excludes:
+        rewritten_excludes.append(expected_exclude)
+    if rewritten_excludes != exclude_dirs:
+        config["exclude_dirs"] = rewritten_excludes
+        changed = True
+
+    expected_log_file = os.path.join(logs_dir, "maintainerr.log")
+    if config.get("log_file") != expected_log_file:
+        config["log_file"] = expected_log_file
+        changed = True
+
+    expected_command = ["node", "apps/server/dist/main.js"]
+    if config.get("command") != expected_command:
+        config["command"] = expected_command
+        changed = True
+
+    env = config.get("env") or {}
+    expected_env = {
+        "NODE_ENV": "production",
+        "UI_HOSTNAME": "0.0.0.0",
+        "UI_PORT": str(config.get("port", 6246)),
+        "DATA_DIR": data_dir,
+        "BASE_PATH": "",
+        "VERSION_TAG": "development" if config.get("branch_enabled") else "stable",
+        "UV_USE_IO_URING": "0",
+    }
+    for env_key, value in expected_env.items():
+        if env.get(env_key) != value:
+            env[env_key] = value
+            changed = True
+    package_version = _maintainerr_package_version(config_dir)
+    if package_version and env.get("npm_package_version") != package_version:
+        env["npm_package_version"] = package_version
+        changed = True
+    config["env"] = env
+
+    if not _maintainerr_runtime_ready(config_dir):
+        if configure_only:
+            return False, "Maintainerr runtime build is missing."
+        logger.info("Building Maintainerr from source in %s.", config_dir)
+        success, error = _build_maintainerr(process_handler, config_dir)
+        if not success:
+            return False, error
+        package_version = _maintainerr_package_version(config_dir)
+        if package_version:
+            config["env"]["npm_package_version"] = package_version
+            changed = True
+
+    server_dist = os.path.join(config_dir, "apps", "server", "dist")
+    success, error = _relocate_maintainerr_runtime_paths(config_dir, server_dist)
+    if not success:
+        return False, error
+
+    if package_version and not config.get("branch_enabled"):
+        release_marker = (
+            package_version
+            if package_version.startswith("v")
+            else f"v{package_version}"
+        )
+        versions.version_write(
+            config.get("process_name", "Maintainerr"),
+            key="maintainerr",
+            version_path=os.path.join(config_dir, "version.txt"),
+            version=release_marker,
+        )
+
+    if changed and not install_only:
+        CONFIG_MANAGER.save_config(config.get("process_name", "Maintainerr"))
+
+    logger.info("Maintainerr setup complete.")
     return True, None
 
 
