@@ -2016,23 +2016,6 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Configuration in dumb_config.json">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#key-configuration-fields" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Key Configuration Fields
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
 </li>
       
         <li class="md-nav__item">
@@ -2645,6 +2628,10 @@
       
         
       
+        
+      
+        
+      
     
     
     
@@ -2843,6 +2830,66 @@
     
   
     Pulsarr
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../optional/maintainerr/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-archive-restore" viewBox="0 0 24 24"><rect width="20" height="5" x="2" y="3" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h2M20 8v11a2 2 0 0 1-2 2h-2M9 15l3-3 3 3M12 12v9"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    Maintainerr
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../optional/mediastorm/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-clapperboard" viewBox="0 0 24 24"><path d="M20.2 6 3 11l-.9-2.4c-.3-1.1.3-2.2 1.3-2.5l13.5-4c1.1-.3 2.2.3 2.5 1.3ZM6.2 5.3l3.1 3.9M12.4 3.4l3.1 4M3 11h18v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    MediaStorm
   
 
     
@@ -4670,23 +4717,6 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Configuration in dumb_config.json">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#key-configuration-fields" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Key Configuration Fields
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
 </li>
       
         <li class="md-nav__item">
@@ -4808,10 +4838,10 @@
   
 
 
-<h1 id="jellyfin-core-service">Jellyfin (Core Service)<a class="headerlink" href="#jellyfin-core-service" title="Permanent link">#</a></h1>
+<h1 id="jellyfin-core-service">Jellyfin (Core Service)<a class="headerlink" href="#jellyfin-core-service" title="Permanent link">&para;</a></h1>
 <p><strong>Jellyfin</strong> is an open-source media server for organizing and streaming your media library. It can be used as an alternative to Plex or Emby.</p>
 <hr />
-<h2 id="service-relationships">Service Relationships<a class="headerlink" href="#service-relationships" title="Permanent link">#</a></h2>
+<h2 id="service-relationships">Service Relationships<a class="headerlink" href="#service-relationships" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
@@ -4839,7 +4869,7 @@
 </tbody>
 </table>
 <hr />
-<h2 id="configuration-in-dumb_configjson">Configuration in <code>dumb_config.json</code><a class="headerlink" href="#configuration-in-dumb_configjson" title="Permanent link">#</a></h2>
+<h2 id="configuration-in-dumb_configjson">Configuration in <code>dumb_config.json</code><a class="headerlink" href="#configuration-in-dumb_configjson" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="nt">&quot;jellyfin&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;process_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Jellyfin Media Server&quot;</span><span class="p">,</span>
@@ -4855,7 +4885,7 @@
 <span class="w">  </span><span class="nt">&quot;env&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{}</span>
 <span class="p">}</span>
 </code></pre></div>
-<h3 id="key-configuration-fields">Key Configuration Fields<a class="headerlink" href="#key-configuration-fields" title="Permanent link">#</a></h3>
+<h3 id="key-configuration-fields">Key Configuration Fields<a class="headerlink" href="#key-configuration-fields" title="Permanent link">&para;</a></h3>
 <ul>
 <li><code>pinned_version</code>: Optional version pin for Jellyfin updates.</li>
 <li><code>port</code>: Web UI port (default <code>8096</code>).</li>
@@ -4863,7 +4893,7 @@
 <li><code>command</code>: Override the default startup command if needed.</li>
 </ul>
 <hr />
-<h2 id="accessing-the-ui">Accessing the UI<a class="headerlink" href="#accessing-the-ui" title="Permanent link">#</a></h2>
+<h2 id="accessing-the-ui">Accessing the UI<a class="headerlink" href="#accessing-the-ui" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Navigate to: <code>http://&lt;host&gt;:8096</code> (default Jellyfin port)</li>
 </ul>
@@ -4871,7 +4901,7 @@
 not require the <code>add-apt-repository</code> utility, which is intentionally absent from
 the minimized DUMB runtime image.</p>
 <hr />
-<h2 id="resources">Resources<a class="headerlink" href="#resources" title="Permanent link">#</a></h2>
+<h2 id="resources">Resources<a class="headerlink" href="#resources" title="Permanent link">&para;</a></h2>
 <ul>
 <li><a href="https://jellyfin.org/">Jellyfin Website</a></li>
 <li><a href="https://github.com/jellyfin/jellyfin">Jellyfin GitHub</a></li>

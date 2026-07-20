@@ -2319,23 +2319,6 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Configuration settings in dumb_config.json">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#configuration-key-descriptions" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Configuration key descriptions
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
 </li>
       
         <li class="md-nav__item">
@@ -2700,6 +2683,10 @@
       
         
       
+        
+      
+        
+      
     
     
     
@@ -2898,6 +2885,66 @@
     
   
     Pulsarr
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../optional/maintainerr/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-archive-restore" viewBox="0 0 24 24"><rect width="20" height="5" x="2" y="3" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h2M20 8v11a2 2 0 0 1-2 2h-2M9 15l3-3 3 3M12 12v9"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    Maintainerr
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../optional/mediastorm/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-clapperboard" viewBox="0 0 24 24"><path d="M20.2 6 3 11l-.9-2.4c-.3-1.1.3-2.2 1.3-2.5l13.5-4c1.1-.3 2.2.3 2.5 1.3ZM6.2 5.3l3.1 3.9M12.4 3.4l3.1 4M3 11h18v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    MediaStorm
   
 
     
@@ -4758,23 +4805,6 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Configuration settings in dumb_config.json">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#configuration-key-descriptions" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Configuration key descriptions
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
 </li>
       
         <li class="md-nav__item">
@@ -4918,10 +4948,10 @@
   
 
 
-<h1 id="neutarr">NeutArr<a class="headerlink" href="#neutarr" title="Permanent link">#</a></h1>
+<h1 id="neutarr">NeutArr<a class="headerlink" href="#neutarr" title="Permanent link">&para;</a></h1>
 <p>NeutArr is DUMB's default backlog-search automation service. It continuously searches for missing or upgraded content in your Arr applications. It periodically triggers searches in Radarr, Sonarr, Lidarr, and Whisparr to find better quality releases or fill gaps in your library.</p>
 <hr />
-<h2 id="overview">Overview<a class="headerlink" href="#overview" title="Permanent link">#</a></h2>
+<h2 id="overview">Overview<a class="headerlink" href="#overview" title="Permanent link">&para;</a></h2>
 <p>NeutArr integrates with your Arr stack to automate the hunt for:</p>
 <ul>
 <li><strong>Missing content</strong> - Movies, TV episodes, or music not yet downloaded</li>
@@ -4930,7 +4960,7 @@
 </ul>
 <p>DUMB supports multiple NeutArr instances, allowing you to run separate hunters for different Arr configurations (e.g., one for Decypharr-linked services and one for NzbDAV-linked services).</p>
 <hr />
-<h2 id="service-relationships">Service relationships<a class="headerlink" href="#service-relationships" title="Permanent link">#</a></h2>
+<h2 id="service-relationships">Service relationships<a class="headerlink" href="#service-relationships" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
@@ -4958,7 +4988,7 @@
 </tbody>
 </table>
 <hr />
-<h2 id="default-ports">Default ports<a class="headerlink" href="#default-ports" title="Permanent link">#</a></h2>
+<h2 id="default-ports">Default ports<a class="headerlink" href="#default-ports" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
@@ -4975,7 +5005,7 @@
 </table>
 <p>Additional NeutArr instances must use unique ports.</p>
 <hr />
-<h2 id="automation-in-dumb">Automation in DUMB<a class="headerlink" href="#automation-in-dumb" title="Permanent link">#</a></h2>
+<h2 id="automation-in-dumb">Automation in DUMB<a class="headerlink" href="#automation-in-dumb" title="Permanent link">&para;</a></h2>
 <p>DUMB auto-populates NeutArr with Arr instances that opt in.</p>
 <ol>
 <li>Set <code>use_neutarr: true</code> on the Arr instances you want NeutArr to manage.</li>
@@ -5012,7 +5042,7 @@ For deeper behavior details, see <a href="../../../reference/core-service/">Core
 <p>DUMB writes NeutArr configuration into NeutArr's JSON config files under the instance <code>config_dir</code> (for example <code>general.json</code>, <code>sonarr.json</code>, <code>radarr.json</code>, and <code>users.json</code>). You can still tune settings in the NeutArr UI, but DUMB will keep the Arr instance list and related config in sync.</p>
 </div>
 <hr />
-<h2 id="configuration-settings-in-dumb_configjson">Configuration settings in <code>dumb_config.json</code><a class="headerlink" href="#configuration-settings-in-dumb_configjson" title="Permanent link">#</a></h2>
+<h2 id="configuration-settings-in-dumb_configjson">Configuration settings in <code>dumb_config.json</code><a class="headerlink" href="#configuration-settings-in-dumb_configjson" title="Permanent link">&para;</a></h2>
 <p>Below is a sample configuration for NeutArr within the <code>dumb_config.json</code> file:</p>
 <div class="highlight"><pre><span></span><code><span class="nt">&quot;neutarr&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;instances&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
@@ -5053,7 +5083,7 @@ For deeper behavior details, see <a href="../../../reference/core-service/">Core
 <span class="w">  </span><span class="p">}</span>
 <span class="p">}</span>
 </code></pre></div>
-<h3 id="configuration-key-descriptions">Configuration key descriptions<a class="headerlink" href="#configuration-key-descriptions" title="Permanent link">#</a></h3>
+<h3 id="configuration-key-descriptions">Configuration key descriptions<a class="headerlink" href="#configuration-key-descriptions" title="Permanent link">&para;</a></h3>
 <ul>
 <li><strong><code>enabled</code></strong>: Whether to start this NeutArr instance.</li>
 <li><strong><code>process_name</code></strong>: Display name used in logs and the frontend.</li>
@@ -5074,7 +5104,7 @@ For deeper behavior details, see <a href="../../../reference/core-service/">Core
 <li><strong><code>env</code></strong>: Environment variables passed at runtime.</li>
 </ul>
 <hr />
-<h2 id="multi-instance-support">Multi-instance support<a class="headerlink" href="#multi-instance-support" title="Permanent link">#</a></h2>
+<h2 id="multi-instance-support">Multi-instance support<a class="headerlink" href="#multi-instance-support" title="Permanent link">&para;</a></h2>
 <p>DUMB supports running multiple NeutArr instances to work with different Arr configurations.
 The default config ships with a single <code>Default</code> instance.</p>
 <table>
@@ -5103,7 +5133,7 @@ The default config ships with a single <code>Default</code> instance.</p>
 <li>Log output</li>
 </ul>
 <hr />
-<h2 id="neutarr-web-ui">NeutArr web UI<a class="headerlink" href="#neutarr-web-ui" title="Permanent link">#</a></h2>
+<h2 id="neutarr-web-ui">NeutArr web UI<a class="headerlink" href="#neutarr-web-ui" title="Permanent link">&para;</a></h2>
 <p>NeutArr provides a web interface for:</p>
 <ul>
 <li>Configuring which Arr services to monitor</li>
@@ -5113,7 +5143,7 @@ The default config ships with a single <code>Default</code> instance.</p>
 </ul>
 <p>Access the UI at <code>http://&lt;host&gt;:&lt;port&gt;</code> or through the DUMB frontend's embedded service UI feature.</p>
 <hr />
-<h2 id="tips">Tips<a class="headerlink" href="#tips" title="Permanent link">#</a></h2>
+<h2 id="tips">Tips<a class="headerlink" href="#tips" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Start with conservative search intervals to avoid rate limiting from indexers.</li>
 <li>Use separate NeutArr instances when you have Arr services connected to different download clients.</li>
@@ -5121,7 +5151,7 @@ The default config ships with a single <code>Default</code> instance.</p>
 <li>NeutArr respects your Arr quality profiles, so configure those first.</li>
 </ul>
 <hr />
-<h2 id="resources">Resources<a class="headerlink" href="#resources" title="Permanent link">#</a></h2>
+<h2 id="resources">Resources<a class="headerlink" href="#resources" title="Permanent link">&para;</a></h2>
 <ul>
 <li><a href="https://github.com/I-am-PUID-0/NeutArr">NeutArr GitHub Repository</a></li>
 </ul>

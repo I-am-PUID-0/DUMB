@@ -2536,6 +2536,10 @@
       
         
       
+        
+      
+        
+      
     
     
     
@@ -2732,6 +2736,66 @@
     
   
     Pulsarr
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="maintainerr/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-archive-restore" viewBox="0 0 24 24"><rect width="20" height="5" x="2" y="3" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h2M20 8v11a2 2 0 0 1-2 2h-2M9 15l3-3 3 3M12 12v9"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    Maintainerr
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="mediastorm/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-clapperboard" viewBox="0 0 24 24"><path d="M20.2 6 3 11l-.9-2.4c-.3-1.1.3-2.2 1.3-2.5l13.5-4c1.1-.3 2.2.3 2.5 1.3ZM6.2 5.3l3.1 3.9M12.4 3.4l3.1 4M3 11h18v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    MediaStorm
   
 
     
@@ -4691,10 +4755,10 @@
   
 
 
-<h1 id="optional-services">Optional Services<a class="headerlink" href="#optional-services" title="Permanent link">#</a></h1>
+<h1 id="optional-services">Optional Services<a class="headerlink" href="#optional-services" title="Permanent link">&para;</a></h1>
 <p>Optional services enhance the DUMB ecosystem by adding scraping capabilities, database tools, request automation, or controlled access paths. These are not required by every core service to function, but they can improve performance, visibility, automation, and how you expose selected services.</p>
 <hr />
-<h2 id="what-are-optional-services">What Are Optional Services?<a class="headerlink" href="#what-are-optional-services" title="Permanent link">#</a></h2>
+<h2 id="what-are-optional-services">What Are Optional Services?<a class="headerlink" href="#what-are-optional-services" title="Permanent link">&para;</a></h2>
 <p>Optional services are:</p>
 <ul>
 <li>Not essential for startup or core functionality</li>
@@ -4702,7 +4766,7 @@
 <li>Frequently used to improve performance, metadata accuracy, or user experience</li>
 </ul>
 <hr />
-<h2 id="optional-service-index">Optional Service Index<a class="headerlink" href="#optional-service-index" title="Permanent link">#</a></h2>
+<h2 id="optional-service-index">Optional Service Index<a class="headerlink" href="#optional-service-index" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
@@ -4738,6 +4802,16 @@
 <td>Plex, Sonarr, Radarr</td>
 </tr>
 <tr>
+<td><a href="../optional/maintainerr/">Maintainerr</a></td>
+<td>Rule-based library cleanup and leaving-soon collections</td>
+<td>Plex/Jellyfin/Emby, Sonarr, Radarr, Seerr, Tautulli</td>
+</tr>
+<tr>
+<td><a href="../optional/mediastorm/">MediaStorm</a></td>
+<td>Self-hosted streaming for Debrid, torrent, and Usenet sources</td>
+<td>PostgreSQL, playback providers</td>
+</tr>
+<tr>
 <td><a href="../optional/traefik-proxy-admin/">Traefik Proxy Admin</a></td>
 <td>User-managed Traefik reverse proxy routes</td>
 <td>Traefik, PostgreSQL</td>
@@ -4755,7 +4829,7 @@
 </tbody>
 </table>
 <hr />
-<h2 id="how-they-work">How They Work<a class="headerlink" href="#how-they-work" title="Permanent link">#</a></h2>
+<h2 id="how-they-work">How They Work<a class="headerlink" href="#how-they-work" title="Permanent link">&para;</a></h2>
 <p>Optional services attach to the DUMB ecosystem dynamically:</p>
 <ul>
 <li><strong><a href="../optional/pgadmin/">pgAdmin</a></strong> provides a GUI for exploring and managing the PostgreSQL instance used by Riven and Zilean.</li>
@@ -4763,13 +4837,15 @@
 <li><strong><a href="../optional/tautulli/">Tautulli</a></strong> monitors your Plex server, tracking playback history, user activity, and providing detailed statistics.</li>
 <li><strong><a href="../optional/bazarr/">Bazarr</a></strong> connects to Sonarr and Radarr and manages subtitles for their movie and TV libraries using the same DUMB media paths.</li>
 <li><strong><a href="../optional/pulsarr/">Pulsarr</a></strong> monitors Plex watchlists and routes approved requests into Sonarr and Radarr.</li>
+<li><strong><a href="../optional/maintainerr/">Maintainerr</a></strong> builds review collections from media-server and automation data, then applies delayed cleanup actions you explicitly configure.</li>
+<li><strong><a href="../optional/mediastorm/">MediaStorm</a></strong> provides its own accounts and clients for streaming from configured Debrid, torrent, and Usenet sources.</li>
 <li><strong><a href="../optional/traefik-proxy-admin/">Traefik Proxy Admin</a></strong> lets operators create Traefik reverse proxy routes for services inside or outside the DUMB container. It owns user-managed host routes while DUMB continues to own embedded UI routes.</li>
 <li><strong><a href="../optional/cloudflared/">Cloudflared</a></strong> runs a Cloudflare Tunnel connector inside DUMB so public traffic can reach the built-in Traefik entrypoint without direct port forwarding. Cloudflared carries traffic to Traefik; Traefik and TPA still decide which service receives it.</li>
 <li><strong><a href="../optional/zilean/">Zilean</a></strong> improves scraping efficiency by caching previous results from <a href="https://debridmediamanager.com/">Debrid Media Manager</a> hash lists shared by users and reducing redundant queries. Core services like Riven and CLI Debrid can use it as a scraping backend.</li>
 </ul>
 <p>These services can be disabled at any time without affecting the startup of core or dependent services.</p>
 <hr />
-<h2 id="tips">Tips<a class="headerlink" href="#tips" title="Permanent link">#</a></h2>
+<h2 id="tips">Tips<a class="headerlink" href="#tips" title="Permanent link">&para;</a></h2>
 <ul>
 <li>If not using Zilean, make sure other scrapers are configured in Riven and CLI Debrid.</li>
 <li>pgAdmin is useful during debugging, migrations, or manual SQL work — but not required for normal operation.</li>
@@ -4777,7 +4853,7 @@
 <li>You can start optional services manually from the DUMB Frontend or include them in onboarding.</li>
 </ul>
 <hr />
-<h2 id="related-pages">Related Pages<a class="headerlink" href="#related-pages" title="Permanent link">#</a></h2>
+<h2 id="related-pages">Related Pages<a class="headerlink" href="#related-pages" title="Permanent link">&para;</a></h2>
 <ul>
 <li><a href="../core/">Core Services</a></li>
 <li><a href="../dependent/">Dependent Services</a></li>
