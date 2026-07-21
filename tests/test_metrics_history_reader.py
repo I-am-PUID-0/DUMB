@@ -94,8 +94,27 @@ class MetricsHistoryReaderTests(unittest.TestCase):
                     "mem": {"percent": 50, "extra": "drop"},
                     "disk": {"percent": 70},
                     "inode": {"percent": 80, "extra": "drop"},
+                    "filesystems": [
+                        {
+                            "path": "/data",
+                            "mount_point": "/data",
+                            "fs_type": "xfs",
+                            "available": True,
+                            "percent": 45,
+                            "inode": {"percent": 12},
+                            "used": 123,
+                        }
+                    ],
                     "disk_io": {"read_bytes": 100, "write_bytes": 200},
                     "net_io": {"sent_bytes": 300, "recv_bytes": 400},
+                    "network_interfaces": [
+                        {
+                            "name": "eth0",
+                            "available": True,
+                            "sent_bytes": 250,
+                            "recv_bytes": 350,
+                        }
+                    ],
                 },
                 "dumb_managed": [
                     {"name": "prowlarr", "pid": 123, "cpu_percent": 1.5, "rss": 2048}
@@ -112,8 +131,23 @@ class MetricsHistoryReaderTests(unittest.TestCase):
                     "mem": {"percent": 60},
                     "disk": {"percent": 71},
                     "inode": {"percent": 81},
+                    "filesystems": [
+                        {
+                            "path": "/data",
+                            "percent": 46,
+                            "inode": {"percent": 13},
+                        }
+                    ],
                     "disk_io": {"read_bytes": 160, "write_bytes": 260},
                     "net_io": {"sent_bytes": 330, "recv_bytes": 460},
+                    "network_interfaces": [
+                        {
+                            "name": "eth0",
+                            "available": True,
+                            "sent_bytes": 280,
+                            "recv_bytes": 410,
+                        }
+                    ],
                 },
             },
         ]
@@ -130,6 +164,14 @@ class MetricsHistoryReaderTests(unittest.TestCase):
         )
         self.assertEqual(series["cpu"], [10, 20])
         self.assertEqual(series["inode"], [80, 81])
+        self.assertEqual(series["filesystems"]["/data"]["disk"], [45, 46])
+        self.assertEqual(series["filesystems"]["/data"]["inode"], [12, 13])
+        self.assertEqual(
+            series["network_interfaces"]["eth0"]["sent_rate"], [None, 30.0]
+        )
+        self.assertEqual(
+            series["network_interfaces"]["eth0"]["recv_rate"], [None, 60.0]
+        )
         self.assertEqual(series["disk_read_rate"], [None, 60.0])
         self.assertEqual(series["net_recv_rate"], [None, 60.0])
 

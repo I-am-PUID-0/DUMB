@@ -111,8 +111,10 @@ def compact_history_items(items):
         mem = system.get("mem") or {}
         disk = system.get("disk") or {}
         inode = system.get("inode") or {}
+        filesystems = system.get("filesystems") or []
         disk_io = system.get("disk_io") or {}
         net_io = system.get("net_io") or {}
+        network_interfaces = system.get("network_interfaces") or []
         compacted.append(
             {
                 "timestamp": item.get("timestamp"),
@@ -122,6 +124,26 @@ def compact_history_items(items):
                     "mem": {"percent": mem.get("percent")} if mem else None,
                     "disk": {"percent": disk.get("percent")} if disk else None,
                     "inode": {"percent": inode.get("percent")} if inode else None,
+                    "filesystems": [
+                        {
+                            "path": filesystem.get("path"),
+                            "mount_point": filesystem.get("mount_point"),
+                            "fs_type": filesystem.get("fs_type"),
+                            "available": filesystem.get("available"),
+                            "percent": filesystem.get("percent"),
+                            "inode": (
+                                {
+                                    "percent": (filesystem.get("inode") or {}).get(
+                                        "percent"
+                                    )
+                                }
+                                if filesystem.get("inode")
+                                else None
+                            ),
+                        }
+                        for filesystem in filesystems
+                        if isinstance(filesystem, dict)
+                    ],
                     "disk_io": (
                         {
                             "read_bytes": disk_io.get("read_bytes"),
@@ -138,6 +160,25 @@ def compact_history_items(items):
                         if net_io
                         else None
                     ),
+                    "network_interfaces": [
+                        {
+                            "name": interface.get("name"),
+                            "available": interface.get("available"),
+                            "is_up": interface.get("is_up"),
+                            "speed_mbps": interface.get("speed_mbps"),
+                            "mtu": interface.get("mtu"),
+                            "sent_bytes": interface.get("sent_bytes"),
+                            "recv_bytes": interface.get("recv_bytes"),
+                            "sent_packets": interface.get("sent_packets"),
+                            "recv_packets": interface.get("recv_packets"),
+                            "errors_in": interface.get("errors_in"),
+                            "errors_out": interface.get("errors_out"),
+                            "drops_in": interface.get("drops_in"),
+                            "drops_out": interface.get("drops_out"),
+                        }
+                        for interface in network_interfaces
+                        if isinstance(interface, dict)
+                    ],
                 },
                 "dumb_managed": [
                     {
@@ -216,6 +257,22 @@ def build_history_series(items):
     disk_write = []
     net_sent = []
     net_recv = []
+    filesystem_paths = []
+    for item in items:
+        for filesystem in (item.get("system") or {}).get("filesystems") or []:
+            path = filesystem.get("path") if isinstance(filesystem, dict) else None
+            if path and path not in filesystem_paths:
+                filesystem_paths.append(path)
+    filesystems = {path: {"disk": [], "inode": []} for path in filesystem_paths}
+    network_interface_names = []
+    for item in items:
+        for interface in (item.get("system") or {}).get("network_interfaces") or []:
+            name = interface.get("name") if isinstance(interface, dict) else None
+            if name and name not in network_interface_names:
+                network_interface_names.append(name)
+    network_interfaces = {
+        name: {"sent": [], "recv": []} for name in network_interface_names
+    }
     for item in items:
         timestamps.append(item.get("timestamp"))
         system = item.get("system") or {}
@@ -229,6 +286,26 @@ def build_history_series(items):
         disk_write.append(disk_io.get("write_bytes"))
         net_sent.append(net_io.get("sent_bytes"))
         net_recv.append(net_io.get("recv_bytes"))
+        filesystem_lookup = {
+            filesystem.get("path"): filesystem
+            for filesystem in system.get("filesystems") or []
+            if isinstance(filesystem, dict) and filesystem.get("path")
+        }
+        for path in filesystem_paths:
+            filesystem = filesystem_lookup.get(path) or {}
+            filesystems[path]["disk"].append(filesystem.get("percent"))
+            filesystems[path]["inode"].append(
+                (filesystem.get("inode") or {}).get("percent")
+            )
+        interface_lookup = {
+            interface.get("name"): interface
+            for interface in system.get("network_interfaces") or []
+            if isinstance(interface, dict) and interface.get("name")
+        }
+        for name in network_interface_names:
+            interface = interface_lookup.get(name) or {}
+            network_interfaces[name]["sent"].append(interface.get("sent_bytes"))
+            network_interfaces[name]["recv"].append(interface.get("recv_bytes"))
 
     return {
         "cpu": cpu,
@@ -239,6 +316,14 @@ def build_history_series(items):
         "disk_write_rate": _build_rate_series(disk_write, timestamps),
         "net_sent_rate": _build_rate_series(net_sent, timestamps),
         "net_recv_rate": _build_rate_series(net_recv, timestamps),
+        "filesystems": filesystems,
+        "network_interfaces": {
+            name: {
+                "sent_rate": _build_rate_series(values["sent"], timestamps),
+                "recv_rate": _build_rate_series(values["recv"], timestamps),
+            }
+            for name, values in network_interfaces.items()
+        },
     }
 
 
@@ -263,6 +348,20 @@ def compute_history_stats(items):
         "disk_write_rate": _series_stats(series.get("disk_write_rate", [])),
         "net_sent_rate": _series_stats(series.get("net_sent_rate", [])),
         "net_recv_rate": _series_stats(series.get("net_recv_rate", [])),
+        "filesystems": {
+            path: {
+                "disk": _series_stats(values.get("disk", [])),
+                "inode": _series_stats(values.get("inode", [])),
+            }
+            for path, values in (series.get("filesystems") or {}).items()
+        },
+        "network_interfaces": {
+            name: {
+                "sent_rate": _series_stats(values.get("sent_rate", [])),
+                "recv_rate": _series_stats(values.get("recv_rate", [])),
+            }
+            for name, values in (series.get("network_interfaces") or {}).items()
+        },
     }
 
 

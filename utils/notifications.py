@@ -513,7 +513,9 @@ class NotificationManager:
             ):
                 continue
             cooldown = max(0, int(destination.get("cooldown_sec", 0) or 0))
-            cooldown_key = self._cooldown_key(destination, event_type, service_name)
+            cooldown_key = self._cooldown_key(
+                destination, event_type, service_name, metadata
+            )
             if not force and self._is_suppressed(cooldown_key, cooldown, now):
                 self._record_suppressed(
                     event_id,
@@ -650,13 +652,17 @@ class NotificationManager:
             return False
         return True
 
-    def _cooldown_key(self, destination, event_type, service_name):
+    def _cooldown_key(self, destination, event_type, service_name, metadata=None):
+        condition_key = (
+            metadata.get("condition_key") if isinstance(metadata, dict) else None
+        )
         return "|".join(
             (
                 "cooldown",
                 str(destination.get("id") or ""),
                 str(event_type or ""),
                 str(service_name or ""),
+                str(condition_key or ""),
             )
         )
 
@@ -975,18 +981,6 @@ class NotificationManager:
                 thresholds.get("memory_percent"),
                 "%",
             ),
-            (
-                "disk",
-                system.get("disk", {}).get("percent"),
-                thresholds.get("disk_percent"),
-                "%",
-            ),
-            (
-                "inode",
-                system.get("inode", {}).get("percent"),
-                thresholds.get("inode_percent"),
-                "%",
-            ),
         )
         for name, value, threshold, suffix in resources:
             if value is None or threshold is None:
@@ -1001,6 +995,51 @@ class NotificationManager:
                 f"{name.title()} usage is {float(value):.1f}{suffix}; configured threshold is {float(threshold):.1f}{suffix}.",
                 value=float(value),
             )
+
+        filesystems = system.get("filesystems") or [
+            {
+                "path": system.get("disk", {}).get("path") or "/",
+                "percent": system.get("disk", {}).get("percent"),
+                "inode": system.get("inode") or {},
+            }
+        ]
+        filesystem_condition_keys = set()
+        for filesystem in filesystems:
+            if not isinstance(filesystem, dict):
+                continue
+            path = filesystem.get("path") or "/"
+            for name, value, threshold in (
+                (
+                    "disk",
+                    filesystem.get("percent"),
+                    thresholds.get("disk_percent"),
+                ),
+                (
+                    "inode",
+                    (filesystem.get("inode") or {}).get("percent"),
+                    thresholds.get("inode_percent"),
+                ),
+            ):
+                key = f"resource:{name}:{path}"
+                filesystem_condition_keys.add(key)
+                if value is None or threshold is None:
+                    continue
+                self._condition(
+                    key,
+                    float(value) >= float(threshold),
+                    duration,
+                    f"resource.{name}.high",
+                    "warning",
+                    f"DUMB {name.title()} pressure is high at {path}",
+                    f"{name.title()} usage at {path} is {float(value):.1f}%; configured threshold is {float(threshold):.1f}%.",
+                    value=float(value),
+                )
+        for key in list(self._conditions):
+            if key in {"resource:disk", "resource:inode"} or (
+                key.startswith(("resource:disk:", "resource:inode:"))
+                and key not in filesystem_condition_keys
+            ):
+                self._conditions.pop(key, None)
 
         database_rank = {
             "observing": 0,

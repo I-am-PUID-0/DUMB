@@ -4,6 +4,48 @@ import psutil
 
 from utils.database_health import DatabaseHealthCollector
 
+DEFAULT_FILESYSTEM_PATHS = ["/"]
+DEFAULT_NETWORK_INTERFACES = ["all"]
+_IGNORED_FILESYSTEM_PREFIXES = ("/dev", "/proc", "/sys")
+_IGNORED_FILESYSTEM_TYPES = {
+    "autofs",
+    "bpf",
+    "cgroup",
+    "cgroup2",
+    "configfs",
+    "debugfs",
+    "devpts",
+    "devtmpfs",
+    "fusectl",
+    "hugetlbfs",
+    "mqueue",
+    "proc",
+    "pstore",
+    "securityfs",
+    "sysfs",
+    "tracefs",
+}
+_NETWORK_COUNTER_FIELDS = (
+    "sent_bytes",
+    "recv_bytes",
+    "sent_packets",
+    "recv_packets",
+    "errors_in",
+    "errors_out",
+    "drops_in",
+    "drops_out",
+)
+_NETWORK_COUNTER_ATTRIBUTES = {
+    "sent_bytes": "bytes_sent",
+    "recv_bytes": "bytes_recv",
+    "sent_packets": "packets_sent",
+    "recv_packets": "packets_recv",
+    "errors_in": "errin",
+    "errors_out": "errout",
+    "drops_in": "dropin",
+    "drops_out": "dropout",
+}
+
 
 class MetricsCollector:
     def __init__(self, process_handler, logger):
@@ -39,24 +81,35 @@ class MetricsCollector:
     def _collect_system_metrics(self):
         from utils.config_loader import CONFIG_MANAGER
 
-        scope = (
-            CONFIG_MANAGER.get("dumb", {})
-            .get("metrics", {})
-            .get("system_scope", "host")
+        metrics_config = CONFIG_MANAGER.get("dumb", {}).get("metrics", {})
+        scope = metrics_config.get("system_scope", "host")
+        filesystems = self._collect_filesystem_metrics(
+            metrics_config.get("filesystem_paths")
+        )
+        net_io, network_interfaces = self._collect_network_metrics(
+            metrics_config.get("network_interfaces")
         )
         effective_scope = scope
         if scope == "auto":
             effective_scope = "cgroup" if self._cgroup_available() else "host"
         if effective_scope == "cgroup":
-            metrics = self._collect_system_metrics_cgroup(effective_scope)
+            metrics = self._collect_system_metrics_cgroup(
+                effective_scope, filesystems, net_io, network_interfaces
+            )
             if metrics:
                 return metrics
-        return self._collect_system_metrics_host(effective_scope)
+        return self._collect_system_metrics_host(
+            effective_scope, filesystems, net_io, network_interfaces
+        )
 
-    def _collect_system_metrics_host(self, scope_label):
-        disk_usage = psutil.disk_usage("/")
+    def _collect_system_metrics_host(
+        self, scope_label, filesystems=None, net_io=None, network_interfaces=None
+    ):
+        filesystems = filesystems or self._collect_filesystem_metrics()
+        disk_usage, inode_usage = self._primary_filesystem_aliases(filesystems)
         disk_io = psutil.disk_io_counters()
-        net_io = psutil.net_io_counters()
+        if net_io is None or network_interfaces is None:
+            net_io, network_interfaces = self._collect_network_metrics()
         mem = psutil.virtual_memory()
         swap = psutil.swap_memory()
         load_avg = None
@@ -80,30 +133,24 @@ class MetricsCollector:
                 "used": swap.used,
                 "percent": swap.percent,
             },
-            "disk": {
-                "total": disk_usage.total,
-                "used": disk_usage.used,
-                "percent": disk_usage.percent,
-                "path": "/",
-            },
-            "inode": self._collect_inode_usage("/"),
+            "disk": disk_usage,
+            "inode": inode_usage,
+            "filesystems": filesystems,
             "disk_io": {
                 "read_bytes": disk_io.read_bytes if disk_io else 0,
                 "write_bytes": disk_io.write_bytes if disk_io else 0,
                 "read_count": disk_io.read_count if disk_io else 0,
                 "write_count": disk_io.write_count if disk_io else 0,
             },
-            "net_io": {
-                "sent_bytes": net_io.bytes_sent if net_io else 0,
-                "recv_bytes": net_io.bytes_recv if net_io else 0,
-                "sent_packets": net_io.packets_sent if net_io else 0,
-                "recv_packets": net_io.packets_recv if net_io else 0,
-            },
+            "net_io": net_io,
+            "network_interfaces": network_interfaces,
             "boot_time": psutil.boot_time(),
             "container_start_time": self.container_start_time,
         }
 
-    def _collect_system_metrics_cgroup(self, scope_label):
+    def _collect_system_metrics_cgroup(
+        self, scope_label, filesystems=None, net_io=None, network_interfaces=None
+    ):
         cpu_limit = self._read_cgroup_cpu_limit()
         cpu_usage = self._read_cgroup_cpu_usage()
         if cpu_usage is None:
@@ -133,9 +180,11 @@ class MetricsCollector:
             mem_used = mem_current if mem_current is not None else 0
             mem_percent = (mem_used / mem_total * 100.0) if mem_total else None
 
-        disk_usage = psutil.disk_usage("/")
+        filesystems = filesystems or self._collect_filesystem_metrics()
+        disk_usage, inode_usage = self._primary_filesystem_aliases(filesystems)
         disk_io = self._read_cgroup_io()
-        net_io = psutil.net_io_counters()
+        if net_io is None or network_interfaces is None:
+            net_io, network_interfaces = self._collect_network_metrics()
         swap = psutil.swap_memory()
         load_avg = None
         try:
@@ -158,25 +207,17 @@ class MetricsCollector:
                 "used": swap.used,
                 "percent": swap.percent,
             },
-            "disk": {
-                "total": disk_usage.total,
-                "used": disk_usage.used,
-                "percent": disk_usage.percent,
-                "path": "/",
-            },
-            "inode": self._collect_inode_usage("/"),
+            "disk": disk_usage,
+            "inode": inode_usage,
+            "filesystems": filesystems,
             "disk_io": {
                 "read_bytes": disk_io.get("read_bytes", 0),
                 "write_bytes": disk_io.get("write_bytes", 0),
                 "read_count": 0,
                 "write_count": 0,
             },
-            "net_io": {
-                "sent_bytes": net_io.bytes_sent if net_io else 0,
-                "recv_bytes": net_io.bytes_recv if net_io else 0,
-                "sent_packets": net_io.packets_sent if net_io else 0,
-                "recv_packets": net_io.packets_recv if net_io else 0,
-            },
+            "net_io": net_io,
+            "network_interfaces": network_interfaces,
             "boot_time": psutil.boot_time(),
             "container_start_time": self.container_start_time,
         }
@@ -203,6 +244,144 @@ class MetricsCollector:
                 "percent": None,
                 "path": path,
             }
+
+    def _collect_filesystem_metrics(self, configured_paths=None):
+        paths = _normalize_filesystem_paths(configured_paths)
+        mount_entries = _read_mount_entries()
+        filesystems = []
+        for path in paths:
+            mount = _mount_for_path(path, mount_entries)
+            entry = {
+                "path": path,
+                "mount_point": mount.get("mount_point") if mount else None,
+                "fs_type": mount.get("fs_type") if mount else None,
+                "available": False,
+                "total": None,
+                "used": None,
+                "free": None,
+                "percent": None,
+                "inode": self._collect_inode_usage(path),
+            }
+            try:
+                usage = psutil.disk_usage(path)
+                entry.update(
+                    {
+                        "available": True,
+                        "total": usage.total,
+                        "used": usage.used,
+                        "free": getattr(
+                            usage, "free", max(usage.total - usage.used, 0)
+                        ),
+                        "percent": usage.percent,
+                    }
+                )
+            except (FileNotFoundError, PermissionError, OSError):
+                pass
+            filesystems.append(entry)
+        return filesystems
+
+    def _primary_filesystem_aliases(self, filesystems):
+        primary = (
+            filesystems[0]
+            if filesystems
+            else {
+                "path": "/",
+                "mount_point": None,
+                "fs_type": None,
+                "available": False,
+                "total": None,
+                "used": None,
+                "free": None,
+                "percent": None,
+                "inode": self._collect_inode_usage("/"),
+            }
+        )
+        disk = {
+            key: primary.get(key)
+            for key in (
+                "total",
+                "used",
+                "free",
+                "percent",
+                "path",
+                "mount_point",
+                "fs_type",
+                "available",
+            )
+        }
+        return disk, primary.get("inode") or self._collect_inode_usage(
+            primary.get("path") or "/"
+        )
+
+    def list_filesystem_candidates(self):
+        candidates = []
+        seen = set()
+        for mount in _read_mount_entries():
+            path = mount["mount_point"]
+            fs_type = mount.get("fs_type")
+            if path in seen or not _is_filesystem_candidate(path, fs_type):
+                continue
+            metrics = self._collect_filesystem_metrics([path])[0]
+            if not metrics.get("available"):
+                continue
+            seen.add(path)
+            candidates.append(metrics)
+        return sorted(
+            candidates, key=lambda entry: (entry["path"] != "/", entry["path"])
+        )
+
+    def _collect_network_metrics(self, configured_interfaces=None):
+        selected = _normalize_network_interfaces(configured_interfaces)
+        try:
+            counters = psutil.net_io_counters(pernic=True) or {}
+        except (AttributeError, OSError):
+            counters = {}
+        try:
+            stats = psutil.net_if_stats() or {}
+        except (AttributeError, OSError):
+            stats = {}
+
+        names = sorted(counters)
+        if selected != DEFAULT_NETWORK_INTERFACES:
+            names = selected
+        interfaces = []
+        for name in names:
+            counter = counters.get(name)
+            interface_stats = stats.get(name)
+            interface_speed = getattr(interface_stats, "speed", None)
+            interfaces.append(
+                {
+                    "name": name,
+                    "available": counter is not None,
+                    "is_up": (bool(interface_stats.isup) if interface_stats else None),
+                    "speed_mbps": (
+                        int(interface_speed)
+                        if interface_speed is not None and interface_speed >= 0
+                        else None
+                    ),
+                    "mtu": (
+                        int(interface_stats.mtu)
+                        if interface_stats
+                        and getattr(interface_stats, "mtu", None) is not None
+                        else None
+                    ),
+                    **_network_counter_payload(counter),
+                }
+            )
+
+        aggregate = {
+            key: sum(
+                int(interface.get(key) or 0)
+                for interface in interfaces
+                if interface.get("available")
+            )
+            for key in _NETWORK_COUNTER_FIELDS
+        }
+        return aggregate, interfaces
+
+    def list_network_interface_candidates(self):
+        _, interfaces = self._collect_network_metrics(DEFAULT_NETWORK_INTERFACES)
+        return interfaces
 
     def _cgroup_available(self):
         return os.path.exists("/sys/fs/cgroup/cpu.stat")
@@ -494,3 +673,111 @@ def _addr_to_tuple(addr):
     if not addr:
         return None
     return [addr.ip, addr.port]
+
+
+def _normalize_filesystem_paths(configured_paths):
+    values = (
+        configured_paths
+        if isinstance(configured_paths, list) and configured_paths
+        else DEFAULT_FILESYSTEM_PATHS
+    )
+    paths = []
+    for value in values:
+        if not isinstance(value, str):
+            continue
+        value = value.strip()
+        if not value.startswith("/"):
+            continue
+        normalized = os.path.normpath(value)
+        if normalized not in paths:
+            paths.append(normalized)
+        if len(paths) >= 32:
+            break
+    return paths or list(DEFAULT_FILESYSTEM_PATHS)
+
+
+def _normalize_network_interfaces(configured_interfaces):
+    values = (
+        configured_interfaces
+        if isinstance(configured_interfaces, list) and configured_interfaces
+        else DEFAULT_NETWORK_INTERFACES
+    )
+    names = []
+    for value in values:
+        if not isinstance(value, str):
+            continue
+        name = value.strip()
+        if not name:
+            continue
+        if name.lower() == "all":
+            return list(DEFAULT_NETWORK_INTERFACES)
+        if name not in names:
+            names.append(name)
+        if len(names) >= 32:
+            break
+    return names or list(DEFAULT_NETWORK_INTERFACES)
+
+
+def _network_counter_payload(counter):
+    return {
+        key: (int(getattr(counter, attribute, 0)) if counter is not None else None)
+        for key, attribute in _NETWORK_COUNTER_ATTRIBUTES.items()
+    }
+
+
+def _read_mount_entries():
+    entries = []
+    try:
+        with open("/proc/self/mountinfo", "r", encoding="utf-8") as handle:
+            for line in handle:
+                left, separator, right = line.rstrip("\n").partition(" - ")
+                if not separator:
+                    continue
+                left_fields = left.split()
+                right_fields = right.split()
+                if len(left_fields) < 5 or not right_fields:
+                    continue
+                entries.append(
+                    {
+                        "mount_point": _decode_mount_field(left_fields[4]),
+                        "fs_type": _decode_mount_field(right_fields[0]),
+                    }
+                )
+    except OSError:
+        return [{"mount_point": "/", "fs_type": None}]
+    return entries or [{"mount_point": "/", "fs_type": None}]
+
+
+def _decode_mount_field(value):
+    for encoded, decoded in (
+        ("\\040", " "),
+        ("\\011", "\t"),
+        ("\\012", "\n"),
+        ("\\134", "\\"),
+    ):
+        value = value.replace(encoded, decoded)
+    return value
+
+
+def _mount_for_path(path, mount_entries):
+    resolved = os.path.realpath(path) if os.path.exists(path) else os.path.abspath(path)
+    best = None
+    for entry in mount_entries:
+        mount_point = entry.get("mount_point") or "/"
+        if resolved == mount_point or resolved.startswith(
+            mount_point.rstrip("/") + "/"
+        ):
+            if best is None or len(mount_point) > len(best["mount_point"]):
+                best = entry
+    return best
+
+
+def _is_filesystem_candidate(path, fs_type):
+    if not path.startswith("/") or not os.path.isdir(path):
+        return False
+    if fs_type in _IGNORED_FILESYSTEM_TYPES:
+        return False
+    return not any(
+        path == prefix or path.startswith(prefix + "/")
+        for prefix in _IGNORED_FILESYSTEM_PREFIXES
+    )

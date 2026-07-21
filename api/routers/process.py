@@ -5144,6 +5144,8 @@ async def get_capabilities(current_user: str = Depends(get_optional_current_user
         "database_health_metrics": True,
         "metrics_history_storage": True,
         "metrics_history_hot_activation": True,
+        "metrics_filesystem_selection": True,
+        "metrics_network_interface_selection": True,
         "database_health_service_keys": sorted(SUPPORTED_SERVICE_KEYS),
         "notifications": True,
         "ai_diagnostics": True,

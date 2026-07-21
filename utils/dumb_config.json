@@ -117,6 +117,12 @@
     },
     "metrics": {
       "system_scope": "auto",
+      "filesystem_paths": [
+        "/"
+      ],
+      "network_interfaces": [
+        "all"
+      ],
       "history_enabled": true,
       "history_interval_sec": 5,
       "history_retention_days": 7,

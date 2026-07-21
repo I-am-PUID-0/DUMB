@@ -45,6 +45,24 @@ class MutableMetricsCollector(FakeMetricsCollector):
         return snapshot
 
 
+class FilesystemMetricsCollector(FakeMetricsCollector):
+    def snapshot(self, **kwargs):
+        snapshot = super().snapshot(**kwargs)
+        snapshot["system"]["filesystems"] = [
+            {
+                "path": "/config",
+                "percent": 94,
+                "inode": {"percent": 20},
+            },
+            {
+                "path": "/data",
+                "percent": 95,
+                "inode": {"percent": 91},
+            },
+        ]
+        return snapshot
+
+
 class NotificationManagerTests(unittest.TestCase):
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
@@ -105,6 +123,32 @@ class NotificationManagerTests(unittest.TestCase):
         self.assertEqual(destination["headers"], {})
         self.assertTrue(destination["url_configured"])
         self.assertTrue(destination["headers_configured"])
+
+    def test_resource_notifications_monitor_every_selected_filesystem(self):
+        self.config["destinations"][0]["event_types"] = [
+            "resource.disk.high",
+            "resource.inode.high",
+        ]
+        self.config["destinations"][0]["cooldown_sec"] = 300
+        self.manager.metrics_collector = FilesystemMetricsCollector()
+
+        self.manager._collect_monitored_conditions(self.config)
+
+        self.assertTrue(self.manager._conditions["resource:disk:/config"]["active"])
+        self.assertTrue(self.manager._conditions["resource:disk:/data"]["active"])
+        self.assertTrue(self.manager._conditions["resource:inode:/data"]["active"])
+        history = self.manager.history()
+        self.assertEqual(len(history), 3)
+        self.assertEqual(
+            [entry["event_type"] for entry in history].count("resource.disk.high"),
+            2,
+        )
+        self.assertEqual(
+            {entry["event_type"] for entry in history},
+            {"resource.disk.high", "resource.inode.high"},
+        )
+        self.assertTrue(any("/config" in entry["title"] for entry in history))
+        self.assertTrue(any("/data" in entry["title"] for entry in history))
 
     def test_update_config_preserves_blank_existing_secrets(self):
         payload = self.manager.get_config(redact=True)

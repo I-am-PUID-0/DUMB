@@ -457,6 +457,30 @@
                 "auto"
               ]
             },
+            "filesystem_paths": {
+              "type": "array",
+              "description": "Absolute container-visible paths whose filesystems are monitored. The first path remains the primary disk/inode history series for compatibility.",
+              "minItems": 1,
+              "maxItems": 32,
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "pattern": "^/",
+                "minLength": 1
+              }
+            },
+            "network_interfaces": {
+              "type": "array",
+              "description": "Network interfaces visible in the DUMB network namespace. Use all to aggregate every visible interface.",
+              "minItems": 1,
+              "maxItems": 32,
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 64
+              }
+            },
             "history_enabled": {
               "type": "boolean"
             },
@@ -598,6 +622,8 @@
             }
           },
           "required": [
+            "filesystem_paths",
+            "network_interfaces",
             "history_enabled",
             "history_interval_sec",
             "history_retention_days",

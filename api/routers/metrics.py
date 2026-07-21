@@ -27,6 +27,38 @@ async def get_metrics_snapshot(
     return collector.snapshot()
 
 
+@metrics_router.get("/filesystems")
+async def get_metrics_filesystems(
+    collector=Depends(get_metrics_collector),
+    current_user: str = Depends(get_optional_current_user),
+):
+    configured_paths = (
+        CONFIG_MANAGER.get("dumb", {}).get("metrics", {}).get("filesystem_paths", ["/"])
+    )
+    return {
+        "configured_paths": configured_paths,
+        "candidates": await run_in_threadpool(collector.list_filesystem_candidates),
+    }
+
+
+@metrics_router.get("/network-interfaces")
+async def get_metrics_network_interfaces(
+    collector=Depends(get_metrics_collector),
+    current_user: str = Depends(get_optional_current_user),
+):
+    configured_interfaces = (
+        CONFIG_MANAGER.get("dumb", {})
+        .get("metrics", {})
+        .get("network_interfaces", ["all"])
+    )
+    return {
+        "configured_interfaces": configured_interfaces,
+        "candidates": await run_in_threadpool(
+            collector.list_network_interface_candidates
+        ),
+    }
+
+
 @metrics_router.get("/database-health")
 async def get_database_health(
     refresh: bool = Query(default=False),
