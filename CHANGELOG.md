@@ -1,5 +1,29 @@
 # Changelog
 
+## [2.9.0](https://github.com/I-am-PUID-0/DUMB/compare/2.8.0...2.9.0) (2026-07-21)
+
+
+### ✨ Features
+
+* **maintainerr:** add optional service integration ([b0b2307](https://github.com/I-am-PUID-0/DUMB/commit/b0b2307a0f7d09e250b708f4a489cbc7282fdc47)), closes [#262](https://github.com/I-am-PUID-0/DUMB/issues/262)
+* **mediastorm:** add verified OCI runtime installation ([4d0f96a](https://github.com/I-am-PUID-0/DUMB/commit/4d0f96a4d506b16f8794de5eaa70668f44aefd87)), closes [#263](https://github.com/I-am-PUID-0/DUMB/issues/263)
+* **metrics:** support selectable filesystems and network interfaces ([9edfa4f](https://github.com/I-am-PUID-0/DUMB/commit/9edfa4f4e69018af9d4a9ef031a3054b53c45dfc))
+* **postgres:** expand guarded SQLite migration support ([5cbf505](https://github.com/I-am-PUID-0/DUMB/commit/5cbf5059f1b3b4ad43d5b332e45bae1ea0b4acb7))
+
+
+### 🐛 Bug Fixes
+
+* **altmount:** install release binary during updates ([e43e151](https://github.com/I-am-PUID-0/DUMB/commit/e43e151e15a3b2aead6af430337f56738d1b6e79))
+* **altmount:** recover safely from stale mount paths ([68b809d](https://github.com/I-am-PUID-0/DUMB/commit/68b809d22068eb9e32e2409e20bdf778807f29c8))
+* **devcontainer:** install Maintainerr canvas dependencies ([932ccec](https://github.com/I-am-PUID-0/DUMB/commit/932ccec89bf766b5e5af470a00f9ceff2a865010)), closes [#262](https://github.com/I-am-PUID-0/DUMB/issues/262)
+* **maintainerr:** make Yarn cache root configurable ([9bdf5a7](https://github.com/I-am-PUID-0/DUMB/commit/9bdf5a789adb858c0d285fef1cf69f4cbc56eb96)), closes [#262](https://github.com/I-am-PUID-0/DUMB/issues/262)
+* **mediastorm:** create managed database when PostgreSQL is already running ([35bb98d](https://github.com/I-am-PUID-0/DUMB/commit/35bb98dbb4495f1d7d467bdf9c4af85b36049154))
+
+
+### 🤡 Other Changes
+
+* **workflows:** update actions/checkout to v7.0.1 across all workflow files ([db73b18](https://github.com/I-am-PUID-0/DUMB/commit/db73b185e64eb953d5f9ea3287d5ee415e34c979))
+
 ## [2.8.0](https://github.com/I-am-PUID-0/DUMB/compare/2.7.0...2.8.0) (2026-07-20)
 
 
