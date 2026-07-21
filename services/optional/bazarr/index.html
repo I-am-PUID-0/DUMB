@@ -800,7 +800,7 @@
   <span class="md-ellipsis">
     
   
-    Arr PostgreSQL Migration
+    PostgreSQL Migration
   
 
     
@@ -2816,6 +2816,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#postgresql-migration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        PostgreSQL migration
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#troubleshooting" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4786,6 +4797,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#postgresql-migration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        PostgreSQL migration
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#troubleshooting" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4923,6 +4945,8 @@
 <p>Open the Bazarr service page in the DUMB frontend, enable the service in <strong>DUMB Config</strong>, save, and start it. The default configuration is:</p>
 <div class="highlight"><pre><span></span><code><span class="nt">&quot;bazarr&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;postgres_enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;postgres_database&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;process_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Bazarr&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;repo_owner&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;morpheus65535&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;repo_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;bazarr&quot;</span><span class="p">,</span>
@@ -4950,7 +4974,7 @@
 <span class="w">    </span><span class="s2">&quot;{port}&quot;</span>
 <span class="w">  </span><span class="p">],</span>
 <span class="w">  </span><span class="nt">&quot;config_dir&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/opt/bazarr&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;config_file&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/bazarr/data/config.yaml&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;config_file&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/bazarr/data/config/config.yaml&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;log_file&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/bazarr/data/log/bazarr.log&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;env&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">    </span><span class="nt">&quot;NO_UPDATE&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;true&quot;</span>
@@ -4970,12 +4994,16 @@
 <li>Test each connection, select subtitle languages and profiles, then configure at least one subtitle provider.</li>
 </ol>
 <p>If your Arr instances use non-default ports, use the actual ports shown on their DUMB service pages.</p>
+<p>DUMB treats <code>bazarr.port</code> as authoritative. If DUMB assigns a different port to avoid a conflict, Bazarr's persisted <strong>Settings -&gt; General -&gt; Port</strong> value is synchronized to the same port during setup. Restart Bazarr after manually changing <code>bazarr.port</code> so both the managed launch command and Bazarr's saved setting are updated.</p>
 <h2 id="media-paths">Media paths<a class="headerlink" href="#media-paths" title="Permanent link">&para;</a></h2>
 <p>Bazarr relies on the paths reported by Sonarr and Radarr. Inside DUMB, all three services see the same filesystem, so the reported Arr path should already be valid in Bazarr. Keep the Arr root folders and Bazarr access on the same <code>/mnt/debrid/...</code> paths.</p>
 <p>Do not add remote path mappings merely because DUMB itself is running in Docker. A mapping is only needed if an Arr instance reports a path that genuinely differs from the path Bazarr can access.</p>
 <h2 id="updates-and-persistence">Updates and persistence<a class="headerlink" href="#updates-and-persistence" title="Permanent link">&para;</a></h2>
 <p>DUMB checks the official Bazarr GitHub release and installs updates according to <code>auto_update_interval</code> and <code>auto_update_start_time</code>. The Python virtual environment is retained during an application update and its requirements are refreshed from the release.</p>
-<p>The Bazarr database and settings remain under <code>/data/bazarr</code> across container replacement or application updates. Do not place Bazarr's SQLite configuration directory on NFS.</p>
+<p>Bazarr uses <code>/bazarr/data/db/bazarr.db</code> by default. The database and settings remain under <code>/data/bazarr</code> across container replacement or application updates. Do not place Bazarr's SQLite configuration directory on NFS.</p>
+<h2 id="postgresql-migration">PostgreSQL migration<a class="headerlink" href="#postgresql-migration" title="Permanent link">&para;</a></h2>
+<p>Bazarr supports PostgreSQL, and DUMB exposes the guarded <strong>Database Migration</strong> tool on the Bazarr service page. Run a rehearsal first, review all table counts, then perform cutover. DUMB configures Bazarr's official <code>POSTGRES_*</code> environment values and creates the <code>bazarr</code> database by default.</p>
+<p>Do not set <code>postgres_enabled: true</code> directly on an existing installation; that changes the backend without copying <code>bazarr.db</code>. Bazarr's upstream guide requires the SQLite database to have been used with Bazarr 1.1.5 or newer before migration. DUMB converts the SQLite timestamp values to the types in Bazarr's current PostgreSQL schema, preserves the SQLite source, and restores SQLite configuration automatically when cutover fails. See <a href="../../../features/arr-postgres-migration/">SQLite to PostgreSQL Migration</a>.</p>
 <h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h2>
 <h3 id="bazarr-cannot-connect-to-sonarr-or-radarr">Bazarr cannot connect to Sonarr or Radarr<a class="headerlink" href="#bazarr-cannot-connect-to-sonarr-or-radarr" title="Permanent link">&para;</a></h3>
 <ul>
@@ -4999,6 +5027,7 @@
 <h2 id="related-links">Related links<a class="headerlink" href="#related-links" title="Permanent link">&para;</a></h2>
 <ul>
 <li><a href="https://wiki.bazarr.media/Getting-Started/Setup-Guide/">Bazarr setup guide</a></li>
+<li><a href="https://wiki.bazarr.media/Additional-Configuration/PostgreSQL-Database/">Bazarr PostgreSQL database</a></li>
 <li><a href="../../core/sonarr/">Sonarr</a></li>
 <li><a href="../../core/radarr/">Radarr</a></li>
 <li><a href="../../../features/embedded-ui/">Embedded service UIs</a></li>

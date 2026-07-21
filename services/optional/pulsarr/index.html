@@ -800,7 +800,7 @@
   <span class="md-ellipsis">
     
   
-    Arr PostgreSQL Migration
+    PostgreSQL Migration
   
 
     
@@ -2846,6 +2846,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#postgresql-migration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        PostgreSQL migration
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#related-links" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4775,6 +4786,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#postgresql-migration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        PostgreSQL migration
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#related-links" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4914,6 +4936,8 @@
 <h2 id="configuration-settings-in-dumb_configjson">Configuration settings in <code>dumb_config.json</code><a class="headerlink" href="#configuration-settings-in-dumb_configjson" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="nt">&quot;pulsarr&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;postgres_enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;postgres_database&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;process_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Pulsarr&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;repo_owner&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;jamcalli&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;repo_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Pulsarr&quot;</span><span class="p">,</span>
@@ -4953,6 +4977,8 @@
 <h3 id="configuration-key-descriptions">Configuration key descriptions<a class="headerlink" href="#configuration-key-descriptions" title="Permanent link">&para;</a></h3>
 <ul>
 <li><strong><code>enabled</code></strong>: Whether to start Pulsarr.</li>
+<li><strong><code>postgres_enabled</code></strong>: Select DUMB-managed PostgreSQL after using the guided migration tool. SQLite remains the default.</li>
+<li><strong><code>postgres_database</code></strong>: Optional target name; blank uses <code>pulsarr</code>.</li>
 <li><strong><code>repo_owner</code></strong> / <strong><code>repo_name</code></strong>: GitHub repository DUMB downloads from.</li>
 <li><strong><code>release_version_enabled</code></strong> / <strong><code>release_version</code></strong>: Use a tagged release if enabled, or the latest release by default.</li>
 <li><strong><code>branch_enabled</code></strong> / <strong><code>branch</code></strong>: Use a source branch instead of a release.</li>
@@ -4985,6 +5011,9 @@
   preserves the migration error in DUMB's service log.</li>
 <li>If you intentionally serve Pulsarr behind a separate subfolder reverse proxy, set Pulsarr's own <code>basePath</code> environment variable for that external proxy. DUMB's embedded UI route strips its service prefix and does not need <code>basePath</code>.</li>
 </ul>
+<h2 id="postgresql-migration">PostgreSQL migration<a class="headerlink" href="#postgresql-migration" title="Permanent link">&para;</a></h2>
+<p>Use <strong>Database Migration</strong> on the Pulsarr service page for an existing SQLite installation. Rehearsal starts Pulsarr against an isolated PostgreSQL database so Pulsarr creates its current schema, imports application data while excluding Knex's migration bookkeeping tables, validates every copied table, and returns production to SQLite. Cutover repeats this from a cold snapshot and enables <code>postgres_enabled</code> only after validation.</p>
+<p>Do not enable PostgreSQL directly when you need the existing users, settings, requests, or integrations. See <a href="../../../features/arr-postgres-migration/">SQLite to PostgreSQL Migration</a> and the <a href="https://jamcalli.github.io/Pulsarr/docs/installation/postgres-migration/">upstream Pulsarr migration guide</a>.</p>
 <hr />
 <h2 id="related-links">Related links<a class="headerlink" href="#related-links" title="Permanent link">&para;</a></h2>
 <ul>

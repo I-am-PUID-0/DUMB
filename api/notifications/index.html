@@ -800,7 +800,7 @@
   <span class="md-ellipsis">
     
   
-    Arr PostgreSQL Migration
+    PostgreSQL Migration
   
 
     
@@ -4860,6 +4860,7 @@ configuration and supported-event discovery remain available.</p>
 <span class="p">}</span>
 </code></pre></div>
 <p>A blank URL or headers object preserves an existing saved secret for the same destination ID. Destination <code>service_names</code> must contain exact process names that are currently enabled in DUMB; disabled template services and unknown names are rejected with <code>400</code> rather than retained as hidden filters. An empty list matches all events.</p>
+<p>Disk and inode thresholds are evaluated independently for every path in <code>dumb.metrics.filesystem_paths</code>. Notification titles identify the affected container path, and cooldown state is kept per threshold condition so simultaneous pressure on two selected filesystems is not collapsed into one event.</p>
 <h2 id="supported-events">Supported events<a class="headerlink" href="#supported-events" title="Permanent link">&para;</a></h2>
 <h3 id="get-apinotificationsevents"><code>GET /api/notifications/events</code><a class="headerlink" href="#get-apinotificationsevents" title="Permanent link">&para;</a></h3>
 <p>Returns the backend-supported event types and severity values. Frontends should use this endpoint instead of hard-coding future event support.</p>

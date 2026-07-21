@@ -800,7 +800,7 @@
   <span class="md-ellipsis">
     
   
-    Arr PostgreSQL Migration
+    PostgreSQL Migration
   
 
     
@@ -3594,6 +3594,28 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#filesystem-discovery" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Filesystem discovery
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#network-interface-discovery" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Network interface discovery
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#database-health" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4741,6 +4763,28 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#filesystem-discovery" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Filesystem discovery
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#network-interface-discovery" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Network interface discovery
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#database-health" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4901,7 +4945,16 @@
 <h2 id="current-snapshot">Current snapshot<a class="headerlink" href="#current-snapshot" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="err">GET /api/metrics</span>
 </code></pre></div>
-<p>Returns current system, managed-process, external-process, and configured Database Health data.</p>
+<p>Returns current system, managed-process, external-process, and configured Database Health data. <code>system.filesystems</code> contains one entry per configured <code>dumb.metrics.filesystem_paths</code> value. <code>system.disk</code> and <code>system.inode</code> remain aliases for the first configured path for backward compatibility.</p>
+<h2 id="filesystem-discovery">Filesystem discovery<a class="headerlink" href="#filesystem-discovery" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><span class="err">GET /api/metrics/filesystems</span>
+</code></pre></div>
+<p>Returns <code>configured_paths</code> plus eligible filesystem mount points visible inside the DUMB container. The response intentionally uses container paths; Docker host paths that are not mounted into the container cannot be discovered or monitored. Clients should gate this endpoint and the <code>filesystem_paths</code> setting on the <code>metrics_filesystem_selection</code> capability.</p>
+<h2 id="network-interface-discovery">Network interface discovery<a class="headerlink" href="#network-interface-discovery" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><span class="err">GET /api/metrics/network-interfaces</span>
+</code></pre></div>
+<p>Returns <code>configured_interfaces</code> plus interfaces visible inside DUMB's network namespace. Candidate entries include interface name, availability/link state, speed, MTU, and cumulative byte/packet/error/drop counters; IP addresses are not returned. Clients should gate this endpoint and <code>dumb.metrics.network_interfaces</code> on the <code>metrics_network_interface_selection</code> capability.</p>
+<p>In current snapshots, <code>system.network_interfaces</code> contains each selected visible interface. <code>system.net_io</code> remains the compatibility aggregate and sums only the selected available interfaces. The default <code>["all"]</code> selects every visible interface. Host interfaces cannot be discovered from a bridge-networked container merely by changing <code>system_scope</code>.</p>
 <h2 id="database-health">Database Health<a class="headerlink" href="#database-health" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="err">GET /api/metrics/database-health</span>
 <span class="err">GET /api/metrics/database-health?process_name=NzbDAV&amp;refresh=true</span>
@@ -4940,7 +4993,7 @@
 <h2 id="chart-history">Chart history<a class="headerlink" href="#chart-history" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="err">GET /api/metrics/history_series?since=1784300000&amp;bucket_seconds=60&amp;max_points=600</span>
 </code></pre></div>
-<p>This endpoint returns compact items, timestamps, CPU/memory/disk/inode percentage series, derived disk/network rate series, summary statistics, truncation state, and the effective bucket size. DUMB automatically increases the bucket size when necessary to honor <code>max_points</code>.</p>
+<p>This endpoint returns compact items, timestamps, CPU/memory/disk/inode percentage series, per-selected-filesystem disk/inode series, per-selected-interface send/receive rate series, derived aggregate disk/network rate series, summary statistics, truncation state, and the effective bucket size. DUMB automatically increases the bucket size when necessary to honor <code>max_points</code>.</p>
 <h2 id="storage-status">Storage status<a class="headerlink" href="#storage-status" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="err">GET /api/metrics/history/storage</span>
 <span class="err">GET /api/metrics/history/storage?probe_postgresql=true</span>

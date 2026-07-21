@@ -800,7 +800,7 @@
   <span class="md-ellipsis">
     
   
-    Arr PostgreSQL Migration
+    PostgreSQL Migration
   
 
     
@@ -5081,7 +5081,7 @@
 <h3 id="endpoint_1">Endpoint<a class="headerlink" href="#endpoint_1" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code>/ws/metrics
 </code></pre></div>
-<p>Streams real-time system metrics including CPU, memory, disk, and network usage.</p>
+<p>Streams real-time system metrics including CPU, memory, selected filesystem, and selected network-interface usage. Each snapshot's <code>system.filesystems</code> array contains the configured container-visible paths; <code>system.disk</code> and <code>system.inode</code> alias the first path for older clients. <code>system.network_interfaces</code> contains per-interface counters and metadata, while <code>system.net_io</code> is their compatibility aggregate.</p>
 <h3 id="query-parameters_1">Query parameters<a class="headerlink" href="#query-parameters_1" title="Permanent link">&para;</a></h3>
 <table>
 <thead>

@@ -800,7 +800,7 @@
   <span class="md-ellipsis">
     
   
-    Arr PostgreSQL Migration
+    PostgreSQL Migration
   
 
     
@@ -4999,7 +4999,7 @@
 <p>Setting <code>postgres_enabled: true</code> changes the database backend Sonarr starts with. It does <strong>not</strong> copy <code>sonarr.db</code> into PostgreSQL.</p>
 <p>If you enable this on an existing SQLite-backed Sonarr instance without doing a manual migration, Sonarr can start against fresh PostgreSQL databases and appear empty or newly initialized.</p>
 </div>
-<p>For an existing instance, use the <strong>Database Migration</strong> tool on its service page. Run a rehearsal first, review its table-count validation, and only then start guarded cutover. See <a href="../../../features/arr-postgres-migration/">Arr SQLite to PostgreSQL Migration</a>.</p>
+<p>For an existing instance, use the <strong>Database Migration</strong> tool on its service page. Run a rehearsal first, review its table-count validation, and only then start guarded cutover. See <a href="../../../features/arr-postgres-migration/">SQLite to PostgreSQL Migration</a>.</p>
 <p>Sonarr's upstream documentation still classifies existing SQLite migration as unsupported. Back up <code>/sonarr/...</code> and <code>/postgres_data</code> before proceeding, even when using DUMB's guarded workflow.</p>
 <div class="admonition warning">
 <p class="admonition-title">PostgreSQL is not a temporary toggle</p>

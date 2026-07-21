@@ -800,7 +800,7 @@
   <span class="md-ellipsis">
     
   
-    Arr PostgreSQL Migration
+    PostgreSQL Migration
   
 
     
@@ -5015,12 +5015,11 @@
 <p>Setting <code>postgres_enabled: true</code> changes the database backend Prowlarr starts with. It does <strong>not</strong> copy <code>prowlarr.db</code> into PostgreSQL.</p>
 <p>If you enable this on an existing SQLite-backed Prowlarr instance without doing a manual migration, Prowlarr can start against fresh PostgreSQL databases and appear empty or newly initialized.</p>
 </div>
-<p>This mode is intended for new Prowlarr databases unless you are deliberately following upstream/community migration notes. Back up both <code>/prowlarr/...</code> and <code>/postgres_data</code> before experimenting with an existing instance.</p>
-<p>Manual migration, if you choose to attempt it, is outside DUMB automation. Use the upstream Prowlarr PostgreSQL guide as the source of truth for whether migration is currently documented and supported.</p>
+<p>For an existing instance, use <strong>Database Migration</strong> on the service page. DUMB requires a rehearsal, initializes an isolated Prowlarr-owned PostgreSQL schema, imports and validates every table, and preserves SQLite for rollback. Prowlarr's upstream guide still classifies migration as unsupported. See <a href="../../../features/arr-postgres-migration/">SQLite to PostgreSQL Migration</a>.</p>
 <div class="admonition warning">
 <p class="admonition-title">PostgreSQL is not a temporary toggle</p>
 <p>There is no known supported migration path from PostgreSQL back to SQLite for Prowlarr. Treat <code>postgres_enabled: true</code> as a long-term database choice unless you are willing to recreate the Prowlarr instance from scratch.</p>
-<p>DUMB does not provide automatic SQLite-to-PostgreSQL or PostgreSQL-to-SQLite migration for Prowlarr.</p>
+<p>DUMB can restore the preserved pre-cutover SQLite state, but it does not copy later PostgreSQL writes back into SQLite.</p>
 </div>
 <hr />
 <h2 id="repo-based-installs-and-updates">Repo-based installs and updates<a class="headerlink" href="#repo-based-installs-and-updates" title="Permanent link">&para;</a></h2>

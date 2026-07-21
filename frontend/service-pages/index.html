@@ -800,7 +800,7 @@
   <span class="md-ellipsis">
     
   
-    Arr PostgreSQL Migration
+    PostgreSQL Migration
   
 
     
@@ -5045,7 +5045,7 @@ auto-restart policies, auto-update scheduling, and configuration editors.</p>
 <li>On-demand update checks and auto-update scheduling</li>
 <li>Seerr Sync controls when viewing a Seerr instance</li>
 <li>Symlink Job Center (for symlink-capable services) with active jobs, recent history, retry, and failure clearing</li>
-<li>Guided SQLite-to-PostgreSQL rehearsal/cutover panel on Sonarr and Radarr instances</li>
+<li>Guided SQLite-to-PostgreSQL rehearsal/cutover panel on every backend-advertised supported service, with explicit rehearsal/cutover success notices, automatic cutover selection, close-while-active confirmation, and persistent background running/completion indicators</li>
 <li>Sidebar operator QoL controls (quick filters, saved views, compact mode, and command palette)</li>
 </ul>
 <hr />
@@ -5065,7 +5065,7 @@ config key and process name in monospace.</p>
 </div>
 <hr />
 <h2 id="database-migration-panel">Database Migration panel<a class="headerlink" href="#database-migration-panel" title="Permanent link">&para;</a></h2>
-<p>On Sonarr and Radarr service pages, <strong>Database Migration</strong> opens a guided SQLite-to-PostgreSQL workflow when the backend advertises the <code>arr_postgres_migration</code> capability.</p>
+<p>On Sonarr, Radarr, Lidarr, Prowlarr, Whisparr, Bazarr, Pulsarr, Seerr, and AltMount service pages, <strong>Database Migration</strong> opens a guided SQLite-to-PostgreSQL workflow when the backend advertises <code>postgres_migration</code> and includes the service in <code>postgres_migration_service_keys</code>. Older backends retain the legacy Sonarr/Radarr capability path.</p>
 <p>The panel provides:</p>
 <ul>
 <li>non-mutating readiness checks;</li>
@@ -5078,7 +5078,7 @@ config key and process name in monospace.</p>
 <li>explicit SQLite rollback when a cutover backup is available.</li>
 </ul>
 <p>The frontend requires a successful rehearsal before enabling its cutover choice. Closing or navigating away from the panel does not cancel the backend job; reopening the service page resumes the latest job display.</p>
-<p>See <a href="../../features/arr-postgres-migration/">Arr SQLite to PostgreSQL Migration</a> before using it in production.</p>
+<p>See <a href="../../features/arr-postgres-migration/">SQLite to PostgreSQL Migration</a> before using it in production.</p>
 <hr />
 <h2 id="dependency-graph-view">Dependency graph view<a class="headerlink" href="#dependency-graph-view" title="Permanent link">&para;</a></h2>
 <p>On the <strong>DUMB Config</strong> tab, use the <strong>Dependencies</strong> action to open a pop-out dependency graph panel that:</p>

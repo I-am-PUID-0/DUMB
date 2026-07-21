@@ -29,7 +29,7 @@
     
     
       
-        <title>Arr SQLite to PostgreSQL Migration - Debrid Unlimited Media Bridge</title>
+        <title>SQLite to PostgreSQL Migration - Debrid Unlimited Media Bridge</title>
       
     
     
@@ -116,7 +116,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#arr-sqlite-to-postgresql-migration" class="md-skip">
+        <a href="#sqlite-to-postgresql-migration" class="md-skip">
           Skip to content
         </a>
       
@@ -160,7 +160,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Arr SQLite to PostgreSQL Migration
+              SQLite to PostgreSQL Migration
             
           </span>
         </div>
@@ -812,7 +812,7 @@
   <span class="md-ellipsis">
     
   
-    Arr PostgreSQL Migration
+    PostgreSQL Migration
   
 
     
@@ -830,7 +830,7 @@
   <span class="md-ellipsis">
     
   
-    Arr PostgreSQL Migration
+    PostgreSQL Migration
   
 
     
@@ -857,10 +857,21 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#what-the-tool-automates" class="md-nav__link">
+  <a href="#supported-services" class="md-nav__link">
     <span class="md-ellipsis">
       
-        What the tool automates
+        Supported services
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-dumb-automates" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What DUMB automates
       
     </span>
   </a>
@@ -879,10 +890,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#application-logs-are-optional" class="md-nav__link">
+  <a href="#arr-log-databases-are-optional" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Application logs are optional
+        Arr log databases are optional
       
     </span>
   </a>
@@ -912,10 +923,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#supported-scope" class="md-nav__link">
+  <a href="#upstream-references" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Supported scope
+        Upstream references
       
     </span>
   </a>
@@ -4706,10 +4717,21 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#what-the-tool-automates" class="md-nav__link">
+  <a href="#supported-services" class="md-nav__link">
     <span class="md-ellipsis">
       
-        What the tool automates
+        Supported services
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-dumb-automates" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What DUMB automates
       
     </span>
   </a>
@@ -4728,10 +4750,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#application-logs-are-optional" class="md-nav__link">
+  <a href="#arr-log-databases-are-optional" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Application logs are optional
+        Arr log databases are optional
       
     </span>
   </a>
@@ -4761,10 +4783,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#supported-scope" class="md-nav__link">
+  <a href="#upstream-references" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Supported scope
+        Upstream references
       
     </span>
   </a>
@@ -4850,87 +4872,141 @@
   
 
 
-<h1 id="arr-sqlite-to-postgresql-migration">Arr SQLite to PostgreSQL Migration<a class="headerlink" href="#arr-sqlite-to-postgresql-migration" title="Permanent link">&para;</a></h1>
-<p>DUMB provides a guarded migration tool for moving an existing <strong>Sonarr or Radarr</strong> instance from SQLite to DUMB's PostgreSQL service. The tool is available from the instance's service page under <strong>Database Migration</strong>.</p>
-<p>This is deliberately separate from <code>postgres_enabled</code>. Turning that setting on directly changes the database backend but does not copy existing data.</p>
-<div class="admonition danger">
-<p class="admonition-title">Servarr considers this unsupported</p>
-<p>Sonarr and Radarr document SQLite-to-PostgreSQL migration as unsupported and may not assist with failures. DUMB adds backups, rehearsal, validation, and rollback controls, but it cannot turn the migration into an upstream-supported operation.</p>
-</div>
-<h2 id="what-the-tool-automates">What the tool automates<a class="headerlink" href="#what-the-tool-automates" title="Permanent link">&para;</a></h2>
+<h1 id="sqlite-to-postgresql-migration">SQLite to PostgreSQL Migration<a class="headerlink" href="#sqlite-to-postgresql-migration" title="Permanent link">&para;</a></h1>
+<p>DUMB provides a guarded tool for moving an existing supported service from SQLite to DUMB-managed PostgreSQL. Open the service page and select <strong>Database Migration</strong>.</p>
+<p>This tool is deliberately separate from <code>postgres_enabled</code>. Enabling PostgreSQL directly changes the database used at the next start; it does not copy existing SQLite data.</p>
+<h2 id="supported-services">Supported services<a class="headerlink" href="#supported-services" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Service</th>
+<th>SQLite source</th>
+<th>PostgreSQL target</th>
+<th>Important note</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Sonarr</td>
+<td><code>sonarr.db</code>, optional <code>logs.db</code></td>
+<td>Per-instance main/log databases</td>
+<td>Requires Sonarr 4.0.0.615 or newer; Servarr calls migration unsupported</td>
+</tr>
+<tr>
+<td>Radarr</td>
+<td><code>radarr.db</code>, optional <code>logs.db</code></td>
+<td>Per-instance main/log databases</td>
+<td>Requires Radarr 4.1.0.6133 or newer; Servarr calls migration unsupported</td>
+</tr>
+<tr>
+<td>Lidarr</td>
+<td><code>lidarr.db</code>, optional <code>logs.db</code></td>
+<td>Per-instance main/log databases</td>
+<td>Requires Lidarr 1.1.2.2890 or newer; upstream guide is community/unsupported</td>
+</tr>
+<tr>
+<td>Prowlarr</td>
+<td><code>prowlarr.db</code>, optional <code>logs.db</code></td>
+<td>Per-instance main/log databases</td>
+<td>Upstream guide calls migration unsupported</td>
+</tr>
+<tr>
+<td>Whisparr</td>
+<td><code>whisparr.db</code>, optional <code>logs.db</code></td>
+<td>Per-instance main/log databases</td>
+<td>Follow the same guarded rehearsal and validation rules</td>
+</tr>
+<tr>
+<td>Bazarr</td>
+<td><code>/bazarr/data/db/bazarr.db</code></td>
+<td><code>bazarr</code> by default</td>
+<td>The SQLite database must have been upgraded by Bazarr 1.1.5 or newer; timestamp columns require type conversion</td>
+</tr>
+<tr>
+<td>Pulsarr</td>
+<td><code>/pulsarr/data/db/pulsarr.db</code></td>
+<td><code>pulsarr</code> by default</td>
+<td>DUMB runs Pulsarr's migration script in staging; migration metadata tables are recreated and are not copied</td>
+</tr>
+<tr>
+<td>Seerr</td>
+<td><code>/seerr/config/db/db.sqlite3</code></td>
+<td>Per-instance database</td>
+<td>Migration metadata is recreated by Seerr and is not copied</td>
+</tr>
+<tr>
+<td>AltMount</td>
+<td>Configured <code>database.path</code></td>
+<td><code>altmount</code> by default</td>
+<td>AltMount supports both providers; DUMB validates the data-only conversion against AltMount's current schema</td>
+</tr>
+</tbody>
+</table>
+<p>Services that use PostgreSQL only, such as MediaStorm, Riven Backend, Zilean, and Traefik Proxy Admin, do not have a SQLite source to migrate. Services without a confirmed PostgreSQL backend are not offered the tool.</p>
+<h2 id="what-dumb-automates">What DUMB automates<a class="headerlink" href="#what-dumb-automates" title="Permanent link">&para;</a></h2>
 <p>The workflow:</p>
 <ol>
-<li>Confirms that the instance is enabled, currently uses SQLite, meets the supported version floor, and has healthy SQLite files.</li>
-<li>Verifies PostgreSQL connectivity, database-creation privileges, and backup space.</li>
-<li>Creates consistent SQLite backups with SQLite's backup API and verifies the copies.</li>
-<li>Creates the instance's PostgreSQL main/log databases.</li>
-<li>Briefly starts the Arr against PostgreSQL when the current binary needs to initialize its schema.</li>
-<li>Imports data into that Arr-created schema using DUMB's native data-only importer.</li>
-<li>Resets PostgreSQL sequences dynamically and compares every imported table's row count with SQLite.</li>
-<li>During cutover, persists <code>postgres_enabled: true</code> only after import validation succeeds.</li>
-<li>Automatically restores the original <code>config.xml</code> and SQLite mode if cutover fails.</li>
+<li>Confirms that the service is enabled, still configured for SQLite, and has a healthy SQLite source.</li>
+<li>Verifies PostgreSQL connectivity, database-creation privileges, and storage for staging plus backups.</li>
+<li>Creates consistent SQLite backups with SQLite's backup API and verifies each copy.</li>
+<li>Starts the current application briefly against isolated PostgreSQL staging databases so the application creates its own current schema.</li>
+<li>Imports data into that schema, converts values according to PostgreSQL target types, resets sequences, and compares every imported table's row count.</li>
+<li>For cutover, clones the validated application schema into the named production databases, imports a fresh cold snapshot, and enables <code>postgres_enabled</code> only after validation succeeds.</li>
+<li>Restores the saved application configuration and SQLite mode automatically if cutover fails.</li>
 </ol>
-<p>Job state and backups are stored under:</p>
+<p>Jobs and backups remain in the original compatibility location:</p>
 <div class="highlight"><pre><span></span><code>/config/arr-postgres-migration/
 ├── jobs/
 └── backups/
 </code></pre></div>
-<p>The original SQLite databases are not deleted.</p>
+<p>Existing Sonarr/Radarr job history and rollback backups therefore remain visible after upgrading. DUMB never deletes the source SQLite database.</p>
 <h2 id="recommended-flow">Recommended flow<a class="headerlink" href="#recommended-flow" title="Permanent link">&para;</a></h2>
 <h3 id="1-run-preflight">1. Run preflight<a class="headerlink" href="#1-run-preflight" title="Permanent link">&para;</a></h3>
-<p>Open the Sonarr or Radarr service page, select <strong>Database Migration</strong>, and review every check. A failed check blocks the job. Warnings require review but may be expected, such as an Arr version that could not be read from its logs or PostgreSQL databases that already contain an initialized schema.</p>
+<p>Open <strong>Database Migration</strong> on the service page and review every check. A failure blocks the job. A warning requires review but may be expected, such as a version that cannot be detected or a target database that already contains data.</p>
+<p>The panel shows the latest persisted job for the current service, including its service name and start time. Historical failed or completed jobs remain visible after navigation and restarts; opening a panel or running preflight does not start a migration.</p>
+<p>Preflight does not change the service configuration.</p>
 <h3 id="2-run-a-rehearsal">2. Run a rehearsal<a class="headerlink" href="#2-run-a-rehearsal" title="Permanent link">&para;</a></h3>
-<p>Rehearsal is the default and is required by dmbdb before it enables cutover.</p>
-<p>A rehearsal:</p>
+<p>Rehearsal is required before dmbdb enables cutover. It:</p>
 <ul>
 <li>takes a consistent SQLite snapshot;</li>
-<li>initializes the current Arr PostgreSQL schema in isolated staging databases;</li>
-<li>imports into temporary rehearsal databases;</li>
-<li>validates all table counts and important library counts;</li>
-<li>removes the rehearsal databases; and</li>
-<li>leaves the service using SQLite.</li>
+<li>briefly stops the application and lets it initialize isolated PostgreSQL staging databases;</li>
+<li>returns the production application to SQLite;</li>
+<li>performs the longer import against staging;</li>
+<li>validates all table counts and selected high-value tables; and</li>
+<li>removes the staging databases.</li>
 </ul>
-<p>Schema initialization causes a short service interruption. The longer rehearsal import then runs against isolated staging databases while the production instance is back on SQLite.</p>
-<h3 id="3-review-results">3. Review results<a class="headerlink" href="#3-review-results" title="Permanent link">&para;</a></h3>
-<p>The panel shows the current stage, percentage, detailed event history, imported tables/rows, and important library counts. Do not proceed if the rehearsal fails or automatically rolls back.</p>
-<h3 id="4-run-guarded-cutover">4. Run guarded cutover<a class="headerlink" href="#4-run-guarded-cutover" title="Permanent link">&para;</a></h3>
-<p>Cutover stops the selected Arr, creates a new cold SQLite backup, resets the named PostgreSQL target databases, imports and validates the fresh snapshot, then switches the instance to PostgreSQL.</p>
-<p>Downtime depends primarily on SQLite database size and storage speed. Do not restart DUMB or the Arr during this job.</p>
-<h3 id="5-validate-the-application">5. Validate the application<a class="headerlink" href="#5-validate-the-application" title="Permanent link">&para;</a></h3>
-<p>After cutover, check:</p>
-<ul>
-<li>series/movies and file counts;</li>
-<li>root folders;</li>
-<li>quality profiles and custom formats;</li>
-<li>indexers and download clients;</li>
-<li>recent history; and</li>
-<li>a harmless write, such as saving an unchanged setting.</li>
-</ul>
-<p>Keep the SQLite backup until the PostgreSQL deployment and its backup schedule have been proven.</p>
-<h2 id="application-logs-are-optional">Application logs are optional<a class="headerlink" href="#application-logs-are-optional" title="Permanent link">&para;</a></h2>
-<p>The main Arr database contains configuration, library state, and history. <code>logs.db</code> contains application log entries and can be very large.</p>
-<p>Leave <strong>Migrate the Arr log database too</strong> disabled unless old application log entries are important. When disabled, the PostgreSQL log database starts fresh and cutover is faster.</p>
+<p>The schema-bootstrap interruption is normally short. Do not restart DUMB or manually start/stop the service while a job is active.</p>
+<p>Closing the migration popup does not cancel an active job. dmbdb asks for confirmation, then keeps a <strong>Database migration running in the background</strong> indicator on the service page with current progress and an <strong>Open progress</strong> action. Reopen the panel at any time to resume the detailed event view. Do not restart the DUMB API or container while the job is active.</p>
+<p>When a guarded cutover finishes, the panel displays <strong>Migration completed successfully — PostgreSQL cutover is complete</strong>. If it finishes while the popup is closed, the service page replaces the running indicator with a dismissible completion notice. This confirms that DUMB imported and validated the snapshot and switched the database configuration; still verify service health, application data, and integrations afterward.</p>
+<p>When validation succeeds, the panel displays <strong>Rehearsal passed — ready for PostgreSQL cutover</strong> and automatically selects <strong>Cut over to PostgreSQL</strong>. The service is still using SQLite at this point. Review the safeguards, enter the confirmation text again, and click <strong>Start guarded cutover</strong> to perform the actual switch.</p>
+<h3 id="3-run-guarded-cutover">3. Run guarded cutover<a class="headerlink" href="#3-run-guarded-cutover" title="Permanent link">&para;</a></h3>
+<p>Cutover stops the service, creates a fresh cold backup, resets the named PostgreSQL target databases, imports and validates the snapshot, switches the application configuration, and starts the service when it was running before the job.</p>
+<p>Downtime depends mainly on SQLite size and storage speed.</p>
+<h3 id="4-validate-the-application">4. Validate the application<a class="headerlink" href="#4-validate-the-application" title="Permanent link">&para;</a></h3>
+<p>Check the service's important objects and integrations, then perform a harmless write such as saving an unchanged setting. For an Arr, verify libraries, files, root folders, profiles, indexers, download clients, and history. For Bazarr, verify shows/movies, providers, history, and subtitle searches. For request services, verify users, requests, settings, and integrations.</p>
+<p>Keep the SQLite backup until PostgreSQL and its backup schedule have been proven.</p>
+<h2 id="arr-log-databases-are-optional">Arr log databases are optional<a class="headerlink" href="#arr-log-databases-are-optional" title="Permanent link">&para;</a></h2>
+<p>The five Arr services have a separate <code>logs.db</code>. Leave <strong>Migrate the service log database too</strong> disabled unless old application log entries matter. The main database already contains application configuration, library state, and history; starting fresh for diagnostic logs shortens cutover.</p>
+<p>The option is hidden for Bazarr, Pulsarr, Seerr, and AltMount because they have one migrated SQLite database.</p>
 <h2 id="rollback-behavior">Rollback behavior<a class="headerlink" href="#rollback-behavior" title="Permanent link">&para;</a></h2>
-<p>For a completed cutover, the panel can restore the preserved pre-cutover <code>config.xml</code>, set <code>postgres_enabled: false</code>, and restart the instance against SQLite.</p>
+<p>For a completed cutover, the panel can restore the preserved application configuration, set <code>postgres_enabled: false</code>, and restart against the untouched SQLite database.</p>
 <div class="admonition warning">
 <p class="admonition-title">Rollback is not reverse migration</p>
-<p>Changes made after PostgreSQL cutover are not copied back into SQLite. Roll back promptly if validation fails. A later rollback can lose settings, library changes, history, or other writes made while PostgreSQL was active.</p>
+<p>Changes written after PostgreSQL cutover are not copied into SQLite. Roll back promptly if validation fails. A later rollback can lose settings, library changes, history, requests, or other PostgreSQL writes.</p>
 </div>
-<p>An interrupted job is marked as interrupted after the DUMB API restarts. Inspect the job and restore SQLite before retrying.</p>
+<p>An active job is marked <code>interrupted</code> if the DUMB API restarts. Inspect its backup directory and restore SQLite before retrying.</p>
 <h2 id="postgresql-backups-after-migration">PostgreSQL backups after migration<a class="headerlink" href="#postgresql-backups-after-migration" title="Permanent link">&para;</a></h2>
-<p>Sonarr and Radarr built-in backups do not include PostgreSQL data. Configure scheduled <code>pg_dump</code> backups for both the main and log databases after cutover. Keep <code>/postgres_data</code> protected by normal host/container backups as well.</p>
-<h2 id="supported-scope">Supported scope<a class="headerlink" href="#supported-scope" title="Permanent link">&para;</a></h2>
-<p>The guided importer initially supports:</p>
-<ul>
-<li>Sonarr <code>4.0.0.615</code> or newer</li>
-<li>Radarr <code>4.1.0.6133</code> or newer</li>
-<li>DUMB-managed PostgreSQL with a role that has <code>CREATEDB</code> and superuser privileges</li>
-</ul>
-<p>Lidarr, Prowlarr, and Whisparr can use <code>postgres_enabled</code>, but the guided migration tool does not migrate their existing SQLite data yet.</p>
-<p>Upstream references:</p>
+<p>Application-native backups generally do not contain PostgreSQL data. Configure scheduled <code>pg_dump</code> backups for every migrated database and protect <code>/postgres_data</code> with the normal host/container backup plan.</p>
+<h2 id="upstream-references">Upstream references<a class="headerlink" href="#upstream-references" title="Permanent link">&para;</a></h2>
 <ul>
 <li><a href="https://wiki.servarr.com/en/sonarr/postgres-setup">Sonarr PostgreSQL setup</a></li>
 <li><a href="https://wiki.servarr.com/radarr/postgres-setup">Radarr PostgreSQL setup</a></li>
+<li><a href="https://wiki.servarr.com/lidarr/postgres-setup">Lidarr PostgreSQL setup</a></li>
+<li><a href="https://wiki.servarr.com/prowlarr/postgres-setup">Prowlarr PostgreSQL setup</a></li>
+<li><a href="https://wiki.servarr.com/whisparr/postgres-setup">Whisparr PostgreSQL setup</a></li>
+<li><a href="https://wiki.bazarr.media/Additional-Configuration/PostgreSQL-Database/">Bazarr PostgreSQL database</a></li>
+<li><a href="https://jamcalli.github.io/Pulsarr/docs/installation/postgres-migration/">Pulsarr SQLite-to-PostgreSQL migration</a></li>
+<li><a href="https://docs.seerr.dev/extending-seerr/database-config/">Seerr database configuration and migration</a></li>
 </ul>
 
 

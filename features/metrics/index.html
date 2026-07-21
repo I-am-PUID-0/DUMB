@@ -803,7 +803,7 @@
   <span class="md-ellipsis">
     
   
-    Arr PostgreSQL Migration
+    PostgreSQL Migration
   
 
     
@@ -5022,16 +5022,16 @@
 <td>Total, used, percentage</td>
 </tr>
 <tr>
-<td><strong>Disk</strong></td>
-<td>Total, used, free, percentage</td>
+<td><strong>Filesystems</strong></td>
+<td>Total, used, free, percentage for each selected container-visible path</td>
 </tr>
 <tr>
 <td><strong>Inodes</strong></td>
-<td>Total, used, free, percentage</td>
+<td>Total, used, free, percentage for each selected filesystem</td>
 </tr>
 <tr>
 <td><strong>Network</strong></td>
-<td>Bytes/packets sent and received</td>
+<td>Bytes/packets, errors, drops, link state, speed, and MTU for selected visible interfaces</td>
 </tr>
 <tr>
 <td><strong>System</strong></td>
@@ -5072,6 +5072,13 @@
 <div class="highlight"><pre><span></span><code><span class="nt">&quot;dumb&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;metrics&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">    </span><span class="nt">&quot;system_scope&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;auto&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;filesystem_paths&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">      </span><span class="s2">&quot;/data&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="s2">&quot;/config&quot;</span>
+<span class="w">    </span><span class="p">],</span>
+<span class="w">    </span><span class="nt">&quot;network_interfaces&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">      </span><span class="s2">&quot;all&quot;</span>
+<span class="w">    </span><span class="p">],</span>
 <span class="w">    </span><span class="nt">&quot;history_enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;history_interval_sec&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">5</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;history_retention_days&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">7</span><span class="p">,</span>
@@ -5122,6 +5129,16 @@
 <td><code>system_scope</code></td>
 <td><code>auto</code></td>
 <td>Choose system scope for metrics (<code>auto</code>, <code>host</code>, <code>container</code>)</td>
+</tr>
+<tr>
+<td><code>filesystem_paths</code></td>
+<td><code>["/"]</code></td>
+<td>Absolute paths visible inside the container whose filesystems are monitored; the first path is primary for compatibility fields and the existing disk/inode history charts</td>
+</tr>
+<tr>
+<td><code>network_interfaces</code></td>
+<td><code>["all"]</code></td>
+<td>Interface names visible in DUMB's network namespace; <code>all</code> preserves the aggregate of every visible interface, including loopback</td>
 </tr>
 <tr>
 <td><code>history_enabled</code></td>
@@ -5222,11 +5239,11 @@
 <tbody>
 <tr>
 <td><strong>SQLite</strong></td>
-<td>NzbDAV, Bazarr, CLI Debrid, CLI Battery, Emby, Jellyfin, Maintainerr, Profilarr, Tautulli, and Plex; Sonarr, Radarr, Lidarr, Prowlarr, and Whisparr when PostgreSQL is disabled</td>
+<td>NzbDAV, CLI Debrid, CLI Battery, Emby, Jellyfin, Maintainerr, Profilarr, Tautulli, and Plex; Sonarr, Radarr, Lidarr, Prowlarr, and Whisparr when PostgreSQL is disabled</td>
 </tr>
 <tr>
 <td><strong>SQLite or PostgreSQL</strong></td>
-<td>AltMount, Pulsarr, and Seerr; DUMB detects the provider from their application config/environment</td>
+<td>AltMount, Bazarr, Pulsarr, and Seerr; DUMB detects the provider from their application config/environment</td>
 </tr>
 <tr>
 <td><strong>PostgreSQL</strong></td>
@@ -5433,8 +5450,9 @@ curl<span class="w"> </span><span class="s2">&quot;http://localhost:8000/api/met
 <ul>
 <li><strong>CPU</strong> - Reports usage relative to container limit</li>
 <li><strong>Memory</strong> - Reports container memory limit, not host</li>
-<li><strong>Disk</strong> - Reports container filesystem stats</li>
-<li><strong>Inodes</strong> - Reports inode capacity and pressure for the container root filesystem</li>
+<li><strong>Disk</strong> - Reports every path selected in <code>filesystem_paths</code></li>
+<li><strong>Inodes</strong> - Reports inode capacity and pressure for every selected path</li>
+<li><strong>Network</strong> - Reports only interfaces in the container network namespace unless the container uses host networking</li>
 </ul>
 <h3 id="host-mode">Host mode<a class="headerlink" href="#host-mode" title="Permanent link">&para;</a></h3>
 <p>When running without cgroup limits:</p>
@@ -5445,6 +5463,14 @@ curl<span class="w"> </span><span class="s2">&quot;http://localhost:8000/api/met
 <p class="admonition-title">Detection</p>
 <p>cgroup detection is automatic. DUMB checks for cgroup v1 and v2 interfaces.</p>
 </div>
+<h3 id="selecting-the-correct-storage">Selecting the correct storage<a class="headerlink" href="#selecting-the-correct-storage" title="Permanent link">&para;</a></h3>
+<p>Docker only exposes paths mounted into the container. DUMB cannot infer or inspect the host-side source path for storage that is not mounted. Open <strong>Metrics → Settings → Monitored Filesystems</strong>, then select a discovered container mount such as <code>/data</code>, <code>/config</code>, or another bind-mounted path. You can also enter an absolute container path manually.</p>
+<p>The first selected path is the primary filesystem. DUMB keeps its values in the legacy <code>system.disk</code> and <code>system.inode</code> fields and uses it for the existing disk/inode historical charts. Every selected path is returned in <code>system.filesystems</code>, retained in raw/compact history, evaluated by browser alerts, and evaluated independently by backend notification thresholds. Reordering paths changes which filesystem is primary; it does not change Docker mounts.</p>
+<p>If two selected paths map to the same underlying host filesystem, their capacity values can be identical. A missing or inaccessible configured path remains visible as unavailable instead of silently falling back to <code>/</code>.</p>
+<h3 id="selecting-network-interfaces">Selecting network interfaces<a class="headerlink" href="#selecting-network-interfaces" title="Permanent link">&para;</a></h3>
+<p>Open <strong>Metrics → Settings → Monitored Network Interfaces</strong> to choose <code>all</code> or specific interface names discovered inside DUMB's network namespace. With normal Docker bridge networking, the useful interface is commonly <code>eth0</code>; selecting it excludes loopback traffic from the aggregate chart. With <code>network_mode: host</code>, DUMB can discover and select the host's interfaces instead.</p>
+<p>The compatibility <code>system.net_io</code> object is the sum of the selected available interfaces. <code>system.network_interfaces</code> reports each selected interface separately with cumulative byte/packet/error/drop counters plus link state, speed, and MTU. Compact history and chart-series responses retain per-interface rates. A configured interface that temporarily disappears remains visible as unavailable rather than being replaced by another interface.</p>
+<p><code>system_scope</code> does not cross network namespaces. Selecting <code>host</code> or <code>cgroup</code> changes CPU/memory collection behavior, but it cannot expose host network interfaces to a bridge-networked container.</p>
 <hr />
 <h2 id="api-endpoints">API endpoints<a class="headerlink" href="#api-endpoints" title="Permanent link">&para;</a></h2>
 <h3 id="current-metrics">Current metrics<a class="headerlink" href="#current-metrics" title="Permanent link">&para;</a></h3>

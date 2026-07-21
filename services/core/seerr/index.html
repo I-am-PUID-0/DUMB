@@ -800,7 +800,7 @@
   <span class="md-ellipsis">
     
   
-    Arr PostgreSQL Migration
+    PostgreSQL Migration
   
 
     
@@ -2083,6 +2083,17 @@
     <span class="md-ellipsis">
       
         Configuration settings in dumb_config.json
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#postgresql-migration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        PostgreSQL migration
       
     </span>
   </a>
@@ -4819,6 +4830,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#postgresql-migration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        PostgreSQL migration
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#seerr-sync" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -5049,6 +5071,8 @@
 <span class="w">  </span><span class="nt">&quot;instances&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">    </span><span class="nt">&quot;Default&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">      </span><span class="nt">&quot;enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;postgres_enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;postgres_database&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&quot;</span><span class="p">,</span>
 <span class="w">      </span><span class="nt">&quot;sync_role&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;disabled&quot;</span><span class="p">,</span>
 <span class="w">      </span><span class="nt">&quot;core_service&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&quot;</span><span class="p">,</span>
 <span class="w">      </span><span class="nt">&quot;process_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Seerr&quot;</span><span class="p">,</span>
@@ -5085,6 +5109,8 @@
 <h4 id="seerr-instance-keys">Seerr instance keys<a class="headerlink" href="#seerr-instance-keys" title="Permanent link">&para;</a></h4>
 <ul>
 <li><strong><code>enabled</code></strong>: Whether to start this Seerr instance.</li>
+<li><strong><code>postgres_enabled</code></strong>: Select DUMB-managed PostgreSQL after using the guided migration tool. SQLite remains the default.</li>
+<li><strong><code>postgres_database</code></strong>: Optional database-name override. Blank uses a per-instance DUMB default.</li>
 <li><strong><code>sync_role</code></strong>: <code>disabled</code>, <code>primary</code>, or <code>subordinate</code>.</li>
 </ul>
 <div class="admonition note">
@@ -5109,6 +5135,9 @@
 <li><strong><code>log_file</code></strong>: Path to the Seerr log file.</li>
 <li><strong><code>env</code></strong>: Environment variables passed at runtime.</li>
 </ul>
+<h2 id="postgresql-migration">PostgreSQL migration<a class="headerlink" href="#postgresql-migration" title="Permanent link">&para;</a></h2>
+<p>Each Seerr instance can migrate its <code>/config/db/db.sqlite3</code> data independently. Open <strong>Database Migration</strong> on that instance's service page, complete rehearsal, review users/media/requests and full table-count validation, then cut over. DUMB lets Seerr initialize its own current PostgreSQL schema and does not copy Seerr's migration bookkeeping table.</p>
+<p>Setting <code>postgres_enabled: true</code> directly does not copy SQLite data. The preserved SQLite database can be restored, but writes made after PostgreSQL cutover are not merged back. See <a href="../../../features/arr-postgres-migration/">SQLite to PostgreSQL Migration</a> and <a href="https://docs.seerr.dev/extending-seerr/database-config/">Seerr database configuration</a>.</p>
 <hr />
 <h2 id="seerr-sync">Seerr Sync<a class="headerlink" href="#seerr-sync" title="Permanent link">&para;</a></h2>
 <p>Seerr Sync replicates requests from one <strong>primary</strong> Seerr instance to one or more <strong>subordinates</strong>. It is one‑way and is designed for multi‑Seerr setups where the primary is the source of truth.</p>

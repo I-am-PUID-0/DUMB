@@ -800,7 +800,7 @@
   <span class="md-ellipsis">
     
   
-    Arr PostgreSQL Migration
+    PostgreSQL Migration
   
 
     
@@ -1961,6 +1961,17 @@
     <span class="md-ellipsis">
       
         DUMB Configuration
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#postgresql-migration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        PostgreSQL migration
       
     </span>
   </a>
@@ -4773,6 +4784,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#postgresql-migration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        PostgreSQL migration
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#first-start" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4956,6 +4978,8 @@
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;altmount&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">    </span><span class="nt">&quot;enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;postgres_enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;postgres_database&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;process_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;AltMount&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;repo_owner&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;javi11&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;repo_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;altmount&quot;</span><span class="p">,</span>
@@ -5000,6 +5024,10 @@
 </tbody>
 </table>
 <p>DUMB stores the same mount-mode values used by Decypharr (<code>dfs</code>, <code>rclone</code>, <code>external_rclone</code>, <code>none</code>) and writes the matching upstream AltMount value into <code>/altmount/config.yaml</code>. AltMount's own UI names these choices Disabled, Internal RClone, AltMount Native, and External RClone.</p>
+<h2 id="postgresql-migration">PostgreSQL migration<a class="headerlink" href="#postgresql-migration" title="Permanent link">&para;</a></h2>
+<p>AltMount supports both SQLite and PostgreSQL through its <code>database</code> configuration. For an existing SQLite-backed service, open <strong>Database Migration</strong>, run a rehearsal, validate the import against AltMount's current application-created PostgreSQL schema, and only then cut over. DUMB writes the PostgreSQL DSN into <code>/altmount/config.yaml</code>, registers the target database (<code>altmount</code> by default), and retains the SQLite file for rollback.</p>
+<p>Do not set <code>postgres_enabled: true</code> directly when existing AltMount state must be retained. DUMB has not found an upstream application-specific data migration tool, so rehearsal and post-cutover application checks are especially important. See <a href="../../../features/arr-postgres-migration/">SQLite to PostgreSQL Migration</a>.</p>
+<p>AltMount <code>v0.3.2</code> contains a PostgreSQL syntax error in its bundled migration 10 expression index. During guarded schema initialization, DUMB applies the intended corrected index only when the isolated database is at Goose version 9 and contains the expected <code>import_queue.metadata</code> column, records version 10, and lets AltMount run all remaining migrations itself. If those exact safeguards do not match, DUMB refuses the repair and restores SQLite instead of skipping unknown schema work.</p>
 <h2 id="first-start">First Start<a class="headerlink" href="#first-start" title="Permanent link">&para;</a></h2>
 <ol>
 <li>Select <code>AltMount</code> as the Usenet workflow service in guided onboarding, or enable <code>altmount</code> in runtime config.</li>

@@ -800,7 +800,7 @@
   <span class="md-ellipsis">
     
   
-    Arr PostgreSQL Migration
+    PostgreSQL Migration
   
 
     
@@ -3515,10 +3515,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#arr-postgresql-migration" class="md-nav__link">
+  <a href="#sqlite-to-postgresql-migration" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Arr PostgreSQL Migration
+        SQLite-to-PostgreSQL Migration
       
     </span>
   </a>
@@ -4708,10 +4708,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#arr-postgresql-migration" class="md-nav__link">
+  <a href="#sqlite-to-postgresql-migration" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Arr PostgreSQL Migration
+        SQLite-to-PostgreSQL Migration
       
     </span>
   </a>
@@ -5194,12 +5194,12 @@ flowchart TD
 <span class="p">}</span>
 </code></pre></div>
 <hr />
-<h2 id="arr-postgresql-migration">Arr PostgreSQL Migration<a class="headerlink" href="#arr-postgresql-migration" title="Permanent link">&para;</a></h2>
-<p>These endpoints power the guarded Sonarr/Radarr SQLite-to-PostgreSQL workflow. See <a href="../../features/arr-postgres-migration/">Arr SQLite to PostgreSQL Migration</a> for operator guidance and limitations.</p>
-<h3 id="get-processarr-postgres-migrationpreflight"><code>GET /process/arr-postgres-migration/preflight</code><a class="headerlink" href="#get-processarr-postgres-migrationpreflight" title="Permanent link">&para;</a></h3>
+<h2 id="sqlite-to-postgresql-migration">SQLite-to-PostgreSQL Migration<a class="headerlink" href="#sqlite-to-postgresql-migration" title="Permanent link">&para;</a></h2>
+<p>These endpoints power the guarded migration workflow for Sonarr, Radarr, Lidarr, Prowlarr, Whisparr, Bazarr, Pulsarr, Seerr, and AltMount. See <a href="../../features/arr-postgres-migration/">SQLite to PostgreSQL Migration</a> for operator guidance and service-specific limitations.</p>
+<h3 id="get-processpostgres-migrationpreflight"><code>GET /process/postgres-migration/preflight</code><a class="headerlink" href="#get-processpostgres-migrationpreflight" title="Permanent link">&para;</a></h3>
 <p>Query parameter: <code>process_name</code>.</p>
-<p>Returns non-mutating SQLite integrity, Arr version, PostgreSQL connectivity/role, target database, and backup-space checks. <code>ready</code> is false when any blocking check fails. The response never includes the PostgreSQL password.</p>
-<h3 id="post-processarr-postgres-migrationstart"><code>POST /process/arr-postgres-migration/start</code><a class="headerlink" href="#post-processarr-postgres-migrationstart" title="Permanent link">&para;</a></h3>
+<p>Returns non-mutating SQLite integrity, detected application version when available, PostgreSQL connectivity/role, target database, and backup-space checks. <code>ready</code> is false when any blocking check fails. The response never includes the PostgreSQL password. <code>supports_log_migration</code> tells clients whether to offer the separate Arr log-database option.</p>
+<h3 id="post-processpostgres-migrationstart"><code>POST /process/postgres-migration/start</code><a class="headerlink" href="#post-processpostgres-migrationstart" title="Permanent link">&para;</a></h3>
 <p>Queues a persisted rehearsal or cutover job.</p>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;process_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Sonarr NzbDAV&quot;</span><span class="p">,</span>
@@ -5212,19 +5212,20 @@ flowchart TD
 <span class="p">}</span>
 </code></pre></div>
 <p><code>mode</code> must be <code>rehearsal</code> or <code>cutover</code>. The backend requires every acknowledgement and exact confirmation text. Jobs and detailed stage events persist under <code>/config/arr-postgres-migration/jobs</code>.</p>
-<h3 id="get-processarr-postgres-migrationstatus"><code>GET /process/arr-postgres-migration/status</code><a class="headerlink" href="#get-processarr-postgres-migrationstatus" title="Permanent link">&para;</a></h3>
+<h3 id="get-processpostgres-migrationstatus"><code>GET /process/postgres-migration/status</code><a class="headerlink" href="#get-processpostgres-migrationstatus" title="Permanent link">&para;</a></h3>
 <p>Query parameter: <code>job_id</code>.</p>
 <p>Returns stage, percentage, recent detailed events, result counts, errors, and rollback state for one job.</p>
-<h3 id="get-processarr-postgres-migrationlatest"><code>GET /process/arr-postgres-migration/latest</code><a class="headerlink" href="#get-processarr-postgres-migrationlatest" title="Permanent link">&para;</a></h3>
+<h3 id="get-processpostgres-migrationlatest"><code>GET /process/postgres-migration/latest</code><a class="headerlink" href="#get-processpostgres-migrationlatest" title="Permanent link">&para;</a></h3>
 <p>Query parameter: <code>process_name</code>.</p>
 <p>Returns the most recently updated migration job for that service so dmbdb can resume visibility after navigation or refresh.</p>
-<h3 id="post-processarr-postgres-migrationrollback"><code>POST /process/arr-postgres-migration/rollback</code><a class="headerlink" href="#post-processarr-postgres-migrationrollback" title="Permanent link">&para;</a></h3>
+<h3 id="post-processpostgres-migrationrollback"><code>POST /process/postgres-migration/rollback</code><a class="headerlink" href="#post-processpostgres-migrationrollback" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;job_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;example-job-id&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;confirmation&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ROLLBACK Sonarr NzbDAV&quot;</span>
 <span class="p">}</span>
 </code></pre></div>
-<p>Restores the job's preserved <code>config.xml</code>, persists <code>postgres_enabled: false</code>, and restarts the service against SQLite when it was running. This does not reverse-copy changes made after PostgreSQL cutover.</p>
+<p>Restores the job's preserved application configuration when applicable, persists <code>postgres_enabled: false</code>, and restarts the service against SQLite when it was running. This does not reverse-copy changes made after PostgreSQL cutover.</p>
+<p>The former <code>/process/arr-postgres-migration/*</code> paths remain available as hidden compatibility aliases for older dmbdb clients and existing Sonarr/Radarr deployments.</p>
 <hr />
 <h3 id="get-processcapabilities"><code>GET /process/capabilities</code><a class="headerlink" href="#get-processcapabilities" title="Permanent link">&para;</a></h3>
 <p>Returns backend capabilities and feature flags. Used by the frontend to determine available features.</p>
@@ -5250,13 +5251,21 @@ flowchart TD
 <span class="w">  </span><span class="nt">&quot;arr_postgres_migration&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;arr_postgres_migration_rehearsal&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;arr_postgres_migration_rollback&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;postgres_migration&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;postgres_migration_rehearsal&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;postgres_migration_rollback&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;postgres_migration_service_keys&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;altmount&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;bazarr&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;lidarr&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;prowlarr&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;pulsarr&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;radarr&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;seerr&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;sonarr&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;whisparr&quot;</span><span class="p">],</span>
 <span class="w">  </span><span class="nt">&quot;database_health_metrics&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;metrics_history_storage&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;metrics_history_hot_activation&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;metrics_filesystem_selection&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;metrics_network_interface_selection&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;notifications&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span>
 <span class="p">}</span>
 </code></pre></div>
 <p><code>metrics_history_hot_activation</code> means the frontend can enable, start, and synchronize DUMB-managed PostgreSQL for Metrics history without restarting DUMB. Clients must continue using the restart-based guidance when this flag is absent.</p>
+<p><code>metrics_filesystem_selection</code> means the backend accepts <code>dumb.metrics.filesystem_paths</code>, returns all selected paths in Metrics snapshots/history, and exposes <code>GET /api/metrics/filesystems</code> for container-visible mount discovery. Older backends support only the legacy root-filesystem metrics fields.</p>
+<p><code>metrics_network_interface_selection</code> means the backend accepts <code>dumb.metrics.network_interfaces</code>, returns per-interface Metrics data, and exposes <code>GET /api/metrics/network-interfaces</code> for network-namespace interface discovery. Older backends expose only the aggregate <code>system.net_io</code> counters.</p>
 <table>
 <thead>
 <tr>
@@ -5334,16 +5343,24 @@ flowchart TD
 <td>Whether <code>/process/symlink-manifest-files</code> is available</td>
 </tr>
 <tr>
-<td><code>arr_postgres_migration</code></td>
-<td>Whether guarded Sonarr/Radarr SQLite-to-PostgreSQL migration routes are available</td>
+<td><code>postgres_migration</code></td>
+<td>Whether the generic guarded SQLite-to-PostgreSQL routes are available</td>
 </tr>
 <tr>
-<td><code>arr_postgres_migration_rehearsal</code></td>
+<td><code>postgres_migration_rehearsal</code></td>
 <td>Whether isolated rehearsal imports are supported</td>
 </tr>
 <tr>
-<td><code>arr_postgres_migration_rollback</code></td>
+<td><code>postgres_migration_rollback</code></td>
 <td>Whether jobs can restore preserved SQLite configuration</td>
+</tr>
+<tr>
+<td><code>postgres_migration_service_keys</code></td>
+<td>Backend-authoritative service keys offered by the migration UI</td>
+</tr>
+<tr>
+<td><code>arr_postgres_migration*</code></td>
+<td>Legacy Sonarr/Radarr capability aliases retained for older clients</td>
 </tr>
 </tbody>
 </table>

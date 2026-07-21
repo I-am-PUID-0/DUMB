@@ -800,7 +800,7 @@
   <span class="md-ellipsis">
     
   
-    Arr PostgreSQL Migration
+    PostgreSQL Migration
   
 
     
@@ -4821,22 +4821,22 @@
 </tr>
 <tr>
 <td>GET</td>
-<td><code>/process/arr-postgres-migration/preflight</code></td>
-<td>Check Sonarr/Radarr migration readiness</td>
+<td><code>/process/postgres-migration/preflight</code></td>
+<td>Check supported service migration readiness</td>
 </tr>
 <tr>
 <td>POST</td>
-<td><code>/process/arr-postgres-migration/start</code></td>
+<td><code>/process/postgres-migration/start</code></td>
 <td>Start a rehearsal or guarded cutover</td>
 </tr>
 <tr>
 <td>GET</td>
-<td><code>/process/arr-postgres-migration/status</code></td>
+<td><code>/process/postgres-migration/status</code></td>
 <td>Poll migration progress and validation</td>
 </tr>
 <tr>
 <td>POST</td>
-<td><code>/process/arr-postgres-migration/rollback</code></td>
+<td><code>/process/postgres-migration/rollback</code></td>
 <td>Restore preserved SQLite configuration</td>
 </tr>
 <tr>
@@ -4933,6 +4933,16 @@
 <td>GET</td>
 <td><code>/metrics/history</code></td>
 <td>Read provider-neutral metrics history</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/metrics/filesystems</code></td>
+<td>Discover monitorable container filesystems</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/metrics/network-interfaces</code></td>
+<td>Discover visible network interfaces</td>
 </tr>
 <tr>
 <td>GET</td>
