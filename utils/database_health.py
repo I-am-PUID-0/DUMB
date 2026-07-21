@@ -1063,6 +1063,14 @@ def _provider_for_service(key: str, service: dict[str, Any]) -> str:
         return "postgresql" if service.get("postgres_enabled") is True else "sqlite"
     if key in POSTGRES_SERVICE_DATABASES or key == "postgres":
         return "postgresql"
+    if key == "bazarr":
+        env = service.get("env") or {}
+        return (
+            "postgresql"
+            if service.get("postgres_enabled") is True
+            or str(env.get("POSTGRES_ENABLED") or "false").strip().lower() == "true"
+            else "sqlite"
+        )
     if key == "pulsarr":
         env = service.get("env") or {}
         return (
@@ -1104,6 +1112,14 @@ def _altmount_database_config(service: dict[str, Any]) -> dict[str, Any]:
 def _service_postgres_connection(key, service, config):
     del config
     env = service.get("env") or {}
+    if key == "bazarr":
+        return {
+            "host": env.get("POSTGRES_HOST") or "127.0.0.1",
+            "port": env.get("POSTGRES_PORT") or 5432,
+            "user": env.get("POSTGRES_USERNAME"),
+            "password": env.get("POSTGRES_PASSWORD"),
+            "database": env.get("POSTGRES_DATABASE") or "bazarr",
+        }
     if key == "pulsarr":
         dsn = str(env.get("dbConnectionString") or "").strip()
         if dsn:

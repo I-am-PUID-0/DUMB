@@ -128,6 +128,12 @@ class DumbConfigSchemaTests(unittest.TestCase):
                 self.assertIn(key, altmount_defaults)
                 self.assertIn(key, altmount_schema)
 
+    def test_bazarr_config_file_matches_current_data_root_layout(self):
+        self.assertEqual(
+            self.config["bazarr"]["config_file"],
+            "/bazarr/data/config/config.yaml",
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

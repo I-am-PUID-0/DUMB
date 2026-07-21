@@ -117,6 +117,29 @@ class ArrPostgresTests(unittest.TestCase):
             self.assertTrue(ensure_arr_postgres_enabled_flag("Movies", instance))
             self.assertTrue(instance["postgres_enabled"])
 
+    def test_configure_runtime_reenables_registered_database_entries(self):
+        cfg = StubConfig(
+            {
+                "postgres": {
+                    "enabled": True,
+                    "databases": [
+                        {"name": "sonarr-main", "enabled": False},
+                        {"name": "sonarr-log", "enabled": False},
+                    ],
+                },
+                "sonarr": {
+                    "instances": {
+                        "Default": {"enabled": True, "postgres_enabled": True}
+                    }
+                },
+            }
+        )
+
+        self.assertTrue(configure_arr_postgres_runtime(cfg))
+        self.assertTrue(
+            all(item["enabled"] for item in cfg.config["postgres"]["databases"])
+        )
+
     def test_configure_runtime_repairs_flag_from_config_xml_and_registers_xml_dbs(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             config_file = os.path.join(temp_dir, "config.xml")

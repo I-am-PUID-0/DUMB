@@ -8,6 +8,11 @@ from utils.traefik_setup import setup_traefik
 from utils.user_management import chown_recursive, chown_single
 from utils.apt_lock import run_locked
 from utils.arr_postgres import apply_arr_postgres_config
+from utils.service_postgres import (
+    apply_service_postgres_config,
+    service_postgres_database_name,
+    service_postgres_enabled,
+)
 from utils.zilean_dotnet import prepare_zilean_for_net10
 from utils.mediastorm_installer import (
     MediaStormInstallError,
@@ -17,6 +22,7 @@ from utils.mediastorm_installer import (
     mediastorm_runtime_matches_selection,
 )
 import defusedxml.ElementTree as ET
+import yaml
 import os, shutil, random, subprocess, re, glob, secrets, shlex, time, urllib.parse, base64, threading, sys, hashlib, json, requests, copy
 
 user_id = CONFIG_MANAGER.get("puid")
@@ -2204,6 +2210,124 @@ def install_arr_instances(key, process_handler=None):
     return True, None
 
 
+def _ensure_bazarr_postgres_driver(process_handler, install_path: str):
+    """Install Bazarr's optional PostgreSQL driver when it is not bundled."""
+    python_executable = os.path.join(install_path, "venv", "bin", "python")
+    requirements_file = os.path.join(install_path, "postgres-requirements.txt")
+    if not os.path.isfile(python_executable):
+        return False, f"Bazarr Python runtime was not found at {python_executable}."
+    check = subprocess.run(
+        [python_executable, "-c", "import psycopg2"],
+        check=False,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    if check.returncode == 0:
+        return True, None
+    if not os.path.isfile(requirements_file):
+        return False, (
+            "Bazarr's PostgreSQL requirements file is missing at "
+            f"{requirements_file}."
+        )
+    if process_handler is None:
+        return (
+            False,
+            "A process handler is required to install Bazarr's PostgreSQL driver.",
+        )
+
+    logger.info("Installing Bazarr PostgreSQL driver requirements.")
+    result = process_handler.start_process(
+        "install_requirements",
+        install_path,
+        [
+            python_executable,
+            "-m",
+            "pip",
+            "install",
+            "-r",
+            requirements_file,
+        ],
+    )
+    if isinstance(result, tuple):
+        success, error = result
+    else:
+        success, error = result, None
+    if not success:
+        return False, error or "Failed to start Bazarr PostgreSQL driver install."
+    process_handler.wait("install_requirements")
+    if process_handler.returncode != 0:
+        detail = process_handler.stderr or process_handler.stdout or "pip failed"
+        return False, f"Failed to install Bazarr PostgreSQL driver: {detail}"
+    return True, None
+
+
+def _sync_bazarr_port(config_file: str, port: int) -> tuple[bool, str | None]:
+    """Keep Bazarr's persisted port aligned with DUMB's managed port."""
+    if not config_file or not os.path.isfile(config_file):
+        logger.debug(
+            "Bazarr configuration is not available yet; port synchronization deferred."
+        )
+        return False, None
+
+    try:
+        desired_port = int(port)
+    except (TypeError, ValueError):
+        return False, f"Invalid Bazarr port: {port!r}."
+    if not 1 <= desired_port <= 65535:
+        return False, f"Invalid Bazarr port: {desired_port}."
+
+    try:
+        with open(config_file, "r", encoding="utf-8") as handle:
+            config_data = yaml.safe_load(handle)
+    except Exception as exc:
+        return False, f"Failed to read Bazarr configuration at {config_file}: {exc}"
+
+    if not isinstance(config_data, dict):
+        return False, f"Bazarr configuration at {config_file} is not a mapping."
+    general = config_data.get("general")
+    if not isinstance(general, dict):
+        return False, (
+            f"Bazarr configuration at {config_file} is missing its general section."
+        )
+
+    previous_port = general.get("port")
+    try:
+        if int(previous_port) == desired_port:
+            return False, None
+    except (TypeError, ValueError):
+        pass
+
+    general["port"] = desired_port
+    temporary = f"{config_file}.tmp"
+    try:
+        with open(temporary, "w", encoding="utf-8") as handle:
+            yaml.safe_dump(
+                config_data,
+                handle,
+                allow_unicode=True,
+                explicit_start=True,
+                sort_keys=False,
+            )
+        stat = os.stat(config_file)
+        os.chmod(temporary, stat.st_mode & 0o777)
+        os.chown(temporary, stat.st_uid, stat.st_gid)
+        os.replace(temporary, config_file)
+    except Exception as exc:
+        try:
+            if os.path.exists(temporary):
+                os.unlink(temporary)
+        except OSError:
+            pass
+        return False, f"Failed to update Bazarr port in {config_file}: {exc}"
+
+    logger.info(
+        "Synchronized Bazarr application port from %s to %s.",
+        previous_port,
+        desired_port,
+    )
+    return True, None
+
+
 def setup_bazarr(
     process_handler=None, install_only: bool = False, configure_only: bool = False
 ):
@@ -2218,9 +2342,16 @@ def setup_bazarr(
             return True, None
 
         install_path = config.get("config_dir", "/opt/bazarr")
-        data_dir = os.path.dirname(
-            config.get("config_file", "/bazarr/data/config.yaml")
-        )
+        data_dir = "/bazarr/data"
+        configured_command = config.get("command") or []
+        if isinstance(configured_command, list):
+            try:
+                config_index = configured_command.index("--config")
+                configured_data_dir = str(configured_command[config_index + 1]).strip()
+                if configured_data_dir:
+                    data_dir = configured_data_dir
+            except (ValueError, IndexError):
+                pass
         bazarr_py_path = os.path.join(install_path, "bazarr.py")
 
         if not os.path.isfile(bazarr_py_path):
@@ -2253,9 +2384,23 @@ def setup_bazarr(
         if install_only:
             return True, None
 
+        if service_postgres_enabled(config):
+            success, error = _ensure_bazarr_postgres_driver(
+                process_handler, install_path
+            )
+            if not success:
+                return False, error
+
         os.makedirs(data_dir, exist_ok=True)
         success, error = chown_recursive(data_dir, user_id, group_id)
         if not success:
+            return False, error
+
+        bazarr_config_file = config.get("config_file") or os.path.join(
+            data_dir, "config", "config.yaml"
+        )
+        _, error = _sync_bazarr_port(bazarr_config_file, config.get("port", 6767))
+        if error:
             return False, error
 
         config["command"] = [
@@ -2267,6 +2412,14 @@ def setup_bazarr(
             str(config.get("port", 6767)),
         ]
         config["env"] = {**(config.get("env") or {}), "NO_UPDATE": "true"}
+        bazarr_database = service_postgres_database_name("bazarr", None, config)
+        apply_service_postgres_config(
+            "bazarr",
+            config,
+            CONFIG_MANAGER.get("postgres", {}) or {},
+            bazarr_database,
+            enabled=service_postgres_enabled(config),
+        )
         logger.info("Bazarr setup complete.")
         return True, None
     except Exception as e:
@@ -4101,6 +4254,17 @@ def setup_seerr(
             instance_env["NODE_ENV"] = "production"
             env_changed = True
         instance["env"] = instance_env
+        seerr_database = service_postgres_database_name(
+            "seerr", instance_name, instance
+        )
+        if apply_service_postgres_config(
+            "seerr",
+            instance,
+            CONFIG_MANAGER.get("postgres", {}) or {},
+            seerr_database,
+            enabled=service_postgres_enabled(instance),
+        ):
+            env_changed = True
         entry_path = os.path.join(instance_config_dir, "dist", "index.js")
         repo_marker = os.path.join(instance_config_dir, "package.json")
         if not install_only and (env_changed or path_changed):
@@ -4948,6 +5112,14 @@ def setup_altmount(
 
     write_altmount_default_config(config)
     sync_altmount_managed_config(config)
+    altmount_database = service_postgres_database_name("altmount", None, config)
+    apply_service_postgres_config(
+        "altmount",
+        config,
+        CONFIG_MANAGER.get("postgres", {}) or {},
+        altmount_database,
+        enabled=service_postgres_enabled(config),
+    )
     _chown_recursive_if_needed(
         config_dir, CONFIG_MANAGER.get("puid"), CONFIG_MANAGER.get("pgid")
     )
@@ -5653,6 +5825,15 @@ def setup_pulsarr(
             env[key] = value
             env_changed = True
     config["env"] = env
+    pulsarr_database = service_postgres_database_name("pulsarr", None, config)
+    if apply_service_postgres_config(
+        "pulsarr",
+        config,
+        CONFIG_MANAGER.get("postgres", {}) or {},
+        pulsarr_database,
+        enabled=service_postgres_enabled(config),
+    ):
+        env_changed = True
 
     bun_bin = os.path.join(os.getenv("BUN_INSTALL", "/config/.bun"), "bin", "bun")
     command = config.get("command", [])

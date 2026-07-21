@@ -473,6 +473,17 @@ class DatabaseHealthCollectorTests(unittest.TestCase):
         collector = DatabaseHealthCollector()
         cases = (
             (
+                "bazarr",
+                {
+                    "postgres_enabled": True,
+                    "env": {
+                        "POSTGRES_HOST": "db.example",
+                        "POSTGRES_DATABASE": "bazarr_prod",
+                    },
+                },
+                "bazarr_prod",
+            ),
+            (
                 "pulsarr",
                 {
                     "env": {

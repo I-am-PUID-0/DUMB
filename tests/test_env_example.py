@@ -1,5 +1,6 @@
 import json
 import sys
+import tempfile
 import types
 import unittest
 from pathlib import Path
@@ -90,6 +91,31 @@ class ConfigLoaderEnvParsingTests(unittest.TestCase):
             self.manager._normalize_value("env", "[]", {"PORT": "3004"}),
             {"PORT": "3004"},
         )
+
+
+class ConfigLoaderMigrationTests(unittest.TestCase):
+    def test_bazarr_legacy_config_path_is_persisted(self):
+        config_manager = _load_config_manager_class()
+        with tempfile.TemporaryDirectory() as temp_dir:
+            config = json.loads((ROOT / "utils" / "dumb_config.json").read_text())
+            config["bazarr"]["config_file"] = "/bazarr/data/config.yaml"
+            config_path = Path(temp_dir) / "dumb_config.json"
+            config_path.write_text(json.dumps(config), encoding="utf-8")
+
+            manager = config_manager(
+                file_path=str(config_path),
+                schema_path=str(ROOT / "utils" / "dumb_config_schema.json"),
+            )
+
+            persisted = json.loads(config_path.read_text(encoding="utf-8"))
+            self.assertEqual(
+                manager.get("bazarr")["config_file"],
+                "/bazarr/data/config/config.yaml",
+            )
+            self.assertEqual(
+                persisted["bazarr"]["config_file"],
+                "/bazarr/data/config/config.yaml",
+            )
 
 
 if __name__ == "__main__":

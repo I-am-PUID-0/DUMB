@@ -134,15 +134,21 @@ def configure_arr_postgres_runtime(config_manager) -> bool:
         logger.info("PostgreSQL enabled because Arr PostgreSQL support is configured.")
 
     databases = postgres_config.setdefault("databases", [])
-    existing_names = {
-        str(db.get("name"))
-        for db in databases
-        if isinstance(db, dict) and db.get("name") is not None
-    }
     for db_name in arr_databases:
-        if db_name not in existing_names:
+        existing = next(
+            (
+                db
+                for db in databases
+                if isinstance(db, dict) and str(db.get("name")) == db_name
+            ),
+            None,
+        )
+        if existing is not None:
+            if existing.get("enabled") is not True:
+                existing["enabled"] = True
+                changed = True
+        else:
             databases.append({"name": db_name, "enabled": True})
-            existing_names.add(db_name)
             changed = True
             logger.info("Registered PostgreSQL database for Arr service: %s", db_name)
 

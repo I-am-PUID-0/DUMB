@@ -107,6 +107,26 @@ class ConditionalDependencyMapTests(unittest.TestCase):
 
         self.assertEqual(deps["mediastorm"], {"postgres"})
 
+    def test_dual_backend_services_depend_on_postgres_only_after_opt_in(self):
+        deps = self._build(
+            {
+                "bazarr": {"enabled": True, "postgres_enabled": True},
+                "pulsarr": {"enabled": True, "postgres_enabled": False},
+                "altmount": {"enabled": False, "postgres_enabled": True},
+                "seerr": {
+                    "instances": {
+                        "main": {"enabled": True, "postgres_enabled": True},
+                        "sqlite": {"enabled": True, "postgres_enabled": False},
+                    }
+                },
+            }
+        )
+
+        self.assertEqual(deps["bazarr"], {"postgres"})
+        self.assertEqual(deps["seerr"], {"postgres"})
+        self.assertNotIn("postgres", deps.get("pulsarr", set()))
+        self.assertNotIn("postgres", deps.get("altmount", set()))
+
     def test_rclone_dependencies_include_provider_flags_and_core_service_links(self):
         deps = self._build(
             {

@@ -156,6 +156,18 @@ class ConfigManager:
                 default_config = load(default_file, object_pairs_hook=OrderedDict)
 
             existing_config = self._load_config()
+            bazarr_config_migrated = False
+
+            # Bazarr treats --config as its data root and stores the YAML file
+            # in a nested config directory. Correct DUMB's former default so
+            # existing installations expose the real path through /api/config.
+            bazarr_cfg = existing_config.get("bazarr")
+            if (
+                isinstance(bazarr_cfg, dict)
+                and bazarr_cfg.get("config_file") == "/bazarr/data/config.yaml"
+            ):
+                bazarr_cfg["config_file"] = "/bazarr/data/config/config.yaml"
+                bazarr_config_migrated = True
 
             # Migrate legacy Decypharr embedded toggle to mount_type before merge/prune
             dec_cfg = existing_config.get("decypharr")
@@ -200,7 +212,7 @@ class ConfigManager:
 
             pruned_config = self._prune_extraneous_keys(merged_config, default_config)
 
-            if pruned_config != existing_config:
+            if pruned_config != existing_config or bazarr_config_migrated:
                 backup_path = self.file_path + ".bak"
                 shutil.copyfile(self.file_path, backup_path)
                 self._atomic_write(pruned_config)

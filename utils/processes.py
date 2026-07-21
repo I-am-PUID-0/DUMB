@@ -153,6 +153,7 @@ class ProcessHandler:
         suppress_logging=False,
         env=None,
     ):
+        requested_env = dict(env) if isinstance(env, dict) else None
         internal_name = self._prefixed_name(process_name)
         self._set_restart_disabled(internal_name, False)
         self._reset_healthcheck_state(internal_name)
@@ -219,8 +220,7 @@ class ProcessHandler:
                 self.logger.debug(f"Command for {process_name}: {command}")
                 config_dir = config.get("config_dir", config_dir)
                 suppress_logging = config.get("suppress_logging", suppress_logging)
-                env = env or {}
-                env.update(config.get("env", {}))
+                env = {**(config.get("env", {}) or {}), **(env or {})}
 
             if config_for_wait is None:
                 key, instance_name = CONFIG_MANAGER.find_key_for_process(process_name)
@@ -343,12 +343,16 @@ class ProcessHandler:
                 config = CONFIG_MANAGER.get_instance(instance_name, key)
                 if key == "zurg":
                     config.get("log_level", "INFO")
-                    env = config.get("env", None)
-                    if env is None:
-                        env = {}
-                        env["LOG_LEVEL"] = config.get("log_level", "INFO")
+                    config_env = config.get("env", None)
+                    if config_env is None:
+                        config_env = {"LOG_LEVEL": config.get("log_level", "INFO")}
                 else:
-                    env = config.get("env", None)
+                    config_env = config.get("env", None)
+                env = (
+                    config_env
+                    if requested_env is None
+                    else {**(config_env or {}), **requested_env}
+                )
                 if key == "emby":
                     try:
                         from utils.emby_settings import patch_emby_config
@@ -682,6 +686,32 @@ class ProcessHandler:
 
             self._update_running_processes_file()
 
+    @staticmethod
+    def _signal_process_group(process, sig):
+        """Signal the isolated session created for a managed subprocess.
+
+        Some service launchers, notably Bazarr, supervise a child application
+        process. Signalling only the launcher leaves that child orphaned and
+        can keep ports and database connections alive after DUMB reports the
+        service stopped. Every process started above uses ``start_new_session``,
+        so its PID is also the process-group ID.
+        """
+        try:
+            process_group = os.getpgid(process.pid)
+            if process_group == os.getpgrp():
+                raise RuntimeError("refusing to signal DUMB's process group")
+            os.killpg(process_group, sig)
+            return
+        except ProcessLookupError:
+            return
+        except (OSError, RuntimeError):
+            # Preserve the prior single-process behavior if a platform or
+            # unusual subprocess implementation does not expose the group.
+            if sig == signal.SIGKILL:
+                process.kill()
+            else:
+                process.terminate()
+
     def stop_process(self, process_name, disable_restart=True):
         intentional_pid = None
         try:
@@ -712,7 +742,7 @@ class ProcessHandler:
                 self.logger.debug(f"Process {process_name} found: {process}")
                 if disable_restart:
                     self._set_restart_disabled(internal_name, True)
-                process.terminate()
+                self._signal_process_group(process, signal.SIGTERM)
                 attempt = 0
                 while attempt < max_attempts:
                     self.logger.debug(
@@ -735,7 +765,7 @@ class ProcessHandler:
                     self.logger.warning(
                         f"{process_description} process did not terminate, forcing shutdown."
                     )
-                    process.kill()
+                    self._signal_process_group(process, signal.SIGKILL)
                     process.wait()
                     self.logger.info(
                         f"{process_description} process forcefully terminated."

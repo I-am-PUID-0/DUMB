@@ -21,8 +21,16 @@ from utils.arr_postgres import (
     configure_arr_postgres_runtime,
     ensure_arr_postgres_enabled_flag,
 )
+from utils.service_postgres import (
+    SERVICE_POSTGRES_KEYS,
+    configure_service_postgres_runtime,
+    service_postgres_enabled,
+)
 from utils.postgres import initialize_postgres_databases
 from utils.database_health import SUPPORTED_SERVICE_KEYS
+from utils.arr_postgres_migration import (
+    SUPPORTED_SERVICES as POSTGRES_MIGRATION_SERVICES,
+)
 from utils.versions import Versions
 import json, copy, time, glob, re, socket, errno, psutil, os, threading, fnmatch
 
@@ -50,7 +58,7 @@ class RescheduleSymlinkBackupRequest(BaseModel):
     process_name: str
 
 
-class ArrPostgresMigrationStartRequest(BaseModel):
+class PostgresMigrationStartRequest(BaseModel):
     process_name: str
     mode: str = "rehearsal"
     include_logs: bool = False
@@ -61,7 +69,7 @@ class ArrPostgresMigrationStartRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
-class ArrPostgresMigrationRollbackRequest(BaseModel):
+class PostgresMigrationRollbackRequest(BaseModel):
     job_id: str
     confirmation: str
     model_config = ConfigDict(extra="forbid")
@@ -726,7 +734,8 @@ SERVICE_OPTION_DESCRIPTIONS = {
     "mount_path": "Mount path used by services that expose or manage a filesystem mount.",
     "use_neutarr": "If true, auto-configures NeutArr for this Arr instance.",
     "use_profilarr": "If true, auto-configures Profilarr for this Arr instance.",
-    "postgres_enabled": "Use DUMB PostgreSQL for this Arr instance. SQLite remains the default.",
+    "postgres_enabled": "Use DUMB PostgreSQL for this service. Use the guided migration tool before enabling it on an existing SQLite installation.",
+    "postgres_database": "Optional PostgreSQL database name. Leave blank for DUMB's service or per-instance default.",
     "postgres_main_db": "Optional PostgreSQL main database name. Leave blank for DUMB's per-instance default.",
     "postgres_log_db": "Optional PostgreSQL log database name. Leave blank for DUMB's per-instance default.",
     "core_service": "Specifies which core service(s) this service applies to; e.g., decypharr, nzbdav, altmount, combined values (decypharr,nzbdav), or none (blank).",
@@ -2554,53 +2563,55 @@ async def reschedule_symlink_backup(
     return payload
 
 
-@process_router.get("/arr-postgres-migration/preflight")
-async def arr_postgres_migration_preflight(
-    process_name: str = Query(..., description="Sonarr or Radarr process name"),
+@process_router.get("/postgres-migration/preflight")
+@process_router.get("/arr-postgres-migration/preflight", include_in_schema=False)
+async def postgres_migration_preflight(
+    process_name: str = Query(..., description="Supported service process name"),
     api_state=Depends(get_api_state),
     logger=Depends(get_logger),
     current_user: str = Depends(get_optional_current_user),
 ):
     from utils.arr_postgres_migration import (
-        ArrPostgresMigrationError,
-        build_arr_postgres_preflight,
+        PostgresMigrationError,
+        build_postgres_preflight,
     )
 
     try:
         return await run_in_threadpool(
-            build_arr_postgres_preflight,
+            build_postgres_preflight,
             CONFIG_MANAGER,
             process_name,
             api_state,
         )
-    except ArrPostgresMigrationError as exc:
+    except PostgresMigrationError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from None
     except Exception:
-        logger.error("Arr PostgreSQL migration preflight failed for %s", process_name)
+        logger.error("PostgreSQL migration preflight failed for %s", process_name)
         raise HTTPException(
             status_code=500,
             detail="Migration preflight failed. Check DUMB and PostgreSQL logs.",
         ) from None
 
 
-@process_router.post("/arr-postgres-migration/start")
-async def arr_postgres_migration_start(
-    request: ArrPostgresMigrationStartRequest,
+@process_router.post("/postgres-migration/start")
+@process_router.post("/arr-postgres-migration/start", include_in_schema=False)
+async def postgres_migration_start(
+    request: PostgresMigrationStartRequest,
     process_handler=Depends(get_process_handler),
     api_state=Depends(get_api_state),
     logger=Depends(get_logger),
     current_user: str = Depends(get_optional_current_user),
 ):
     from utils.arr_postgres_migration import (
-        ARR_POSTGRES_MIGRATION_MANAGER,
-        ArrPostgresMigrationError,
+        POSTGRES_MIGRATION_MANAGER,
+        PostgresMigrationError,
     )
 
     if not process_handler or not api_state:
         raise HTTPException(status_code=500, detail="Runtime state is unavailable.")
     try:
         return await run_in_threadpool(
-            ARR_POSTGRES_MIGRATION_MANAGER.create_job,
+            POSTGRES_MIGRATION_MANAGER.create_job,
             CONFIG_MANAGER,
             process_handler,
             api_state,
@@ -2613,11 +2624,11 @@ async def arr_postgres_migration_start(
             bool(request.acknowledge_backup),
             bool(request.acknowledge_target_reset),
         )
-    except ArrPostgresMigrationError as exc:
+    except PostgresMigrationError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from None
     except Exception:
         logger.error(
-            "Failed to queue Arr PostgreSQL migration for %s", request.process_name
+            "Failed to queue PostgreSQL migration for %s", request.process_name
         )
         raise HTTPException(
             status_code=500,
@@ -2625,55 +2636,61 @@ async def arr_postgres_migration_start(
         ) from None
 
 
-@process_router.get("/arr-postgres-migration/status")
-def arr_postgres_migration_status(
+@process_router.get("/postgres-migration/status")
+@process_router.get("/arr-postgres-migration/status", include_in_schema=False)
+def postgres_migration_status(
     job_id: str = Query(..., description="Migration job ID"),
+    process_name: str | None = Query(None, description="Expected service process name"),
     current_user: str = Depends(get_optional_current_user),
 ):
-    from utils.arr_postgres_migration import ARR_POSTGRES_MIGRATION_MANAGER
+    from utils.arr_postgres_migration import POSTGRES_MIGRATION_MANAGER
 
-    payload = ARR_POSTGRES_MIGRATION_MANAGER.get_job(job_id)
+    payload = POSTGRES_MIGRATION_MANAGER.get_job(job_id)
     if not payload:
+        raise HTTPException(status_code=404, detail="Migration job not found.")
+    if process_name and payload.get("process_name") != process_name:
         raise HTTPException(status_code=404, detail="Migration job not found.")
     return payload
 
 
-@process_router.get("/arr-postgres-migration/latest")
-def arr_postgres_migration_latest(
-    process_name: str = Query(..., description="Sonarr or Radarr process name"),
+@process_router.get("/postgres-migration/latest")
+@process_router.get("/arr-postgres-migration/latest", include_in_schema=False)
+def postgres_migration_latest(
+    process_name: str = Query(..., description="Supported service process name"),
     current_user: str = Depends(get_optional_current_user),
 ):
-    from utils.arr_postgres_migration import ARR_POSTGRES_MIGRATION_MANAGER
+    from utils.arr_postgres_migration import POSTGRES_MIGRATION_MANAGER
 
-    return {"job": ARR_POSTGRES_MIGRATION_MANAGER.latest_job(process_name)}
+    return {"job": POSTGRES_MIGRATION_MANAGER.latest_job(process_name)}
 
 
-@process_router.post("/arr-postgres-migration/rollback")
-async def arr_postgres_migration_rollback(
-    request: ArrPostgresMigrationRollbackRequest,
+@process_router.post("/postgres-migration/rollback")
+@process_router.post("/arr-postgres-migration/rollback", include_in_schema=False)
+async def postgres_migration_rollback(
+    request: PostgresMigrationRollbackRequest,
     process_handler=Depends(get_process_handler),
     api_state=Depends(get_api_state),
     logger=Depends(get_logger),
     current_user: str = Depends(get_optional_current_user),
 ):
     from utils.arr_postgres_migration import (
-        ARR_POSTGRES_MIGRATION_MANAGER,
-        ArrPostgresMigrationError,
+        POSTGRES_MIGRATION_MANAGER,
+        PostgresMigrationError,
     )
 
     try:
         return await run_in_threadpool(
-            ARR_POSTGRES_MIGRATION_MANAGER.rollback_job,
+            POSTGRES_MIGRATION_MANAGER.rollback_job,
             request.job_id,
             request.confirmation,
             CONFIG_MANAGER,
             process_handler,
             api_state,
         )
-    except ArrPostgresMigrationError as exc:
+    except PostgresMigrationError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from None
     except Exception:
-        logger.error("Arr PostgreSQL migration rollback failed")
+        logger.error("PostgreSQL migration rollback failed")
         raise HTTPException(
             status_code=500,
             detail="Rollback failed. Check DUMB logs and the job backup directory.",
@@ -3129,9 +3146,10 @@ def wait_for_process_running(
 def ensure_arr_postgres_dependency_running(
     service_key: str, service_config: dict, updater, api_state, logger
 ) -> None:
-    if service_key not in {"sonarr", "radarr", "lidarr", "prowlarr", "whisparr"}:
+    arr_keys = {"sonarr", "radarr", "lidarr", "prowlarr", "whisparr"}
+    if service_key not in arr_keys and service_key not in SERVICE_POSTGRES_KEYS:
         return
-    if not arr_postgres_enabled(service_config):
+    if service_key in arr_keys and not arr_postgres_enabled(service_config):
         if ensure_arr_postgres_enabled_flag(
             service_config.get("process_name") or service_key, service_config
         ):
@@ -3142,8 +3160,16 @@ def ensure_arr_postgres_dependency_running(
             )
         else:
             return
+    elif service_key in SERVICE_POSTGRES_KEYS and not service_postgres_enabled(
+        service_config
+    ):
+        return
 
-    if configure_arr_postgres_runtime(CONFIG_MANAGER):
+    if service_key in arr_keys:
+        config_changed = configure_arr_postgres_runtime(CONFIG_MANAGER)
+    else:
+        config_changed = configure_service_postgres_runtime(CONFIG_MANAGER)
+    if config_changed:
         CONFIG_MANAGER.save_config()
 
     postgres_config = CONFIG_MANAGER.config.get("postgres", {}) or {}
@@ -5111,6 +5137,10 @@ async def get_capabilities(current_user: str = Depends(get_optional_current_user
         "arr_postgres_migration": True,
         "arr_postgres_migration_rehearsal": True,
         "arr_postgres_migration_rollback": True,
+        "postgres_migration": True,
+        "postgres_migration_rehearsal": True,
+        "postgres_migration_rollback": True,
+        "postgres_migration_service_keys": sorted(POSTGRES_MIGRATION_SERVICES),
         "database_health_metrics": True,
         "metrics_history_storage": True,
         "metrics_history_hot_activation": True,

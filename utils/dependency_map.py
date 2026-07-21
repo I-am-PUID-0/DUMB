@@ -16,6 +16,7 @@ from utils.arr_postgres import (
     arr_postgres_enabled,
 )
 from utils.core_services import has_core_service
+from utils.service_postgres import SERVICE_POSTGRES_KEYS, service_postgres_enabled
 
 
 def _service_has_enabled_instance(config_obj: dict) -> bool:
@@ -88,6 +89,22 @@ def build_conditional_dependency_map(
             for instance in instances.values()
         ):
             deps.setdefault(arr_key, set()).add("postgres")
+
+    for service_key in SERVICE_POSTGRES_KEYS:
+        service_config = config_getter(service_key)
+        candidates = (
+            (service_config.get("instances", {}) or {}).values()
+            if isinstance(service_config, dict)
+            and isinstance(service_config.get("instances"), dict)
+            else [service_config]
+        )
+        if any(
+            isinstance(service, dict)
+            and service.get("enabled")
+            and service_postgres_enabled(service)
+            for service in candidates
+        ):
+            deps.setdefault(service_key, set()).add("postgres")
 
     # -- Media-server-conditional deps --
     if _service_has_enabled_instance(config_getter("plex")):

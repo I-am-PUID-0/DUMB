@@ -16,6 +16,7 @@ from utils.ffprobe_monitor import start_ffprobe_monitor
 from utils.setup import setup_project
 from utils.seerr_sync import start_seerr_sync_service
 from utils.arr_postgres import configure_arr_postgres_runtime
+from utils.service_postgres import configure_service_postgres_runtime
 from utils.postgres import stop_existing_postgres_for_data_directory
 from utils.metrics_postgres import ensure_metrics_postgres_config
 from concurrent.futures import ThreadPoolExecutor, wait, FIRST_COMPLETED
@@ -973,6 +974,8 @@ def main():
     _apply_waits_to_service(config, "tautulli", _build_plex_wait_entries(config))
     _apply_waits_to_service(config, "seerr", _build_media_wait_entries(config))
     if configure_arr_postgres_runtime(config):
+        config.save_config()
+    if configure_service_postgres_runtime(config):
         config.save_config()
     try:
         _start_control_plane_and_preinstall(process_handler, updater, config)

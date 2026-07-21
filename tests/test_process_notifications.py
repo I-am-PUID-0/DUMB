@@ -1,3 +1,4 @@
+import signal
 import unittest
 from unittest.mock import Mock, patch
 
@@ -58,6 +59,27 @@ class ProcessNotificationTests(unittest.TestCase):
 
         notify_event.assert_not_called()
         handler._maybe_schedule_restart.assert_not_called()
+
+    def test_managed_shutdown_signals_the_complete_process_group(self):
+        process = Mock(pid=1234)
+
+        with (
+            patch("utils.processes.os.getpgid", return_value=1234),
+            patch("utils.processes.os.getpgrp", return_value=4321),
+            patch("utils.processes.os.killpg") as killpg,
+        ):
+            ProcessHandler._signal_process_group(process, signal.SIGTERM)
+
+        killpg.assert_called_once_with(1234, signal.SIGTERM)
+        process.terminate.assert_not_called()
+
+    def test_managed_shutdown_falls_back_when_group_signalling_is_unavailable(self):
+        process = Mock(pid=1234)
+
+        with patch("utils.processes.os.getpgid", side_effect=PermissionError):
+            ProcessHandler._signal_process_group(process, signal.SIGTERM)
+
+        process.terminate.assert_called_once_with()
 
 
 if __name__ == "__main__":

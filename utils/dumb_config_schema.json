@@ -1974,6 +1974,12 @@
         "enabled": {
           "type": "boolean"
         },
+        "postgres_enabled": {
+          "type": "boolean"
+        },
+        "postgres_database": {
+          "type": "string"
+        },
         "process_name": {
           "type": "string"
         },
@@ -2426,6 +2432,12 @@
               "properties": {
                 "enabled": {
                   "type": "boolean"
+                },
+                "postgres_enabled": {
+                  "type": "boolean"
+                },
+                "postgres_database": {
+                  "type": "string"
                 },
                 "sync_role": {
                   "type": "string",
@@ -3895,6 +3907,12 @@
         "enabled": {
           "type": "boolean"
         },
+        "postgres_enabled": {
+          "type": "boolean"
+        },
+        "postgres_database": {
+          "type": "string"
+        },
         "process_name": {
           "type": "string"
         },
@@ -4201,6 +4219,12 @@
       "properties": {
         "enabled": {
           "type": "boolean"
+        },
+        "postgres_enabled": {
+          "type": "boolean"
+        },
+        "postgres_database": {
+          "type": "string"
         },
         "process_name": {
           "type": "string"

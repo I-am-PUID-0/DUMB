@@ -579,6 +579,8 @@
   },
   "bazarr": {
     "enabled": false,
+    "postgres_enabled": false,
+    "postgres_database": "",
     "process_name": "Bazarr",
     "repo_owner": "morpheus65535",
     "repo_name": "bazarr",
@@ -606,7 +608,7 @@
       "{port}"
     ],
     "config_dir": "/opt/bazarr",
-    "config_file": "/bazarr/data/config.yaml",
+    "config_file": "/bazarr/data/config/config.yaml",
     "log_file": "/bazarr/data/log/bazarr.log",
     "env": {
       "NO_UPDATE": "true"
@@ -614,6 +616,8 @@
   },
   "pulsarr": {
     "enabled": false,
+    "postgres_enabled": false,
+    "postgres_database": "",
     "process_name": "Pulsarr",
     "repo_owner": "jamcalli",
     "repo_name": "Pulsarr",
@@ -725,6 +729,8 @@
   },
   "altmount": {
     "enabled": false,
+    "postgres_enabled": false,
+    "postgres_database": "",
     "process_name": "AltMount",
     "repo_owner": "javi11",
     "repo_name": "altmount",
@@ -864,6 +870,8 @@
     "instances": {
       "Default": {
         "enabled": false,
+        "postgres_enabled": false,
+        "postgres_database": "",
         "sync_role": "disabled",
         "core_service": "",
         "process_name": "Seerr",
