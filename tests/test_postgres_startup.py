@@ -5,9 +5,12 @@ import signal
 import tempfile
 import unittest
 from types import SimpleNamespace
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
-from utils.postgres import stop_existing_postgres_for_data_directory
+from utils.postgres import (
+    initialize_postgres_config_dir_directory,
+    stop_existing_postgres_for_data_directory,
+)
 
 
 class PostgresStartupSafetyTests(unittest.TestCase):
@@ -131,6 +134,70 @@ class PostgresStartupSafetyTests(unittest.TestCase):
 
             self.assertFalse(success)
             self.assertIn("multiple parent processes", error)
+
+    def test_initdb_uses_utf8_locale_and_configured_arguments(self):
+        process_handler = SimpleNamespace(
+            returncode=0,
+            stdout="",
+            stderr="",
+            start_process=Mock(return_value=(True, None)),
+            wait=Mock(),
+        )
+
+        with tempfile.TemporaryDirectory() as data_dir:
+            success, error = initialize_postgres_config_dir_directory(
+                process_handler,
+                data_dir,
+                "DUMB",
+                "test-password",
+                "--data-checksums --auth-local=scram-sha-256",
+            )
+
+        self.assertTrue(success)
+        self.assertIsNone(error)
+        command = process_handler.start_process.call_args.args[2]
+        self.assertEqual(command[:6], ["su", "-", "DUMB", "-s", "/bin/bash", "-c"])
+        initdb_command = command[-1]
+        self.assertIn("--data-checksums", initdb_command)
+        self.assertIn("--auth-local=scram-sha-256", initdb_command)
+        self.assertIn("--encoding=UTF8", initdb_command)
+        self.assertIn("--locale=C.UTF-8", initdb_command)
+
+    def test_initdb_rejects_invalid_configured_arguments(self):
+        process_handler = SimpleNamespace(start_process=Mock())
+
+        with tempfile.TemporaryDirectory() as data_dir:
+            success, error = initialize_postgres_config_dir_directory(
+                process_handler,
+                data_dir,
+                "DUMB",
+                "test-password",
+                "--data-checksums 'unterminated",
+            )
+
+        self.assertFalse(success)
+        self.assertIn("Invalid PostgreSQL initdb_args", error)
+        process_handler.start_process.assert_not_called()
+
+    def test_initdb_surfaces_nonzero_exit(self):
+        process_handler = SimpleNamespace(
+            returncode=1,
+            stdout="",
+            stderr="initdb failed",
+            start_process=Mock(return_value=(True, None)),
+            wait=Mock(),
+        )
+
+        with tempfile.TemporaryDirectory() as data_dir:
+            success, error = initialize_postgres_config_dir_directory(
+                process_handler,
+                data_dir,
+                "DUMB",
+                "test-password",
+            )
+
+        self.assertFalse(success)
+        self.assertEqual(error, "PostgreSQL initdb failed: initdb failed")
 
 
 if __name__ == "__main__":

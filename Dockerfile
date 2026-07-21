@@ -78,6 +78,11 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     rm -rf /var/lib/apt/lists/* && \
     go version && dotnet --info >/dev/null && node --version && npm --version && pnpm --version
 
+# Keep login shells and setup subprocesses on a UTF-8 locale. PostgreSQL
+# initialization also pins its locale and encoding explicitly below.
+ENV LANG=C.UTF-8 \
+    LC_ALL=C.UTF-8
+
 # make Postgres client binaries available in login shells
 RUN echo "export PATH=/usr/lib/postgresql/16/bin:\$PATH" > /etc/profile.d/postgresql.sh
 RUN echo "export PATH=/usr/lib/postgresql/16/bin:\$PATH" >> /root/.bashrc

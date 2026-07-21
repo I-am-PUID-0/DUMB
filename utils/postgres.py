@@ -298,7 +298,11 @@ def stop_existing_postgres_for_data_directory(postgres_config_dir, postgres_user
 
 
 def initialize_postgres_config_dir_directory(
-    process_handler, postgres_config_dir, postgres_user, postgres_password
+    process_handler,
+    postgres_config_dir,
+    postgres_user,
+    postgres_password,
+    initdb_args="",
 ):
     try:
         postmaster_opts = os.path.join(postgres_config_dir, "postmaster.opts")
@@ -311,15 +315,45 @@ def initialize_postgres_config_dir_directory(
             logger.info(
                 f"Initializing PostgreSQL data directory at {postgres_config_dir}..."
             )
-            initialize_command = f"initdb -D {postgres_config_dir} -U {postgres_user} --pwfile=<(echo {postgres_password})"
-            init = process_handler.start_process(
+            try:
+                configured_initdb_args = shlex.split(initdb_args or "")
+            except (TypeError, ValueError) as e:
+                return False, f"Invalid PostgreSQL initdb_args: {e}"
+
+            initdb_command_parts = [
+                "initdb",
+                *configured_initdb_args,
+                "-D",
+                postgres_config_dir,
+                "-U",
+                postgres_user,
+                "--encoding=UTF8",
+                "--locale=C.UTF-8",
+            ]
+            initialize_command = (
+                f"{shlex.join(initdb_command_parts)} "
+                f"--pwfile=<(printf '%s\\n' {shlex.quote(postgres_password)})"
+            )
+            success, error = process_handler.start_process(
                 "PostgreSQL_init",
                 postgres_config_dir,
                 ["su", "-", postgres_user, "-s", "/bin/bash", "-c", initialize_command],
             )
+            if not success:
+                return False, error or "PostgreSQL initdb failed to start."
+
             process_handler.wait("PostgreSQL_init")
+            if process_handler.returncode != 0:
+                detail = (
+                    process_handler.stderr
+                    or process_handler.stdout
+                    or "initdb exited with a non-zero status"
+                )
+                return False, f"PostgreSQL initdb failed: {detail}"
+
             logger.info(
-                f"Initialized PostgreSQL data directory at {postgres_config_dir}."
+                "Initialized PostgreSQL data directory at %s with UTF-8 encoding.",
+                postgres_config_dir,
             )
             return True, None
     except subprocess.CalledProcessError as e:
@@ -850,6 +884,7 @@ def migrate_legacy_role_dmb_to_dumb(
     postgres_process_name: str,
     postgres_config_dir: str,
     postgres_command: str,
+    initdb_args: str = "",
 ):
     try:
         role_exists, error = postgres_role_exists(
@@ -973,6 +1008,7 @@ def migrate_legacy_role_dmb_to_dumb(
                 postgres_config_dir=postgres_config_dir,
                 postgres_user="DUMB",
                 postgres_password=postgres_password,
+                initdb_args=initdb_args,
             )
             if not success:
                 return (
@@ -1115,6 +1151,7 @@ def postgres_setup(process_handler=None):
     postgres_password = postgres_config.get("password")
     postgres_port = postgres_config.get("port")
     postgres_databases = postgres_config.get("databases")
+    postgres_initdb_args = postgres_config.get("initdb_args", "")
     try:
         if postgres_config_dir:
             if not os.path.exists(postgres_config_dir):
@@ -1149,7 +1186,11 @@ def postgres_setup(process_handler=None):
             return False, error
 
         success, error = initialize_postgres_config_dir_directory(
-            process_handler, postgres_config_dir, postgres_user, postgres_password
+            process_handler,
+            postgres_config_dir,
+            postgres_user,
+            postgres_password,
+            postgres_initdb_args,
         )
         if not success:
             return False, error
@@ -1214,6 +1255,7 @@ def postgres_setup(process_handler=None):
             postgres_process_name=postgres_process_name,
             postgres_config_dir=postgres_config_dir,
             postgres_command=postgres_command,
+            initdb_args=postgres_initdb_args,
         )
         if not success:
             logger.warning(error)
