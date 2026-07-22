@@ -10,6 +10,7 @@ from utils.mediastorm_installer import (
     _mediastorm_install_request,
     apply_mediastorm_layer,
     install_mediastorm_runtime,
+    mediastorm_app_version_text,
     mediastorm_install_selector,
     mediastorm_runtime_ready,
     mediastorm_runtime_matches_selection,
@@ -172,6 +173,10 @@ class MediaStormInstallerTests(unittest.TestCase):
                 "v1.5.0-20260711",
             )
             self.assertEqual(
+                (runtime / "app-version.txt").read_text(encoding="utf-8"),
+                "1.5.0\n20260711\n",
+            )
+            self.assertEqual(
                 (runtime / "scripts" / "search_subtitles.py").stat().st_mode & 0o777,
                 0o644,
             )
@@ -319,6 +324,12 @@ class MediaStormInstallerTests(unittest.TestCase):
         self.assertEqual(
             normalize_mediastorm_version("1.5.0\n20260711\n"),
             "v1.5.0-20260711",
+        )
+
+    def test_restores_mediastorm_two_line_version_file(self):
+        self.assertEqual(
+            mediastorm_app_version_text("v1.5.0-20260711\n"),
+            "1.5.0\n20260711\n",
         )
 
 

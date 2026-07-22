@@ -17,6 +17,7 @@ from utils.zilean_dotnet import prepare_zilean_for_net10
 from utils.mediastorm_installer import (
     MediaStormInstallError,
     install_mediastorm_runtime,
+    mediastorm_app_version_text,
     mediastorm_install_selector,
     mediastorm_runtime_ready,
     mediastorm_runtime_matches_selection,
@@ -5634,7 +5635,7 @@ def setup_maintainerr(
 
 
 def _ensure_mediastorm_runtime_link(
-    source: str, target: str
+    source: str, target: str, *, replace_file: bool = False
 ) -> tuple[bool, str | None]:
     if not os.path.exists(source):
         return False, f"Bundled MediaStorm runtime asset not found: {source}"
@@ -5643,12 +5644,41 @@ def _ensure_mediastorm_runtime_link(
             return True, None
         os.unlink(target)
     elif os.path.exists(target):
-        return (
-            False,
-            f"Cannot install MediaStorm runtime link over existing path: {target}",
-        )
+        if replace_file and os.path.isfile(target):
+            os.unlink(target)
+        else:
+            return (
+                False,
+                f"Cannot install MediaStorm runtime link over existing path: {target}",
+            )
     os.symlink(source, target)
     return True, None
+
+
+def _ensure_mediastorm_app_version(
+    runtime_dir: str, config_dir: str
+) -> tuple[bool, str | None]:
+    source = os.path.join(runtime_dir, "app-version.txt")
+    if not os.path.isfile(source):
+        marker = os.path.join(runtime_dir, "version.txt")
+        temporary = f"{source}.tmp-{os.getpid()}"
+        try:
+            with open(marker, "r", encoding="utf-8") as handle:
+                app_version = mediastorm_app_version_text(handle.read())
+            with open(temporary, "w", encoding="utf-8") as handle:
+                handle.write(app_version)
+            os.chmod(temporary, 0o644)
+            os.replace(temporary, source)
+        except OSError as exc:
+            if os.path.exists(temporary):
+                os.unlink(temporary)
+            return False, f"Failed preparing MediaStorm app version metadata: {exc}"
+
+    return _ensure_mediastorm_runtime_link(
+        source,
+        os.path.join(config_dir, "version.txt"),
+        replace_file=True,
+    )
 
 
 def setup_mediastorm(
@@ -5711,6 +5741,10 @@ def setup_mediastorm(
         )
 
     _chown_recursive_if_needed(config_dir, user_id, group_id)
+
+    success, error = _ensure_mediastorm_app_version(runtime_dir, config_dir)
+    if not success:
+        return False, error
 
     for script_name in (
         "parse_title.py",

@@ -25,7 +25,7 @@ _MAX_EXTRACTED_BYTES = 2 * 1024 * 1024 * 1024
 _SOURCE_FILES = {
     "app/mediastorm": "mediastorm",
     "root/mediastorm": "mediastorm",
-    "app/version.txt": ".upstream-version.txt",
+    "app/version.txt": "app-version.txt",
     "parse_title.py": "scripts/parse_title.py",
     "parse_title_batch.py": "scripts/parse_title_batch.py",
     "search_subtitles.py": "scripts/search_subtitles.py",
@@ -181,6 +181,20 @@ def normalize_mediastorm_version(raw_value: str) -> str:
         return ""
     value = "-".join(parts)
     return value if value.startswith("v") else f"v{value}"
+
+
+def mediastorm_app_version_text(raw_value: str) -> str:
+    """Convert DUMB's normalized marker back to MediaStorm's file format."""
+    normalized = normalize_mediastorm_version(raw_value)
+    value = normalized.removeprefix("v")
+    release_match = _MEDIASTORM_RELEASE_PATTERN.fullmatch(value)
+    if not release_match:
+        return f"{value}\n"
+    version, build_id = release_match.groups()
+    lines = [version]
+    if build_id:
+        lines.append(build_id)
+    return "\n".join(lines) + "\n"
 
 
 def mediastorm_install_selector(config: dict) -> str:
@@ -398,7 +412,7 @@ def install_mediastorm_runtime(
             finally:
                 layer_path.unlink(missing_ok=True)
 
-        upstream_version_path = staged_runtime / ".upstream-version.txt"
+        upstream_version_path = staged_runtime / "app-version.txt"
         try:
             actual_version = normalize_mediastorm_version(
                 upstream_version_path.read_text(encoding="utf-8")
@@ -420,7 +434,6 @@ def install_mediastorm_runtime(
                 "MediaStorm OCI version mismatch: "
                 f"expected {expectation}, found {actual_version or 'unknown'}."
             )
-        upstream_version_path.unlink(missing_ok=True)
         _build_python_environment(staged_runtime)
         (staged_runtime / "version.txt").write_text(
             f"{actual_version}\n", encoding="utf-8"

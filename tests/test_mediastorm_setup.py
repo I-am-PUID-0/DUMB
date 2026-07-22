@@ -15,6 +15,7 @@ class MediaStormSetupTests(unittest.TestCase):
         (root / "scripts").mkdir()
         (root / "bin").mkdir()
         (root / "mediastorm").write_text("binary", encoding="utf-8")
+        (root / "version.txt").write_text("v1.5.0-20260711\n", encoding="utf-8")
         (root / "web" / "index.html").write_text("web", encoding="utf-8")
         (root / "iroh" / "iroh-direct-spike").write_text("iroh", encoding="utf-8")
         (root / "python-venv" / "bin" / "python3").write_text(
@@ -105,6 +106,14 @@ class MediaStormSetupTests(unittest.TestCase):
             self.assertEqual(
                 str(runtime / "scripts" / "parse_title.py"),
                 os.readlink(links_dir / "parse_title.py"),
+            )
+            self.assertEqual(
+                str(runtime / "app-version.txt"),
+                os.readlink(config_dir / "version.txt"),
+            )
+            self.assertEqual(
+                (config_dir / "version.txt").read_text(encoding="utf-8"),
+                "1.5.0\n20260711\n",
             )
             ensure_database.assert_called_once_with("mediastorm")
             initialize_databases.assert_called_once_with()
