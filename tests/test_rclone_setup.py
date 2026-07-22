@@ -67,6 +67,7 @@ class RcloneSetupTests(unittest.TestCase):
                     return_value=(True, None),
                 ) as sync_rc,
                 patch.object(setup, "chown_recursive", return_value=(True, None)),
+                patch.object(setup.os, "chown"),
                 patch.object(setup, "_is_rclone_rc_port_available", return_value=True),
             ):
                 success, error = setup.rclone_setup()
