@@ -2821,6 +2821,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Configuration settings in dumb_config.json">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#configuration-key-descriptions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Configuration key descriptions
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -4761,6 +4778,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Configuration settings in dumb_config.json">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#configuration-key-descriptions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Configuration key descriptions
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -4904,10 +4938,10 @@
   
 
 
-<h1 id="pulsarr">Pulsarr<a class="headerlink" href="#pulsarr" title="Permanent link">&para;</a></h1>
+<h1 id="pulsarr">Pulsarr<a class="headerlink" href="#pulsarr" title="Permanent link">#</a></h1>
 <p>Pulsarr monitors Plex watchlists and routes requested movies and shows to Sonarr and Radarr. It is useful when Plex is the front door for requests and you want watchlist-driven automation, approvals, quotas, and notifications without running a separate request portal.</p>
 <hr />
-<h2 id="overview">Overview<a class="headerlink" href="#overview" title="Permanent link">&para;</a></h2>
+<h2 id="overview">Overview<a class="headerlink" href="#overview" title="Permanent link">#</a></h2>
 <p>Pulsarr provides:</p>
 <ul>
 <li><strong>Plex watchlist monitoring</strong> - Syncs watched Plex account activity into media requests.</li>
@@ -4917,7 +4951,7 @@
 <li><strong>Multi-user support</strong> - Tracks Plex users and watchlist permissions.</li>
 </ul>
 <hr />
-<h2 id="default-port">Default port<a class="headerlink" href="#default-port" title="Permanent link">&para;</a></h2>
+<h2 id="default-port">Default port<a class="headerlink" href="#default-port" title="Permanent link">#</a></h2>
 <table>
 <thead>
 <tr>
@@ -4933,7 +4967,7 @@
 </tbody>
 </table>
 <hr />
-<h2 id="configuration-settings-in-dumb_configjson">Configuration settings in <code>dumb_config.json</code><a class="headerlink" href="#configuration-settings-in-dumb_configjson" title="Permanent link">&para;</a></h2>
+<h2 id="configuration-settings-in-dumb_configjson">Configuration settings in <code>dumb_config.json</code><a class="headerlink" href="#configuration-settings-in-dumb_configjson" title="Permanent link">#</a></h2>
 <div class="highlight"><pre><span></span><code><span class="nt">&quot;pulsarr&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;postgres_enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
@@ -4974,7 +5008,7 @@
 <span class="w">  </span><span class="p">}</span>
 <span class="p">}</span>
 </code></pre></div>
-<h3 id="configuration-key-descriptions">Configuration key descriptions<a class="headerlink" href="#configuration-key-descriptions" title="Permanent link">&para;</a></h3>
+<h3 id="configuration-key-descriptions">Configuration key descriptions<a class="headerlink" href="#configuration-key-descriptions" title="Permanent link">#</a></h3>
 <ul>
 <li><strong><code>enabled</code></strong>: Whether to start Pulsarr.</li>
 <li><strong><code>postgres_enabled</code></strong>: Select DUMB-managed PostgreSQL after using the guided migration tool. SQLite remains the default.</li>
@@ -4991,7 +5025,7 @@
 <li><strong><code>env.allowIframes</code></strong>: Allows Pulsarr to be embedded in the DUMB frontend.</li>
 </ul>
 <hr />
-<h2 id="initial-setup">Initial setup<a class="headerlink" href="#initial-setup" title="Permanent link">&para;</a></h2>
+<h2 id="initial-setup">Initial setup<a class="headerlink" href="#initial-setup" title="Permanent link">#</a></h2>
 <p>After enabling and starting Pulsarr:</p>
 <ol>
 <li>Open Pulsarr from the DUMB service page or at <code>http://&lt;host&gt;:3003</code>.</li>
@@ -5001,7 +5035,7 @@
 <li>Start the main workflow from Pulsarr's dashboard and enable auto-start if desired.</li>
 </ol>
 <hr />
-<h2 id="notes">Notes<a class="headerlink" href="#notes" title="Permanent link">&para;</a></h2>
+<h2 id="notes">Notes<a class="headerlink" href="#notes" title="Permanent link">#</a></h2>
 <ul>
 <li>Pulsarr uses SQLite by default at <code>/pulsarr/data/db/pulsarr.db</code>.</li>
 <li>DUMB installs Bun under <code>/config/.bun</code> when Pulsarr is built from source.</li>
@@ -5011,11 +5045,11 @@
   preserves the migration error in DUMB's service log.</li>
 <li>If you intentionally serve Pulsarr behind a separate subfolder reverse proxy, set Pulsarr's own <code>basePath</code> environment variable for that external proxy. DUMB's embedded UI route strips its service prefix and does not need <code>basePath</code>.</li>
 </ul>
-<h2 id="postgresql-migration">PostgreSQL migration<a class="headerlink" href="#postgresql-migration" title="Permanent link">&para;</a></h2>
+<h2 id="postgresql-migration">PostgreSQL migration<a class="headerlink" href="#postgresql-migration" title="Permanent link">#</a></h2>
 <p>Use <strong>Database Migration</strong> on the Pulsarr service page for an existing SQLite installation. Rehearsal starts Pulsarr against an isolated PostgreSQL database so Pulsarr creates its current schema, imports application data while excluding Knex's migration bookkeeping tables, validates every copied table, and returns production to SQLite. Cutover repeats this from a cold snapshot and enables <code>postgres_enabled</code> only after validation.</p>
 <p>Do not enable PostgreSQL directly when you need the existing users, settings, requests, or integrations. See <a href="../../../features/arr-postgres-migration/">SQLite to PostgreSQL Migration</a> and the <a href="https://jamcalli.github.io/Pulsarr/docs/installation/postgres-migration/">upstream Pulsarr migration guide</a>.</p>
 <hr />
-<h2 id="related-links">Related links<a class="headerlink" href="#related-links" title="Permanent link">&para;</a></h2>
+<h2 id="related-links">Related links<a class="headerlink" href="#related-links" title="Permanent link">#</a></h2>
 <ul>
 <li><a href="https://github.com/jamcalli/Pulsarr">Pulsarr repository</a></li>
 <li><a href="https://jamcalli.github.io/Pulsarr/">Pulsarr documentation</a></li>
