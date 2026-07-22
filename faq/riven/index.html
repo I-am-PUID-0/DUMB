@@ -4876,25 +4876,25 @@
   
 
 
-<h1 id="riven-faq">Riven FAQ<a class="headerlink" href="#riven-faq" title="Permanent link">#</a></h1>
-<h2 id="do-i-need-both-riven-backend-and-riven-frontend">Do I need both Riven Backend and Riven Frontend?<a class="headerlink" href="#do-i-need-both-riven-backend-and-riven-frontend" title="Permanent link">#</a></h2>
+<h1 id="riven-faq">Riven FAQ<a class="headerlink" href="#riven-faq" title="Permanent link">&para;</a></h1>
+<h2 id="do-i-need-both-riven-backend-and-riven-frontend">Do I need both Riven Backend and Riven Frontend?<a class="headerlink" href="#do-i-need-both-riven-backend-and-riven-frontend" title="Permanent link">&para;</a></h2>
 <p>Riven Backend is the orchestrator and database consumer. Riven Frontend is an optional UI that depends on the backend. Starting the frontend alone does not provide a working Riven stack.</p>
-<h2 id="what-changes-in-branch-mode">What changes in branch mode?<a class="headerlink" href="#what-changes-in-branch-mode" title="Permanent link">#</a></h2>
+<h2 id="what-changes-in-branch-mode">What changes in branch mode?<a class="headerlink" href="#what-changes-in-branch-mode" title="Permanent link">&para;</a></h2>
 <p>The current branch layout uses Python 3.13 and Riven's native filesystem/debrid-link settings. DUMB removes the legacy Zurg/rclone runtime dependencies for a branch-enabled backend and points both the filesystem mount and updater library path at <code>/mnt/debrid/riven</code>. Stable/release-mode Riven retains the legacy Zurg/rclone dependency model.</p>
-<h2 id="is-postgresql-required">Is PostgreSQL required?<a class="headerlink" href="#is-postgresql-required" title="Permanent link">#</a></h2>
+<h2 id="is-postgresql-required">Is PostgreSQL required?<a class="headerlink" href="#is-postgresql-required" title="Permanent link">&para;</a></h2>
 <p>Yes. DUMB enables PostgreSQL for Riven, creates the required database, and starts it before the backend. In the maintained volume layout, PostgreSQL's internal <code>/postgres_data</code> path is persisted through <code>/data/postgres</code>.</p>
-<h2 id="where-is-riven-state-stored">Where is Riven state stored?<a class="headerlink" href="#where-is-riven-state-stored" title="Permanent link">#</a></h2>
+<h2 id="where-is-riven-state-stored">Where is Riven state stored?<a class="headerlink" href="#where-is-riven-state-stored" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Backend settings/data: <code>/riven/backend/data</code> (persisted below <code>/data/riven</code>)</li>
 <li>Symlink library: <code>/mnt/debrid/riven_symlinks</code></li>
 <li>Backend log collected by DUMB: <code>/log/riven_backend.log</code></li>
 </ul>
 <p>Back up both <code>/data</code> and any irreplaceable symlink-library state before a migration or rollback.</p>
-<h2 id="why-can-the-frontend-not-reach-the-backend">Why can the frontend not reach the backend?<a class="headerlink" href="#why-can-the-frontend-not-reach-the-backend" title="Permanent link">#</a></h2>
+<h2 id="why-can-the-frontend-not-reach-the-backend">Why can the frontend not reach the backend?<a class="headerlink" href="#why-can-the-frontend-not-reach-the-backend" title="Permanent link">&para;</a></h2>
 <p>Confirm both services are running, PostgreSQL is healthy, and the frontend's configured backend/origin URL matches the backend's assigned port. Riven and NzbDAV share desired defaults (<code>3000</code> and <code>8080</code>), so use the ports saved in the runtime DUMB configuration after conflict resolution.</p>
-<h2 id="how-should-i-move-an-existing-riven-symlink-tree">How should I move an existing Riven symlink tree?<a class="headerlink" href="#how-should-i-move-an-existing-riven-symlink-tree" title="Permanent link">#</a></h2>
+<h2 id="how-should-i-move-an-existing-riven-symlink-tree">How should I move an existing Riven symlink tree?<a class="headerlink" href="#how-should-i-move-an-existing-riven-symlink-tree" title="Permanent link">&para;</a></h2>
 <p>Use DUMB's Symlinks panel to create a snapshot, preview the rewrite/root migration, and then apply it. A manual rollback restores link entries but cannot merge application/database changes made after a migration.</p>
-<h2 id="related-pages">Related pages<a class="headerlink" href="#related-pages" title="Permanent link">#</a></h2>
+<h2 id="related-pages">Related pages<a class="headerlink" href="#related-pages" title="Permanent link">&para;</a></h2>
 <ul>
 <li><a href="../../services/core/riven-backend/">Riven Backend</a></li>
 <li><a href="../../services/optional/riven-frontend/">Riven Frontend</a></li>

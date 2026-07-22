@@ -887,56 +887,6 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Recommended flow">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#1-run-preflight" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        1. Run preflight
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#2-run-a-rehearsal" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        2. Run a rehearsal
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#3-run-guarded-cutover" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3. Run guarded cutover
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#4-validate-the-application" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        4. Validate the application
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
 </li>
       
         <li class="md-nav__item">
@@ -4799,56 +4749,6 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Recommended flow">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#1-run-preflight" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        1. Run preflight
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#2-run-a-rehearsal" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        2. Run a rehearsal
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#3-run-guarded-cutover" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3. Run guarded cutover
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#4-validate-the-application" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        4. Validate the application
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
 </li>
       
         <li class="md-nav__item">
@@ -4974,10 +4874,10 @@
   
 
 
-<h1 id="sqlite-to-postgresql-migration">SQLite to PostgreSQL Migration<a class="headerlink" href="#sqlite-to-postgresql-migration" title="Permanent link">#</a></h1>
+<h1 id="sqlite-to-postgresql-migration">SQLite to PostgreSQL Migration<a class="headerlink" href="#sqlite-to-postgresql-migration" title="Permanent link">&para;</a></h1>
 <p>DUMB provides a guarded tool for moving an existing supported service from SQLite to DUMB-managed PostgreSQL. Open the service page and select <strong>Database Migration</strong>.</p>
 <p>This tool is deliberately separate from <code>postgres_enabled</code>. Enabling PostgreSQL directly changes the database used at the next start; it does not copy existing SQLite data.</p>
-<h2 id="supported-services">Supported services<a class="headerlink" href="#supported-services" title="Permanent link">#</a></h2>
+<h2 id="supported-services">Supported services<a class="headerlink" href="#supported-services" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
@@ -5045,7 +4945,7 @@
 </tbody>
 </table>
 <p>Services that use PostgreSQL only, such as MediaStorm, Riven Backend, Zilean, and Traefik Proxy Admin, do not have a SQLite source to migrate. Services without a confirmed PostgreSQL backend are not offered the tool.</p>
-<h2 id="what-dumb-automates">What DUMB automates<a class="headerlink" href="#what-dumb-automates" title="Permanent link">#</a></h2>
+<h2 id="what-dumb-automates">What DUMB automates<a class="headerlink" href="#what-dumb-automates" title="Permanent link">&para;</a></h2>
 <p>The workflow:</p>
 <ol>
 <li>Confirms that the service is enabled, still configured for SQLite, and has a healthy SQLite source.</li>
@@ -5062,12 +4962,12 @@
 └── backups/
 </code></pre></div>
 <p>Existing Sonarr/Radarr job history and rollback backups therefore remain visible after upgrading. DUMB never deletes the source SQLite database.</p>
-<h2 id="recommended-flow">Recommended flow<a class="headerlink" href="#recommended-flow" title="Permanent link">#</a></h2>
-<h3 id="1-run-preflight">1. Run preflight<a class="headerlink" href="#1-run-preflight" title="Permanent link">#</a></h3>
+<h2 id="recommended-flow">Recommended flow<a class="headerlink" href="#recommended-flow" title="Permanent link">&para;</a></h2>
+<h3 id="1-run-preflight">1. Run preflight<a class="headerlink" href="#1-run-preflight" title="Permanent link">&para;</a></h3>
 <p>Open <strong>Database Migration</strong> on the service page and review every check. A failure blocks the job. A warning requires review but may be expected, such as a version that cannot be detected or a target database that already contains data.</p>
 <p>The panel shows the latest persisted job for the current service, including its service name and start time. Historical failed or completed jobs remain visible after navigation and restarts; opening a panel or running preflight does not start a migration.</p>
 <p>Preflight does not change the service configuration.</p>
-<h3 id="2-run-a-rehearsal">2. Run a rehearsal<a class="headerlink" href="#2-run-a-rehearsal" title="Permanent link">#</a></h3>
+<h3 id="2-run-a-rehearsal">2. Run a rehearsal<a class="headerlink" href="#2-run-a-rehearsal" title="Permanent link">&para;</a></h3>
 <p>Rehearsal is required before dmbdb enables cutover. It:</p>
 <ul>
 <li>takes a consistent SQLite snapshot;</li>
@@ -5081,32 +4981,32 @@
 <p>Closing the migration popup does not cancel an active job. dmbdb asks for confirmation, then keeps a <strong>Database migration running in the background</strong> indicator on the service page with current progress and an <strong>Open progress</strong> action. Reopen the panel at any time to resume the detailed event view. Do not restart the DUMB API or container while the job is active.</p>
 <p>When a guarded cutover finishes, the panel displays <strong>Migration completed successfully — PostgreSQL cutover is complete</strong>. If it finishes while the popup is closed, the service page replaces the running indicator with a dismissible completion notice. This confirms that DUMB imported and validated the snapshot and switched the database configuration; still verify service health, application data, and integrations afterward.</p>
 <p>When validation succeeds, the panel displays <strong>Rehearsal passed — ready for PostgreSQL cutover</strong> and automatically selects <strong>Cut over to PostgreSQL</strong>. The service is still using SQLite at this point. Review the safeguards, enter the confirmation text again, and click <strong>Start guarded cutover</strong> to perform the actual switch.</p>
-<h3 id="3-run-guarded-cutover">3. Run guarded cutover<a class="headerlink" href="#3-run-guarded-cutover" title="Permanent link">#</a></h3>
+<h3 id="3-run-guarded-cutover">3. Run guarded cutover<a class="headerlink" href="#3-run-guarded-cutover" title="Permanent link">&para;</a></h3>
 <p>Cutover stops the service, creates a fresh cold backup, resets the named PostgreSQL target databases, imports and validates the snapshot, switches the application configuration, and starts the service when it was running before the job.</p>
 <p>Downtime depends mainly on SQLite size and storage speed.</p>
-<h3 id="4-validate-the-application">4. Validate the application<a class="headerlink" href="#4-validate-the-application" title="Permanent link">#</a></h3>
+<h3 id="4-validate-the-application">4. Validate the application<a class="headerlink" href="#4-validate-the-application" title="Permanent link">&para;</a></h3>
 <p>Check the service's important objects and integrations, then perform a harmless write such as saving an unchanged setting. For an Arr, verify libraries, files, root folders, profiles, indexers, download clients, and history. For Bazarr, verify shows/movies, providers, history, and subtitle searches. For request services, verify users, requests, settings, and integrations.</p>
 <p>Keep the SQLite backup until PostgreSQL and its
 <a href="../../faq/pgadmin/#example-scheduled-backups-with-pgagent">backup schedule</a> have
 been proven with a test restore.</p>
-<h2 id="arr-log-databases-are-optional">Arr log databases are optional<a class="headerlink" href="#arr-log-databases-are-optional" title="Permanent link">#</a></h2>
+<h2 id="arr-log-databases-are-optional">Arr log databases are optional<a class="headerlink" href="#arr-log-databases-are-optional" title="Permanent link">&para;</a></h2>
 <p>The five Arr services have a separate <code>logs.db</code>. Leave <strong>Migrate the service log database too</strong> disabled unless old application log entries matter. The main database already contains application configuration, library state, and history; starting fresh for diagnostic logs shortens cutover.</p>
 <p>The option is hidden for Bazarr, Pulsarr, Seerr, and AltMount because they have one migrated SQLite database.</p>
-<h2 id="rollback-behavior">Rollback behavior<a class="headerlink" href="#rollback-behavior" title="Permanent link">#</a></h2>
+<h2 id="rollback-behavior">Rollback behavior<a class="headerlink" href="#rollback-behavior" title="Permanent link">&para;</a></h2>
 <p>For a completed cutover, the panel can restore the preserved application configuration, set <code>postgres_enabled: false</code>, and restart against the untouched SQLite database.</p>
 <div class="admonition warning">
 <p class="admonition-title">Rollback is not reverse migration</p>
 <p>Changes written after PostgreSQL cutover are not copied into SQLite. Roll back promptly if validation fails. A later rollback can lose settings, library changes, history, requests, or other PostgreSQL writes.</p>
 </div>
 <p>An active job is marked <code>interrupted</code> if the DUMB API restarts. Inspect its backup directory and restore SQLite before retrying.</p>
-<h2 id="postgresql-backups-after-migration">PostgreSQL backups after migration<a class="headerlink" href="#postgresql-backups-after-migration" title="Permanent link">#</a></h2>
+<h2 id="postgresql-backups-after-migration">PostgreSQL backups after migration<a class="headerlink" href="#postgresql-backups-after-migration" title="Permanent link">&para;</a></h2>
 <p>Application-native backups generally do not contain PostgreSQL data. Configure
 scheduled <code>pg_dump</code> backups for every migrated database by following the
 <a href="../../faq/pgadmin/#example-scheduled-backups-with-pgagent">pgAdmin and pgAgent example</a>,
 including retention and restore testing. Also protect the mounted data
 directory's <code>postgres</code> subtree (container path <code>/data/postgres</code>, service path
 <code>/postgres_data</code>) with the normal backup plan.</p>
-<h2 id="upstream-references">Upstream references<a class="headerlink" href="#upstream-references" title="Permanent link">#</a></h2>
+<h2 id="upstream-references">Upstream references<a class="headerlink" href="#upstream-references" title="Permanent link">&para;</a></h2>
 <ul>
 <li><a href="https://wiki.servarr.com/en/sonarr/postgres-setup">Sonarr PostgreSQL setup</a></li>
 <li><a href="https://wiki.servarr.com/radarr/postgres-setup">Radarr PostgreSQL setup</a></li>

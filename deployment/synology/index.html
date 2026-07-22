@@ -4832,10 +4832,10 @@
   
 
 
-<h1 id="deploy-with-synology-container-manager">Deploy with Synology Container Manager<a class="headerlink" href="#deploy-with-synology-container-manager" title="Permanent link">#</a></h1>
+<h1 id="deploy-with-synology-container-manager">Deploy with Synology Container Manager<a class="headerlink" href="#deploy-with-synology-container-manager" title="Permanent link">&para;</a></h1>
 <p>DSM 7.2 Container Manager supports Docker Compose through <strong>Projects</strong>. A project
 can upload a Compose file or use the built-in YAML editor.</p>
-<h2 id="prerequisites">Prerequisites<a class="headerlink" href="#prerequisites" title="Permanent link">#</a></h2>
+<h2 id="prerequisites">Prerequisites<a class="headerlink" href="#prerequisites" title="Permanent link">&para;</a></h2>
 <ul>
 <li>A Synology model/architecture supported by the DUMB image (<code>amd64</code> or <code>arm64</code>)</li>
 <li>DSM Container Manager installed</li>
@@ -4846,7 +4846,7 @@ can upload a Compose file or use the built-in YAML editor.</p>
 </ul>
 <p>Synology documents the project workflow in
 <a href="https://kb.synology.com/en-us/DSM/help/ContainerManager/docker_project">Container Manager: Project</a>.</p>
-<h2 id="prepare-persistent-storage">Prepare persistent storage<a class="headerlink" href="#prepare-persistent-storage" title="Permanent link">#</a></h2>
+<h2 id="prepare-persistent-storage">Prepare persistent storage<a class="headerlink" href="#prepare-persistent-storage" title="Permanent link">&para;</a></h2>
 <p>Create this structure in File Station or over SSH:</p>
 <div class="highlight"><pre><span></span><code>/volume1/docker/DUMB/
 ├── config/
@@ -4856,7 +4856,7 @@ can upload a Compose file or use the built-in YAML editor.</p>
 </code></pre></div>
 <p>Replace <code>volume1</code> if the share is on another volume. Apply permissions for the
 same UID/GID you will enter as <code>PUID</code> and <code>PGID</code>.</p>
-<h2 id="create-the-project">Create the project<a class="headerlink" href="#create-the-project" title="Permanent link">#</a></h2>
+<h2 id="create-the-project">Create the project<a class="headerlink" href="#create-the-project" title="Permanent link">&para;</a></h2>
 <ol>
 <li>Open <strong>Container Manager</strong> → <strong>Project</strong> → <strong>Create</strong>.</li>
 <li>Enter a project name such as <code>dumb</code> and choose a project working directory.</li>
@@ -4875,7 +4875,7 @@ same UID/GID you will enter as <code>PUID</code> and <code>PGID</code>.</p>
 </code></pre></div>
 <p>Open <code>http://&lt;synology-address&gt;:3005</code>. DUMB API requests use the frontend proxy
 at <code>/api</code>; the native backend on <code>8000</code> is intentionally not published.</p>
-<h2 id="fuse-and-mount-propagation">FUSE and mount propagation<a class="headerlink" href="#fuse-and-mount-propagation" title="Permanent link">#</a></h2>
+<h2 id="fuse-and-mount-propagation">FUSE and mount propagation<a class="headerlink" href="#fuse-and-mount-propagation" title="Permanent link">&para;</a></h2>
 <p>Keep <code>/dev/fuse</code>, <code>SYS_ADMIN</code>, and the security options from the maintained
 Compose file when your workflow needs rclone/FUSE. Support can vary by DSM,
 model, and kernel. A successful container start alone does not prove that an
@@ -4887,7 +4887,7 @@ external media-server container can see nested mounts.</p>
 an equivalent propagation mode. If DSM does not preserve propagation, keep the
 producer and consumers inside DUMB or select a workflow that exposes ordinary
 files/symlinks.</p>
-<h2 id="updating">Updating<a class="headerlink" href="#updating" title="Permanent link">#</a></h2>
+<h2 id="updating">Updating<a class="headerlink" href="#updating" title="Permanent link">&para;</a></h2>
 <p>In <strong>Project</strong>, edit the YAML if the upstream Compose file changed, pull the
 current image, and rebuild/recreate the project. Do not use <strong>Clean</strong> or delete
 the persistent shared folders unless you intend to remove DUMB data.</p>

@@ -1694,23 +1694,6 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Configuration Settings in dumb_config.json">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#configuration-key-descriptions" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Configuration Key Descriptions
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
 </li>
       
         <li class="md-nav__item">
@@ -4758,23 +4741,6 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Configuration Settings in dumb_config.json">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#configuration-key-descriptions" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Configuration Key Descriptions
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
 </li>
       
         <li class="md-nav__item">
@@ -4918,9 +4884,9 @@
   
 
 
-<h1 id="dumb-api">DUMB API<a class="headerlink" href="#dumb-api" title="Permanent link">#</a></h1>
+<h1 id="dumb-api">DUMB API<a class="headerlink" href="#dumb-api" title="Permanent link">&para;</a></h1>
 <p>The <strong>DUMB API</strong> is the central communication layer between the DUMB Frontend and the backend service. It handles requests for logs, service management (start/stop), configuration updates, and health checks.</p>
-<h2 id="access-model">Access model<a class="headerlink" href="#access-model" title="Permanent link">#</a></h2>
+<h2 id="access-model">Access model<a class="headerlink" href="#access-model" title="Permanent link">&para;</a></h2>
 <p>The maintained Compose file does not publish port <code>8000</code>. The API binds to <code>127.0.0.1:8000</code> inside the DUMB container and dmbdb proxies it through the normal frontend address:</p>
 <table>
 <thead>
@@ -4955,7 +4921,7 @@ was used.</p>
 <p>Setting <code>host</code> to <code>0.0.0.0</code> and publishing port <code>8000</code> exposes powerful lifecycle and configuration endpoints. Enable DUMB authentication and restrict the port to trusted networks before doing this.</p>
 </div>
 <hr />
-<h2 id="configuration-settings-in-dumb_configjson">Configuration Settings in <code>dumb_config.json</code><a class="headerlink" href="#configuration-settings-in-dumb_configjson" title="Permanent link">#</a></h2>
+<h2 id="configuration-settings-in-dumb_configjson">Configuration Settings in <code>dumb_config.json</code><a class="headerlink" href="#configuration-settings-in-dumb_configjson" title="Permanent link">&para;</a></h2>
 <p>Located in <code>dumb.api_service</code>:
 <div class="highlight"><pre><span></span><code><span class="nt">&quot;enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
 <span class="nt">&quot;process_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;DUMB API&quot;</span><span class="p">,</span>
@@ -4963,7 +4929,7 @@ was used.</p>
 <span class="nt">&quot;host&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;127.0.0.1&quot;</span><span class="p">,</span>
 <span class="nt">&quot;port&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">8000</span>
 </code></pre></div></p>
-<h3 id="configuration-key-descriptions">Configuration Key Descriptions<a class="headerlink" href="#configuration-key-descriptions" title="Permanent link">#</a></h3>
+<h3 id="configuration-key-descriptions">Configuration Key Descriptions<a class="headerlink" href="#configuration-key-descriptions" title="Permanent link">&para;</a></h3>
 <ul>
 <li><strong><code>enabled</code></strong> – Whether the API service should run.</li>
 <li><strong><code>process_name</code></strong> – Used in process management and logs.</li>
@@ -4978,7 +4944,7 @@ was used.</p>
 <p><strong><code>port</code></strong> – Internal backend listener port. It is not automatically published to the Docker host.</p>
 </li>
 </ul>
-<h2 id="what-the-api-owns">What the API owns<a class="headerlink" href="#what-the-api-owns" title="Permanent link">#</a></h2>
+<h2 id="what-the-api-owns">What the API owns<a class="headerlink" href="#what-the-api-owns" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Optional JWT authentication and user setup</li>
 <li>Service lifecycle, dependency graphs, update controls, and onboarding</li>
@@ -4989,7 +4955,7 @@ was used.</p>
 <li>Real-time log, status, and metrics WebSockets</li>
 </ul>
 <p>The backend advertises optional features through <code>GET /process/capabilities</code>. Frontends and automation should gate newer actions on these capability flags instead of assuming every DUMB version supports every endpoint.</p>
-<h2 id="health-and-interactive-schema">Health and interactive schema<a class="headerlink" href="#health-and-interactive-schema" title="Permanent link">#</a></h2>
+<h2 id="health-and-interactive-schema">Health and interactive schema<a class="headerlink" href="#health-and-interactive-schema" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Native health check: <code>GET /health</code></li>
 <li>OpenAPI JSON: <code>/openapi.json</code></li>
@@ -4997,9 +4963,9 @@ was used.</p>
 <li>Scalar UI: <code>/scalar</code></li>
 </ul>
 <p>The interactive documentation endpoints live on the native backend listener. See the <a href="../../../api/">API overview</a> for access choices and the complete reference.</p>
-<h2 id="persistence-and-logs">Persistence and logs<a class="headerlink" href="#persistence-and-logs" title="Permanent link">#</a></h2>
+<h2 id="persistence-and-logs">Persistence and logs<a class="headerlink" href="#persistence-and-logs" title="Permanent link">&para;</a></h2>
 <p>API settings are stored with the main runtime configuration at <code>/config/dumb_config.json</code>. Authentication users and the generated JWT secret are stored separately at <code>/config/users.json</code>. DUMB logs are written below the configured <code>/log</code> directory.</p>
-<h2 id="related-pages">Related pages<a class="headerlink" href="#related-pages" title="Permanent link">#</a></h2>
+<h2 id="related-pages">Related pages<a class="headerlink" href="#related-pages" title="Permanent link">&para;</a></h2>
 <ul>
 <li><a href="../../../api/">API overview</a></li>
 <li><a href="../../../features/authentication/">Authentication</a></li>

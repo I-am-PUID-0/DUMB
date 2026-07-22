@@ -4898,13 +4898,13 @@
   
 
 
-<h1 id="cli-debrid-faq">CLI Debrid FAQ<a class="headerlink" href="#cli-debrid-faq" title="Permanent link">#</a></h1>
-<h2 id="what-does-dumb-start-with-cli-debrid">What does DUMB start with CLI Debrid?<a class="headerlink" href="#what-does-dumb-start-with-cli-debrid" title="Permanent link">#</a></h2>
+<h1 id="cli-debrid-faq">CLI Debrid FAQ<a class="headerlink" href="#cli-debrid-faq" title="Permanent link">&para;</a></h1>
+<h2 id="what-does-dumb-start-with-cli-debrid">What does DUMB start with CLI Debrid?<a class="headerlink" href="#what-does-dumb-start-with-cli-debrid" title="Permanent link">&para;</a></h2>
 <p>The stable/older CLI Debrid workflow includes standalone CLI Battery and Phalanx
 DB, plus the selected Zurg/rclone provider path. DUMB creates and orders those
 dependencies during onboarding. The v0.7.29+ pre-release exception is described
 below.</p>
-<h2 id="does-cli-debrid-v0729-still-need-a-separate-cli-battery-process">Does CLI Debrid v0.7.29 still need a separate CLI Battery process?<a class="headerlink" href="#does-cli-debrid-v0729-still-need-a-separate-cli-battery-process" title="Permanent link">#</a></h2>
+<h2 id="does-cli-debrid-v0729-still-need-a-separate-cli-battery-process">Does CLI Debrid v0.7.29 still need a separate CLI Battery process?<a class="headerlink" href="#does-cli-debrid-v0729-still-need-a-separate-cli-battery-process" title="Permanent link">&para;</a></h2>
 <p>Not in that upstream pre-release architecture. The
 <a href="https://github.com/godver3/cli_debrid/releases/tag/v0.7.29">v0.7.29 pre-release</a>
 includes a
@@ -4919,26 +4919,26 @@ is no longer the required runtime.</p>
 <p>Normal container startup respects the disabled toggle. The current guided
 <strong>Start Core Service</strong> and onboarding flows may re-enable CLI Battery because
 their dependency model is not yet version-aware, so verify the toggle afterward.</p>
-<h2 id="why-is-cli-battery-on-a-separate-port">Why is CLI Battery on a separate port?<a class="headerlink" href="#why-is-cli-battery-on-a-separate-port" title="Permanent link">#</a></h2>
+<h2 id="why-is-cli-battery-on-a-separate-port">Why is CLI Battery on a separate port?<a class="headerlink" href="#why-is-cli-battery-on-a-separate-port" title="Permanent link">&para;</a></h2>
 <p>In the standalone/stable integration, CLI Debrid's UI defaults to <code>5000</code> and CLI
 Battery defaults to <code>5001</code>. During setup DUMB writes
 <code>cli_debrid.env.CLI_DEBRID_BATTERY_PORT</code> from the actual <code>cli_battery.port</code>,
 including any dynamically reassigned port. The upstream v0.7.29 pre-release
 removes this separate network hop.</p>
-<h2 id="why-do-i-see-http-423-responses">Why do I see HTTP 423 responses?<a class="headerlink" href="#why-do-i-see-http-423-responses" title="Permanent link">#</a></h2>
+<h2 id="why-do-i-see-http-423-responses">Why do I see HTTP 423 responses?<a class="headerlink" href="#why-do-i-see-http-423-responses" title="Permanent link">&para;</a></h2>
 <p>CLI Battery uses <code>423 Locked</code> while a resource is deliberately unavailable or still being prepared. Confirm CLI Battery and Phalanx are healthy, then inspect both service logs before changing ports or deleting state.</p>
-<h2 id="where-are-its-persistent-files-and-symlinks">Where are its persistent files and symlinks?<a class="headerlink" href="#where-are-its-persistent-files-and-symlinks" title="Permanent link">#</a></h2>
+<h2 id="where-are-its-persistent-files-and-symlinks">Where are its persistent files and symlinks?<a class="headerlink" href="#where-are-its-persistent-files-and-symlinks" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Application data inside the container: <code>/cli_debrid/data</code> (persisted below <code>/data/cli_debrid</code> in the maintained layout)</li>
 <li>Curated library root: <code>/mnt/debrid/clid_symlinks</code></li>
 <li>DUMB log: <code>/cli_debrid/data/logs/debug.log</code></li>
 </ul>
 <p>The raw provider mount path and the curated symlink root serve different purposes; point Arr/media-library imports at the curated root expected by your workflow.</p>
-<h2 id="how-should-i-change-symlink-layouts">How should I change symlink layouts?<a class="headerlink" href="#how-should-i-change-symlink-layouts" title="Permanent link">#</a></h2>
+<h2 id="how-should-i-change-symlink-layouts">How should I change symlink layouts?<a class="headerlink" href="#how-should-i-change-symlink-layouts" title="Permanent link">&para;</a></h2>
 <p>Use the service page's <strong>Symlinks</strong> tools for a dry run, snapshot, retarget, copy, or root migration. Do not bulk-edit link targets first. See <a href="../../features/symlinks/">Symlink Operations</a>.</p>
-<h2 id="how-do-i-troubleshoot-a-failed-update">How do I troubleshoot a failed update?<a class="headerlink" href="#how-do-i-troubleshoot-a-failed-update" title="Permanent link">#</a></h2>
+<h2 id="how-do-i-troubleshoot-a-failed-update">How do I troubleshoot a failed update?<a class="headerlink" href="#how-do-i-troubleshoot-a-failed-update" title="Permanent link">&para;</a></h2>
 <p>Check the CLI Debrid update status and service logs, then verify the selected release/branch still exists. DUMB preserves <code>/cli_debrid/data</code> while replacing application code. Use <strong>Override + install</strong> only when you intentionally want DUMB to reinstall the configured target.</p>
-<h2 id="related-pages">Related pages<a class="headerlink" href="#related-pages" title="Permanent link">#</a></h2>
+<h2 id="related-pages">Related pages<a class="headerlink" href="#related-pages" title="Permanent link">&para;</a></h2>
 <ul>
 <li><a href="../../services/core/cli-debrid/">CLI Debrid service guide</a></li>
 <li><a href="../../services/dependent/cli-battery/">CLI Battery</a></li>

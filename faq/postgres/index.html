@@ -4876,10 +4876,10 @@
   
 
 
-<h1 id="postgresql-faq">PostgreSQL FAQ<a class="headerlink" href="#postgresql-faq" title="Permanent link">#</a></h1>
+<h1 id="postgresql-faq">PostgreSQL FAQ<a class="headerlink" href="#postgresql-faq" title="Permanent link">&para;</a></h1>
 <p>Below are common questions and explanations related to <strong>PostgreSQL</strong>, which is the primary database engine used by DUMB.</p>
 <hr />
-<h2 id="how-postgresql-is-used-in-dumb">How PostgreSQL is used in DUMB<a class="headerlink" href="#how-postgresql-is-used-in-dumb" title="Permanent link">#</a></h2>
+<h2 id="how-postgresql-is-used-in-dumb">How PostgreSQL is used in DUMB<a class="headerlink" href="#how-postgresql-is-used-in-dumb" title="Permanent link">&para;</a></h2>
 <p>PostgreSQL stores persistent data for services that require it and for optional SQLite-to-PostgreSQL cutovers. Current integrations include:</p>
 <ul>
 <li><strong>Riven Backend</strong>, <strong>Zilean</strong>, <strong>Traefik Proxy Admin</strong>, and <strong>MediaStorm</strong></li>
@@ -4924,7 +4924,7 @@
 </table>
 <p>Additional databases are registered from service configuration. PostgreSQL's internal data directory defaults to <code>/postgres_data</code>; the maintained Compose layout persists it at <code>/data/postgres</code> through DUMB's managed data mapping.</p>
 <hr />
-<h2 id="what-happens-if-i-delete-the-database">What happens if I delete the database?<a class="headerlink" href="#what-happens-if-i-delete-the-database" title="Permanent link">#</a></h2>
+<h2 id="what-happens-if-i-delete-the-database">What happens if I delete the database?<a class="headerlink" href="#what-happens-if-i-delete-the-database" title="Permanent link">&para;</a></h2>
 <p>If <code>/data/postgres</code> (or a directly mounted legacy <code>/postgres_data</code>) is deleted, <strong>every database in that cluster is lost</strong>.</p>
 <p>This includes:</p>
 <ul>
@@ -4940,7 +4940,7 @@
 <p>Follow the <a href="../pgadmin/#example-scheduled-backups-with-pgagent">scheduled pg_dump backups with pgAdmin and pgAgent</a> example, including its retention and restore-test steps.</p>
 </div>
 <hr />
-<h2 id="can-i-reset-the-database-intentionally">Can I reset the database intentionally?<a class="headerlink" href="#can-i-reset-the-database-intentionally" title="Permanent link">#</a></h2>
+<h2 id="can-i-reset-the-database-intentionally">Can I reset the database intentionally?<a class="headerlink" href="#can-i-reset-the-database-intentionally" title="Permanent link">&para;</a></h2>
 <p>Yes, but deleting the whole cluster resets every PostgreSQL-backed service. For a disposable installation, stop DUMB and remove <code>/data/postgres</code> (or your explicitly mounted <code>/postgres_data</code>) only after confirming the exact path and preserving any required backups.</p>
 <p>Alternatively, use <strong>pgAdmin 4</strong> (if enabled) to drop individual databases manually.</p>
 <blockquote>
@@ -4948,7 +4948,7 @@
 <p>Alternatively, see the <a href="../pgadmin/#drop-a-database-or-create-a-manual-backup-in-pgadmin">pgAdmin FAQ</a> section.</p>
 </blockquote>
 <hr />
-<h2 id="what-are-the-default-credentials">What are the default credentials?<a class="headerlink" href="#what-are-the-default-credentials" title="Permanent link">#</a></h2>
+<h2 id="what-are-the-default-credentials">What are the default credentials?<a class="headerlink" href="#what-are-the-default-credentials" title="Permanent link">&para;</a></h2>
 <ul>
 <li><strong>Username</strong>: <code>DUMB</code></li>
 <li><strong>Password</strong>: <code>postgres</code></li>
@@ -4956,7 +4956,7 @@
 <li>These values can be customized in the <code>postgres</code> section of <code>dumb_config.json</code>.</li>
 </ul>
 <hr />
-<h2 id="can-i-connect-to-postgresql-externally">Can I connect to PostgreSQL externally?<a class="headerlink" href="#can-i-connect-to-postgresql-externally" title="Permanent link">#</a></h2>
+<h2 id="can-i-connect-to-postgresql-externally">Can I connect to PostgreSQL externally?<a class="headerlink" href="#can-i-connect-to-postgresql-externally" title="Permanent link">&para;</a></h2>
 <p>Yes — by default, PostgreSQL binds to <code>127.0.0.1</code>. If you want to connect from an external app (like DBeaver or pgAdmin on your host machine), you'll need to:</p>
 <ol>
 <li>Change <code>host</code> in the <code>postgres</code> section of <code>dumb_config.json</code> to <code>0.0.0.0</code></li>
@@ -4964,11 +4964,11 @@
 <li>Optionally secure with a firewall or password change</li>
 </ol>
 <hr />
-<h2 id="is-it-safe-to-run-queries-against-the-databases">Is it safe to run queries against the databases?<a class="headerlink" href="#is-it-safe-to-run-queries-against-the-databases" title="Permanent link">#</a></h2>
+<h2 id="is-it-safe-to-run-queries-against-the-databases">Is it safe to run queries against the databases?<a class="headerlink" href="#is-it-safe-to-run-queries-against-the-databases" title="Permanent link">&para;</a></h2>
 <p>Yes — but with caution. Direct queries using tools like pgAdmin or psql can be useful for debugging or data inspection, but changes may break app logic unless you know what you're doing.</p>
 <p>When in doubt, make a backup first!</p>
 <hr />
-<h2 id="related-pages">Related Pages<a class="headerlink" href="#related-pages" title="Permanent link">#</a></h2>
+<h2 id="related-pages">Related Pages<a class="headerlink" href="#related-pages" title="Permanent link">&para;</a></h2>
 <ul>
 <li><a href="../../services/optional/pgadmin/">pgAdmin Service Guide</a></li>
 <li><a href="../../services/core/riven-backend/">Riven Backend</a></li>
