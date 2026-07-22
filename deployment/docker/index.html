@@ -1869,6 +1869,8 @@
         
   
   
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-mountain" viewBox="0 0 24 24"><path d="m8 3 4 8 5-5 5 15H2z"/></svg>
+  
   <span class="md-ellipsis">
     
   
@@ -5145,7 +5147,7 @@ starts one or more containers using a <code>docker-compose.yml</code> file.</p>
 <li>Pulls the DUMB image from a registry</li>
 <li>Creates a container with your settings</li>
 <li>Mounts your local folders so configs and logs persist</li>
-<li>Exposes ports so you can reach the UI and API</li>
+<li>Exposes the frontend, which also proxies the API and embedded service UIs</li>
 </ul>
 <hr />
 <h2 id="install-docker-official-method">Install Docker (official method)<a class="headerlink" href="#install-docker-official-method" title="Permanent link">#</a></h2>
@@ -5270,8 +5272,9 @@ sed<span class="w"> </span>-i<span class="w"> </span><span class="se">\</span>
 <p>By default:</p>
 <ul>
 <li><strong>DUMB Frontend</strong>: <code>http://&lt;host&gt;:3005</code></li>
-<li><strong>DUMB API</strong>: <code>http://&lt;host&gt;:8000</code></li>
+<li><strong>DUMB API through the frontend</strong>: <code>http://&lt;host&gt;:3005/api</code></li>
 </ul>
+<p>The backend-native API listens on container loopback <code>127.0.0.1:8000</code> and is not published by the maintained Compose file.</p>
 <p>If you do not see the UI:</p>
 <ul>
 <li>Confirm the container is running: <code>sudo docker ps</code></li>
@@ -5283,13 +5286,16 @@ sed<span class="w"> </span>-i<span class="w"> </span><span class="se">\</span>
 <h2 id="expose-ports-for-direct-ui-access">Expose ports for direct UI access<a class="headerlink" href="#expose-ports-for-direct-ui-access" title="Permanent link">#</a></h2>
 <p>Docker only exposes ports you explicitly map in your <code>docker-compose.yml</code>.
 If a UI is not reachable, it usually means the port is not mapped.</p>
-<p>Example: expose the DUMB frontend and API.</p>
+<p>The maintained Compose file publishes only the DUMB Frontend:</p>
 <div class="highlight"><pre><span></span><code><span class="nt">services</span><span class="p">:</span>
 <span class="w">  </span><span class="nt">DUMB</span><span class="p">:</span>
 <span class="w">    </span><span class="nt">ports</span><span class="p">:</span>
 <span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;3005:3005&quot;</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;8000:8000&quot;</span>
 </code></pre></div>
+<div class="admonition danger">
+<p class="admonition-title">Direct backend API exposure</p>
+<p>Adding <code>8000:8000</code> alone is not sufficient because the API binds to <code>127.0.0.1</code> inside the container. If you intentionally need the backend directly, set <code>DUMB_API_SERVICE_HOST=0.0.0.0</code>, publish <code>8000:8000</code>, enable DUMB authentication, and restrict the port with a firewall or trusted network. Native backend routes do not include <code>/api</code>; for example, <code>/process/processes</code>.</p>
+</div>
 <p>Example: expose an Arr service UI (Radarr).</p>
 <div class="highlight"><pre><span></span><code><span class="nt">services</span><span class="p">:</span>
 <span class="w">  </span><span class="nt">DUMB</span><span class="p">:</span>

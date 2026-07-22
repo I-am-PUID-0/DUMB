@@ -1869,6 +1869,8 @@
         
   
   
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-mountain" viewBox="0 0 24 24"><path d="m8 3 4 8 5-5 5 15H2z"/></svg>
+  
   <span class="md-ellipsis">
     
   
@@ -4592,6 +4594,28 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#how-to-reach-it" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How to reach it
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#how-the-frontend-api-gateway-works" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How the frontend API gateway works
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#features" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4727,6 +4751,85 @@
 
 <h1 id="dumb-api">DUMB API<a class="headerlink" href="#dumb-api" title="Permanent link">#</a></h1>
 <p>DUMB includes a built-in REST API and WebSocket server to allow programmatic control of services, logging, and system state.</p>
+<h2 id="how-to-reach-it">How to reach it<a class="headerlink" href="#how-to-reach-it" title="Permanent link">#</a></h2>
+<table>
+<thead>
+<tr>
+<th>Access path</th>
+<th>Example</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>DUMB Frontend proxy</td>
+<td><code>http://&lt;host&gt;:3005/api/process/processes</code></td>
+<td>Default and recommended. Add <code>/api</code> before the backend-native REST path.</td>
+</tr>
+<tr>
+<td>Backend directly</td>
+<td><code>http://&lt;host&gt;:8000/process/processes</code></td>
+<td>Port <code>8000</code> listens on <code>127.0.0.1</code> by default and is not published by the standard Compose file. Direct exposure requires an intentional host/config change.</td>
+</tr>
+<tr>
+<td>WebSocket through the frontend</td>
+<td><code>ws://&lt;host&gt;:3005/ws/status</code></td>
+<td>WebSocket routes stay under <code>/ws</code>; do not add <code>/api</code>.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="how-the-frontend-api-gateway-works">How the frontend API gateway works<a class="headerlink" href="#how-the-frontend-api-gateway-works" title="Permanent link">#</a></h2>
+<p>Port <code>3005</code> is not only the dashboard. The dmbdb server also acts as the normal
+gateway to the DUMB backend, so scripts and other API clients can use the same
+published address as the browser UI.</p>
+<pre class="mermaid"><code>flowchart LR
+    C[Browser or API client]
+    F[dmbdb&lt;br/&gt;port 3005]
+    B[DUMB FastAPI backend&lt;br/&gt;127.0.0.1:8000]
+
+    C --&gt;|/api/process/processes| F
+    F --&gt;|strip /api&lt;br/&gt;/process/processes| B
+    C --&gt;|/ws/status| F
+    F --&gt;|path unchanged&lt;br/&gt;/ws/status| B</code></pre>
+<p>The mapping is:</p>
+<table>
+<thead>
+<tr>
+<th>Client-facing request on port 3005</th>
+<th>Request received by port 8000</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/api/auth/login</code></td>
+<td><code>/auth/login</code></td>
+</tr>
+<tr>
+<td><code>/api/process/processes</code></td>
+<td><code>/process/processes</code></td>
+</tr>
+<tr>
+<td><code>/api/config</code></td>
+<td><code>/config</code></td>
+</tr>
+<tr>
+<td><code>/ws/status</code></td>
+<td><code>/ws/status</code></td>
+</tr>
+</tbody>
+</table>
+<p>The proxy changes only the route used to reach the backend. Authentication and
+authorization are still enforced by FastAPI; using port <code>3005</code> does not bypass
+JWT requirements or expose a separate API implementation.</p>
+<p>Endpoint paths throughout this API reference are <strong>backend-native paths</strong>. When
+using the normal frontend URL, prefix REST paths with <code>/api</code>. For example:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Standard deployment: call through the published frontend/API gateway</span>
+curl<span class="w"> </span>http://localhost:3005/api/health
+
+<span class="c1"># Direct backend: only inside the container or when port 8000 is exposed</span>
+curl<span class="w"> </span>http://127.0.0.1:8000/health
+</code></pre></div>
+<p>WebSocket paths are forwarded without adding or removing <code>/api</code>.</p>
 <p>The API is enabled and configured using the <code>dumb_config.json</code> under the <code>dumb.api_service</code> section. For example:</p>
 <div class="highlight"><pre><span></span><code><span class="nt">&quot;api_service&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
@@ -4761,17 +4864,17 @@
 <tbody>
 <tr>
 <td>GET</td>
-<td><code>/api/auth/status</code></td>
+<td><code>/auth/status</code></td>
 <td>Get authentication status</td>
 </tr>
 <tr>
 <td>POST</td>
-<td><code>/api/auth/login</code></td>
+<td><code>/auth/login</code></td>
 <td>Authenticate and get JWT tokens</td>
 </tr>
 <tr>
 <td>POST</td>
-<td><code>/api/auth/refresh</code></td>
+<td><code>/auth/refresh</code></td>
 <td>Refresh access token</td>
 </tr>
 <tr>
@@ -5044,7 +5147,7 @@
 </table>
 <hr />
 <h2 id="api-documentation">API Documentation<a class="headerlink" href="#api-documentation" title="Permanent link">#</a></h2>
-<p>DUMB provides built-in API documentation through two convenient endpoints:</p>
+<p>DUMB provides built-in API documentation on the backend listener through two convenient endpoints. Because the listener is loopback-only by default, use these from inside the container or deliberately expose the backend with authentication and network controls.</p>
 <ul>
 <li>
 <p><strong>FastAPI Swagger UI</strong><br />

@@ -1869,6 +1869,8 @@
         
   
   
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-mountain" viewBox="0 0 24 24"><path d="m8 3 4 8 5-5 5 15H2z"/></svg>
+  
   <span class="md-ellipsis">
     
   
@@ -5081,10 +5083,10 @@
 <hr />
 <h2 id="frequently-asked-questions-faq">Frequently Asked Questions (FAQ)<a class="headerlink" href="#frequently-asked-questions-faq" title="Permanent link">#</a></h2>
 <h3 id="does-the-dumb-image-have-the-latest-version-of-x">Does the <strong>DUMB</strong> image have the latest version of <code>x</code><a class="headerlink" href="#does-the-dumb-image-have-the-latest-version-of-x" title="Permanent link">#</a></h3>
-<p>The GitHub repo for <strong>DUMB</strong> use many continuous integration and continuous deployment (CI/CD) workflows to ensure proper building, reporting, and updating of the images.</p>
+<p>The GitHub repository for <strong>DUMB</strong> uses continuous integration and deployment workflows to build and report image contents.</p>
 <p>For example, the <a href="https://github.com/I-am-PUID-0/DUMB/actions/workflows/fetch-latest-tags.yml">Check for New Release Tags</a> workflow is automated to run every three hours and check for updates to the various services/projects utilized in DUMB. If an update is found, the <a href="https://github.com/I-am-PUID-0/DUMB/actions/workflows/docker-image.yml">Docker Image CI</a> workflow is called to build a new image with the latest services. </p>
 <h3 id="what-versions-are-in-the-latest-dumb-image">What versions are in the latest <strong>DUMB</strong> image<a class="headerlink" href="#what-versions-are-in-the-latest-dumb-image" title="Permanent link">#</a></h3>
-<p>Similar to the above question, and the answer is usually the latest; however, if there has been a recent release and the <a href="https://github.com/I-am-PUID-0/DUMB/actions/workflows/fetch-latest-tags.yml">Check for New Release Tags</a> workflow has not run yet, then there my be disparity. </p>
+<p>The image often contains current upstream releases, but not every service is updated by the same workflow or at the same time. Compatibility pins and services installed at runtime can also differ from the image-build inputs. Treat the running service page/version marker and the relevant Docker build summary as authoritative.</p>
 <p>To check, click on one of the <a href="https://github.com/I-am-PUID-0/DUMB/actions/workflows/docker-image.yml">Docker Image CI</a> jobs to see the <code>Build Summary</code></p>
 <p>Example <code>Build Summary</code> below:
 <img alt="Build Summary" src="../../assets/images/build_summary.PNG" /></p>
@@ -5096,7 +5098,7 @@
 <li>Navigate to <strong>Settings</strong> in the sidebar</li>
 <li>Find the <strong>Authentication</strong> section</li>
 <li>Click <strong>Enable Authentication</strong></li>
-<li>If no users exist, create an admin account</li>
+<li>If no users exist, create the first local account</li>
 </ol>
 <p>See the <a href="../../features/authentication/">Authentication Guide</a> for details.</p>
 <h3 id="im-locked-out-of-dumb---how-do-i-reset-authentication">I'm locked out of DUMB - how do I reset authentication?<a class="headerlink" href="#im-locked-out-of-dumb---how-do-i-reset-authentication" title="Permanent link">#</a></h3>
@@ -5104,7 +5106,7 @@
 <ol>
 <li>Stop the DUMB container</li>
 <li>Edit <code>/config/users.json</code></li>
-<li>Set <code>"auth_enabled": false</code></li>
+<li>Set <code>"enabled": false</code></li>
 <li>Restart the container</li>
 <li>Access the dashboard and create a new user</li>
 </ol>

@@ -1869,6 +1869,8 @@
         
   
   
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-mountain" viewBox="0 0 24 24"><path d="m8 3 4 8 5-5 5 15H2z"/></svg>
+  
   <span class="md-ellipsis">
     
   
@@ -4809,13 +4811,15 @@
 
 
 <h1 id="configuration-schema">Configuration schema<a class="headerlink" href="#configuration-schema" title="Permanent link">#</a></h1>
-<p>DUMB uses a JSON schema to validate <code>dumb_config.json</code> and keep service definitions consistent.</p>
+<p>DUMB uses a JSON schema to validate <code>/config/dumb_config.json</code> and keep service definitions consistent.</p>
 <hr />
 <h2 id="schema-location">Schema location<a class="headerlink" href="#schema-location" title="Permanent link">#</a></h2>
-<p>The schema lives in the backend repository:</p>
-<div class="highlight"><pre><span></span><code>utils/dumb_config_schema.json
+<p>The default template and schema live in the backend repository/image:</p>
+<div class="highlight"><pre><span></span><code>utils/dumb_config.json
+utils/dumb_config_schema.json
 </code></pre></div>
-<p>Use this schema to validate custom edits or generate tooling support (autocomplete, validation, templates).</p>
+<p><code>utils/dumb_config.json</code> is a template; <code>/config/dumb_config.json</code> is the persistent runtime file. On startup DUMB copies the template when needed, adds missing defaults to existing configs, prunes keys removed from the supported template, and validates the result against the schema before creating the effective environment-overridden configuration.</p>
+<p>The API exposes the current schema at native <code>GET /config/schema</code> (frontend proxy: <code>GET /api/config/schema</code>) and a process-specific subtree at <code>POST /config/process-config/schema</code>.</p>
 <hr />
 <h2 id="top-level-structure">Top-level structure<a class="headerlink" href="#top-level-structure" title="Permanent link">#</a></h2>
 <table>
@@ -4847,6 +4851,14 @@
 <td>Reverse-proxy configuration</td>
 </tr>
 <tr>
+<td><code>traefik_proxy_admin</code> / <code>cloudflared</code></td>
+<td>Optional reverse-proxy management and tunnel connector</td>
+</tr>
+<tr>
+<td><code>seerr_sync</code></td>
+<td>Cross-instance Seerr synchronization</td>
+</tr>
+<tr>
 <td><code>postgres</code> / <code>pgadmin</code></td>
 <td>Database settings</td>
 </tr>
@@ -4868,8 +4880,10 @@
 <h2 id="validation-tips">Validation tips<a class="headerlink" href="#validation-tips" title="Permanent link">#</a></h2>
 <ul>
 <li>Validate JSON changes before restart to avoid startup failures.</li>
+<li>Back up <code>/config/dumb_config.json</code> before large manual edits; use the frontend editor for normal service changes.</li>
 <li>Keep <code>config_dir</code>, <code>log_file</code>, and <code>port</code> unique for each service instance.</li>
 <li>Use <code>release_version_enabled</code> or <code>branch_enabled</code> when pinning versions.</li>
+<li>Do not edit <code>utils/dumb_config.json</code> expecting a persistent runtime change.</li>
 </ul>
 <hr />
 <h2 id="related-pages">Related pages<a class="headerlink" href="#related-pages" title="Permanent link">#</a></h2>

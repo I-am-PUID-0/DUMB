@@ -2022,6 +2022,8 @@
         
   
   
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-mountain" viewBox="0 0 24 24"><path d="m8 3 4 8 5-5 5 15H2z"/></svg>
+  
   <span class="md-ellipsis">
     
   
@@ -4970,9 +4972,10 @@
 <li>Unmounting rclone mounts</li>
 <li>Syncing configuration states</li>
 </ul>
-<p>To allow time for clean shutdowns, use:
-<div class="highlight"><pre><span></span><code><span class="nt">docker-compose</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">stop_grace_period</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">60s</span>
+<p>The maintained Compose file currently allows 30 seconds for clean shutdown:
+<div class="highlight"><pre><span></span><code><span class="nt">services</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">DUMB</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">stop_grace_period</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">30s</span>
 </code></pre></div></p>
 <hr />
 <h2 id="tips">Tips<a class="headerlink" href="#tips" title="Permanent link">#</a></h2>

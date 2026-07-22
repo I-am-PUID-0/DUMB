@@ -1863,6 +1863,8 @@
         
   
   
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-mountain" viewBox="0 0 24 24"><path d="m8 3 4 8 5-5 5 15H2z"/></svg>
+  
   <span class="md-ellipsis">
     
   
@@ -4704,7 +4706,21 @@
 </ul>
 <hr />
 <h2 id="architecture-at-a-glance">Architecture at a Glance<a class="headerlink" href="#architecture-at-a-glance" title="Permanent link">#</a></h2>
-<p><img alt="DUMB Flow Diagram" src="../assets/images/under_construction.png" /></p>
+<pre class="mermaid"><code>flowchart LR
+    USER([Operator]) --&gt; FE[DUMB Frontend :3005]
+    FE --&gt; API[DUMB API]
+    API --&gt; ORCH[Setup + process orchestration]
+    ORCH --&gt; CORE[Debrid / Usenet workflow]
+    ORCH --&gt; ARR[Arr automation]
+    CORE --&gt; LIB[(Mounts + curated libraries)]
+    ARR --&gt; CORE
+    LIB --&gt; MEDIA[Plex / Jellyfin / Emby]
+    REQUEST[Seerr / lists / watchlists] --&gt; ARR
+    FE -. embedded UI .-&gt; SVC[Managed service UIs]</code></pre>
+<p>DUMB coordinates the services and their configuration; each upstream service
+still owns its application-specific behavior and data. See the
+<a href="../architecture/">architecture overview</a> for the control, storage, and
+proxy layers.</p>
 <div class="admonition note">
 <p class="admonition-title">For details on each service, visit the <a href="../services/">Services Overview</a>.</p>
 </div>

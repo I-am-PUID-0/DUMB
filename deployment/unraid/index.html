@@ -116,7 +116,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#deploying-dumb-on-unraid" class="md-skip">
+        <a href="#deploy-dumb-on-unraid" class="md-skip">
           Skip to content
         </a>
       
@@ -1869,6 +1869,8 @@
         
   
   
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-mountain" viewBox="0 0 24 24"><path d="m8 3 4 8 5-5 5 15H2z"/></svg>
+  
   <span class="md-ellipsis">
     
   
@@ -3064,6 +3066,8 @@
       <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
       
       
+        
+      
       
         <label class="md-nav__link md-nav__link--active" for="__toc">
           
@@ -3111,23 +3115,14 @@
   
   
   
+    
+  
   
     <label class="md-nav__title" for="__toc">
       <span class="md-nav__icon md-icon"></span>
       On this page
     </label>
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#deploying-dumb-on-unraid" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Deploying DUMB on unRAID
-      
-    </span>
-  </a>
-  
-</li>
       
         <li class="md-nav__item">
   <a href="#prerequisites" class="md-nav__link">
@@ -3141,83 +3136,55 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#quick-start" class="md-nav__link">
+  <a href="#install-from-community-applications" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Quick Start
+        Install from Community Applications
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Quick Start">
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#persistent-path-mappings" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Persistent path mappings
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#open-dumb" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Open DUMB
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#share-library-paths-with-another-container" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Share library paths with another container
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Share library paths with another container">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#1-install-the-dumb-template" class="md-nav__link">
+  <a href="#mount-propagation" class="md-nav__link">
     <span class="md-ellipsis">
       
-        1. Install the DUMB Template
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#2-path-and-variable-configuration" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        2. Path and Variable Configuration
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#3-fix-permissions-first-time-only" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3. Fix Permissions (First-Time Only)
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="3. Fix Permissions (First-Time Only)">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#terminal-method" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Terminal Method:
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#webui-method" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        WebUI Method:
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#4-start-the-container" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        4. Start the Container
+        Mount propagation
       
     </span>
   </a>
@@ -3230,71 +3197,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#matching-paths-in-plex-jellyfin-emby" class="md-nav__link">
+  <a href="#permissions" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Matching Paths in Plex, Jellyfin, Emby
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#example-screenshots" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Example Screenshots
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#additional-configuration" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Additional Configuration
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Additional Configuration">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#plex-token-setup" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Plex Token Setup
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#advanced-tools" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Advanced Tools
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#jellyfin-and-emby-notes" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Jellyfin and Emby Notes
+        Permissions
       
     </span>
   </a>
@@ -4822,23 +4728,14 @@
   
   
   
+    
+  
   
     <label class="md-nav__title" for="__toc">
       <span class="md-nav__icon md-icon"></span>
       On this page
     </label>
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#deploying-dumb-on-unraid" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Deploying DUMB on unRAID
-      
-    </span>
-  </a>
-  
-</li>
       
         <li class="md-nav__item">
   <a href="#prerequisites" class="md-nav__link">
@@ -4852,83 +4749,55 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#quick-start" class="md-nav__link">
+  <a href="#install-from-community-applications" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Quick Start
+        Install from Community Applications
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Quick Start">
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#persistent-path-mappings" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Persistent path mappings
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#open-dumb" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Open DUMB
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#share-library-paths-with-another-container" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Share library paths with another container
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Share library paths with another container">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#1-install-the-dumb-template" class="md-nav__link">
+  <a href="#mount-propagation" class="md-nav__link">
     <span class="md-ellipsis">
       
-        1. Install the DUMB Template
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#2-path-and-variable-configuration" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        2. Path and Variable Configuration
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#3-fix-permissions-first-time-only" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3. Fix Permissions (First-Time Only)
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="3. Fix Permissions (First-Time Only)">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#terminal-method" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Terminal Method:
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#webui-method" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        WebUI Method:
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#4-start-the-container" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        4. Start the Container
+        Mount propagation
       
     </span>
   </a>
@@ -4941,71 +4810,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#matching-paths-in-plex-jellyfin-emby" class="md-nav__link">
+  <a href="#permissions" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Matching Paths in Plex, Jellyfin, Emby
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#example-screenshots" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Example Screenshots
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#additional-configuration" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Additional Configuration
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Additional Configuration">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#plex-token-setup" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Plex Token Setup
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#advanced-tools" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Advanced Tools
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#jellyfin-and-emby-notes" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Jellyfin and Emby Notes
+        Permissions
       
     </span>
   </a>
@@ -5102,122 +4910,131 @@
   
 
 
-  <h1>unRAID Deployment</h1>
-
-<h2 id="deploying-dumb-on-unraid">Deploying DUMB on unRAID<a class="headerlink" href="#deploying-dumb-on-unraid" title="Permanent link">#</a></h2>
-<p>This guide will walk you through deploying <strong>Debrid Unlimited Media Bridge (DUMB)</strong> on <strong>unRAID</strong> using the Community Applications plugin and Docker.</p>
-<hr />
+<h1 id="deploy-dumb-on-unraid">Deploy DUMB on Unraid<a class="headerlink" href="#deploy-dumb-on-unraid" title="Permanent link">#</a></h1>
+<p>Deploy DUMB from the Community Applications template when it is available, or
+add it as a Compose stack/container using the maintained settings below. The
+same persistence and path rules apply to both methods.</p>
 <h2 id="prerequisites">Prerequisites<a class="headerlink" href="#prerequisites" title="Permanent link">#</a></h2>
-<p>Before proceeding, ensure you have the following:</p>
 <ul>
-<li>A running <strong>unRAID server</strong> with Docker enabled.</li>
-<li>The <strong>Community Applications</strong> plugin installed.</li>
-<li>At least one unRAID <strong>share</strong> for persistent storage (e.g., <code>/mnt/user/appdata/DUMB</code>).</li>
-<li>An understanding of basic Docker container and volume mapping in unRAID.</li>
+<li>Unraid with Docker enabled</li>
+<li>Community Applications for the template-based path</li>
+<li>A persistent appdata directory and sufficient space for selected services</li>
+<li>A UID/GID that owns the mapped directories</li>
+<li><code>/dev/fuse</code> access for workflows that create rclone/FUSE mounts</li>
 </ul>
-<p>Optional but recommended:</p>
-<ul>
-<li>Installed media server such as <strong>Plex</strong>, <strong>Jellyfin</strong>, or <strong>Emby</strong>.</li>
-<li>A valid <strong>Plex Token</strong> (if using Plex integration).</li>
-</ul>
-<hr />
-<h2 id="quick-start">Quick Start<a class="headerlink" href="#quick-start" title="Permanent link">#</a></h2>
-<h3 id="1-install-the-dumb-template">1. <strong>Install the DUMB Template</strong><a class="headerlink" href="#1-install-the-dumb-template" title="Permanent link">#</a></h3>
-<ul>
-<li>Navigate to the <strong>Apps</strong> tab in unRAID.</li>
-<li>Search for <code>DUMB</code> and select the <strong>Debrid Unlimited Media Bridge</strong> template.</li>
-<li>Click <strong>Install</strong>.</li>
-</ul>
-<h3 id="2-path-and-variable-configuration">2. <strong>Path and Variable Configuration</strong><a class="headerlink" href="#2-path-and-variable-configuration" title="Permanent link">#</a></h3>
-<p>Ensure your <strong>paths and environment variables</strong> are set correctly:
-- Mount all relevant paths (e.g., <code>/mnt</code>, <code>/config</code>, <code>/cache</code>) to valid unRAID shares.
-- Set your <code>PUID</code> to <code>99</code> and <code>PGID</code> to <code>100</code> (used for <code>nobody:users</code> on unRAID).
-- Set your timezone (<code>TZ</code>) appropriately (e.g., <code>America/New_York</code>).</p>
-<h3 id="3-fix-permissions-first-time-only">3. <strong>Fix Permissions (First-Time Only)</strong><a class="headerlink" href="#3-fix-permissions-first-time-only" title="Permanent link">#</a></h3>
-<blockquote>
-<p>Docker on unRAID may create directories as <code>root</code>, causing permission issues. Fix this using the following method:</p>
-</blockquote>
-<h4 id="terminal-method">Terminal Method:<a class="headerlink" href="#terminal-method" title="Permanent link">#</a></h4>
-<div class="highlight"><pre><span></span><code>chown<span class="w"> </span>-R<span class="w"> </span><span class="m">99</span>:100<span class="w"> </span>/mnt/user/appdata/DUMB
-</code></pre></div>
-<h4 id="webui-method">WebUI Method:<a class="headerlink" href="#webui-method" title="Permanent link">#</a></h4>
+<h2 id="install-from-community-applications">Install from Community Applications<a class="headerlink" href="#install-from-community-applications" title="Permanent link">#</a></h2>
 <ol>
-<li>Go to <strong>Shares</strong> &gt; locate your DUMB share.</li>
-<li>Click the <code>+</code> to expand.</li>
-<li>Under <strong>Owner</strong>, set to <code>nobody</code> (user ID 99).</li>
+<li>Open <strong>Apps</strong>, search for <code>DUMB</code>, and select the Debrid Unlimited Media Bridge
+   template.</li>
+<li>Confirm the image is <code>iampuid0/dumb:latest</code> (or the release tag you intend to
+   run).</li>
+<li>Configure the four persistent mappings shown below.</li>
+<li>Set <code>TZ</code>, <code>PUID</code>, and <code>PGID</code> to values that can access those shares.</li>
+<li>Keep <code>/dev/fuse</code>, <code>SYS_ADMIN</code>, and the required security settings when your
+   workflow uses FUSE.</li>
+<li>Apply the template and follow the container log through first startup.</li>
 </ol>
-<h3 id="4-start-the-container">4. <strong>Start the Container</strong><a class="headerlink" href="#4-start-the-container" title="Permanent link">#</a></h3>
-<ul>
-<li>Click <strong>Start</strong> in the Docker tab.</li>
-<li>Open the <strong>Logs</strong> tab to confirm successful startup.</li>
-<li>Look for a confirmation message that <code>riven frontend</code> has started.</li>
-</ul>
-<hr />
-<h2 id="matching-paths-in-plex-jellyfin-emby">Matching Paths in Plex, Jellyfin, Emby<a class="headerlink" href="#matching-paths-in-plex-jellyfin-emby" title="Permanent link">#</a></h2>
-<p>Your <strong>Media Server (Plex, Jellyfin, or Emby)</strong> must have the same paths as DUMB:</p>
-<ul>
-<li>DUMB mounts:</li>
-<li><code>/mnt</code> (contains both Riven and Zurg content)</li>
-<li>In your media server:</li>
-<li>Mount <code>/mnt</code> to <code>/mnt</code> as well.</li>
-<li>Only add the <strong>Riven path</strong> (e.g., <code>/mnt/movies</code>, <code>/mnt/shows</code>) as libraries.</li>
-</ul>
-<blockquote>
-<p>Do <strong>NOT</strong> add <code>/data</code> or Zurg’s full rclone mount as libraries. Use only the <strong>Riven symlinked</strong> content.</p>
-</blockquote>
-<hr />
-<h2 id="example-screenshots">Example Screenshots<a class="headerlink" href="#example-screenshots" title="Permanent link">#</a></h2>
-<ul>
-<li>DUMB Docker setup:</li>
-</ul>
-<p><img alt="unraid-dumb-setup-1" src="https://github.com/user-attachments/assets/c11f95fa-710f-4b1d-af07-be0a81dbface" />
-<img alt="unraid-dumb-setup-2" src="https://github.com/user-attachments/assets/cb0a02b9-c986-4de8-9751-f615d48c2716" /></p>
-<ul>
-<li>Plex Docker container setup:</li>
-</ul>
-<p><img alt="plex-dumb-paths" src="https://github.com/user-attachments/assets/0f3a9286-f81d-4d24-ab9a-5cf9a5bcee25" /></p>
-<ul>
-<li>Plex UI Library paths:</li>
-</ul>
-<p><img alt="plex-paths1" src="https://github.com/user-attachments/assets/d5a450fe-33e5-465f-bce8-aca1587723d3" />
-<img alt="plex-paths2" src="https://github.com/user-attachments/assets/0af17df8-a0e0-4514-8cb2-090a1e628138" /></p>
-<hr />
-<h2 id="additional-configuration">Additional Configuration<a class="headerlink" href="#additional-configuration" title="Permanent link">#</a></h2>
-<h3 id="plex-token-setup">Plex Token Setup<a class="headerlink" href="#plex-token-setup" title="Permanent link">#</a></h3>
-<p>To enable features like watchlist syncing, you may need your Plex token:</p>
-<ol>
-<li>Visit <code>https://plex.tv</code>, login.</li>
-<li>Open any item &gt; click the 3 dots &gt; <strong>View XML</strong>.</li>
-<li>At the end of the URL, copy the value after <code>Plex-Token=</code>.</li>
-</ol>
-<hr />
-<h3 id="advanced-tools">Advanced Tools<a class="headerlink" href="#advanced-tools" title="Permanent link">#</a></h3>
-<p>To troubleshoot permissions or inspect mounts:
-<div class="highlight"><pre><span></span><code>docker<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>-w<span class="w"> </span>/mnt/movies<span class="w"> </span>dumb<span class="w"> </span>ls<span class="w"> </span>-Rl
+<p>The common Unraid <code>nobody:users</code> identity is <code>99:100</code>, but do not copy those
+values blindly. Use the owner of your appdata/media paths, and correct existing
+directory permissions before starting DUMB.</p>
+<h2 id="persistent-path-mappings">Persistent path mappings<a class="headerlink" href="#persistent-path-mappings" title="Permanent link">#</a></h2>
+<p>Use a layout such as:</p>
+<table>
+<thead>
+<tr>
+<th>Unraid host path</th>
+<th>Container path</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/mnt/user/appdata/DUMB/config</code></td>
+<td><code>/config</code></td>
+<td>Runtime configuration, auth, metrics, jobs</td>
+</tr>
+<tr>
+<td><code>/mnt/user/appdata/DUMB/log</code></td>
+<td><code>/log</code></td>
+<td>DUMB and managed-service logs</td>
+</tr>
+<tr>
+<td><code>/mnt/user/appdata/DUMB/data</code></td>
+<td><code>/data</code></td>
+<td>Service-specific persistent application data</td>
+</tr>
+<tr>
+<td><code>/mnt/user/appdata/DUMB/mnt/debrid</code></td>
+<td><code>/mnt/debrid</code></td>
+<td>Mounts, links, and library trees</td>
+</tr>
+</tbody>
+</table>
+<p>Do not replace the <code>/data</code> mapping with a generic <code>/mnt</code> mapping. DUMB maps
+internal paths such as <code>/plex</code>, <code>/altmount</code>, and <code>/postgres_data</code> into the
+persistent <code>/data</code> tree.</p>
+<p>If you deploy through Compose, start from the current
+<a href="https://github.com/I-am-PUID-0/DUMB/blob/master/docker-compose.yml">DUMB Compose file</a>
+and replace <code>/home/username/docker/DUMB</code> with <code>/mnt/user/appdata/DUMB</code>.</p>
+<h2 id="open-dumb">Open DUMB<a class="headerlink" href="#open-dumb" title="Permanent link">#</a></h2>
+<p>The maintained deployment publishes the frontend at:</p>
+<div class="highlight"><pre><span></span><code>http://&lt;unraid-address&gt;:3005
 </code></pre></div>
-To enter the container interactively:
-<div class="highlight"><pre><span></span><code>docker<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>-it<span class="w"> </span>dumb<span class="w"> </span>sh
+<p>The frontend proxies DUMB API calls under <code>/api</code>. The backend-native <code>8000</code>
+listener remains private by default; do not publish it for ordinary use.</p>
+<h2 id="share-library-paths-with-another-container">Share library paths with another container<a class="headerlink" href="#share-library-paths-with-another-container" title="Permanent link">#</a></h2>
+<p>Use the same container-visible path in DUMB and the external Plex, Jellyfin,
+Emby, Sonarr, Radarr, or other consumer:</p>
+<div class="highlight"><pre><span></span><code>/mnt/debrid
 </code></pre></div>
-Install Midnight Commander (optional):
-<div class="highlight"><pre><span></span><code>apk<span class="w"> </span>add<span class="w"> </span>mc<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>mc
-</code></pre></div></p>
-<hr />
-<h2 id="jellyfin-and-emby-notes">Jellyfin and Emby Notes<a class="headerlink" href="#jellyfin-and-emby-notes" title="Permanent link">#</a></h2>
-<p>Both <strong>Jellyfin</strong> and <strong>Emby</strong> can work with DUMB:</p>
+<p>Then select the curated library produced by your workflow, for example:</p>
 <ul>
-<li>Map <code>/mnt</code> into the containers.</li>
-<li>Add <strong>only the Riven subpaths</strong> (<code>/mnt/movies</code>, <code>/mnt/shows</code>) as libraries.</li>
+<li><code>/mnt/debrid/riven_symlinks</code></li>
+<li><code>/mnt/debrid/clid_symlinks</code></li>
+<li><code>/mnt/debrid/decypharr_symlinks</code></li>
+<li><code>/mnt/debrid/nzbdav-symlinks</code></li>
+<li><code>/mnt/debrid/combined_symlinks</code></li>
+<li>the AltMount import directory configured for that instance</li>
 </ul>
-<hr />
+<p>Do not point a media library at an entire raw provider mount unless that is
+explicitly the workflow you designed.</p>
+<h3 id="mount-propagation">Mount propagation<a class="headerlink" href="#mount-propagation" title="Permanent link">#</a></h3>
+<p>When DUMB creates a nested FUSE/rclone mount that another container must see:</p>
+<ul>
+<li>DUMB's host bind must be <code>rshared</code>.</li>
+<li>Consumer containers should mount the same host path with <code>rslave</code> (or an
+  equivalent slave propagation mode).</li>
+<li>Restart consumers after changing propagation settings and verify the nested
+  mount from inside each container.</li>
+</ul>
+<p>Propagation is unnecessary for ordinary symlink/file trees and when every
+consumer runs inside DUMB.</p>
+<h2 id="permissions">Permissions<a class="headerlink" href="#permissions" title="Permanent link">#</a></h2>
+<p>If Unraid created the DUMB directory with the wrong owner, stop the container
+and correct the exact appdata tree:</p>
+<div class="highlight"><pre><span></span><code>chown<span class="w"> </span>-R<span class="w"> </span>&lt;PUID&gt;:&lt;PGID&gt;<span class="w"> </span>/mnt/user/appdata/DUMB
+</code></pre></div>
+<p>Avoid recursive ownership changes over a mounted media library unless you have
+verified the intended scope.</p>
 <h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">#</a></h2>
+<p>View the container log from the Docker tab, or inspect from an Unraid terminal:</p>
+<div class="highlight"><pre><span></span><code>docker<span class="w"> </span>logs<span class="w"> </span>-f<span class="w"> </span>DUMB
+docker<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>-it<span class="w"> </span>DUMB<span class="w"> </span>bash
+docker<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>DUMB<span class="w"> </span>findmnt<span class="w"> </span>-R<span class="w"> </span>/mnt/debrid
+</code></pre></div>
+<p>Do not install ad-hoc tools into the running container; those changes disappear
+on recreation and can alter the supported runtime. Useful checks are already
+available through the DUMB UI, logs, and standard Ubuntu utilities in the image.</p>
+<p>Common causes of failure are:</p>
 <ul>
-<li>Check logs via <strong>Docker tab</strong> &gt; select DUMB &gt; <strong>Logs</strong>.</li>
-<li>Use <code>docker exec</code> or Midnight Commander to inspect file/folder structure.</li>
-<li>Common issues:</li>
-<li>Wrong <code>PUID/PGID</code></li>
-<li>Paths not matching between DUMB and your media server</li>
-<li>Invalid Plex token</li>
+<li>incorrect appdata ownership or mismatched <code>PUID</code>/<code>PGID</code></li>
+<li>missing <code>/dev/fuse</code> or <code>SYS_ADMIN</code> for a FUSE workflow</li>
+<li>inconsistent paths between DUMB and external consumers</li>
+<li>missing <code>rshared</code>/<code>rslave</code> propagation for nested mounts</li>
+<li>a host port already in use</li>
 </ul>
+<p>Continue with <a href="../../getting-started/">Getting Started</a>, then review
+<a href="../../reference/ports/">Service ports</a> before publishing any additional UI.</p>
 
 
 

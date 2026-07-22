@@ -1869,6 +1869,8 @@
         
   
   
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-mountain" viewBox="0 0 24 24"><path d="m8 3 4 8 5-5 5 15H2z"/></svg>
+  
   <span class="md-ellipsis">
     
   
@@ -3770,10 +3772,21 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#message-format" class="md-nav__link">
+  <a href="#default-message-format" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Message format
+        Default message format
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#expanded-message-format" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Expanded message format
       
     </span>
   </a>
@@ -3842,10 +3855,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#snapshot-message-format" class="md-nav__link">
+  <a href="#live-snapshot-message-format" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Snapshot message format
+        Live snapshot message format
       
     </span>
   </a>
@@ -3925,7 +3938,7 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#message-format_1" class="md-nav__link">
+  <a href="#message-format" class="md-nav__link">
     <span class="md-ellipsis">
       
         Message format
@@ -5058,10 +5071,21 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#message-format" class="md-nav__link">
+  <a href="#default-message-format" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Message format
+        Default message format
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#expanded-message-format" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Expanded message format
       
     </span>
   </a>
@@ -5130,10 +5154,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#snapshot-message-format" class="md-nav__link">
+  <a href="#live-snapshot-message-format" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Snapshot message format
+        Live snapshot message format
       
     </span>
   </a>
@@ -5213,7 +5237,7 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#message-format_1" class="md-nav__link">
+  <a href="#message-format" class="md-nav__link">
     <span class="md-ellipsis">
       
         Message format
@@ -5452,7 +5476,7 @@
 <hr />
 <h2 id="authentication">Authentication<a class="headerlink" href="#authentication" title="Permanent link">#</a></h2>
 <p>When authentication is enabled, include the access token as a query parameter:</p>
-<div class="highlight"><pre><span></span><code>ws://localhost:8000/ws/status?token=eyJhbGciOiJIUzI1NiIs...
+<div class="highlight"><pre><span></span><code>ws://localhost:3005/ws/status?token=eyJhbGciOiJIUzI1NiIs...
 </code></pre></div>
 <p>If the token is missing or invalid, the connection will be rejected with a close code.</p>
 <hr />
@@ -5460,7 +5484,8 @@
 <h3 id="endpoint">Endpoint<a class="headerlink" href="#endpoint" title="Permanent link">#</a></h3>
 <div class="highlight"><pre><span></span><code>/ws/status
 </code></pre></div>
-<p>Streams real-time service status updates including running state, health status, and restart counts.</p>
+<p>Streams the names of tracked running services. Add <code>health=true</code> to request the
+expanded health and restart-state objects.</p>
 <h3 id="query-parameters">Query parameters<a class="headerlink" href="#query-parameters" title="Permanent link">#</a></h3>
 <table>
 <thead>
@@ -5481,8 +5506,8 @@
 <tr>
 <td><code>health</code></td>
 <td>boolean</td>
-<td><code>true</code></td>
-<td>Include health check results</td>
+<td><code>false</code></td>
+<td>Include health and restart-state details</td>
 </tr>
 <tr>
 <td><code>token</code></td>
@@ -5493,14 +5518,23 @@
 </tbody>
 </table>
 <h3 id="connection-example">Connection example<a class="headerlink" href="#connection-example" title="Permanent link">#</a></h3>
-<div class="highlight"><pre><span></span><code><span class="kd">const</span><span class="w"> </span><span class="nx">ws</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="ow">new</span><span class="w"> </span><span class="nx">WebSocket</span><span class="p">(</span><span class="s1">&#39;ws://localhost:8000/ws/status?interval=2&amp;health=true&amp;token=...&#39;</span><span class="p">);</span>
+<div class="highlight"><pre><span></span><code><span class="kd">const</span><span class="w"> </span><span class="nx">ws</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="ow">new</span><span class="w"> </span><span class="nx">WebSocket</span><span class="p">(</span><span class="s1">&#39;ws://localhost:3005/ws/status?interval=2&amp;health=true&amp;token=...&#39;</span><span class="p">);</span>
 
 <span class="nx">ws</span><span class="p">.</span><span class="nx">onmessage</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="nx">event</span><span class="p">)</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="kd">const</span><span class="w"> </span><span class="nx">data</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">JSON</span><span class="p">.</span><span class="nx">parse</span><span class="p">(</span><span class="nx">event</span><span class="p">.</span><span class="nx">data</span><span class="p">);</span>
 <span class="w">  </span><span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="nx">data</span><span class="p">);</span>
 <span class="p">};</span>
 </code></pre></div>
-<h3 id="message-format">Message format<a class="headerlink" href="#message-format" title="Permanent link">#</a></h3>
+<h3 id="default-message-format">Default message format<a class="headerlink" href="#default-message-format" title="Permanent link">#</a></h3>
+<p>Without <code>health=true</code>, the payload contains only the current running-process
+names:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;status&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;running&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;DUMB Frontend&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;Riven Backend&quot;</span><span class="p">]</span>
+<span class="p">}</span>
+</code></pre></div>
+<h3 id="expanded-message-format">Expanded message format<a class="headerlink" href="#expanded-message-format" title="Permanent link">#</a></h3>
+<p>With <code>health=true</code>, the payload uses <code>processes</code>:</p>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;status&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;processes&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
@@ -5510,20 +5544,19 @@
 <span class="w">      </span><span class="nt">&quot;healthy&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
 <span class="w">      </span><span class="nt">&quot;health_reason&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
 <span class="w">      </span><span class="nt">&quot;restart&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<span class="w">        </span><span class="nt">&quot;count&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;last_restart&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span>
-<span class="w">      </span><span class="p">}</span>
-<span class="w">    </span><span class="p">},</span>
-<span class="w">    </span><span class="p">{</span>
-<span class="w">      </span><span class="nt">&quot;process_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Zurg w/ RealDebrid&quot;</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;running&quot;</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;healthy&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;health_reason&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;restart&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<span class="w">        </span><span class="nt">&quot;count&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">2</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;last_restart&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2025-01-15T10:30:00Z&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span>
+<span class="w">        </span><span class="nt">&quot;restart_attempts&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;restart_successes&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;restart_failures&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;recent_restart_attempts&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;pending&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;next_restart_time&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;disabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;last_restart_time&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;last_failure_reason&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;last_exit_time&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;last_exit_reason&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;unhealthy_count&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;unhealthy_threshold&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">3</span>
 <span class="w">      </span><span class="p">}</span>
 <span class="w">    </span><span class="p">}</span>
 <span class="w">  </span><span class="p">]</span>
@@ -5547,7 +5580,7 @@
 <tr>
 <td><code>status</code></td>
 <td>string</td>
-<td><code>running</code>, <code>stopped</code>, or <code>unknown</code></td>
+<td><code>running</code> for entries in this running-process snapshot</td>
 </tr>
 <tr>
 <td><code>healthy</code></td>
@@ -5560,19 +5593,9 @@
 <td>Reason if unhealthy</td>
 </tr>
 <tr>
-<td><code>restart.count</code></td>
-<td>integer</td>
-<td>Number of auto-restarts</td>
-</tr>
-<tr>
-<td><code>restart.last_restart</code></td>
-<td>string</td>
-<td>ISO timestamp of last restart</td>
-</tr>
-<tr>
-<td><code>restart.enabled</code></td>
-<td>boolean</td>
-<td>Whether auto-restart is enabled</td>
+<td><code>restart</code></td>
+<td>object</td>
+<td>Current auto-restart counters, pending/disabled state, timestamps, and health threshold</td>
 </tr>
 </tbody>
 </table>
@@ -5608,8 +5631,38 @@
 <tr>
 <td><code>bootstrap</code></td>
 <td>boolean</td>
-<td><code>true</code></td>
-<td>Send initial snapshot immediately</td>
+<td><code>false</code></td>
+<td>Send a snapshot plus prepared history in one initial message</td>
+</tr>
+<tr>
+<td><code>history_full</code></td>
+<td>boolean</td>
+<td><code>false</code></td>
+<td>Request the full retained history window rather than the default window</td>
+</tr>
+<tr>
+<td><code>history_limit</code></td>
+<td>integer</td>
+<td><code>5000</code></td>
+<td>Maximum raw history rows read for the initial payload</td>
+</tr>
+<tr>
+<td><code>history_since</code></td>
+<td>number</td>
+<td>-</td>
+<td>Unix timestamp lower bound for history</td>
+</tr>
+<tr>
+<td><code>history_bucket</code></td>
+<td>integer</td>
+<td>automatic</td>
+<td>Requested history bucket size in seconds</td>
+</tr>
+<tr>
+<td><code>history_points</code></td>
+<td>integer</td>
+<td><code>600</code></td>
+<td>Maximum prepared series points in a bootstrap payload</td>
 </tr>
 <tr>
 <td><code>token</code></td>
@@ -5620,12 +5673,15 @@
 </tbody>
 </table>
 <h3 id="connection-example_1">Connection example<a class="headerlink" href="#connection-example_1" title="Permanent link">#</a></h3>
-<div class="highlight"><pre><span></span><code><span class="kd">const</span><span class="w"> </span><span class="nx">ws</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="ow">new</span><span class="w"> </span><span class="nx">WebSocket</span><span class="p">(</span><span class="s1">&#39;ws://localhost:8000/ws/metrics?interval=2&amp;history=true&amp;token=...&#39;</span><span class="p">);</span>
+<div class="highlight"><pre><span></span><code><span class="kd">const</span><span class="w"> </span><span class="nx">ws</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="ow">new</span><span class="w"> </span><span class="nx">WebSocket</span><span class="p">(</span><span class="s1">&#39;ws://localhost:3005/ws/metrics?interval=2&amp;bootstrap=true&amp;token=...&#39;</span><span class="p">);</span>
 
 <span class="nx">ws</span><span class="p">.</span><span class="nx">onmessage</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="nx">event</span><span class="p">)</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="kd">const</span><span class="w"> </span><span class="nx">data</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">JSON</span><span class="p">.</span><span class="nx">parse</span><span class="p">(</span><span class="nx">event</span><span class="p">.</span><span class="nx">data</span><span class="p">);</span>
 
-<span class="w">  </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="nx">data</span><span class="p">.</span><span class="nx">type</span><span class="w"> </span><span class="o">===</span><span class="w"> </span><span class="s1">&#39;snapshot&#39;</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="nx">data</span><span class="p">.</span><span class="nx">type</span><span class="w"> </span><span class="o">===</span><span class="w"> </span><span class="s1">&#39;bootstrap&#39;</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">initializeCharts</span><span class="p">(</span><span class="nx">data</span><span class="p">.</span><span class="nx">items</span><span class="p">);</span>
+<span class="w">    </span><span class="nx">updateDashboard</span><span class="p">(</span><span class="nx">data</span><span class="p">.</span><span class="nx">snapshot</span><span class="p">);</span>
+<span class="w">  </span><span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="nx">data</span><span class="p">.</span><span class="nx">type</span><span class="w"> </span><span class="o">===</span><span class="w"> </span><span class="s1">&#39;snapshot&#39;</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
 <span class="w">    </span><span class="c1">// Current metrics</span>
 <span class="w">    </span><span class="nx">updateDashboard</span><span class="p">(</span><span class="nx">data</span><span class="p">.</span><span class="nx">data</span><span class="p">);</span>
 <span class="w">  </span><span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="nx">data</span><span class="p">.</span><span class="nx">type</span><span class="w"> </span><span class="o">===</span><span class="w"> </span><span class="s1">&#39;history&#39;</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
@@ -5634,54 +5690,48 @@
 <span class="w">  </span><span class="p">}</span>
 <span class="p">};</span>
 </code></pre></div>
-<h3 id="snapshot-message-format">Snapshot message format<a class="headerlink" href="#snapshot-message-format" title="Permanent link">#</a></h3>
+<h3 id="live-snapshot-message-format">Live snapshot message format<a class="headerlink" href="#live-snapshot-message-format" title="Permanent link">#</a></h3>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;snapshot&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;data&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<span class="w">    </span><span class="nt">&quot;timestamp&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2025-01-15T10:30:00Z&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;cpu&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<span class="w">      </span><span class="nt">&quot;percent&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">45.2</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;count&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">8</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;load_avg&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="mf">1.5</span><span class="p">,</span><span class="w"> </span><span class="mf">1.2</span><span class="p">,</span><span class="w"> </span><span class="mf">0.9</span><span class="p">]</span>
+<span class="w">    </span><span class="nt">&quot;timestamp&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">1752575400.0</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;system&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">&quot;scope&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;cgroup&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;cpu_percent&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">45.2</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;cpu_count&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">8</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;load_avg&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="mf">1.5</span><span class="p">,</span><span class="w"> </span><span class="mf">1.2</span><span class="p">,</span><span class="w"> </span><span class="mf">0.9</span><span class="p">],</span>
+<span class="w">      </span><span class="nt">&quot;mem&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nt">&quot;total&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">17179869184</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;used&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">8589934592</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;percent&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">50.0</span>
+<span class="w">      </span><span class="p">},</span>
+<span class="w">      </span><span class="nt">&quot;disk&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nt">&quot;path&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;total&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">500107862016</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;used&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">250053931008</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;free&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">250053931008</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;percent&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">50.0</span>
+<span class="w">      </span><span class="p">},</span>
+<span class="w">      </span><span class="nt">&quot;inode&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">&quot;path&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;percent&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">4.2</span><span class="p">},</span>
+<span class="w">      </span><span class="nt">&quot;filesystems&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[],</span>
+<span class="w">      </span><span class="nt">&quot;net_io&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">&quot;sent_bytes&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1073741824</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;recv_bytes&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">2147483648</span><span class="p">},</span>
+<span class="w">      </span><span class="nt">&quot;network_interfaces&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[]</span>
 <span class="w">    </span><span class="p">},</span>
-<span class="w">    </span><span class="nt">&quot;memory&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<span class="w">      </span><span class="nt">&quot;total&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">17179869184</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;available&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">8589934592</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;percent&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">50.0</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;used&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">8589934592</span>
-<span class="w">    </span><span class="p">},</span>
-<span class="w">    </span><span class="nt">&quot;swap&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<span class="w">      </span><span class="nt">&quot;total&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">8589934592</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;used&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1073741824</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;percent&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">12.5</span>
-<span class="w">    </span><span class="p">},</span>
-<span class="w">    </span><span class="nt">&quot;disk&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<span class="w">      </span><span class="nt">&quot;total&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">500107862016</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;used&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">250053931008</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;free&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">250053931008</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;percent&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">50.0</span>
-<span class="w">    </span><span class="p">},</span>
-<span class="w">    </span><span class="nt">&quot;network&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<span class="w">      </span><span class="nt">&quot;bytes_sent&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1073741824</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;bytes_recv&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">2147483648</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;packets_sent&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1000000</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;packets_recv&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">2000000</span>
-<span class="w">    </span><span class="p">},</span>
-<span class="w">    </span><span class="nt">&quot;processes&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="nt">&quot;dumb_managed&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
 <span class="w">      </span><span class="p">{</span>
 <span class="w">        </span><span class="nt">&quot;pid&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1234</span><span class="p">,</span>
 <span class="w">        </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Riven Backend&quot;</span><span class="p">,</span>
 <span class="w">        </span><span class="nt">&quot;cpu_percent&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">5.2</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;memory_percent&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">2.1</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;memory_rss&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">134217728</span>
+<span class="w">        </span><span class="nt">&quot;rss&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">134217728</span>
 <span class="w">      </span><span class="p">}</span>
 <span class="w">    </span><span class="p">],</span>
-<span class="w">    </span><span class="nt">&quot;boot_time&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2025-01-01T00:00:00Z&quot;</span>
+<span class="w">    </span><span class="nt">&quot;external&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[],</span>
+<span class="w">    </span><span class="nt">&quot;database_health&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{}</span>
 <span class="w">  </span><span class="p">}</span>
 <span class="p">}</span>
 </code></pre></div>
 <h3 id="history-message-format">History message format<a class="headerlink" href="#history-message-format" title="Permanent link">#</a></h3>
-<p>Sent once on connection when <code>history=true</code>:</p>
+<p>Sent once on connection when <code>history=true</code> and <code>bootstrap</code> is false:</p>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;history&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;items&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
@@ -5696,9 +5746,13 @@
 <span class="w">      </span><span class="nt">&quot;memory&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;percent&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">49.8</span><span class="w"> </span><span class="p">}</span>
 <span class="w">    </span><span class="p">}</span>
 <span class="w">  </span><span class="p">],</span>
-<span class="w">  </span><span class="nt">&quot;bucket_seconds&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">5</span>
+<span class="w">  </span><span class="nt">&quot;truncated&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span>
 <span class="p">}</span>
 </code></pre></div>
+<p>When <code>bootstrap=true</code>, the initial message has <code>type: "bootstrap"</code> and includes
+<code>snapshot</code>, <code>items</code>, prepared <code>series</code>, <code>timestamps</code>, <code>truncated</code>, <code>stats</code>, and
+<code>bucket_seconds</code>. Live updates after either initial mode still use
+<code>type: "snapshot"</code>.</p>
 <h3 id="metric-field-descriptions">Metric field descriptions<a class="headerlink" href="#metric-field-descriptions" title="Permanent link">#</a></h3>
 <table>
 <thead>
@@ -5711,58 +5765,53 @@
 <tbody>
 <tr>
 <td><strong>CPU</strong></td>
-<td><code>percent</code></td>
-<td>Overall CPU usage percentage</td>
+<td><code>system.cpu_percent</code></td>
+<td>CPU usage for the configured host/cgroup scope</td>
 </tr>
 <tr>
 <td><strong>CPU</strong></td>
-<td><code>count</code></td>
-<td>Number of CPU cores</td>
+<td><code>system.cpu_count</code></td>
+<td>Logical host CPUs or effective cgroup CPU limit</td>
 </tr>
 <tr>
 <td><strong>CPU</strong></td>
-<td><code>load_avg</code></td>
-<td>1, 5, 15 minute load averages</td>
+<td><code>system.load_avg</code></td>
+<td>1, 5, 15 minute host load averages</td>
 </tr>
 <tr>
 <td><strong>Memory</strong></td>
-<td><code>total</code></td>
-<td>Total RAM in bytes</td>
+<td><code>system.mem</code></td>
+<td>Total, used, and percent for the selected scope</td>
 </tr>
 <tr>
-<td><strong>Memory</strong></td>
-<td><code>available</code></td>
-<td>Available RAM in bytes</td>
+<td><strong>Filesystem</strong></td>
+<td><code>system.filesystems</code></td>
+<td>Per-selected-path capacity, type, availability, and inode data</td>
 </tr>
 <tr>
-<td><strong>Memory</strong></td>
-<td><code>percent</code></td>
-<td>Memory usage percentage</td>
-</tr>
-<tr>
-<td><strong>Disk</strong></td>
-<td><code>total</code></td>
-<td>Total disk space in bytes</td>
-</tr>
-<tr>
-<td><strong>Disk</strong></td>
-<td><code>used</code></td>
-<td>Used disk space in bytes</td>
-</tr>
-<tr>
-<td><strong>Disk</strong></td>
-<td><code>percent</code></td>
-<td>Disk usage percentage</td>
+<td><strong>Filesystem</strong></td>
+<td><code>system.disk</code> / <code>system.inode</code></td>
+<td>Compatibility aliases for the first selected path</td>
 </tr>
 <tr>
 <td><strong>Network</strong></td>
-<td><code>bytes_sent</code></td>
-<td>Total bytes sent</td>
+<td><code>system.network_interfaces</code></td>
+<td>Per-selected-interface counters and link metadata</td>
 </tr>
 <tr>
 <td><strong>Network</strong></td>
-<td><code>bytes_recv</code></td>
-<td>Total bytes received</td>
+<td><code>system.net_io</code></td>
+<td>Compatibility aggregate across selected interfaces</td>
+</tr>
+<tr>
+<td><strong>Processes</strong></td>
+<td><code>dumb_managed</code> / <code>external</code></td>
+<td>Managed and bounded external process metrics</td>
+</tr>
+<tr>
+<td><strong>Database</strong></td>
+<td><code>database_health</code></td>
+<td>Opt-in database/store health snapshot</td>
 </tr>
 </tbody>
 </table>
@@ -5792,14 +5841,14 @@
 </tbody>
 </table>
 <h3 id="connection-example_2">Connection example<a class="headerlink" href="#connection-example_2" title="Permanent link">#</a></h3>
-<div class="highlight"><pre><span></span><code><span class="kd">const</span><span class="w"> </span><span class="nx">ws</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="ow">new</span><span class="w"> </span><span class="nx">WebSocket</span><span class="p">(</span><span class="s1">&#39;ws://localhost:8000/ws/logs?token=...&#39;</span><span class="p">);</span>
+<div class="highlight"><pre><span></span><code><span class="kd">const</span><span class="w"> </span><span class="nx">ws</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="ow">new</span><span class="w"> </span><span class="nx">WebSocket</span><span class="p">(</span><span class="s1">&#39;ws://localhost:3005/ws/logs?token=...&#39;</span><span class="p">);</span>
 
 <span class="nx">ws</span><span class="p">.</span><span class="nx">onmessage</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="nx">event</span><span class="p">)</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="c1">// Each message is a log line</span>
 <span class="w">  </span><span class="nx">appendToLogViewer</span><span class="p">(</span><span class="nx">event</span><span class="p">.</span><span class="nx">data</span><span class="p">);</span>
 <span class="p">};</span>
 </code></pre></div>
-<h3 id="message-format_1">Message format<a class="headerlink" href="#message-format_1" title="Permanent link">#</a></h3>
+<h3 id="message-format">Message format<a class="headerlink" href="#message-format" title="Permanent link">#</a></h3>
 <p>Log messages are sent as plain text lines:</p>
 <div class="highlight"><pre><span></span><code>Apr 12, 2025 10:04:01 - INFO - Riven Backend started
 Apr 12, 2025 10:04:02 - DEBUG - Processing request...
@@ -5813,7 +5862,7 @@ Apr 12, 2025 10:04:03 - ERROR - Connection failed: timeout
 <p>Send a ping message to keep the connection alive:</p>
 <div class="highlight"><pre><span></span><code><span class="p">{</span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ping&quot;</span><span class="p">}</span>
 </code></pre></div>
-<p>Response:</p>
+<p>Response (the plain-text <code>ping</code> input is also accepted):</p>
 <div class="highlight"><pre><span></span><code>pong
 </code></pre></div>
 <hr />
@@ -5821,7 +5870,7 @@ Apr 12, 2025 10:04:03 - ERROR - Connection failed: timeout
 <h3 id="reconnection-strategy">Reconnection strategy<a class="headerlink" href="#reconnection-strategy" title="Permanent link">#</a></h3>
 <p>WebSocket connections may drop due to network issues. Implement automatic reconnection:</p>
 <div class="highlight"><pre><span></span><code><span class="kd">function</span><span class="w"> </span><span class="nx">connectWebSocket</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
-<span class="w">  </span><span class="kd">const</span><span class="w"> </span><span class="nx">ws</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="ow">new</span><span class="w"> </span><span class="nx">WebSocket</span><span class="p">(</span><span class="s1">&#39;ws://localhost:8000/ws/status?token=...&#39;</span><span class="p">);</span>
+<span class="w">  </span><span class="kd">const</span><span class="w"> </span><span class="nx">ws</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="ow">new</span><span class="w"> </span><span class="nx">WebSocket</span><span class="p">(</span><span class="s1">&#39;ws://localhost:3005/ws/status?token=...&#39;</span><span class="p">);</span>
 
 <span class="w">  </span><span class="nx">ws</span><span class="p">.</span><span class="nx">onclose</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">()</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p">{</span>
 <span class="w">    </span><span class="c1">// Reconnect after delay with exponential backoff</span>
@@ -5865,18 +5914,14 @@ Apr 12, 2025 10:04:03 - ERROR - Connection failed: timeout
 <td>Abnormal closure (network error)</td>
 </tr>
 <tr>
-<td>4001</td>
-<td>Authentication required</td>
-</tr>
-<tr>
-<td>4003</td>
-<td>Invalid or expired token</td>
+<td>1008</td>
+<td>Authentication required, invalid/expired token, or disabled user</td>
 </tr>
 </tbody>
 </table>
 <h3 id="handling-authentication-errors">Handling authentication errors<a class="headerlink" href="#handling-authentication-errors" title="Permanent link">#</a></h3>
 <div class="highlight"><pre><span></span><code><span class="nx">ws</span><span class="p">.</span><span class="nx">onclose</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="nx">event</span><span class="p">)</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p">{</span>
-<span class="w">  </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="nx">event</span><span class="p">.</span><span class="nx">code</span><span class="w"> </span><span class="o">===</span><span class="w"> </span><span class="mf">4001</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nx">event</span><span class="p">.</span><span class="nx">code</span><span class="w"> </span><span class="o">===</span><span class="w"> </span><span class="mf">4003</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="nx">event</span><span class="p">.</span><span class="nx">code</span><span class="w"> </span><span class="o">===</span><span class="w"> </span><span class="mf">1008</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
 <span class="w">    </span><span class="c1">// Token expired or invalid - refresh and reconnect</span>
 <span class="w">    </span><span class="nx">refreshToken</span><span class="p">().</span><span class="nx">then</span><span class="p">(()</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="nx">connectWebSocket</span><span class="p">());</span>
 <span class="w">  </span><span class="p">}</span>
@@ -5889,7 +5934,7 @@ Apr 12, 2025 10:04:03 - ERROR - Connection failed: timeout
 <span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
 
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">monitor_status</span><span class="p">():</span>
-    <span class="n">uri</span> <span class="o">=</span> <span class="s2">&quot;ws://localhost:8000/ws/status?interval=2&amp;health=true&quot;</span>
+    <span class="n">uri</span> <span class="o">=</span> <span class="s2">&quot;ws://localhost:3005/ws/status?interval=2&amp;health=true&quot;</span>
 
     <span class="k">async</span> <span class="k">with</span> <span class="n">websockets</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">uri</span><span class="p">)</span> <span class="k">as</span> <span class="n">websocket</span><span class="p">:</span>
         <span class="k">async</span> <span class="k">for</span> <span class="n">message</span> <span class="ow">in</span> <span class="n">websocket</span><span class="p">:</span>

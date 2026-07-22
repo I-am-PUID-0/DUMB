@@ -1869,6 +1869,8 @@
         
   
   
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-mountain" viewBox="0 0 24 24"><path d="m8 3 4 8 5-5 5 15H2z"/></svg>
+  
   <span class="md-ellipsis">
     
   
@@ -4865,7 +4867,10 @@
 <span class="w">  </span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;healthy&quot;</span>
 <span class="p">}</span>
 </code></pre></div>
-<p>If the check fails, the status will be <code>"unhealthy"</code> and include diagnostic output.</p>
+<p>If a tracked process or one of its configured listener ports fails the check, the
+response remains HTTP 200 with <code>"status": "unhealthy"</code> and a sanitized <code>details</code>
+field. A health-check timeout returns HTTP 504; an execution failure returns
+HTTP 500.</p>
 <hr />
 <div class="admonition tip">
 <p class="admonition-title">Use Cases</p>
@@ -4876,10 +4881,12 @@
 </div>
 <hr />
 <h2 id="implementation">Implementation<a class="headerlink" href="#implementation" title="Permanent link">#</a></h2>
-<p>This route executes a background health check script in the container:
+<p>This route executes the container health-check script:
 <div class="highlight"><pre><span></span><code>/healthcheck.py
 </code></pre></div>
-It runs within the same virtual environment as DUMB and ensures all critical files, paths, and subprocesses are functional.</p>
+It reads DUMB's tracked process file, confirms each PID is still running, and
+tests configured service ports when present. It is a stack/process readiness
+signal, not a deep application-data or provider health test.</p>
 <hr />
 <h2 id="related">Related<a class="headerlink" href="#related" title="Permanent link">#</a></h2>
 <ul>

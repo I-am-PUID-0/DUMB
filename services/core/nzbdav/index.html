@@ -2122,6 +2122,8 @@
         
   
   
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-mountain" viewBox="0 0 24 24"><path d="m8 3 4 8 5-5 5 15H2z"/></svg>
+  
   <span class="md-ellipsis">
     
   
@@ -5260,6 +5262,16 @@ that fork for release, branch, and update operations.</p>
 <span class="w">    </span><span class="nt">&quot;backend_port&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">8080</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;auto_update&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;auto_update_interval&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">24</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;auto_update_start_time&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;04:00&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;symlink_backup_enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;symlink_backup_interval&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">168</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;symlink_backup_start_time&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;04:00&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;symlink_backup_path&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/config/symlink-repair/snapshots/nzbdav-{timestamp}.json&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;symlink_backup_include_broken&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;symlink_backup_retention_count&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;symlink_backup_roots&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">        </span><span class="s2">&quot;/mnt/debrid/nzbdav-symlinks&quot;</span>
+<span class="w">    </span><span class="p">],</span>
 <span class="w">    </span><span class="nt">&quot;clear_on_update&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;exclude_dirs&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[],</span>
 <span class="w">    </span><span class="nt">&quot;platforms&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
@@ -5400,13 +5412,15 @@ Radarr instances you want wired to NzbDAV:</p>
 <li>Update Arr permissions (enable chmod + set folder/file modes)</li>
 <li>Attempt to add an <code>nzbdav</code> download client in the Arrs using their API keys</li>
 </ul>
-<p>When <code>core_service</code> includes multiple workflow services, the root folder base
-shifts to <code>/mnt/debrid/combined_symlinks/&lt;category&gt;</code>.</p>
+<p>When <code>core_service</code> includes both <code>decypharr</code> and <code>nzbdav</code>, the root folder base
+shifts to <code>/mnt/debrid/combined_symlinks/&lt;category&gt;</code>. Other multi-service
+combinations keep the NzbDAV symlink root unless another workflow owns its own
+root-folder setup.</p>
 <div class="admonition info">
 <p class="admonition-title">Automatic vs manual wiring</p>
 <p>When <code>core_service</code> is set to <code>nzbdav</code> (or includes it), DUMB
 automatically configures download clients, root folders, and permissions.
-If <code>core_service</code> includes multiple workflow services, the Arr root folder
+If <code>core_service</code> includes both <code>decypharr</code> and <code>nzbdav</code>, the Arr root folder
 base switches to <code>/mnt/debrid/combined_symlinks/&lt;category&gt;</code>.
 Manual setup is only needed when <code>core_service</code> is blank or you want to override
 the combined workflow wiring.</p>

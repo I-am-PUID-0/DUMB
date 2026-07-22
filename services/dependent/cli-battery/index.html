@@ -1878,6 +1878,8 @@
         
   
   
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-mountain" viewBox="0 0 24 24"><path d="m8 3 4 8 5-5 5 15H2z"/></svg>
+  
   <span class="md-ellipsis">
     
   
@@ -2469,10 +2471,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#required-by-cli-debrid" class="md-nav__link">
+  <a href="#required-by-stableolder-cli-debrid-layouts" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Required by CLI Debrid
+        Required by stable/older CLI Debrid layouts
       
     </span>
   </a>
@@ -4848,10 +4850,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#required-by-cli-debrid" class="md-nav__link">
+  <a href="#required-by-stableolder-cli-debrid-layouts" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Required by CLI Debrid
+        Required by stable/older CLI Debrid layouts
       
     </span>
   </a>
@@ -5039,7 +5041,27 @@
 
 
 <h1 id="cli-battery-configuration">CLI Battery Configuration<a class="headerlink" href="#cli-battery-configuration" title="Permanent link">#</a></h1>
-<p>The <strong>CLI Battery</strong> is a Flask-based companion application required by CLI Debrid. It provides metadata services and background processing, integrates with Trakt, and exposes a lightweight web API for managing movies and TV shows. This service must be running for CLI Debrid to operate properly.</p>
+<p>In the CLI Debrid layout currently managed by DUMB, <strong>CLI Battery</strong> is a separate
+Flask-based companion application. It provides metadata services and background
+processing, integrates with Trakt, and exposes a lightweight web API for managing
+movies and TV shows. This service must be running for the current DUMB-supported
+CLI Debrid layout to operate properly.</p>
+<div class="admonition info">
+<p class="admonition-title">Upstream pre-release architecture change</p>
+<p><a href="https://github.com/godver3/cli_debrid/releases/tag/v0.7.29">CLI Debrid v0.7.29</a>
+is an upstream pre-release. Commit
+<a href="https://github.com/godver3/cli_debrid/commit/ef4deb5bbed60826ef2aaa48be0ecb17250ea87e"><code>ef4deb5</code></a>
+replaces the standalone Flask/HTTP service with an in-process Python module,
+removing the separate port and process from that upstream layout.</p>
+<p>DUMB has not yet made its dependency graph version-aware: its configuration
+still contains <code>cli_battery/main.py</code>, port <code>5001</code>, and CLI Battery as a
+prerequisite. Keep this service enabled for stable/older CLI Debrid releases.
+If you intentionally use v0.7.29 or a newer pre-release with the in-process
+rewrite, manually disable the standalone CLI Battery service.</p>
+<p>Normal DUMB startup skips a disabled CLI Battery. A guided <strong>Start Core
+Service</strong> or onboarding action may re-enable it from the current static
+dependency map, so re-check the toggle after using those flows.</p>
+</div>
 <h2 id="service-relationships">Service relationships<a class="headerlink" href="#service-relationships" title="Permanent link">#</a></h2>
 <table>
 <thead>
@@ -5054,8 +5076,8 @@
 <td>CLI Debrid companion service</td>
 </tr>
 <tr>
-<td>Depends On</td>
-<td><a href="../../core/cli-debrid/">CLI Debrid</a></td>
+<td>Used By</td>
+<td>Stable/older <a href="../../core/cli-debrid/">CLI Debrid</a> layouts that use the separate port-5001 service</td>
 </tr>
 <tr>
 <td>Exposes UI</td>
@@ -5113,8 +5135,10 @@
 <p>CLI Battery handles Trakt OAuth flows. Make sure the callback URL you authorize matches the port you expose.</p>
 </div>
 <hr />
-<h2 id="required-by-cli-debrid">Required by CLI Debrid<a class="headerlink" href="#required-by-cli-debrid" title="Permanent link">#</a></h2>
-<p>CLI Battery must be running <strong>before</strong> CLI Debrid launches, as the latter depends on it for coordination and metadata resolution.</p>
+<h2 id="required-by-stableolder-cli-debrid-layouts">Required by stable/older CLI Debrid layouts<a class="headerlink" href="#required-by-stableolder-cli-debrid-layouts" title="Permanent link">#</a></h2>
+<p>CLI Battery must be running <strong>before</strong> a CLI Debrid release that depends on its
+standalone API launches. This ordering does not apply to the in-process v0.7.29+
+pre-release design; disable this separate DUMB service for that layout.</p>
 <hr />
 <h2 id="web-interface-and-api">Web interface and API<a class="headerlink" href="#web-interface-and-api" title="Permanent link">#</a></h2>
 <p>CLI Battery is a Flask web app exposing a browser UI and REST API:</p>
@@ -5141,7 +5165,7 @@
 <hr />
 <h2 id="access-via-traefik">Access via Traefik<a class="headerlink" href="#access-via-traefik" title="Permanent link">#</a></h2>
 <p>If Traefik is enabled in DUMB, CLI Battery can be reached via the proxy path:</p>
-<div class="highlight"><pre><span></span><code>http://&lt;host&gt;/cli_battery/
+<div class="highlight"><pre><span></span><code>http://&lt;host&gt;:18080/service/ui/cli_battery/
 </code></pre></div>
 <hr />
 <h2 id="logs-and-data-paths">Logs and data paths<a class="headerlink" href="#logs-and-data-paths" title="Permanent link">#</a></h2>

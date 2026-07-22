@@ -2047,6 +2047,8 @@
         
   
   
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-mountain" viewBox="0 0 24 24"><path d="m8 3 4 8 5-5 5 15H2z"/></svg>
+  
   <span class="md-ellipsis">
     
   
@@ -5084,7 +5086,9 @@
 <p>Downtime depends mainly on SQLite size and storage speed.</p>
 <h3 id="4-validate-the-application">4. Validate the application<a class="headerlink" href="#4-validate-the-application" title="Permanent link">#</a></h3>
 <p>Check the service's important objects and integrations, then perform a harmless write such as saving an unchanged setting. For an Arr, verify libraries, files, root folders, profiles, indexers, download clients, and history. For Bazarr, verify shows/movies, providers, history, and subtitle searches. For request services, verify users, requests, settings, and integrations.</p>
-<p>Keep the SQLite backup until PostgreSQL and its backup schedule have been proven.</p>
+<p>Keep the SQLite backup until PostgreSQL and its
+<a href="../../faq/pgadmin/#example-scheduled-backups-with-pgagent">backup schedule</a> have
+been proven with a test restore.</p>
 <h2 id="arr-log-databases-are-optional">Arr log databases are optional<a class="headerlink" href="#arr-log-databases-are-optional" title="Permanent link">#</a></h2>
 <p>The five Arr services have a separate <code>logs.db</code>. Leave <strong>Migrate the service log database too</strong> disabled unless old application log entries matter. The main database already contains application configuration, library state, and history; starting fresh for diagnostic logs shortens cutover.</p>
 <p>The option is hidden for Bazarr, Pulsarr, Seerr, and AltMount because they have one migrated SQLite database.</p>
@@ -5096,7 +5100,12 @@
 </div>
 <p>An active job is marked <code>interrupted</code> if the DUMB API restarts. Inspect its backup directory and restore SQLite before retrying.</p>
 <h2 id="postgresql-backups-after-migration">PostgreSQL backups after migration<a class="headerlink" href="#postgresql-backups-after-migration" title="Permanent link">#</a></h2>
-<p>Application-native backups generally do not contain PostgreSQL data. Configure scheduled <code>pg_dump</code> backups for every migrated database and protect <code>/postgres_data</code> with the normal host/container backup plan.</p>
+<p>Application-native backups generally do not contain PostgreSQL data. Configure
+scheduled <code>pg_dump</code> backups for every migrated database by following the
+<a href="../../faq/pgadmin/#example-scheduled-backups-with-pgagent">pgAdmin and pgAgent example</a>,
+including retention and restore testing. Also protect the mounted data
+directory's <code>postgres</code> subtree (container path <code>/data/postgres</code>, service path
+<code>/postgres_data</code>) with the normal backup plan.</p>
 <h2 id="upstream-references">Upstream references<a class="headerlink" href="#upstream-references" title="Permanent link">#</a></h2>
 <ul>
 <li><a href="https://wiki.servarr.com/en/sonarr/postgres-setup">Sonarr PostgreSQL setup</a></li>
@@ -5105,7 +5114,7 @@
 <li><a href="https://wiki.servarr.com/prowlarr/postgres-setup">Prowlarr PostgreSQL setup</a></li>
 <li><a href="https://wiki.servarr.com/whisparr/postgres-setup">Whisparr PostgreSQL setup</a></li>
 <li><a href="https://wiki.bazarr.media/Additional-Configuration/PostgreSQL-Database/">Bazarr PostgreSQL database</a></li>
-<li><a href="https://jamcalli.github.io/Pulsarr/docs/installation/postgres-migration/">Pulsarr SQLite-to-PostgreSQL migration</a></li>
+<li><a href="https://jamcalli.github.io/Pulsarr/docs/installation/postgres-migration">Pulsarr SQLite-to-PostgreSQL migration</a></li>
 <li><a href="https://docs.seerr.dev/extending-seerr/database-config/">Seerr database configuration and migration</a></li>
 </ul>
 

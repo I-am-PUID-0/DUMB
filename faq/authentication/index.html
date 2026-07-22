@@ -1869,6 +1869,8 @@
         
   
   
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-mountain" viewBox="0 0 24 24"><path d="m8 3 4 8 5-5 5 15H2z"/></svg>
+  
   <span class="md-ellipsis">
     
   
@@ -5453,8 +5455,11 @@
 <h3 id="can-i-change-my-password">Can I change my password?<a class="headerlink" href="#can-i-change-my-password" title="Permanent link">#</a></h3>
 <p>Currently, password changes require:</p>
 <ol>
-<li>Deleting the existing user</li>
-<li>Creating a new user with the same username</li>
+<li>Creating a temporary second user</li>
+<li>Signing in as the temporary user</li>
+<li>Deleting the original user (users cannot delete their own current account)</li>
+<li>Recreating the original username with the new password</li>
+<li>Signing in as the recreated user and deleting the temporary account</li>
 </ol>
 <div class="admonition note">
 <p class="admonition-title">Future feature</p>
@@ -5462,6 +5467,7 @@
 </div>
 <h3 id="how-many-users-can-i-create">How many users can I create?<a class="headerlink" href="#how-many-users-can-i-create" title="Permanent link">#</a></h3>
 <p>There's no hard limit on the number of user accounts. Create as many as needed for your use case.</p>
+<p>All enabled users currently have the same DUMB permissions. Creating another account does not create a read-only role.</p>
 <hr />
 <h2 id="login-issues">Login issues<a class="headerlink" href="#login-issues" title="Permanent link">#</a></h2>
 <h3 id="invalid-credentials-error">"Invalid credentials" error<a class="headerlink" href="#invalid-credentials-error" title="Permanent link">#</a></h3>
@@ -5471,7 +5477,9 @@
 <li><strong>Account status</strong> - Check if the user is disabled in Settings</li>
 </ul>
 <h3 id="user-account-is-disabled-error">"User account is disabled" error<a class="headerlink" href="#user-account-is-disabled-error" title="Permanent link">#</a></h3>
-<p>An administrator has disabled your account. Contact an admin to re-enable it via Settings <span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"/></svg></span> User Management.</p>
+<p>Another authenticated DUMB user has disabled your account. Contact an operator
+with an enabled account to re-enable it via Settings <span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"/></svg></span> User
+Management.</p>
 <h3 id="session-expires-too-quickly">Session expires too quickly<a class="headerlink" href="#session-expires-too-quickly" title="Permanent link">#</a></h3>
 <p>Access tokens expire after 60 minutes by default. If you're experiencing frequent logouts:</p>
 <ul>
@@ -5519,21 +5527,22 @@
 <ol>
 <li>Stop the DUMB container</li>
 <li>Edit <code>/config/users.json</code></li>
-<li>Set <code>"auth_enabled": false</code></li>
+<li>Set <code>"enabled": false</code></li>
 <li>Start the container</li>
-<li>Access DUMB and create a new user</li>
-<li>Re-enable authentication</li>
+<li>Access DUMB and create a temporary user with a different username</li>
+<li>Re-enable authentication and sign in as the temporary user</li>
+<li>Delete the forgotten account and recreate it with a new password</li>
+<li>Sign in as the recreated account and delete the temporary user</li>
 </ol>
 <h3 id="i-deleted-all-users-and-cant-log-in">I deleted all users and can't log in<a class="headerlink" href="#i-deleted-all-users-and-cant-log-in" title="Permanent link">#</a></h3>
 <p>Follow the lockout recovery steps above to disable authentication, then create a new user.</p>
 <h3 id="the-usersjson-file-is-corrupted">The users.json file is corrupted<a class="headerlink" href="#the-usersjson-file-is-corrupted" title="Permanent link">#</a></h3>
 <p>Replace it with a minimal valid file:</p>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
-<span class="w">  </span><span class="nt">&quot;version&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">2</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;users&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[],</span>
 <span class="w">  </span><span class="nt">&quot;jwt_secret&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;auth_enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;setup_skipped&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;users&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[]</span>
+<span class="w">  </span><span class="nt">&quot;setup_skipped&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span>
 <span class="p">}</span>
 </code></pre></div>
 <p>Then restart DUMB and go through setup again. A new JWT secret will be generated automatically.</p>
@@ -5560,11 +5569,11 @@
 </table>
 <h3 id="how-do-i-authenticate-api-requests">How do I authenticate API requests?<a class="headerlink" href="#how-do-i-authenticate-api-requests" title="Permanent link">#</a></h3>
 <p>Include the access token in the Authorization header:</p>
-<div class="highlight"><pre><span></span><code>curl<span class="w"> </span>-H<span class="w"> </span><span class="s2">&quot;Authorization: Bearer &lt;your_token&gt;&quot;</span><span class="w"> </span>http://localhost:8000/api/...
+<div class="highlight"><pre><span></span><code>curl<span class="w"> </span>-H<span class="w"> </span><span class="s2">&quot;Authorization: Bearer &lt;your_token&gt;&quot;</span><span class="w"> </span>http://localhost:3005/api/...
 </code></pre></div>
 <h3 id="how-do-i-authenticate-websocket-connections">How do I authenticate WebSocket connections?<a class="headerlink" href="#how-do-i-authenticate-websocket-connections" title="Permanent link">#</a></h3>
 <p>Pass the token as a query parameter:</p>
-<div class="highlight"><pre><span></span><code>ws://localhost:8000/ws/status?token=&lt;your_token&gt;
+<div class="highlight"><pre><span></span><code>ws://localhost:3005/ws/status?token=&lt;your_token&gt;
 </code></pre></div>
 <h3 id="my-api-calls-return-401-unauthorized">My API calls return 401 Unauthorized<a class="headerlink" href="#my-api-calls-return-401-unauthorized" title="Permanent link">#</a></h3>
 <ul>

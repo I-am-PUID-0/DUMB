@@ -2211,6 +2211,8 @@
         
   
   
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-mountain" viewBox="0 0 24 24"><path d="m8 3 4 8 5-5 5 15H2z"/></svg>
+  
   <span class="md-ellipsis">
     
   
@@ -5306,10 +5308,14 @@
 <ul>
 <li><strong>JWT token-based security</strong> with access and refresh tokens</li>
 <li><strong>User management</strong> with create, update, and delete capabilities</li>
-<li><strong>First-time setup wizard</strong> for creating the initial admin user</li>
+<li><strong>First-time setup wizard</strong> for creating the initial local user</li>
 <li><strong>Optional authentication</strong> - can be skipped for local/trusted environments</li>
 <li><strong>Session persistence</strong> with "Remember Me" functionality</li>
 </ul>
+<div class="admonition important">
+<p class="admonition-title">No role separation</p>
+<p>DUMB currently has one authenticated privilege level. Every enabled user can reach the same service-control, configuration, and user-management endpoints; usernames are not viewer/editor/admin roles.</p>
+</div>
 <hr />
 <h2 id="authentication-flow">Authentication flow<a class="headerlink" href="#authentication-flow" title="Permanent link">#</a></h2>
 <pre class="mermaid"><code>flowchart TD
@@ -5328,7 +5334,7 @@
 <h2 id="first-time-setup">First-time setup<a class="headerlink" href="#first-time-setup" title="Permanent link">#</a></h2>
 <p>When DUMB starts for the first time, the frontend detects that no users exist and redirects to the setup page.</p>
 <h3 id="setup-options">Setup options<a class="headerlink" href="#setup-options" title="Permanent link">#</a></h3>
-<div class="tabbed-set tabbed-alternate" data-tabs="1:2"><input checked="checked" id="setup-options-create-admin-account" name="__tabbed_1" type="radio" /><input id="setup-options-skip-authentication" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="setup-options-create-admin-account">Create admin account</label><label for="setup-options-skip-authentication">Skip authentication</label></div>
+<div class="tabbed-set tabbed-alternate" data-tabs="1:2"><input checked="checked" id="setup-options-create-first-account" name="__tabbed_1" type="radio" /><input id="setup-options-skip-authentication" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="setup-options-create-first-account">Create first account</label><label for="setup-options-skip-authentication">Skip authentication</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
 <ol>
@@ -5396,7 +5402,9 @@
 </ul>
 <hr />
 <h2 id="user-management">User management<a class="headerlink" href="#user-management" title="Permanent link">#</a></h2>
-<p>Administrators can manage users through the Settings page or API.</p>
+<p>Any authenticated user can manage users through the Settings page or API. This
+is why DUMB should be treated as an operator/admin control plane even when you
+create accounts for multiple people.</p>
 <h3 id="available-operations">Available operations<a class="headerlink" href="#available-operations" title="Permanent link">#</a></h3>
 <table>
 <thead>
@@ -5457,14 +5465,15 @@
 </div>
 <hr />
 <h2 id="api-authentication">API authentication<a class="headerlink" href="#api-authentication" title="Permanent link">#</a></h2>
-<p>When authentication is enabled, all API requests require a valid JWT token in the <code>Authorization</code> header.</p>
+<p>When authentication is enabled, protected API requests require a valid JWT token in the <code>Authorization</code> header.</p>
+<p>The normal browser-facing API is proxied by the DUMB Frontend at port <code>3005</code> under <code>/api</code>. The backend-native form, used only when you deliberately expose port <code>8000</code>, has no <code>/api</code> prefix.</p>
 <h3 id="request-format">Request format<a class="headerlink" href="#request-format" title="Permanent link">#</a></h3>
-<div class="highlight"><pre><span></span><code>curl<span class="w"> </span>-X<span class="w"> </span>GET<span class="w"> </span>http://localhost:8000/api/process/processes<span class="w"> </span><span class="se">\</span>
+<div class="highlight"><pre><span></span><code>curl<span class="w"> </span>-X<span class="w"> </span>GET<span class="w"> </span>http://localhost:3005/api/process/processes<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Authorization: Bearer &lt;access_token&gt;&quot;</span>
 </code></pre></div>
 <h3 id="websocket-authentication">WebSocket authentication<a class="headerlink" href="#websocket-authentication" title="Permanent link">#</a></h3>
 <p>WebSocket connections pass the token as a query parameter:</p>
-<div class="highlight"><pre><span></span><code><span class="kd">const</span><span class="w"> </span><span class="nx">ws</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="ow">new</span><span class="w"> </span><span class="nx">WebSocket</span><span class="p">(</span><span class="s1">&#39;ws://localhost:8000/ws/status?token=&lt;access_token&gt;&#39;</span><span class="p">);</span>
+<div class="highlight"><pre><span></span><code><span class="kd">const</span><span class="w"> </span><span class="nx">ws</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="ow">new</span><span class="w"> </span><span class="nx">WebSocket</span><span class="p">(</span><span class="s1">&#39;ws://localhost:3005/ws/status?token=&lt;access_token&gt;&#39;</span><span class="p">);</span>
 </code></pre></div>
 <h3 id="handling-token-expiration">Handling token expiration<a class="headerlink" href="#handling-token-expiration" title="Permanent link">#</a></h3>
 <p>When an access token expires, the API returns a <code>401 Unauthorized</code> response. The frontend automatically:</p>
@@ -5479,17 +5488,16 @@
 <h2 id="configuration">Configuration<a class="headerlink" href="#configuration" title="Permanent link">#</a></h2>
 <p>Authentication state is stored in <code>/config/users.json</code>:</p>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
-<span class="w">  </span><span class="nt">&quot;version&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">2</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;jwt_secret&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;auto-generated-secret-key&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;auth_enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;setup_skipped&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;users&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
 <span class="w">    </span><span class="p">{</span>
 <span class="w">      </span><span class="nt">&quot;username&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;admin&quot;</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;hashed_password&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;$2b$12$...&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;password&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;$2b$12$...&quot;</span><span class="p">,</span>
 <span class="w">      </span><span class="nt">&quot;disabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span>
 <span class="w">    </span><span class="p">}</span>
-<span class="w">  </span><span class="p">]</span>
+<span class="w">  </span><span class="p">],</span>
+<span class="w">  </span><span class="nt">&quot;jwt_secret&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;auto-generated-secret-key&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;setup_skipped&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span>
 <span class="p">}</span>
 </code></pre></div>
 <table>
@@ -5501,24 +5509,20 @@
 </thead>
 <tbody>
 <tr>
-<td><code>version</code></td>
-<td>Schema version for migrations</td>
+<td><code>enabled</code></td>
+<td>Whether authentication is required</td>
+</tr>
+<tr>
+<td><code>users</code></td>
+<td>Array of user accounts; <code>password</code> contains the bcrypt hash, not plain text</td>
 </tr>
 <tr>
 <td><code>jwt_secret</code></td>
 <td>Auto-generated secret for signing tokens</td>
 </tr>
 <tr>
-<td><code>auth_enabled</code></td>
-<td>Whether authentication is required</td>
-</tr>
-<tr>
 <td><code>setup_skipped</code></td>
 <td>Whether initial setup was skipped</td>
-</tr>
-<tr>
-<td><code>users</code></td>
-<td>Array of user accounts</td>
 </tr>
 </tbody>
 </table>
@@ -5545,10 +5549,14 @@
 <ol>
 <li>Stop the DUMB container</li>
 <li>Edit <code>/config/users.json</code></li>
-<li>Set <code>"auth_enabled": false</code></li>
+<li>Set <code>"enabled": false</code></li>
 <li>Restart the container</li>
 <li>Access the dashboard and create a new user or reset your password</li>
 </ol>
+<p>Because the current API has no password-change endpoint, recovery means creating
+a temporary user, re-enabling authentication, signing in as that user, and
+recreating the forgotten account. See the <a href="../../faq/authentication/#i-forgot-my-password-how-do-i-reset-it">Authentication FAQ</a>
+for the safe sequence.</p>
 <hr />
 <h2 id="related-pages">Related pages<a class="headerlink" href="#related-pages" title="Permanent link">#</a></h2>
 <ul>

@@ -1869,6 +1869,8 @@
         
   
   
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-mountain" viewBox="0 0 24 24"><path d="m8 3 4 8 5-5 5 15H2z"/></svg>
+  
   <span class="md-ellipsis">
     
   
@@ -3290,10 +3292,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#add-and-configure-a-user-inside-the-lxc-required" class="md-nav__link">
+  <a href="#add-and-configure-a-docker-operator-inside-the-lxc" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Add and Configure a User inside the LXC (Required)
+        Add and configure a Docker operator inside the LXC
       
     </span>
   </a>
@@ -3334,10 +3336,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#update-docker-bind-mount-important" class="md-nav__link">
+  <a href="#use-the-current-dumb-mounts" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Update Docker Bind Mount (Important)
+        Use the current DUMB mounts
       
     </span>
   </a>
@@ -4924,10 +4926,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#add-and-configure-a-user-inside-the-lxc-required" class="md-nav__link">
+  <a href="#add-and-configure-a-docker-operator-inside-the-lxc" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Add and Configure a User inside the LXC (Required)
+        Add and configure a Docker operator inside the LXC
       
     </span>
   </a>
@@ -4968,10 +4970,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#update-docker-bind-mount-important" class="md-nav__link">
+  <a href="#use-the-current-dumb-mounts" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Update Docker Bind Mount (Important)
+        Use the current DUMB mounts
       
     </span>
   </a>
@@ -5089,7 +5091,10 @@
 </div>
 <hr />
 <h2 id="lxc-configuration-for-docker--fuse-support">LXC Configuration for Docker + Fuse Support<a class="headerlink" href="#lxc-configuration-for-docker--fuse-support" title="Permanent link">#</a></h2>
-<p>To ensure DUMB works correctly inside your LXC container (especially with Docker, rclone, and bind mounts), you’ll need to update both the <strong>container config</strong>, the <strong>Proxmox host</strong>, and optionally configure persistence across reboots.</p>
+<p>To run nested Docker and FUSE workflows inside an LXC, update both the
+<strong>container config</strong> and the <strong>Proxmox host</strong>, then make propagation persistent.
+These settings materially reduce LXC isolation. Use a dedicated, trusted LXC;
+do not treat it as a strong security boundary for untrusted workloads.</p>
 <hr />
 <h3 id="update-the-lxc-config-file">Update the LXC Config File<a class="headerlink" href="#update-the-lxc-config-file" title="Permanent link">#</a></h3>
 <div class="admonition note">
@@ -5191,10 +5196,11 @@ systemctl<span class="w"> </span><span class="nb">enable</span><span class="w"> 
 </li>
 </ol>
 <hr />
-<h2 id="add-and-configure-a-user-inside-the-lxc-required">Add and Configure a User inside the LXC (Required)<a class="headerlink" href="#add-and-configure-a-user-inside-the-lxc-required" title="Permanent link">#</a></h2>
-<div class="admonition warning">
-<p class="admonition-title">DUMB must be ran as any user other than root</p>
-</div>
+<h2 id="add-and-configure-a-docker-operator-inside-the-lxc">Add and configure a Docker operator inside the LXC<a class="headerlink" href="#add-and-configure-a-docker-operator-inside-the-lxc" title="Permanent link">#</a></h2>
+<p>Use a non-root host/LXC account to manage Compose and set its UID/GID as DUMB's
+<code>PUID</code>/<code>PGID</code>. The container entrypoint itself still starts with the privileges
+declared by the maintained Compose file so it can prepare users, devices, and
+mounts; <code>PUID</code>/<code>PGID</code> control the managed service identity.</p>
 <ol>
 <li>
 <p><strong>Start/Restart the container:</strong></p>
@@ -5205,29 +5211,19 @@ systemctl<span class="w"> </span><span class="nb">enable</span><span class="w"> 
 </div>
 </li>
 <li>
-<p>If not already created in the LXC, add a user (<code>ubuntu</code>) and configure passwordless sudo:</p>
+<p>If not already created in the LXC, add a user such as <code>ubuntu</code>:</p>
 <div class="highlight"><pre><span></span><code>adduser<span class="w"> </span>ubuntu
 usermod<span class="w"> </span>-aG<span class="w"> </span>sudo<span class="w"> </span>ubuntu
 </code></pre></div>
+<p>Avoid adding a broad passwordless-sudo rule solely for DUMB.</p>
 </li>
 <li>
-<p>Enable passwordless sudo (Optional):
-    <div class="highlight"><pre><span></span><code>echo &quot;ubuntu ALL=(ALL) NOPASSWD:ALL&quot; &gt; /etc/sudoers.d/ubuntu
-chmod 440 /etc/sudoers.d/ubuntu
-</code></pre></div></p>
-<div class="admonition tip">
-<p class="admonition-title">Tip</p>
-<p>To find the UID and GID (needed for <code>PUID</code> and <code>PGID</code> in your DUMB config):
+<p>Find the UID/GID needed for Compose <code>PUID</code> and <code>PGID</code>:</p>
 <div class="highlight"><pre><span></span><code>id<span class="w"> </span>ubuntu
-</code></pre></div></p>
-<p>Example output:
-<div class="highlight"><pre><span></span><code><span class="nv">uid</span><span class="o">=</span><span class="m">1000</span><span class="o">(</span>ubuntu<span class="o">)</span><span class="w"> </span><span class="nv">gid</span><span class="o">=</span><span class="m">1000</span><span class="o">(</span>ubuntu<span class="o">)</span>
-</code></pre></div></p>
-<p>Use these values in your <code>dumb_config.json</code> or docker-compose:
-<div class="highlight"><pre><span></span><code><span class="nt">&quot;puid&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1000</span><span class="p">,</span>
-<span class="nt">&quot;pgid&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1000</span><span class="p">,</span>
-</code></pre></div></p>
-</div>
+</code></pre></div>
+<p>Example output:</p>
+<div class="highlight"><pre><span></span><code>uid=1000(ubuntu) gid=1000(ubuntu)
+</code></pre></div>
 </li>
 </ol>
 <hr />
@@ -5239,7 +5235,7 @@ chmod 440 /etc/sudoers.d/ubuntu
 <ol>
 <li>
 <p>Switch to the <code>ubuntu</code> user:</p>
-<div class="highlight"><pre><span></span><code>su<span class="w"> </span>ubuntu
+<div class="highlight"><pre><span></span><code>su<span class="w"> </span>-<span class="w"> </span>ubuntu
 </code></pre></div>
 </li>
 <li>
@@ -5249,7 +5245,7 @@ chmod 440 /etc/sudoers.d/ubuntu
 </li>
 <li>
 <p>Create the DUMB directories.
-    <div class="highlight"><pre><span></span><code>mkdir<span class="w"> </span>-p<span class="w"> </span>DUMB/config<span class="w"> </span>DUMB/log<span class="w"> </span>DUMB/Zurg/RD<span class="w"> </span>DUMB/Riven/data<span class="w"> </span>DUMB/Riven/mnt<span class="w"> </span>DUMB/PostgreSQL/data<span class="w"> </span>DUMB/pgAdmin4/data<span class="w"> </span>DUMB/Zilean/data
+    <div class="highlight"><pre><span></span><code>mkdir<span class="w"> </span>-p<span class="w"> </span>DUMB/config<span class="w"> </span>DUMB/log<span class="w"> </span>DUMB/data<span class="w"> </span>DUMB/mnt/debrid
 </code></pre></div></p>
 </li>
 </ol>
@@ -5270,9 +5266,9 @@ docker<span class="w"> </span>compose<span class="w"> </span>version
 </li>
 <li>
 <p>Add your user to the docker group:
-    <div class="highlight"><pre><span></span><code>sudo<span class="w"> </span>groupadd<span class="w"> </span>docker
-sudo<span class="w"> </span>usermod<span class="w"> </span>-aG<span class="w"> </span>docker<span class="w"> </span><span class="nv">$USER</span>
+    <div class="highlight"><pre><span></span><code>sudo<span class="w"> </span>usermod<span class="w"> </span>-aG<span class="w"> </span>docker<span class="w"> </span><span class="nv">$USER</span>
 </code></pre></div></p>
+<p>Log out and back in before running Docker without <code>sudo</code>.</p>
 </li>
 </ol>
 <hr />
@@ -5309,17 +5305,15 @@ You might need to restart the container if it timed out. </p>
 </div>
 <p>For more, see the <a href=".././portainer/">Portainer Deployment Guide</a>.</p>
 <hr />
-<h2 id="update-docker-bind-mount-important">Update Docker Bind Mount (Important)<a class="headerlink" href="#update-docker-bind-mount-important" title="Permanent link">#</a></h2>
-<p>When launching DUMB or your media server, make sure the following mount is used:</p>
-<p>Replace:
-<div class="highlight"><pre><span></span><code><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/home/username/docker/DUMB/Zurg/mnt:/data:shared</span>
-</code></pre></div></p>
-<p>With:
-<div class="highlight"><pre><span></span><code><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/mnt/docker-mounts:/data:rshared</span>
-</code></pre></div></p>
-<div class="admonition tip">
-<p class="admonition-title">This ensures proper visibility between <code>zurg</code>, <code>rclone</code>, and your media server inside the LXC container.</p>
-</div>
+<h2 id="use-the-current-dumb-mounts">Use the current DUMB mounts<a class="headerlink" href="#use-the-current-dumb-mounts" title="Permanent link">#</a></h2>
+<p>Inside the Docker-capable LXC, use the maintained four-mount layout:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">volumes</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/home/ubuntu/docker/DUMB/config:/config</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/home/ubuntu/docker/DUMB/log:/log</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/home/ubuntu/docker/DUMB/data:/data</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/mnt/docker-mounts:/mnt/debrid:rshared</span>
+</code></pre></div>
+<p>The <code>/data</code> mount persists service application state. <code>/mnt/debrid</code> is the separate mount/link tree; give that mount <code>rshared</code> propagation only when DUMB-created FUSE/rclone submounts must appear outside the DUMB container. Consumer containers should normally receive the same host path at <code>/mnt/debrid</code> with <code>rslave</code> propagation.</p>
 <hr />
 <h2 id="next-steps">Next Steps<a class="headerlink" href="#next-steps" title="Permanent link">#</a></h2>
 <p>Now that Docker (and optionally Portainer) are installed, continue with:</p>

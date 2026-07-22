@@ -1869,6 +1869,8 @@
         
   
   
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-mountain" viewBox="0 0 24 24"><path d="m8 3 4 8 5-5 5 15H2z"/></svg>
+  
   <span class="md-ellipsis">
     
   
@@ -4822,7 +4824,7 @@
 <ul>
 <li><em>Embedded media servers</em> — Plex, Jellyfin, and Emby run inside the same container, ensuring seamless access to mounted content and full internal control</li>
 <li><em>Service coordination</em> — via the internal DUMB API and real-time config management</li>
-<li><em>Automated acquisition</em> — with core services for discovery and orchestrators like Riven, CLI Debrid, Decypharr, NzbDAV, and AltMount</li>
+<li><em>Automated acquisition</em> — with Riven, CLI Debrid, and Decypharr orchestration plus NzbDAV and AltMount Usenet workflows</li>
 <li><em>Cloud storage mounting</em> — through rclone mounts direct to debrid (e.g., Real-Debrid WebDAV) or utilizing Zurg's WebDAV</li>
 <li><em>Arr automation</em> — Sonarr, Radarr, Lidarr, and Whisparr handle queues, renaming, and library organization</li>
 <li><em>Library management</em> — using symlinks, metadata enrichment, and optional server updates</li>
@@ -4834,8 +4836,10 @@
 <div class="admonition info">
 <p class="admonition-title">Combined workflows</p>
 <p>You can attach a single Arr instance to multiple workflows by setting
-<code>core_service</code> to a list (for example <code>["decypharr", "nzbdav", "altmount"]</code>). When combined,
-DUMB switches Arr root folders to <code>/mnt/debrid/combined_symlinks/&lt;slug&gt;</code>.</p>
+<code>core_service</code> to a list (for example <code>["decypharr", "nzbdav", "altmount"]</code>).
+Combinations that include Decypharr plus NzbDAV or AltMount use
+<code>/mnt/debrid/combined_symlinks/&lt;slug&gt;</code> for the Decypharr-managed Arr root.
+AltMount's own import strategy and Arr path still require operator review.</p>
 </div>
 <hr />
 <h2 id="architecture-at-a-glance">Architecture at a Glance<a class="headerlink" href="#architecture-at-a-glance" title="Permanent link">#</a></h2>

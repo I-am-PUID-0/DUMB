@@ -1869,6 +1869,8 @@
         
   
   
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-mountain" viewBox="0 0 24 24"><path d="m8 3 4 8 5-5 5 15H2z"/></svg>
+  
   <span class="md-ellipsis">
     
   
@@ -5077,16 +5079,27 @@
 </div>
 <hr />
 <h3 id="what-happens-when-i-update-dumb">What happens when I update DUMB?<a class="headerlink" href="#what-happens-when-i-update-dumb" title="Permanent link">#</a></h3>
-<p>The image maintained for DUMB is automatically updated when one of the embedded services (like <code>riven_backend</code>, <code>cli_debrid</code>, etc.) have a new release available; thus, reducing the need to update to the latest release inside the container. For more info, see the <a href="../../faq/dumb/#does-the-dumb-image-have-the-latest-version-of-x">DUMB FAQ</a> regarding finding what versions are built into the image. </p>
+<p>Published DUMB images include a tested snapshot of many service runtimes, but
+image publication does not guarantee an immediate rebuild for every upstream
+release. For more info, see the <a href="../../faq/dumb/#does-the-dumb-image-have-the-latest-version-of-x">DUMB FAQ</a>
+for how bundled and runtime-installed versions differ.</p>
 <p>Alternatively, DUMB also includes <strong>auto-update</strong> functionality for most <a href="../../services/">services</a>. Depending on your configuration (<code>auto_update</code> and <code>auto_update_interval</code>), the system will check for new versions of services like Zurg, Riven, Zilean, etc.</p>
 <p>You can configure update frequency and behavior in each service’s section of <code>dumb_config.json</code>.</p>
 <hr />
 <h3 id="is-dumb-secure">Is DUMB secure?<a class="headerlink" href="#is-dumb-secure" title="Permanent link">#</a></h3>
-<p>DUMB is intended to run on your <strong>local or private server</strong>. Most services are, by default, bound to <code>127.0.0.1</code> and not exposed publicly unless explicitly configured by exposing ports in the Docker compose or changing the bound address.</p>
+<p>DUMB is intended to run on a <strong>local or deliberately protected server</strong>. The
+maintained Compose file publishes only the frontend on port <code>3005</code>; the backend
+API is loopback-only and managed service ports are not host-published unless you
+add them.</p>
 <div class="admonition warning">
 <p class="admonition-title">Security Considerations</p>
-<p>Most of the web-based UIs and APIs lack any form of authentication. </p>
-<p>If you're exposing services externally (e.g., via Traefik or NGINX), consider using authentication layers like OAuth2, HTTPS, and firewalls.</p>
+<p>DUMB authentication protects the frontend and backend API, but it does not
+automatically add authentication to every upstream service UI or to DUMB's
+generated embedded Traefik routes. Some upstream apps have their own login;
+others do not.</p>
+<p>Before external exposure, enable DUMB auth, protect each published route
+with upstream auth, TPA/SSO, Cloudflare Access, or another verified layer,
+use HTTPS, and restrict unnecessary ports with a firewall.</p>
 </div>
 <hr />
 <h3 id="can-i-use-my-own-custom-version-of-a-service">Can I use my own custom version of a service?<a class="headerlink" href="#can-i-use-my-own-custom-version-of-a-service" title="Permanent link">#</a></h3>
@@ -5095,17 +5108,22 @@
 <h3 id="can-i-back-up-my-dumb-setup">Can I back up my DUMB setup?<a class="headerlink" href="#can-i-back-up-my-dumb-setup" title="Permanent link">#</a></h3>
 <p>Absolutely. The most important files to back up are:</p>
 <ul>
-<li><code>dumb_config.json</code></li>
-<li>Any data directories (e.g., <code>/riven/backend/data</code>, <code>/zilean/app/data</code>, <code>/pgadmin/data</code>, <code>postgres_data</code>, <code>plex</code>, etc)</li>
+<li><code>/config</code> (including <code>dumb_config.json</code>, users, feature state, and jobs)</li>
+<li><code>/data</code> (the current consolidated persistence root for managed service data)</li>
+<li>curated symlink/library state below <code>/mnt/debrid</code> when it cannot be recreated</li>
+<li>Any deliberately configured external/direct service-data mounts</li>
 </ul>
 <div class="admonition tip">
 <p class="admonition-title">Backup Strategy</p>
 <p>Regularly backing these up allows you to quickly restore your environment.</p>
 </div>
 <div class="admonition warning">
-<p class="admonition-title">Exclude Mounted Paths</p>
-<p>Be sure to exclude any mounted paths (e.g., /mnt/debrid) when backing up. 
-Otherwise, you'll unintentionally download and archive the entire contents of your debrid services, which can be massive and unnecessary.</p>
+<p class="admonition-title">Separate links from live mounts</p>
+<p>Do not recursively archive a live FUSE/rclone provider submount below
+<code>/mnt/debrid</code>; that can traverse and download the remote library. Back up
+only the ordinary symlink/manifest directories you need, or stop/unmount the
+provider and use a backup tool that does not follow symlink targets or cross
+filesystem boundaries.</p>
 <p>Don't believe me? Just ask Mr. Krabs.</p>
 </div>
 <hr />
@@ -5114,7 +5132,7 @@ Otherwise, you'll unintentionally download and archive the entire contents of yo
 <hr />
 <h3 id="whats-the-difference-between-using-rclonezurg-mounts-vs-symlinks-riven-cli-debrid-decypharr-etc-in-my-media-server">What's the difference between using rclone/Zurg mounts vs. symlinks (Riven, CLI Debrid, Decypharr, etc.) in my media server?<a class="headerlink" href="#whats-the-difference-between-using-rclonezurg-mounts-vs-symlinks-riven-cli-debrid-decypharr-etc-in-my-media-server" title="Permanent link">#</a></h3>
 <p>DUMB supports <strong>two methods of exposing content to your media server</strong>, each with its own use case:</p>
-<div class="tabbed-set tabbed-alternate" data-tabs="1:2"><input checked="checked" id="whats-the-difference-between-using-rclonezurg-mounts-vs-symlinks-riven-cli-debrid-decypharr-etc-in-my-media-server-direct-mount-zurgrclone" name="__tabbed_1" type="radio" /><input id="whats-the-difference-between-using-rclonezurg-mounts-vs-symlinks-riven-cli-debrid-decypharr-etc-in-my-media-server-symlinked-mount-rivencli-debriddecypharr" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="whats-the-difference-between-using-rclonezurg-mounts-vs-symlinks-riven-cli-debrid-decypharr-etc-in-my-media-server-direct-mount-zurgrclone">Direct Mount (Zurg/rclone)</label><label for="whats-the-difference-between-using-rclonezurg-mounts-vs-symlinks-riven-cli-debrid-decypharr-etc-in-my-media-server-symlinked-mount-rivencli-debriddecypharr">Symlinked Mount (Riven/CLI Debrid/Decypharr)</label></div>
+<div class="tabbed-set tabbed-alternate" data-tabs="1:2"><input checked="checked" id="whats-the-difference-between-using-rclonezurg-mounts-vs-symlinks-riven-cli-debrid-decypharr-etc-in-my-media-server-direct-mount-zurgrclone" name="__tabbed_1" type="radio" /><input id="whats-the-difference-between-using-rclonezurg-mounts-vs-symlinks-riven-cli-debrid-decypharr-etc-in-my-media-server-symlinked-mount-rivencli-debriddecypharrnzbdav" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="whats-the-difference-between-using-rclonezurg-mounts-vs-symlinks-riven-cli-debrid-decypharr-etc-in-my-media-server-direct-mount-zurgrclone">Direct Mount (Zurg/rclone)</label><label for="whats-the-difference-between-using-rclonezurg-mounts-vs-symlinks-riven-cli-debrid-decypharr-etc-in-my-media-server-symlinked-mount-rivencli-debriddecypharrnzbdav">Symlinked Mount (Riven/CLI Debrid/Decypharr/NzbDAV)</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
 <p>Mounting the WebDAV or remote storage directly using <code>rclone</code> (which often connects to a Zurg instance) gives you full access to all files in your debrid account.</p>
@@ -5166,11 +5184,11 @@ Otherwise, you'll unintentionally download and archive the entire contents of yo
 <div class="highlight"><pre><span></span><code><span class="l l-Scalar l-Scalar-Plain">/docker/DUMB/mnt/debrid:/docker/DUMB/mnt/debrid</span>
 </code></pre></div>
 <div class="admonition note">
-<p class="admonition-title">This differs from the the default <code>/docker/DUMB/mnt/debrid:/mnt/debrid</code> internal path for the container by prepending <code>/docker/DUMB</code> or whatever the host side absolute path is for the <code>/mnt/debrid</code> directory</p>
+<p class="admonition-title">This differs from the default <code>/docker/DUMB/mnt/debrid:/mnt/debrid</code> mapping by preserving the host's absolute path inside the container.</p>
 </div>
 <p>Then, inside the <code>dumb_config.json</code>, you would also need to make sure you define the updated internal path for symlinks:</p>
 <div class="highlight"><pre><span></span><code><span class="nt">&quot;riven_backend&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<span class="w">  </span><span class="nt">&quot;symlink_library_path&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/docker/DUMB/mnt/debrid/riven_symlinks&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;symlink_library_path&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/docker/DUMB/mnt/debrid/riven_symlinks&quot;</span>
 <span class="p">}</span>
 </code></pre></div>
 <p>This ensures that any symlinks Riven creates will remain valid on the host.</p>
@@ -5184,12 +5202,12 @@ Otherwise, you'll unintentionally download and archive the entire contents of yo
 <p class="admonition-title">The below is the default path used in the container when configured through the onboarding process</p>
 </div>
 <div class="highlight"><pre><span></span><code><span class="nt">&quot;riven_backend&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<span class="w">  </span><span class="nt">&quot;symlink_library_path&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/mnt/debrid/riven_symlinks&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;symlink_library_path&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/mnt/debrid/riven_symlinks&quot;</span>
 <span class="p">}</span>
 </code></pre></div>
 <p>Using standardized top-level paths makes your setup more portable and ensures symlinks will resolve correctly regardless of the underlying directory structure.</p>
 <div class="admonition tip">
-<p class="admonition-title">also review the <a href="../../services/dependent/rclone/#-default-mount-structure">Default Mount Structure</a> and <a href="../../services/dependent/rclone/#-mount-propagation">Mount Propagation</a> sections for additional details!</p>
+<p class="admonition-title">also review the <a href="../../services/dependent/rclone/#default-mount-structure">Default Mount Structure</a> and <a href="../../services/dependent/rclone/#mount-propagation">Mount Propagation</a> sections for additional details!</p>
 </div>
 <hr />
 <h2 id="related-pages">Related Pages<a class="headerlink" href="#related-pages" title="Permanent link">#</a></h2>

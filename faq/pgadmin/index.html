@@ -1869,6 +1869,8 @@
         
   
   
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-mountain" viewBox="0 0 24 24"><path d="m8 3 4 8 5-5 5 15H2z"/></svg>
+  
   <span class="md-ellipsis">
     
   
@@ -4391,17 +4393,6 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#-optional-use-pgagent-to-schedule-tasks" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        ⏱ Optional: Use pgAgent to Schedule Tasks
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#example-scheduled-backups-with-pgagent" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4409,6 +4400,23 @@
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="Example: Scheduled Backups with pgAgent">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#test-a-restore" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Test a restore
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -4909,17 +4917,6 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#-optional-use-pgagent-to-schedule-tasks" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        ⏱ Optional: Use pgAgent to Schedule Tasks
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#example-scheduled-backups-with-pgagent" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4927,6 +4924,23 @@
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="Example: Scheduled Backups with pgAgent">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#test-a-restore" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Test a restore
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -5031,7 +5045,7 @@
 <li>Explore and modify database tables and data</li>
 <li>Run SQL queries manually using the <strong>Query Tool</strong></li>
 <li>Schedule tasks using <strong>pgAgent</strong> (optional tool inside pgAdmin)</li>
-<li>View the <a href="../../services/optional/pgadmin/#-system_stats">System Stats</a> inside PostgreSQL</li>
+<li>View the <a href="../../services/optional/pgadmin/#system_stats">System Stats</a> inside PostgreSQL</li>
 </ul>
 <hr />
 <h2 id="using-pgadmins-query-tool">Using pgAdmin’s Query Tool<a class="headerlink" href="#using-pgadmins-query-tool" title="Permanent link">#</a></h2>
@@ -5124,51 +5138,130 @@ Ensure you’ve backed up anything you want to keep before proceeding.</p>
 <blockquote>
 <p>For more advanced backup configuration and explanation of options, see the <a href="https://www.pgadmin.org/docs/pgadmin4/latest/backup_dialog.html">pgAdmin Backup Dialog Documentation</a>.</p>
 </blockquote>
-<h2 id="-optional-use-pgagent-to-schedule-tasks">⏱ Optional: Use pgAgent to Schedule Tasks<a class="headerlink" href="#-optional-use-pgagent-to-schedule-tasks" title="Permanent link">#</a></h2>
-<p>pgAdmin comes with <strong>pgAgent</strong>, which lets you create recurring jobs.</p>
-<blockquote>
-<p>This is entirely optional and not required to use DUMB.</p>
-</blockquote>
 <h2 id="example-scheduled-backups-with-pgagent">Example: Scheduled Backups with pgAgent<a class="headerlink" href="#example-scheduled-backups-with-pgagent" title="Permanent link">#</a></h2>
+<p>DUMB includes the pgAgent package, creates its PostgreSQL extension, and starts
+the agent when pgAdmin is enabled. The example below creates daily, compressed
+custom-format dumps for every connectable non-template database, backs up global
+roles, and removes files older than 14 days.</p>
+<div class="admonition note">
+<p class="admonition-title">Where the backups are stored</p>
+<p>This example writes to <code>/pgadmin/data/backups</code> inside DUMB. In the maintained
+volume layout that is persisted under <code>/data/pgadmin/backups</code>.</p>
+<p>A backup stored beside the same container data is not an off-system backup.
+Include the host-side <code>data/pgadmin/backups</code> directory in separate storage,
+snapshot, or replication so one disk or filesystem failure cannot destroy
+both PostgreSQL and its dumps.</p>
+</div>
 <ol>
-<li>Navigate to <code>pgAgent Jobs</code> under your connected DUMB server.</li>
+<li>Enable and start both <strong>PostgreSQL</strong> and <strong>pgAdmin</strong> in DUMB.</li>
+<li>Log in to pgAdmin, connect to the preconfigured <strong>DUMB</strong> server, and expand
+   <code>pgAgent Jobs</code>. If the node does not appear, refresh the server tree and check
+   the PostgreSQL, pgAdmin, and pgAgent service logs before continuing.</li>
 <li>
-<p>Right-click → <code>Create → pgAgent Job</code></p>
+<p>Right-click <code>pgAgent Jobs</code> and select <strong>Create → pgAgent Job</strong>.</p>
 <p><img alt="Create Job" src="../../assets/images/pgadmin/pgadmin-create-job.png" /></p>
 </li>
 <li>
-<p>Enter the job name and any comments.</p>
+<p>Name the job <code>DUMB PostgreSQL backups</code>, enable it, and leave <strong>Host Agent</strong>
+   blank unless this database is managed by more than one pgAgent host.</p>
 <p><img alt="Add Job" src="../../assets/images/pgadmin/pgadmin-add-job.png" /></p>
 </li>
 <li>
-<p>Go to the <strong>Steps</strong> tab and click the <code>+</code> button to <strong>Add row</strong>.</p>
-</li>
-<li>
-<p>Edit the new row to configure a backup step.</p>
+<p>Open <strong>Steps</strong>, add a step, and use these values:</p>
+<ul>
+<li><strong>Name:</strong> <code>01-backup-all-databases</code></li>
+<li><strong>Kind:</strong> <code>Batch</code></li>
+<li><strong>Enabled:</strong> Yes</li>
+<li><strong>On error:</strong> Fail</li>
+</ul>
 <p><img alt="Edit Step" src="../../assets/images/pgadmin/pgadmin-edit-step.png" /></p>
 </li>
 <li>
-<p>Enter a step name, set <code>Kind</code> = <code>Batch</code>, and paste your backup command in the <strong>Code</strong> tab:</p>
-<div class="highlight"><pre><span></span><code><span class="n">pg_dump</span><span class="w"> </span><span class="c1">--username=DUMB --dbname=riven --clean --file=/pgadmin/data/riven_backup-`date +%Y-%m-%d-%H-%M-%S`.sql</span>
-<span class="n">pg_dump</span><span class="w"> </span><span class="c1">--username=DUMB --dbname=zilean --clean --file=/pgadmin/data/zilean_backup-`date +%Y-%m-%d-%H-%M-%S`.sql</span>
+<p>Paste this shell script into the step's <strong>Code</strong> tab. Change
+   <code>retention_days</code> if required:</p>
+<div class="highlight"><pre><span></span><code><span class="ch">#!/bin/sh</span>
+<span class="nb">set</span><span class="w"> </span>-eu
+
+<span class="nv">backup_dir</span><span class="o">=</span>/pgadmin/data/backups
+<span class="nv">retention_days</span><span class="o">=</span><span class="m">14</span>
+<span class="nv">timestamp</span><span class="o">=</span><span class="k">$(</span>date<span class="w"> </span>-u<span class="w"> </span>+%Y%m%dT%H%M%SZ<span class="k">)</span>
+<span class="nv">socket_dir</span><span class="o">=</span>/run/postgresql
+
+mkdir<span class="w"> </span>-p<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$backup_dir</span><span class="s2">&quot;</span>
+
+<span class="c1"># Preserve cluster-level roles in addition to the per-database archives.</span>
+pg_dumpall<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--host<span class="o">=</span><span class="s2">&quot;</span><span class="nv">$socket_dir</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--username<span class="o">=</span>DUMB<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--no-password<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--globals-only<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--file<span class="o">=</span><span class="s2">&quot;</span><span class="nv">$backup_dir</span><span class="s2">/globals-</span><span class="nv">$timestamp</span><span class="s2">.sql&quot;</span>
+
+psql<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--host<span class="o">=</span><span class="s2">&quot;</span><span class="nv">$socket_dir</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--username<span class="o">=</span>DUMB<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--dbname<span class="o">=</span>postgres<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--no-password<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--tuples-only<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--no-align<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--command<span class="o">=</span><span class="s2">&quot;SELECT datname FROM pg_database WHERE datallowconn AND NOT datistemplate ORDER BY datname&quot;</span><span class="w"> </span><span class="p">|</span>
+<span class="k">while</span><span class="w"> </span><span class="nv">IFS</span><span class="o">=</span><span class="w"> </span><span class="nb">read</span><span class="w"> </span>-r<span class="w"> </span>database<span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">  </span><span class="nv">safe_name</span><span class="o">=</span><span class="k">$(</span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;%s&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$database</span><span class="s2">&quot;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>tr<span class="w"> </span>-c<span class="w"> </span><span class="s1">&#39;A-Za-z0-9_.-&#39;</span><span class="w"> </span><span class="s1">&#39;_&#39;</span><span class="k">)</span>
+<span class="w">  </span>pg_dump<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--host<span class="o">=</span><span class="s2">&quot;</span><span class="nv">$socket_dir</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--username<span class="o">=</span>DUMB<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--no-password<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--format<span class="o">=</span>custom<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--file<span class="o">=</span><span class="s2">&quot;</span><span class="nv">$backup_dir</span><span class="s2">/</span><span class="nv">$safe_name</span><span class="s2">-</span><span class="nv">$timestamp</span><span class="s2">.backup&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span><span class="s2">&quot;</span><span class="nv">$database</span><span class="s2">&quot;</span>
+<span class="k">done</span>
+
+find<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$backup_dir</span><span class="s2">&quot;</span><span class="w"> </span>-type<span class="w"> </span>f<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="se">\(</span><span class="w"> </span>-name<span class="w"> </span><span class="s1">&#39;*.backup&#39;</span><span class="w"> </span>-o<span class="w"> </span>-name<span class="w"> </span><span class="s1">&#39;globals-*.sql&#39;</span><span class="w"> </span><span class="se">\)</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-mtime<span class="w"> </span><span class="s2">&quot;+</span><span class="nv">$retention_days</span><span class="s2">&quot;</span><span class="w"> </span>-delete
 </code></pre></div>
 <p><img alt="Step Code" src="../../assets/images/pgadmin/pgadmin-backup-step-code.png" /></p>
+<p>DUMB's default local-socket authentication allows its <code>DUMB</code> database role
+to run these commands without embedding a password in the job. If you have
+customized <code>pg_hba.conf</code> to require a password for local connections, use a
+root-owned/libpq <code>.pgpass</code> file with mode <code>0600</code>; do not paste the PostgreSQL
+password into the pgAgent job.</p>
 </li>
 <li>
-<p>Go to the <strong>Schedules</strong> tab to define when the backup should run.</p>
+<p>Open <strong>Schedules</strong>, add a schedule, enable it, and choose a start time when
+   database activity is normally low.</p>
 <p><img alt="Add Schedule" src="../../assets/images/pgadmin/pgadmin-schedule-add.png" /></p>
 </li>
 <li>
-<p>On the <strong>Repeat</strong> tab, set a repeat interval like daily at midnight.</p>
+<p>On <strong>Repeat</strong>, select every day and the desired hour/minute. pgAgent schedule
+   values use the DUMB container's timezone.</p>
 <p><img alt="Repeat Tab" src="../../assets/images/pgadmin/pgadmin-schedule-repeat.png" /></p>
 </li>
 <li>
-<p>Save your pgAgent job.</p>
+<p>Save the job, right-click it, and select <strong>Run now</strong>. Confirm that the run is
+   successful and that <code>.backup</code> files plus a <code>globals-*.sql</code> file appeared in
+   <code>/pgadmin/data/backups</code>.</p>
 </li>
 </ol>
-<div class="admonition tip">
-<p class="admonition-title">Backups are saved in <code>/pgadmin/data</code> by default.</p>
-</div>
+<h3 id="test-a-restore">Test a restore<a class="headerlink" href="#test-a-restore" title="Permanent link">#</a></h3>
+<p>A successful job only proves that files were written. Periodically restore one
+of the application archives into a disposable database:</p>
+<ol>
+<li>In pgAdmin, right-click <strong>Databases</strong>, select <strong>Create → Database</strong>, and create
+   a clearly temporary database such as <code>restore_test</code>.</li>
+<li>Right-click that database and select <strong>Restore</strong>.</li>
+<li>Select the matching <code>.backup</code> file from <code>/pgadmin/data/backups</code>, choose
+   <strong>Custom or tar</strong>, and enable <strong>Exit on error</strong>.</li>
+<li>Run the restore and inspect representative tables or application records.</li>
+<li>Drop only the disposable <code>restore_test</code> database after validation.</li>
+</ol>
+<p>Do not test by restoring over a live application database. The separate
+<code>globals-*.sql</code> file contains cluster roles and is restored with <code>psql</code> only when
+rebuilding a cluster, before restoring the per-database custom archives.</p>
+<p>For the underlying behavior, see the official
+<a href="https://www.pgadmin.org/docs/pgadmin4/latest/pgagent_jobs.html">pgAgent job documentation</a>,
+<a href="https://www.postgresql.org/docs/current/app-pgdump.html">pg_dump documentation</a>,
+and <a href="https://www.postgresql.org/docs/current/app-pgrestore.html">pg_restore documentation</a>.</p>
 <hr />
 <h2 id="related-pages">Related Pages<a class="headerlink" href="#related-pages" title="Permanent link">#</a></h2>
 <ul>

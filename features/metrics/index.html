@@ -2406,6 +2406,8 @@
         
   
   
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-mountain" viewBox="0 0 24 24"><path d="m8 3 4 8 5-5 5 15H2z"/></svg>
+  
   <span class="md-ellipsis">
     
   
@@ -6028,7 +6030,7 @@
 <hr />
 <h2 id="real-time-streaming">Real-time streaming<a class="headerlink" href="#real-time-streaming" title="Permanent link">#</a></h2>
 <p>Metrics are streamed via WebSocket at <code>/ws/metrics</code>:</p>
-<div class="highlight"><pre><span></span><code><span class="kd">const</span><span class="w"> </span><span class="nx">ws</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="ow">new</span><span class="w"> </span><span class="nx">WebSocket</span><span class="p">(</span><span class="s1">&#39;ws://localhost:8000/ws/metrics?interval=2&#39;</span><span class="p">);</span>
+<div class="highlight"><pre><span></span><code><span class="kd">const</span><span class="w"> </span><span class="nx">ws</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="ow">new</span><span class="w"> </span><span class="nx">WebSocket</span><span class="p">(</span><span class="s1">&#39;ws://localhost:3005/ws/metrics?interval=2&#39;</span><span class="p">);</span>
 
 <span class="nx">ws</span><span class="p">.</span><span class="nx">onmessage</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="nx">event</span><span class="p">)</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="kd">const</span><span class="w"> </span><span class="nx">data</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">JSON</span><span class="p">.</span><span class="nx">parse</span><span class="p">(</span><span class="nx">event</span><span class="p">.</span><span class="nx">data</span><span class="p">);</span>
@@ -6138,13 +6140,13 @@
 <h3 id="querying-history">Querying history<a class="headerlink" href="#querying-history" title="Permanent link">#</a></h3>
 <p>Retrieve historical data via API:</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># Get history newer than a Unix timestamp</span>
-curl<span class="w"> </span><span class="s2">&quot;http://localhost:8000/api/metrics/history?since=1784300000&amp;limit=5000&quot;</span>
+curl<span class="w"> </span><span class="s2">&quot;http://localhost:3005/api/metrics/history?since=1784300000&amp;limit=5000&quot;</span>
 
 <span class="c1"># Get compact chart series with server-side buckets</span>
-curl<span class="w"> </span><span class="s2">&quot;http://localhost:8000/api/metrics/history_series?since=1784300000&amp;bucket_seconds=300&amp;max_points=600&quot;</span>
+curl<span class="w"> </span><span class="s2">&quot;http://localhost:3005/api/metrics/history_series?since=1784300000&amp;bucket_seconds=300&amp;max_points=600&quot;</span>
 
 <span class="c1"># Inspect configured/active storage and compression</span>
-curl<span class="w"> </span><span class="s2">&quot;http://localhost:8000/api/metrics/history/storage?probe_postgresql=true&quot;</span>
+curl<span class="w"> </span><span class="s2">&quot;http://localhost:3005/api/metrics/history/storage?probe_postgresql=true&quot;</span>
 </code></pre></div>
 <hr />
 <h2 id="cgroup-awareness">cgroup awareness<a class="headerlink" href="#cgroup-awareness" title="Permanent link">#</a></h2>

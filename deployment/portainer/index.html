@@ -1869,6 +1869,8 @@
         
   
   
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-mountain" viewBox="0 0 24 24"><path d="m8 3 4 8 5-5 5 15H2z"/></svg>
+  
   <span class="md-ellipsis">
     
   
@@ -5275,7 +5277,7 @@ sed<span class="w"> </span>-i<span class="w"> </span><span class="se">\</span>
 <p><img alt="Deploy the Stack" src="../../assets/images/portainer/deploy_the_stack.PNG" /></p>
 <hr />
 <h2 id="thats-it">That’s it!<a class="headerlink" href="#thats-it" title="Permanent link">#</a></h2>
-<p>Once deployed, DUMB will initialize and make its services available at their respective ports (e.g., DUMB Frontend at <code>:3005</code>, API at <code>:8000</code>, etc.).</p>
+<p>Once deployed, DUMB will initialize and expose the frontend at <code>:3005</code>. The frontend proxies DUMB API calls under <code>/api</code>; the backend's native <code>:8000</code> listener remains container-loopback-only unless you deliberately reconfigure and publish it.</p>
 <p>You can now manage DUMB entirely through the <strong><a href="../../services/dumb/dumb-frontend/">DUMB Frontend</a></strong>, or explore the <a href="../../features/configuration/">Configuration</a> docs to adjust settings as needed.</p>
 <hr />
 <h2 id="expose-ports-direct-access">Expose ports (direct access)<a class="headerlink" href="#expose-ports-direct-access" title="Permanent link">#</a></h2>
@@ -5284,7 +5286,6 @@ reachable, confirm the port mapping exists in the stack.</p>
 <p>Example:</p>
 <div class="highlight"><pre><span></span><code><span class="nt">ports</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;3005:3005&quot;</span><span class="w"> </span><span class="c1"># DUMB Frontend</span>
-<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;8000:8000&quot;</span><span class="w"> </span><span class="c1"># DUMB API</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;7878:7878&quot;</span><span class="w"> </span><span class="c1"># Radarr</span>
 </code></pre></div>
 <p>After editing ports, click <strong>Update the stack</strong> to redeploy.</p>
@@ -5292,6 +5293,10 @@ reachable, confirm the port mapping exists in the stack.</p>
 <p class="admonition-title">Reverse proxy or embedded UIs</p>
 <p>If you use a reverse proxy (Traefik, Nginx, Caddy) or DUMB’s embedded UIs,
 you can avoid exposing every service port directly.</p>
+</div>
+<div class="admonition danger">
+<p class="admonition-title">Direct backend API</p>
+<p>If a direct API consumer truly requires port <code>8000</code>, setting a Portainer mapping alone is not enough. Set <code>DUMB_API_SERVICE_HOST=0.0.0.0</code>, publish the port, enable DUMB authentication, and restrict access with a firewall/trusted network. Prefer the frontend's <code>:3005/api/...</code> proxy for normal use.</p>
 </div>
 <hr />
 <h2 id="viewing-logs-for-dumb">Viewing Logs for DUMB<a class="headerlink" href="#viewing-logs-for-dumb" title="Permanent link">#</a></h2>

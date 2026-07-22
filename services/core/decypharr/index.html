@@ -2172,6 +2172,8 @@
         
   
   
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-mountain" viewBox="0 0 24 24"><path d="m8 3 4 8 5-5 5 15H2z"/></svg>
+  
   <span class="md-ellipsis">
     
   
@@ -5315,7 +5317,7 @@ flowchart TD
 <span class="w">    </span><span class="nt">&quot;repo_owner&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;sirrobot01&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;repo_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;decypharr&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;release_version_enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;release_version&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;latest&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;release_version&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;v1.0.0&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;branch_enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;branch&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;main&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;suppress_logging&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
@@ -5323,6 +5325,16 @@ flowchart TD
 <span class="w">    </span><span class="nt">&quot;port&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">8282</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;auto_update&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;auto_update_interval&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">24</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;auto_update_start_time&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;04:00&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;symlink_backup_enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;symlink_backup_interval&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">168</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;symlink_backup_start_time&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;04:00&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;symlink_backup_path&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/config/symlink-repair/snapshots/decypharr-{timestamp}.json&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;symlink_backup_include_broken&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;symlink_backup_retention_count&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;symlink_backup_roots&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">        </span><span class="s2">&quot;/mnt/debrid/decypharr_symlinks&quot;</span>
+<span class="w">    </span><span class="p">],</span>
 <span class="w">    </span><span class="nt">&quot;clear_on_update&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;exclude_dirs&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[],</span>
 <span class="w">    </span><span class="nt">&quot;command&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
@@ -5353,6 +5365,7 @@ flowchart TD
 <li><code>api_keys</code>: Per-provider API keys used by Decypharr for Debrid providers.</li>
 <li><code>clear_on_update</code>, <code>exclude_dirs</code>: Clean old files during update while protecting data dirs.</li>
 </ul>
+<p>Because <code>release_version_enabled</code> is <code>false</code>, the stored <code>v1.0.0</code> value is only the fallback selector; normal stable installs resolve the latest supported GitHub release. Enable the selector only when intentionally pinning a release.</p>
 <hr />
 <h2 id="what-decypharr-does">What Decypharr does<a class="headerlink" href="#what-decypharr-does" title="Permanent link">#</a></h2>
 <h3 id="how-it-works">How It Works<a class="headerlink" href="#how-it-works" title="Permanent link">#</a></h3>
@@ -5568,7 +5581,7 @@ automatically wires the download client and Arr permissions. If <code>core_servi
 <code>/mnt/debrid/combined_symlinks/&lt;slug&gt;</code> instead of the Decypharr-only root.
 Manual configuration is only required when <code>core_service</code> is left blank or you
 want to override the combined workflow wiring.</p>
-<p>Follow the <a href="https://sirrobot01.github.io/decypharr/usage/#connecting-to-sonarrradarr">official usage guide</a> for step-by-step instructions on connecting your Radarr and Sonarr instances to Decypharr.</p>
+<p>Follow the <a href="https://docs.decypharr.com/guides/arrs/">official Arr integration guide</a> for current Sonarr and Radarr connection guidance.</p>
 <div class="admonition tip">
 <p class="admonition-title">Connection Tips</p>
 <p>This includes setting the correct API keys and ensuring URL paths match the container environments.</p>
@@ -5611,7 +5624,7 @@ If you manage permissions manually, review these settings after integration.</p>
 <h2 id="resources">Resources<a class="headerlink" href="#resources" title="Permanent link">#</a></h2>
 <ul>
 <li><a href="https://github.com/sirrobot01/decypharr">Decypharr GitHub</a></li>
-<li><a href="https://sirrobot01.github.io/decypharr/">Decypharr Docs</a></li>
+<li><a href="https://docs.decypharr.com/">Decypharr Docs</a></li>
 </ul>
 
 

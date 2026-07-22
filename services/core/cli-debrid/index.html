@@ -1938,10 +1938,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#required-component-cli-battery" class="md-nav__link">
+  <a href="#stableolder-releases-standalone-cli-battery" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Required Component: CLI Battery
+        Stable/Older Releases: Standalone CLI Battery
       
     </span>
   </a>
@@ -2143,6 +2143,8 @@
       <a href="../altmount/" class="md-nav__link">
         
   
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-mountain" viewBox="0 0 24 24"><path d="m8 3 4 8 5-5 5 15H2z"/></svg>
   
   <span class="md-ellipsis">
     
@@ -4959,10 +4961,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#required-component-cli-battery" class="md-nav__link">
+  <a href="#stableolder-releases-standalone-cli-battery" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Required Component: CLI Battery
+        Stable/Older Releases: Standalone CLI Battery
       
     </span>
   </a>
@@ -5184,6 +5186,25 @@
 
 <h1 id="cli-debrid-core-service">CLI Debrid (Core Service)<a class="headerlink" href="#cli-debrid-core-service" title="Permanent link">#</a></h1>
 <p><strong>CLI Debrid</strong> is a core content orchestrator in the DUMB ecosystem. It automates media collection and upgrading through Debrid services (e.g. Real-Debrid), working alongside Trakt, Plex, Seerr, and various scrapers. CLI Debrid can either monitor your Plex libraries or generate symlinks for organized media delivery to Plex or similar servers.</p>
+<div class="admonition info">
+<p class="admonition-title">CLI Battery transition in the v0.7.29 pre-release</p>
+<p>Upstream <a href="https://github.com/godver3/cli_debrid/releases/tag/v0.7.29">CLI Debrid v0.7.29</a>
+is marked as a pre-release. Its
+<a href="https://github.com/godver3/cli_debrid/commit/ef4deb5bbed60826ef2aaa48be0ecb17250ea87e">CLI Battery rewrite</a>
+converts CLI Battery from a separate Flask service on port <code>5001</code> into an
+in-process Python module imported by CLI Debrid.</p>
+<p>DUMB's current configuration model still contains the old standalone CLI
+Battery process, command, port, and static dependency. If you intentionally
+select v0.7.29 or a newer pre-release with the in-process rewrite, manually
+disable <code>cli_battery</code>; running both forms is unnecessary and the removed
+<code>cli_battery/main.py</code> command cannot serve that upstream layout. Keep CLI
+Battery enabled for stable/older CLI Debrid releases that still use port
+<code>5001</code>.</p>
+<p>Normal DUMB startup respects the disabled setting. Until DUMB's dependency
+graph becomes version-aware, a guided <strong>Start Core Service</strong> or onboarding
+action can re-enable the static dependency; verify that CLI Battery remains
+disabled after using those flows with the pre-release.</p>
+</div>
 <hr />
 <h2 id="workflow-diagram">Workflow diagram<a class="headerlink" href="#workflow-diagram" title="Permanent link">#</a></h2>
 <pre class="mermaid"><code>%%{ init: { "flowchart": { "curve": "basis" } } }%%
@@ -5228,7 +5249,7 @@ flowchart TD
 </tr>
 <tr>
 <td>Depends On</td>
-<td><a href="../../dependent/cli-battery/">CLI Battery</a>, <a href="../../dependent/rclone/">rclone</a>, <a href="../../dependent/zurg/">Zurg</a></td>
+<td>Stable/older releases: <a href="../../dependent/cli-battery/">CLI Battery</a>; provider path: <a href="../../dependent/rclone/">rclone</a> and <a href="../../dependent/zurg/">Zurg</a></td>
 </tr>
 <tr>
 <td>Optional</td>
@@ -5256,6 +5277,16 @@ flowchart TD
 <span class="w">    </span><span class="nt">&quot;port&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">5000</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;auto_update&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;auto_update_interval&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">24</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;auto_update_start_time&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;04:00&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;symlink_backup_enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;symlink_backup_interval&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">168</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;symlink_backup_start_time&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;04:00&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;symlink_backup_path&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/config/symlink-repair/snapshots/cli-debrid-{timestamp}.json&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;symlink_backup_include_broken&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;symlink_backup_retention_count&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;symlink_backup_roots&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">        </span><span class="s2">&quot;/mnt/debrid/clid_symlinks&quot;</span>
+<span class="w">    </span><span class="p">],</span>
 <span class="w">    </span><span class="nt">&quot;clear_on_update&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;exclude_dirs&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
 <span class="w">        </span><span class="s2">&quot;/cli_debrid/data&quot;</span>
@@ -5274,8 +5305,7 @@ flowchart TD
 <span class="w">        </span><span class="nt">&quot;USER_CONFIG&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/cli_debrid/data/config/&quot;</span><span class="p">,</span>
 <span class="w">        </span><span class="nt">&quot;USER_LOGS&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/cli_debrid/data/logs/&quot;</span><span class="p">,</span>
 <span class="w">        </span><span class="nt">&quot;USER_DB_CONTENT&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/cli_debrid/data/db_content/&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;CLI_DEBRID_PORT&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;{port}&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;CLI_DEBRID_BATTERY_PORT&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;5001&quot;</span>
+<span class="w">        </span><span class="nt">&quot;CLI_DEBRID_PORT&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;{port}&quot;</span>
 <span class="w">    </span><span class="p">}</span>
 <span class="p">},</span>
 </code></pre></div>
@@ -5288,7 +5318,7 @@ flowchart TD
 <li><code>log_level</code>, <code>suppress_logging</code>: Logging controls.</li>
 <li><code>port</code>: Flask web interface port.</li>
 <li><code>env</code>: Environment variable configuration used by CLI Debrid.</li>
-<li><code>env.CLI_DEBRID_BATTERY_PORT</code>: Battery API port consumed by CLI Debrid; DUMB auto-syncs this to <code>cli_battery.port</code>.</li>
+<li><code>env.CLI_DEBRID_BATTERY_PORT</code>: Battery API port consumed by stable/older CLI Debrid layouts. It is not present in the untouched template; DUMB creates/synchronizes it from <code>cli_battery.port</code> during setup and config updates. The v0.7.29 pre-release's in-process layout does not use this network hop.</li>
 <li><code>clear_on_update</code>, <code>exclude_dirs</code>: Clean old files during update while protecting data dirs.</li>
 </ul>
 <hr />
@@ -5310,9 +5340,13 @@ flowchart TD
 <li>Scraping Tuning: Manual test interface to evaluate scraper priorities</li>
 </ul>
 <hr />
-<h2 id="required-component-cli-battery">Required Component: CLI Battery<a class="headerlink" href="#required-component-cli-battery" title="Permanent link">#</a></h2>
+<h2 id="stableolder-releases-standalone-cli-battery">Stable/Older Releases: Standalone CLI Battery<a class="headerlink" href="#stableolder-releases-standalone-cli-battery" title="Permanent link">#</a></h2>
 <div class="admonition warning">
-<p class="admonition-title">CLI Battery must be running for CLI Debrid to function.</p>
+<p class="admonition-title">Required only by layouts that still use the standalone service</p>
+<p>Keep CLI Battery running for stable/older CLI Debrid releases that call its
+API on port <code>5001</code>. For v0.7.29+ pre-releases carrying the in-process rewrite,
+manually disable the standalone CLI Battery service instead. See the
+transition note near the top of this page.</p>
 </div>
 <div class="highlight"><pre><span></span><code><span class="nt">&quot;cli_battery&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">    </span><span class="nt">&quot;enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
@@ -5565,7 +5599,7 @@ Use <code>symlink_backup_retention_count</code> to keep only the newest N schedu
 <li><a href="https://github.com/godver3/cli_debrid">CLI Debrid GitHub</a></li>
 <li><a href="https://github.com/godver3/cli_debrid/tree/main/cli_battery">CLI Battery GitHub</a></li>
 <li><a href="https://github.com/godver3/phalanx_db_hyperswarm">Phalanx DB GitHub</a></li>
-<li><a href="https://discord.gg/jAmqZJCZJ4">Join the CLI Debrid Community on Discord</a></li>
+<li><a href="https://discord.gg/ynqnXGJ4hU">Join the CLI Debrid Community on Discord</a></li>
 </ul>
 
 

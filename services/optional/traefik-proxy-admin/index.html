@@ -1878,6 +1878,8 @@
         
   
   
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-mountain" viewBox="0 0 24 24"><path d="m8 3 4 8 5-5 5 15H2z"/></svg>
+  
   <span class="md-ellipsis">
     
   
@@ -5499,7 +5501,16 @@
 <span class="w">  </span><span class="nt">&quot;auto_update_interval&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">24</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;auto_update_start_time&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;04:00&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;clear_on_update&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;exclude_dirs&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="s2">&quot;/traefik-proxy-admin/.next/cache&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="s2">&quot;/traefik-proxy-admin/node_modules&quot;</span>
+<span class="w">  </span><span class="p">],</span>
 <span class="w">  </span><span class="nt">&quot;platforms&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;pnpm&quot;</span><span class="p">],</span>
+<span class="w">  </span><span class="nt">&quot;command&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="s2">&quot;/bin/bash&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="s2">&quot;-c&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="s2">&quot;if [ -f .next/standalone/server.js ]; then exec node .next/standalone/server.js; else exec pnpm exec next start -H 0.0.0.0 -p \&quot;$PORT\&quot;; fi&quot;</span>
+<span class="w">  </span><span class="p">],</span>
 <span class="w">  </span><span class="nt">&quot;config_dir&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/traefik-proxy-admin&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;log_file&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/log/traefik_proxy_admin.log&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;env&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
@@ -5512,10 +5523,28 @@
 <span class="w">    </span><span class="nt">&quot;TRAEFIK_API_URL&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;http://127.0.0.1:18081&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;TRAEFIK_ACCESS_LOG_PATH&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/log/traefik_access.log&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;TARGET_TEST_ALLOW_CIDRS&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;10.0.0.0/16,172.20.0.0/16,192.168.0.0/16,127.0.0.0/8&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;NEXT_TELEMETRY_DISABLED&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;1&quot;</span>
-<span class="w">  </span><span class="p">}</span>
+<span class="w">    </span><span class="nt">&quot;NEXT_TELEMETRY_DISABLED&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;1&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;HOME&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/traefik-proxy-admin&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;PNPM_HOME&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/config/.pnpm-store/traefik-proxy-admin-runtime/pnpm-home&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;XDG_DATA_HOME&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/config/.pnpm-store/traefik-proxy-admin-runtime/xdg-data&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;XDG_CACHE_HOME&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/config/.pnpm-store/traefik-proxy-admin-runtime/xdg-cache&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;npm_config_userconfig&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/traefik-proxy-admin/.npmrc&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;npm_config_cache&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/config/.pnpm-store/traefik-proxy-admin-runtime/npm-cache&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;npm_config_store_dir&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/config/.pnpm-store/traefik-proxy-admin-runtime/store&quot;</span>
+<span class="w">  </span><span class="p">},</span>
+<span class="w">  </span><span class="nt">&quot;wait_for_tcp&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;PostgreSQL&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;host&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;127.0.0.1&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;port&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">5432</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;timeout&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">2</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">]</span>
 <span class="p">}</span>
 </code></pre></div>
+<p>DUMB may add generated database/auth secrets to the effective environment. Use
+the service editor or <code>/api/config</code> as the authority for those secret-bearing
+runtime values rather than copying them from a running instance.</p>
 <h3 id="configuration-key-descriptions">Configuration key descriptions<a class="headerlink" href="#configuration-key-descriptions" title="Permanent link">#</a></h3>
 <ul>
 <li><strong><code>enabled</code></strong>: Whether to install and start TPA.</li>

@@ -851,10 +851,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#exponential-backoff" class="md-nav__link">
+  <a href="#backoff-schedule" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Exponential backoff
+        Backoff schedule
       
     </span>
   </a>
@@ -880,34 +880,6 @@
       
     </span>
   </a>
-  
-    <nav class="md-nav" aria-label="Health checks">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#http-health-checks" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        HTTP health checks
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#process-health-checks" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Process health checks
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
@@ -2232,6 +2204,8 @@
       <a href="../../services/core/altmount/" class="md-nav__link">
         
   
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-mountain" viewBox="0 0 24 24"><path d="m8 3 4 8 5-5 5 15H2z"/></svg>
   
   <span class="md-ellipsis">
     
@@ -5003,10 +4977,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#exponential-backoff" class="md-nav__link">
+  <a href="#backoff-schedule" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Exponential backoff
+        Backoff schedule
       
     </span>
   </a>
@@ -5032,34 +5006,6 @@
       
     </span>
   </a>
-  
-    <nav class="md-nav" aria-label="Health checks">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#http-health-checks" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        HTTP health checks
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#process-health-checks" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Process health checks
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
@@ -5459,8 +5405,9 @@ flowchart TD
 </tbody>
 </table>
 <hr />
-<h2 id="exponential-backoff">Exponential backoff<a class="headerlink" href="#exponential-backoff" title="Permanent link">#</a></h2>
-<p>To prevent rapid restart loops, delays between restarts increase exponentially:</p>
+<h2 id="backoff-schedule">Backoff schedule<a class="headerlink" href="#backoff-schedule" title="Permanent link">#</a></h2>
+<p>To prevent rapid restart loops, DUMB selects delays from the configured
+<code>backoff_seconds</code> list:</p>
 <table>
 <thead>
 <tr>
@@ -5475,35 +5422,31 @@ flowchart TD
 </tr>
 <tr>
 <td>2</td>
-<td>10 seconds</td>
+<td>15 seconds</td>
 </tr>
 <tr>
 <td>3</td>
-<td>20 seconds</td>
+<td>45 seconds</td>
 </tr>
 <tr>
-<td>4</td>
-<td>40 seconds</td>
-</tr>
-<tr>
-<td>5</td>
-<td>80 seconds</td>
-</tr>
-<tr>
-<td>6+</td>
-<td>120 seconds (max)</td>
+<td>4+</td>
+<td>120 seconds</td>
 </tr>
 </tbody>
 </table>
-<p>The formula: <code>delay = min(initial_delay * (backoff_multiplier ^ attempt), max_delay)</code></p>
+<p>This is an explicit list, not a calculated multiplier. You can replace it with
+any ordered list of non-negative delays. Attempts beyond the list use its last
+value.</p>
 <hr />
 <h2 id="restart-limits">Restart limits<a class="headerlink" href="#restart-limits" title="Permanent link">#</a></h2>
 <p>Services have a maximum number of restart attempts within a time window:</p>
 <ul>
-<li><strong>Default</strong>: 5 restarts per hour</li>
-<li>After reaching the limit, auto-restart pauses for that service</li>
-<li>The counter resets after the window expires</li>
-<li>Manual restart resets the counter</li>
+<li><strong>Default</strong>: 3 restart attempts in a rolling 300-second window</li>
+<li>After reaching the limit, additional automatic attempts are suppressed while
+  those attempts remain inside the window</li>
+<li>Old attempts age out of the rolling window automatically</li>
+<li>A manual start re-enables monitoring after an intentional stop, but does not
+  erase the recorded rolling-window attempts</li>
 </ul>
 <div class="admonition warning">
 <p class="admonition-title">Restart limit reached</p>
@@ -5511,23 +5454,27 @@ flowchart TD
 </div>
 <hr />
 <h2 id="health-checks">Health checks<a class="headerlink" href="#health-checks" title="Permanent link">#</a></h2>
-<p>Services are monitored using health check endpoints or process status:</p>
-<h3 id="http-health-checks">HTTP health checks<a class="headerlink" href="#http-health-checks" title="Permanent link">#</a></h3>
-<p>For services with web interfaces:</p>
-<div class="highlight"><pre><span></span><code><span class="nt">&quot;health_check&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<span class="w">  </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;http&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;url&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;http://127.0.0.1:8080/health&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;timeout&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">10</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;interval&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">30</span>
-<span class="p">}</span>
+<p>For each explicitly selected service, DUMB verifies:</p>
+<ul>
+<li>the tracked PID still exists and is not a zombie; and</li>
+<li>each configured <code>port</code>, <code>frontend_port</code>, <code>backend_port</code>, or <code>webdav_port</code>
+  (including corresponding values in <code>env</code>) accepts a TCP connection.</li>
+</ul>
+<p>There is no standalone <code>health_check</code> object in the current config. Add a
+service to <code>dumb.auto_restart.services</code>; its entry may inherit all global values
+or override selected policy fields:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">&quot;services&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">  </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;process_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Riven Backend&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;unhealthy_threshold&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">4</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;grace_period_seconds&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">60</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">]</span>
 </code></pre></div>
-<h3 id="process-health-checks">Process health checks<a class="headerlink" href="#process-health-checks" title="Permanent link">#</a></h3>
-<p>For services without HTTP endpoints:</p>
-<div class="highlight"><pre><span></span><code><span class="nt">&quot;health_check&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<span class="w">  </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;process&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;interval&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">30</span>
-<span class="p">}</span>
-</code></pre></div>
+<p>An empty <code>services</code> list monitors no services even when the global <code>enabled</code>
+flag is true. Use exact process names from <code>GET /process/processes</code> or select
+services in the frontend panel.</p>
 <hr />
 <h2 id="monitoring-restart-status">Monitoring restart status<a class="headerlink" href="#monitoring-restart-status" title="Permanent link">#</a></h2>
 <h3 id="dashboard-indicators">Dashboard indicators<a class="headerlink" href="#dashboard-indicators" title="Permanent link">#</a></h3>
@@ -5540,7 +5487,7 @@ flowchart TD
 <h3 id="api-endpoints">API endpoints<a class="headerlink" href="#api-endpoints" title="Permanent link">#</a></h3>
 <p>Query restart status via the API:</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># Get service status including restart info</span>
-curl<span class="w"> </span>http://localhost:8000/api/process/service-status?process_name<span class="o">=</span>Riven%20Backend
+curl<span class="w"> </span><span class="s1">&#39;http://localhost:3005/api/process/service-status?process_name=Riven%20Backend&amp;include_health=true&#39;</span>
 </code></pre></div>
 <p>Response includes:</p>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
@@ -5548,9 +5495,19 @@ curl<span class="w"> </span>http://localhost:8000/api/process/service-status?pro
 <span class="w">  </span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;running&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;healthy&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;restart&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<span class="w">    </span><span class="nt">&quot;count&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">2</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;last_restart&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2025-01-15T10:30:00Z&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span>
+<span class="w">    </span><span class="nt">&quot;restart_attempts&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">2</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;restart_successes&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">2</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;restart_failures&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;recent_restart_attempts&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">2</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;pending&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;next_restart_time&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;disabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;last_restart_time&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">1736937000.0</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;last_failure_reason&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;last_exit_time&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">1736936995.0</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;last_exit_reason&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Port 127.0.0.1:8080 not responding&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;unhealthy_count&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;unhealthy_threshold&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">3</span>
 <span class="w">  </span><span class="p">}</span>
 <span class="p">}</span>
 </code></pre></div>
@@ -5564,9 +5521,19 @@ curl<span class="w"> </span>http://localhost:8000/api/process/service-status?pro
 <span class="w">      </span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;running&quot;</span><span class="p">,</span>
 <span class="w">      </span><span class="nt">&quot;healthy&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
 <span class="w">      </span><span class="nt">&quot;restart&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<span class="w">        </span><span class="nt">&quot;count&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">2</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;last_restart&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2025-01-15T10:30:00Z&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span>
+<span class="w">        </span><span class="nt">&quot;restart_attempts&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">2</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;restart_successes&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">2</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;restart_failures&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;recent_restart_attempts&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">2</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;pending&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;next_restart_time&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;disabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;last_restart_time&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">1736937000.0</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;last_failure_reason&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;last_exit_time&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">1736936995.0</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;last_exit_reason&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Port 127.0.0.1:8080 not responding&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;unhealthy_count&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;unhealthy_threshold&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">3</span>
 <span class="w">      </span><span class="p">}</span>
 <span class="w">    </span><span class="p">}</span>
 <span class="w">  </span><span class="p">]</span>
@@ -5575,15 +5542,18 @@ curl<span class="w"> </span>http://localhost:8000/api/process/service-status?pro
 <hr />
 <h2 id="disabling-auto-restart">Disabling auto-restart<a class="headerlink" href="#disabling-auto-restart" title="Permanent link">#</a></h2>
 <h3 id="per-service">Per-service<a class="headerlink" href="#per-service" title="Permanent link">#</a></h3>
-<p>Disable for a specific service:</p>
-<div class="highlight"><pre><span></span><code><span class="nt">&quot;riven_backend&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<span class="w">  </span><span class="nt">&quot;auto_restart&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<p>Remove a service from the monitored list, or retain an explicit disabled entry:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">&quot;services&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">  </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;process_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Riven Backend&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span>
 <span class="w">  </span><span class="p">}</span>
-<span class="p">}</span>
+<span class="p">]</span>
 </code></pre></div>
 <h3 id="globally">Globally<a class="headerlink" href="#globally" title="Permanent link">#</a></h3>
-<p>To disable auto-restart for all services, set <code>enabled: false</code> in each service's auto_restart configuration, or use the Settings page in the frontend.</p>
+<p>To disable auto-restart for all services, set <code>dumb.auto_restart.enabled</code> to
+<code>false</code>, or use the frontend panel. Per-service entries may remain stored for a
+later re-enable.</p>
 <hr />
 <h2 id="best-practices">Best practices<a class="headerlink" href="#best-practices" title="Permanent link">#</a></h2>
 <h3 id="appropriate-thresholds">Appropriate thresholds<a class="headerlink" href="#appropriate-thresholds" title="Permanent link">#</a></h3>
@@ -5615,14 +5585,15 @@ curl<span class="w"> </span>http://localhost:8000/api/process/service-status?pro
 <h3 id="auto-restart-not-working">Auto-restart not working<a class="headerlink" href="#auto-restart-not-working" title="Permanent link">#</a></h3>
 <ol>
 <li>Verify <code>auto_restart.enabled</code> is <code>true</code></li>
-<li>Check if restart limit was reached</li>
-<li>Ensure health check is configured correctly</li>
+<li>Confirm the exact process name is present and enabled in <code>auto_restart.services</code></li>
+<li>Check whether the restart limit was reached</li>
+<li>Confirm the configured service port is accurate and reachable on container loopback</li>
 </ol>
 <h3 id="restart-delay-too-long">Restart delay too long<a class="headerlink" href="#restart-delay-too-long" title="Permanent link">#</a></h3>
 <ul>
-<li>Reduce <code>backoff_multiplier</code></li>
-<li>Lower <code>max_delay</code></li>
-<li>Reset counter with manual restart</li>
+<li>Shorten the values in <code>backoff_seconds</code></li>
+<li>Review <code>max_restarts</code> and <code>window_seconds</code> before changing limits</li>
+<li>Fix the underlying health failure instead of using a zero-delay retry loop</li>
 </ul>
 <hr />
 <h2 id="related-pages">Related pages<a class="headerlink" href="#related-pages" title="Permanent link">#</a></h2>

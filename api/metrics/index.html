@@ -1869,6 +1869,8 @@
         
   
   
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-mountain" viewBox="0 0 24 24"><path d="m8 3 4 8 5-5 5 15H2z"/></svg>
+  
   <span class="md-ellipsis">
     
   
@@ -4943,25 +4945,25 @@
 <h1 id="metrics-api">Metrics API<a class="headerlink" href="#metrics-api" title="Permanent link">#</a></h1>
 <p>The Metrics API provides live snapshots, database-health observations, historical series, storage status, and legacy-history migration. Authentication follows the normal DUMB API configuration.</p>
 <h2 id="current-snapshot">Current snapshot<a class="headerlink" href="#current-snapshot" title="Permanent link">#</a></h2>
-<div class="highlight"><pre><span></span><code><span class="err">GET /api/metrics</span>
+<div class="highlight"><pre><span></span><code><span class="err">GET /metrics</span>
 </code></pre></div>
 <p>Returns current system, managed-process, external-process, and configured Database Health data. <code>system.filesystems</code> contains one entry per configured <code>dumb.metrics.filesystem_paths</code> value. <code>system.disk</code> and <code>system.inode</code> remain aliases for the first configured path for backward compatibility.</p>
 <h2 id="filesystem-discovery">Filesystem discovery<a class="headerlink" href="#filesystem-discovery" title="Permanent link">#</a></h2>
-<div class="highlight"><pre><span></span><code><span class="err">GET /api/metrics/filesystems</span>
+<div class="highlight"><pre><span></span><code><span class="err">GET /metrics/filesystems</span>
 </code></pre></div>
 <p>Returns <code>configured_paths</code> plus eligible filesystem mount points visible inside the DUMB container. The response intentionally uses container paths; Docker host paths that are not mounted into the container cannot be discovered or monitored. Clients should gate this endpoint and the <code>filesystem_paths</code> setting on the <code>metrics_filesystem_selection</code> capability.</p>
 <h2 id="network-interface-discovery">Network interface discovery<a class="headerlink" href="#network-interface-discovery" title="Permanent link">#</a></h2>
-<div class="highlight"><pre><span></span><code><span class="err">GET /api/metrics/network-interfaces</span>
+<div class="highlight"><pre><span></span><code><span class="err">GET /metrics/network-interfaces</span>
 </code></pre></div>
 <p>Returns <code>configured_interfaces</code> plus interfaces visible inside DUMB's network namespace. Candidate entries include interface name, availability/link state, speed, MTU, and cumulative byte/packet/error/drop counters; IP addresses are not returned. Clients should gate this endpoint and <code>dumb.metrics.network_interfaces</code> on the <code>metrics_network_interface_selection</code> capability.</p>
 <p>In current snapshots, <code>system.network_interfaces</code> contains each selected visible interface. <code>system.net_io</code> remains the compatibility aggregate and sums only the selected available interfaces. The default <code>["all"]</code> selects every visible interface. Host interfaces cannot be discovered from a bridge-networked container merely by changing <code>system_scope</code>.</p>
 <h2 id="database-health">Database Health<a class="headerlink" href="#database-health" title="Permanent link">#</a></h2>
-<div class="highlight"><pre><span></span><code><span class="err">GET /api/metrics/database-health</span>
-<span class="err">GET /api/metrics/database-health?process_name=NzbDAV&amp;refresh=true</span>
+<div class="highlight"><pre><span></span><code><span class="err">GET /metrics/database-health</span>
+<span class="err">GET /metrics/database-health?process_name=NzbDAV&amp;refresh=true</span>
 </code></pre></div>
 <p><code>process_name</code> limits the response to one managed service. <code>refresh=true</code> invalidates the cached bounded probe before collection.</p>
 <h2 id="raw-history">Raw history<a class="headerlink" href="#raw-history" title="Permanent link">#</a></h2>
-<div class="highlight"><pre><span></span><code><span class="err">GET /api/metrics/history?since=1784300000&amp;limit=5000</span>
+<div class="highlight"><pre><span></span><code><span class="err">GET /metrics/history?since=1784300000&amp;limit=5000</span>
 </code></pre></div>
 <table>
 <thead>
@@ -4991,12 +4993,12 @@
 </table>
 <p>The response contains ordered <code>items</code> and a <code>truncated</code> indicator. The configured database backend is transparent to clients.</p>
 <h2 id="chart-history">Chart history<a class="headerlink" href="#chart-history" title="Permanent link">#</a></h2>
-<div class="highlight"><pre><span></span><code><span class="err">GET /api/metrics/history_series?since=1784300000&amp;bucket_seconds=60&amp;max_points=600</span>
+<div class="highlight"><pre><span></span><code><span class="err">GET /metrics/history_series?since=1784300000&amp;bucket_seconds=60&amp;max_points=600</span>
 </code></pre></div>
 <p>This endpoint returns compact items, timestamps, CPU/memory/disk/inode percentage series, per-selected-filesystem disk/inode series, per-selected-interface send/receive rate series, derived aggregate disk/network rate series, summary statistics, truncation state, and the effective bucket size. DUMB automatically increases the bucket size when necessary to honor <code>max_points</code>.</p>
 <h2 id="storage-status">Storage status<a class="headerlink" href="#storage-status" title="Permanent link">#</a></h2>
-<div class="highlight"><pre><span></span><code><span class="err">GET /api/metrics/history/storage</span>
-<span class="err">GET /api/metrics/history/storage?probe_postgresql=true</span>
+<div class="highlight"><pre><span></span><code><span class="err">GET /metrics/history/storage</span>
+<span class="err">GET /metrics/history/storage?probe_postgresql=true</span>
 </code></pre></div>
 <p>The response reports:</p>
 <ul>
@@ -5010,12 +5012,12 @@
 </ul>
 <p><code>probe_postgresql=true</code> bypasses the reconnect backoff for a deliberate operator test. It does not disable SQLite fallback or expose PostgreSQL credentials.</p>
 <h2 id="import-legacy-jsonl">Import legacy JSONL<a class="headerlink" href="#import-legacy-jsonl" title="Permanent link">#</a></h2>
-<div class="highlight"><pre><span></span><code><span class="err">POST /api/metrics/history/migrate</span>
-<span class="err">POST /api/metrics/history/migrate?force=true</span>
+<div class="highlight"><pre><span></span><code><span class="err">POST /metrics/history/migrate</span>
+<span class="err">POST /metrics/history/migrate?force=true</span>
 </code></pre></div>
 <p>The import reads legacy <code>metrics-YYYYMMDD-NNN.jsonl</code> files from the configured history directory and upserts snapshots into SQLite by timestamp. It is safe to repeat and preserves source files. DUMB records the migration as complete only when every line decodes and every batch writes successfully. A malformed JSONL record or partial write returns <code>completed: false</code> with a nonzero <code>skipped</code> count and remains retryable on the next import or DUMB startup. Without <code>force=true</code>, only a completed migration returns its recorded result without rescanning all files. When PostgreSQL is configured, a rescan requires a full idempotent SQLite-to-PostgreSQL reconciliation before PostgreSQL can resume serving history reads; this also backfills imported samples older than PostgreSQL's current newest row.</p>
 <h2 id="activate-postgresql-storage">Activate PostgreSQL storage<a class="headerlink" href="#activate-postgresql-storage" title="Permanent link">#</a></h2>
-<div class="highlight"><pre><span></span><code><span class="err">POST /api/metrics/history/storage/activate-postgresql</span>
+<div class="highlight"><pre><span></span><code><span class="err">POST /metrics/history/storage/activate-postgresql</span>
 </code></pre></div>
 <p>After <code>dumb.metrics.storage.provider</code> has been saved as <code>postgresql</code>, this endpoint performs restart-free activation:</p>
 <ol>

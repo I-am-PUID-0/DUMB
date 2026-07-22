@@ -1878,6 +1878,8 @@
         
   
   
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-mountain" viewBox="0 0 24 24"><path d="m8 3 4 8 5-5 5 15H2z"/></svg>
+  
   <span class="md-ellipsis">
     
   
@@ -4777,8 +4779,8 @@
 <tbody>
 <tr>
 <td><a href="../dependent/cli-battery/">CLI Battery</a></td>
-<td>Metadata and Trakt integration layer for CLI Debrid</td>
-<td>CLI Debrid</td>
+<td>Standalone metadata and Trakt layer for stable/older CLI Debrid releases</td>
+<td>CLI Debrid before the v0.7.29 in-process pre-release layout</td>
 </tr>
 <tr>
 <td><a href="../dependent/phalanx-db/">Phalanx DB</a></td>
@@ -4787,13 +4789,13 @@
 </tr>
 <tr>
 <td><a href="../dependent/postgres/">PostgreSQL</a></td>
-<td>Central database used by Riven, Zilean, pgAdmin</td>
-<td>Riven, Zilean, pgAdmin</td>
+<td>Shared database engine for required and optional service backends</td>
+<td>Riven, Zilean, pgAdmin, TPA, MediaStorm, migrated services, optional Metrics history</td>
 </tr>
 <tr>
 <td><a href="../dependent/rclone/">rclone</a></td>
-<td>Mounts Debrid cloud storage via WebDAV</td>
-<td>CLI Debrid, Riven, Decypharr</td>
+<td>Mounts Debrid/Usenet WebDAV storage</td>
+<td>CLI Debrid, stable Riven, NzbDAV, Decypharr external-rclone mode</td>
 </tr>
 <tr>
 <td><a href="../dependent/zurg/">Zurg</a></td>
@@ -4807,8 +4809,8 @@
 <p>Dependent services act as building blocks — either providing runtime resources or exposing interfaces used by core services.</p>
 <p>For example:</p>
 <ul>
-<li><strong><a href="../dependent/cli-battery/">CLI Battery</a></strong> must start before CLI Debrid or scraping will fail.</li>
-<li><strong><a href="../dependent/postgres/">PostgreSQL</a></strong> must start before Riven, Zilean, or pgAdmin </li>
+<li><strong><a href="../dependent/cli-battery/">CLI Battery</a></strong> must start before stable/older CLI Debrid layouts. For the upstream v0.7.29+ pre-release in-process layout, manually disable the standalone DUMB service and verify that guided core-start/onboarding actions did not re-enable it.</li>
+<li><strong><a href="../dependent/postgres/">PostgreSQL</a></strong> must start before every service configured to use one of its databases.</li>
 <li><strong><a href="../dependent/rclone/">rclone</a></strong> must be active to expose the debrid content as a mounted file system to facilitate symlink creation or raw file use.</li>
 <li><strong><a href="../dependent/zurg/">Zurg</a></strong> must run if rclone is configured to use its WebDAV endpoint.</li>
 </ul>
@@ -4824,7 +4826,7 @@
 <ul>
 <li><a href="../core/">Core Services</a></li>
 <li><a href="../optional/">Optional Services</a></li>
-<li><a href="../#-how-the-services-work-together">How Services Work Together</a></li>
+<li><a href="../#how-the-services-work-together">How Services Work Together</a></li>
 </ul>
 
 

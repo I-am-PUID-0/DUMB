@@ -1878,6 +1878,8 @@
         
   
   
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-mountain" viewBox="0 0 24 24"><path d="m8 3 4 8 5-5 5 15H2z"/></svg>
+  
   <span class="md-ellipsis">
     
   
@@ -5544,6 +5546,7 @@
 <span class="w">  </span><span class="nt">&quot;port&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">32400</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;auto_update&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;auto_update_interval&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">24</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;auto_update_start_time&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;04:00&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;pinned_version&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;config_dir&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/plex&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;config_file&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/plex/Plex Media Server/Preferences.xml&quot;</span><span class="p">,</span>
@@ -5650,11 +5653,11 @@
 </div>
 <p>Copy this entire Plex configuration directory to the DUMB host's Plex directory:</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># Replace /path/to/existing/plex with the path from your host or old container</span>
-rsync<span class="w"> </span>-a<span class="w"> </span><span class="s2">&quot;/path/to/existing/plex/Plex Media Server&quot;</span><span class="w"> </span><span class="s2">&quot;/path/to/DUMB/plex/&quot;</span>
+rsync<span class="w"> </span>-a<span class="w"> </span><span class="s2">&quot;/path/to/existing/plex/Plex Media Server&quot;</span><span class="w"> </span><span class="s2">&quot;/path/to/DUMB/data/plex/&quot;</span>
 </code></pre></div>
 <p>The result should be:</p>
-<div class="highlight"><pre><span></span><code>DUMB/plex/Plex Media Server/Preferences.xml
-DUMB/plex/Plex Media Server/Plug-in Support/Databases/...
+<div class="highlight"><pre><span></span><code>DUMB/data/plex/Plex Media Server/Preferences.xml
+DUMB/data/plex/Plex Media Server/Plug-in Support/Databases/...
 </code></pre></div>
 <div class="admonition important">
 <p class="admonition-title">The internal path <strong>must</strong> remain <code>/plex/Plex Media Server/Preferences.xml</code> inside the container, unless you follow Step 3 below.</p>
@@ -5680,8 +5683,8 @@ DUMB/plex/Plex Media Server/Plug-in Support/Databases/...
 <p>The Plex data directory should be owned by the same UID/GID used in the container (<code>PUID</code>/<code>PGID</code>).<br />
 Example:</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># Replace 1000:1000 with your container PUID:PGID and adjust the path</span>
-sudo<span class="w"> </span>chown<span class="w"> </span>-R<span class="w"> </span><span class="m">1000</span>:1000<span class="w"> </span>/path/to/DUMB/plex
-sudo<span class="w"> </span>chmod<span class="w"> </span>-R<span class="w"> </span>u+rwX,g+rwX<span class="w"> </span>/path/to/DUMB/plex
+sudo<span class="w"> </span>chown<span class="w"> </span>-R<span class="w"> </span><span class="m">1000</span>:1000<span class="w"> </span>/path/to/DUMB/data/plex
+sudo<span class="w"> </span>chmod<span class="w"> </span>-R<span class="w"> </span>u+rwX,g+rwX<span class="w"> </span>/path/to/DUMB/data/plex
 </code></pre></div>
 <p>If your container uses a different PUID/PGID (for example, <code>568:568</code> on some NAS setups), use that instead.</p>
 </div>
@@ -5741,11 +5744,11 @@ sudo<span class="w"> </span>chmod<span class="w"> </span>-R<span class="w"> </sp
 <tbody>
 <tr>
 <td>Plex Docker Container</td>
-<td>Copy container's volume contents to <code>DUMB/plex</code></td>
+<td>Copy container's volume contents to <code>DUMB/data/plex</code></td>
 </tr>
 <tr>
 <td>Plex on Host</td>
-<td>Copy <code>/var/lib/plexmediaserver</code> or equivalent to <code>DUMB/plex</code></td>
+<td>Copy <code>/var/lib/plexmediaserver</code> or equivalent to <code>DUMB/data/plex</code></td>
 </tr>
 <tr>
 <td>Plex Media</td>

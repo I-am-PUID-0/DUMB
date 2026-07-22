@@ -115,6 +115,11 @@
     <label class="md-overlay" for="__drawer"></label>
     <div data-md-component="skip">
       
+        
+        <a href="#deploy-with-dockge" class="md-skip">
+          Skip to content
+        </a>
+      
     </div>
     <div data-md-component="announce">
       
@@ -1864,6 +1869,8 @@
         
   
   
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-mountain" viewBox="0 0 24 24"><path d="m8 3 4 8 5-5 5 15H2z"/></svg>
+  
   <span class="md-ellipsis">
     
   
@@ -3239,6 +3246,28 @@
       <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
       
       
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-box" viewBox="0 0 24 24"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5M12 22V12"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    Dockge
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
       
       <a href="./" class="md-nav__link md-nav__link--active">
         
@@ -3258,6 +3287,81 @@
   
 
       </a>
+      
+        
+
+
+<nav class="md-nav md-nav--secondary" aria-label="On this page">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      On this page
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#prerequisites" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Prerequisites
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#prepare-persistent-storage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Prepare persistent storage
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#create-the-stack" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Create the stack
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#external-media-server-mounts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        External media-server mounts
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#verify-and-update" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Verify and update
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
       
     </li>
   
@@ -4585,6 +4689,71 @@
   
   
   
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      On this page
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#prerequisites" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Prerequisites
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#prepare-persistent-storage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Prepare persistent storage
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#create-the-stack" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Create the stack
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#external-media-server-mounts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        External media-server mounts
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#verify-and-update" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Verify and update
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
   
 </nav>
                   </div>
@@ -4663,9 +4832,74 @@
   
 
 
-  <h1>Deploy with Dockge</h1>
-
-
+<h1 id="deploy-with-dockge">Deploy with Dockge<a class="headerlink" href="#deploy-with-dockge" title="Permanent link">#</a></h1>
+<p><a href="https://github.com/louislam/dockge">Dockge</a> manages file-backed Docker Compose
+stacks. DUMB does not need a Dockge-specific image: use the maintained DUMB
+Compose file and replace its example host paths.</p>
+<h2 id="prerequisites">Prerequisites<a class="headerlink" href="#prerequisites" title="Permanent link">#</a></h2>
+<ul>
+<li>Docker Engine and Docker Compose v2</li>
+<li>A working Dockge installation connected to the target Docker host</li>
+<li>A numeric UID/GID with access to the persistent directories</li>
+<li><code>/dev/fuse</code> on the host if the selected workflow uses a FUSE or rclone mount</li>
+</ul>
+<p>Dockge stores each stack as a normal <code>compose.yaml</code>. Its stacks directory must be
+mounted at the same path inside the Dockge container as on the host. See the
+<a href="https://github.com/louislam/dockge#how-to-install">Dockge installation and stacks documentation</a>.</p>
+<h2 id="prepare-persistent-storage">Prepare persistent storage<a class="headerlink" href="#prepare-persistent-storage" title="Permanent link">#</a></h2>
+<p>Run this on the Docker host, not in the Dockge web terminal:</p>
+<div class="highlight"><pre><span></span><code>sudo<span class="w"> </span>mkdir<span class="w"> </span>-p<span class="w"> </span>/opt/dumb/<span class="o">{</span>config,log,data,mnt/debrid<span class="o">}</span>
+sudo<span class="w"> </span>chown<span class="w"> </span>-R<span class="w"> </span><span class="m">1000</span>:1000<span class="w"> </span>/opt/dumb
+</code></pre></div>
+<p>Replace <code>1000:1000</code> with the <code>PUID:PGID</code> you will use for DUMB.</p>
+<h2 id="create-the-stack">Create the stack<a class="headerlink" href="#create-the-stack" title="Permanent link">#</a></h2>
+<ol>
+<li>In Dockge, choose <strong>Compose</strong> or <strong>New Stack</strong>.</li>
+<li>Name the stack <code>dumb</code>.</li>
+<li>Paste the current
+   <a href="https://github.com/I-am-PUID-0/DUMB/blob/master/docker-compose.yml">DUMB Compose file</a>.</li>
+<li>Replace <code>/home/username/docker/DUMB</code> with <code>/opt/dumb</code>.</li>
+<li>Set <code>TZ</code>, <code>PUID</code>, and <code>PGID</code>.</li>
+<li>Deploy the stack and follow its terminal output.</li>
+</ol>
+<p>The resulting storage and port section should resemble:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">services</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">DUMB</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">image</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">iampuid0/dumb:latest</span>
+<span class="w">    </span><span class="nt">container_name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">DUMB</span>
+<span class="w">    </span><span class="nt">volumes</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/opt/dumb/config:/config</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/opt/dumb/log:/log</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/opt/dumb/data:/data</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/opt/dumb/mnt/debrid:/mnt/debrid</span>
+<span class="w">    </span><span class="nt">environment</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">TZ=UTC</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">PUID=1000</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">PGID=1000</span>
+<span class="w">    </span><span class="nt">ports</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;3005:3005&quot;</span>
+</code></pre></div>
+<p>Keep the <code>devices</code>, <code>cap_add</code>, and <code>security_opt</code> entries from the maintained
+Compose file when the stack uses FUSE. Remove <code>/dev/dri</code> only when the host does
+not provide it and no selected service needs hardware acceleration.</p>
+<h2 id="external-media-server-mounts">External media-server mounts<a class="headerlink" href="#external-media-server-mounts" title="Permanent link">#</a></h2>
+<p>If Plex, Jellyfin, Emby, or an Arr runs in another container and must see a
+submount created inside DUMB, change the DUMB mount to:</p>
+<div class="highlight"><pre><span></span><code><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/opt/dumb/mnt/debrid:/mnt/debrid:rshared</span>
+</code></pre></div>
+<p>Mount the same host path into each consumer at <code>/mnt/debrid</code> with <code>rslave</code> (or an
+equivalent propagation mode). This is unnecessary when all consumers run inside
+DUMB or the workflow exposes ordinary files/symlinks without a propagated
+submount.</p>
+<h2 id="verify-and-update">Verify and update<a class="headerlink" href="#verify-and-update" title="Permanent link">#</a></h2>
+<ul>
+<li>Open <code>http://&lt;docker-host&gt;:3005</code>.</li>
+<li>Check the Dockge stack terminal or DUMB container logs if startup fails.</li>
+<li>Update by pulling the new image and redeploying the stack; do not delete the
+  four persistent host directories.</li>
+</ul>
+<p>Continue with <a href="../../getting-started/">Getting Started</a> or review the
+<a href="../../features/configuration/">configuration model</a>.</p>
 
 
 

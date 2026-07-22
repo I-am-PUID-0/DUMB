@@ -1878,6 +1878,8 @@
         
   
   
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-mountain" viewBox="0 0 24 24"><path d="m8 3 4 8 5-5 5 15H2z"/></svg>
+  
   <span class="md-ellipsis">
     
   
@@ -4991,6 +4993,7 @@
 <span class="w">      </span><span class="nt">&quot;suppress_logging&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
 <span class="w">      </span><span class="nt">&quot;auto_update&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
 <span class="w">      </span><span class="nt">&quot;auto_update_interval&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">24</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;auto_update_start_time&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;04:00&quot;</span><span class="p">,</span>
 <span class="w">      </span><span class="nt">&quot;pinned_version&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&quot;</span><span class="p">,</span>
 <span class="w">      </span><span class="nt">&quot;port&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">8989</span><span class="p">,</span>
 <span class="w">      </span><span class="nt">&quot;config_dir&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/sonarr/default&quot;</span><span class="p">,</span>
@@ -5034,7 +5037,7 @@
 <p>If you enable this on an existing SQLite-backed Sonarr instance without doing a manual migration, Sonarr can start against fresh PostgreSQL databases and appear empty or newly initialized.</p>
 </div>
 <p>For an existing instance, use the <strong>Database Migration</strong> tool on its service page. Run a rehearsal first, review its table-count validation, and only then start guarded cutover. See <a href="../../../features/arr-postgres-migration/">SQLite to PostgreSQL Migration</a>.</p>
-<p>Sonarr's upstream documentation still classifies existing SQLite migration as unsupported. Back up <code>/sonarr/...</code> and <code>/postgres_data</code> before proceeding, even when using DUMB's guarded workflow.</p>
+<p>Sonarr's upstream documentation still classifies existing SQLite migration as unsupported. Back up Sonarr's <code>/data/sonarr</code> persistence and PostgreSQL's <code>/data/postgres</code> persistence (internal paths <code>/sonarr/...</code> and <code>/postgres_data</code>) before proceeding, even when using DUMB's guarded workflow.</p>
 <div class="admonition warning">
 <p class="admonition-title">PostgreSQL is not a temporary toggle</p>
 <p>There is no known supported migration path from PostgreSQL back to SQLite for Sonarr. Treat <code>postgres_enabled: true</code> as a long-term database choice unless you are willing to recreate the Sonarr instance from scratch.</p>

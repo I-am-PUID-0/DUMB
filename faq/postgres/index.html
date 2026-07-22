@@ -1869,6 +1869,8 @@
         
   
   
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-mountain" viewBox="0 0 24 24"><path d="m8 3 4 8 5-5 5 15H2z"/></svg>
+  
   <span class="md-ellipsis">
     
   
@@ -4878,10 +4880,12 @@
 <p>Below are common questions and explanations related to <strong>PostgreSQL</strong>, which is the primary database engine used by DUMB.</p>
 <hr />
 <h2 id="how-postgresql-is-used-in-dumb">How PostgreSQL is used in DUMB<a class="headerlink" href="#how-postgresql-is-used-in-dumb" title="Permanent link">#</a></h2>
-<p>PostgreSQL is used to <strong>store persistent data</strong> for the following services:</p>
+<p>PostgreSQL stores persistent data for services that require it and for optional SQLite-to-PostgreSQL cutovers. Current integrations include:</p>
 <ul>
-<li><strong>Riven Backend</strong> – stores indexed content, metadata, scraped results, job states, and user settings.</li>
-<li><strong>Zilean</strong> – stores hash lookups, metadata cache, and processing history.</li>
+<li><strong>Riven Backend</strong>, <strong>Zilean</strong>, <strong>Traefik Proxy Admin</strong>, and <strong>MediaStorm</strong></li>
+<li>Optional PostgreSQL modes for <strong>Sonarr, Radarr, Lidarr, Prowlarr, Whisparr, Bazarr, Pulsarr, Seerr, and AltMount</strong> after a guarded migration</li>
+<li>Optional DUMB Metrics history storage</li>
+<li><strong>pgAdmin</strong>'s own database when pgAdmin is enabled</li>
 </ul>
 <p>Each service has its <strong>own database</strong>, created automatically when DUMB starts:</p>
 <table>
@@ -4904,31 +4908,44 @@
 <td>pgAdmin (optional)</td>
 <td><code>pgadmin</code></td>
 </tr>
+<tr>
+<td>Traefik Proxy Admin</td>
+<td><code>traefik_proxy_admin</code></td>
+</tr>
+<tr>
+<td>MediaStorm</td>
+<td><code>mediastorm</code></td>
+</tr>
+<tr>
+<td>Metrics history (optional default)</td>
+<td><code>dumb_metrics</code></td>
+</tr>
 </tbody>
 </table>
-<p>The database storage path is configured using the <code>postgres_data</code> path in <code>dumb_config.json</code>, defaulting to <code>/postgres_data</code>.</p>
+<p>Additional databases are registered from service configuration. PostgreSQL's internal data directory defaults to <code>/postgres_data</code>; the maintained Compose layout persists it at <code>/data/postgres</code> through DUMB's managed data mapping.</p>
 <hr />
 <h2 id="what-happens-if-i-delete-the-database">What happens if I delete the database?<a class="headerlink" href="#what-happens-if-i-delete-the-database" title="Permanent link">#</a></h2>
-<p>If the PostgreSQL volume or <code>/postgres_data</code> directory is deleted, <strong>all data for Riven and Zilean will be lost</strong>.</p>
+<p>If <code>/data/postgres</code> (or a directly mounted legacy <code>/postgres_data</code>) is deleted, <strong>every database in that cluster is lost</strong>.</p>
 <p>This includes:</p>
 <ul>
-<li>Indexed or scraped content in Riven</li>
-<li>Cached metadata and hashes in Zilean</li>
-<li>Any custom settings stored in the database</li>
+<li>Application data and settings for PostgreSQL-backed services</li>
+<li>Migrated Arr-family databases</li>
+<li>PostgreSQL Metrics history</li>
+<li>pgAdmin state stored in its database</li>
 </ul>
-<p>Both services will start fresh and <strong>reinitialize their databases</strong> upon next launch.</p>
+<p>Services may create empty schemas on their next launch, but this does not reconstruct the deleted application data.</p>
 <div class="admonition warning">
-<p class="admonition-title">Accidental deletion of <code>postgres_data</code> is not recoverable</p>
-<p>Make sure to regularly back up your <code>postgres_data</code> directory if long-term retention is important.</p>
-<p>See the <a href="../pgadmin/#-example-scheduled-backups-with-pgagent">pgAdmin service</a> for details on scheduling backups of the PostgreSQL databases. </p>
+<p class="admonition-title">A directory copy is not a complete running-database backup strategy</p>
+<p>Schedule logical <code>pg_dump</code> backups for every important database and test restores. Also protect the mounted <code>/data</code> tree while the stack is stopped or with a PostgreSQL-aware physical-backup process.</p>
+<p>Follow the <a href="../pgadmin/#example-scheduled-backups-with-pgagent">scheduled pg_dump backups with pgAdmin and pgAgent</a> example, including its retention and restore-test steps.</p>
 </div>
 <hr />
 <h2 id="can-i-reset-the-database-intentionally">Can I reset the database intentionally?<a class="headerlink" href="#can-i-reset-the-database-intentionally" title="Permanent link">#</a></h2>
-<p>Yes — stopping the stack, deleting the <code>postgres_data</code> directory, and starting again will reset everything.</p>
+<p>Yes, but deleting the whole cluster resets every PostgreSQL-backed service. For a disposable installation, stop DUMB and remove <code>/data/postgres</code> (or your explicitly mounted <code>/postgres_data</code>) only after confirming the exact path and preserving any required backups.</p>
 <p>Alternatively, use <strong>pgAdmin 4</strong> (if enabled) to drop individual databases manually.</p>
 <blockquote>
-<p>See the <a href="../../services/dependent/postgres.md/#-useful-commands">PostgreSQL Useful Commands</a> section.</p>
-<p>Alternatively, See the <a href="../pgadmin.md/#-drop-a-database-or-create-a-manual-backup-in-pgadmin">pgAdmin FAQ</a> section.</p>
+<p>See the <a href="../../services/dependent/postgres/#useful-commands">PostgreSQL Useful Commands</a> section.</p>
+<p>Alternatively, see the <a href="../pgadmin/#drop-a-database-or-create-a-manual-backup-in-pgadmin">pgAdmin FAQ</a> section.</p>
 </blockquote>
 <hr />
 <h2 id="what-are-the-default-credentials">What are the default credentials?<a class="headerlink" href="#what-are-the-default-credentials" title="Permanent link">#</a></h2>

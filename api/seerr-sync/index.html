@@ -1869,6 +1869,8 @@
         
   
   
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-mountain" viewBox="0 0 24 24"><path d="m8 3 4 8 5-5 5 15H2z"/></svg>
+  
   <span class="md-ellipsis">
     
   
@@ -3685,10 +3687,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#get-apiseerr-syncstatus" class="md-nav__link">
+  <a href="#get-seerr-syncstatus" class="md-nav__link">
     <span class="md-ellipsis">
       
-        GET /api/seerr-sync/status
+        GET /seerr-sync/status
       
     </span>
   </a>
@@ -3696,10 +3698,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#get-apiseerr-syncfailed" class="md-nav__link">
+  <a href="#get-seerr-syncfailed" class="md-nav__link">
     <span class="md-ellipsis">
       
-        GET /api/seerr-sync/failed
+        GET /seerr-sync/failed
       
     </span>
   </a>
@@ -3707,10 +3709,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#get-apiseerr-syncstate" class="md-nav__link">
+  <a href="#get-seerr-syncstate" class="md-nav__link">
     <span class="md-ellipsis">
       
-        GET /api/seerr-sync/state
+        GET /seerr-sync/state
       
     </span>
   </a>
@@ -3718,10 +3720,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#post-apiseerr-synctest" class="md-nav__link">
+  <a href="#post-seerr-synctest" class="md-nav__link">
     <span class="md-ellipsis">
       
-        POST /api/seerr-sync/test
+        POST /seerr-sync/test
       
     </span>
   </a>
@@ -3729,10 +3731,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#delete-apiseerr-syncfailed" class="md-nav__link">
+  <a href="#delete-seerr-syncfailed" class="md-nav__link">
     <span class="md-ellipsis">
       
-        DELETE /api/seerr-sync/failed
+        DELETE /seerr-sync/failed
       
     </span>
   </a>
@@ -4737,10 +4739,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#get-apiseerr-syncstatus" class="md-nav__link">
+  <a href="#get-seerr-syncstatus" class="md-nav__link">
     <span class="md-ellipsis">
       
-        GET /api/seerr-sync/status
+        GET /seerr-sync/status
       
     </span>
   </a>
@@ -4748,10 +4750,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#get-apiseerr-syncfailed" class="md-nav__link">
+  <a href="#get-seerr-syncfailed" class="md-nav__link">
     <span class="md-ellipsis">
       
-        GET /api/seerr-sync/failed
+        GET /seerr-sync/failed
       
     </span>
   </a>
@@ -4759,10 +4761,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#get-apiseerr-syncstate" class="md-nav__link">
+  <a href="#get-seerr-syncstate" class="md-nav__link">
     <span class="md-ellipsis">
       
-        GET /api/seerr-sync/state
+        GET /seerr-sync/state
       
     </span>
   </a>
@@ -4770,10 +4772,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#post-apiseerr-synctest" class="md-nav__link">
+  <a href="#post-seerr-synctest" class="md-nav__link">
     <span class="md-ellipsis">
       
-        POST /api/seerr-sync/test
+        POST /seerr-sync/test
       
     </span>
   </a>
@@ -4781,10 +4783,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#delete-apiseerr-syncfailed" class="md-nav__link">
+  <a href="#delete-seerr-syncfailed" class="md-nav__link">
     <span class="md-ellipsis">
       
-        DELETE /api/seerr-sync/failed
+        DELETE /seerr-sync/failed
       
     </span>
   </a>
@@ -4891,7 +4893,7 @@
 <p>It polls the primary at a configurable interval, fingerprints requests using <code>{mediaType}:{tmdbId}:{is4k}</code>, and persists sync state in <code>/config/seerr_sync_state.json</code> to survive restarts.</p>
 <hr />
 <h2 id="endpoints">Endpoints<a class="headerlink" href="#endpoints" title="Permanent link">#</a></h2>
-<h3 id="get-apiseerr-syncstatus">GET <code>/api/seerr-sync/status</code><a class="headerlink" href="#get-apiseerr-syncstatus" title="Permanent link">#</a></h3>
+<h3 id="get-seerr-syncstatus">GET <code>/seerr-sync/status</code><a class="headerlink" href="#get-seerr-syncstatus" title="Permanent link">#</a></h3>
 <p>Summary status of the sync service.</p>
 <p>Response (disabled):</p>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
@@ -4922,7 +4924,7 @@
 <span class="p">}</span>
 </code></pre></div>
 <hr />
-<h3 id="get-apiseerr-syncfailed">GET <code>/api/seerr-sync/failed</code><a class="headerlink" href="#get-apiseerr-syncfailed" title="Permanent link">#</a></h3>
+<h3 id="get-seerr-syncfailed">GET <code>/seerr-sync/failed</code><a class="headerlink" href="#get-seerr-syncfailed" title="Permanent link">#</a></h3>
 <p>List failed sync attempts with details.</p>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;count&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">9</span><span class="p">,</span>
@@ -4939,7 +4941,7 @@
 <span class="p">}</span>
 </code></pre></div>
 <hr />
-<h3 id="get-apiseerr-syncstate">GET <code>/api/seerr-sync/state</code><a class="headerlink" href="#get-apiseerr-syncstate" title="Permanent link">#</a></h3>
+<h3 id="get-seerr-syncstate">GET <code>/seerr-sync/state</code><a class="headerlink" href="#get-seerr-syncstate" title="Permanent link">#</a></h3>
 <p>Raw sync state (debugging).</p>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;last_poll_ts&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2026-01-29T21:32:46Z&quot;</span><span class="p">,</span>
@@ -4962,7 +4964,7 @@
 <span class="p">}</span>
 </code></pre></div>
 <hr />
-<h3 id="post-apiseerr-synctest">POST <code>/api/seerr-sync/test</code><a class="headerlink" href="#post-apiseerr-synctest" title="Permanent link">#</a></h3>
+<h3 id="post-seerr-synctest">POST <code>/seerr-sync/test</code><a class="headerlink" href="#post-seerr-synctest" title="Permanent link">#</a></h3>
 <p>Test connectivity to a Seerr instance using a URL and API key.</p>
 <p>Request body:</p>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
@@ -4984,7 +4986,7 @@
 <span class="p">}</span>
 </code></pre></div>
 <hr />
-<h3 id="delete-apiseerr-syncfailed">DELETE <code>/api/seerr-sync/failed</code><a class="headerlink" href="#delete-apiseerr-syncfailed" title="Permanent link">#</a></h3>
+<h3 id="delete-seerr-syncfailed">DELETE <code>/seerr-sync/failed</code><a class="headerlink" href="#delete-seerr-syncfailed" title="Permanent link">#</a></h3>
 <p>Clear failed requests so they are retried on the next poll.</p>
 <p>Query parameters:</p>
 <ul>

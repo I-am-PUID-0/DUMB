@@ -1999,6 +1999,8 @@
         
   
   
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-mountain" viewBox="0 0 24 24"><path d="m8 3 4 8 5-5 5 15H2z"/></svg>
+  
   <span class="md-ellipsis">
     
   
@@ -4892,11 +4894,11 @@
 </tr>
 <tr>
 <td>Routers</td>
-<td><code>/auth</code>, <code>/process</code>, <code>/config</code>, <code>/logs</code>, <code>/metrics</code>, <code>/ws/*</code></td>
+<td><code>/auth</code>, <code>/process</code>, <code>/config</code>, <code>/logs</code>, <code>/metrics</code>, <code>/notifications</code>, <code>/ai</code>, <code>/seerr-sync</code>, <code>/ws/*</code></td>
 </tr>
 <tr>
 <td>Config manager</td>
-<td>Reads/writes <code>dumb_config.json</code> and service settings</td>
+<td>Reads/writes <code>/config/dumb_config.json</code> and service settings</td>
 </tr>
 <tr>
 <td>Process handler</td>
@@ -4928,7 +4930,15 @@
 </tr>
 <tr>
 <td>Metrics</td>
-<td>Collects system and service telemetry</td>
+<td>Collects system, process, filesystem, network, history, and opt-in database-health telemetry</td>
+</tr>
+<tr>
+<td>Notifications</td>
+<td>Queues and delivers routed Apprise/webhook events when enabled</td>
+</tr>
+<tr>
+<td>AI diagnostics</td>
+<td>Builds redacted diagnostic bundles for an optional configured model provider</td>
 </tr>
 </tbody>
 </table>

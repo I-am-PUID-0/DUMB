@@ -2249,6 +2249,8 @@
         
   
   
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-mountain" viewBox="0 0 24 24"><path d="m8 3 4 8 5-5 5 15H2z"/></svg>
+  
   <span class="md-ellipsis">
     
   
@@ -5810,16 +5812,16 @@
 <h2 id="api-access">API access<a class="headerlink" href="#api-access" title="Permanent link">#</a></h2>
 <p>Metrics are also available via the REST API:</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># Current metrics snapshot</span>
-curl<span class="w"> </span>http://localhost:8000/api/metrics
+curl<span class="w"> </span>http://localhost:3005/api/metrics
 
 <span class="c1"># Historical metrics newer than a Unix timestamp</span>
-curl<span class="w"> </span><span class="s2">&quot;http://localhost:8000/api/metrics/history?since=1784300000&amp;limit=5000&quot;</span>
+curl<span class="w"> </span><span class="s2">&quot;http://localhost:3005/api/metrics/history?since=1784300000&amp;limit=5000&quot;</span>
 
 <span class="c1"># Storage, migration, and fallback status</span>
-curl<span class="w"> </span><span class="s2">&quot;http://localhost:8000/api/metrics/history/storage?probe_postgresql=true&quot;</span>
+curl<span class="w"> </span><span class="s2">&quot;http://localhost:3005/api/metrics/history/storage?probe_postgresql=true&quot;</span>
 
 <span class="c1"># Database health, optionally forcing a fresh collection</span>
-curl<span class="w"> </span><span class="s2">&quot;http://localhost:8000/api/metrics/database-health?process_name=NzbDAV&amp;refresh=true&quot;</span>
+curl<span class="w"> </span><span class="s2">&quot;http://localhost:3005/api/metrics/database-health?process_name=NzbDAV&amp;refresh=true&quot;</span>
 </code></pre></div>
 <p>See the <a href="../../api/websocket/">WebSocket API</a> documentation for real-time streaming.</p>
 <hr />

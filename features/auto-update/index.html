@@ -2283,6 +2283,8 @@
         
   
   
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-mountain" viewBox="0 0 24 24"><path d="m8 3 4 8 5-5 5 15H2z"/></svg>
+  
   <span class="md-ellipsis">
     
   
@@ -5785,7 +5787,11 @@ Scheduled auto-update checks are disabled when <code>branch_enabled</code> is tr
 </code></pre></div>
 <div class="admonition tip">
 <p class="admonition-title">Token permissions</p>
-<p>The GitHub token only needs <code>public_repo</code> read access for checking releases.</p>
+<p>Prefer a fine-grained token restricted to the repositories DUMB must read.
+Fine-grained tokens already have read-only access to public repositories;
+for private repos/forks, grant only the minimum read permission required by
+the GitHub endpoint. Do not grant repository write, package write, workflow,
+or administration permissions for release checks.</p>
 </div>
 <div class="admonition danger">
 <p class="admonition-title">Protect your token</p>

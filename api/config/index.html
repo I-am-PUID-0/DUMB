@@ -1869,6 +1869,8 @@
         
   
   
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-mountain" viewBox="0 0 24 24"><path d="m8 3 4 8 5-5 5 15H2z"/></svg>
+  
   <span class="md-ellipsis">
     
   
@@ -3601,6 +3603,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#get-configservice-ui-map" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GET /config/service-ui-map
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#get-configservice-ui" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4869,6 +4882,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#get-configservice-ui-map" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GET /config/service-ui-map
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#get-configservice-ui" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -5029,7 +5053,7 @@
 <p><strong>Description:</strong>
 Returns the currently loaded in-memory configuration. You can optionally pass <code>process_name</code> to fetch a single service block.</p>
 <p><strong>Usage Example:</strong>
-<div class="highlight"><pre><span></span><code>curl<span class="w"> </span>http://localhost:8000/config
+<div class="highlight"><pre><span></span><code>curl<span class="w"> </span>http://localhost:3005/api/config
 </code></pre></div></p>
 <hr />
 <h3 id="post-config"><code>POST /config</code><a class="headerlink" href="#post-config" title="Permanent link">#</a></h3>
@@ -5045,7 +5069,7 @@ Updates config in memory. When <code>process_name</code> is provided, it updates
 <span class="p">}</span>
 </code></pre></div></p>
 <p><strong>Usage Example:</strong>
-<div class="highlight"><pre><span></span><code>curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://localhost:8000/config<span class="w"> </span><span class="se">\</span>
+<div class="highlight"><pre><span></span><code>curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://localhost:3005/api/config<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Content-Type: application/json&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{&quot;process_name&quot;:&quot;Riven Backend&quot;,&quot;updates&quot;:{&quot;log_level&quot;:&quot;DEBUG&quot;},&quot;persist&quot;:true}&#39;</span>
 </code></pre></div></p>
@@ -5054,7 +5078,7 @@ Updates config in memory. When <code>process_name</code> is provided, it updates
 <p><strong>Description:</strong>
 Returns the JSON schema used for config validation.</p>
 <p><strong>Usage Example:</strong>
-<div class="highlight"><pre><span></span><code>curl<span class="w"> </span>http://localhost:8000/config/schema
+<div class="highlight"><pre><span></span><code>curl<span class="w"> </span>http://localhost:3005/api/config/schema
 </code></pre></div></p>
 <hr />
 <h3 id="post-configprocess-configschema"><code>POST /config/process-config/schema</code><a class="headerlink" href="#post-configprocess-configschema" title="Permanent link">#</a></h3>
@@ -5066,7 +5090,7 @@ Returns the config schema subtree for a specific <code>process_name</code>.</p>
 <span class="p">}</span>
 </code></pre></div></p>
 <p><strong>Usage Example:</strong>
-<div class="highlight"><pre><span></span><code>curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://localhost:8000/config/process-config/schema<span class="w"> </span><span class="se">\</span>
+<div class="highlight"><pre><span></span><code>curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://localhost:3005/api/config/process-config/schema<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Content-Type: application/json&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{&quot;process_name&quot;:&quot;Riven Backend&quot;}&#39;</span>
 </code></pre></div></p>
@@ -5081,10 +5105,18 @@ Reads or updates a service-specific config file (JSON/YAML/CONF/Python/XML). If 
 <span class="p">}</span>
 </code></pre></div></p>
 <p><strong>Usage Example:</strong>
-<div class="highlight"><pre><span></span><code>curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://localhost:8000/config/service-config<span class="w"> </span><span class="se">\</span>
+<div class="highlight"><pre><span></span><code>curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://localhost:3005/api/config/service-config<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Content-Type: application/json&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{&quot;service_name&quot;:&quot;Zurg w/ RealDebrid&quot;}&#39;</span>
 </code></pre></div></p>
+<hr />
+<h3 id="get-configservice-ui-map"><code>GET /config/service-ui-map</code><a class="headerlink" href="#get-configservice-ui-map" title="Permanent link">#</a></h3>
+<p>Returns the sanitized embedded-UI route name to backend <code>config_key</code> mapping used by the dmbdb proxy. Clients should treat this endpoint as the source of truth and use their local service-type fallback only when startup authentication prevents the map from loading.</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;altmount&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;altmount&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;traefik_proxy_admin&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;traefik_proxy_admin&quot;</span>
+<span class="p">}</span>
+</code></pre></div>
 <hr />
 <h3 id="get-configservice-ui"><code>GET /config/service-ui</code><a class="headerlink" href="#get-configservice-ui" title="Permanent link">#</a></h3>
 <p><strong>Description:</strong>
@@ -5127,8 +5159,9 @@ Enables or disables the embedded service UI feature. When enabled, DUMB writes T
 </code></pre></div></p>
 <p><strong>Response:</strong>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
-<span class="w">  </span><span class="nt">&quot;message&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Service UI enabled&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span>
+<span class="w">  </span><span class="nt">&quot;enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;services&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[],</span>
+<span class="w">  </span><span class="nt">&quot;traefik_config&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/config/traefik/dynamic/services.yaml&quot;</span>
 <span class="p">}</span>
 </code></pre></div></p>
 <hr />

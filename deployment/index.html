@@ -1869,6 +1869,8 @@
         
   
   
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-mountain" viewBox="0 0 24 24"><path d="m8 3 4 8 5-5 5 15H2z"/></svg>
+  
   <span class="md-ellipsis">
     
   
@@ -4726,11 +4728,12 @@
 <ul>
 <li><strong>Docker or Docker-compatible environment</strong></li>
 <li>Linux system (WSL on Windows when using <code>rshared</code>)</li>
-<li>Minimum 2 vCPU, 2GB RAM, SSD recommended</li>
+<li>A practical minimum of 2 vCPU and 2 GB RAM for a small stack; larger stacks and source builds need more</li>
+<li>SSD-backed persistent storage is strongly recommended</li>
 </ul>
 <div class="admonition warning">
 <p class="admonition-title">Docker Desktop</p>
-<p>Docker Desktop <strong>CANNOT</strong> be used to run DUMB when using <code>rshared</code> mount propagation. </p>
+<p>Docker Desktop cannot support DUMB workflows that require <code>rshared</code> mount propagation.</p>
 <p>Docker Desktop does not support the <a href="https://docs.docker.com/storage/bind-mounts/#configure-bind-propagation">mount propagation</a> required for rclone mounts.</p>
 <p><img alt="image" src="../assets/images/docker_desktop.png" /></p>
 <p>See the <a href="https://dumbarr.com/deployment/wsl">deployment options</a> to run DUMB on Windows through WSL2.</p>
@@ -4740,25 +4743,37 @@
 <table>
 <thead>
 <tr>
-<th>Service</th>
-<th>Required Info</th>
+<th>Workflow</th>
+<th>Required information</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td>Debrid</td>
-<td>API Key (Real-Debrid)</td>
+<td>API key for each selected debrid provider</td>
 </tr>
 <tr>
-<td>GitHub</td>
-<td>Token <em>(if using the sponsored Zurg repo)</em></td>
+<td>Usenet</td>
+<td>NNTP provider connection details</td>
+</tr>
+<tr>
+<td>Plex</td>
+<td>Claim/token and address when needed by the selected integration</td>
+</tr>
+<tr>
+<td>Private/sponsored GitHub source</td>
+<td>Read-capable GitHub token only when required</td>
+</tr>
+<tr>
+<td>Cloudflared</td>
+<td>Cloudflare Tunnel token when enabled</td>
 </tr>
 </tbody>
 </table>
-<p>See <a href="../features/configuration/#-integration-tokens--credentials">Configuration → Integration Tokens</a></p>
+<p>See <a href="../features/configuration/#integration-tokens-credentials">Configuration → Integration Tokens</a></p>
 <hr />
 <h2 id="required-directories">Required Directories<a class="headerlink" href="#required-directories" title="Permanent link">#</a></h2>
-<p>You'll need to bind mount the following volumes when running the container:</p>
+<p>The maintained Compose file uses these persistent mounts:</p>
 <table>
 <thead>
 <tr>
@@ -4769,66 +4784,30 @@
 <tbody>
 <tr>
 <td><code>/config</code></td>
-<td>Location for configuration files</td>
+<td>DUMB configuration and feature state</td>
 </tr>
 <tr>
 <td><code>/log</code></td>
-<td>Location for logs</td>
+<td>DUMB and service logs</td>
 </tr>
 <tr>
-<td><code>/zurg/RD</code></td>
-<td>Location for Zurg RealDebrid active configuration</td>
-</tr>
-<tr>
-<td><code>/riven/backend/data</code></td>
-<td>Location for Riven Backend data</td>
-</tr>
-<tr>
-<td><code>/postgres_data</code></td>
-<td>Location for PostgreSQL databases</td>
-</tr>
-<tr>
-<td><code>/pgadmin/data</code></td>
-<td>Location for pgAdmin 4 data</td>
-</tr>
-<tr>
-<td><code>/zilean/app/data</code></td>
-<td>Location for Zilean data</td>
-</tr>
-<tr>
-<td><code>/cli_debrid/data</code></td>
-<td>Location for cli_debrid data</td>
-</tr>
-<tr>
-<td><code>/phalanx_db/data</code></td>
-<td>Location for phalanx_db data</td>
-</tr>
-<tr>
-<td><code>/decypharr</code></td>
-<td>Location for decypharr data</td>
-</tr>
-<tr>
-<td><code>/plex</code></td>
-<td>Location for Plex Media Server data</td>
-</tr>
-<tr>
-<td><code>/transcode</code></td>
-<td>Optional writable Plex transcoding cache</td>
+<td><code>/data</code></td>
+<td>Service-specific persistent data, reached through DUMB-managed internal symlinks</td>
 </tr>
 <tr>
 <td><code>/mnt/debrid</code></td>
-<td>Location for raw debrid files/links and symlinks</td>
+<td>Mounts, links, and symlink libraries</td>
 </tr>
 </tbody>
 </table>
 <div class="admonition note">
-<p class="admonition-title">/config</p>
-<p>If a Zurg config.yml and/or Zurg app is placed here, it will be used to override the default configuration and/or app used at startup.</p>
+<p class="admonition-title">Internal service paths</p>
+<p>Paths such as <code>/plex</code>, <code>/postgres_data</code>, <code>/zurg/RD</code>, and <code>/altmount</code> are still the paths services use inside the container, but DUMB maps them into subdirectories of the mounted <code>/data</code> tree. Do not add a separate bind mount for each one unless you are deliberately retaining a legacy/advanced layout.</p>
 </div>
 <div class="admonition important">
 <p class="admonition-title">/mnt/debrid:rshared</p>
 <p>The <code>:rshared</code> must be included in order to support <a href="https://docs.docker.com/storage/bind-mounts/#configure-bind-propagation">mount propagation</a> for rclone to the host when exposing the raw debrid files/links to an external container; e.g., the arrs or a media server.</p>
-<p><code>:rshared</code> is not required when using the default configuration leveraging the internal media server or when not utilizing <a href="../services/core/decypharr/">Decypharr</a>.</p>
+<p><code>:rshared</code> is unnecessary when consumers remain internal or the selected workflow does not create a propagated FUSE/rclone submount.</p>
 </div>
 <hr />
 <div class="admonition note">
@@ -4842,6 +4821,9 @@
 <span class="w">  </span><span class="nt">image</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">iampuid0/dumb:latest</span>
 <span class="w">  </span><span class="nt">volumes</span><span class="p">:</span>
 <span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">./config:/config</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">./log:/log</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">./data:/data</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">./mnt/debrid:/mnt/debrid:rshared</span>
 </code></pre></div>
 </div>
 <p>For more about configuring services, see the <a href="../features/configuration/">Configuration</a> page.</p>

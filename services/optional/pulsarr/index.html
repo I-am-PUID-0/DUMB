@@ -1878,6 +1878,8 @@
         
   
   
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-mountain" viewBox="0 0 24 24"><path d="m8 3 4 8 5-5 5 15H2z"/></svg>
+  
   <span class="md-ellipsis">
     
   
@@ -5047,7 +5049,7 @@
 </ul>
 <h2 id="postgresql-migration">PostgreSQL migration<a class="headerlink" href="#postgresql-migration" title="Permanent link">#</a></h2>
 <p>Use <strong>Database Migration</strong> on the Pulsarr service page for an existing SQLite installation. Rehearsal starts Pulsarr against an isolated PostgreSQL database so Pulsarr creates its current schema, imports application data while excluding Knex's migration bookkeeping tables, validates every copied table, and returns production to SQLite. Cutover repeats this from a cold snapshot and enables <code>postgres_enabled</code> only after validation.</p>
-<p>Do not enable PostgreSQL directly when you need the existing users, settings, requests, or integrations. See <a href="../../../features/arr-postgres-migration/">SQLite to PostgreSQL Migration</a> and the <a href="https://jamcalli.github.io/Pulsarr/docs/installation/postgres-migration/">upstream Pulsarr migration guide</a>.</p>
+<p>Do not enable PostgreSQL directly when you need the existing users, settings, requests, or integrations. See <a href="../../../features/arr-postgres-migration/">SQLite to PostgreSQL Migration</a> and the <a href="https://jamcalli.github.io/Pulsarr/docs/installation/postgres-migration">upstream Pulsarr migration guide</a>.</p>
 <hr />
 <h2 id="related-links">Related links<a class="headerlink" href="#related-links" title="Permanent link">#</a></h2>
 <ul>

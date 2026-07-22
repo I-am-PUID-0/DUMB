@@ -1869,6 +1869,8 @@
         
   
   
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-mountain" viewBox="0 0 24 24"><path d="m8 3 4 8 5-5 5 15H2z"/></svg>
+  
   <span class="md-ellipsis">
     
   
@@ -4848,7 +4850,7 @@
 <span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
 
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">consume_logs</span><span class="p">():</span>
-    <span class="n">uri</span> <span class="o">=</span> <span class="s2">&quot;ws://localhost:8000/ws/logs&quot;</span>
+    <span class="n">uri</span> <span class="o">=</span> <span class="s2">&quot;ws://localhost:3005/ws/logs&quot;</span>
     <span class="k">async</span> <span class="k">with</span> <span class="n">websockets</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">uri</span><span class="p">)</span> <span class="k">as</span> <span class="n">websocket</span><span class="p">:</span>
         <span class="k">async</span> <span class="k">for</span> <span class="n">message</span> <span class="ow">in</span> <span class="n">websocket</span><span class="p">:</span>
             <span class="nb">print</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
@@ -4858,9 +4860,9 @@
 <hr />
 <h2 id="related-modules">Related Modules<a class="headerlink" href="#related-modules" title="Permanent link">#</a></h2>
 <ul>
-<li><a href="https://github.com/I-am-PUID-0/DUMB/blob/master/api/routers/websocket_logs.py"><code>websocket_logs.py</code></a></li>
+<li><a href="https://github.com/I-am-PUID-0/DUMB/blob/dev/api/routers/websocket_logs.py"><code>websocket_logs.py</code></a></li>
 <li><a href="../logs/">Logs API</a> for historical log file access</li>
-<li><a href="../../services/dumb/dumb-frontend/#real-time-logs">Frontend Log Viewer</a></li>
+<li><a href="../../frontend/service-pages/#logs">Frontend Log Viewer</a></li>
 </ul>
 
 

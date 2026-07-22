@@ -1878,6 +1878,8 @@
         
   
   
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-mountain" viewBox="0 0 24 24"><path d="m8 3 4 8 5-5 5 15H2z"/></svg>
+  
   <span class="md-ellipsis">
     
   
@@ -4932,7 +4934,7 @@
 <tr>
 <td><a href="cli-debrid/">CLI Debrid</a></td>
 <td>Debrid media scraper, automation engine, and upgrade engine</td>
-<td>CLI Battery, Phalanx DB, rclone, Zurg</td>
+<td>CLI Battery for stable/older releases; Phalanx DB, rclone, Zurg</td>
 <td>Zilean</td>
 </tr>
 <tr>
@@ -4949,8 +4951,8 @@
 </tr>
 <tr>
 <td><a href="altmount/">AltMount</a></td>
-<td>Alternative Usenet WebDAV and SABnzbd-compatible workflow</td>
-<td></td>
+<td>Usenet streaming, WebDAV, and SABnzbd-compatible Arr workflow</td>
+<td>NNTP provider account</td>
 <td>Sonarr, Radarr, Lidarr, Whisparr</td>
 </tr>
 <tr>
@@ -4980,7 +4982,7 @@
 <tr>
 <td><a href="riven-backend/">Riven Backend</a></td>
 <td>Debrid media scraper and automation engine</td>
-<td>PostgreSQL, rclone, Zurg</td>
+<td>PostgreSQL; stable mode also uses rclone and Zurg</td>
 <td>Zilean, Riven Frontend</td>
 </tr>
 <tr>
@@ -5038,13 +5040,13 @@
 <h2 id="example-workflows">Example Workflows<a class="headerlink" href="#example-workflows" title="Permanent link">#</a></h2>
 <h3 id="cli-debrid"><a href="cli-debrid/">CLI Debrid</a><a class="headerlink" href="#cli-debrid" title="Permanent link">#</a></h3>
 <ul>
-<li><strong>Requires:</strong> <a href="../dependent/cli-battery/">CLI Battery</a>, <a href="../dependent/phalanx-db/">Phalanx DB</a>, <a href="../dependent/rclone/">rclone</a>, and <a href="../dependent/zurg/">Zurg</a></li>
+<li><strong>Requires:</strong> <a href="../dependent/cli-battery/">CLI Battery</a> for stable/older releases (disable it for the v0.7.29+ in-process pre-release layout), <a href="../dependent/phalanx-db/">Phalanx DB</a>, <a href="../dependent/rclone/">rclone</a>, and <a href="../dependent/zurg/">Zurg</a></li>
 <li><strong>Optionally Uses:</strong> <a href="../optional/zilean/">Zilean</a> (as a scraper)</li>
 <li><strong>Outputs:</strong> Clean symlinks for Plex/Emby/Jellyfin and/or monitors Plex library for collected media</li>
 </ul>
 <h3 id="decypharr"><a href="decypharr/">Decypharr</a><a class="headerlink" href="#decypharr" title="Permanent link">#</a></h3>
 <ul>
-<li><strong>Requires:</strong> <a href="../dependent/rclone/">rclone</a></li>
+<li><strong>Requires:</strong> No external mount dependency for native DFS, embedded rclone, or no-mount mode; <code>external_rclone</code> uses a DUMB-managed <a href="../dependent/rclone/">rclone</a> after Decypharr starts</li>
 <li><strong>Optionally Uses:</strong> <a href="../optional/zilean/">Zilean</a> (as a scraper via the arrs)</li>
 <li><strong>Outputs:</strong> Symlinks automatically managed and organized by the arrs (Sonarr/Radarr)</li>
 </ul>
@@ -5071,13 +5073,14 @@
 </ul>
 <h3 id="altmount"><a href="altmount/">AltMount</a><a class="headerlink" href="#altmount" title="Permanent link">#</a></h3>
 <ul>
-<li><strong>Requires:</strong> Arr instances with <code>core_service: altmount</code> for DUMB-managed download-client setup</li>
-<li><strong>Optionally Uses:</strong> AltMount providers, import strategy, and rclone settings managed in AltMount</li>
-<li><strong>Outputs:</strong> SABnzbd-compatible Usenet workflow and WebDAV-backed media access</li>
+<li><strong>Requires:</strong> At least one NNTP provider configured in AltMount; linked Arr instances are optional</li>
+<li><strong>DUMB Integration:</strong> <code>core_service: altmount</code> adds matching Arr instances to AltMount and creates their AltMount download clients</li>
+<li><strong>Operator Configuration:</strong> Choose the AltMount import strategy, validate Arr root/import paths, and configure media-server libraries</li>
+<li><strong>Outputs:</strong> WebDAV plus the selected FUSE/rclone mount and <code>NONE</code>, <code>SYMLINK</code>, or <code>STRM</code> import flow</li>
 </ul>
 <h3 id="riven-backend"><a href="riven-backend/">Riven Backend</a><a class="headerlink" href="#riven-backend" title="Permanent link">#</a></h3>
 <ul>
-<li><strong>Requires:</strong> <a href="../dependent/postgres/">PostgreSQL</a>, <a href="../dependent/rclone/">rclone</a>, and <a href="../dependent/zurg/">Zurg</a></li>
+<li><strong>Requires:</strong> <a href="../dependent/postgres/">PostgreSQL</a>. Stable/release mode also uses <a href="../dependent/rclone/">rclone</a> and <a href="../dependent/zurg/">Zurg</a>; current branch mode uses Riven's native filesystem/debrid-link path instead.</li>
 <li><strong>Optionally Uses:</strong> <a href="../optional/zilean/">Zilean</a> (as a scraper)</li>
 <li><strong>Outputs:</strong> Clean symlinks for Plex/Emby/Jellyfin</li>
 </ul>
@@ -5117,7 +5120,7 @@
 <ul>
 <li><a href="../dependent/">Dependent Services</a></li>
 <li><a href="../optional/">Optional Services</a></li>
-<li><a href="../#-how-the-services-work-together">How Services Work Together</a></li>
+<li><a href="../#how-the-services-work-together">How Services Work Together</a></li>
 </ul>
 
 

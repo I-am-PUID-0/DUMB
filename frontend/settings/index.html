@@ -1275,6 +1275,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#appearance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Appearance
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#about-section" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2188,6 +2199,8 @@
       <a href="../../services/core/altmount/" class="md-nav__link">
         
   
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-mountain" viewBox="0 0 24 24"><path d="m8 3 4 8 5-5 5 15H2z"/></svg>
   
   <span class="md-ellipsis">
     
@@ -4937,6 +4950,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#appearance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Appearance
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#about-section" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -5282,6 +5306,8 @@
 <li>Jumping to Discord, GitHub, docs, and Docker Hub</li>
 <li>Viewing contributors</li>
 </ul>
+<h2 id="appearance">Appearance<a class="headerlink" href="#appearance" title="Permanent link">#</a></h2>
+<p>Choose <strong>System Default</strong> to follow the browser/operating-system light or dark preference, or select one of the explicit light/dark palettes shown in the theme grid. The choice is stored in browser local storage as <code>dmbdb.appearance.theme</code>; it is a per-browser preference and does not modify backend configuration.</p>
 <hr />
 <h2 id="about-section">About section<a class="headerlink" href="#about-section" title="Permanent link">#</a></h2>
 <h3 id="version-information">Version information<a class="headerlink" href="#version-information" title="Permanent link">#</a></h3>
@@ -5359,20 +5385,20 @@ onboarding flow only re-offers non-instance services when they are disabled in t
 <ul>
 <li>Library access</li>
 <li>Plex API integration</li>
-<li>Tautulli connection</li>
+<li>Riven watchlist/library-scan integration when Riven is selected</li>
 </ul>
 <h3 id="github-token">GitHub token<a class="headerlink" href="#github-token" title="Permanent link">#</a></h3>
 <p>Optional GitHub personal access token for:</p>
 <ul>
 <li>Higher API rate limits</li>
 <li>Access to private repositories</li>
-<li>Auto-update functionality</li>
+<li>Private/sponsored release sources used by update/install workflows</li>
 </ul>
 <div class="admonition tip">
 <p class="admonition-title">Creating a GitHub token</p>
 <ol>
 <li>Go to GitHub Settings <span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"/></svg></span> Developer Settings <span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"/></svg></span> Personal Access Tokens</li>
-<li>Create a token with <code>repo</code> scope</li>
+<li>Grant only the read access required by the private/sponsored repository. Public release checks normally need no token.</li>
 <li>Paste it in the GitHub Token field</li>
 </ol>
 </div>

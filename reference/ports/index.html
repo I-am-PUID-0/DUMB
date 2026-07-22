@@ -1869,6 +1869,8 @@
         
   
   
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-mountain" viewBox="0 0 24 24"><path d="m8 3 4 8 5-5 5 15H2z"/></svg>
+  
   <span class="md-ellipsis">
     
   
@@ -4173,6 +4175,28 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#mediastorm" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        MediaStorm
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#bazarr" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Bazarr
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#tautulli" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -5513,6 +5537,28 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#mediastorm" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        MediaStorm
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#bazarr" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Bazarr
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#tautulli" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -5859,8 +5905,8 @@ reverse proxy or use DUMB’s embedded UIs via Traefik.</p>
 </tr>
 <tr>
 <td>3005</td>
-<td>DUMB Frontend</td>
-<td>Web UI</td>
+<td>DUMB Frontend and API gateway</td>
+<td>Web UI/API</td>
 </tr>
 <tr>
 <td>5000</td>
@@ -5893,6 +5939,11 @@ reverse proxy or use DUMB’s embedded UIs via Traefik.</p>
 <td>Web UI/API</td>
 </tr>
 <tr>
+<td>6767</td>
+<td>Bazarr</td>
+<td>Web UI/API</td>
+</tr>
+<tr>
 <td>6969</td>
 <td>Whisparr</td>
 <td>Web UI</td>
@@ -5904,17 +5955,17 @@ reverse proxy or use DUMB’s embedded UIs via Traefik.</p>
 </tr>
 <tr>
 <td>7878</td>
-<td>Radarr (Decypharr)</td>
+<td>Radarr (first/default instance)</td>
 <td>Web UI</td>
 </tr>
 <tr>
 <td>7879</td>
-<td>Radarr (NzbDAV)</td>
+<td>Radarr (typical second instance)</td>
 <td>Web UI</td>
 </tr>
 <tr>
 <td>8000</td>
-<td>DUMB API</td>
+<td>DUMB API (container loopback by default)</td>
 <td>API</td>
 </tr>
 <tr>
@@ -5969,22 +6020,22 @@ reverse proxy or use DUMB’s embedded UIs via Traefik.</p>
 </tr>
 <tr>
 <td>8989</td>
-<td>Sonarr (Decypharr)</td>
+<td>Sonarr (first/default instance)</td>
 <td>Web UI</td>
 </tr>
 <tr>
 <td>8990</td>
-<td>Sonarr (NzbDAV)</td>
+<td>Sonarr (typical second instance)</td>
 <td>Web UI</td>
 </tr>
 <tr>
 <td>9090</td>
-<td>Zurg (Riven)</td>
+<td>Zurg (first/default instance)</td>
 <td>API</td>
 </tr>
 <tr>
 <td>9091</td>
-<td>Zurg (CLID)</td>
+<td>Zurg (typical second instance)</td>
 <td>API</td>
 </tr>
 <tr>
@@ -6045,8 +6096,9 @@ This applies to single-port services and NzbDAV's <code>frontend_port</code>/<co
 </tr>
 </tbody>
 </table>
-<p>The backend API that powers service management, configuration, and monitoring.</p>
-<div class="highlight"><pre><span></span><code>http://localhost:8000/api/...
+<p>The backend API that powers service management, configuration, and monitoring. It listens on <code>127.0.0.1</code> inside the container and is not host-published by the maintained Compose file.</p>
+<div class="highlight"><pre><span></span><code>http://localhost:8000/process/processes  # backend-native, from inside the container
+http://localhost:3005/api/process/processes  # normal frontend proxy
 </code></pre></div>
 <h3 id="dumb-frontend">DUMB Frontend<a class="headerlink" href="#dumb-frontend" title="Permanent link">#</a></h3>
 <table>
@@ -6063,7 +6115,7 @@ This applies to single-port services and NzbDAV's <code>frontend_port</code>/<co
 </tr>
 <tr>
 <td><strong>Type</strong></td>
-<td>Web UI</td>
+<td>Web UI / REST and WebSocket gateway</td>
 </tr>
 <tr>
 <td><strong>Protocol</strong></td>
@@ -6072,6 +6124,9 @@ This applies to single-port services and NzbDAV's <code>frontend_port</code>/<co
 </tbody>
 </table>
 <p>The main dashboard for managing DUMB services.</p>
+<p>The same listener exposes backend REST routes under <code>/api/*</code> and WebSocket
+routes under <code>/ws/*</code>. REST requests have <code>/api</code> removed before they are sent to
+the loopback-only backend on port <code>8000</code>.</p>
 <div class="highlight"><pre><span></span><code>http://localhost:3005
 </code></pre></div>
 <h3 id="traefik-proxy">Traefik proxy<a class="headerlink" href="#traefik-proxy" title="Permanent link">#</a></h3>
@@ -6301,10 +6356,10 @@ http://localhost:8080  # API
 </table>
 <div class="highlight"><pre><span></span><code>http://localhost:3000  # Frontend
 </code></pre></div>
-<div class="admonition warning">
-<p class="admonition-title">NzbDAV port overlap</p>
+<div class="admonition note">
+<p class="admonition-title">NzbDAV and Riven desired defaults overlap</p>
 <p>The default NzbDAV ports (<code>3000</code> and <code>8080</code>) overlap with Riven defaults.
-If you run both services, change one set of ports to avoid conflicts.</p>
+DUMB's startup port allocator normally moves a conflicting enabled service to the next free port and persists the result. Use the runtime configuration/UI—not this default table—as the authority for a running stack.</p>
 </div>
 <h3 id="altmount">AltMount<a class="headerlink" href="#altmount" title="Permanent link">#</a></h3>
 <table>
@@ -6328,58 +6383,63 @@ If you run both services, change one set of ports to avoid conflicts.</p>
 <td><code>/altmount/metadata</code></td>
 </tr>
 <tr>
+<td><code>mount_path</code></td>
+<td><code>/mnt/debrid/altmount</code></td>
+</tr>
+<tr>
 <td><code>log_file</code></td>
 <td><code>/altmount/logs/altmount.log</code></td>
 </tr>
 </tbody>
 </table>
-<p>AltMount also exposes <code>/live</code> for DUMB startup/readiness checks.</p>
+<p>AltMount also exposes <code>/live</code>; DUMB probes it while completing the post-start
+Arr integration pass.</p>
 <hr />
 <h2 id="arr-suite">Arr suite<a class="headerlink" href="#arr-suite" title="Permanent link">#</a></h2>
-<p>The Arr applications support multiple instances for different workflows (for example Decypharr, NzbDAV, or AltMount).</p>
+<p>The Arr applications support multiple instances for different workflows (for example Decypharr, NzbDAV, or AltMount). The first instance starts from the application's base default; additional/conflicting instances are assigned the next free port and saved to <code>/config/dumb_config.json</code>.</p>
 <h3 id="sonarr-tv-shows">Sonarr (TV shows)<a class="headerlink" href="#sonarr-tv-shows" title="Permanent link">#</a></h3>
 <table>
 <thead>
 <tr>
 <th>Instance</th>
-<th>Port</th>
+<th>Typical port</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>Decypharr</td>
+<td>First/default</td>
 <td>8989</td>
 </tr>
 <tr>
-<td>NzbDAV</td>
+<td>Second</td>
 <td>8990</td>
 </tr>
 </tbody>
 </table>
-<div class="highlight"><pre><span></span><code>http://localhost:8989  # Decypharr instance
-http://localhost:8990  # NzbDAV instance
+<div class="highlight"><pre><span></span><code>http://localhost:8989  # typical first instance
+http://localhost:8990  # typical second instance
 </code></pre></div>
 <h3 id="radarr-movies">Radarr (Movies)<a class="headerlink" href="#radarr-movies" title="Permanent link">#</a></h3>
 <table>
 <thead>
 <tr>
 <th>Instance</th>
-<th>Port</th>
+<th>Typical port</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>Decypharr</td>
+<td>First/default</td>
 <td>7878</td>
 </tr>
 <tr>
-<td>NzbDAV</td>
+<td>Second</td>
 <td>7879</td>
 </tr>
 </tbody>
 </table>
-<div class="highlight"><pre><span></span><code>http://localhost:7878  # Decypharr instance
-http://localhost:7879  # NzbDAV instance
+<div class="highlight"><pre><span></span><code>http://localhost:7878  # typical first instance
+http://localhost:7879  # typical second instance
 </code></pre></div>
 <h3 id="lidarr-music">Lidarr (Music)<a class="headerlink" href="#lidarr-music" title="Permanent link">#</a></h3>
 <table>
@@ -6526,6 +6586,49 @@ http://localhost:7879  # NzbDAV instance
 </table>
 <div class="highlight"><pre><span></span><code>http://localhost:6246
 </code></pre></div>
+<h3 id="mediastorm">MediaStorm<a class="headerlink" href="#mediastorm" title="Permanent link">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Port</strong></td>
+<td>7777</td>
+</tr>
+<tr>
+<td><strong>Type</strong></td>
+<td>Web UI / API</td>
+</tr>
+</tbody>
+</table>
+<p>The embedded UI opens at <code>/admin</code>.</p>
+<div class="highlight"><pre><span></span><code>http://localhost:7777/admin
+</code></pre></div>
+<h3 id="bazarr">Bazarr<a class="headerlink" href="#bazarr" title="Permanent link">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Port</strong></td>
+<td>6767</td>
+</tr>
+<tr>
+<td><strong>Type</strong></td>
+<td>Web UI / API</td>
+</tr>
+</tbody>
+</table>
+<div class="highlight"><pre><span></span><code>http://localhost:6767
+</code></pre></div>
 <h3 id="tautulli">Tautulli<a class="headerlink" href="#tautulli" title="Permanent link">#</a></h3>
 <table>
 <thead>
@@ -6604,19 +6707,19 @@ http://localhost:7879  # NzbDAV instance
 </thead>
 <tbody>
 <tr>
-<td>Riven</td>
+<td>First/default</td>
 <td>9090</td>
-<td>Riven workflow</td>
+<td>Any linked workflow</td>
 </tr>
 <tr>
-<td>CLID</td>
+<td>Typical second</td>
 <td>9091</td>
-<td>CLI Debrid workflow</td>
+<td>Any additional linked workflow</td>
 </tr>
 </tbody>
 </table>
-<div class="highlight"><pre><span></span><code>http://localhost:9090  # Riven instance
-http://localhost:9091  # CLID instance
+<div class="highlight"><pre><span></span><code>http://localhost:9090  # typical first instance
+http://localhost:9091  # typical second instance
 </code></pre></div>
 <h3 id="phalanx-db">Phalanx DB<a class="headerlink" href="#phalanx-db" title="Permanent link">#</a></h3>
 <table>
@@ -6664,7 +6767,7 @@ http://localhost:9091  # CLID instance
 </tr>
 </tbody>
 </table>
-<div class="highlight"><pre><span></span><code>postgresql://localhost:5432/dumb
+<div class="highlight"><pre><span></span><code>postgresql://&lt;user&gt;:&lt;password&gt;@localhost:5432/&lt;configured_database&gt;
 </code></pre></div>
 <h3 id="pgadmin">pgAdmin<a class="headerlink" href="#pgadmin" title="Permanent link">#</a></h3>
 <table>
@@ -6702,7 +6805,7 @@ http://localhost:9091  # CLID instance
 <hr />
 <h2 id="firewall-configuration">Firewall configuration<a class="headerlink" href="#firewall-configuration" title="Permanent link">#</a></h2>
 <h3 id="minimum-required-ports">Minimum required ports<a class="headerlink" href="#minimum-required-ports" title="Permanent link">#</a></h3>
-<p>For basic DUMB operation, expose these ports:</p>
+<p>For basic DUMB operation, publish only:</p>
 <table>
 <thead>
 <tr>
@@ -6713,11 +6816,7 @@ http://localhost:9091  # CLID instance
 <tbody>
 <tr>
 <td>3005</td>
-<td>DUMB Frontend</td>
-</tr>
-<tr>
-<td>8000</td>
-<td>DUMB API</td>
+<td>DUMB Frontend and its <code>/api</code>/<code>/ws</code> proxy</td>
 </tr>
 </tbody>
 </table>
@@ -6725,10 +6824,10 @@ http://localhost:9091  # CLID instance
 <p>For complete functionality including all service UIs:</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># Example UFW configuration</span>
 sudo<span class="w"> </span>ufw<span class="w"> </span>allow<span class="w"> </span><span class="m">3005</span>/tcp<span class="w">  </span><span class="c1"># DUMB Frontend</span>
-sudo<span class="w"> </span>ufw<span class="w"> </span>allow<span class="w"> </span><span class="m">8000</span>/tcp<span class="w">  </span><span class="c1"># DUMB API</span>
 sudo<span class="w"> </span>ufw<span class="w"> </span>allow<span class="w"> </span><span class="m">18080</span>/tcp<span class="w"> </span><span class="c1"># Traefik (embedded UIs)</span>
 sudo<span class="w"> </span>ufw<span class="w"> </span>allow<span class="w"> </span><span class="m">32400</span>/tcp<span class="w"> </span><span class="c1"># Plex</span>
 </code></pre></div>
+<p>The backend port <code>8000</code> is loopback-only and unpublished by default. Expose it only when a direct API consumer requires it, after changing <code>dumb.api_service.host</code> to <code>0.0.0.0</code>, enabling authentication, and restricting network access.</p>
 <div class="admonition tip">
 <p class="admonition-title">Use Traefik for consolidated access</p>
 <p>Instead of exposing all service ports, enable embedded UIs and access services through Traefik on port 18080. See <a href="../../features/embedded-ui/">Embedded UIs</a>.</p>

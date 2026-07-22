@@ -1514,6 +1514,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#default-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Default configuration
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#security-considerations" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1976,6 +1987,8 @@
       <a href="../../services/core/altmount/" class="md-nav__link">
         
   
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-mountain" viewBox="0 0 24 24"><path d="m8 3 4 8 5-5 5 15H2z"/></svg>
   
   <span class="md-ellipsis">
     
@@ -4730,6 +4743,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#default-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Default configuration
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#security-considerations" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4857,11 +4881,11 @@
 </tr>
 <tr>
 <td>DUMB API (Scalar)</td>
-<td><code>http://&lt;host&gt;/dumb_api_service/scalar</code></td>
+<td><code>http://&lt;host&gt;:18080/service/ui/dumb_api_service/scalar</code></td>
 </tr>
 <tr>
 <td>DUMB Frontend</td>
-<td><code>http://&lt;host&gt;/dumb_frontend/</code></td>
+<td><code>http://&lt;host&gt;:3005/</code> (published directly, not through the embedded-service route set)</td>
 </tr>
 </tbody>
 </table>
@@ -4912,10 +4936,41 @@
 <li>Cloudflared can bring external traffic to Traefik without replacing either DUMB's routes or TPA's routes.</li>
 </ul>
 <hr />
+<h2 id="default-configuration">Default configuration<a class="headerlink" href="#default-configuration" title="Permanent link">#</a></h2>
+<div class="highlight"><pre><span></span><code><span class="nt">&quot;traefik&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;process_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Traefik&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;pinned_version&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;v3.6.6&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;suppress_logging&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;log_level&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;INFO&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;log_file&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/log/traefik.log&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;access_log_file&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/log/traefik_access.log&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;port&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">18080</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;entrypoints&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;web&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">&quot;address&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;:18080&quot;</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">},</span>
+<span class="w">  </span><span class="nt">&quot;command&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="s2">&quot;/traefik/traefik&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="s2">&quot;--configFile=/config/traefik/traefik.yml&quot;</span>
+<span class="w">  </span><span class="p">],</span>
+<span class="w">  </span><span class="nt">&quot;config_dir&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/config/traefik&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;config_file&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/config/traefik/traefik.yml&quot;</span>
+<span class="p">}</span>
+</code></pre></div>
+<p><code>pinned_version</code> selects the Traefik binary DUMB installs. The config and both
+log paths live under the persistent <code>/config</code> and <code>/log</code> mounts. DUMB rewrites
+its generated route files when service UI definitions change; put operator-owned
+host routes in Traefik Proxy Admin rather than editing <code>services.yaml</code> by hand.</p>
+<hr />
 <h2 id="security-considerations">Security considerations<a class="headerlink" href="#security-considerations" title="Permanent link">#</a></h2>
 <div class="admonition warning">
-<p class="admonition-title">No built-in auth</p>
-<p>Most service UIs do not require authentication. If you expose Traefik outside your LAN, add authentication and TLS at the proxy layer.</p>
+<p class="admonition-title">Embedded routes do not add auth</p>
+<p>DUMB's generated embedded-service routes do not add an authentication
+middleware. Some upstream apps have their own login and some do not. If you
+expose Traefik outside your LAN, use protected TPA routes, Cloudflare Access,
+or another deliberate authentication layer and verify it before publishing.</p>
 </div>
 <hr />
 <h2 id="related-pages">Related pages<a class="headerlink" href="#related-pages" title="Permanent link">#</a></h2>

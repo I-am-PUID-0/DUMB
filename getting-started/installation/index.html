@@ -1863,6 +1863,8 @@
         
   
   
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-mountain" viewBox="0 0 24 24"><path d="m8 3 4 8 5-5 5 15H2z"/></svg>
+  
   <span class="md-ellipsis">
     
   
@@ -4683,11 +4685,12 @@
 <ul>
 <li><strong>Docker or Docker-compatible environment</strong></li>
 <li>Linux system (WSL on Windows when using <code>rshared</code>)</li>
-<li>Minimum 2 vCPU, 2GB RAM, SSD recommended</li>
+<li>A practical minimum of 2 vCPU and 2 GB RAM for a small stack; source builds, PostgreSQL, media servers, and larger service selections need more</li>
+<li>SSD-backed persistent storage is strongly recommended</li>
 </ul>
 <div class="admonition warning">
 <p class="admonition-title">Docker Desktop</p>
-<p>Docker Desktop <strong>CANNOT</strong> be used to run DUMB when using <code>rshared</code> mount propagation. </p>
+<p>Docker Desktop cannot support DUMB workflows that require <code>rshared</code> mount propagation.</p>
 <p>Docker Desktop does not support the <a href="https://docs.docker.com/storage/bind-mounts/#configure-bind-propagation">mount propagation</a> required for rclone mounts.</p>
 <p><img alt="image" src="../../assets/images/docker_desktop.png" /></p>
 <p>See the <a href="https://dumbarr.com/deployment/wsl">deployment options</a> to run DUMB on Windows through WSL2.</p>
@@ -4697,25 +4700,37 @@
 <table>
 <thead>
 <tr>
-<th>Service</th>
-<th>Required Info</th>
+<th>Workflow</th>
+<th>Required information</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td>Debrid</td>
-<td>API Key (Real-Debrid)</td>
+<td>API key for each selected debrid provider</td>
 </tr>
 <tr>
-<td>GitHub</td>
-<td>Token <em>(if using the sponsored Zurg repo)</em></td>
+<td>Usenet</td>
+<td>NNTP provider host, port, credentials, connections, and TLS choice</td>
+</tr>
+<tr>
+<td>Plex</td>
+<td>Claim/token and server address when the selected workflow needs Plex integration</td>
+</tr>
+<tr>
+<td>Private/sponsored GitHub source</td>
+<td>Read-capable GitHub token only when the repository requires it</td>
+</tr>
+<tr>
+<td>Cloudflared</td>
+<td>Cloudflare Tunnel token when enabling the tunnel connector</td>
 </tr>
 </tbody>
 </table>
-<p>See <a href="../../features/configuration/#-integration-tokens--credentials">Configuration → Integration Tokens</a></p>
+<p>See <a href="../../features/configuration/#integration-tokens-credentials">Configuration → Integration Tokens</a></p>
 <hr />
 <h2 id="required-directories">Required Directories<a class="headerlink" href="#required-directories" title="Permanent link">#</a></h2>
-<p>You'll need to bind mount the following volumes when running the container:</p>
+<p>The maintained Compose layout uses four host mounts:</p>
 <table>
 <thead>
 <tr>
@@ -4726,66 +4741,30 @@
 <tbody>
 <tr>
 <td><code>/config</code></td>
-<td>Location for configuration files</td>
+<td>DUMB configuration, authentication data, migration jobs, snapshots, and feature state</td>
 </tr>
 <tr>
 <td><code>/log</code></td>
-<td>Location for logs</td>
+<td>DUMB and collected service logs</td>
 </tr>
 <tr>
-<td><code>/zurg/RD</code></td>
-<td>Location for Zurg RealDebrid active configuration</td>
-</tr>
-<tr>
-<td><code>/riven/backend/data</code></td>
-<td>Location for Riven Backend data</td>
-</tr>
-<tr>
-<td><code>/postgres_data</code></td>
-<td>Location for PostgreSQL databases</td>
-</tr>
-<tr>
-<td><code>/pgadmin/data</code></td>
-<td>Location for pgAdmin 4 data</td>
-</tr>
-<tr>
-<td><code>/zilean/app/data</code></td>
-<td>Location for Zilean data</td>
-</tr>
-<tr>
-<td><code>/cli_debrid/data</code></td>
-<td>Location for cli_debrid data</td>
-</tr>
-<tr>
-<td><code>/phalanx_db/data</code></td>
-<td>Location for phalanx_db data</td>
-</tr>
-<tr>
-<td><code>/decypharr</code></td>
-<td>Location for decypharr data</td>
-</tr>
-<tr>
-<td><code>/plex</code></td>
-<td>Location for Plex Media Server data</td>
-</tr>
-<tr>
-<td><code>/transcode</code></td>
-<td>Optional writable Plex transcoding cache</td>
+<td><code>/data</code></td>
+<td>Persistent service data. DUMB maps internal paths such as <code>/plex</code>, <code>/postgres_data</code>, <code>/decypharr</code>, and <code>/altmount</code> into service-specific subdirectories here.</td>
 </tr>
 <tr>
 <td><code>/mnt/debrid</code></td>
-<td>Location for raw debrid files/links and symlinks</td>
+<td>Mounts, generated links, and symlink libraries shared by media workflows</td>
 </tr>
 </tbody>
 </table>
 <div class="admonition note">
-<p class="admonition-title">/config</p>
-<p>If a Zurg config.yml and/or Zurg app is placed here, it will be used to override the default configuration and/or app used at startup.</p>
+<p class="admonition-title">Do not mount every internal service path</p>
+<p>Current deployments normally persist those paths through <code>/data</code>. Separate direct mounts such as <code>/postgres_data</code> or <code>/plex</code> are legacy/advanced layouts and can prevent DUMB from creating its managed data symlinks. Keep them only when intentionally migrating an existing deployment and verify the service-specific guide.</p>
 </div>
 <div class="admonition important">
 <p class="admonition-title">/mnt/debrid:rshared</p>
 <p>The <code>:rshared</code> must be included in order to support <a href="https://docs.docker.com/storage/bind-mounts/#configure-bind-propagation">mount propagation</a> for rclone to the host when exposing the raw debrid files/links to an external container; e.g., the arrs or a media server.</p>
-<p><code>:rshared</code> is not required when using the default configuration leveraging the internal media server or when not utilizing <a href="../../services/core/decypharr/">Decypharr</a>.</p>
+<p><code>:rshared</code> is not required when all consumers remain inside the DUMB container, when no FUSE/rclone submount is used, or when the selected workflow does not need mount propagation. The requirement is based on mount behavior—not on Decypharr alone.</p>
 </div>
 <hr />
 <h2 id="preparation-checklist">Preparation Checklist<a class="headerlink" href="#preparation-checklist" title="Permanent link">#</a></h2>

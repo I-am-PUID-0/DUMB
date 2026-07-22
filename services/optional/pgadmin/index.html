@@ -1878,6 +1878,8 @@
         
   
   
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-mountain" viewBox="0 0 24 24"><path d="m8 3 4 8 5-5 5 15H2z"/></svg>
+  
   <span class="md-ellipsis">
     
   
@@ -4975,6 +4977,13 @@
 <h1 id="pgadmin-4">pgAdmin 4<a class="headerlink" href="#pgadmin-4" title="Permanent link">#</a></h1>
 <p>pgAdmin 4 is a web-based administration tool for managing PostgreSQL databases. </p>
 <p>DUMB includes pgAdmin pre-installed and configured to work out of the box, allowing you to inspect, query, and back up your databases directly from a browser.</p>
+<div class="admonition danger">
+<p class="admonition-title">Change the bootstrap credentials</p>
+<p>The documented defaults are public bootstrap values. Change them before
+exposing pgAdmin beyond a trusted local network, and prefer keeping pgAdmin
+disabled when it is not actively needed. pgAdmin can read and modify every
+registered database in the shared DUMB PostgreSQL cluster.</p>
+</div>
 <hr />
 <h2 id="configuration-settings-in-dumb_configjson">Configuration Settings in <code>dumb_config.json</code><a class="headerlink" href="#configuration-settings-in-dumb_configjson" title="Permanent link">#</a></h2>
 <div class="highlight"><pre><span></span><code><span class="nt">&quot;pgadmin&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
@@ -5028,6 +5037,12 @@
 <div class="admonition tip">
 <p class="admonition-title">The email is used as the username. It does not need to be a real email address.</p>
 </div>
+<p>In the maintained volume layout, <code>/pgadmin/data</code> persists under the mounted
+<code>/data/pgadmin</code> subtree. Backing up pgAdmin's own data does not back up the
+PostgreSQL databases it administers. Use logical <code>pg_dump</code> backups for those;
+the <a href="../../../faq/pgadmin/#example-scheduled-backups-with-pgagent">scheduled pgAdmin/pgAgent example</a>
+includes all-database discovery, retention, off-system-copy guidance, and a
+restore test.</p>
 <p><img alt="Login Screen" src="../../../assets/images/pgadmin/pgadmin-login.png" /></p>
 <hr />
 <h2 id="server-configuration">Server Configuration<a class="headerlink" href="#server-configuration" title="Permanent link">#</a></h2>
@@ -5055,6 +5070,7 @@
 <li>Scheduling backups</li>
 <li>Routine maintenance</li>
 </ul>
+<p>See the <a href="../../../faq/pgadmin/#example-scheduled-backups-with-pgagent">complete scheduled-backup example</a>.</p>
 <p><img alt="pgAgent Jobs" src="../../../assets/images/pgadmin/pgadmin-pgagent-jobs.png" /></p>
 <hr />
 <h2 id="more-info">More Info<a class="headerlink" href="#more-info" title="Permanent link">#</a></h2>
@@ -5066,7 +5082,7 @@
 <p><a href="https://www.pgadmin.org/docs/pgadmin4/latest/index.html">pgAdmin Docs</a></p>
 </li>
 <li>
-<p><a href="https://www.pgadmin.org/docs/pgadmin4/development/pgagent_jobs.html">pgAgent Job Scheduler</a></p>
+<p><a href="https://www.pgadmin.org/docs/pgadmin4/latest/pgagent_jobs.html">pgAgent Job Scheduler</a></p>
 </li>
 </ul>
 <hr />

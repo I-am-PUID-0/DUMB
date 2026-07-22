@@ -1977,6 +1977,8 @@
         
   
   
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-mountain" viewBox="0 0 24 24"><path d="m8 3 4 8 5-5 5 15H2z"/></svg>
+  
   <span class="md-ellipsis">
     
   
@@ -4872,17 +4874,25 @@
 <h2 id="data-flow">Data flow<a class="headerlink" href="#data-flow" title="Permanent link">#</a></h2>
 <pre class="mermaid"><code>%%{ init: { "flowchart": { "curve": "basis" } } }%%
 flowchart LR
-    UI([Pages + components])
+    CLIENT([Browser UI or API client])
     ST[Pinia stores]
-    API[API client]
-    BE[[DUMB API]]
-    WS[(WebSocket streams)]
+    FE[dmbdb server&lt;br/&gt;port 3005]
+    BE[[DUMB API&lt;br/&gt;127.0.0.1:8000]]
 
-    UI ==&gt; ST
-    ST ==&gt; API
-    API ==&gt; BE
-    BE ==&gt; WS
-    WS ==&gt; ST</code></pre>
+    CLIENT ==&gt;|UI state| ST
+    ST ==&gt;|REST /api/*| FE
+    CLIENT ==&gt;|external REST /api/*| FE
+    FE ==&gt;|strip /api and forward| BE
+    CLIENT -.-&gt;|WebSocket /ws/*| FE
+    FE -.-&gt;|forward unchanged| BE</code></pre>
+<p>The frontend server is also the public API gateway. Its <code>/api/*</code> middleware
+removes the leading <code>/api</code> and forwards the request to the backend-native route
+on port <code>8000</code>. For example, <code>:3005/api/config</code> becomes <code>:8000/config</code>.
+WebSockets use <code>/ws/*</code> on both sides and are forwarded without that rewrite.</p>
+<p>This same-origin design lets the browser avoid cross-origin API calls and means
+the standard Compose deployment needs to publish only port <code>3005</code>. External
+automation can use the gateway too; backend authentication is still applied
+after the request is forwarded.</p>
 <hr />
 <h2 id="embedded-service-uis">Embedded service UIs<a class="headerlink" href="#embedded-service-uis" title="Permanent link">#</a></h2>
 <p>The frontend can embed service UIs in iframes when Traefik is enabled, keeping navigation and authentication within the DUMB experience.</p>

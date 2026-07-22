@@ -1878,6 +1878,8 @@
         
   
   
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-mountain" viewBox="0 0 24 24"><path d="m8 3 4 8 5-5 5 15H2z"/></svg>
+  
   <span class="md-ellipsis">
     
   
@@ -4927,11 +4929,11 @@
 <p>There are <strong>two official Zurg repositories</strong>:</p>
 <ul>
 <li><strong><a href="https://github.com/debridmediamanager/zurg-testing"><code>zurg-testing</code></a></strong> – The <strong>default</strong> public repo used by DUMB. It contains stable builds accessible to all users.</li>
-<li><strong><a href="https://github.com/debridmediamanager/zurg"><code>zurg</code></a></strong> – The <strong>sponsored-only</strong> repo that includes the latest features, nightly builds, and premium support. DUMB can access it by setting the <code>DMB_GITHUB_TOKEN</code> and changing the <code>repo_name</code> to <code>zurg</code>.</li>
+<li><strong><a href="https://github.com/debridmediamanager/zurg"><code>zurg</code></a></strong> – The <strong>sponsored-only</strong> repo that includes the latest features, nightly builds, and premium support. DUMB can access it by setting the <code>DUMB_GITHUB_TOKEN</code> and changing the <code>repo_name</code> to <code>zurg</code>.</li>
 </ul>
 <div class="admonition tip">
 <p class="admonition-title">GitHub Token Setup</p>
-<p>See <a href="../../../features/configuration.md/#-integration-tokens--credentials">Integration Tokens &amp; Credentials</a> section for details on setting up the <code>DMB_GITHUB_TOKEN</code>.</p>
+<p>See <a href="../../../features/configuration/#integration-tokens-credentials">Integration Tokens &amp; Credentials</a> for details on setting up the <code>DUMB_GITHUB_TOKEN</code>.</p>
 </div>
 <hr />
 <h2 id="configuration-in-dumb_configjson">Configuration in <code>dumb_config.json</code><a class="headerlink" href="#configuration-in-dumb_configjson" title="Permanent link">#</a></h2>
@@ -4952,6 +4954,7 @@
 <span class="w">      </span><span class="nt">&quot;port&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">9090</span><span class="p">,</span>
 <span class="w">      </span><span class="nt">&quot;auto_update&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
 <span class="w">      </span><span class="nt">&quot;auto_update_interval&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">24</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;auto_update_start_time&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;04:00&quot;</span><span class="p">,</span>
 <span class="w">      </span><span class="nt">&quot;clear_on_update&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
 <span class="w">      </span><span class="nt">&quot;exclude_dirs&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;/zurg/RD&quot;</span><span class="p">],</span>
 <span class="w">      </span><span class="nt">&quot;key_type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;RealDebrid&quot;</span><span class="p">,</span>
@@ -5017,6 +5020,7 @@
 <span class="w">            </span><span class="nt">&quot;port&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">9090</span><span class="p">,</span>
 <span class="w">            </span><span class="nt">&quot;auto_update&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
 <span class="w">            </span><span class="nt">&quot;auto_update_interval&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">24</span><span class="p">,</span>
+<span class="w">            </span><span class="nt">&quot;auto_update_start_time&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;04:00&quot;</span><span class="p">,</span>
 <span class="w">            </span><span class="nt">&quot;clear_on_update&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
 <span class="w">            </span><span class="nt">&quot;exclude_dirs&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;/zurg/RD&quot;</span><span class="p">],</span>
 <span class="w">            </span><span class="nt">&quot;key_type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;RealDebrid&quot;</span><span class="p">,</span>
@@ -5041,6 +5045,7 @@
 <span class="w">            </span><span class="nt">&quot;port&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">9091</span><span class="p">,</span>
 <span class="w">            </span><span class="nt">&quot;auto_update&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
 <span class="w">            </span><span class="nt">&quot;auto_update_interval&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">24</span><span class="p">,</span>
+<span class="w">            </span><span class="nt">&quot;auto_update_start_time&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;04:00&quot;</span><span class="p">,</span>
 <span class="w">            </span><span class="nt">&quot;clear_on_update&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
 <span class="w">            </span><span class="nt">&quot;exclude_dirs&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;/zurg/RD2&quot;</span><span class="p">],</span>
 <span class="w">            </span><span class="nt">&quot;key_type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;RealDebrid&quot;</span><span class="p">,</span>

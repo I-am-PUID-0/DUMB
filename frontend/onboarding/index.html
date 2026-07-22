@@ -2176,6 +2176,8 @@
         
   
   
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-mountain" viewBox="0 0 24 24"><path d="m8 3 4 8 5-5 5 15H2z"/></svg>
+  
   <span class="md-ellipsis">
     
   
@@ -5325,13 +5327,13 @@ flowchart TD
 </div>
 <hr />
 <h3 id="step-2-preflight-checks">Step 2: Preflight checks<a class="headerlink" href="#step-2-preflight-checks" title="Permanent link">#</a></h3>
-<p>The wizard verifies key backend readiness signals before proceeding:</p>
+<p>The wizard performs these blocking frontend-proxied requests before proceeding:</p>
 <ul>
-<li>DUMB API health endpoint response</li>
-<li>Backend capabilities endpoint availability</li>
-<li>Core service catalog loading</li>
-<li>Existing mount/symlink path configuration visibility</li>
-<li>Embedded UI endpoint availability</li>
+<li><code>GET /api/health</code></li>
+<li><code>GET /api/process/capabilities</code></li>
+<li><code>GET /api/process/core-services</code></li>
+<li><code>GET /api/config</code></li>
+<li><code>GET /api/config/service-ui</code></li>
 </ul>
 <p>Blocking check failures must be resolved before moving to the next step.</p>
 <hr />
@@ -5375,16 +5377,28 @@ flowchart TD
 </thead>
 <tbody>
 <tr>
-<td><strong>Utilities</strong></td>
-<td>Zilean, pgAdmin, Riven Frontend, PostgreSQL</td>
+<td><strong>Database/discovery</strong></td>
+<td>PostgreSQL, pgAdmin, Zilean</td>
 </tr>
 <tr>
-<td><strong>Monitoring</strong></td>
-<td>Tautulli</td>
+<td><strong>Riven UI</strong></td>
+<td>Riven Frontend</td>
+</tr>
+<tr>
+<td><strong>Media automation</strong></td>
+<td>Tautulli, Bazarr, Pulsarr, Maintainerr</td>
+</tr>
+<tr>
+<td><strong>Streaming</strong></td>
+<td>MediaStorm</td>
+</tr>
+<tr>
+<td><strong>Reverse proxy/exposure</strong></td>
+<td>Traefik Proxy Admin, Cloudflared</td>
 </tr>
 </tbody>
 </table>
-<p>Optional services are filtered based on your core services and automatically configured with appropriate connections.</p>
+<p>Optional services are filtered based on core dependencies and earlier selections. For example, PostgreSQL may be enabled/hidden automatically when a selected service requires it.</p>
 <div class="admonition warning">
 <p class="admonition-title">MediaStorm first login</p>
 <p>When MediaStorm is selected, its initial admin username and password are both <code>admin</code>. The Optional Services step displays this reminder. Change the public default password immediately after first login and before exposing MediaStorm outside your trusted network.</p>
@@ -5398,9 +5412,17 @@ flowchart TD
 <li><strong>Zurg</strong>: Custom port, log level</li>
 <li><strong>rclone</strong>: Mount options, log level</li>
 <li><strong>Phalanx DB</strong>: Enable/disable for CLI Debrid</li>
-<li><strong>Decypharr</strong>: Use embedded rclone option</li>
+<li><strong>Decypharr</strong>: FUSE, embedded rclone, external rclone, or no-mount mode</li>
+<li><strong>AltMount</strong>: FUSE, embedded rclone, external rclone, or no-mount mode</li>
 </ul>
 <p>Default values are pre-filled but can be customized.</p>
+<div class="admonition note">
+<p class="admonition-title">AltMount still needs application setup</p>
+<p>Onboarding selects AltMount's mount mode and wires Arr download clients.
+After first start, create the AltMount administrator, add an NNTP provider,
+choose an import strategy, and validate the Arr/media-library paths. See the
+<a href="../../services/core/altmount/#first-start-checklist">AltMount guide</a>.</p>
+</div>
 <div class="admonition info">
 <p class="admonition-title">Instances</p>
 <p>Services that support multiple instances show instance panels on a single page. Each instance can have its
@@ -5482,7 +5504,10 @@ setup may fail to fully configure dependencies and integrations.</p>
 </ul>
 <p>For Arr services and NeutArr, instance names can be used to split workflows (e.g., Debrid vs Usenet, or multiple
 quality tiers). </p>
-<p>Combined Arr workflows use <code>/mnt/debrid/combined_symlinks/&lt;slug&gt;</code> for root folders.</p>
+<p>Combined Arr workflows that include Decypharr plus NzbDAV or AltMount use
+<code>/mnt/debrid/combined_symlinks/&lt;slug&gt;</code> for the Decypharr-managed root. An
+AltMount-only route—or NzbDAV + AltMount without Decypharr—does not get a
+combined root automatically.</p>
 <hr />
 <h2 id="after-onboarding">After onboarding<a class="headerlink" href="#after-onboarding" title="Permanent link">#</a></h2>
 <p>Once complete:</p>

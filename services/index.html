@@ -1878,6 +1878,8 @@
         
   
   
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-mountain" viewBox="0 0 24 24"><path d="m8 3 4 8 5-5 5 15H2z"/></svg>
+  
   <span class="md-ellipsis">
     
   
@@ -4776,14 +4778,14 @@
 <li>
 <p><strong>Metadata &amp; Caching</strong></p>
 <ul>
-<li><strong>CLI Battery</strong> and  <strong>Phalanx DB</strong> serve as local or distributed metadata stores</li>
+<li><strong>CLI Battery</strong> serves as the standalone local metadata layer for stable/older CLI Debrid releases; v0.7.29+ pre-releases move it in-process. <strong>Phalanx DB</strong> provides distributed metadata.</li>
 <li><strong>Zilean</strong> caches metadata and exposes a Torznab-compatible indexer for scraping optimization</li>
 </ul>
 </li>
 <li>
 <p><strong>Database Layer</strong></p>
 <ul>
-<li><strong>PostgreSQL</strong> stores metadata for Riven, Zilean, and pgAdmin</li>
+<li><strong>PostgreSQL</strong> stores data for Riven, Zilean, pgAdmin, Traefik Proxy Admin, MediaStorm, optional Metrics history, and services deliberately migrated from SQLite</li>
 <li><strong>pgAdmin</strong> is a GUI for exploring PostgreSQL databases</li>
 </ul>
 </li>
@@ -4840,7 +4842,7 @@
 <tr>
 <td><a href="../services/core/altmount/">AltMount</a></td>
 <td>Core</td>
-<td>Alternative Usenet WebDAV and SABnzbd-compatible workflow</td>
+<td>Usenet streaming, WebDAV, mount, and Arr import workflow</td>
 </tr>
 <tr>
 <td><a href="../services/core/plex-media-server/">Plex</a></td>
@@ -4915,7 +4917,7 @@
 <tr>
 <td><a href="../services/dependent/cli-battery/">CLI Battery</a></td>
 <td>Dependent</td>
-<td>Metadata service for CLI Debrid</td>
+<td>Standalone metadata service for stable/older CLI Debrid releases</td>
 </tr>
 <tr>
 <td><a href="../services/dependent/phalanx-db/">Phalanx DB</a></td>

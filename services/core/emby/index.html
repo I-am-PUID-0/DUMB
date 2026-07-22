@@ -1878,6 +1878,8 @@
         
   
   
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-mountain" viewBox="0 0 24 24"><path d="m8 3 4 8 5-5 5 15H2z"/></svg>
+  
   <span class="md-ellipsis">
     
   
@@ -4988,7 +4990,7 @@
 </table>
 <div class="admonition info">
 <p class="admonition-title">Traefik access</p>
-<p>If Traefik is enabled, the Emby UI is proxied at <code>http://&lt;host&gt;/emby/</code> (path prefix <code>/web</code>).</p>
+<p>If Traefik is enabled, the Emby UI is proxied at <code>http://&lt;host&gt;:18080/service/ui/emby/</code>; DUMB preserves Emby's internal <code>/web</code> path handling.</p>
 </div>
 <hr />
 <h2 id="configuration-in-dumb_configjson">Configuration in <code>dumb_config.json</code><a class="headerlink" href="#configuration-in-dumb_configjson" title="Permanent link">#</a></h2>
@@ -5005,6 +5007,7 @@
 <span class="w">  </span><span class="nt">&quot;port&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">8096</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;auto_update&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;auto_update_interval&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">24</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;auto_update_start_time&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;04:00&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;config_dir&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/emby&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;config_file&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/emby/config/system.xml&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;log_file&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/emby/log/embyserver.txt&quot;</span><span class="p">,</span>
@@ -5028,7 +5031,7 @@
 <h2 id="accessing-the-ui">Accessing the UI<a class="headerlink" href="#accessing-the-ui" title="Permanent link">#</a></h2>
 <ul>
 <li>Navigate to: <code>http://&lt;host&gt;:8096</code></li>
-<li>Traefik proxy: <code>http://&lt;host&gt;/emby/</code></li>
+<li>Traefik proxy: <code>http://&lt;host&gt;:18080/service/ui/emby/</code></li>
 </ul>
 <hr />
 <h2 id="logs-and-data-paths">Logs and data paths<a class="headerlink" href="#logs-and-data-paths" title="Permanent link">#</a></h2>

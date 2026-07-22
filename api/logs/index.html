@@ -1869,6 +1869,8 @@
         
   
   
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-mountain" viewBox="0 0 24 24"><path d="m8 3 4 8 5-5 5 15H2z"/></svg>
+  
   <span class="md-ellipsis">
     
   
@@ -4874,6 +4876,7 @@
 <p>Returns a JSON object containing the log chunk and cursor:</p>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;process_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Riven Backend&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;size&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">123456</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;cursor&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">123456</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;chunk&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Apr 12, 2025 10:04:01 - INFO - Riven Backend started\n&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;reset&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
@@ -4886,6 +4889,7 @@
 <ul>
 <li>When <code>reset</code> is <code>true</code>, clients should replace their log buffer with <code>chunk</code>.</li>
 <li>On incremental requests, pass the returned <code>cursor</code> to get only new bytes.</li>
+<li>Log content passes through DUMB's sensitive-data redactor before it is returned.</li>
 </ul>
 </div>
 <hr />

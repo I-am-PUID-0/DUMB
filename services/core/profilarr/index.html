@@ -1878,6 +1878,8 @@
         
   
   
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-mountain" viewBox="0 0 24 24"><path d="m8 3 4 8 5-5 5 15H2z"/></svg>
+  
   <span class="md-ellipsis">
     
   
@@ -5179,7 +5181,7 @@
 <span class="w">      </span><span class="nt">&quot;repo_owner&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Dictionarry-Hub&quot;</span><span class="p">,</span>
 <span class="w">      </span><span class="nt">&quot;repo_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;profilarr&quot;</span><span class="p">,</span>
 <span class="w">      </span><span class="nt">&quot;release_version_enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;release_version&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;latest&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;release_version&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;v1.1.4&quot;</span><span class="p">,</span>
 <span class="w">      </span><span class="nt">&quot;branch_enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
 <span class="w">      </span><span class="nt">&quot;branch&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;main&quot;</span><span class="p">,</span>
 <span class="w">      </span><span class="nt">&quot;suppress_logging&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
@@ -5187,6 +5189,7 @@
 <span class="w">      </span><span class="nt">&quot;port&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">6868</span><span class="p">,</span>
 <span class="w">      </span><span class="nt">&quot;auto_update&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
 <span class="w">      </span><span class="nt">&quot;auto_update_interval&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">24</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;auto_update_start_time&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;04:00&quot;</span><span class="p">,</span>
 <span class="w">      </span><span class="nt">&quot;clear_on_update&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
 <span class="w">      </span><span class="nt">&quot;exclude_dirs&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
 <span class="w">        </span><span class="s2">&quot;/profilarr/default/config&quot;</span>
@@ -5195,12 +5198,22 @@
 <span class="w">        </span><span class="s2">&quot;python&quot;</span><span class="p">,</span>
 <span class="w">        </span><span class="s2">&quot;pnpm&quot;</span>
 <span class="w">      </span><span class="p">],</span>
-<span class="w">      </span><span class="nt">&quot;command&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;bash&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;entrypoint.sh&quot;</span><span class="p">],</span>
+<span class="w">      </span><span class="nt">&quot;command&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">        </span><span class="s2">&quot;/profilarr/default/backend/venv/bin/gunicorn&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="s2">&quot;--chdir&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="s2">&quot;/profilarr/default/backend&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="s2">&quot;--bind&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="s2">&quot;0.0.0.0:{port}&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="s2">&quot;--timeout&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="s2">&quot;600&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="s2">&quot;app.main:create_app()&quot;</span>
+<span class="w">      </span><span class="p">],</span>
 <span class="w">      </span><span class="nt">&quot;config_dir&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/profilarr/default&quot;</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;config_file&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/profilarr/default/config/config.json&quot;</span><span class="p">,</span>
 <span class="w">      </span><span class="nt">&quot;log_file&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/profilarr/default/config/log/profilarr.log&quot;</span><span class="p">,</span>
 <span class="w">      </span><span class="nt">&quot;env&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<span class="w">        </span><span class="nt">&quot;PORT&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;{port}&quot;</span>
+<span class="w">        </span><span class="nt">&quot;PROFILARR_CONFIG_DIR&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/profilarr/default/config&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;FLASK_ENV&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;production&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;PYTHONPATH&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/profilarr/default/backend&quot;</span>
 <span class="w">      </span><span class="p">}</span>
 <span class="w">    </span><span class="p">}</span>
 <span class="w">  </span><span class="p">}</span>
@@ -5214,9 +5227,13 @@
 <li><strong><code>release_version_enabled</code> / <code>release_version</code></strong>: Use GitHub releases when enabled.</li>
 <li><strong><code>branch_enabled</code> / <code>branch</code></strong>: Use a specific branch if enabled.</li>
 <li><strong><code>port</code></strong>: Port the Profilarr UI is exposed on.</li>
-<li><strong><code>auto_update</code> / <code>auto_update_interval</code></strong>: Automatic update settings.</li>
-<li><strong><code>config_dir</code> / <code>config_file</code> / <code>log_file</code></strong>: Profilarr config and log paths.</li>
+<li><strong><code>auto_update</code> / <code>auto_update_interval</code> / <code>auto_update_start_time</code></strong>: Automatic update settings.</li>
+<li><strong><code>config_dir</code> / <code>log_file</code></strong>: Profilarr installation/config root and log path.</li>
 </ul>
+<div class="admonition note">
+<p class="admonition-title">Pinned compatibility default</p>
+<p>DUMB currently enables the tested <code>v1.1.4</code> release selector by default. Do not replace it with an arbitrary current upstream release unless you intend to compatibility-test DUMB's install, launch, and auto-link behavior against that version.</p>
+</div>
 <hr />
 <h2 id="arr-instance-options">Arr instance options<a class="headerlink" href="#arr-instance-options" title="Permanent link">#</a></h2>
 <p>Profilarr auto‑linking is controlled per Arr instance:</p>

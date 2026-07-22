@@ -1872,6 +1872,8 @@
         
   
   
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-mountain" viewBox="0 0 24 24"><path d="m8 3 4 8 5-5 5 15H2z"/></svg>
+  
   <span class="md-ellipsis">
     
   
@@ -4848,7 +4850,9 @@
 </tr>
 </tbody>
 </table>
-<p>When accessed through Traefik, the frontend is available at port <code>18080</code>.</p>
+<p>The maintained Compose file publishes the frontend directly on <code>3005</code>. Built-in
+Traefik on <code>18080</code> routes managed service UIs; it does not replace the normal
+DUMB frontend listener.</p>
 <hr />
 <h2 id="key-pages">Key pages<a class="headerlink" href="#key-pages" title="Permanent link">#</a></h2>
 <table>
@@ -4877,8 +4881,8 @@
 </tr>
 <tr>
 <td><a href="service-pages/">Service pages</a></td>
-<td><code>/settings</code></td>
-<td>Auto-restart, auto-update, config editors</td>
+<td><code>/services/[serviceId]</code></td>
+<td>Status, logs, embedded UI, updates, and config editors</td>
 </tr>
 <tr>
 <td><a href="metrics/">Metrics</a></td>
@@ -4960,11 +4964,13 @@ Traefik enables WebSockets by default, but Nginx requires explicit configuration
 <h2 id="authentication">Authentication<a class="headerlink" href="#authentication" title="Permanent link">#</a></h2>
 <p>The frontend supports optional JWT-based authentication:</p>
 <ul>
-<li><strong>First-time setup</strong> - Create admin account or skip authentication</li>
+<li><strong>First-time setup</strong> - Create the first local account or skip authentication</li>
 <li><strong>Login</strong> - Secure access with username/password</li>
 <li><strong>Remember me</strong> - Persistent sessions across browser restarts</li>
 <li><strong>User management</strong> - Create, disable, and delete users</li>
 </ul>
+<p>All enabled DUMB users currently have the same control-plane permissions; there
+is no viewer/operator/admin role split.</p>
 <p>See the <a href="../features/authentication/">Authentication</a> guide for details.</p>
 <hr />
 <h2 id="configuration">Configuration<a class="headerlink" href="#configuration" title="Permanent link">#</a></h2>
