@@ -23,7 +23,7 @@ from utils.mediastorm_installer import (
 )
 import defusedxml.ElementTree as ET
 import yaml
-import os, shutil, random, subprocess, re, glob, secrets, shlex, time, urllib.parse, base64, threading, sys, hashlib, json, requests, copy
+import os, shutil, random, subprocess, re, glob, secrets, shlex, time, urllib.parse, base64, threading, sys, hashlib, json, requests, copy, socket
 
 user_id = CONFIG_MANAGER.get("puid")
 group_id = CONFIG_MANAGER.get("pgid")
@@ -7737,6 +7737,66 @@ def fuse_config():
         return False, "Permission denied while accessing /etc/fuse.conf."
 
 
+def _extract_rclone_rc_port(command):
+    if isinstance(command, str):
+        command = shlex.split(command)
+    if not isinstance(command, list):
+        return None
+
+    for index, token in enumerate(command):
+        if not isinstance(token, str):
+            continue
+        address = None
+        if token == "--rc-addr" and index + 1 < len(command):
+            address = command[index + 1]
+        elif token.startswith("--rc-addr="):
+            address = token.split("=", 1)[1]
+        if not isinstance(address, str):
+            continue
+        port_text = address.rsplit(":", 1)[-1]
+        if port_text.isdigit() and 0 < int(port_text) <= 65535:
+            return int(port_text)
+    return None
+
+
+def _is_rclone_rc_port_available(port):
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+            sock.bind(("0.0.0.0", port))
+        return True
+    except OSError:
+        return False
+
+
+def _select_rclone_rc_port(
+    instance, all_instances, altmount_config=None, port_available=None
+):
+    reserved_ports = set()
+    for other in (all_instances or {}).values():
+        if other is instance or not isinstance(other, dict):
+            continue
+        port = _extract_rclone_rc_port(other.get("command", []))
+        if port:
+            reserved_ports.add(port)
+
+    altmount_config = altmount_config or {}
+    if altmount_config.get("enabled") and altmount_config.get(
+        "mount_type", "rclone"
+    ) in {"rclone", "external_rclone"}:
+        try:
+            reserved_ports.add(int(altmount_config.get("rclone_rc_port") or 5573))
+        except (TypeError, ValueError):
+            reserved_ports.add(5573)
+
+    port_available = port_available or _is_rclone_rc_port_available
+    candidate = _extract_rclone_rc_port(instance.get("command", [])) or 5572
+    while candidate <= 65535:
+        if candidate not in reserved_ports and port_available(candidate):
+            return candidate
+        candidate += 1
+    raise RuntimeError("No available rclone RC port could be allocated.")
+
+
 def rclone_setup():
     config = CONFIG_MANAGER.get("rclone")
     if not config:
@@ -8087,51 +8147,11 @@ def rclone_setup():
                     "--gid": str(group_id),
                     "--allow-other": None,
                     "--poll-interval": "0",
-                    "--dir-cache-time": "10s",
                     "--allow-non-empty": None,
                     "--cache-dir": cache_dir,
                     "--log-level": log_level,
                 }
-                default_flags = {}
-                if instance.get("key_type", "").lower() == "nzbdav":
-                    default_flags.update(
-                        {
-                            "--vfs-cache-mode": "full",
-                            "--buffer-size": "1024M",
-                            "--dir-cache-time": "1s",
-                            "--vfs-cache-max-size": "5G",
-                            "--vfs-cache-max-age": "180m",
-                            "--links": None,
-                            "--use-cookies": None,
-                        }
-                    )
-                if instance.get("decypharr_enabled"):
-                    used_ports = set()
-                    all_instances = CONFIG_MANAGER.get("rclone", {}).get(
-                        "instances", {}
-                    )
-
-                    for other_name, other in all_instances.items():
-                        if other is instance or not other.get("decypharr_enabled"):
-                            continue
-                        other_cmd = other.get("command", [])
-                        for i, token in enumerate(other_cmd):
-                            if token == "--rc-addr" and i + 1 < len(other_cmd):
-                                port = other_cmd[i + 1]
-                                if port.startswith(":") and port[1:].isdigit():
-                                    used_ports.add(int(port[1:]))
-                    rc_port = 5572
-                    while rc_port in used_ports:
-                        rc_port += 1
-
-                    required_flags.update(
-                        {
-                            "--rc": None,
-                            "--rc-addr": f":{rc_port}",
-                            "--rc-no-auth": None,
-                        }
-                    )
-
+                default_flags = {"--dir-cache-time": "10s"}
                 existing = instance.get("command", [])
                 parsed_flags = {}
                 i = 0
@@ -8149,6 +8169,46 @@ def rclone_setup():
                         else:
                             parsed_flags[item] = None
                     i += 1
+                if instance.get("key_type", "").lower() == "nzbdav":
+                    default_flags.update(
+                        {
+                            "--vfs-cache-mode": "full",
+                            "--buffer-size": "1024M",
+                            "--dir-cache-time": "1s",
+                            "--vfs-cache-max-size": "5G",
+                            "--vfs-cache-max-age": "180m",
+                            "--links": None,
+                            "--use-cookies": None,
+                        }
+                    )
+                rc_port = None
+                previous_rc_port = _extract_rclone_rc_port(existing)
+                is_nzbdav = instance.get("key_type", "").lower() == "nzbdav"
+                if instance.get("decypharr_enabled") or is_nzbdav:
+                    all_instances = CONFIG_MANAGER.get("rclone", {}).get(
+                        "instances", {}
+                    )
+                    rc_port = _select_rclone_rc_port(
+                        instance,
+                        all_instances,
+                        CONFIG_MANAGER.get("altmount", {}),
+                    )
+
+                    required_flags.update(
+                        {
+                            "--rc": None,
+                            "--rc-addr": (
+                                f"127.0.0.1:{rc_port}" if is_nzbdav else f":{rc_port}"
+                            ),
+                        }
+                    )
+                    if (
+                        "--rc-user" not in parsed_flags
+                        and "--rc-pass" not in parsed_flags
+                    ):
+                        required_flags["--rc-no-auth"] = None
+                    else:
+                        parsed_flags.pop("--rc-no-auth", None)
                 for key, value in required_flags.items():
                     parsed_flags[key] = value
                 for key, value in default_flags.items():
@@ -8168,6 +8228,26 @@ def rclone_setup():
                 logger.debug(
                     f"Final rclone command for {instance['mount_name']}: {final_cmd}"
                 )
+
+                if is_nzbdav and rc_port:
+                    from utils.nzbdav_settings import sync_nzbdav_rclone_rc
+
+                    previous_host = (
+                        f"http://127.0.0.1:{previous_rc_port}"
+                        if previous_rc_port
+                        else None
+                    )
+                    ok, sync_error = sync_nzbdav_rclone_rc(
+                        f"http://127.0.0.1:{rc_port}",
+                        previous_managed_host=previous_host,
+                        user=parsed_flags.get("--rc-user"),
+                        password=parsed_flags.get("--rc-pass"),
+                    )
+                    if not ok and sync_error:
+                        logger.warning(
+                            "Failed to configure NzbDAV rclone RC settings: %s",
+                            sync_error,
+                        )
 
             update_or_generate_command(instance)
             from utils.riven_settings import parse_config_keys

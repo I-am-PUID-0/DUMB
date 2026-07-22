@@ -6,7 +6,7 @@ from utils.url_security import safe_request, safe_urlopen
 from utils.user_management import chown_recursive, chown_single
 from typing import Optional, Tuple
 import defusedxml.ElementTree as ET
-import json, os, time, urllib.request, urllib.error
+import json, os, time, urllib.request, urllib.error, urllib.parse
 import threading
 
 
@@ -116,6 +116,71 @@ def _instance_core_services(svc_name: str, instance_name: str) -> list[str]:
 
 def _join(host: str, path: str) -> str:
     return f"{host.rstrip('/')}/{path.lstrip('/')}"
+
+
+def sync_nzbdav_rclone_rc(
+    host: str,
+    previous_managed_host: Optional[str] = None,
+    user: Optional[str] = None,
+    password: Optional[str] = None,
+) -> Tuple[bool, Optional[str]]:
+    keys = ("rclone.rc-enabled", "rclone.host", "rclone.user", "rclone.pass")
+    try:
+        current = {key: nzbdav_db.get_config_value(key) or "" for key in keys}
+    except FileNotFoundError as exc:
+        return False, str(exc)
+
+    updates = {}
+    if not current["rclone.host"]:
+        updates["rclone.host"] = host
+        updates["rclone.rc-enabled"] = "true"
+    elif (
+        previous_managed_host
+        and current["rclone.host"].rstrip("/") == previous_managed_host.rstrip("/")
+        and current["rclone.host"].rstrip("/") != host.rstrip("/")
+    ):
+        updates["rclone.host"] = host
+
+    if user and not current["rclone.user"]:
+        updates["rclone.user"] = user
+    if password and not current["rclone.pass"]:
+        updates["rclone.pass"] = password
+
+    if not updates:
+        return True, None
+
+    nzbdav_config = CONFIG_MANAGER.get("nzbdav", {}) or {}
+    env_config = nzbdav_config.get("env", {}) or {}
+    api_key = env_config.get("FRONTEND_BACKEND_API_KEY") or nzbdav_db.get_config_value(
+        "api.key"
+    )
+    backend_port = int(nzbdav_config.get("backend_port") or 8080)
+    if api_key:
+        request = safe_request(
+            f"http://127.0.0.1:{backend_port}/api/update-config",
+            data=urllib.parse.urlencode(updates).encode("utf-8"),
+            headers={
+                "Content-Type": "application/x-www-form-urlencoded",
+                "x-api-key": api_key,
+            },
+            method="POST",
+        )
+        try:
+            with safe_urlopen(request, timeout=5) as response:
+                if 200 <= response.status < 300:
+                    logger.info("Configured NzbDAV to use rclone RC at %s.", host)
+                    return True, None
+        except (urllib.error.URLError, TimeoutError, OSError):
+            logger.debug(
+                "NzbDAV API unavailable while configuring rclone RC; updating its database directly."
+            )
+
+    for key, value in updates.items():
+        ok, error = nzbdav_db.set_config_value(key, value)
+        if not ok:
+            return False, error
+    logger.info("Seeded NzbDAV rclone RC settings at %s.", host)
+    return True, None
 
 
 def _arr_req(
