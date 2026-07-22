@@ -4854,8 +4854,8 @@
   
 
 
-<h1 id="decypharr-faq">Decypharr FAQ<a class="headerlink" href="#decypharr-faq" title="Permanent link">&para;</a></h1>
-<h2 id="which-mount-mode-should-i-choose">Which mount mode should I choose?<a class="headerlink" href="#which-mount-mode-should-i-choose" title="Permanent link">&para;</a></h2>
+<h1 id="decypharr-faq">Decypharr FAQ<a class="headerlink" href="#decypharr-faq" title="Permanent link">#</a></h1>
+<h2 id="which-mount-mode-should-i-choose">Which mount mode should I choose?<a class="headerlink" href="#which-mount-mode-should-i-choose" title="Permanent link">#</a></h2>
 <table>
 <thead>
 <tr>
@@ -4888,15 +4888,15 @@
 </tbody>
 </table>
 <p>DFS and native Usenet are current stable features; a beta branch toggle is not required to use them.</p>
-<h2 id="why-does-external-rclone-start-after-decypharr">Why does external rclone start after Decypharr?<a class="headerlink" href="#why-does-external-rclone-start-after-decypharr" title="Permanent link">&para;</a></h2>
+<h2 id="why-does-external-rclone-start-after-decypharr">Why does external rclone start after Decypharr?<a class="headerlink" href="#why-does-external-rclone-start-after-decypharr" title="Permanent link">#</a></h2>
 <p>The rclone instance consumes Decypharr's WebDAV endpoint, so starting rclone first creates a dependency cycle. DUMB starts Decypharr, waits for its WebDAV readiness, then starts the <code>decypharr_enabled</code> rclone instance.</p>
-<h2 id="where-do-provider-api-keys-belong">Where do provider API keys belong?<a class="headerlink" href="#where-do-provider-api-keys-belong" title="Permanent link">&para;</a></h2>
+<h2 id="where-do-provider-api-keys-belong">Where do provider API keys belong?<a class="headerlink" href="#where-do-provider-api-keys-belong" title="Permanent link">#</a></h2>
 <p>DUMB persists onboarding keys under <code>decypharr.api_keys</code> for every mount mode. Setup reconciles those keys into Decypharr and uses them when an external-rclone instance must be created. Avoid putting secrets into screenshots or support logs.</p>
-<h2 id="how-is-usenet-connected-to-an-arr-app">How is Usenet connected to an Arr app?<a class="headerlink" href="#how-is-usenet-connected-to-an-arr-app" title="Permanent link">&para;</a></h2>
+<h2 id="how-is-usenet-connected-to-an-arr-app">How is Usenet connected to an Arr app?<a class="headerlink" href="#how-is-usenet-connected-to-an-arr-app" title="Permanent link">#</a></h2>
 <p>When Decypharr has Usenet providers configured, DUMB adds a Sabnzbd-compatible download client named <code>decypharr-usenet</code> to linked Arr instances. Debrid downloads use Decypharr's qBittorrent-compatible client.</p>
-<h2 id="why-is-dumb-waiting-for-the-wrong-old-provider-mount">Why is DUMB waiting for the wrong old provider mount?<a class="headerlink" href="#why-is-dumb-waiting-for-the-wrong-old-provider-mount" title="Permanent link">&para;</a></h2>
+<h2 id="why-is-dumb-waiting-for-the-wrong-old-provider-mount">Why is DUMB waiting for the wrong old provider mount?<a class="headerlink" href="#why-is-dumb-waiting-for-the-wrong-old-provider-mount" title="Permanent link">#</a></h2>
 <p>Legacy configs may contain per-provider folders while current configs use one top-level <code>mount.mount_path</code>. Restart after saving the desired <code>mount_type</code> in DUMB so setup can reconcile <code>config.json</code>. If existing links still target the old layout, preview the Decypharr migration playbook in <strong>Symlinks</strong> before applying it.</p>
-<h2 id="related-pages">Related pages<a class="headerlink" href="#related-pages" title="Permanent link">&para;</a></h2>
+<h2 id="related-pages">Related pages<a class="headerlink" href="#related-pages" title="Permanent link">#</a></h2>
 <ul>
 <li><a href="../../services/core/decypharr/">Decypharr service guide</a></li>
 <li><a href="../../features/symlinks/">Symlink Operations</a></li>

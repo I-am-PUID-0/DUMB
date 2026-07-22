@@ -4738,10 +4738,10 @@
   
 
 
-<h1 id="architecture-overview">Architecture overview<a class="headerlink" href="#architecture-overview" title="Permanent link">&para;</a></h1>
+<h1 id="architecture-overview">Architecture overview<a class="headerlink" href="#architecture-overview" title="Permanent link">#</a></h1>
 <p>This section explains how DUMB is structured, how services are orchestrated, and how the frontend, backend, and proxy layers interact.</p>
 <hr />
-<h2 id="system-overview">System overview<a class="headerlink" href="#system-overview" title="Permanent link">&para;</a></h2>
+<h2 id="system-overview">System overview<a class="headerlink" href="#system-overview" title="Permanent link">#</a></h2>
 <p>DUMB bundles a FastAPI backend, a Nuxt 4 frontend, a Traefik access layer, and a set of managed services (core, dependent, and optional). The backend owns configuration, process lifecycle, setup hooks, dependency ordering, health checks, update automation, and Traefik route generation. The frontend surfaces onboarding, status, logs, metrics, configuration controls, and embedded service UIs.</p>
 <pre class="mermaid"><code>flowchart TD
     U([User browser])
@@ -4767,7 +4767,7 @@
     CFD -. tunnel ingress .-&gt; TR
 </code></pre>
 <hr />
-<h2 id="core-building-blocks">Core building blocks<a class="headerlink" href="#core-building-blocks" title="Permanent link">&para;</a></h2>
+<h2 id="core-building-blocks">Core building blocks<a class="headerlink" href="#core-building-blocks" title="Permanent link">#</a></h2>
 <table>
 <thead>
 <tr>
@@ -4815,21 +4815,21 @@
 </tbody>
 </table>
 <hr />
-<h2 id="storage-and-mounts">Storage and mounts<a class="headerlink" href="#storage-and-mounts" title="Permanent link">&para;</a></h2>
+<h2 id="storage-and-mounts">Storage and mounts<a class="headerlink" href="#storage-and-mounts" title="Permanent link">#</a></h2>
 <p>The maintained deployment persists four container paths: <code>/config</code>, <code>/log</code>, <code>/data</code>, and <code>/mnt/debrid</code>. Services still use their native internal paths (for example <code>/riven/backend/data</code>, <code>/decypharr</code>, <code>/postgres_data</code>, or <code>/altmount</code>), but DUMB maps those paths into service-specific subdirectories below the mounted <code>/data</code> root. Media access is provided through <code>/mnt/debrid</code>, including mounts and curated symlink libraries.</p>
 <div class="admonition tip">
 <p class="admonition-title">Mount propagation</p>
 <p>When Arr services or media servers run outside the DUMB container, ensure mount propagation (<code>rshared</code>/<code>rslave</code>) is configured so symlinks and rclone mounts stay consistent.</p>
 </div>
 <hr />
-<h2 id="networking-and-proxying">Networking and proxying<a class="headerlink" href="#networking-and-proxying" title="Permanent link">&para;</a></h2>
+<h2 id="networking-and-proxying">Networking and proxying<a class="headerlink" href="#networking-and-proxying" title="Permanent link">#</a></h2>
 <p>DUMB publishes the frontend on port <code>3005</code>; the frontend proxies REST calls under <code>/api</code> and WebSockets under <code>/ws</code> to the loopback backend. The native API listener on port <code>8000</code> is not published by the maintained Compose file. Traefik can be enabled to consolidate service UIs under a single port and path-based routing. When Traefik Proxy Admin is enabled, Traefik also polls TPA's HTTP provider for user-managed host routes. When Cloudflared is enabled, Cloudflare Tunnel traffic is delivered to the same Traefik entrypoint.</p>
 <div class="admonition info">
 <p class="admonition-title">Traefik is optional</p>
 <p>You can access service UIs directly on their ports, or enable Traefik to route embedded UIs under a single endpoint. TPA and Cloudflared are optional additions for user-managed hostnames and tunnel ingress.</p>
 </div>
 <hr />
-<h2 id="configuration-lifecycle">Configuration lifecycle<a class="headerlink" href="#configuration-lifecycle" title="Permanent link">&para;</a></h2>
+<h2 id="configuration-lifecycle">Configuration lifecycle<a class="headerlink" href="#configuration-lifecycle" title="Permanent link">#</a></h2>
 <ol>
 <li>DUMB loads <code>dumb_config.json</code> on startup.</li>
 <li>The API and process handler apply config changes.</li>
@@ -4837,7 +4837,7 @@
 <li>The frontend reflects status and logs in real time.</li>
 </ol>
 <hr />
-<h2 id="related-pages">Related pages<a class="headerlink" href="#related-pages" title="Permanent link">&para;</a></h2>
+<h2 id="related-pages">Related pages<a class="headerlink" href="#related-pages" title="Permanent link">#</a></h2>
 <ul>
 <li><a href="backend/">Backend architecture</a></li>
 <li><a href="frontend/">Frontend architecture</a></li>

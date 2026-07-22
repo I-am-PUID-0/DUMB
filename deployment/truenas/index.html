@@ -4832,11 +4832,11 @@
   
 
 
-<h1 id="deploy-with-truenas-scale">Deploy with TrueNAS SCALE<a class="headerlink" href="#deploy-with-truenas-scale" title="Permanent link">&para;</a></h1>
+<h1 id="deploy-with-truenas-scale">Deploy with TrueNAS SCALE<a class="headerlink" href="#deploy-with-truenas-scale" title="Permanent link">#</a></h1>
 <p>TrueNAS SCALE 24.10 and later use Docker for Apps and can deploy a custom
 application from Docker Compose YAML. Older 24.04 and earlier releases use the
 archived Kubernetes app model and are not covered by this Compose procedure.</p>
-<h2 id="prerequisites">Prerequisites<a class="headerlink" href="#prerequisites" title="Permanent link">&para;</a></h2>
+<h2 id="prerequisites">Prerequisites<a class="headerlink" href="#prerequisites" title="Permanent link">#</a></h2>
 <ul>
 <li>TrueNAS SCALE 24.10 or later with an Apps pool selected</li>
 <li>Datasets/directories for DUMB's persistent storage</li>
@@ -4845,7 +4845,7 @@ archived Kubernetes app model and are not covered by this Compose procedure.</p>
 </ul>
 <p>TrueNAS documents the current editor under
 <a href="https://www.truenas.com/docs/scale/apps/installcustomappscreens/#add-custom-app-screen">Install Custom App via YAML</a>.</p>
-<h2 id="create-datasets-and-directories">Create datasets and directories<a class="headerlink" href="#create-datasets-and-directories" title="Permanent link">&para;</a></h2>
+<h2 id="create-datasets-and-directories">Create datasets and directories<a class="headerlink" href="#create-datasets-and-directories" title="Permanent link">#</a></h2>
 <p>Create a dedicated dataset such as <code>tank/apps/dumb</code>, then create:</p>
 <div class="highlight"><pre><span></span><code>/mnt/tank/apps/dumb/
 ├── config/
@@ -4857,7 +4857,7 @@ archived Kubernetes app model and are not covered by this Compose procedure.</p>
 inspect than hidden app-managed volumes. Set ACLs/ownership for the UID/GID DUMB
 will run as; the TrueNAS <code>apps</code> user's default IDs are not automatically the
 right IDs for DUMB.</p>
-<h2 id="install-via-yaml">Install via YAML<a class="headerlink" href="#install-via-yaml" title="Permanent link">&para;</a></h2>
+<h2 id="install-via-yaml">Install via YAML<a class="headerlink" href="#install-via-yaml" title="Permanent link">#</a></h2>
 <ol>
 <li>Open <strong>Apps</strong> → <strong>Discover Apps</strong>.</li>
 <li>Use the menu beside <strong>Custom App</strong> and choose <strong>Install via YAML</strong>.</li>
@@ -4878,7 +4878,7 @@ right IDs for DUMB.</p>
 proxies DUMB's API under <code>/api</code>; do not expose native backend port <code>8000</code> unless
 you deliberately change its bind address, enable authentication, and restrict
 network access.</p>
-<h2 id="fuse-and-external-media-servers">FUSE and external media servers<a class="headerlink" href="#fuse-and-external-media-servers" title="Permanent link">&para;</a></h2>
+<h2 id="fuse-and-external-media-servers">FUSE and external media servers<a class="headerlink" href="#fuse-and-external-media-servers" title="Permanent link">#</a></h2>
 <p>The maintained Compose file includes <code>/dev/fuse</code>, <code>SYS_ADMIN</code>, and an unconfined
 AppArmor profile. Keep them for mount-producing workflows. Remove <code>/dev/dri</code>
 only if that device is absent and no configured service needs it.</p>
@@ -4887,7 +4887,7 @@ DUMB's <code>/mnt/debrid</code> host bind and a compatible slave propagation mod
 consumer. TrueNAS performs only basic YAML validation, so verify the effective
 container mounts after deployment rather than assuming the UI accepted every
 Compose option.</p>
-<h2 id="updates-and-backups">Updates and backups<a class="headerlink" href="#updates-and-backups" title="Permanent link">&para;</a></h2>
+<h2 id="updates-and-backups">Updates and backups<a class="headerlink" href="#updates-and-backups" title="Permanent link">#</a></h2>
 <ul>
 <li>Edit/redeploy the custom app to adopt Compose changes and pull a new image.</li>
 <li>Back up <code>config</code> and service data under <code>data</code>; preserve the chosen workflow's

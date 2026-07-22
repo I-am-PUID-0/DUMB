@@ -2002,6 +2002,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Configuration in dumb_config.json">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#important-fields" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Important fields
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -2089,6 +2106,67 @@
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="Troubleshooting">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#altmount-does-not-start" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        AltMount does not start
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#provider-or-streaming-failures" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Provider or streaming failures
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#arr-download-client-setup-is-missing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Arr download-client setup is missing
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#import-completes-but-the-library-cannot-see-the-file" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Import completes but the library cannot see the file
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#embedded-uiapi-requests-open-dumb-instead-of-altmount" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Embedded UI/API requests open DUMB instead of AltMount
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -4884,6 +4962,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Configuration in dumb_config.json">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#important-fields" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Important fields
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -4971,6 +5066,67 @@
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="Troubleshooting">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#altmount-does-not-start" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        AltMount does not start
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#provider-or-streaming-failures" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Provider or streaming failures
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#arr-download-client-setup-is-missing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Arr download-client setup is missing
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#import-completes-but-the-library-cannot-see-the-file" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Import completes but the library cannot see the file
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#embedded-uiapi-requests-open-dumb-instead-of-altmount" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Embedded UI/API requests open DUMB instead of AltMount
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -5082,11 +5238,11 @@
   
 
 
-<h1 id="altmount-core-service">AltMount (Core Service)<a class="headerlink" href="#altmount-core-service" title="Permanent link">&para;</a></h1>
+<h1 id="altmount-core-service">AltMount (Core Service)<a class="headerlink" href="#altmount-core-service" title="Permanent link">#</a></h1>
 <p><strong>AltMount</strong> is a Usenet-backed WebDAV and streaming service. It accepts NZBs from Arr applications through a SABnzbd-compatible API, reads content from one or more NNTP providers, and makes that content available through WebDAV, a built-in FUSE or rclone mount, symlinks, or STRM files.</p>
 <p>In DUMB, AltMount is a core Usenet workflow service. DUMB installs and starts AltMount, supplies its baseline configuration, embeds its UI, and connects enabled Sonarr, Radarr, Lidarr, and Whisparr instances whose <code>core_service</code> includes <code>altmount</code>.</p>
 <hr />
-<h2 id="workflow-diagram">Workflow diagram<a class="headerlink" href="#workflow-diagram" title="Permanent link">&para;</a></h2>
+<h2 id="workflow-diagram">Workflow diagram<a class="headerlink" href="#workflow-diagram" title="Permanent link">#</a></h2>
 <pre class="mermaid"><code>%%{ init: { "flowchart": { "curve": "basis" } } }%%
 flowchart TD
     A([Request Sources:&lt;br/&gt;Seerr, Trakt,&lt;br/&gt;Plex Watchlist,&lt;br/&gt;NeutArr])
@@ -5115,7 +5271,7 @@ flowchart TD
     class e1,e2,e3,e4 animate</code></pre>
 <p>The dashed arrows are DUMB automation. The solid arrows are the normal request and media flow after setup.</p>
 <hr />
-<h2 id="service-relationships">Service relationships<a class="headerlink" href="#service-relationships" title="Permanent link">&para;</a></h2>
+<h2 id="service-relationships">Service relationships<a class="headerlink" href="#service-relationships" title="Permanent link">#</a></h2>
 <table>
 <thead>
 <tr>
@@ -5148,7 +5304,7 @@ flowchart TD
 </table>
 <p><code>external_rclone</code> does <strong>not</strong> create or start a DUMB-managed <a href="../../dependent/rclone/">rclone</a> instance. In that mode AltMount exposes its rclone RC service, while you remain responsible for the external mount process.</p>
 <hr />
-<h2 id="what-altmount-provides">What AltMount provides<a class="headerlink" href="#what-altmount-provides" title="Permanent link">&para;</a></h2>
+<h2 id="what-altmount-provides">What AltMount provides<a class="headerlink" href="#what-altmount-provides" title="Permanent link">#</a></h2>
 <ul>
 <li>A modern web UI and API for configuration, queue visibility, and health monitoring</li>
 <li>WebDAV access and range-based streaming directly from Usenet</li>
@@ -5160,7 +5316,7 @@ flowchart TD
 <li>Local metadata with optional SQLite-to-PostgreSQL migration through DUMB</li>
 </ul>
 <p>AltMount owns the media-processing behavior. DUMB supplies the service lifecycle and integration around it.</p>
-<h2 id="what-dumb-manages">What DUMB manages<a class="headerlink" href="#what-dumb-manages" title="Permanent link">&para;</a></h2>
+<h2 id="what-dumb-manages">What DUMB manages<a class="headerlink" href="#what-dumb-manages" title="Permanent link">#</a></h2>
 <table>
 <thead>
 <tr>
@@ -5203,7 +5359,7 @@ flowchart TD
 <p class="admonition-title">DUMB preserves most AltMount settings, but some fields are authoritative</p>
 <p>DUMB creates <code>/altmount/config.yaml</code> only when the file is missing. On later setup or restart passes, it preserves providers and other AltMount-owned settings while synchronizing the DUMB-managed mount path/type, rclone mode, API prefix/key, SABnzbd enablement/categories, and Arr integration structure.</p>
 </div>
-<h2 id="default-port-and-urls">Default port and URLs<a class="headerlink" href="#default-port-and-urls" title="Permanent link">&para;</a></h2>
+<h2 id="default-port-and-urls">Default port and URLs<a class="headerlink" href="#default-port-and-urls" title="Permanent link">#</a></h2>
 <table>
 <thead>
 <tr>
@@ -5236,7 +5392,7 @@ flowchart TD
 </tbody>
 </table>
 <p>The native port is inside the DUMB container. It is directly reachable from the host only if your deployment publishes or otherwise exposes it.</p>
-<h2 id="configuration-in-dumb_configjson">Configuration in <code>dumb_config.json</code><a class="headerlink" href="#configuration-in-dumb_configjson" title="Permanent link">&para;</a></h2>
+<h2 id="configuration-in-dumb_configjson">Configuration in <code>dumb_config.json</code><a class="headerlink" href="#configuration-in-dumb_configjson" title="Permanent link">#</a></h2>
 <p>The current default block is:</p>
 <div class="highlight"><pre><span></span><code><span class="nt">&quot;altmount&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
@@ -5274,7 +5430,7 @@ flowchart TD
 <span class="w">  </span><span class="p">}</span>
 <span class="p">}</span>
 </code></pre></div>
-<h3 id="important-fields">Important fields<a class="headerlink" href="#important-fields" title="Permanent link">&para;</a></h3>
+<h3 id="important-fields">Important fields<a class="headerlink" href="#important-fields" title="Permanent link">#</a></h3>
 <ul>
 <li><code>enabled</code>: Starts AltMount under DUMB's process manager.</li>
 <li><code>pinned_version</code>: Uses the latest upstream release or a specific release tag. DUMB installs the matching architecture-specific <code>altmount-cli</code> asset.</li>
@@ -5288,7 +5444,7 @@ flowchart TD
 <li><code>env.COOKIE_DOMAIN</code>: Defaults to <code>localhost</code>; change it only when your direct or reverse-proxied AltMount access model requires another cookie domain.</li>
 </ul>
 <p><code>command</code>, <code>PUID</code>, <code>PGID</code>, and <code>PORT</code> are reconciled by setup. Avoid treating them as independent AltMount UI settings.</p>
-<h2 id="mount-modes">Mount modes<a class="headerlink" href="#mount-modes" title="Permanent link">&para;</a></h2>
+<h2 id="mount-modes">Mount modes<a class="headerlink" href="#mount-modes" title="Permanent link">#</a></h2>
 <table>
 <thead>
 <tr>
@@ -5325,7 +5481,7 @@ flowchart TD
 <p class="admonition-title">Mount mode and import strategy are different decisions</p>
 <p><code>mount_type</code> controls how AltMount content becomes visible as a filesystem. The AltMount-owned import strategy controls what Arr imports from that content.</p>
 </div>
-<h2 id="import-strategy-and-library-paths">Import strategy and library paths<a class="headerlink" href="#import-strategy-and-library-paths" title="Permanent link">&para;</a></h2>
+<h2 id="import-strategy-and-library-paths">Import strategy and library paths<a class="headerlink" href="#import-strategy-and-library-paths" title="Permanent link">#</a></h2>
 <p>Configure the import strategy in <strong>AltMount → Configuration → Import</strong>:</p>
 <table>
 <thead>
@@ -5356,7 +5512,7 @@ flowchart TD
 <p>DUMB does not currently choose the import strategy, create its <code>import_dir</code>, or set Arr root folders/media-server libraries for AltMount. Keep every path inside the shared DUMB namespace—normally under <code>/mnt/debrid</code>—and make sure AltMount, the linked Arr, and the media server all see the same container path.</p>
 <p>For <code>SYMLINK</code> or <code>STRM</code>, create and validate the chosen import directory before sending a real release. For <code>NONE</code>, confirm the linked Arr can browse the mounted category path under <code>/mnt/debrid/altmount</code>.</p>
 <p>See AltMount's <a href="https://altmount.kipsilabs.top/docs/Configuration/integration/">ARR integration guide</a> for the application-level import and webhook options.</p>
-<h2 id="dumb-to-altmount-arr-integration">DUMB-to-AltMount Arr integration<a class="headerlink" href="#dumb-to-altmount-arr-integration" title="Permanent link">&para;</a></h2>
+<h2 id="dumb-to-altmount-arr-integration">DUMB-to-AltMount Arr integration<a class="headerlink" href="#dumb-to-altmount-arr-integration" title="Permanent link">#</a></h2>
 <p>For an enabled Sonarr, Radarr, Lidarr, or Whisparr instance, set:</p>
 <div class="highlight"><pre><span></span><code><span class="nt">&quot;core_service&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;altmount&quot;</span>
 </code></pre></div>
@@ -5377,7 +5533,7 @@ flowchart TD
 <p class="admonition-title">Finish the AltMount-owned setup</p>
 <p>DUMB intentionally leaves <code>providers</code> empty. Add at least one NNTP provider, choose and validate the import strategy, confirm the Arr root/import paths, and test playback before relying on automation.</p>
 </div>
-<h2 id="first-start-checklist">First-start checklist<a class="headerlink" href="#first-start-checklist" title="Permanent link">&para;</a></h2>
+<h2 id="first-start-checklist">First-start checklist<a class="headerlink" href="#first-start-checklist" title="Permanent link">#</a></h2>
 <ol>
 <li>Select <strong>AltMount</strong> as the Usenet workflow in guided onboarding, then choose its mount mode.</li>
 <li>Open AltMount from the DUMB service page and create the first AltMount administrator account.</li>
@@ -5388,7 +5544,7 @@ flowchart TD
 <li>Verify the linked Arr instances and their <code>altmount</code> download clients.</li>
 <li>Send a small test NZB and confirm queue, import, library scan, and playback behavior end to end.</li>
 </ol>
-<h2 id="postgresql-migration">PostgreSQL migration<a class="headerlink" href="#postgresql-migration" title="Permanent link">&para;</a></h2>
+<h2 id="postgresql-migration">PostgreSQL migration<a class="headerlink" href="#postgresql-migration" title="Permanent link">#</a></h2>
 <p>AltMount supports SQLite and PostgreSQL. New/default installs use <code>/altmount/altmount.db</code>.</p>
 <p>For an existing SQLite-backed service, open <strong>Database Migration</strong> on the AltMount service page, run a rehearsal, validate the imported table counts against AltMount's application-created PostgreSQL schema, and only then run cutover. DUMB writes the PostgreSQL DSN into <code>/altmount/config.yaml</code>, registers the target database (<code>altmount</code> by default), and retains the SQLite file and migration backups for rollback.</p>
 <p>Do not enable <code>postgres_enabled</code> directly when existing data must be retained. DUMB has not found an upstream application-specific data migration tool, so the guarded DUMB workflow and post-cutover application checks are important. See <a href="../../../features/arr-postgres-migration/">SQLite to PostgreSQL Migration</a>.</p>
@@ -5396,7 +5552,7 @@ flowchart TD
 <p class="admonition-title">AltMount v0.3.2 migration compatibility</p>
 <p>AltMount <code>v0.3.2</code> contains invalid PostgreSQL syntax in its bundled migration 10 expression index. DUMB applies the intended index only in an isolated staging database whose latest Goose version is exactly 9 and which contains the expected <code>import_queue.metadata</code> column. Any mismatch refuses the repair and restores SQLite instead of skipping unknown schema work.</p>
 </div>
-<h2 id="files-and-persistence">Files and persistence<a class="headerlink" href="#files-and-persistence" title="Permanent link">&para;</a></h2>
+<h2 id="files-and-persistence">Files and persistence<a class="headerlink" href="#files-and-persistence" title="Permanent link">#</a></h2>
 <table>
 <thead>
 <tr>
@@ -5440,44 +5596,44 @@ flowchart TD
 </tbody>
 </table>
 <p>In the maintained Compose layout, back up <code>/data/altmount</code> (the persistence target behind internal <code>/altmount</code>) as sensitive application data. It can contain NNTP credentials, API keys, user data, and the SQLite database.</p>
-<h2 id="embedded-ui-behavior">Embedded UI behavior<a class="headerlink" href="#embedded-ui-behavior" title="Permanent link">&para;</a></h2>
+<h2 id="embedded-ui-behavior">Embedded UI behavior<a class="headerlink" href="#embedded-ui-behavior" title="Permanent link">#</a></h2>
 <p>AltMount is a root-route React-style application. dmbdb keeps its root navigation and root <code>/api/*</code> calls in the AltMount iframe context so they do not collide with DUMB's own application or API routes. Open the UI from the AltMount service page rather than browsing directly to <code>/ui/altmount</code>.</p>
 <p>If the embedded UI loses routing context, reload the DUMB service page. The direct Traefik-backed route is <code>/service/ui/altmount</code> when embedded service UIs are enabled.</p>
-<h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h2>
-<h3 id="altmount-does-not-start">AltMount does not start<a class="headerlink" href="#altmount-does-not-start" title="Permanent link">&para;</a></h3>
+<h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">#</a></h2>
+<h3 id="altmount-does-not-start">AltMount does not start<a class="headerlink" href="#altmount-does-not-start" title="Permanent link">#</a></h3>
 <ul>
 <li>Check the DUMB service log and <code>/altmount/logs/altmount.log</code>.</li>
 <li>Confirm <code>/altmount/altmount</code> exists and is executable.</li>
 <li>Verify the configured port is free and <code>/altmount/config.yaml</code> is valid YAML.</li>
 <li>For FUSE/rclone modes, check whether <code>/mnt/debrid/altmount</code> is a stale, dangling, read-only, or busy mount path.</li>
 </ul>
-<h3 id="provider-or-streaming-failures">Provider or streaming failures<a class="headerlink" href="#provider-or-streaming-failures" title="Permanent link">&para;</a></h3>
+<h3 id="provider-or-streaming-failures">Provider or streaming failures<a class="headerlink" href="#provider-or-streaming-failures" title="Permanent link">#</a></h3>
 <ul>
 <li>Confirm at least one provider is enabled and its credentials, TLS mode, and connection limit are valid.</li>
 <li>Do not allocate more combined connections than the provider account permits.</li>
 <li>Review AltMount's queue and health pages for missing articles, masked files, or cache pressure.</li>
 </ul>
-<h3 id="arr-download-client-setup-is-missing">Arr download-client setup is missing<a class="headerlink" href="#arr-download-client-setup-is-missing" title="Permanent link">&para;</a></h3>
+<h3 id="arr-download-client-setup-is-missing">Arr download-client setup is missing<a class="headerlink" href="#arr-download-client-setup-is-missing" title="Permanent link">#</a></h3>
 <ul>
 <li>Confirm the Arr instance is enabled and <code>core_service</code> includes <code>altmount</code>.</li>
 <li>Confirm DUMB can read the Arr API key and AltMount's generated <code>ALTMOUNT_API_KEY</code> is still present.</li>
 <li>Verify both services are running, then restart AltMount or rerun the guided start so DUMB can repeat the integration pass.</li>
 <li>Check that the Arr category matches the DUMB defaults for its application type.</li>
 </ul>
-<h3 id="import-completes-but-the-library-cannot-see-the-file">Import completes but the library cannot see the file<a class="headerlink" href="#import-completes-but-the-library-cannot-see-the-file" title="Permanent link">&para;</a></h3>
+<h3 id="import-completes-but-the-library-cannot-see-the-file">Import completes but the library cannot see the file<a class="headerlink" href="#import-completes-but-the-library-cannot-see-the-file" title="Permanent link">#</a></h3>
 <ul>
 <li>Confirm <code>mount_path</code>, the AltMount <code>import_dir</code>, the Arr root folder, and the media-server library use paths visible inside the DUMB container.</li>
 <li>For <code>SYMLINK</code>, inspect the link target from inside the container and verify it remains under a shared path.</li>
 <li>For <code>STRM</code>, confirm the WebDAV URL written into the file is reachable by the player.</li>
 <li>Use Arr Manual Import to separate path visibility problems from download-client problems.</li>
 </ul>
-<h3 id="embedded-uiapi-requests-open-dumb-instead-of-altmount">Embedded UI/API requests open DUMB instead of AltMount<a class="headerlink" href="#embedded-uiapi-requests-open-dumb-instead-of-altmount" title="Permanent link">&para;</a></h3>
+<h3 id="embedded-uiapi-requests-open-dumb-instead-of-altmount">Embedded UI/API requests open DUMB instead of AltMount<a class="headerlink" href="#embedded-uiapi-requests-open-dumb-instead-of-altmount" title="Permanent link">#</a></h3>
 <ul>
 <li>Reopen the AltMount service page and reload the iframe to refresh <code>dumb_ui_service</code> context.</li>
 <li>Verify embedded service UIs are enabled and <code>/service/ui/altmount</code> responds.</li>
 <li>Check dmbdb proxy logs for root-route or <code>/api/*</code> routing errors.</li>
 </ul>
-<h2 id="related-links">Related links<a class="headerlink" href="#related-links" title="Permanent link">&para;</a></h2>
+<h2 id="related-links">Related links<a class="headerlink" href="#related-links" title="Permanent link">#</a></h2>
 <ul>
 <li><a href="https://altmount.kipsilabs.top/">AltMount documentation</a></li>
 <li><a href="https://altmount.kipsilabs.top/docs/intro/">AltMount getting started</a></li>

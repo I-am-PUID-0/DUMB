@@ -3177,6 +3177,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Share library paths with another container">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#mount-propagation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Mount propagation
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -4773,6 +4790,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Share library paths with another container">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#mount-propagation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Mount propagation
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -4876,11 +4910,11 @@
   
 
 
-<h1 id="deploy-dumb-on-unraid">Deploy DUMB on Unraid<a class="headerlink" href="#deploy-dumb-on-unraid" title="Permanent link">&para;</a></h1>
+<h1 id="deploy-dumb-on-unraid">Deploy DUMB on Unraid<a class="headerlink" href="#deploy-dumb-on-unraid" title="Permanent link">#</a></h1>
 <p>Deploy DUMB from the Community Applications template when it is available, or
 add it as a Compose stack/container using the maintained settings below. The
 same persistence and path rules apply to both methods.</p>
-<h2 id="prerequisites">Prerequisites<a class="headerlink" href="#prerequisites" title="Permanent link">&para;</a></h2>
+<h2 id="prerequisites">Prerequisites<a class="headerlink" href="#prerequisites" title="Permanent link">#</a></h2>
 <ul>
 <li>Unraid with Docker enabled</li>
 <li>Community Applications for the template-based path</li>
@@ -4888,7 +4922,7 @@ same persistence and path rules apply to both methods.</p>
 <li>A UID/GID that owns the mapped directories</li>
 <li><code>/dev/fuse</code> access for workflows that create rclone/FUSE mounts</li>
 </ul>
-<h2 id="install-from-community-applications">Install from Community Applications<a class="headerlink" href="#install-from-community-applications" title="Permanent link">&para;</a></h2>
+<h2 id="install-from-community-applications">Install from Community Applications<a class="headerlink" href="#install-from-community-applications" title="Permanent link">#</a></h2>
 <ol>
 <li>Open <strong>Apps</strong>, search for <code>DUMB</code>, and select the Debrid Unlimited Media Bridge
    template.</li>
@@ -4903,7 +4937,7 @@ same persistence and path rules apply to both methods.</p>
 <p>The common Unraid <code>nobody:users</code> identity is <code>99:100</code>, but do not copy those
 values blindly. Use the owner of your appdata/media paths, and correct existing
 directory permissions before starting DUMB.</p>
-<h2 id="persistent-path-mappings">Persistent path mappings<a class="headerlink" href="#persistent-path-mappings" title="Permanent link">&para;</a></h2>
+<h2 id="persistent-path-mappings">Persistent path mappings<a class="headerlink" href="#persistent-path-mappings" title="Permanent link">#</a></h2>
 <p>Use a layout such as:</p>
 <table>
 <thead>
@@ -4942,13 +4976,13 @@ persistent <code>/data</code> tree.</p>
 <p>If you deploy through Compose, start from the current
 <a href="https://github.com/I-am-PUID-0/DUMB/blob/master/docker-compose.yml">DUMB Compose file</a>
 and replace <code>/home/username/docker/DUMB</code> with <code>/mnt/user/appdata/DUMB</code>.</p>
-<h2 id="open-dumb">Open DUMB<a class="headerlink" href="#open-dumb" title="Permanent link">&para;</a></h2>
+<h2 id="open-dumb">Open DUMB<a class="headerlink" href="#open-dumb" title="Permanent link">#</a></h2>
 <p>The maintained deployment publishes the frontend at:</p>
 <div class="highlight"><pre><span></span><code>http://&lt;unraid-address&gt;:3005
 </code></pre></div>
 <p>The frontend proxies DUMB API calls under <code>/api</code>. The backend-native <code>8000</code>
 listener remains private by default; do not publish it for ordinary use.</p>
-<h2 id="share-library-paths-with-another-container">Share library paths with another container<a class="headerlink" href="#share-library-paths-with-another-container" title="Permanent link">&para;</a></h2>
+<h2 id="share-library-paths-with-another-container">Share library paths with another container<a class="headerlink" href="#share-library-paths-with-another-container" title="Permanent link">#</a></h2>
 <p>Use the same container-visible path in DUMB and the external Plex, Jellyfin,
 Emby, Sonarr, Radarr, or other consumer:</p>
 <div class="highlight"><pre><span></span><code>/mnt/debrid
@@ -4964,7 +4998,7 @@ Emby, Sonarr, Radarr, or other consumer:</p>
 </ul>
 <p>Do not point a media library at an entire raw provider mount unless that is
 explicitly the workflow you designed.</p>
-<h3 id="mount-propagation">Mount propagation<a class="headerlink" href="#mount-propagation" title="Permanent link">&para;</a></h3>
+<h3 id="mount-propagation">Mount propagation<a class="headerlink" href="#mount-propagation" title="Permanent link">#</a></h3>
 <p>When DUMB creates a nested FUSE/rclone mount that another container must see:</p>
 <ul>
 <li>DUMB's host bind must be <code>rshared</code>.</li>
@@ -4975,14 +5009,14 @@ explicitly the workflow you designed.</p>
 </ul>
 <p>Propagation is unnecessary for ordinary symlink/file trees and when every
 consumer runs inside DUMB.</p>
-<h2 id="permissions">Permissions<a class="headerlink" href="#permissions" title="Permanent link">&para;</a></h2>
+<h2 id="permissions">Permissions<a class="headerlink" href="#permissions" title="Permanent link">#</a></h2>
 <p>If Unraid created the DUMB directory with the wrong owner, stop the container
 and correct the exact appdata tree:</p>
 <div class="highlight"><pre><span></span><code>chown<span class="w"> </span>-R<span class="w"> </span>&lt;PUID&gt;:&lt;PGID&gt;<span class="w"> </span>/mnt/user/appdata/DUMB
 </code></pre></div>
 <p>Avoid recursive ownership changes over a mounted media library unless you have
 verified the intended scope.</p>
-<h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h2>
+<h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">#</a></h2>
 <p>View the container log from the Docker tab, or inspect from an Unraid terminal:</p>
 <div class="highlight"><pre><span></span><code>docker<span class="w"> </span>logs<span class="w"> </span>-f<span class="w"> </span>DUMB
 docker<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>-it<span class="w"> </span>DUMB<span class="w"> </span>bash

@@ -3697,6 +3697,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="POST &#x2f;ai&#x2f;diagnose">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#diagnostic-bundle-context" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Diagnostic Bundle Context
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -3707,6 +3724,23 @@
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="POST &#x2f;ai&#x2f;diagnose-stack">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#deterministic-finalizers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Deterministic Finalizers
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -4762,6 +4796,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="POST &#x2f;ai&#x2f;diagnose">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#diagnostic-bundle-context" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Diagnostic Bundle Context
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -4772,6 +4823,23 @@
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="POST &#x2f;ai&#x2f;diagnose-stack">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#deterministic-finalizers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Deterministic Finalizers
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -4854,13 +4922,13 @@
   
 
 
-<h1 id="ai-assistant-api">AI Assistant API<a class="headerlink" href="#ai-assistant-api" title="Permanent link">&para;</a></h1>
+<h1 id="ai-assistant-api">AI Assistant API<a class="headerlink" href="#ai-assistant-api" title="Permanent link">#</a></h1>
 <p>The AI API manages provider settings and service diagnostics. Authentication follows the same DUMB API authentication behavior as the rest of the backend.</p>
 <p>The backend makes provider requests from inside the DUMB container. Use provider URLs that are reachable from that container, not just from your browser.</p>
-<h2 id="get-aisettings"><code>GET /ai/settings</code><a class="headerlink" href="#get-aisettings" title="Permanent link">&para;</a></h2>
+<h2 id="get-aisettings"><code>GET /ai/settings</code><a class="headerlink" href="#get-aisettings" title="Permanent link">#</a></h2>
 <p>Returns the active AI settings without exposing the stored API key.</p>
 <p>Response includes <code>api_key_configured: true</code> when a key is stored.</p>
-<h2 id="put-aisettings"><code>PUT /ai/settings</code><a class="headerlink" href="#put-aisettings" title="Permanent link">&para;</a></h2>
+<h2 id="put-aisettings"><code>PUT /ai/settings</code><a class="headerlink" href="#put-aisettings" title="Permanent link">#</a></h2>
 <p>Updates the <code>dumb.ai</code> settings block. Omit <code>api_key</code> to keep the existing stored key.</p>
 <p>Example payload:</p>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
@@ -4941,7 +5009,7 @@
 </tr>
 </tbody>
 </table>
-<h2 id="post-aitest"><code>POST /ai/test</code><a class="headerlink" href="#post-aitest" title="Permanent link">&para;</a></h2>
+<h2 id="post-aitest"><code>POST /ai/test</code><a class="headerlink" href="#post-aitest" title="Permanent link">#</a></h2>
 <p>Tests the configured provider using a short connectivity prompt. The request can include unsaved provider fields, so the frontend can test current form values before saving them.</p>
 <p>This endpoint does not include service logs, service configuration, dependency graph data, or diagnostic bundle content.</p>
 <p>Example payload:</p>
@@ -4983,7 +5051,7 @@
 </tr>
 </tbody>
 </table>
-<h2 id="post-aimodels"><code>POST /ai/models</code><a class="headerlink" href="#post-aimodels" title="Permanent link">&para;</a></h2>
+<h2 id="post-aimodels"><code>POST /ai/models</code><a class="headerlink" href="#post-aimodels" title="Permanent link">#</a></h2>
 <p>Lists available models for providers with a compatible model-list endpoint. The request can include unsaved provider fields.</p>
 <p>Supported discovery modes:</p>
 <table>
@@ -5035,7 +5103,7 @@
 <span class="w">  </span><span class="p">]</span>
 <span class="p">}</span>
 </code></pre></div>
-<h2 id="post-aidiagnose"><code>POST /ai/diagnose</code><a class="headerlink" href="#post-aidiagnose" title="Permanent link">&para;</a></h2>
+<h2 id="post-aidiagnose"><code>POST /ai/diagnose</code><a class="headerlink" href="#post-aidiagnose" title="Permanent link">#</a></h2>
 <p>Builds a redacted service diagnostic bundle. If <code>dry_run</code> is true, or if AI is disabled, the endpoint returns the bundle without calling a provider. If AI is enabled and <code>dry_run</code> is false, DUMB sends the bundle to the configured provider and returns the analysis.</p>
 <p>Use <code>dry_run: true</code> before enabling provider calls to inspect the exact bundle that would be shared.</p>
 <p>Example payload:</p>
@@ -5089,11 +5157,11 @@
 </tr>
 </tbody>
 </table>
-<h3 id="diagnostic-bundle-context">Diagnostic Bundle Context<a class="headerlink" href="#diagnostic-bundle-context" title="Permanent link">&para;</a></h3>
+<h3 id="diagnostic-bundle-context">Diagnostic Bundle Context<a class="headerlink" href="#diagnostic-bundle-context" title="Permanent link">#</a></h3>
 <p>The bundle can include <code>docs_context</code> when <code>include_docs_context</code> is enabled. This block contains selected DUMB_docs excerpts with source paths and public documentation URLs. The backend chooses snippets using the service/config key, status, question text, and included logs.</p>
 <p>DUMB prefers local Markdown from <code>DUMB_DOCS_PATH</code> or common sibling-repo workbench paths. If local docs are unavailable, it falls back to the matching public pages on <code>https://dumbarr.com</code>.</p>
 <p>The bundle also includes DUMB product facts. API clients can use dry-run responses to verify that <code>dumb_product.expansion</code> is <code>Debrid Unlimited Media Bridge</code> before sending a provider request.</p>
-<h2 id="post-aidiagnose-stack"><code>POST /ai/diagnose-stack</code><a class="headerlink" href="#post-aidiagnose-stack" title="Permanent link">&para;</a></h2>
+<h2 id="post-aidiagnose-stack"><code>POST /ai/diagnose-stack</code><a class="headerlink" href="#post-aidiagnose-stack" title="Permanent link">#</a></h2>
 <p>Builds a stack-wide diagnostic bundle. Use this when the question is about the whole deployment instead of one service.</p>
 <p>If <code>dry_run</code> is true, or if AI is disabled, the endpoint returns the bundle without calling a provider. If AI is enabled and <code>dry_run</code> is false, DUMB sends the stack bundle to the configured provider and returns the analysis.</p>
 <p>Example payload:</p>
@@ -5154,7 +5222,7 @@
 </table>
 <p>When <code>dry_run</code> is false, DUMB compacts stack bundles before sending them to the provider. The API response still includes the full built bundle, but the provider prompt uses shortened docs excerpts, targeted log snippets, capped graph nodes/edges, and omits full service configs with a note. This avoids common context-length failures with local models.</p>
 <p>Provider responses include a <code>usage</code> object when the provider reports token or evaluation counts. OpenAI-compatible providers usually return <code>prompt_tokens</code>, <code>completion_tokens</code>, and <code>total_tokens</code>. Ollama native responses return <code>prompt_eval_count</code> and <code>eval_count</code>; DUMB maps those to prompt/completion/total token fields and preserves timing fields such as <code>total_duration</code>.</p>
-<h3 id="deterministic-finalizers">Deterministic Finalizers<a class="headerlink" href="#deterministic-finalizers" title="Permanent link">&para;</a></h3>
+<h3 id="deterministic-finalizers">Deterministic Finalizers<a class="headerlink" href="#deterministic-finalizers" title="Permanent link">#</a></h3>
 <p>For selected stack questions, DUMB may post-process the provider response before returning <code>analysis</code>:</p>
 <ul>
 <li>Product identity questions such as <code>What does DUMB stand for?</code> return the canonical product fact, <code>Debrid Unlimited Media Bridge</code>, even if the provider invents another acronym expansion.</li>

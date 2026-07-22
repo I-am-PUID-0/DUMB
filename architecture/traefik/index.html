@@ -4854,10 +4854,10 @@
   
 
 
-<h1 id="traefik-proxy">Traefik proxy<a class="headerlink" href="#traefik-proxy" title="Permanent link">&para;</a></h1>
+<h1 id="traefik-proxy">Traefik proxy<a class="headerlink" href="#traefik-proxy" title="Permanent link">#</a></h1>
 <p>Traefik provides optional reverse-proxy routing for service UIs and user-managed external routes. When enabled, it exposes a single entry point and maps requests to services through DUMB-generated dynamic config and, optionally, Traefik Proxy Admin. Cloudflared can then carry Cloudflare Tunnel traffic to that same entrypoint.</p>
 <hr />
-<h2 id="what-traefik-does-in-dumb">What Traefik does in DUMB<a class="headerlink" href="#what-traefik-does-in-dumb" title="Permanent link">&para;</a></h2>
+<h2 id="what-traefik-does-in-dumb">What Traefik does in DUMB<a class="headerlink" href="#what-traefik-does-in-dumb" title="Permanent link">#</a></h2>
 <ul>
 <li>Builds dynamic routes for enabled embedded service UIs</li>
 <li>Adds path prefixes for UI services under <code>/service/ui/&lt;service&gt;</code></li>
@@ -4866,7 +4866,7 @@
 <li>Can receive public traffic through the optional Cloudflared service</li>
 </ul>
 <hr />
-<h2 id="default-access">Default access<a class="headerlink" href="#default-access" title="Permanent link">&para;</a></h2>
+<h2 id="default-access">Default access<a class="headerlink" href="#default-access" title="Permanent link">#</a></h2>
 <table>
 <thead>
 <tr>
@@ -4894,7 +4894,7 @@
 <p>Some services use explicit prefixes (for example Emby/Jellyfin use <code>/web</code>), which Traefik preserves.</p>
 </div>
 <hr />
-<h2 id="how-routes-are-generated">How routes are generated<a class="headerlink" href="#how-routes-are-generated" title="Permanent link">&para;</a></h2>
+<h2 id="how-routes-are-generated">How routes are generated<a class="headerlink" href="#how-routes-are-generated" title="Permanent link">#</a></h2>
 <p>The backend generates Traefik config based on enabled services and their ports. Services with UIs are registered automatically when they are enabled in <code>dumb_config.json</code>.</p>
 <p>DUMB separates Traefik configuration ownership into lanes:</p>
 <table>
@@ -4936,7 +4936,7 @@
 <li>Cloudflared can bring external traffic to Traefik without replacing either DUMB's routes or TPA's routes.</li>
 </ul>
 <hr />
-<h2 id="default-configuration">Default configuration<a class="headerlink" href="#default-configuration" title="Permanent link">&para;</a></h2>
+<h2 id="default-configuration">Default configuration<a class="headerlink" href="#default-configuration" title="Permanent link">#</a></h2>
 <div class="highlight"><pre><span></span><code><span class="nt">&quot;traefik&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;process_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Traefik&quot;</span><span class="p">,</span>
@@ -4964,7 +4964,7 @@ log paths live under the persistent <code>/config</code> and <code>/log</code> m
 its generated route files when service UI definitions change; put operator-owned
 host routes in Traefik Proxy Admin rather than editing <code>services.yaml</code> by hand.</p>
 <hr />
-<h2 id="security-considerations">Security considerations<a class="headerlink" href="#security-considerations" title="Permanent link">&para;</a></h2>
+<h2 id="security-considerations">Security considerations<a class="headerlink" href="#security-considerations" title="Permanent link">#</a></h2>
 <div class="admonition warning">
 <p class="admonition-title">Embedded routes do not add auth</p>
 <p>DUMB's generated embedded-service routes do not add an authentication
@@ -4973,7 +4973,7 @@ expose Traefik outside your LAN, use protected TPA routes, Cloudflare Access,
 or another deliberate authentication layer and verify it before publishing.</p>
 </div>
 <hr />
-<h2 id="related-pages">Related pages<a class="headerlink" href="#related-pages" title="Permanent link">&para;</a></h2>
+<h2 id="related-pages">Related pages<a class="headerlink" href="#related-pages" title="Permanent link">#</a></h2>
 <ul>
 <li><a href="../../features/embedded-ui/">Embedded UIs</a></li>
 <li><a href="../../services/optional/traefik-proxy-admin/">Traefik Proxy Admin</a></li>
