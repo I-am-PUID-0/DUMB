@@ -65,6 +65,25 @@ class APIStateHelperTests(unittest.TestCase):
         self.assertEqual(state._branch_commit_marker("dev-abcdef1"), "abcdef1")
         self.assertIsNone(state._branch_commit_marker("2.5.0"))
 
+    def test_get_status_details_checks_dumb_api_current_process_health(self):
+        state = self._state()
+        state._refresh_status_cache = lambda: {}
+        state.process_handler = types.SimpleNamespace(
+            get_restart_stats=lambda process_name: {"process_name": process_name}
+        )
+
+        with patch("api.api_state.os.getpid", return_value=4321):
+            with patch.object(
+                state, "_check_health", return_value=(True, None)
+            ) as check_health:
+                details = state.get_status_details("DUMB API", include_health=True)
+
+        check_health.assert_called_once_with("DUMB API", 4321, "running")
+        self.assertEqual(details["status"], "running")
+        self.assertTrue(details["healthy"])
+        self.assertIsNone(details["health_reason"])
+        self.assertEqual(details["restart"], {"process_name": "DUMB API"})
+
     def test_first_run_update_notice_uses_release_url_for_release_version(self):
         state = self._state()
         state._update_notices_file_existed = False

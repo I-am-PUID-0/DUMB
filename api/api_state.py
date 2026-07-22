@@ -481,6 +481,8 @@ class APIState:
 
         if normalized_input in ("dumbapi", "dmbapi"):
             status = "running"
+            matched_name = process_name
+            pid = os.getpid()
         elif normalized_input in {"plexdbrepair", "dbrepair"}:
             plex_cfg = CONFIG_MANAGER.get("plex", {}) or {}
             if plex_cfg.get("dbrepair", {}).get("enabled"):
