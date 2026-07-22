@@ -491,6 +491,23 @@ class ProcessHandler:
                 env=process_env,
             )
 
+            success, error = self._check_immediate_exit_and_log(process, process_name)
+            if not success:
+                notify_event(
+                    "service.start.failed",
+                    "critical",
+                    f"{process_name} exited during startup",
+                    error
+                    or "The service exited before its startup grace period completed.",
+                    service_name=process_name,
+                )
+                return False, error
+
+            # Do not start competing pipe readers until the immediate-exit
+            # check has had a chance to capture short-lived helper failures.
+            # Starting these threads first can consume compiler stderr before
+            # _check_immediate_exit_and_log reads it, leaving setup callers
+            # with an empty error message.
             if enable_subprocess_logging:
                 subprocess_logger = SubprocessLogger(
                     self.logger,
@@ -504,18 +521,6 @@ class ProcessHandler:
                     process, instance_name, process_name
                 )
                 self.subprocess_loggers[internal_name] = subprocess_logger
-
-            success, error = self._check_immediate_exit_and_log(process, process_name)
-            if not success:
-                notify_event(
-                    "service.start.failed",
-                    "critical",
-                    f"{process_name} exited during startup",
-                    error
-                    or "The service exited before its startup grace period completed.",
-                    service_name=process_name,
-                )
-                return False, error
 
             self.logger.info(f"{process_name} process started with PID: {process.pid}")
 

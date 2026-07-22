@@ -3636,7 +3636,17 @@ def build_decypharr_dev(process_handler, config):
         go_build_error = ""
         go_build_success = False
         for attempt in range(3):
-            process_handler.start_process("go_build", config_dir, command)
+            started, start_error = process_handler.start_process(
+                "go_build", config_dir, command
+            )
+            if not started:
+                go_build_error = (
+                    (process_handler.stderr or "").strip()
+                    or (process_handler.stdout or "").strip()
+                    or str(start_error or "go build failed to start")
+                )
+                logger.warning(f"Decypharr build failed (attempt {attempt + 1}/3)")
+                continue
             process_handler.wait("go_build")
             if process_handler.returncode == 0:
                 go_build_success = True

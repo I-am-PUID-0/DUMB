@@ -57,10 +57,11 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     apt-get install -y --no-install-recommends \
       build-essential libxml2-utils git jq tzdata nano locales python3 \
       python3.11 python3.11-venv python3.11-dev python3.12 python3.12-venv python3.12-dev libffi-dev libpython3.11 libpq-dev \
-      fuse3 ffmpeg mesa-va-drivers mesa-vulkan-drivers openssl unzip pkg-config \
+      fuse3 libfuse-dev ffmpeg mesa-va-drivers mesa-vulkan-drivers openssl unzip pkg-config \
       libcairo2-dev libpango1.0-dev libjpeg-dev libgif-dev libpixman-1-dev librsvg2-dev \
       postgresql-client-16 postgresql-16 postgresql-contrib-16 pgagent \
       htop bash && \
+    test -f /usr/include/fuse/fuse.h && \
     # Python convenience + locale
     locale-gen en_US.UTF-8 && \
     update-alternatives --install /usr/bin/python python /usr/bin/python3.11 1 && \

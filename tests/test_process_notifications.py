@@ -1,3 +1,4 @@
+import io
 import signal
 import unittest
 from unittest.mock import Mock, patch
@@ -80,6 +81,41 @@ class ProcessNotificationTests(unittest.TestCase):
             ProcessHandler._signal_process_group(process, signal.SIGTERM)
 
         process.terminate.assert_called_once_with()
+
+    @patch("utils.processes.notify_event")
+    def test_immediate_helper_failure_preserves_stderr_before_logging(
+        self, notify_event
+    ):
+        handler = object.__new__(ProcessHandler)
+        handler.init_attributes(Mock())
+        process = Mock(
+            pid=1234,
+            returncode=1,
+            stdout=io.StringIO(""),
+            stderr=io.StringIO("fatal error: fuse.h: No such file or directory\n"),
+        )
+        process.poll.return_value = 1
+
+        with (
+            patch(
+                "utils.processes.CONFIG_MANAGER.find_key_for_process",
+                return_value=(None, None),
+            ),
+            patch("utils.processes.CONFIG_MANAGER.get", return_value={}),
+            patch("utils.processes.subprocess.Popen", return_value=process),
+            patch("utils.processes.SubprocessLogger") as subprocess_logger,
+        ):
+            success, error = handler.start_process(
+                "go_build", "/tmp", ["go", "build", "."]
+            )
+
+        self.assertFalse(success)
+        self.assertEqual("go_build failed to stay running.", error)
+        self.assertEqual(
+            "fatal error: fuse.h: No such file or directory", handler.stderr
+        )
+        subprocess_logger.assert_not_called()
+        notify_event.assert_called_once()
 
 
 if __name__ == "__main__":
