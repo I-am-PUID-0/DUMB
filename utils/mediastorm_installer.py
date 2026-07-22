@@ -23,6 +23,7 @@ _MEDIASTORM_COMMIT_PATTERN = re.compile(r"^[a-f0-9]{40}$", re.IGNORECASE)
 _MEDIASTORM_DIGEST_PATTERN = re.compile(r"^sha256:[a-f0-9]{64}$")
 _MAX_EXTRACTED_BYTES = 2 * 1024 * 1024 * 1024
 _SOURCE_FILES = {
+    "app/mediastorm": "mediastorm",
     "root/mediastorm": "mediastorm",
     "app/version.txt": ".upstream-version.txt",
     "parse_title.py": "scripts/parse_title.py",
@@ -35,6 +36,7 @@ _SOURCE_FILES = {
     "usr/local/bin/yt-dlp": "bin/yt-dlp",
     "usr/local/bin/deno": "bin/deno",
 }
+_MEDIASTORM_COMPATIBILITY_LINK = ("root/mediastorm", "/app/mediastorm")
 _SOURCE_DIRECTORIES = {
     "opt/strmr-web": "web",
     "opt/iroh": "iroh",
@@ -131,6 +133,16 @@ def apply_mediastorm_layer(
                 continue
             destination = _safe_destination(root, mapped)
             if member.issym() or member.islnk():
+                if (
+                    member.issym()
+                    and (source_path, member.linkname) == _MEDIASTORM_COMPATIBILITY_LINK
+                ):
+                    # Current upstream images keep /root/mediastorm as a
+                    # compatibility alias while installing the real binary at
+                    # /app/mediastorm. Extract the allowlisted regular file
+                    # from its own layer and do not reproduce the absolute
+                    # container symlink inside DUMB's staged runtime.
+                    continue
                 raise MediaStormInstallError(
                     f"MediaStorm OCI runtime contains an unsupported link: {source_path}"
                 )

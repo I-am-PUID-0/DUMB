@@ -26,6 +26,15 @@ def _write_layer(path: Path, entries: dict[str, tuple[bytes, int]]) -> None:
             archive.addfile(info, io.BytesIO(content))
 
 
+def _write_symlink_layer(path: Path, name: str, target: str) -> None:
+    with tarfile.open(path, "w:gz") as archive:
+        info = tarfile.TarInfo(name)
+        info.type = tarfile.SYMTYPE
+        info.linkname = target
+        info.mode = 0o777
+        archive.addfile(info)
+
+
 class _FakeOCIClient:
     def __init__(self, layers, missing_references=None):
         self.layers = layers
@@ -88,6 +97,32 @@ class MediaStormInstallerTests(unittest.TestCase):
             _write_layer(layer, {"../../opt/strmr-web/escape": (b"bad", 0o644)})
 
             with self.assertRaises(MediaStormInstallError):
+                apply_mediastorm_layer(layer, root / "output")
+
+    def test_extracts_current_app_binary_and_ignores_known_root_alias(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            alias_layer = root / "alias.tar.gz"
+            binary_layer = root / "binary.tar.gz"
+            output = root / "output"
+            _write_symlink_layer(alias_layer, "root/mediastorm", "/app/mediastorm")
+            _write_layer(binary_layer, {"app/mediastorm": (b"server", 0o755)})
+
+            extracted_bytes = apply_mediastorm_layer(alias_layer, output)
+            apply_mediastorm_layer(binary_layer, output, extracted_bytes)
+
+            self.assertEqual((output / "mediastorm").read_bytes(), b"server")
+            self.assertFalse((output / "mediastorm").is_symlink())
+
+    def test_rejects_unexpected_root_binary_link_target(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            layer = root / "layer.tar.gz"
+            _write_symlink_layer(layer, "root/mediastorm", "/etc/shadow")
+
+            with self.assertRaisesRegex(
+                MediaStormInstallError, "unsupported link: root/mediastorm"
+            ):
                 apply_mediastorm_layer(layer, root / "output")
 
     def test_installs_verified_runtime_atomically(self):

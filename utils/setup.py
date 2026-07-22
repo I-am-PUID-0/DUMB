@@ -4429,7 +4429,17 @@ def _initialize_postgres_databases_if_running() -> tuple[bool, str | None]:
     user = postgres_config.get("user", "DUMB")
     try:
         readiness = subprocess.run(
-            ["pg_isready", "-U", str(user), "-h", str(host), "-p", str(port)],
+            [
+                "pg_isready",
+                "-U",
+                str(user),
+                "-d",
+                "postgres",
+                "-h",
+                str(host),
+                "-p",
+                str(port),
+            ],
             capture_output=True,
             text=True,
             timeout=5,
