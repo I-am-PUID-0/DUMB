@@ -5132,8 +5132,9 @@ RCLONE_TPSLIMIT_BURST=10
 <div class="admonition note">
 <p class="admonition-title">Note</p>
 <p>The <code>command</code> field is empty by default (<code>"command": []</code>) because DUMB generates the rclone command dynamically during setup and applies it in memory.</p>
-<p>If you add custom arguments to the <code>command</code> list, it will override the auto-generated defaults. </p>
-<p>You will be responsible for maintaining all required options, such as <code>--mount-name</code> and <code>--mount-dir</code>. </p>
+<p>Saved tunable arguments in the <code>command</code> list are preserved. DUMB still
+reconciles required mount, identity, cache-path, and provider-specific
+flags during setup.</p>
 <p>To revert to default behavior, simply clear the field again by setting <code>"command": []</code>.</p>
 </div>
 <p>Example default command DUMB generates:
@@ -5225,6 +5226,11 @@ RCLONE_TPSLIMIT_BURST=10
 <td><code>--dir-cache-time</code></td>
 <td><code>10s</code></td>
 <td>Cache directory structure for 10 seconds.</td>
+</tr>
+<tr>
+<td><code>--rc</code> / <code>--rc-addr</code></td>
+<td>first available from <code>5572</code></td>
+<td>Enables the local rclone control API; DUMB avoids configured and active RC ports.</td>
 </tr>
 <tr>
 <td><code>--allow-non-empty</code></td>
