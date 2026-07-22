@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.9.1](https://github.com/I-am-PUID-0/DUMB/compare/2.9.0...2.9.1) (2026-07-22)
+
+
+### 🐛 Bug Fixes
+
+* **pgadmin:** propagate immediate startup failures ([bc09092](https://github.com/I-am-PUID-0/DUMB/commit/bc090929e36ded254f6ce564389a3edd4646cb02))
+* **postgres:** initialize managed clusters with UTF-8 encoding ([45b6854](https://github.com/I-am-PUID-0/DUMB/commit/45b68540e8b156933679794d2c3413698968cc45))
+
 ## [2.9.0](https://github.com/I-am-PUID-0/DUMB/compare/2.8.0...2.9.0) (2026-07-21)
 
 
