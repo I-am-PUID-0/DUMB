@@ -586,12 +586,14 @@ def start_pgadmin(
         # set the command in the config memory
         config.set("pgadmin", "command", pgadmin_command)
 
-        process_handler.start_process(
+        success, error = process_handler.start_process(
             pgadmin_process_name,
             pgadmin_config_dir,
             ["sh", "-c", f"exec {pgadmin_command}"],
             env=env,
         )
+        if not success:
+            return False, error or "pgAdmin exited during startup."
 
         logger.info("pgAdmin process started successfully using PostgreSQL database.")
         return True, None

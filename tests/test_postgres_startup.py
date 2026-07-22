@@ -7,8 +7,10 @@ import unittest
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
+from utils import postgres as postgres_utils
 from utils.postgres import (
     initialize_postgres_config_dir_directory,
+    start_pgadmin,
     stop_existing_postgres_for_data_directory,
 )
 
@@ -198,6 +200,35 @@ class PostgresStartupSafetyTests(unittest.TestCase):
 
         self.assertFalse(success)
         self.assertEqual(error, "PostgreSQL initdb failed: initdb failed")
+
+    def test_pgadmin_start_propagates_immediate_process_failure(self):
+        process_handler = SimpleNamespace(
+            start_process=Mock(return_value=(False, "pgAdmin failed to stay running."))
+        )
+
+        with (
+            patch.object(
+                postgres_utils,
+                "create_pgadmin_config",
+                return_value="/tmp/config_local.py",
+            ),
+            patch.object(postgres_utils.config, "set"),
+            patch.dict(os.environ, {}, clear=False),
+        ):
+            success, error = start_pgadmin(
+                process_handler,
+                "/tmp/pgadmin",
+                "/tmp/config_local.py",
+                "postgresql://example.invalid/pgadmin",
+                "admin@example.com",
+                "test-password",
+                "pgAdmin4",
+                5050,
+                "0.0.0.0",
+            )
+
+        self.assertFalse(success)
+        self.assertEqual(error, "pgAdmin failed to stay running.")
 
 
 if __name__ == "__main__":
