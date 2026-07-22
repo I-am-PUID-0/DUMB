@@ -1,5 +1,19 @@
 # Changelog
 
+## [2.10.0](https://github.com/I-am-PUID-0/DUMB/compare/2.9.2...2.10.0) (2026-07-22)
+
+
+### ✨ Features
+
+* **nzbdav:** configure collision-safe rclone RC ([5d2168b](https://github.com/I-am-PUID-0/DUMB/commit/5d2168bd13998bce5016c8ef3568b66935e15dd0))
+
+
+### 🐛 Bug Fixes
+
+* **api:** report accurate health for the DUMB API process ([7d54b7a](https://github.com/I-am-PUID-0/DUMB/commit/7d54b7ad6bf781430cc344c814148cbd9da041b1)), closes [#275](https://github.com/I-am-PUID-0/DUMB/issues/275)
+* **mediastorm:** expose version metadata to the application ([99543d6](https://github.com/I-am-PUID-0/DUMB/commit/99543d646a72098a2cd7a0f0a617dbee53848cc9))
+* **tests:** add missing chown patch in RcloneSetupTests ([c62f499](https://github.com/I-am-PUID-0/DUMB/commit/c62f499858a459dcc118571fe91b2d63a0efe7fb))
+
 ## [2.9.2](https://github.com/I-am-PUID-0/DUMB/compare/2.9.1...2.9.2) (2026-07-22)
 
 
