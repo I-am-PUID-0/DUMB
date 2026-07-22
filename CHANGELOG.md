@@ -1,5 +1,18 @@
 # Changelog
 
+## [2.9.2](https://github.com/I-am-PUID-0/DUMB/compare/2.9.1...2.9.2) (2026-07-22)
+
+
+### 🐛 Bug Fixes
+
+* **decypharr:** restore FUSE headers for branch builds ([86a4925](https://github.com/I-am-PUID-0/DUMB/commit/86a4925af3ec007d2ce8013de2c4511795946c30))
+* **mediastorm:** support current OCI runtime layout ([8e2aaad](https://github.com/I-am-PUID-0/DUMB/commit/8e2aaade02db1d675e47b6fbe4d3701842126492))
+
+
+### 🤡 Other Changes
+
+* **deps:** update dependencies ([b13c59a](https://github.com/I-am-PUID-0/DUMB/commit/b13c59acf4590a9706743450af2410f6e46b2c9b))
+
 ## [2.9.1](https://github.com/I-am-PUID-0/DUMB/compare/2.9.0...2.9.1) (2026-07-22)
 
 
