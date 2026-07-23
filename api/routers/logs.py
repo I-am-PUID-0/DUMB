@@ -110,10 +110,27 @@ def filter_dumb_log(log_path, logger):
         return ""
 
 
-def _read_chunk(path: Path, start: int) -> bytes:
+def _read_complete_chunk(path: Path, start: int) -> tuple[bytes, int]:
+    """Read complete log lines without exposing fragments across API polls."""
+
     with open(path, "rb") as f:
-        f.seek(max(0, start))
-        return f.read()
+        safe_start = max(0, start)
+        if safe_start:
+            f.seek(safe_start - 1)
+            if f.read(1) not in {b"\n", b"\r"}:
+                # An arbitrary/tail cursor can land inside a sensitive line.
+                # Skip that fragment rather than returning an unredactable tail.
+                f.readline()
+                safe_start = f.tell()
+
+        f.seek(safe_start)
+        data = f.read()
+
+    final_newline = data.rfind(b"\n")
+    if final_newline < 0:
+        return b"", safe_start
+    complete = data[: final_newline + 1]
+    return complete, safe_start + len(complete)
 
 
 @logs_router.get("", response_model=LogFileResponse)
@@ -160,11 +177,11 @@ async def get_log_file(
                     "reset": True,
                 }
             start = max(0, size - int(tail_bytes))
-            data = _read_chunk(log_path, start)
+            data, safe_cursor = _read_complete_chunk(log_path, start)
             return {
                 "process_name": process_name,
                 "size": size,
-                "cursor": size,
+                "cursor": safe_cursor,
                 "chunk": redact_sensitive_log_data(data.decode("utf-8", "replace")),
                 "reset": True,
             }
@@ -173,18 +190,17 @@ async def get_log_file(
         if cursor > size:
             # file rotated/truncated; tail fresh bytes
             start = max(0, size - int(tail_bytes))
-            data = _read_chunk(log_path, start)
+            data, safe_cursor = _read_complete_chunk(log_path, start)
             return {
                 "process_name": process_name,
                 "size": size,
-                "cursor": size,
+                "cursor": safe_cursor,
                 "chunk": redact_sensitive_log_data(data.decode("utf-8", "replace")),
                 "reset": True,
             }
 
         # Normal delta
-        data = _read_chunk(log_path, cursor)
-        new_cursor = cursor + len(data)
+        data, new_cursor = _read_complete_chunk(log_path, cursor)
         return {
             "process_name": process_name,
             "size": size,

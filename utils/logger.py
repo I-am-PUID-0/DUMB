@@ -3,32 +3,140 @@ import asyncio, os, re, sys, tempfile, threading, time, logging
 from logging.handlers import BaseRotatingHandler
 from colorlog import ColoredFormatter
 
-SENSITIVE_LOG_PATTERNS = [
-    re.compile(
-        r"(\bWebDAV\s+credentials\s*:\s*[^/\r\n]*?/\s*)(?!\[REDACTED\])\S+",
-        re.IGNORECASE,
+SENSITIVE_LOG_REDACTIONS = [
+    (
+        re.compile(
+            r"(\bWebDAV\s+credentials\s*:\s*[^/\r\n]*?/\s*)" r"(?!\[REDACTED\])\S+",
+            re.IGNORECASE,
+        ),
+        r"\1[REDACTED]",
     ),
-    re.compile(
-        r"(\b(?:CLOUDFLARED_TUNNEL_TOKEN|CF_TUNNEL_TOKEN|TUNNEL_TOKEN)\s*[:=]\s*)[^,\]\s}]+",
-        re.IGNORECASE,
+    (
+        re.compile(
+            r"(\b(?:CLOUDFLARED_TUNNEL_TOKEN|CF_TUNNEL_TOKEN|TUNNEL_TOKEN)"
+            r"\s*[:=]\s*)(?!\[REDACTED\])[^,\]\s}]+",
+            re.IGNORECASE,
+        ),
+        r"\1[REDACTED]",
     ),
-    re.compile(r"(\btoken=)(?!\[REDACTED\])[^&\s]+", re.IGNORECASE),
-    re.compile(
-        r"([?&](?:api[_-]?key|apikey|password|secret|token)=)(?!\[REDACTED\])[^&\s]+",
-        re.IGNORECASE,
+    (
+        re.compile(
+            r"(\b(?:cookie|set-cookie|authorization|proxy-authorization|"
+            r"x-(?:api-key|auth-token|plex-token))\s*:\s*)"
+            r"(?!\[REDACTED\])[^\r\n]*",
+            re.IGNORECASE,
+        ),
+        r"\1[REDACTED]",
     ),
-    re.compile(
-        r"(\b(?:api[ _-]?key|apikey|password|secret|token)\s*[:=]\s*)(?!\[REDACTED\])[^,\]\s}]+",
-        re.IGNORECASE,
+    (
+        re.compile(
+            r"(\b(?:authorization|proxy-authorization)\s*[=:]\s*"
+            r"(?:Bearer|Basic)\s+)(?!\[REDACTED\])\S+",
+            re.IGNORECASE,
+        ),
+        r"\1[REDACTED]",
+    ),
+    (
+        re.compile(
+            r"((?<![\w-])['\"](?:cookie|set-cookie)['\"]\s*:\s*"
+            r"['\"])(?!\[REDACTED\])[^'\"\r\n}]+",
+            re.IGNORECASE,
+        ),
+        r"\1[REDACTED]",
+    ),
+    (
+        re.compile(
+            r"([?&](?:api[_-]?key|apikey|auth[_-]?token|access[_-]?token|"
+            r"refresh[_-]?token|id[_-]?token|x-plex-token|password|passwd|"
+            r"secret|client[_-]?secret|token|code)=)"
+            r"(?!\[REDACTED\])[^&#\s]+",
+            re.IGNORECASE,
+        ),
+        r"\1[REDACTED]",
+    ),
+    (
+        re.compile(
+            r"((?<![\w-])['\"]?(?:api[ _-]?key|apikey|password|passwd|"
+            r"secret|client[ _-]?secret|auth[ _-]?token|access[ _-]?token|"
+            r"refresh[ _-]?token|sentry[ _-]?key|token)['\"]?\s*[:=]\s*"
+            r"['\"]?)(?!\[REDACTED\])[^,'\"\]\s}]+",
+            re.IGNORECASE,
+        ),
+        r"\1[REDACTED]",
+    ),
+    (
+        re.compile(
+            r"(\bMyPlex:\s+username\s+is\s+)(?!\[REDACTED\])[^,\r\n]+",
+            re.IGNORECASE,
+        ),
+        r"\1[REDACTED]",
+    ),
+    (
+        re.compile(
+            r"(\bSigned-in\s+Token\s*\()(?!\[REDACTED\])" r"[^)\s][^)\r\n]*(\))",
+            re.IGNORECASE,
+        ),
+        r"\1[REDACTED]\2",
+    ),
+    (
+        re.compile(
+            r"((?:--serverUuid=|[?&]machineIdentifier=))"
+            r"(?!\[REDACTED\])[A-Fa-f0-9-]{16,}",
+            re.IGNORECASE,
+        ),
+        r"\1[REDACTED]",
+    ),
+    (
+        re.compile(
+            r"((?:/devices/|/api/servers/))(?!\[REDACTED\])[A-Fa-f0-9]{32,}",
+            re.IGNORECASE,
+        ),
+        r"\1[REDACTED]",
+    ),
+    (
+        re.compile(
+            r"(\bMyPlex:\s+Got response for\s+)" r"(?!\[REDACTED\])[A-Fa-f0-9]{32,}",
+            re.IGNORECASE,
+        ),
+        r"\1[REDACTED]",
+    ),
+    (
+        re.compile(
+            r"(?<![\w.+-])[\w.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9-]+"
+            r"(?:\.[A-Za-z0-9-]+)+"
+        ),
+        "[REDACTED]",
     ),
 ]
 
 
 def redact_sensitive_log_data(value):
     text = str(value or "")
-    for pattern in SENSITIVE_LOG_PATTERNS:
-        text = pattern.sub(r"\1[REDACTED]", text)
+    for pattern, replacement in SENSITIVE_LOG_REDACTIONS:
+        text = pattern.sub(replacement, text)
     return text
+
+
+class SensitiveDataFilter(logging.Filter):
+    """Redact a fully rendered record before any handler persists or broadcasts it."""
+
+    def filter(self, record):
+        try:
+            message = record.getMessage()
+            redacted = redact_sensitive_log_data(message)
+            if redacted != message:
+                record.msg = redacted
+                record.args = ()
+        except Exception:
+            # Logging must remain available even if a third-party record has
+            # unusual formatting arguments.
+            pass
+        return True
+
+
+def _ensure_sensitive_filter(handler):
+    if not any(isinstance(item, SensitiveDataFilter) for item in handler.filters):
+        handler.addFilter(SensitiveDataFilter())
 
 
 class SubprocessLogger:
@@ -592,6 +700,7 @@ def get_logger(log_name=None, log_dir=None, websocket_manager=None):
         "%(asctime)s - %(levelname)s - %(message)s", datefmt="%b %e, %Y %H:%M:%S"
     )
     handler.setFormatter(file_formatter)
+    _ensure_sensitive_filter(handler)
 
     enable_color_log = CONFIG_MANAGER.get("dumb").get("color_log", False)
     if enable_color_log:
@@ -629,6 +738,7 @@ def get_logger(log_name=None, log_dir=None, websocket_manager=None):
     else:
         stdout_handler = logging.StreamHandler(sys.stdout)
         stdout_handler.setFormatter(file_formatter)
+    _ensure_sensitive_filter(stdout_handler)
 
     existing_handler_types = {type(h) for h in logger.handlers}
     if CustomRotatingFileHandler not in existing_handler_types:
@@ -640,7 +750,10 @@ def get_logger(log_name=None, log_dir=None, websocket_manager=None):
     ):
         ws_handler = WebSocketHandler(websocket_manager)
         ws_handler.setFormatter(file_formatter)
+        _ensure_sensitive_filter(ws_handler)
         logger.addHandler(ws_handler)
+    for existing_handler in logger.handlers:
+        _ensure_sensitive_filter(existing_handler)
     # logger.debug(f"New handlers: {[type(h).__name__ for h in logger.handlers]}")
     return logger
 
@@ -682,6 +795,7 @@ def get_subprocess_file_logger(log_file, log_level=None, log_name=None):
         maxBytes=max_log_size,
     )
     handler.setFormatter(file_formatter)
+    _ensure_sensitive_filter(handler)
 
     if not any(
         isinstance(h, CustomRotatingFileHandler)
@@ -724,6 +838,7 @@ def get_subprocess_access_logger(log_file, log_name=None):
         maxBytes=max_log_size,
     )
     handler.setFormatter(logging.Formatter("%(message)s"))
+    _ensure_sensitive_filter(handler)
 
     if not any(
         isinstance(h, CustomRotatingFileHandler)
