@@ -21,6 +21,20 @@ class NzbDAVSetupTests(unittest.TestCase):
         self.assertIsNone(short_value)
         self.assertIn("40-character hexadecimal", short_error)
 
+    def test_commit_state_skip_requires_matching_installed_version_marker(self):
+        commit_sha = "a" * 40
+        with tempfile.TemporaryDirectory() as tmpdir:
+            version_path = Path(tmpdir) / "version.txt"
+            version_path.write_text("v0.8.1", encoding="utf-8")
+
+            self.assertFalse(setup._commit_version_marker_matches(tmpdir, commit_sha))
+
+            version_path.write_text(
+                f"commit-{commit_sha[:12]}",
+                encoding="utf-8",
+            )
+            self.assertTrue(setup._commit_version_marker_matches(tmpdir, commit_sha))
+
     def test_commit_pin_takes_precedence_over_release_and_branch(self):
         commit_sha = "a" * 40
         config = {
@@ -58,6 +72,46 @@ class NzbDAVSetupTests(unittest.TestCase):
             process_handler, config, "NzbDAV", "nzbdav"
         )
         install_release.assert_not_called()
+
+    def test_commit_marker_is_not_written_before_source_setup_succeeds(self):
+        commit_sha = "b" * 40
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = {
+                "process_name": "DUMB Frontend",
+                "config_dir": tmpdir,
+                "repo_owner": "example",
+                "repo_name": "frontend",
+                "commit_sha": commit_sha,
+                "clear_on_update": False,
+            }
+            with (
+                patch.object(
+                    setup.downloader,
+                    "get_commit",
+                    return_value=("https://example.invalid/archive.zip", "source"),
+                ),
+                patch.object(
+                    setup.downloader,
+                    "download_and_extract",
+                    return_value=(True, None),
+                ),
+                patch.object(
+                    setup,
+                    "additional_setup",
+                    return_value=(False, "build failed"),
+                ),
+                patch.object(setup.versions, "version_write") as version_write,
+            ):
+                success, error = setup.setup_branch_version(
+                    Mock(),
+                    config,
+                    "DUMB Frontend",
+                    "dumb_frontend",
+                )
+
+        self.assertFalse(success)
+        self.assertEqual("build failed", error)
+        version_write.assert_not_called()
 
     def _write_start_script(self, root: Path) -> Path:
         frontend_dir = root / "frontend"

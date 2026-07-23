@@ -5161,6 +5161,7 @@ async def get_capabilities(current_user: str = Depends(get_optional_current_user
         "optional_only_onboarding": True,
         "optional_service_options": True,
         "manual_update_check": True,
+        "configured_source_install": True,
         "commit_sha_pinning": True,
         "commit_sha_service_keys": sorted(COMMIT_PIN_SERVICE_KEYS),
         "seerr_sync": True,

@@ -442,6 +442,7 @@ class Update:
             current_version, _ = versions.version_check(
                 process_name, instance_name, key
             )
+            configured_version = f"commit-{commit_sha[:12]}"
             return {
                 "status": "blocked",
                 "reason": "commit",
@@ -449,8 +450,9 @@ class Update:
                     f"{process_name} is pinned to commit {commit_sha[:12]}. "
                     "Change or clear commit_sha to select another source revision."
                 ),
-                "current_version": current_version or f"commit-{commit_sha[:12]}",
-                "available_version": f"commit-{commit_sha[:12]}",
+                "current_version": current_version or "unknown",
+                "available_version": configured_version,
+                "configured_target_installed": current_version == configured_version,
                 "checked_at": checked_at,
                 "auto_update_enabled": False,
                 "auto_update_interval": interval_hours,
@@ -858,11 +860,13 @@ class Update:
 
     def manual_update_install(self, process_name, allow_override=False, target=None):
         key, instance_name = CONFIG_MANAGER.find_key_for_process(process_name)
+        requested_target = str(target or "").strip().lower()
+        apply_configured_target = requested_target == "configured"
         self.logger.info(
             "Manual update install requested for %s (override=%s, target=%s).",
             process_name,
             bool(allow_override),
-            target or "configured",
+            target or "default",
         )
         with self.updating:
             # Resolve the live configuration after acquiring the update lock. A
@@ -887,7 +891,15 @@ class Update:
                 return payload
 
             block_reason = self._get_update_block_reason(config)
-            if block_reason and not allow_override:
+            if apply_configured_target and not block_reason:
+                payload = {
+                    "status": "error",
+                    "reason": "configured_target_missing",
+                    "message": f"No configured pinned source target for {process_name}.",
+                }
+                self._safe_record_update_status(process_name, payload)
+                return payload
+            if block_reason and not allow_override and not apply_configured_target:
                 payload = {
                     "status": "blocked",
                     "reason": block_reason,
@@ -915,37 +927,46 @@ class Update:
                 )
             }
             try:
-                if allow_override:
-                    preserve_branch_mode = (
-                        bool(original.get("branch_enabled"))
-                        and not str(original.get("commit_sha") or "").strip()
-                        and not target
+                if apply_configured_target:
+                    success, message = self._install_configured_target(
+                        process_name,
+                        config,
+                        key,
+                        instance_name,
+                        block_reason,
                     )
-                    config["pinned_version"] = ""
-                    config["commit_sha"] = ""
-                    if not preserve_branch_mode:
-                        config["branch_enabled"] = False
-                    if config.get(
-                        "release_version_enabled"
-                    ) and not self._release_is_nightly_or_prerelease(config):
-                        config["release_version_enabled"] = False
-                        config["release_version"] = ""
-                    temporary_source_guard.update(
-                        {
-                            source_key: config.get(source_key)
-                            for source_key in temporary_source_guard
-                        }
-                    )
-                if target:
-                    target_value = str(target).lower()
-                    if target_value in {"prerelease", "nightly"}:
-                        config["release_version_enabled"] = True
-                        config["release_version"] = target_value
-                        temporary_source_guard["release_version_enabled"] = True
+                else:
+                    if allow_override:
+                        preserve_branch_mode = (
+                            bool(original.get("branch_enabled"))
+                            and not str(original.get("commit_sha") or "").strip()
+                            and not target
+                        )
+                        config["pinned_version"] = ""
+                        config["commit_sha"] = ""
+                        if not preserve_branch_mode:
+                            config["branch_enabled"] = False
+                        if config.get(
+                            "release_version_enabled"
+                        ) and not self._release_is_nightly_or_prerelease(config):
+                            config["release_version_enabled"] = False
+                            config["release_version"] = ""
+                        temporary_source_guard.update(
+                            {
+                                source_key: config.get(source_key)
+                                for source_key in temporary_source_guard
+                            }
+                        )
+                    if target:
+                        target_value = str(target).lower()
+                        if target_value in {"prerelease", "nightly"}:
+                            config["release_version_enabled"] = True
+                            config["release_version"] = target_value
+                            temporary_source_guard["release_version_enabled"] = True
 
-                success, message = self.update_check(
-                    process_name, config, key, instance_name
-                )
+                    success, message = self.update_check(
+                        process_name, config, key, instance_name
+                    )
                 if not success:
                     status = "no_update"
                     if isinstance(message, str) and "Failed" in message:
@@ -984,6 +1005,37 @@ class Update:
                     config["release_version"] = original.get("release_version")
                     config["branch_enabled"] = original.get("branch_enabled")
                     config["branch"] = original.get("branch")
+
+    def _install_configured_target(
+        self,
+        process_name,
+        config,
+        key,
+        instance_name,
+        block_reason,
+    ):
+        if process_name in self.process_handler.process_names:
+            self.stop_process(process_name)
+        with self.process_handler.setup_tracker_lock:
+            if process_name in self.process_handler.setup_tracker:
+                self.process_handler.setup_tracker.remove(process_name)
+
+        success, error = setup_project(self.process_handler, process_name)
+        if not success:
+            return (
+                False,
+                f"Failed to install configured target for {process_name}: {error}",
+            )
+
+        process, error = self.start_process(process_name, config, key, instance_name)
+        if not process:
+            return False, f"Failed to start {process_name}: {error}"
+
+        target_label = block_reason.replace("_", " ")
+        commit_sha = str(config.get("commit_sha") or "").strip().lower()
+        if commit_sha:
+            target_label = f"commit {commit_sha[:12]}"
+        return True, f"Installed configured {target_label} for {process_name}."
 
     def _cancel_auto_update_job(self, process_name):
         existing_job = Update._jobs.get(process_name)

@@ -280,6 +280,16 @@ def _normalize_commit_sha(value) -> tuple[str | None, str | None]:
     return commit_sha, None
 
 
+def _commit_version_marker_matches(target_dir: str, commit_sha: str) -> bool:
+    expected = f"commit-{commit_sha[:12]}"
+    version_path = os.path.join(target_dir, "version.txt")
+    try:
+        with open(version_path, "r", encoding="utf-8") as handle:
+            return handle.read().strip() == expected
+    except OSError:
+        return False
+
+
 def _source_build_enabled(config: dict) -> bool:
     return bool(str(config.get("commit_sha") or "").strip()) or bool(
         config.get("branch_enabled")
@@ -619,14 +629,18 @@ def setup_branch_version(process_handler, config, process_name, key):
                 previous_ref = previous_state.get("source_ref") or previous_state.get(
                     "branch"
                 )
-                if (
+                state_matches = (
                     previous_state.get("repo_owner") == config["repo_owner"]
                     and previous_state.get("repo_name") == config["repo_name"]
                     and previous_kind == source_kind
                     and previous_ref == source_ref
                     and previous_state.get("commit_sha") == current_sha
                     and _has_branch_runtime_artifacts(target_dir, key)
-                ):
+                )
+                marker_matches = not commit_sha or _commit_version_marker_matches(
+                    target_dir, commit_sha
+                )
+                if state_matches and marker_matches:
                     logger.info(
                         "%s '%s' unchanged for %s (%s); skipping reinstall/setup.",
                         source_kind.capitalize(),
@@ -635,6 +649,13 @@ def setup_branch_version(process_handler, config, process_name, key):
                         current_sha[:8],
                     )
                     return True, None
+                if state_matches and commit_sha and not marker_matches:
+                    logger.info(
+                        "Cached commit state for %s matches %s, but the installed "
+                        "version marker does not; reinstalling the configured commit.",
+                        process_name,
+                        commit_sha[:12],
+                    )
 
         exclude_dirs = None
         if config.get("clear_on_update"):
@@ -669,14 +690,7 @@ def setup_branch_version(process_handler, config, process_name, key):
         if not success:
             return False, f"Failed to download source archive: {error}"
 
-        if commit_sha and key in COMMIT_PIN_SERVICE_KEYS:
-            versions.version_write(
-                process_name=config.get("process_name") or process_name,
-                key=key,
-                version_path=os.path.join(target_dir, "version.txt"),
-                version=f"commit-{commit_sha[:12]}",
-            )
-        elif key in {"nzbdav", "neutarr", "pulsarr", "maintainerr"}:
+        if not commit_sha and key in {"nzbdav", "neutarr", "pulsarr", "maintainerr"}:
             branch_name = (config.get("branch") or "main").strip() or "main"
             branch_sha, branch_sha_error = _fetch_branch_head_sha(
                 config["repo_owner"], config["repo_name"], branch_name
@@ -704,6 +718,13 @@ def setup_branch_version(process_handler, config, process_name, key):
             return False, error
 
         if key in COMMIT_PIN_SERVICE_KEYS:
+            if commit_sha:
+                versions.version_write(
+                    process_name=config.get("process_name") or process_name,
+                    key=key,
+                    version_path=os.path.join(target_dir, "version.txt"),
+                    version=f"commit-{commit_sha[:12]}",
+                )
             if source_kind == "branch":
                 current_sha, _ = _fetch_branch_head_sha(
                     config["repo_owner"], config["repo_name"], source_ref
