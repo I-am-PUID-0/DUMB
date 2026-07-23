@@ -5426,6 +5426,7 @@
 <span class="w">  </span><span class="nt">&quot;repo_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;traefik-proxy-admin&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;release_version_enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;release_version&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;latest&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;commit_sha&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;branch_enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;branch&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;main&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;suppress_logging&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
@@ -5482,6 +5483,7 @@ runtime values rather than copying them from a running instance.</p>
 <h3 id="configuration-key-descriptions">Configuration key descriptions<a class="headerlink" href="#configuration-key-descriptions" title="Permanent link">&para;</a></h3>
 <ul>
 <li><strong><code>enabled</code></strong>: Whether to install and start TPA.</li>
+<li><strong><code>commit_sha</code></strong>: Optional full 40-character GitHub SHA for an exact TPA source build.</li>
 <li><strong><code>port</code></strong>: TPA web UI port.</li>
 <li><strong><code>platforms</code></strong>: Uses DUMB's pnpm setup path.</li>
 <li><strong><code>config_dir</code></strong>: TPA source and build directory.</li>
@@ -5492,6 +5494,12 @@ runtime values rather than copying them from a running instance.</p>
 <li><strong><code>env.TRAEFIK_ACCESS_LOG_PATH</code></strong>: DUMB Traefik access log path for TPA diagnostics.</li>
 <li><strong><code>env.TARGET_TEST_ALLOW_CIDRS</code></strong>: Private CIDR allowlist used by TPA target reachability tests.</li>
 </ul>
+<div class="admonition info">
+<p class="admonition-title">Exact commit pin</p>
+<p>Set <code>commit_sha</code> to the complete SHA from <code>repo_owner</code>/<code>repo_name</code> to deploy
+that immutable TPA revision. It overrides release and branch selection and
+disables automatic updates until changed or cleared.</p>
+</div>
 <hr />
 <h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h2>
 <table>

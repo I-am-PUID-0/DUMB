@@ -2113,10 +2113,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#branch-version-targeting" class="md-nav__link">
+  <a href="#commit-branch-version-targeting" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Branch / Version Targeting
+        Commit / Branch / Version Targeting
       
     </span>
   </a>
@@ -4746,10 +4746,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#branch-version-targeting" class="md-nav__link">
+  <a href="#commit-branch-version-targeting" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Branch / Version Targeting
+        Commit / Branch / Version Targeting
       
     </span>
   </a>
@@ -4924,6 +4924,7 @@ flowchart TD
 <span class="w">    </span><span class="nt">&quot;repo_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;riven&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;release_version_enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;release_version&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;v0.20.1&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;commit_sha&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;branch_enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;branch&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;release-please--branches--main&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;suppress_logging&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
@@ -4983,6 +4984,7 @@ conflicts manually before restarting a single service.</p>
 <li><strong><code>port</code></strong>: Port exposed for the API.</li>
 <li><strong><code>repo_owner</code></strong> / <strong><code>repo_name</code></strong>: GitHub repo to pull from.</li>
 <li><strong><code>release_version_enabled</code></strong> / <strong><code>release_version</code></strong>: Use a tagged release if enabled.</li>
+<li><strong><code>commit_sha</code></strong>: Builds an exact Riven revision from its full 40-character GitHub SHA.</li>
 <li><strong><code>branch_enabled</code></strong> / <strong><code>branch</code></strong>: Use a specific branch if enabled.</li>
 <li><strong><code>suppress_logging</code></strong>: If <code>true</code>, disables log output for this service.</li>
 <li><strong><code>log_level</code></strong>: Logging verbosity level (e.g., <code>DEBUG</code>, <code>INFO</code>).</li>
@@ -5002,12 +5004,16 @@ conflicts manually before restarting a single service.</p>
 <li><strong><code>wait_for_dir</code></strong>: Delays startup until the specified directory exists.</li>
 </ul>
 <hr />
-<h2 id="branch-version-targeting">Branch / Version Targeting<a class="headerlink" href="#branch-version-targeting" title="Permanent link">&para;</a></h2>
-<p>You can control which version or branch of the backend is deployed by setting:</p>
+<h2 id="commit-branch-version-targeting">Commit / Branch / Version Targeting<a class="headerlink" href="#commit-branch-version-targeting" title="Permanent link">&para;</a></h2>
+<p>You can control which source revision of the backend is deployed by setting:</p>
 <ul>
+<li><code>commit_sha</code> to a full 40-character SHA for an immutable source pin</li>
 <li><code>branch_enabled: true</code> and specifying a <code>branch</code></li>
 <li>or <code>release_version_enabled: true</code> and specifying a <code>release_version</code></li>
 </ul>
+<p>The commit pin has highest precedence and disables automatic updates until it
+is changed or cleared. Commit builds use the same source-build runtime path as
+Riven branch builds.</p>
 <hr />
 <h2 id="initial-setup-riven-backend">Initial Setup: Riven Backend<a class="headerlink" href="#initial-setup-riven-backend" title="Permanent link">&para;</a></h2>
 <p>Before Riven Backend can be used, <strong>initial configuration is required</strong>.</p>

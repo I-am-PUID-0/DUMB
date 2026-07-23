@@ -4884,7 +4884,10 @@ utils/dumb_config_schema.json
 <li>Validate JSON changes before restart to avoid startup failures.</li>
 <li>Back up <code>/config/dumb_config.json</code> before large manual edits; use the frontend editor for normal service changes.</li>
 <li>Keep <code>config_dir</code>, <code>log_file</code>, and <code>port</code> unique for each service instance.</li>
-<li>Use <code>release_version_enabled</code> or <code>branch_enabled</code> when pinning versions.</li>
+<li>Use <code>release_version_enabled</code> for release tags, <code>commit_sha</code> for an exact
+  40-character GitHub source revision, or <code>branch_enabled</code> for a moving branch.</li>
+<li>A non-empty <code>commit_sha</code> takes precedence over release and branch settings and
+  disables automatic updates until changed or cleared.</li>
 <li>Do not edit <code>utils/dumb_config.json</code> expecting a persistent runtime change.</li>
 </ul>
 <hr />

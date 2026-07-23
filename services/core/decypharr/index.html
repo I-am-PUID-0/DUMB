@@ -5008,6 +5008,7 @@ flowchart TD
 <span class="w">    </span><span class="nt">&quot;repo_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;decypharr&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;release_version_enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;release_version&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;v1.0.0&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;commit_sha&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;branch_enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;branch&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;main&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;suppress_logging&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
@@ -5047,6 +5048,7 @@ flowchart TD
 <li><code>process_name</code>: Used for display and logs.</li>
 <li><code>repo_owner</code>, <code>repo_name</code>: GitHub repo to use for updates.</li>
 <li><code>release_version_enabled</code>, <code>branch_enabled</code>: Target a specific tag or branch.</li>
+<li><code>commit_sha</code>: Build an exact Decypharr source revision from its full 40-character GitHub SHA.</li>
 <li><code>log_level</code>, <code>suppress_logging</code>: Logging controls.</li>
 <li><code>port</code>: Web UI port.</li>
 <li><code>env</code>: Environment variables passed to Decypharr.</li>
@@ -5056,6 +5058,13 @@ flowchart TD
 <li><code>clear_on_update</code>, <code>exclude_dirs</code>: Clean old files during update while protecting data dirs.</li>
 </ul>
 <p>Because <code>release_version_enabled</code> is <code>false</code>, the stored <code>v1.0.0</code> value is only the fallback selector; normal stable installs resolve the latest supported GitHub release. Enable the selector only when intentionally pinning a release.</p>
+<div class="admonition info">
+<p class="admonition-title">Exact commit pin</p>
+<p>Set <code>commit_sha</code> to a full 40-character SHA to build that immutable
+Decypharr revision. The commit pin overrides release and branch settings,
+uses Decypharr's source-build path, and disables automatic updates until
+changed or cleared.</p>
+</div>
 <hr />
 <h2 id="what-decypharr-does">What Decypharr does<a class="headerlink" href="#what-decypharr-does" title="Permanent link">&para;</a></h2>
 <h3 id="how-it-works">How It Works<a class="headerlink" href="#how-it-works" title="Permanent link">&para;</a></h3>

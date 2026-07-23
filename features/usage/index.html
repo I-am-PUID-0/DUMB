@@ -4870,11 +4870,13 @@
 </div>
 <p>Services use one of these update modes depending on how upstream ships them:</p>
 <ul>
-<li><strong>GitHub release or branch services</strong> use <code>release_version_enabled</code>, <code>release_version</code>, <code>branch_enabled</code>, and <code>branch</code>.</li>
+<li><strong>GitHub source/release services</strong> use <code>release_version_enabled</code>, <code>release_version</code>, exact <code>commit_sha</code> pins, <code>branch_enabled</code>, and <code>branch</code>.</li>
 <li><strong>Pinned binary services</strong> use <code>pinned_version</code>.</li>
 <li><strong>Instance-based services</strong> store the same update fields inside each instance.</li>
 </ul>
-<p>Use the service page's <strong>Updates</strong> panel to see whether an update is available, whether a pin or branch blocks automatic installation, and when the next scheduled check will run.</p>
+<p>Use the service page's <strong>Updates</strong> panel to see whether an update is available,
+whether a version, exact commit, or branch blocks automatic installation, and
+when the next scheduled check will run.</p>
 <hr />
 <h2 id="shutdown-handling">Shutdown Handling<a class="headerlink" href="#shutdown-handling" title="Permanent link">&para;</a></h2>
 <p>DUMB handles graceful shutdown of all services. </p>

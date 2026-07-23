@@ -1714,10 +1714,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#branch-version-targeting" class="md-nav__link">
+  <a href="#commit-branch-version-targeting" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Branch / Version Targeting
+        Commit / Branch / Version Targeting
       
     </span>
   </a>
@@ -4740,10 +4740,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#branch-version-targeting" class="md-nav__link">
+  <a href="#commit-branch-version-targeting" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Branch / Version Targeting
+        Commit / Branch / Version Targeting
       
     </span>
   </a>
@@ -4928,6 +4928,7 @@ and metrics in a single interface.</p>
 <span class="w">    </span><span class="nt">&quot;repo_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;dmbdb&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;release_version_enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;release_version&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;v1.2.0&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;commit_sha&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;branch_enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;branch&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;main&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;suppress_logging&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
@@ -4955,6 +4956,7 @@ and metrics in a single interface.</p>
 <li><strong><code>process_name</code></strong>: Name used in logs and process tracking.</li>
 <li><strong><code>repo_owner</code></strong> / <strong><code>repo_name</code></strong>: Specifies the GitHub repository to clone for the frontend.</li>
 <li><strong><code>release_version_enabled</code></strong> / <strong><code>release_version</code></strong>: Indicates if a specific release version should be used.</li>
+<li><strong><code>commit_sha</code></strong>: Builds an exact GitHub revision. Use the complete 40-character hexadecimal SHA.</li>
 <li><strong><code>branch_enabled</code></strong> / <strong><code>branch</code></strong>: Specifies the branch to use if enabled.</li>
 <li><strong><code>suppress_logging</code></strong>: If <code>true</code>, disables log output for this service.</li>
 <li><strong><code>log_level</code></strong>: Logging verbosity level (e.g., <code>DEBUG</code>, <code>INFO</code>).</li>
@@ -4970,12 +4972,15 @@ and metrics in a single interface.</p>
 <li><strong><code>env</code></strong>: Environment variables for the frontend.</li>
 </ul>
 <hr />
-<h2 id="branch-version-targeting">Branch / Version Targeting<a class="headerlink" href="#branch-version-targeting" title="Permanent link">&para;</a></h2>
-<p>You can control which version or branch of the frontend is deployed by setting:</p>
+<h2 id="commit-branch-version-targeting">Commit / Branch / Version Targeting<a class="headerlink" href="#commit-branch-version-targeting" title="Permanent link">&para;</a></h2>
+<p>You can control which source revision of the frontend is deployed by setting:</p>
 <ul>
+<li><code>commit_sha</code> to a full 40-character SHA for an immutable source pin</li>
 <li><code>branch_enabled: true</code> and specifying a <code>branch</code></li>
 <li>or <code>release_version_enabled: true</code> and specifying a <code>release_version</code></li>
 </ul>
+<p><code>commit_sha</code> takes precedence over release and branch settings. Automatic
+updates remain disabled until the commit pin is changed or cleared.</p>
 <hr />
 <h2 id="accessing-the-dumb-frontend">Accessing the DUMB Frontend<a class="headerlink" href="#accessing-the-dumb-frontend" title="Permanent link">&para;</a></h2>
 <ul>

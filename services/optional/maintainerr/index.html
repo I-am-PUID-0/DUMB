@@ -4952,6 +4952,7 @@
 <span class="w">  </span><span class="nt">&quot;repo_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Maintainerr&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;release_version_enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;release_version&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;latest&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;commit_sha&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;branch_enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;branch&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;development&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;suppress_logging&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
@@ -4986,6 +4987,7 @@
 <ul>
 <li><strong><code>enabled</code></strong>: Whether DUMB starts Maintainerr.</li>
 <li><strong><code>release_version_enabled</code></strong> / <strong><code>release_version</code></strong>: Pin a tagged upstream release. With pinning disabled, DUMB bootstraps the latest stable release on first install.</li>
+<li><strong><code>commit_sha</code></strong>: Build an exact Maintainerr revision from its full 40-character GitHub SHA. It overrides release/branch selection, disables automatic updates, and is treated as a development/source build for data compatibility.</li>
 <li><strong><code>branch_enabled</code></strong> / <strong><code>branch</code></strong>: Build an upstream source branch instead of a stable release. Upstream does not support moving a development data directory back to stable.</li>
 <li><strong><code>port</code></strong>: Maintainerr's web UI and API port.</li>
 <li><strong><code>auto_update</code></strong>: Check for and install newer releases using DUMB's update scheduler.</li>

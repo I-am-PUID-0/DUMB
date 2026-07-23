@@ -5044,6 +5044,7 @@ that fork for release, branch, and update operations.</p>
 <span class="w">    </span><span class="nt">&quot;repo_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;nzbdav&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;release_version_enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;release_version&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;latest&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;commit_sha&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;branch_enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;branch&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;main&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;suppress_logging&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
@@ -5080,6 +5081,8 @@ that fork for release, branch, and update operations.</p>
 <li><code>enabled</code>: Toggle to run NzbDAV via DUMB.</li>
 <li><code>frontend_port</code>: Port for the Web UI and WebDAV endpoint.</li>
 <li><code>backend_port</code>: Port for the backend API.</li>
+<li><code>commit_sha</code>: Optional full 40-character GitHub SHA. When set, DUMB builds
+  that exact NzbDAV revision instead of selecting a release or branch.</li>
 <li><code>webdav_password</code>: Default WebDAV password (overridden by <code>WEBDAV_PASSWORD</code>).</li>
 <li><code>config_dir</code>: Path where NzbDAV data is stored.</li>
 <li><code>log_file</code>: Path for the consolidated NzbDAV log.</li>
@@ -5090,6 +5093,19 @@ that fork for release, branch, and update operations.</p>
 <p>If <code>webdav_password</code> is blank, DUMB generates one at startup and stores it in the config.
 Change the password before exposing NzbDAV outside your trusted network.</p>
 </div>
+<h3 id="pinning-an-exact-nzbdav-commit">Pinning an exact NzbDAV commit<a class="headerlink" href="#pinning-an-exact-nzbdav-commit" title="Permanent link">&para;</a></h3>
+<p>Set <code>commit_sha</code> to the complete SHA from the configured <code>repo_owner</code> and
+<code>repo_name</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">&quot;nzbdav&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;repo_owner&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;nzbdav&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;repo_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;nzbdav&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;commit_sha&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;0123456789abcdef0123456789abcdef01234567&quot;</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>The commit pin overrides <code>release_version_enabled</code> and <code>branch_enabled</code>.
+Automatic updates stay disabled while the pin is present. Change the SHA to
+move deliberately to another revision, or clear it to return to the configured
+release/branch strategy.</p>
 <h3 id="environment-variables">Environment Variables<a class="headerlink" href="#environment-variables" title="Permanent link">&para;</a></h3>
 <ul>
 <li><code>LOG_LEVEL</code>: Logging level for NzbDAV (defaults to <code>INFO</code>).</li>

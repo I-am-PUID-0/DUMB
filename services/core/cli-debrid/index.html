@@ -1972,10 +1972,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#branch-version-targeting" class="md-nav__link">
+  <a href="#commit-branch-version-targeting" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Branch / Version Targeting
+        Commit / Branch / Version Targeting
       
     </span>
   </a>
@@ -4933,10 +4933,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#branch-version-targeting" class="md-nav__link">
+  <a href="#commit-branch-version-targeting" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Branch / Version Targeting
+        Commit / Branch / Version Targeting
       
     </span>
   </a>
@@ -5148,6 +5148,7 @@ flowchart TD
 <span class="w">    </span><span class="nt">&quot;repo_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;cli_debrid&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;release_version_enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;release_version&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;v0.6.07&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;commit_sha&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;branch_enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;branch&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;main&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;suppress_logging&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
@@ -5193,6 +5194,7 @@ flowchart TD
 <li><code>process_name</code>: Used for display and logs.</li>
 <li><code>repo_owner</code>, <code>repo_name</code>: GitHub repo to use for updates.</li>
 <li><code>release_version_enabled</code>, <code>branch_enabled</code>: Target a specific tag or branch.</li>
+<li><code>commit_sha</code>: Build an exact CLI Debrid revision from its full 40-character GitHub SHA.</li>
 <li><code>log_level</code>, <code>suppress_logging</code>: Logging controls.</li>
 <li><code>port</code>: Flask web interface port.</li>
 <li><code>env</code>: Environment variable configuration used by CLI Debrid.</li>
@@ -5261,6 +5263,7 @@ transition note near the top of this page.</p>
 <span class="w">    </span><span class="nt">&quot;repo_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;phalanx_db_hyperswarm&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;release_version_enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;release_version&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;v0.50&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;commit_sha&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;branch_enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;branch&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;main&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;suppress_logging&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
@@ -5409,18 +5412,21 @@ Use <code>symlink_backup_retention_count</code> to keep only the newest N schedu
 <span class="k">done</span>
 <span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;Webhook update complete.&quot;</span>
 </code></pre></div>
-<h2 id="branch-version-targeting">Branch / Version Targeting<a class="headerlink" href="#branch-version-targeting" title="Permanent link">&para;</a></h2>
-<p>You can control which version or branch is deployed by setting:</p>
+<h2 id="commit-branch-version-targeting">Commit / Branch / Version Targeting<a class="headerlink" href="#commit-branch-version-targeting" title="Permanent link">&para;</a></h2>
+<p>You can control which source revision is deployed by setting:</p>
 <ul>
+<li><code>commit_sha</code> to a full 40-character SHA for an immutable source pin</li>
 <li><code>branch_enabled: true</code> and specifying a <code>branch</code></li>
 <li>or <code>release_version_enabled: true</code> and specifying a <code>release_version</code></li>
 </ul>
+<p>The exact commit overrides release and branch selection and disables automatic
+updates until the pin is changed or cleared.</p>
 <div class="admonition info">
 <p class="admonition-title">Dev releases use the prerelease tag</p>
 <p>CLI Debrid dev builds are published as GitHub prereleases. To track dev, enable
 <code>release_version_enabled</code> and set <code>release_version</code> to <code>prerelease</code>.</p>
 </div>
-<div class="tabbed-set tabbed-alternate" data-tabs="1:2"><input checked="checked" id="branch-version-targeting-dev-prerelease" name="__tabbed_1" type="radio" /><input id="branch-version-targeting-stable-latest-release" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="branch-version-targeting-dev-prerelease">Dev (prerelease)</label><label for="branch-version-targeting-stable-latest-release">Stable (latest release)</label></div>
+<div class="tabbed-set tabbed-alternate" data-tabs="1:2"><input checked="checked" id="commit-branch-version-targeting-dev-prerelease" name="__tabbed_1" type="radio" /><input id="commit-branch-version-targeting-stable-latest-release" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="commit-branch-version-targeting-dev-prerelease">Dev (prerelease)</label><label for="commit-branch-version-targeting-stable-latest-release">Stable (latest release)</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
 <div class="highlight"><pre><span></span><code><span class="nt">&quot;cli_debrid&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
@@ -5430,6 +5436,7 @@ Use <code>symlink_backup_retention_count</code> to keep only the newest N schedu
 <span class="w">    </span><span class="nt">&quot;repo_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;cli_debrid&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;release_version_enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;release_version&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;prerelease&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;commit_sha&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;branch_enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;branch&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;main&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;suppress_logging&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
@@ -5448,6 +5455,7 @@ Use <code>symlink_backup_retention_count</code> to keep only the newest N schedu
 <span class="w">    </span><span class="nt">&quot;repo_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;cli_debrid&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;release_version_enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;release_version&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;v0.6.07&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;commit_sha&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;branch_enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;branch&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;main&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;suppress_logging&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>

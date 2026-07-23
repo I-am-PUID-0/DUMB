@@ -5014,6 +5014,7 @@
 <span class="w">      </span><span class="nt">&quot;repo_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;profilarr&quot;</span><span class="p">,</span>
 <span class="w">      </span><span class="nt">&quot;release_version_enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
 <span class="w">      </span><span class="nt">&quot;release_version&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;v1.1.4&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;commit_sha&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&quot;</span><span class="p">,</span>
 <span class="w">      </span><span class="nt">&quot;branch_enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
 <span class="w">      </span><span class="nt">&quot;branch&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;main&quot;</span><span class="p">,</span>
 <span class="w">      </span><span class="nt">&quot;suppress_logging&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
@@ -5057,6 +5058,7 @@
 <li><strong><code>core_service</code></strong>: Filters which Arr instances are auto‑linked (see below).</li>
 <li><strong><code>repo_owner</code> / <code>repo_name</code></strong>: GitHub repository for Profilarr itself.</li>
 <li><strong><code>release_version_enabled</code> / <code>release_version</code></strong>: Use GitHub releases when enabled.</li>
+<li><strong><code>commit_sha</code></strong>: Build this Profilarr instance from an exact full 40-character GitHub SHA. It overrides release/branch selection and disables automatic updates for that instance until cleared.</li>
 <li><strong><code>branch_enabled</code> / <code>branch</code></strong>: Use a specific branch if enabled.</li>
 <li><strong><code>port</code></strong>: Port the Profilarr UI is exposed on.</li>
 <li><strong><code>auto_update</code> / <code>auto_update_interval</code> / <code>auto_update_start_time</code></strong>: Automatic update settings.</li>

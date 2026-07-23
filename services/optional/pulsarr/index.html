@@ -4947,6 +4947,7 @@
 <span class="w">  </span><span class="nt">&quot;repo_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Pulsarr&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;release_version_enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;release_version&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;latest&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;commit_sha&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;branch_enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;branch&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;master&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;suppress_logging&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
@@ -4985,6 +4986,7 @@
 <li><strong><code>postgres_database</code></strong>: Optional target name; blank uses <code>pulsarr</code>.</li>
 <li><strong><code>repo_owner</code></strong> / <strong><code>repo_name</code></strong>: GitHub repository DUMB downloads from.</li>
 <li><strong><code>release_version_enabled</code></strong> / <strong><code>release_version</code></strong>: Use a tagged release if enabled, or the latest release by default.</li>
+<li><strong><code>commit_sha</code></strong>: Build an exact Pulsarr revision from its full 40-character GitHub SHA. It overrides release/branch selection and disables automatic updates until cleared.</li>
 <li><strong><code>branch_enabled</code></strong> / <strong><code>branch</code></strong>: Use a source branch instead of a release.</li>
 <li><strong><code>port</code></strong>: Pulsarr web UI port.</li>
 <li><strong><code>platforms</code></strong>: Uses DUMB's Bun setup path.</li>

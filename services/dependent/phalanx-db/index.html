@@ -2497,10 +2497,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#branch-version-targeting" class="md-nav__link">
+  <a href="#commit-branch-version-targeting" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Branch / Version Targeting
+        Commit / Branch / Version Targeting
       
     </span>
   </a>
@@ -4790,10 +4790,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#branch-version-targeting" class="md-nav__link">
+  <a href="#commit-branch-version-targeting" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Branch / Version Targeting
+        Commit / Branch / Version Targeting
       
     </span>
   </a>
@@ -4965,6 +4965,7 @@
 <span class="w">  </span><span class="nt">&quot;repo_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;phalanx_db_hyperswarm&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;release_version_enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;release_version&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;v0.50&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;commit_sha&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;branch_enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;branch&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;main&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;suppress_logging&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
@@ -4990,6 +4991,7 @@
 <li><strong><code>process_name</code></strong>: Label used for logging and monitoring.</li>
 <li><strong><code>repo_owner</code></strong> / <strong><code>repo_name</code></strong>: Source GitHub repo for updates.</li>
 <li><strong><code>release_version_enabled</code></strong> / <strong><code>release_version</code></strong>: Targets a specific version release.</li>
+<li><strong><code>commit_sha</code></strong>: Builds an exact Phalanx DB revision from its full 40-character GitHub SHA.</li>
 <li><strong><code>branch_enabled</code></strong> / <strong><code>branch</code></strong>: If true, uses a GitHub branch instead of a release.</li>
 <li><strong><code>suppress_logging</code></strong>: Suppresses logs from this service.</li>
 <li><strong><code>log_level</code></strong>: Verbosity level.</li>
@@ -5032,12 +5034,15 @@
 <p>Runtime data is stored under <code>/phalanx_db/data</code> and symlinked into <code>/phalanx_db</code> so upgrades can preserve data.</p>
 </div>
 <hr />
-<h2 id="branch-version-targeting">Branch / Version Targeting<a class="headerlink" href="#branch-version-targeting" title="Permanent link">&para;</a></h2>
-<p>You can control which version or branch is deployed by setting:</p>
+<h2 id="commit-branch-version-targeting">Commit / Branch / Version Targeting<a class="headerlink" href="#commit-branch-version-targeting" title="Permanent link">&para;</a></h2>
+<p>You can control which source revision is deployed by setting:</p>
 <ul>
+<li><code>commit_sha</code> to a full 40-character SHA for an immutable source pin</li>
 <li><code>branch_enabled: true</code> and specifying a <code>branch</code></li>
 <li>or <code>release_version_enabled: true</code> and specifying a <code>release_version</code></li>
 </ul>
+<p>The commit pin overrides the release and branch selectors and disables
+automatic updates until changed or cleared.</p>
 <hr />
 <h2 id="access">Access<a class="headerlink" href="#access" title="Permanent link">&para;</a></h2>
 <ul>

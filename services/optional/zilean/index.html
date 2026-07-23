@@ -2952,10 +2952,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#branch-version-targeting" class="md-nav__link">
+  <a href="#commit-branch-version-targeting" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Branch / Version Targeting
+        Commit / Branch / Version Targeting
       
     </span>
   </a>
@@ -4707,10 +4707,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#branch-version-targeting" class="md-nav__link">
+  <a href="#commit-branch-version-targeting" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Branch / Version Targeting
+        Commit / Branch / Version Targeting
       
     </span>
   </a>
@@ -4849,6 +4849,7 @@
 <span class="w">  </span><span class="nt">&quot;repo_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;zilean&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;release_version_enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;release_version&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;v3.3.0&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;commit_sha&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;branch_enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;branch&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;main&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;suppress_logging&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
@@ -4889,6 +4890,7 @@
 <li><strong><code>process_name</code></strong>: Used in logs and process tracking.</li>
 <li><strong><code>repo_owner</code></strong> / <strong><code>repo_name</code></strong>: GitHub repo to pull from.</li>
 <li><strong><code>release_version_enabled</code></strong> / <strong><code>release_version</code></strong>: Use a tagged release if enabled.</li>
+<li><strong><code>commit_sha</code></strong>: Builds an exact Zilean revision from its full 40-character GitHub SHA.</li>
 <li><strong><code>branch_enabled</code></strong> / <strong><code>branch</code></strong>: Use a specific branch if enabled.</li>
 <li><strong><code>suppress_logging</code></strong>: If <code>true</code>, disables log output for this service.</li>
 <li><strong><code>log_level</code></strong>: Logging verbosity (e.g., <code>DEBUG</code>, <code>INFO</code>).</li>
@@ -4916,12 +4918,15 @@
 <li><strong><code>Zilean__Database__ConnectionString</code></strong>: Connection string for PostgreSQL.</li>
 </ul>
 <hr />
-<h2 id="branch-version-targeting">Branch / Version Targeting<a class="headerlink" href="#branch-version-targeting" title="Permanent link">&para;</a></h2>
-<p>You can control which version or branch of Zilean is deployed by setting:</p>
+<h2 id="commit-branch-version-targeting">Commit / Branch / Version Targeting<a class="headerlink" href="#commit-branch-version-targeting" title="Permanent link">&para;</a></h2>
+<p>You can control which source revision of Zilean is deployed by setting:</p>
 <ul>
+<li><code>commit_sha</code> to a full 40-character SHA for an immutable source pin</li>
 <li><code>branch_enabled: true</code> and specifying a <code>branch</code></li>
 <li>or <code>release_version_enabled: true</code> and specifying a <code>release_version</code></li>
 </ul>
+<p>The exact commit overrides release and branch selection. Automatic updates stay
+disabled while the pin is present.</p>
 <hr />
 <h2 id="tips">Tips<a class="headerlink" href="#tips" title="Permanent link">&para;</a></h2>
 <ul>

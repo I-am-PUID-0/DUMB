@@ -5118,6 +5118,10 @@ flowchart TD
 <p>When MediaStorm is selected, its initial admin username and password are both <code>admin</code>. The Optional Services step displays this reminder. Change the public default password immediately after first login and before exposing MediaStorm outside your trusted network.</p>
 </div>
 <p>MediaStorm's service-options step also allows its OCI runtime to follow <code>latest</code> or be pinned to a release tag, full commit SHA, or OCI digest. Leave release pinning disabled for normal automatic updates. See the <a href="../../services/optional/mediastorm/#version-selection">MediaStorm version-selection guide</a> before selecting a fixed build.</p>
+<p>For GitHub source-build services, the service-options step also exposes
+<code>commit_sha</code>. Paste the full 40-character SHA to select an immutable source
+revision. Once the SHA is complete, onboarding clears competing release and
+branch selections; enabling a release or branch clears the commit pin.</p>
 <hr />
 <h3 id="step-5-service-specific-options">Step 5: Service-specific options<a class="headerlink" href="#step-5-service-specific-options" title="Permanent link">&para;</a></h3>
 <p>Configure additional settings for selected services:</p>
