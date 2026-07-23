@@ -5171,9 +5171,20 @@ flowchart TD
 </table>
 <div class="admonition warning">
 <p class="admonition-title">Auto-update and strategy interaction</p>
-<p>Automatic scheduling is disabled when <code>pinned_version</code>, <code>commit_sha</code>, <code>release_version_enabled</code>, or <code>branch_enabled</code> are set.
-The only exception is when <code>release_version</code> is <code>nightly</code> or <code>prerelease</code>, which keeps scheduled checks enabled.</p>
+<p>Automatic scheduling is disabled when <code>pinned_version</code>, <code>commit_sha</code>,
+<code>release_version_enabled</code>, or <code>branch_enabled</code> are set. The only exception is
+a <code>nightly</code> or <code>prerelease</code> release selector with no commit, pinned-version,
+or branch selector taking precedence. A non-empty <code>commit_sha</code> always
+disables moving update checks, including the initial post-setup check.</p>
 </div>
+<p>After changing a fixed release, branch, or commit selection, use <strong>Check for
+updates</strong>. When the configured target differs from the installed version, the
+Updates panel shows <strong>Install configured release</strong>, <strong>Install configured
+branch</strong>, or <strong>Install configured commit</strong>. This applies the saved selection
+without clearing it. <strong>Override + latest</strong> is a separate escape hatch that
+temporarily bypasses any saved release, branch, commit, or pinned-version
+selection and installs the latest stable release. DUMB restores the saved
+configuration after that one installation.</p>
 <hr />
 <h2 id="update-strategies">Update strategies<a class="headerlink" href="#update-strategies" title="Permanent link">&para;</a></h2>
 <h3 id="latest-release-default">Latest release (default)<a class="headerlink" href="#latest-release-default" title="Permanent link">&para;</a></h3>
@@ -5239,7 +5250,15 @@ Scheduled auto-update checks are disabled when <code>branch_enabled</code> is tr
 it takes precedence over release and branch settings. DUMB downloads that exact
 GitHub source archive, builds it through the service's normal source-build path,
 records a <code>commit-&lt;short-sha&gt;</code> version marker where supported, and disables
-automatic updates until the field is changed or cleared.</p>
+automatic updates until the field is changed or cleared. This block applies to
+scheduled checks, the initial post-setup check, and normal direct update checks.
+When the configured commit differs from the installed version, use <strong>Install
+configured commit</strong> to build and restart on that SHA without clearing or
+bypassing the pin. <strong>Override + latest</strong> is a separate explicit action that
+temporarily bypasses the pin and installs the moving latest release; it does not
+clear the saved SHA. If source settings are saved while an update is already
+running, DUMB preserves the newer saved selection rather than restoring the
+update operation's older selection over it.</p>
 <p>Supported source-build services are:</p>
 <ul>
 <li>DUMB Frontend</li>

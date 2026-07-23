@@ -5106,6 +5106,10 @@ Change the password before exposing NzbDAV outside your trusted network.</p>
 Automatic updates stay disabled while the pin is present. Change the SHA to
 move deliberately to another revision, or clear it to return to the configured
 release/branch strategy.</p>
+<p>After saving a new SHA, open <strong>Updates</strong> and select <strong>Install configured
+commit</strong>. This installs and restarts NzbDAV on the saved commit. Do not use
+<strong>Override + latest</strong> for this operation; that action intentionally installs the
+latest moving release while leaving the saved pin in place for a later restart.</p>
 <h3 id="environment-variables">Environment Variables<a class="headerlink" href="#environment-variables" title="Permanent link">&para;</a></h3>
 <ul>
 <li><code>LOG_LEVEL</code>: Logging level for NzbDAV (defaults to <code>INFO</code>).</li>

@@ -4951,11 +4951,20 @@ flowchart TD
 <span class="p">}</span>
 </code></pre></div>
 <h3 id="post-processupdate-install"><code>POST /process/update-install</code><a class="headerlink" href="#post-processupdate-install" title="Permanent link">&para;</a></h3>
-<p>Installs an available update. <code>allow_override</code> permits the explicit override/install workflow; <code>target</code> optionally supplies a supported release selector.</p>
+<p>Installs an available update. <code>allow_override: true</code> temporarily ignores the
+saved release, branch, commit, or pinned-version selection and installs the
+latest stable release; DUMB restores the saved configuration afterward.
+<code>target</code> optionally supplies a supported release selector; <code>target:
+"configured"</code> applies the currently configured pinned commit/release/branch
+without clearing or bypassing it.</p>
+<p>Configured-target update-check responses include
+<code>configured_target_kind</code> (<code>release</code>, <code>branch</code>, or <code>commit</code>) and
+<code>configured_target_installed</code>. Clients can use these fields to offer the
+matching configured-target installation action only when it is needed.</p>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
-<span class="w">  </span><span class="nt">&quot;process_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;AltMount&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;process_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;NzbDAV&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;allow_override&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;target&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span>
+<span class="w">  </span><span class="nt">&quot;target&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;configured&quot;</span>
 <span class="p">}</span>
 </code></pre></div>
 <h3 id="post-processauto-updatereschedule"><code>POST /process/auto-update/reschedule</code><a class="headerlink" href="#post-processauto-updatereschedule" title="Permanent link">&para;</a></h3>
@@ -4964,7 +4973,9 @@ flowchart TD
 <span class="w">  </span><span class="nt">&quot;process_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;AltMount&quot;</span>
 <span class="p">}</span>
 </code></pre></div>
-<p>Clients should gate manual update actions on the <code>manual_update_check</code> capability and the start-time control on <code>auto_update_start_time</code>.</p>
+<p>Clients should gate manual update actions on the <code>manual_update_check</code>
+capability, configured-target installation on <code>configured_source_install</code>, and
+the start-time control on <code>auto_update_start_time</code>.</p>
 <hr />
 <h3 id="post-processstart-core-service"><code>POST /process/start-core-service</code><a class="headerlink" href="#post-processstart-core-service" title="Permanent link">&para;</a></h3>
 <p>Starts one or more core services and all required dependencies. This is used during onboarding.</p>
@@ -5289,6 +5300,8 @@ prerequisite/dependent stages around the selected service.</p>
 <span class="w">  </span><span class="nt">&quot;optional_only_onboarding&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;optional_service_options&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;manual_update_check&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;configured_source_install&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;commit_sha_pinning&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;seerr_sync&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;auto_update_start_time&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;symlink_repair&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
@@ -5340,6 +5353,14 @@ prerequisite/dependent stages around the selected service.</p>
 <tr>
 <td><code>manual_update_check</code></td>
 <td>Whether manual update check/install routes are available</td>
+</tr>
+<tr>
+<td><code>configured_source_install</code></td>
+<td>Whether <code>target: "configured"</code> can install a saved pinned source target without overriding it</td>
+</tr>
+<tr>
+<td><code>commit_sha_pinning</code></td>
+<td>Whether exact GitHub commit SHA source pins are supported</td>
 </tr>
 <tr>
 <td><code>seerr_sync</code></td>
