@@ -1,14 +1,64 @@
 import os
 import subprocess
 import tempfile
+import threading
 import unittest
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 from utils import setup
 
 
 class NzbDAVSetupTests(unittest.TestCase):
+    def test_commit_pin_requires_full_sha_and_normalizes_case(self):
+        commit_sha = "A" * 40
+
+        normalized, error = setup._normalize_commit_sha(commit_sha)
+        short_value, short_error = setup._normalize_commit_sha("abc1234")
+
+        self.assertEqual("a" * 40, normalized)
+        self.assertIsNone(error)
+        self.assertIsNone(short_value)
+        self.assertIn("40-character hexadecimal", short_error)
+
+    def test_commit_pin_takes_precedence_over_release_and_branch(self):
+        commit_sha = "a" * 40
+        config = {
+            "enabled": True,
+            "process_name": "NzbDAV",
+            "config_dir": "/nzbdav",
+            "release_version_enabled": True,
+            "release_version": "latest",
+            "commit_sha": commit_sha,
+            "branch_enabled": True,
+            "branch": "main",
+            "env": {},
+        }
+        process_handler = Mock()
+        process_handler.setup_tracker = set()
+        process_handler.setup_tracker_lock = threading.Lock()
+
+        with (
+            patch.object(
+                setup.CONFIG_MANAGER,
+                "find_key_for_process",
+                return_value=("nzbdav", None),
+            ),
+            patch.object(setup.CONFIG_MANAGER, "get_instance", return_value=config),
+            patch.object(
+                setup, "setup_branch_version", return_value=(True, None)
+            ) as install_source,
+            patch.object(setup, "setup_release_version") as install_release,
+            patch.object(setup, "setup_nzbdav", return_value=(True, None)),
+        ):
+            success, error = setup.install_project(process_handler, "NzbDAV")
+
+        self.assertTrue(success, error)
+        install_source.assert_called_once_with(
+            process_handler, config, "NzbDAV", "nzbdav"
+        )
+        install_release.assert_not_called()
+
     def _write_start_script(self, root: Path) -> Path:
         frontend_dir = root / "frontend"
         frontend_dir.mkdir()

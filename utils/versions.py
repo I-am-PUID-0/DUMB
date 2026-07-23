@@ -185,6 +185,17 @@ class Versions:
         self, process_name=None, instance_name=None, key=None, version_path=None
     ):
         try:
+            try:
+                config = (
+                    CONFIG_MANAGER.get_instance(instance_name, key) if key else None
+                )
+            except Exception:
+                config = None
+            if isinstance(config, dict) and str(config.get("commit_sha") or "").strip():
+                commit_marker = self.read_version_marker(config.get("config_dir") or "")
+                if commit_marker:
+                    return commit_marker, None
+
             if key == "dumb_api_service":
                 env_version = (os.environ.get("DUMB_VERSION") or "").strip()
                 if env_version:

@@ -83,6 +83,8 @@ class Update:
     def _get_update_block_reason(self, config):
         if config.get("pinned_version"):
             return "pinned_version"
+        if str(config.get("commit_sha") or "").strip():
+            return "commit"
         if config.get("branch_enabled"):
             return "branch"
         if config.get("release_version_enabled"):
@@ -433,6 +435,27 @@ class Update:
                 "auto_update_interval": interval_hours,
                 "auto_update_start_time": start_time,
                 "next_check_at": next_check_at,
+            }
+
+        commit_sha = str(config.get("commit_sha") or "").strip().lower()
+        if commit_sha:
+            current_version, _ = versions.version_check(
+                process_name, instance_name, key
+            )
+            return {
+                "status": "blocked",
+                "reason": "commit",
+                "message": (
+                    f"{process_name} is pinned to commit {commit_sha[:12]}. "
+                    "Change or clear commit_sha to select another source revision."
+                ),
+                "current_version": current_version or f"commit-{commit_sha[:12]}",
+                "available_version": f"commit-{commit_sha[:12]}",
+                "checked_at": checked_at,
+                "auto_update_enabled": False,
+                "auto_update_interval": interval_hours,
+                "auto_update_start_time": start_time,
+                "next_check_at": None,
             }
 
         branch_enabled = bool(config.get("branch_enabled")) and key in {
@@ -865,6 +888,7 @@ class Update:
 
         original = {
             "pinned_version": config.get("pinned_version"),
+            "commit_sha": config.get("commit_sha"),
             "release_version_enabled": config.get("release_version_enabled"),
             "release_version": config.get("release_version"),
             "branch_enabled": config.get("branch_enabled"),
@@ -875,9 +899,12 @@ class Update:
             try:
                 if allow_override:
                     preserve_branch_mode = (
-                        bool(original.get("branch_enabled")) and not target
+                        bool(original.get("branch_enabled"))
+                        and not str(original.get("commit_sha") or "").strip()
+                        and not target
                     )
                     config["pinned_version"] = ""
+                    config["commit_sha"] = ""
                     if not preserve_branch_mode:
                         config["branch_enabled"] = False
                     if config.get(
@@ -913,6 +940,7 @@ class Update:
                 return payload
             finally:
                 config["pinned_version"] = original.get("pinned_version")
+                config["commit_sha"] = original.get("commit_sha")
                 config["release_version_enabled"] = original.get(
                     "release_version_enabled"
                 )
@@ -1285,6 +1313,10 @@ class Update:
         except Exception:
             current_version = ""
 
+        commit_sha = str(config.get("commit_sha") or "").strip().lower()
+        if commit_sha:
+            return current_version != f"commit-{commit_sha[:12]}"
+
         if config.get("branch_enabled") and key in {"decypharr", "nzbdav"}:
             branch_name = (config.get("branch") or "main").strip() or "main"
             # Decypharr branch builds persist as "<branch>-<short_sha>" in version.txt.
@@ -1411,13 +1443,14 @@ class Update:
 
         if (
             config.get("pinned_version")
+            or str(config.get("commit_sha") or "").strip()
             or config.get("release_version_enabled")
             or config.get("branch_enabled")
         ):
             if not self._release_is_nightly_or_prerelease(config):
                 enable_update = False
                 self.logger.info(
-                    "Automatic updates disabled for %s due to pinned, release, or branch configuration.",
+                    "Automatic updates disabled for %s due to pinned, commit, release, or branch configuration.",
                     process_name,
                 )
 
@@ -1658,6 +1691,13 @@ class Update:
                 return self.update_check_arr_latest(
                     process_name, config, key, instance_name
                 )
+
+        commit_sha = str(config.get("commit_sha") or "").strip().lower()
+        if commit_sha:
+            return (
+                False,
+                f"{process_name} is pinned to commit {commit_sha[:12]}; no moving update target is configured.",
+            )
 
         if config.get("branch_enabled"):
             repo_owner = config.get("repo_owner")

@@ -171,7 +171,10 @@ def set_env_variables():
     debrid_link_api_key = keys.get("DOWNLOADERS_DEBRID_LINK_API_KEY")
     torbox_api_key = keys.get("DOWNLOADERS_TORBOX_API_KEY")
     symlink_rclone_path = keys.get("SYMLINK_RCLONE_PATH")
-    riven_branch_enabled = bool(riven_backend_config.get("branch_enabled"))
+    riven_branch_enabled = bool(
+        riven_backend_config.get("branch_enabled")
+        or str(riven_backend_config.get("commit_sha") or "").strip()
+    )
     # Branch-enabled Riven mounts and serves its own VFS directly.
     riven_library_path = (
         "/mnt/debrid/riven"

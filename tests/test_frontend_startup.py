@@ -23,6 +23,7 @@ class FrontendStartupTests(unittest.TestCase):
             "enabled": True,
             "config_dir": str(root),
             "command": ["node", ".output/server/index.mjs"],
+            "commit_sha": "",
             "branch_enabled": False,
             "release_version_enabled": False,
         }
@@ -46,6 +47,16 @@ class FrontendStartupTests(unittest.TestCase):
             config["branch_enabled"] = True
 
             self.assertFalse(frontend_start_readiness(config)[0])
+
+    def test_commit_install_is_deferred(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            config = self._frontend_config(Path(temp_dir))
+            config["commit_sha"] = "a" * 40
+
+            ready, reason = frontend_start_readiness(config)
+
+            self.assertFalse(ready)
+            self.assertIn("commit installation", reason)
 
     def test_matching_pinned_release_can_start_early(self):
         with tempfile.TemporaryDirectory() as temp_dir:

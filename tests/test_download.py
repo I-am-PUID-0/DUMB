@@ -89,6 +89,29 @@ class DownloaderHelperTests(unittest.TestCase):
         self.assertEqual(download.Downloader.normalize_arch("linux-arm"), "linux_arm")
         self.assertEqual(download.Downloader.normalize_arch("amd64"), "amd64")
 
+    def test_get_commit_uses_immutable_github_archive(self):
+        commit_sha = "a" * 40
+        response = FakeResponse(200)
+
+        with patch.object(
+            self.downloader, "fetch_with_retries", return_value=response
+        ) as fetch:
+            url, folder = self.downloader.get_commit("owner", "repo", commit_sha)
+
+        self.assertEqual(url, f"https://github.com/owner/repo/archive/{commit_sha}.zip")
+        self.assertEqual(folder, f"repo-{commit_sha}")
+        fetch.assert_called_once_with(url, self.downloader.get_headers())
+
+    def test_get_commit_rejects_short_or_non_hex_sha_without_network(self):
+        with patch.object(self.downloader, "fetch_with_retries") as fetch:
+            for value in ("abc1234", "g" * 40, ""):
+                with self.subTest(value=value):
+                    url, error = self.downloader.get_commit("owner", "repo", value)
+                    self.assertIsNone(url)
+                    self.assertIn("40-character hexadecimal", error)
+
+        fetch.assert_not_called()
+
     def test_find_asset_download_url_prefers_matching_non_musl_asset(self):
         release_info = {
             "tag_name": "v1.0.0",

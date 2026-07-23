@@ -258,6 +258,29 @@ class Downloader:
         else:
             return None, f"Failed to get branch {branch} from {repo_name}."
 
+    def get_commit(self, repo_owner, repo_name, commit_sha, headers=None):
+        commit_sha = str(commit_sha or "").strip().lower()
+        if not re.fullmatch(r"[0-9a-f]{40}", commit_sha):
+            return None, "Commit SHA must be a full 40-character hexadecimal value."
+
+        headers = headers or self.get_headers()
+        zip_folder_name = f"{repo_name}-{commit_sha}"
+        commit_url = (
+            f"https://github.com/{repo_owner}/{repo_name}/archive/{commit_sha}.zip"
+        )
+        self.logger.debug(
+            "Requesting %s commit %s from %s",
+            repo_name,
+            commit_sha,
+            commit_url,
+        )
+        response = self.fetch_with_retries(commit_url, headers)
+
+        if response and response.status_code == 200:
+            return commit_url, zip_folder_name
+
+        return None, f"Failed to get commit {commit_sha} from {repo_name}."
+
     def fetch_github_release_info(
         self, repo_owner, repo_name, release_version, headers=None
     ):

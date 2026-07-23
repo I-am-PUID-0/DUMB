@@ -34,6 +34,25 @@ _INSTALL_LOCKS = {}
 _MEDIASTORM_RUNTIME_LINK_DIR = "/"
 _MEDIASTORM_PYTHON_LINK = "/.venv"
 _MEDIASTORM_LOG_DIR = "/log"
+COMMIT_PIN_SERVICE_KEYS = frozenset(
+    {
+        "dumb_frontend",
+        "traefik_proxy_admin",
+        "cli_debrid",
+        "decypharr",
+        "nzbdav",
+        "phalanx_db",
+        "tautulli",
+        "pulsarr",
+        "maintainerr",
+        "neutarr",
+        "profilarr",
+        "seerr",
+        "riven_backend",
+        "riven_frontend",
+        "zilean",
+    }
+)
 
 
 def _get_install_lock(key: str) -> threading.Lock:
@@ -252,6 +271,21 @@ def _fetch_github_branch_head_sha(
         return None, f"Error resolving branch head sha: {e}"
 
 
+def _normalize_commit_sha(value) -> tuple[str | None, str | None]:
+    commit_sha = str(value or "").strip().lower()
+    if not commit_sha:
+        return None, None
+    if not re.fullmatch(r"[0-9a-f]{40}", commit_sha):
+        return None, "commit_sha must be a full 40-character hexadecimal value."
+    return commit_sha, None
+
+
+def _source_build_enabled(config: dict) -> bool:
+    return bool(str(config.get("commit_sha") or "").strip()) or bool(
+        config.get("branch_enabled")
+    )
+
+
 def setup_release_version(process_handler, config, process_name, key):
     logger.info(f"Using release version {config['release_version']} for {process_name}")
 
@@ -410,10 +444,21 @@ def setup_release_version(process_handler, config, process_name, key):
 
 
 def setup_branch_version(process_handler, config, process_name, key):
+    """Install an exact commit pin or a configured branch source archive."""
+
     def _branch_state_path(target_dir: str, service_key: str) -> str:
         state_dir = "/config/.dumb_branch_state"
         os.makedirs(state_dir, exist_ok=True)
-        return os.path.join(state_dir, f"{service_key}.json")
+        process_slug = re.sub(
+            r"[^a-z0-9]+", "-", str(process_name or service_key).lower()
+        ).strip("-")
+        target_hash = hashlib.sha256(
+            os.path.realpath(target_dir).encode("utf-8")
+        ).hexdigest()[:8]
+        return os.path.join(
+            state_dir,
+            f"{service_key}-{process_slug or service_key}-{target_hash}.json",
+        )
 
     def _legacy_branch_state_path(target_dir: str) -> str:
         return os.path.join(target_dir, ".dumb_branch_state.json")
@@ -421,6 +466,7 @@ def setup_branch_version(process_handler, config, process_name, key):
     def _read_branch_state(target_dir: str, service_key: str) -> dict:
         for state_path in (
             _branch_state_path(target_dir, service_key),
+            os.path.join("/config/.dumb_branch_state", f"{service_key}.json"),
             _legacy_branch_state_path(target_dir),
         ):
             if not os.path.isfile(state_path):
@@ -488,6 +534,32 @@ def setup_branch_version(process_handler, config, process_name, key):
             return _maintainerr_runtime_ready(target_dir) and os.path.isfile(
                 os.path.join(target_dir, "version.txt")
             )
+        if service_key == "dumb_frontend":
+            return os.path.isfile(
+                os.path.join(target_dir, ".output", "server", "index.mjs")
+            )
+        if service_key == "traefik_proxy_admin":
+            return os.path.isfile(
+                os.path.join(target_dir, "package.json")
+            ) and os.path.isfile(os.path.join(target_dir, ".next", "BUILD_ID"))
+        if service_key == "cli_debrid":
+            return os.path.isfile(os.path.join(target_dir, "main.py"))
+        if service_key == "phalanx_db":
+            return os.path.isfile(os.path.join(target_dir, "package.json"))
+        if service_key == "tautulli":
+            return os.path.isfile(os.path.join(target_dir, "Tautulli.py"))
+        if service_key == "pulsarr":
+            return os.path.isfile(os.path.join(target_dir, "dist", "server.js"))
+        if service_key == "profilarr":
+            return os.path.isfile(
+                os.path.join(target_dir, "backend", "venv", "bin", "gunicorn")
+            ) and os.path.isdir(os.path.join(target_dir, "frontend", "dist"))
+        if service_key == "seerr":
+            return os.path.isfile(os.path.join(target_dir, "dist", "index.js"))
+        if service_key == "zilean":
+            return bool(
+                glob.glob(os.path.join(target_dir, "app", "*.runtimeconfig.json"))
+            )
         return False
 
     if key in [
@@ -501,49 +573,68 @@ def setup_branch_version(process_handler, config, process_name, key):
         target_dir = os.path.join(f"/opt/{key.lower()}")
     else:
         target_dir = config["config_dir"]
-    if key == "zurg":
-        return False, "Branch version not supported for Zurg."
-    else:
-        logger.info(f"Using branch {config['branch']} for {process_name}")
-        os.makedirs(target_dir, exist_ok=True)
-        branch_url, zip_folder_name = downloader.get_branch(
-            config["repo_owner"], config["repo_name"], config["branch"]
-        )
-        if not branch_url:
-            return False, f"Failed to fetch branch {config['branch']}"
+    commit_sha, commit_error = _normalize_commit_sha(config.get("commit_sha"))
+    if commit_error:
+        return False, commit_error
+    if commit_sha and key not in COMMIT_PIN_SERVICE_KEYS:
+        return False, f"Commit pinning is not supported for {process_name}."
 
-        if key in {
-            "riven_backend",
-            "riven_frontend",
-            "decypharr",
-            "nzbdav",
-            "maintainerr",
-        }:
-            current_sha, sha_error = _fetch_branch_head_sha(
-                config["repo_owner"], config["repo_name"], config["branch"]
+    if key == "zurg":
+        return False, "Source branch and commit installs are not supported for Zurg."
+    else:
+        os.makedirs(target_dir, exist_ok=True)
+        if commit_sha:
+            source_kind = "commit"
+            source_ref = commit_sha
+            current_sha = commit_sha
+            logger.info("Using commit %s for %s", commit_sha, process_name)
+            source_url, zip_folder_name = downloader.get_commit(
+                config["repo_owner"], config["repo_name"], commit_sha
             )
-            if current_sha:
-                previous_state = _read_branch_state(target_dir, key)
-                if (
-                    previous_state.get("repo_owner") == config["repo_owner"]
-                    and previous_state.get("repo_name") == config["repo_name"]
-                    and previous_state.get("branch") == config["branch"]
-                    and previous_state.get("commit_sha") == current_sha
-                    and _has_branch_runtime_artifacts(target_dir, key)
-                ):
-                    logger.info(
-                        "Branch '%s' unchanged for %s (%s); skipping reinstall/setup.",
-                        config["branch"],
-                        process_name,
-                        current_sha[:8],
-                    )
-                    return True, None
-            elif sha_error:
+            if not source_url:
+                return False, f"Failed to fetch commit {commit_sha}"
+        else:
+            source_kind = "branch"
+            source_ref = (config.get("branch") or "main").strip() or "main"
+            logger.info("Using branch %s for %s", source_ref, process_name)
+            source_url, zip_folder_name = downloader.get_branch(
+                config["repo_owner"], config["repo_name"], source_ref
+            )
+            if not source_url:
+                return False, f"Failed to fetch branch {source_ref}"
+            current_sha, sha_error = _fetch_branch_head_sha(
+                config["repo_owner"], config["repo_name"], source_ref
+            )
+            if not current_sha and sha_error:
                 logger.debug(
                     "Branch head SHA lookup failed for %s: %s. Continuing with install.",
                     process_name,
                     sha_error,
                 )
+
+        if key in COMMIT_PIN_SERVICE_KEYS:
+            if current_sha:
+                previous_state = _read_branch_state(target_dir, key)
+                previous_kind = previous_state.get("source_kind") or "branch"
+                previous_ref = previous_state.get("source_ref") or previous_state.get(
+                    "branch"
+                )
+                if (
+                    previous_state.get("repo_owner") == config["repo_owner"]
+                    and previous_state.get("repo_name") == config["repo_name"]
+                    and previous_kind == source_kind
+                    and previous_ref == source_ref
+                    and previous_state.get("commit_sha") == current_sha
+                    and _has_branch_runtime_artifacts(target_dir, key)
+                ):
+                    logger.info(
+                        "%s '%s' unchanged for %s (%s); skipping reinstall/setup.",
+                        source_kind.capitalize(),
+                        source_ref,
+                        process_name,
+                        current_sha[:8],
+                    )
+                    return True, None
 
         exclude_dirs = None
         if config.get("clear_on_update"):
@@ -570,15 +661,22 @@ def setup_branch_version(process_handler, config, process_name, key):
                 return False, error
 
         success, error = downloader.download_and_extract(
-            branch_url,
+            source_url,
             target_dir,
             zip_folder_name=zip_folder_name,
             exclude_dirs=exclude_dirs,
         )
         if not success:
-            return False, f"Failed to download branch: {error}"
+            return False, f"Failed to download source archive: {error}"
 
-        if key in {"nzbdav", "neutarr", "pulsarr", "maintainerr"}:
+        if commit_sha and key in COMMIT_PIN_SERVICE_KEYS:
+            versions.version_write(
+                process_name=config.get("process_name") or process_name,
+                key=key,
+                version_path=os.path.join(target_dir, "version.txt"),
+                version=f"commit-{commit_sha[:12]}",
+            )
+        elif key in {"nzbdav", "neutarr", "pulsarr", "maintainerr"}:
             branch_name = (config.get("branch") or "main").strip() or "main"
             branch_sha, branch_sha_error = _fetch_branch_head_sha(
                 config["repo_owner"], config["repo_name"], branch_name
@@ -605,17 +703,11 @@ def setup_branch_version(process_handler, config, process_name, key):
         if not success:
             return False, error
 
-        if key in {
-            "riven_backend",
-            "riven_frontend",
-            "decypharr",
-            "nzbdav",
-            "neutarr",
-            "maintainerr",
-        }:
-            current_sha, _ = _fetch_branch_head_sha(
-                config["repo_owner"], config["repo_name"], config["branch"]
-            )
+        if key in COMMIT_PIN_SERVICE_KEYS:
+            if source_kind == "branch":
+                current_sha, _ = _fetch_branch_head_sha(
+                    config["repo_owner"], config["repo_name"], source_ref
+                )
             if current_sha:
                 _write_branch_state(
                     target_dir,
@@ -623,7 +715,9 @@ def setup_branch_version(process_handler, config, process_name, key):
                     {
                         "repo_owner": config["repo_owner"],
                         "repo_name": config["repo_name"],
-                        "branch": config["branch"],
+                        "source_kind": source_kind,
+                        "source_ref": source_ref,
+                        "branch": source_ref if source_kind == "branch" else None,
                         "commit_sha": current_sha,
                         "updated_at": int(time.time()),
                     },
@@ -659,7 +753,7 @@ def additional_setup(process_handler, process_name, config, key):
         if not success:
             return False, error
 
-    if key == "decypharr" and config.get("branch_enabled"):
+    if key == "decypharr" and _source_build_enabled(config):
         success, error = build_decypharr_dev(process_handler, config)
         if not success:
             return False, f"Failed to build Decypharr development environment: {error}"
@@ -817,6 +911,7 @@ def _setup_project(
             if (
                 not config.get("release_version_enabled")
                 and not config.get("branch_enabled")
+                and not str(config.get("commit_sha") or "").strip()
                 and _needs_riven_bootstrap(key, config.get("config_dir"))
             ):
                 original_release_version = config.get("release_version")
@@ -842,13 +937,23 @@ def _setup_project(
                 else:
                     config.pop("release_version", None)
 
+            commit_sha, commit_error = _normalize_commit_sha(config.get("commit_sha"))
+            if commit_error:
+                return False, commit_error
+
             requested_version = config.get("release_version")
             requested_lower = (requested_version or "").lower()
             allow_release_with_auto_update = (
                 requested_lower in {"latest", "prerelease"}
                 or "nightly" in requested_lower
             )
-            if (
+            if not bootstrap_installed and commit_sha:
+                success, error = setup_branch_version(
+                    process_handler, config, process_name, key
+                )
+                if not success:
+                    return False, error
+            elif (
                 not bootstrap_installed
                 and config.get("release_version_enabled")
                 and (not config.get("auto_update") or allow_release_with_auto_update)
@@ -2697,7 +2802,7 @@ def setup_decypharr(install_only: bool = False, configure_only: bool = False):
             _unmount_decypharr_mounts(decypharr_config_file)
 
         force_release_install = False
-        if not config.get("branch_enabled"):
+        if not _source_build_enabled(config):
             version_path = os.path.join(decypharr_config_dir, "version.txt")
             marker_path = os.path.join(decypharr_config_dir, ".dumb_branch_build")
             if os.path.exists(marker_path):
@@ -2729,7 +2834,7 @@ def setup_decypharr(install_only: bool = False, configure_only: bool = False):
             logger.warning(
                 f"Decypharr project not found at {decypharr_config_dir}. Downloading..."
             )
-            if not config.get("branch_enabled"):
+            if not _source_build_enabled(config):
                 release, error = downloader.get_latest_release(
                     repo_owner=config.get("repo_owner"),
                     repo_name=config.get("repo_name"),
@@ -2824,7 +2929,7 @@ def setup_nzbdav(
             logger.warning(
                 f"NzbDAV project not found at {nzbdav_config_dir}. Downloading..."
             )
-            if not config.get("branch_enabled"):
+            if not _source_build_enabled(config):
                 release = (
                     config.get("release_version")
                     if config.get("release_version_enabled")
@@ -3613,10 +3718,18 @@ def build_decypharr_dev(process_handler, config):
         success, error = setup_pnpm_environment(process_handler, config_dir)
         if not success:
             return False, f"Failed to set up pnpm environment: {error}"
+        commit_sha, commit_error = _normalize_commit_sha(config.get("commit_sha"))
+        if commit_error:
+            return False, commit_error
         branch = (config.get("branch") or "").strip() or "beta"
         version = "3.0.0"  # Runtime semantic version for beta branch builds
-        branch_sha = None
-        if config.get("repo_owner") and config.get("repo_name") and branch:
+        branch_sha = commit_sha
+        if (
+            not branch_sha
+            and config.get("repo_owner")
+            and config.get("repo_name")
+            and branch
+        ):
             branch_sha, sha_error = _fetch_github_branch_head_sha(
                 config.get("repo_owner"),
                 config.get("repo_name"),
@@ -3624,7 +3737,11 @@ def build_decypharr_dev(process_handler, config):
             )
             if sha_error:
                 logger.debug("Decypharr branch SHA lookup failed: %s", sha_error)
-        channel = f"{branch}-{branch_sha[:8]}" if branch_sha else branch
+        channel = (
+            f"commit-{commit_sha[:12]}"
+            if commit_sha
+            else (f"{branch}-{branch_sha[:8]}" if branch_sha else branch)
+        )
         command = [
             "go",
             "build",
@@ -4698,6 +4815,9 @@ def _read_traefik_proxy_admin_package_version(config_dir: str):
 
 
 def _resolve_traefik_proxy_admin_version_marker(config: dict, config_dir: str):
+    commit_sha, _ = _normalize_commit_sha(config.get("commit_sha"))
+    if commit_sha:
+        return f"commit-{commit_sha[:12]}"
     if config.get("branch_enabled"):
         branch = (config.get("branch") or "main").strip() or "main"
         branch_sha, branch_error = _fetch_github_branch_head_sha(
@@ -5587,7 +5707,7 @@ def setup_maintainerr(
         "UI_PORT": str(config.get("port", 6246)),
         "DATA_DIR": data_dir,
         "BASE_PATH": "",
-        "VERSION_TAG": "development" if config.get("branch_enabled") else "stable",
+        "VERSION_TAG": "development" if _source_build_enabled(config) else "stable",
         "UV_USE_IO_URING": "0",
     }
     for env_key, value in expected_env.items():
@@ -5617,7 +5737,7 @@ def setup_maintainerr(
     if not success:
         return False, error
 
-    if package_version and not config.get("branch_enabled"):
+    if package_version and not _source_build_enabled(config):
         release_marker = (
             package_version
             if package_version.startswith("v")
@@ -8468,7 +8588,7 @@ def setup_python_environment(process_handler, key, config_dir):
             if key != "riven_backend":
                 return False
             riven_cfg = CONFIG_MANAGER.get("riven_backend") or {}
-            return bool(riven_cfg.get("branch_enabled"))
+            return _source_build_enabled(riven_cfg)
 
         def _format_process_error(prefix):
             details = []

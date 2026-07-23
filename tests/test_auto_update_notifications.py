@@ -43,6 +43,37 @@ class UpdateNotificationTests(unittest.TestCase):
         self.assertEqual(payload["status"], "unsupported")
         updater._safe_record_update_status.assert_called_once_with("Example", payload)
 
+    def test_commit_sha_blocks_moving_update_target(self):
+        updater = self._updater()
+
+        self.assertEqual(
+            "commit",
+            updater._get_update_block_reason({"commit_sha": "a" * 40}),
+        )
+
+    @patch("utils.auto_update.Versions")
+    def test_preinstalled_commit_runs_install_only_when_marker_differs(self, versions):
+        updater = self._updater()
+        commit_sha = "a" * 40
+        config = {"commit_sha": commit_sha}
+        versions.return_value.version_check.return_value = (
+            f"commit-{commit_sha[:12]}",
+            None,
+        )
+
+        self.assertFalse(
+            updater._should_run_install_phase_for_preinstalled(
+                "NzbDAV", "nzbdav", None, config
+            )
+        )
+
+        versions.return_value.version_check.return_value = ("commit-bbbbbbbbbbbb", None)
+        self.assertTrue(
+            updater._should_run_install_phase_for_preinstalled(
+                "NzbDAV", "nzbdav", None, config
+            )
+        )
+
     @patch("api.api_state.notify_event")
     def test_update_available_notifies_only_for_new_state_or_version(
         self, notify_event

@@ -11,7 +11,11 @@ from utils.dependencies import (
 )
 from utils.config_loader import CONFIG_MANAGER, find_service_config
 from utils.ai_diagnostics import record_diagnostic_event
-from utils.setup import ensure_managed_postgres_database, setup_project
+from utils.setup import (
+    COMMIT_PIN_SERVICE_KEYS,
+    ensure_managed_postgres_database,
+    setup_project,
+)
 from utils.core_services import has_core_service
 from utils.dependency_map import (
     build_conditional_dependency_map,
@@ -379,7 +383,9 @@ def _effective_core_dependencies(
         if mount_type in {"rclone", "dfs", "none"}:
             deps = [dep for dep in deps if dep != "rclone"]
 
-    if core_key == "riven_backend" and bool(cfg.get("branch_enabled")):
+    if core_key == "riven_backend" and bool(
+        cfg.get("branch_enabled") or str(cfg.get("commit_sha") or "").strip()
+    ):
         deps = [dep for dep in deps if dep not in {"zurg", "rclone"}]
 
     return deps
@@ -709,6 +715,7 @@ SERVICE_OPTION_DESCRIPTIONS = {
     "repo_name": "Name of the GitHub repository for the service.",
     "release_version_enabled": "Whether to pin to a specific release version.",
     "release_version": "The specific release tag or version to deploy.",
+    "commit_sha": "Exact GitHub source commit to deploy. Use the full 40-character hexadecimal SHA; when set, it overrides release and branch selection.",
     "branch_enabled": "Whether to pin to a specific branch.",
     "branch": "The branch name to deploy.",
     "suppress_logging": "If true, silences all service log output.",
@@ -5154,6 +5161,8 @@ async def get_capabilities(current_user: str = Depends(get_optional_current_user
         "optional_only_onboarding": True,
         "optional_service_options": True,
         "manual_update_check": True,
+        "commit_sha_pinning": True,
+        "commit_sha_service_keys": sorted(COMMIT_PIN_SERVICE_KEYS),
         "seerr_sync": True,
         "auto_update_start_time": True,
         "symlink_repair": True,

@@ -392,6 +392,10 @@
             "release_version": {
               "type": "string"
             },
+            "commit_sha": {
+              "type": "string",
+              "pattern": "^$|^[0-9a-fA-F]{40}$"
+            },
             "branch_enabled": {
               "type": "boolean"
             },
@@ -968,6 +972,10 @@
         "release_version": {
           "type": "string"
         },
+        "commit_sha": {
+          "type": "string",
+          "pattern": "^$|^[0-9a-fA-F]{40}$"
+        },
         "branch_enabled": {
           "type": "boolean"
         },
@@ -1155,6 +1163,10 @@
         "release_version": {
           "type": "string"
         },
+        "commit_sha": {
+          "type": "string",
+          "pattern": "^$|^[0-9a-fA-F]{40}$"
+        },
         "branch_enabled": {
           "type": "boolean"
         },
@@ -1299,6 +1311,10 @@
         },
         "release_version": {
           "type": "string"
+        },
+        "commit_sha": {
+          "type": "string",
+          "pattern": "^$|^[0-9a-fA-F]{40}$"
         },
         "branch_enabled": {
           "type": "boolean"
@@ -1713,6 +1729,10 @@
         "release_version": {
           "type": "string"
         },
+        "commit_sha": {
+          "type": "string",
+          "pattern": "^$|^[0-9a-fA-F]{40}$"
+        },
         "branch_enabled": {
           "type": "boolean"
         },
@@ -1974,6 +1994,10 @@
         "release_version": {
           "type": "string"
         },
+        "commit_sha": {
+          "type": "string",
+          "pattern": "^$|^[0-9a-fA-F]{40}$"
+        },
         "branch_enabled": {
           "type": "boolean"
         },
@@ -2197,6 +2221,10 @@
                 "release_version": {
                   "type": "string"
                 },
+                "commit_sha": {
+                  "type": "string",
+                  "pattern": "^$|^[0-9a-fA-F]{40}$"
+                },
                 "suppress_logging": {
                   "type": "boolean"
                 },
@@ -2419,6 +2447,10 @@
                 "release_version": {
                   "type": "string"
                 },
+                "commit_sha": {
+                  "type": "string",
+                  "pattern": "^$|^[0-9a-fA-F]{40}$"
+                },
                 "branch_enabled": {
                   "type": "boolean"
                 },
@@ -2560,6 +2592,10 @@
                 },
                 "release_version": {
                   "type": "string"
+                },
+                "commit_sha": {
+                  "type": "string",
+                  "pattern": "^$|^[0-9a-fA-F]{40}$"
                 },
                 "suppress_logging": {
                   "type": "boolean"
@@ -3166,6 +3202,10 @@
         "release_version": {
           "type": "string"
         },
+        "commit_sha": {
+          "type": "string",
+          "pattern": "^$|^[0-9a-fA-F]{40}$"
+        },
         "branch_enabled": {
           "type": "boolean"
         },
@@ -3327,6 +3367,10 @@
         },
         "release_version": {
           "type": "string"
+        },
+        "commit_sha": {
+          "type": "string",
+          "pattern": "^$|^[0-9a-fA-F]{40}$"
         },
         "branch_enabled": {
           "type": "boolean"
@@ -3721,6 +3765,10 @@
         "release_version": {
           "type": "string"
         },
+        "commit_sha": {
+          "type": "string",
+          "pattern": "^$|^[0-9a-fA-F]{40}$"
+        },
         "branch_enabled": {
           "type": "boolean"
         },
@@ -4014,6 +4062,10 @@
         "release_version": {
           "type": "string"
         },
+        "commit_sha": {
+          "type": "string",
+          "pattern": "^$|^[0-9a-fA-F]{40}$"
+        },
         "branch_enabled": {
           "type": "boolean"
         },
@@ -4114,6 +4166,10 @@
         },
         "release_version": {
           "type": "string"
+        },
+        "commit_sha": {
+          "type": "string",
+          "pattern": "^$|^[0-9a-fA-F]{40}$"
         },
         "branch_enabled": {
           "type": "boolean"
@@ -4419,6 +4475,10 @@
         },
         "release_version": {
           "type": "string"
+        },
+        "commit_sha": {
+          "type": "string",
+          "pattern": "^$|^[0-9a-fA-F]{40}$"
         },
         "branch_enabled": {
           "type": "boolean"

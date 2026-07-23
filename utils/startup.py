@@ -38,6 +38,8 @@ def frontend_start_readiness(frontend_config: dict) -> tuple[bool, str | None]:
         return False, None
     if not frontend_entrypoint_exists(frontend_config):
         return False, "DUMB Frontend runtime artifacts are missing."
+    if str(frontend_config.get("commit_sha") or "").strip():
+        return False, "DUMB Frontend commit installation is enabled."
     if frontend_config.get("branch_enabled"):
         return False, "DUMB Frontend branch installation is enabled."
     if not frontend_config.get("release_version_enabled"):

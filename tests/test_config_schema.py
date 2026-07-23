@@ -52,6 +52,56 @@ class DumbConfigSchemaTests(unittest.TestCase):
             ],
         )
 
+    def test_source_build_services_declare_full_commit_sha_pins(self):
+        service_paths = (
+            ("dumb", "frontend"),
+            ("traefik_proxy_admin",),
+            ("cli_debrid",),
+            ("decypharr",),
+            ("nzbdav",),
+            ("phalanx_db",),
+            ("tautulli",),
+            ("pulsarr",),
+            ("maintainerr",),
+            ("neutarr", "instances", "Default"),
+            ("profilarr", "instances", "Default"),
+            ("seerr", "instances", "Default"),
+            ("riven_backend",),
+            ("riven_frontend",),
+            ("zilean",),
+        )
+
+        for path in service_paths:
+            with self.subTest(path=".".join(path)):
+                config_value = self.config
+                schema_value = self.schema["properties"]
+                for index, part in enumerate(path):
+                    config_value = config_value[part]
+                    if part == "instances":
+                        schema_value = schema_value["instances"]["patternProperties"][
+                            ".*"
+                        ]["properties"]
+                    elif index == 0:
+                        schema_value = schema_value[part]["properties"]
+                    elif path[index - 1] != "instances":
+                        schema_value = schema_value[part]["properties"]
+
+                self.assertEqual("", config_value["commit_sha"])
+                self.assertEqual(
+                    "^$|^[0-9a-fA-F]{40}$",
+                    schema_value["commit_sha"]["pattern"],
+                )
+
+    def test_source_commit_sha_schema_rejects_short_values(self):
+        invalid_config = json.loads(json.dumps(self.config))
+        invalid_config["nzbdav"]["commit_sha"] = "abc1234"
+
+        errors = list(Draft7Validator(self.schema).iter_errors(invalid_config))
+
+        self.assertTrue(
+            any(list(error.path) == ["nzbdav", "commit_sha"] for error in errors)
+        )
+
     def test_top_level_config_keys_are_declared_and_required(self):
         config_keys = set(self.config)
         schema_keys = set(self.schema.get("properties", {}))
