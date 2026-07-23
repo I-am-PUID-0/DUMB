@@ -797,6 +797,8 @@
         
   
   
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-database-backup" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 12a9 3 0 0 0 5 2.69M21 9.3V5"/><path d="M3 5v14a9 3 0 0 0 6.47 2.88M12 12v4h4"/><path d="M13 20a5 5 0 0 0 9-3 4.5 4.5 0 0 0-4.5-4.5c-1.33 0-2.54.54-3.41 1.41L12 16"/></svg>
+  
   <span class="md-ellipsis">
     
   
@@ -1878,7 +1880,7 @@
         
   
   
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-mountain" viewBox="0 0 24 24"><path d="m8 3 4 8 5-5 5 15H2z"/></svg>
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-hard-drive-download" viewBox="0 0 24 24"><path d="M12 2v8M16 6l-4 4-4-4"/><rect width="20" height="8" x="2" y="14" rx="2"/><path d="M6 18h.01M10 18h.01"/></svg>
   
   <span class="md-ellipsis">
     
@@ -4757,7 +4759,7 @@
   
 
 
-<h1 id="dumb-services">DUMB Services<a class="headerlink" href="#dumb-services" title="Permanent link">#</a></h1>
+<h1 id="dumb-services">DUMB Services<a class="headerlink" href="#dumb-services" title="Permanent link">&para;</a></h1>
 <p>DUMB includes two internal services that form the backbone of the entire system:</p>
 <ul>
 <li>The <strong>DUMB API</strong> provides centralized coordination, configuration management, and control over all other services.</li>
@@ -4765,7 +4767,7 @@
 </ul>
 <p>These services are always required and are started automatically when the container launches.</p>
 <hr />
-<h2 id="what-are-dumb-services">What Are DUMB Services?<a class="headerlink" href="#what-are-dumb-services" title="Permanent link">#</a></h2>
+<h2 id="what-are-dumb-services">What Are DUMB Services?<a class="headerlink" href="#what-are-dumb-services" title="Permanent link">&para;</a></h2>
 <p>DUMB services are:</p>
 <ul>
 <li><strong>Core to the platform infrastructure</strong></li>
@@ -4773,7 +4775,7 @@
 <li>Required for orchestration, onboarding, and log visibility</li>
 </ul>
 <hr />
-<h2 id="dumb-service-index">DUMB Service Index<a class="headerlink" href="#dumb-service-index" title="Permanent link">#</a></h2>
+<h2 id="dumb-service-index">DUMB Service Index<a class="headerlink" href="#dumb-service-index" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
@@ -4796,21 +4798,21 @@
 </tbody>
 </table>
 <hr />
-<h2 id="how-they-work">How They Work<a class="headerlink" href="#how-they-work" title="Permanent link">#</a></h2>
+<h2 id="how-they-work">How They Work<a class="headerlink" href="#how-they-work" title="Permanent link">&para;</a></h2>
 <ul>
 <li><strong><a href="../dumb/api/">DUMB API</a></strong> is the internal backend that exposes HTTP endpoints for service management, logs, onboarding, and health monitoring. It must be responsive for any service to be monitored or configured.</li>
 <li><strong><a href="../dumb/dumb-frontend/">DUMB Frontend</a></strong> connects to the DUMB API and renders a modern web interface to help users manage their instance through onboarding steps, status dashboards, log viewers, and config editors.</li>
 </ul>
 <p>These services talk to each other over localhost and coordinate all other configured components.</p>
 <hr />
-<h2 id="tips">Tips<a class="headerlink" href="#tips" title="Permanent link">#</a></h2>
+<h2 id="tips">Tips<a class="headerlink" href="#tips" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Both services are auto-launched and should not be disabled.</li>
 <li>If the UI does not load, check the logs for <code>dumb_frontend</code> and <code>dumb_api</code>.</li>
 <li>Configuration updates and onboarding rely on the DUMB API — make sure it is reachable and healthy.</li>
 </ul>
 <hr />
-<h2 id="related-pages">Related Pages<a class="headerlink" href="#related-pages" title="Permanent link">#</a></h2>
+<h2 id="related-pages">Related Pages<a class="headerlink" href="#related-pages" title="Permanent link">&para;</a></h2>
 <ul>
 <li><a href="../../api/">API</a></li>
 <li><a href="../core/">Core Services</a></li>

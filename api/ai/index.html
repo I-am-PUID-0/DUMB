@@ -797,6 +797,8 @@
         
   
   
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-database-backup" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 12a9 3 0 0 0 5 2.69M21 9.3V5"/><path d="M3 5v14a9 3 0 0 0 6.47 2.88M12 12v4h4"/><path d="M13 20a5 5 0 0 0 9-3 4.5 4.5 0 0 0-4.5-4.5c-1.33 0-2.54.54-3.41 1.41L12 16"/></svg>
+  
   <span class="md-ellipsis">
     
   
@@ -1869,7 +1871,7 @@
         
   
   
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-mountain" viewBox="0 0 24 24"><path d="m8 3 4 8 5-5 5 15H2z"/></svg>
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-hard-drive-download" viewBox="0 0 24 24"><path d="M12 2v8M16 6l-4 4-4-4"/><rect width="20" height="8" x="2" y="14" rx="2"/><path d="M6 18h.01M10 18h.01"/></svg>
   
   <span class="md-ellipsis">
     
@@ -3667,6 +3669,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#get-aipresets" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GET /ai/presets
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#post-aitest" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3697,23 +3710,6 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="POST &#x2f;ai&#x2f;diagnose">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#diagnostic-bundle-context" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Diagnostic Bundle Context
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
 </li>
       
         <li class="md-nav__item">
@@ -3725,22 +3721,27 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="POST &#x2f;ai&#x2f;diagnose-stack">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#deterministic-finalizers" class="md-nav__link">
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#post-aifollow-up" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Deterministic Finalizers
+        POST /ai/follow-up
       
     </span>
   </a>
   
 </li>
-        
-      </ul>
-    </nav>
+      
+        <li class="md-nav__item">
+  <a href="#safety-boundary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Safety Boundary
+      
+    </span>
+  </a>
   
 </li>
       
@@ -4766,6 +4767,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#get-aipresets" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GET /ai/presets
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#post-aitest" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4796,23 +4808,6 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="POST &#x2f;ai&#x2f;diagnose">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#diagnostic-bundle-context" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Diagnostic Bundle Context
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
 </li>
       
         <li class="md-nav__item">
@@ -4824,22 +4819,27 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="POST &#x2f;ai&#x2f;diagnose-stack">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#deterministic-finalizers" class="md-nav__link">
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#post-aifollow-up" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Deterministic Finalizers
+        POST /ai/follow-up
       
     </span>
   </a>
   
 </li>
-        
-      </ul>
-    </nav>
+      
+        <li class="md-nav__item">
+  <a href="#safety-boundary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Safety Boundary
+      
+    </span>
+  </a>
   
 </li>
       
@@ -4922,13 +4922,13 @@
   
 
 
-<h1 id="ai-assistant-api">AI Assistant API<a class="headerlink" href="#ai-assistant-api" title="Permanent link">#</a></h1>
+<h1 id="ai-assistant-api">AI Assistant API<a class="headerlink" href="#ai-assistant-api" title="Permanent link">&para;</a></h1>
 <p>The AI API manages provider settings and service diagnostics. Authentication follows the same DUMB API authentication behavior as the rest of the backend.</p>
 <p>The backend makes provider requests from inside the DUMB container. Use provider URLs that are reachable from that container, not just from your browser.</p>
-<h2 id="get-aisettings"><code>GET /ai/settings</code><a class="headerlink" href="#get-aisettings" title="Permanent link">#</a></h2>
+<h2 id="get-aisettings"><code>GET /ai/settings</code><a class="headerlink" href="#get-aisettings" title="Permanent link">&para;</a></h2>
 <p>Returns the active AI settings without exposing the stored API key.</p>
 <p>Response includes <code>api_key_configured: true</code> when a key is stored.</p>
-<h2 id="put-aisettings"><code>PUT /ai/settings</code><a class="headerlink" href="#put-aisettings" title="Permanent link">#</a></h2>
+<h2 id="put-aisettings"><code>PUT /ai/settings</code><a class="headerlink" href="#put-aisettings" title="Permanent link">&para;</a></h2>
 <p>Updates the <code>dumb.ai</code> settings block. Omit <code>api_key</code> to keep the existing stored key.</p>
 <p>Example payload:</p>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
@@ -5007,9 +5007,39 @@
 <td><code>max_docs_chars</code></td>
 <td>Maximum documentation characters included across selected docs snippets.</td>
 </tr>
+<tr>
+<td><code>diagnostic_window_hours</code></td>
+<td>Default analysis window from <code>0.25</code> through <code>720</code> hours.</td>
+</tr>
+<tr>
+<td><code>comparison_mode</code></td>
+<td><code>previous_period</code>, <code>since_change</code>, or <code>none</code>.</td>
+</tr>
+<tr>
+<td><code>deep_log_scan</code></td>
+<td>Enables bounded scanning of retained and rotated service logs.</td>
+</tr>
+<tr>
+<td><code>max_log_scan_mb</code></td>
+<td>Maximum retained-log data read per service request, or shared across targeted stack scans.</td>
+</tr>
+<tr>
+<td><code>include_metrics</code></td>
+<td>Includes current-versus-baseline process metrics when history is available.</td>
+</tr>
+<tr>
+<td><code>include_change_history</code></td>
+<td>Includes redacted configuration changes saved through DUMB.</td>
+</tr>
+<tr>
+<td><code>include_native_diagnostics</code></td>
+<td>Includes allowlisted read-only native service telemetry where supported.</td>
+</tr>
 </tbody>
 </table>
-<h2 id="post-aitest"><code>POST /ai/test</code><a class="headerlink" href="#post-aitest" title="Permanent link">#</a></h2>
+<h2 id="get-aipresets"><code>GET /ai/presets</code><a class="headerlink" href="#get-aipresets" title="Permanent link">&para;</a></h2>
+<p>Returns backend-provided prompt presets grouped under <code>service</code> and <code>stack</code>. Each item contains <code>id</code>, <code>label</code>, and <code>question</code>.</p>
+<h2 id="post-aitest"><code>POST /ai/test</code><a class="headerlink" href="#post-aitest" title="Permanent link">&para;</a></h2>
 <p>Tests the configured provider using a short connectivity prompt. The request can include unsaved provider fields, so the frontend can test current form values before saving them.</p>
 <p>This endpoint does not include service logs, service configuration, dependency graph data, or diagnostic bundle content.</p>
 <p>Example payload:</p>
@@ -5051,7 +5081,7 @@
 </tr>
 </tbody>
 </table>
-<h2 id="post-aimodels"><code>POST /ai/models</code><a class="headerlink" href="#post-aimodels" title="Permanent link">#</a></h2>
+<h2 id="post-aimodels"><code>POST /ai/models</code><a class="headerlink" href="#post-aimodels" title="Permanent link">&para;</a></h2>
 <p>Lists available models for providers with a compatible model-list endpoint. The request can include unsaved provider fields.</p>
 <p>Supported discovery modes:</p>
 <table>
@@ -5103,7 +5133,7 @@
 <span class="w">  </span><span class="p">]</span>
 <span class="p">}</span>
 </code></pre></div>
-<h2 id="post-aidiagnose"><code>POST /ai/diagnose</code><a class="headerlink" href="#post-aidiagnose" title="Permanent link">#</a></h2>
+<h2 id="post-aidiagnose"><code>POST /ai/diagnose</code><a class="headerlink" href="#post-aidiagnose" title="Permanent link">&para;</a></h2>
 <p>Builds a redacted service diagnostic bundle. If <code>dry_run</code> is true, or if AI is disabled, the endpoint returns the bundle without calling a provider. If AI is enabled and <code>dry_run</code> is false, DUMB sends the bundle to the configured provider and returns the analysis.</p>
 <p>Use <code>dry_run: true</code> before enabling provider calls to inspect the exact bundle that would be shared.</p>
 <p>Example payload:</p>
@@ -5115,7 +5145,14 @@
 <span class="w">  </span><span class="nt">&quot;include_service_config&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;include_dependency_graph&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;include_docs_context&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;max_log_chars&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">20000</span>
+<span class="w">  </span><span class="nt">&quot;max_log_chars&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">20000</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;window_hours&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">24</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;comparison&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;previous_period&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;deep_log_scan&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;max_log_scan_mb&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">128</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;include_metrics&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;include_change_history&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;include_native_diagnostics&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span>
 <span class="p">}</span>
 </code></pre></div>
 <p>Response fields:</p>
@@ -5155,13 +5192,61 @@
 <td><code>dry_run</code></td>
 <td>True when no provider call was made.</td>
 </tr>
+<tr>
+<td><code>session_id</code></td>
+<td>Short-lived in-memory session identifier returned after a provider analysis. Empty for previews.</td>
+</tr>
 </tbody>
 </table>
-<h3 id="diagnostic-bundle-context">Diagnostic Bundle Context<a class="headerlink" href="#diagnostic-bundle-context" title="Permanent link">#</a></h3>
+<h3 id="diagnostic-bundle-context">Diagnostic Bundle Context<a class="headerlink" href="#diagnostic-bundle-context" title="Permanent link">&para;</a></h3>
 <p>The bundle can include <code>docs_context</code> when <code>include_docs_context</code> is enabled. This block contains selected DUMB_docs excerpts with source paths and public documentation URLs. The backend chooses snippets using the service/config key, status, question text, and included logs.</p>
-<p>DUMB prefers local Markdown from <code>DUMB_DOCS_PATH</code> or common sibling-repo workbench paths. If local docs are unavailable, it falls back to the matching public pages on <code>https://dumbarr.com</code>.</p>
+<p>DUMB prefers local Markdown from <code>DUMB_DOCS_PATH</code>, the Markdown-only snapshot bundled in official images at <code>/usr/share/dumb/docs</code>, or common sibling-repo workbench paths. Documentation images and other site assets are not included in the image snapshot.</p>
+<p>If local docs are unavailable, DUMB falls back to matching public pages on <code>https://dumbarr.com</code>. The fallback extracts article content and removes navigation, scripts, page chrome, and whitespace-only lines before building excerpts. The raw response is processed in memory and is not cloned or cached to disk.</p>
 <p>The bundle also includes DUMB product facts. API clients can use dry-run responses to verify that <code>dumb_product.expansion</code> is <code>Debrid Unlimited Media Bridge</code> before sending a provider request.</p>
-<h2 id="post-aidiagnose-stack"><code>POST /ai/diagnose-stack</code><a class="headerlink" href="#post-aidiagnose-stack" title="Permanent link">#</a></h2>
+<p>Evidence-enabled service bundles may also include:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>diagnostic_window</code></td>
+<td>Current and baseline boundaries plus the selected comparison mode.</td>
+</tr>
+<tr>
+<td><code>log_analysis</code></td>
+<td>Bounded retained-log coverage, severity counts, restart markers, error signatures, and cited excerpts.</td>
+</tr>
+<tr>
+<td><code>runtime_metrics</code></td>
+<td>Process CPU, RSS, disk activity, PID observations, sample coverage, and calculated changes.</td>
+</tr>
+<tr>
+<td><code>database_health</code></td>
+<td>Existing read-only Database Health evidence when available.</td>
+</tr>
+<tr>
+<td><code>change_history</code></td>
+<td>Redacted configuration changes recorded when settings are saved through DUMB.</td>
+</tr>
+<tr>
+<td><code>native_diagnostics</code></td>
+<td>Allowlisted service-specific evidence. NzbDAV currently includes metrics SQLite and queue-log comparisons.</td>
+</tr>
+<tr>
+<td><code>diagnostic_coverage</code></td>
+<td>Source availability and a deterministic confidence hint.</td>
+</tr>
+<tr>
+<td><code>recommendations</code></td>
+<td>Review-only deterministic next-action context. No action is applied automatically.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="post-aidiagnose-stack"><code>POST /ai/diagnose-stack</code><a class="headerlink" href="#post-aidiagnose-stack" title="Permanent link">&para;</a></h2>
 <p>Builds a stack-wide diagnostic bundle. Use this when the question is about the whole deployment instead of one service.</p>
 <p>If <code>dry_run</code> is true, or if AI is disabled, the endpoint returns the bundle without calling a provider. If AI is enabled and <code>dry_run</code> is false, DUMB sends the stack bundle to the configured provider and returns the analysis.</p>
 <p>Example payload:</p>
@@ -5174,7 +5259,14 @@
 <span class="w">  </span><span class="nt">&quot;include_docs_context&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;include_process_list&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;max_log_chars&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">20000</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;max_docs_chars&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">12000</span>
+<span class="w">  </span><span class="nt">&quot;max_docs_chars&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">12000</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;window_hours&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">24</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;comparison&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;previous_period&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;deep_log_scan&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;max_log_scan_mb&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">128</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;include_metrics&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;include_change_history&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;include_native_diagnostics&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span>
 <span class="p">}</span>
 </code></pre></div>
 <p>Stack bundles include:</p>
@@ -5218,17 +5310,57 @@
 <td><code>docs_context</code></td>
 <td>Selected DUMB_docs snippets when enabled and available.</td>
 </tr>
+<tr>
+<td><code>runtime_metrics</code></td>
+<td>One bounded Metrics-history read summarized per enabled process.</td>
+</tr>
+<tr>
+<td><code>log_analysis</code></td>
+<td>Bounded retained-log summaries for attention services and services selected by the question.</td>
+</tr>
+<tr>
+<td><code>change_history</code></td>
+<td>Redacted stack-wide configuration events in the analysis and baseline windows.</td>
+</tr>
+<tr>
+<td><code>native_diagnostics</code></td>
+<td>Available native collector output for enabled supported services.</td>
+</tr>
+<tr>
+<td><code>diagnostic_coverage</code></td>
+<td>Counts and availability for the evidence sources used.</td>
+</tr>
 </tbody>
 </table>
 <p>When <code>dry_run</code> is false, DUMB compacts stack bundles before sending them to the provider. The API response still includes the full built bundle, but the provider prompt uses shortened docs excerpts, targeted log snippets, capped graph nodes/edges, and omits full service configs with a note. This avoids common context-length failures with local models.</p>
 <p>Provider responses include a <code>usage</code> object when the provider reports token or evaluation counts. OpenAI-compatible providers usually return <code>prompt_tokens</code>, <code>completion_tokens</code>, and <code>total_tokens</code>. Ollama native responses return <code>prompt_eval_count</code> and <code>eval_count</code>; DUMB maps those to prompt/completion/total token fields and preserves timing fields such as <code>total_duration</code>.</p>
-<h3 id="deterministic-finalizers">Deterministic Finalizers<a class="headerlink" href="#deterministic-finalizers" title="Permanent link">#</a></h3>
+<h3 id="deterministic-finalizers">Deterministic Finalizers<a class="headerlink" href="#deterministic-finalizers" title="Permanent link">&para;</a></h3>
 <p>For selected stack questions, DUMB may post-process the provider response before returning <code>analysis</code>:</p>
 <ul>
 <li>Product identity questions such as <code>What does DUMB stand for?</code> return the canonical product fact, <code>Debrid Unlimited Media Bridge</code>, even if the provider invents another acronym expansion.</li>
 <li>DUMB Usenet planning questions are grounded around Decypharr, NzbDAV, AltMount, Arr apps, Prowlarr, and rclone. If a provider recommends SABnzbd, NZBGet, or NZBHydra as the primary DUMB path, DUMB replaces that with the DUMB-native workflow answer.</li>
 </ul>
 <p>The original diagnostic bundle remains available in the response for review. Token <code>usage</code> still reflects the provider request when a provider call was made.</p>
+<h2 id="post-aifollow-up"><code>POST /ai/follow-up</code><a class="headerlink" href="#post-aifollow-up" title="Permanent link">&para;</a></h2>
+<p>Continues a completed provider analysis using the same cached evidence bundle and recent conversation turns.</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;session_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;8d9f5a...&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;question&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Did the service recover after those errors?&quot;</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>The response contains <code>analysis</code>, <code>usage</code>, <code>provider</code>, <code>model</code>, and the same <code>session_id</code>.</p>
+<p>Sessions:</p>
+<ul>
+<li>Exist in backend memory only</li>
+<li>Expire after one hour</li>
+<li>Keep at most eight recent turns</li>
+<li>Are bounded to 50 active sessions per backend process</li>
+<li>Are cleared by a backend restart</li>
+</ul>
+<p>A follow-up does not rescan logs. Run a new diagnosis when you need a newer time window or additional evidence.</p>
+<h2 id="safety-boundary">Safety Boundary<a class="headerlink" href="#safety-boundary" title="Permanent link">&para;</a></h2>
+<p>The AI provider receives a redacted bundle, not runtime tools. The API does not expose unrestricted shell execution, arbitrary SQL, arbitrary filesystem paths, or configuration mutation to the model.</p>
+<p>Retained logs are scanned on demand within the byte budget. The small <code>/config/ai-diagnostics/events.sqlite</code> ledger stores redacted change metadata only; it does not duplicate full logs. NzbDAV native database access opens fixed service databases in SQLite read-only/query-only mode.</p>
 
 
 

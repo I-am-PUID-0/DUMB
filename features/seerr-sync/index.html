@@ -800,6 +800,8 @@
         
   
   
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-database-backup" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 12a9 3 0 0 0 5 2.69M21 9.3V5"/><path d="M3 5v14a9 3 0 0 0 6.47 2.88M12 12v4h4"/><path d="M13 20a5 5 0 0 0 9-3 4.5 4.5 0 0 0-4.5-4.5c-1.33 0-2.54.54-3.41 1.41L12 16"/></svg>
+  
   <span class="md-ellipsis">
     
   
@@ -1977,7 +1979,7 @@
         
   
   
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-mountain" viewBox="0 0 24 24"><path d="m8 3 4 8 5-5 5 15H2z"/></svg>
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-hard-drive-download" viewBox="0 0 24 24"><path d="M12 2v8M16 6l-4 4-4-4"/><rect width="20" height="8" x="2" y="14" rx="2"/><path d="M6 18h.01M10 18h.01"/></svg>
   
   <span class="md-ellipsis">
     
@@ -4832,11 +4834,11 @@
   
 
 
-<h1 id="seerr-sync">Seerr Sync<a class="headerlink" href="#seerr-sync" title="Permanent link">#</a></h1>
+<h1 id="seerr-sync">Seerr Sync<a class="headerlink" href="#seerr-sync" title="Permanent link">&para;</a></h1>
 <p>Seerr Sync replicates media requests from a <strong>primary</strong> Seerr instance to one or more <strong>subordinate</strong> Seerr instances. It is one‑way: requests originate from the primary and are mirrored to subordinates.</p>
 <p><img alt="Seerr Sync overview" class="shadow" src="../../assets/images/features/seerr_sync.png" /></p>
 <hr />
-<h2 id="why-seerr-sync-is-useful">Why Seerr Sync is useful<a class="headerlink" href="#why-seerr-sync-is-useful" title="Permanent link">#</a></h2>
+<h2 id="why-seerr-sync-is-useful">Why Seerr Sync is useful<a class="headerlink" href="#why-seerr-sync-is-useful" title="Permanent link">&para;</a></h2>
 <p>Seerr is typically connected to a single Radarr and Sonarr per quality profile. That works well for a single stack, but becomes limiting when you want <strong>one request to drive multiple independent stacks</strong>.</p>
 <p>Common scenarios Seerr Sync solves:</p>
 <ul>
@@ -4849,7 +4851,7 @@
 </ul>
 <p>Seerr Sync removes the need to duplicate requests or maintain custom scripts.</p>
 <hr />
-<h2 id="how-it-works">How it works<a class="headerlink" href="#how-it-works" title="Permanent link">#</a></h2>
+<h2 id="how-it-works">How it works<a class="headerlink" href="#how-it-works" title="Permanent link">&para;</a></h2>
 <ol>
 <li><strong>Primary Seerr</strong> is where users make requests.  </li>
 <li><strong>Subordinate Seerrs</strong> mirror those requests and send them to their own Arr stacks.  </li>
@@ -4876,7 +4878,7 @@ flowchart TD
     F ==&gt; H
     G ==&gt; H</code></pre>
 <hr />
-<h2 id="real-example">Real example<a class="headerlink" href="#real-example" title="Permanent link">#</a></h2>
+<h2 id="real-example">Real example<a class="headerlink" href="#real-example" title="Permanent link">&para;</a></h2>
 <p>“I have a home server and a seedbox. I want Seerr users to make one request, and have both my home Radarr and my seedbox Radarr grab it. Before this, I had to add things twice or run scripts. Now it just works.”</p>
 <p>Another common use case is running <strong>separate Arr stacks for Debrid and Usenet</strong> (non‑combined). Because Seerr can only push to one Arr per quality profile, you run multiple Seerr instances and use Seerr Sync to mirror requests so <strong>both the Debrid and Usenet stacks get the same requests automatically</strong>.</p>
 <pre class="mermaid"><code>flowchart TD
@@ -4927,7 +4929,7 @@ flowchart TD
     class E,F,G,H,I,J,K,L leaf;
     class M output;</code></pre>
 <hr />
-<h2 id="where-its-configured">Where it’s configured<a class="headerlink" href="#where-its-configured" title="Permanent link">#</a></h2>
+<h2 id="where-its-configured">Where it’s configured<a class="headerlink" href="#where-its-configured" title="Permanent link">&para;</a></h2>
 <p>Seerr Sync is configured via the <code>seerr_sync</code> block in <code>dumb_config.json</code> and per‑instance <code>sync_role</code> on Seerr instances. See the <a href="../../services/core/seerr/">Seerr service page</a> for configuration details and validation rules.</p>
 <p>The DUMB Frontend exposes a Seerr Sync panel with:</p>
 <ul>
@@ -4938,7 +4940,7 @@ flowchart TD
 <li>Status + failed request reporting</li>
 </ul>
 <hr />
-<h2 id="related-pages">Related pages<a class="headerlink" href="#related-pages" title="Permanent link">#</a></h2>
+<h2 id="related-pages">Related pages<a class="headerlink" href="#related-pages" title="Permanent link">&para;</a></h2>
 <ul>
 <li><a href="../../services/core/seerr/">Seerr service</a></li>
 <li><a href="../../api/seerr-sync/">Seerr Sync API</a></li>

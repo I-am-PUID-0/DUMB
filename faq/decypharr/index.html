@@ -797,6 +797,8 @@
         
   
   
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-database-backup" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 12a9 3 0 0 0 5 2.69M21 9.3V5"/><path d="M3 5v14a9 3 0 0 0 6.47 2.88M12 12v4h4"/><path d="M13 20a5 5 0 0 0 9-3 4.5 4.5 0 0 0-4.5-4.5c-1.33 0-2.54.54-3.41 1.41L12 16"/></svg>
+  
   <span class="md-ellipsis">
     
   
@@ -1869,7 +1871,7 @@
         
   
   
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-mountain" viewBox="0 0 24 24"><path d="m8 3 4 8 5-5 5 15H2z"/></svg>
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-hard-drive-download" viewBox="0 0 24 24"><path d="M12 2v8M16 6l-4 4-4-4"/><rect width="20" height="8" x="2" y="14" rx="2"/><path d="M6 18h.01M10 18h.01"/></svg>
   
   <span class="md-ellipsis">
     
@@ -4854,8 +4856,8 @@
   
 
 
-<h1 id="decypharr-faq">Decypharr FAQ<a class="headerlink" href="#decypharr-faq" title="Permanent link">#</a></h1>
-<h2 id="which-mount-mode-should-i-choose">Which mount mode should I choose?<a class="headerlink" href="#which-mount-mode-should-i-choose" title="Permanent link">#</a></h2>
+<h1 id="decypharr-faq">Decypharr FAQ<a class="headerlink" href="#decypharr-faq" title="Permanent link">&para;</a></h1>
+<h2 id="which-mount-mode-should-i-choose">Which mount mode should I choose?<a class="headerlink" href="#which-mount-mode-should-i-choose" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
@@ -4888,15 +4890,15 @@
 </tbody>
 </table>
 <p>DFS and native Usenet are current stable features; a beta branch toggle is not required to use them.</p>
-<h2 id="why-does-external-rclone-start-after-decypharr">Why does external rclone start after Decypharr?<a class="headerlink" href="#why-does-external-rclone-start-after-decypharr" title="Permanent link">#</a></h2>
+<h2 id="why-does-external-rclone-start-after-decypharr">Why does external rclone start after Decypharr?<a class="headerlink" href="#why-does-external-rclone-start-after-decypharr" title="Permanent link">&para;</a></h2>
 <p>The rclone instance consumes Decypharr's WebDAV endpoint, so starting rclone first creates a dependency cycle. DUMB starts Decypharr, waits for its WebDAV readiness, then starts the <code>decypharr_enabled</code> rclone instance.</p>
-<h2 id="where-do-provider-api-keys-belong">Where do provider API keys belong?<a class="headerlink" href="#where-do-provider-api-keys-belong" title="Permanent link">#</a></h2>
+<h2 id="where-do-provider-api-keys-belong">Where do provider API keys belong?<a class="headerlink" href="#where-do-provider-api-keys-belong" title="Permanent link">&para;</a></h2>
 <p>DUMB persists onboarding keys under <code>decypharr.api_keys</code> for every mount mode. Setup reconciles those keys into Decypharr and uses them when an external-rclone instance must be created. Avoid putting secrets into screenshots or support logs.</p>
-<h2 id="how-is-usenet-connected-to-an-arr-app">How is Usenet connected to an Arr app?<a class="headerlink" href="#how-is-usenet-connected-to-an-arr-app" title="Permanent link">#</a></h2>
+<h2 id="how-is-usenet-connected-to-an-arr-app">How is Usenet connected to an Arr app?<a class="headerlink" href="#how-is-usenet-connected-to-an-arr-app" title="Permanent link">&para;</a></h2>
 <p>When Decypharr has Usenet providers configured, DUMB adds a Sabnzbd-compatible download client named <code>decypharr-usenet</code> to linked Arr instances. Debrid downloads use Decypharr's qBittorrent-compatible client.</p>
-<h2 id="why-is-dumb-waiting-for-the-wrong-old-provider-mount">Why is DUMB waiting for the wrong old provider mount?<a class="headerlink" href="#why-is-dumb-waiting-for-the-wrong-old-provider-mount" title="Permanent link">#</a></h2>
+<h2 id="why-is-dumb-waiting-for-the-wrong-old-provider-mount">Why is DUMB waiting for the wrong old provider mount?<a class="headerlink" href="#why-is-dumb-waiting-for-the-wrong-old-provider-mount" title="Permanent link">&para;</a></h2>
 <p>Legacy configs may contain per-provider folders while current configs use one top-level <code>mount.mount_path</code>. Restart after saving the desired <code>mount_type</code> in DUMB so setup can reconcile <code>config.json</code>. If existing links still target the old layout, preview the Decypharr migration playbook in <strong>Symlinks</strong> before applying it.</p>
-<h2 id="related-pages">Related pages<a class="headerlink" href="#related-pages" title="Permanent link">#</a></h2>
+<h2 id="related-pages">Related pages<a class="headerlink" href="#related-pages" title="Permanent link">&para;</a></h2>
 <ul>
 <li><a href="../../services/core/decypharr/">Decypharr service guide</a></li>
 <li><a href="../../features/symlinks/">Symlink Operations</a></li>

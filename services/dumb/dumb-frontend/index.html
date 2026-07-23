@@ -797,6 +797,8 @@
         
   
   
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-database-backup" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 12a9 3 0 0 0 5 2.69M21 9.3V5"/><path d="M3 5v14a9 3 0 0 0 6.47 2.88M12 12v4h4"/><path d="M13 20a5 5 0 0 0 9-3 4.5 4.5 0 0 0-4.5-4.5c-1.33 0-2.54.54-3.41 1.41L12 16"/></svg>
+  
   <span class="md-ellipsis">
     
   
@@ -1709,27 +1711,10 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Configuration Settings in dumb_config.json">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#configuration-key-descriptions" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Configuration Key Descriptions
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
 </li>
       
         <li class="md-nav__item">
-  <a href="#branch--version-targeting" class="md-nav__link">
+  <a href="#branch-version-targeting" class="md-nav__link">
     <span class="md-ellipsis">
       
         Branch / Version Targeting
@@ -2018,7 +2003,7 @@
         
   
   
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-mountain" viewBox="0 0 24 24"><path d="m8 3 4 8 5-5 5 15H2z"/></svg>
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-hard-drive-download" viewBox="0 0 24 24"><path d="M12 2v8M16 6l-4 4-4-4"/><rect width="20" height="8" x="2" y="14" rx="2"/><path d="M6 18h.01M10 18h.01"/></svg>
   
   <span class="md-ellipsis">
     
@@ -4752,27 +4737,10 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Configuration Settings in dumb_config.json">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#configuration-key-descriptions" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Configuration Key Descriptions
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
 </li>
       
         <li class="md-nav__item">
-  <a href="#branch--version-targeting" class="md-nav__link">
+  <a href="#branch-version-targeting" class="md-nav__link">
     <span class="md-ellipsis">
       
         Branch / Version Targeting
@@ -4951,7 +4919,7 @@ and metrics in a single interface.</p>
 </ul>
 </div>
 <hr />
-<h2 id="configuration-settings-in-dumb_configjson">Configuration Settings in <code>dumb_config.json</code><a class="headerlink" href="#configuration-settings-in-dumb_configjson" title="Permanent link">#</a></h2>
+<h2 id="configuration-settings-in-dumb_configjson">Configuration Settings in <code>dumb_config.json</code><a class="headerlink" href="#configuration-settings-in-dumb_configjson" title="Permanent link">&para;</a></h2>
 <p>This block is nested at <code>dumb.frontend</code> in <code>/config/dumb_config.json</code>:</p>
 <div class="highlight"><pre><span></span><code><span class="nt">&quot;frontend&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">    </span><span class="nt">&quot;enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
@@ -4981,7 +4949,7 @@ and metrics in a single interface.</p>
 <span class="w">    </span><span class="nt">&quot;env&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{}</span><span class="w">            </span>
 <span class="p">}</span>
 </code></pre></div>
-<h3 id="configuration-key-descriptions">Configuration Key Descriptions<a class="headerlink" href="#configuration-key-descriptions" title="Permanent link">#</a></h3>
+<h3 id="configuration-key-descriptions">Configuration Key Descriptions<a class="headerlink" href="#configuration-key-descriptions" title="Permanent link">&para;</a></h3>
 <ul>
 <li><strong><code>enabled</code></strong>: Determines whether the DUMB Frontend service is active.</li>
 <li><strong><code>process_name</code></strong>: Name used in logs and process tracking.</li>
@@ -5002,21 +4970,21 @@ and metrics in a single interface.</p>
 <li><strong><code>env</code></strong>: Environment variables for the frontend.</li>
 </ul>
 <hr />
-<h2 id="branch--version-targeting">Branch / Version Targeting<a class="headerlink" href="#branch--version-targeting" title="Permanent link">#</a></h2>
+<h2 id="branch-version-targeting">Branch / Version Targeting<a class="headerlink" href="#branch-version-targeting" title="Permanent link">&para;</a></h2>
 <p>You can control which version or branch of the frontend is deployed by setting:</p>
 <ul>
 <li><code>branch_enabled: true</code> and specifying a <code>branch</code></li>
 <li>or <code>release_version_enabled: true</code> and specifying a <code>release_version</code></li>
 </ul>
 <hr />
-<h2 id="accessing-the-dumb-frontend">Accessing the DUMB Frontend<a class="headerlink" href="#accessing-the-dumb-frontend" title="Permanent link">#</a></h2>
+<h2 id="accessing-the-dumb-frontend">Accessing the DUMB Frontend<a class="headerlink" href="#accessing-the-dumb-frontend" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Navigate to: <code>http://&lt;host&gt;:&lt;port&gt;</code><ul>
 <li>default port <code>3005</code></li>
 </ul>
 </li>
 </ul>
-<h2 id="startup-behavior">Startup behavior<a class="headerlink" href="#startup-behavior" title="Permanent link">#</a></h2>
+<h2 id="startup-behavior">Startup behavior<a class="headerlink" href="#startup-behavior" title="Permanent link">&para;</a></h2>
 <p>DUMB starts its API before the enabled-service preinstall phase. When the
 frontend runtime is already built and its configured version does not require a
 new install, DUMB also starts the frontend before that phase. This makes the UI
@@ -5031,7 +4999,7 @@ following applies:</p>
 </ul>
 <p>In those cases, DUMB keeps the existing install/update path and starts the
 frontend after its runtime is ready.</p>
-<h2 id="frontend-usage-guides">Frontend usage guides<a class="headerlink" href="#frontend-usage-guides" title="Permanent link">#</a></h2>
+<h2 id="frontend-usage-guides">Frontend usage guides<a class="headerlink" href="#frontend-usage-guides" title="Permanent link">&para;</a></h2>
 <p>For UI walkthroughs, use the frontend section:</p>
 <ul>
 <li><a href="../../../frontend/dashboard/">Dashboard</a> - Service cards, toolbar, and logs</li>
@@ -5041,13 +5009,13 @@ frontend after its runtime is ready.</p>
 <li><a href="../../../frontend/metrics/">Metrics</a> - System monitoring</li>
 </ul>
 <hr />
-<h2 id="tips">Tips<a class="headerlink" href="#tips" title="Permanent link">#</a></h2>
+<h2 id="tips">Tips<a class="headerlink" href="#tips" title="Permanent link">&para;</a></h2>
 <ul>
 <li><strong>Automatic Updates</strong>: Enable <code>auto_update</code> to keep the frontend up-to-date with the latest features.</li>
 <li><strong>Log Monitoring</strong>: Utilize the service logs functionality for effective monitoring and troubleshooting.</li>
 </ul>
 <hr />
-<h2 id="resources">Resources<a class="headerlink" href="#resources" title="Permanent link">#</a></h2>
+<h2 id="resources">Resources<a class="headerlink" href="#resources" title="Permanent link">&para;</a></h2>
 <ul>
 <li><a href="https://github.com/nicocapalbo/dmbdb">DUMB Frontend GitHub Repository</a></li>
 <li><a href="https://github.com/nicocapalbo/dmbdb/blob/main/CHANGELOG.md">DUMB Frontend CHANGELOG</a></li>

@@ -797,6 +797,8 @@
         
   
   
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-database-backup" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 12a9 3 0 0 0 5 2.69M21 9.3V5"/><path d="M3 5v14a9 3 0 0 0 6.47 2.88M12 12v4h4"/><path d="M13 20a5 5 0 0 0 9-3 4.5 4.5 0 0 0-4.5-4.5c-1.33 0-2.54.54-3.41 1.41L12 16"/></svg>
+  
   <span class="md-ellipsis">
     
   
@@ -1869,7 +1871,7 @@
         
   
   
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-mountain" viewBox="0 0 24 24"><path d="m8 3 4 8 5-5 5 15H2z"/></svg>
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-hard-drive-download" viewBox="0 0 24 24"><path d="M12 2v8M16 6l-4 4-4-4"/><rect width="20" height="8" x="2" y="14" rx="2"/><path d="M6 18h.01M10 18h.01"/></svg>
   
   <span class="md-ellipsis">
     
@@ -4832,14 +4834,14 @@
   
 
 
-<h1 id="logs-api">Logs API<a class="headerlink" href="#logs-api" title="Permanent link">#</a></h1>
+<h1 id="logs-api">Logs API<a class="headerlink" href="#logs-api" title="Permanent link">&para;</a></h1>
 <p>The <strong>Logs API</strong> allows clients to retrieve recent logs captured by DUMB and served through the API.</p>
 <hr />
-<h2 id="endpoint">Endpoint<a class="headerlink" href="#endpoint" title="Permanent link">#</a></h2>
+<h2 id="endpoint">Endpoint<a class="headerlink" href="#endpoint" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code>GET /logs
 </code></pre></div>
 <hr />
-<h2 id="query-parameters">Query Parameters<a class="headerlink" href="#query-parameters" title="Permanent link">#</a></h2>
+<h2 id="query-parameters">Query Parameters<a class="headerlink" href="#query-parameters" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
@@ -4867,12 +4869,12 @@
 </tbody>
 </table>
 <hr />
-<h2 id="example-request">Example Request<a class="headerlink" href="#example-request" title="Permanent link">#</a></h2>
+<h2 id="example-request">Example Request<a class="headerlink" href="#example-request" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code>GET /logs?process_name=Riven%20Backend
 </code></pre></div>
 <p>This request fetches the latest log chunk for the specified service.</p>
 <hr />
-<h2 id="response-format">Response Format<a class="headerlink" href="#response-format" title="Permanent link">#</a></h2>
+<h2 id="response-format">Response Format<a class="headerlink" href="#response-format" title="Permanent link">&para;</a></h2>
 <p>Returns a JSON object containing the log chunk and cursor:</p>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;process_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Riven Backend&quot;</span><span class="p">,</span>
@@ -4889,11 +4891,13 @@
 <ul>
 <li>When <code>reset</code> is <code>true</code>, clients should replace their log buffer with <code>chunk</code>.</li>
 <li>On incremental requests, pass the returned <code>cursor</code> to get only new bytes.</li>
-<li>Log content passes through DUMB's sensitive-data redactor before it is returned.</li>
+<li>Log content passes through DUMB's sensitive-data redactor before it is returned. This covers credential-bearing HTTP headers, session cookies, common URL/config secrets, email addresses, and Plex account/server identifiers.</li>
+<li>DUMB returns only complete log lines so a sensitive value split across two polling responses cannot bypass redaction.</li>
+<li>Prefer logs viewed or downloaded through DUMB when sharing diagnostics. An application's native log file on disk is owned by that application and may not have DUMB's response-time redaction applied.</li>
 </ul>
 </div>
 <hr />
-<h2 id="related">Related<a class="headerlink" href="#related" title="Permanent link">#</a></h2>
+<h2 id="related">Related<a class="headerlink" href="#related" title="Permanent link">&para;</a></h2>
 <ul>
 <li><a href="../websocket_logs/">Real-Time WebSocket Logs</a> for live streaming logs.</li>
 <li><a href="../process/">Process Management</a> for interacting with services whose logs may be captured here.</li>

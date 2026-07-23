@@ -797,6 +797,8 @@
         
   
   
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-database-backup" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 12a9 3 0 0 0 5 2.69M21 9.3V5"/><path d="M3 5v14a9 3 0 0 0 6.47 2.88M12 12v4h4"/><path d="M13 20a5 5 0 0 0 9-3 4.5 4.5 0 0 0-4.5-4.5c-1.33 0-2.54.54-3.41 1.41L12 16"/></svg>
+  
   <span class="md-ellipsis">
     
   
@@ -1878,7 +1880,7 @@
         
   
   
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-mountain" viewBox="0 0 24 24"><path d="m8 3 4 8 5-5 5 15H2z"/></svg>
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-hard-drive-download" viewBox="0 0 24 24"><path d="M12 2v8M16 6l-4 4-4-4"/><rect width="20" height="8" x="2" y="14" rx="2"/><path d="M6 18h.01M10 18h.01"/></svg>
   
   <span class="md-ellipsis">
     
@@ -2852,23 +2854,6 @@
       
     </span>
   </a>
-  
-    <nav class="md-nav" aria-label="Configuration settings in dumb_config.json">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#configuration-key-descriptions" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Configuration key descriptions
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
@@ -4780,23 +4765,6 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Configuration settings in dumb_config.json">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#configuration-key-descriptions" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Configuration key descriptions
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
 </li>
       
         <li class="md-nav__item">
@@ -4940,10 +4908,10 @@
   
 
 
-<h1 id="maintainerr">Maintainerr<a class="headerlink" href="#maintainerr" title="Permanent link">#</a></h1>
+<h1 id="maintainerr">Maintainerr<a class="headerlink" href="#maintainerr" title="Permanent link">&para;</a></h1>
 <p>Maintainerr helps keep a media library lean by finding content that matches your rules, presenting it in a media-server collection, and optionally removing or unmonitoring it after a delay. It supports Plex, Jellyfin, or Emby as the media server and can use Sonarr, Radarr, Seerr, and Tautulli data when evaluating rules.</p>
 <hr />
-<h2 id="overview">Overview<a class="headerlink" href="#overview" title="Permanent link">#</a></h2>
+<h2 id="overview">Overview<a class="headerlink" href="#overview" title="Permanent link">&para;</a></h2>
 <p>Maintainerr provides:</p>
 <ul>
 <li><strong>Rule-based library review</strong> - Combine media-server, Arr, Seerr, and Tautulli fields into cleanup rules.</li>
@@ -4957,7 +4925,7 @@
 <p>Begin with collection-only rules, test representative media, and use a non-zero action delay. File deletion is intentional and may not be recoverable from DUMB.</p>
 </div>
 <hr />
-<h2 id="default-port-and-data">Default port and data<a class="headerlink" href="#default-port-and-data" title="Permanent link">#</a></h2>
+<h2 id="default-port-and-data">Default port and data<a class="headerlink" href="#default-port-and-data" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
@@ -4976,7 +4944,7 @@
 </table>
 <p>Maintainerr's primary SQLite database is <code>/maintainerr/data/maintainerr.sqlite</code>. DUMB preserves the entire data directory across source updates.</p>
 <hr />
-<h2 id="configuration-settings-in-dumb_configjson">Configuration settings in <code>dumb_config.json</code><a class="headerlink" href="#configuration-settings-in-dumb_configjson" title="Permanent link">#</a></h2>
+<h2 id="configuration-settings-in-dumb_configjson">Configuration settings in <code>dumb_config.json</code><a class="headerlink" href="#configuration-settings-in-dumb_configjson" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="nt">&quot;maintainerr&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;process_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Maintainerr&quot;</span><span class="p">,</span>
@@ -5014,7 +4982,7 @@
 <span class="w">  </span><span class="p">}</span>
 <span class="p">}</span>
 </code></pre></div>
-<h3 id="configuration-key-descriptions">Configuration key descriptions<a class="headerlink" href="#configuration-key-descriptions" title="Permanent link">#</a></h3>
+<h3 id="configuration-key-descriptions">Configuration key descriptions<a class="headerlink" href="#configuration-key-descriptions" title="Permanent link">&para;</a></h3>
 <ul>
 <li><strong><code>enabled</code></strong>: Whether DUMB starts Maintainerr.</li>
 <li><strong><code>release_version_enabled</code></strong> / <strong><code>release_version</code></strong>: Pin a tagged upstream release. With pinning disabled, DUMB bootstraps the latest stable release on first install.</li>
@@ -5026,7 +4994,7 @@
 <li><strong><code>env.BASE_PATH</code></strong>: DUMB keeps this blank because its embedded UI proxy supplies the service context while Maintainerr continues to run at its own root path.</li>
 </ul>
 <hr />
-<h2 id="initial-setup">Initial setup<a class="headerlink" href="#initial-setup" title="Permanent link">#</a></h2>
+<h2 id="initial-setup">Initial setup<a class="headerlink" href="#initial-setup" title="Permanent link">&para;</a></h2>
 <ol>
 <li>Enable Maintainerr during DUMB onboarding or from its service configuration.</li>
 <li>Start Maintainerr. The first source download and Yarn production build can take longer than a normal restart.</li>
@@ -5037,7 +5005,7 @@
 </ol>
 <p>Maintainerr owns its application configuration inside its SQLite database; there is no separate DUMB-managed settings file to edit.</p>
 <hr />
-<h2 id="updates-backups-and-rollback">Updates, backups, and rollback<a class="headerlink" href="#updates-backups-and-rollback" title="Permanent link">#</a></h2>
+<h2 id="updates-backups-and-rollback">Updates, backups, and rollback<a class="headerlink" href="#updates-backups-and-rollback" title="Permanent link">&para;</a></h2>
 <ul>
 <li>DUMB rebuilds Maintainerr from the selected official release or branch and preserves <code>/maintainerr/data</code>.</li>
 <li>Back up <code>maintainerr.sqlite</code> before major upgrades or destructive rule changes. Maintainerr also provides a database backup action in its General settings.</li>
@@ -5045,10 +5013,10 @@
 <li>Database Health Monitoring can observe the Maintainerr SQLite file in Standard or Enhanced read-only mode when you explicitly enable monitoring for this service.</li>
 </ul>
 <hr />
-<h2 id="reverse-proxy-safety">Reverse proxy safety<a class="headerlink" href="#reverse-proxy-safety" title="Permanent link">#</a></h2>
+<h2 id="reverse-proxy-safety">Reverse proxy safety<a class="headerlink" href="#reverse-proxy-safety" title="Permanent link">&para;</a></h2>
 <p>Maintainerr controls destructive library actions, so treat its UI as an administrative service. If you publish it beyond a trusted network, add an authentication layer with Traefik Proxy Admin or another reverse proxy and verify the protection before sharing the hostname.</p>
 <hr />
-<h2 id="related-links">Related links<a class="headerlink" href="#related-links" title="Permanent link">#</a></h2>
+<h2 id="related-links">Related links<a class="headerlink" href="#related-links" title="Permanent link">&para;</a></h2>
 <ul>
 <li><a href="https://github.com/Maintainerr/Maintainerr">Maintainerr repository</a></li>
 <li><a href="https://docs.maintainerr.info/">Maintainerr documentation</a></li>

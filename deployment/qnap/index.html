@@ -797,6 +797,8 @@
         
   
   
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-database-backup" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 12a9 3 0 0 0 5 2.69M21 9.3V5"/><path d="M3 5v14a9 3 0 0 0 6.47 2.88M12 12v4h4"/><path d="M13 20a5 5 0 0 0 9-3 4.5 4.5 0 0 0-4.5-4.5c-1.33 0-2.54.54-3.41 1.41L12 16"/></svg>
+  
   <span class="md-ellipsis">
     
   
@@ -1869,7 +1871,7 @@
         
   
   
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-mountain" viewBox="0 0 24 24"><path d="m8 3 4 8 5-5 5 15H2z"/></svg>
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-hard-drive-download" viewBox="0 0 24 24"><path d="M12 2v8M16 6l-4 4-4-4"/><rect width="20" height="8" x="2" y="14" rx="2"/><path d="M6 18h.01M10 18h.01"/></svg>
   
   <span class="md-ellipsis">
     
@@ -4832,11 +4834,11 @@
   
 
 
-<h1 id="deploy-with-qnap-container-station">Deploy with QNAP Container Station<a class="headerlink" href="#deploy-with-qnap-container-station" title="Permanent link">#</a></h1>
+<h1 id="deploy-with-qnap-container-station">Deploy with QNAP Container Station<a class="headerlink" href="#deploy-with-qnap-container-station" title="Permanent link">&para;</a></h1>
 <p>QNAP Container Station can create a Docker Compose application from YAML. The
 labels can vary slightly by Container Station/QTS version, but the official flow
 is <strong>Create</strong> → <strong>Create Application</strong> → paste and validate the Compose YAML.</p>
-<h2 id="prerequisites">Prerequisites<a class="headerlink" href="#prerequisites" title="Permanent link">#</a></h2>
+<h2 id="prerequisites">Prerequisites<a class="headerlink" href="#prerequisites" title="Permanent link">&para;</a></h2>
 <ul>
 <li>A QNAP model/architecture supported by the DUMB image (<code>amd64</code> or <code>arm64</code>)</li>
 <li>Container Station installed and current</li>
@@ -4847,7 +4849,7 @@ is <strong>Create</strong> → <strong>Create Application</strong> → paste and
 <p>See QNAP's
 <a href="https://docs.qnap.com/operating-system/qne-network/1.0.x/en-us/container-creation-1A95801A.html#creating-an-application">Creating an Application</a>
 instructions for the Compose application workflow.</p>
-<h2 id="prepare-the-shared-folders">Prepare the shared folders<a class="headerlink" href="#prepare-the-shared-folders" title="Permanent link">#</a></h2>
+<h2 id="prepare-the-shared-folders">Prepare the shared folders<a class="headerlink" href="#prepare-the-shared-folders" title="Permanent link">&para;</a></h2>
 <p>Create a DUMB directory under a persistent share, with these subdirectories:</p>
 <div class="highlight"><pre><span></span><code>/share/Container/DUMB/
 ├── config/
@@ -4857,7 +4859,7 @@ instructions for the Compose application workflow.</p>
 </code></pre></div>
 <p>Your QNAP share name can differ. Use its absolute host path in the Compose file
 and grant the selected <code>PUID:PGID</code> ownership or read/write access.</p>
-<h2 id="create-the-application">Create the application<a class="headerlink" href="#create-the-application" title="Permanent link">#</a></h2>
+<h2 id="create-the-application">Create the application<a class="headerlink" href="#create-the-application" title="Permanent link">&para;</a></h2>
 <ol>
 <li>Download or copy the current
    <a href="https://github.com/I-am-PUID-0/DUMB/blob/master/docker-compose.yml">DUMB Compose file</a>.</li>
@@ -4877,7 +4879,7 @@ and grant the selected <code>PUID:PGID</code> ownership or read/write access.</p
 </code></pre></div>
 <p>The maintained Compose file publishes the DUMB frontend on <code>3005</code>. Open
 <code>http://&lt;qnap-address&gt;:3005</code> after the application becomes healthy.</p>
-<h2 id="fuse-and-external-consumers">FUSE and external consumers<a class="headerlink" href="#fuse-and-external-consumers" title="Permanent link">#</a></h2>
+<h2 id="fuse-and-external-consumers">FUSE and external consumers<a class="headerlink" href="#fuse-and-external-consumers" title="Permanent link">&para;</a></h2>
 <p>The maintained Compose file requests <code>/dev/fuse</code>, <code>SYS_ADMIN</code>, and an unconfined
 AppArmor profile. Keep those entries for workflows that mount with rclone/FUSE.
 Availability depends on the QNAP kernel and Container Station version; if the
@@ -4887,7 +4889,7 @@ DUMB <code>/mnt/debrid</code> bind and <code>:rslave</code> on the consumer bind
 cannot preserve those propagation modes, use an all-in-one DUMB workflow or a
 workflow based on ordinary files/symlinks instead of assuming external FUSE
 mounts will propagate.</p>
-<h2 id="update-and-recover">Update and recover<a class="headerlink" href="#update-and-recover" title="Permanent link">#</a></h2>
+<h2 id="update-and-recover">Update and recover<a class="headerlink" href="#update-and-recover" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Pull <code>iampuid0/dumb:latest</code>, then recreate/redeploy the application.</li>
 <li>Preserve <code>/share/Container/DUMB/config</code>, <code>data</code>, <code>log</code>, and <code>mnt/debrid</code>.</li>

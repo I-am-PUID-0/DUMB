@@ -797,6 +797,8 @@
         
   
   
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-database-backup" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 12a9 3 0 0 0 5 2.69M21 9.3V5"/><path d="M3 5v14a9 3 0 0 0 6.47 2.88M12 12v4h4"/><path d="M13 20a5 5 0 0 0 9-3 4.5 4.5 0 0 0-4.5-4.5c-1.33 0-2.54.54-3.41 1.41L12 16"/></svg>
+  
   <span class="md-ellipsis">
     
   
@@ -1872,7 +1874,7 @@
         
   
   
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-mountain" viewBox="0 0 24 24"><path d="m8 3 4 8 5-5 5 15H2z"/></svg>
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-hard-drive-download" viewBox="0 0 24 24"><path d="M12 2v8M16 6l-4 4-4-4"/><rect width="20" height="8" x="2" y="14" rx="2"/><path d="M6 18h.01M10 18h.01"/></svg>
   
   <span class="md-ellipsis">
     
@@ -4635,67 +4637,6 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Features">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#real-time-updates" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Real-time updates
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#service-control" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Service control
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#embedded-service-uis" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Embedded service UIs
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#split-view-mode" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Split view mode
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#service-detail-pages" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Service detail pages
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
 </li>
       
         <li class="md-nav__item">
@@ -4821,10 +4762,10 @@
   
 
 
-<h1 id="dumb-frontend">DUMB Frontend<a class="headerlink" href="#dumb-frontend" title="Permanent link">#</a></h1>
+<h1 id="dumb-frontend">DUMB Frontend<a class="headerlink" href="#dumb-frontend" title="Permanent link">&para;</a></h1>
 <p>The DUMB Frontend is a modern web application built with Nuxt 4 (Vue 3) that provides a unified interface for managing and monitoring all DUMB services. It communicates with the DUMB API to control services, view logs, and monitor system health.</p>
 <hr />
-<h2 id="overview">Overview<a class="headerlink" href="#overview" title="Permanent link">#</a></h2>
+<h2 id="overview">Overview<a class="headerlink" href="#overview" title="Permanent link">&para;</a></h2>
 <p>The frontend provides:</p>
 <ul>
 <li><strong>Service dashboard</strong> - View and control all services from a single page</li>
@@ -4835,7 +4776,7 @@
 <li><strong>Embedded service UIs</strong> - Access service interfaces without leaving DUMB</li>
 </ul>
 <hr />
-<h2 id="default-port">Default port<a class="headerlink" href="#default-port" title="Permanent link">#</a></h2>
+<h2 id="default-port">Default port<a class="headerlink" href="#default-port" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
@@ -4854,7 +4795,7 @@
 Traefik on <code>18080</code> routes managed service UIs; it does not replace the normal
 DUMB frontend listener.</p>
 <hr />
-<h2 id="key-pages">Key pages<a class="headerlink" href="#key-pages" title="Permanent link">#</a></h2>
+<h2 id="key-pages">Key pages<a class="headerlink" href="#key-pages" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
@@ -4907,8 +4848,8 @@ DUMB frontend listener.</p>
 </tbody>
 </table>
 <hr />
-<h2 id="features">Features<a class="headerlink" href="#features" title="Permanent link">#</a></h2>
-<h3 id="real-time-updates">Real-time updates<a class="headerlink" href="#real-time-updates" title="Permanent link">#</a></h3>
+<h2 id="features">Features<a class="headerlink" href="#features" title="Permanent link">&para;</a></h2>
+<h3 id="real-time-updates">Real-time updates<a class="headerlink" href="#real-time-updates" title="Permanent link">&para;</a></h3>
 <p>The frontend maintains WebSocket connections to receive live updates:</p>
 <ul>
 <li><strong>Service status</strong> - Running/stopped state, health checks</li>
@@ -4921,7 +4862,7 @@ DUMB frontend listener.</p>
 WebSocket traffic powers real-time logs, metrics, and service status.
 Traefik enables WebSockets by default, but Nginx requires explicit configuration.</p>
 </div>
-<h3 id="service-control">Service control<a class="headerlink" href="#service-control" title="Permanent link">#</a></h3>
+<h3 id="service-control">Service control<a class="headerlink" href="#service-control" title="Permanent link">&para;</a></h3>
 <p>Start, stop, and restart services directly from the dashboard or service detail pages. The frontend shows:</p>
 <ul>
 <li>Current status (running, stopped, unknown)</li>
@@ -4929,7 +4870,7 @@ Traefik enables WebSockets by default, but Nginx requires explicit configuration
 <li>Auto-restart count and status</li>
 <li>Last restart timestamp</li>
 </ul>
-<h3 id="embedded-service-uis">Embedded service UIs<a class="headerlink" href="#embedded-service-uis" title="Permanent link">#</a></h3>
+<h3 id="embedded-service-uis">Embedded service UIs<a class="headerlink" href="#embedded-service-uis" title="Permanent link">&para;</a></h3>
 <p>When enabled, access service web interfaces directly within DUMB:</p>
 <ul>
 <li>AltMount</li>
@@ -4945,14 +4886,14 @@ Traefik enables WebSockets by default, but Nginx requires explicit configuration
 <li>And more</li>
 </ul>
 <p>This provides a unified experience without exposing individual service ports. Root-route applications such as Pulsarr, Maintainerr, MediaStorm, AltMount, Traefik Proxy Admin, and the Traefik dashboard are kept in iframe context by the frontend proxy so their root-relative assets, APIs, and navigations do not collide with DUMB's own routes.</p>
-<h3 id="split-view-mode">Split view mode<a class="headerlink" href="#split-view-mode" title="Permanent link">#</a></h3>
+<h3 id="split-view-mode">Split view mode<a class="headerlink" href="#split-view-mode" title="Permanent link">&para;</a></h3>
 <p>Compare two pages side-by-side with the resizable split view:</p>
 <ul>
 <li>Monitor logs while viewing dashboard</li>
 <li>Compare service configurations</li>
 <li>View metrics alongside service details</li>
 </ul>
-<h3 id="service-detail-pages">Service detail pages<a class="headerlink" href="#service-detail-pages" title="Permanent link">#</a></h3>
+<h3 id="service-detail-pages">Service detail pages<a class="headerlink" href="#service-detail-pages" title="Permanent link">&para;</a></h3>
 <p>Each service has a dedicated detail page with:</p>
 <ul>
 <li>Live status and health</li>
@@ -4961,7 +4902,7 @@ Traefik enables WebSockets by default, but Nginx requires explicit configuration
 <li>Auto-restart controls</li>
 </ul>
 <hr />
-<h2 id="authentication">Authentication<a class="headerlink" href="#authentication" title="Permanent link">#</a></h2>
+<h2 id="authentication">Authentication<a class="headerlink" href="#authentication" title="Permanent link">&para;</a></h2>
 <p>The frontend supports optional JWT-based authentication:</p>
 <ul>
 <li><strong>First-time setup</strong> - Create the first local account or skip authentication</li>
@@ -4973,7 +4914,7 @@ Traefik enables WebSockets by default, but Nginx requires explicit configuration
 is no viewer/operator/admin role split.</p>
 <p>See the <a href="../features/authentication/">Authentication</a> guide for details.</p>
 <hr />
-<h2 id="configuration">Configuration<a class="headerlink" href="#configuration" title="Permanent link">#</a></h2>
+<h2 id="configuration">Configuration<a class="headerlink" href="#configuration" title="Permanent link">&para;</a></h2>
 <p>The frontend reads its configuration from environment variables:</p>
 <table>
 <thead>
@@ -4997,7 +4938,7 @@ is no viewer/operator/admin role split.</p>
 </tbody>
 </table>
 <hr />
-<h2 id="browser-support">Browser support<a class="headerlink" href="#browser-support" title="Permanent link">#</a></h2>
+<h2 id="browser-support">Browser support<a class="headerlink" href="#browser-support" title="Permanent link">&para;</a></h2>
 <p>The frontend is tested on modern browsers:</p>
 <ul>
 <li>Chrome/Chromium (recommended)</li>
@@ -5006,7 +4947,7 @@ is no viewer/operator/admin role split.</p>
 <li>Edge</li>
 </ul>
 <hr />
-<h2 id="next-steps">Next steps<a class="headerlink" href="#next-steps" title="Permanent link">#</a></h2>
+<h2 id="next-steps">Next steps<a class="headerlink" href="#next-steps" title="Permanent link">&para;</a></h2>
 <ul>
 <li><a href="dashboard/">Dashboard</a> - Learn about the main service view</li>
 <li><a href="onboarding/">Onboarding</a> - Set up DUMB for the first time</li>
