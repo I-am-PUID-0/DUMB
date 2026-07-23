@@ -5144,10 +5144,13 @@ def setup_altmount(
     _chown_recursive_if_needed(
         config_dir, CONFIG_MANAGER.get("puid"), CONFIG_MANAGER.get("pgid")
     )
-    for managed_path in (metadata_dir, logs_dir, rclone_dir, mount_path):
+    for managed_path in (metadata_dir, logs_dir, mount_path):
         _chown_recursive_if_needed(
             managed_path, CONFIG_MANAGER.get("puid"), CONFIG_MANAGER.get("pgid")
         )
+    # Nested rclone files can retain ownership from an older setup run even when
+    # the top-level directory already has the expected owner.
+    chown_recursive(rclone_dir, CONFIG_MANAGER.get("puid"), CONFIG_MANAGER.get("pgid"))
     if changed and not install_only:
         CONFIG_MANAGER.save_config(config.get("process_name", "AltMount"))
 

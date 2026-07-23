@@ -142,6 +142,35 @@ def _upsert_arr_instance(instances: list[Any], entry: dict[str, Any]) -> bool:
     return True
 
 
+def _is_dumb_managed_arr_instance(item: Any, service: str) -> bool:
+    if not isinstance(item, dict):
+        return False
+    name = str(item.get("name") or "")
+    url = str(item.get("url") or "")
+    return name.startswith(f"{service}:") and url.startswith("http://127.0.0.1:")
+
+
+def _sync_arr_instances(
+    instances: list[Any], service: str, entries: list[dict[str, Any]]
+) -> bool:
+    desired_entries = [entry for entry in entries if entry["service"] == service]
+    desired_names = {entry["name"] for entry in desired_entries}
+    retained = [
+        item
+        for item in instances
+        if not (
+            _is_dumb_managed_arr_instance(item, service)
+            and item.get("name") not in desired_names
+        )
+    ]
+    changed = retained != instances
+    instances[:] = retained
+    for entry in desired_entries:
+        if _upsert_arr_instance(instances, entry):
+            changed = True
+    return changed
+
+
 def _normalize_mount_type(config: dict[str, Any]) -> str:
     mount_type = str(config.get("mount_type") or "").strip().lower()
     return mount_type if mount_type in ALTMOUNT_MOUNT_TYPES else "rclone"
@@ -653,9 +682,9 @@ def _sync_altmount_config(
         if not isinstance(arrs_cfg.get(field), list):
             arrs_cfg[field] = []
             changed = True
-    for entry in arr_entries:
-        field = f"{entry['service']}_instances"
-        if _upsert_arr_instance(arrs_cfg[field], entry):
+    for service in _CATEGORY_DEFAULTS:
+        field = f"{service}_instances"
+        if _sync_arr_instances(arrs_cfg[field], service, arr_entries):
             changed = True
 
     if changed:
@@ -693,11 +722,10 @@ def patch_altmount_arr_integration() -> tuple[bool, str | None]:
         return True, None
 
     arr_entries = _collect_arr_entries()
+    _sync_altmount_config(config, arr_entries)
     if not arr_entries:
         logger.debug("No Arr instances linked to AltMount; skipping Arr automation.")
         return True, None
-
-    _sync_altmount_config(config, arr_entries)
 
     api_key = str((config.get("env") or {}).get("ALTMOUNT_API_KEY") or "").strip()
     if not api_key:

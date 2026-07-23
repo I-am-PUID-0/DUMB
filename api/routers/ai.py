@@ -1,11 +1,15 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from html import unescape
 from pathlib import Path
 from typing import Any, Optional
 import json
 import os
 import re
+import threading
+import time
+import uuid
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.concurrency import run_in_threadpool
@@ -15,7 +19,24 @@ import requests
 from api.routers.logs import find_log_file
 from api.routers.process import _collect_process_entries, dependency_graph
 from utils.config_loader import CONFIG_MANAGER
-from utils.dependencies import get_api_state, get_logger, get_optional_current_user
+from utils.ai_diagnostics import (
+    DiagnosticEventStore,
+    build_recommendation_context,
+    build_runtime_comparison,
+    build_stack_runtime_comparison,
+    collect_native_diagnostics,
+    record_config_change as record_ai_config_change,
+    resolve_windows,
+    scan_retained_logs,
+    strip_private_fields,
+)
+from utils.dependencies import (
+    get_api_state,
+    get_logger,
+    get_metrics_collector,
+    get_metrics_history_manager,
+    get_optional_current_user,
+)
 from utils.logger import redact_sensitive_log_data
 
 ai_router = APIRouter()
@@ -35,6 +56,13 @@ DEFAULT_AI_CONFIG = {
     "include_docs_context": True,
     "include_process_list": False,
     "max_docs_chars": 12000,
+    "diagnostic_window_hours": 24,
+    "comparison_mode": "previous_period",
+    "deep_log_scan": True,
+    "max_log_scan_mb": 128,
+    "include_metrics": True,
+    "include_change_history": True,
+    "include_native_diagnostics": True,
 }
 
 SECRET_KEY_HINTS = (
@@ -357,12 +385,19 @@ class AiSettingsUpdate(BaseModel):
     include_docs_context: Optional[bool] = None
     include_process_list: Optional[bool] = None
     max_docs_chars: Optional[int] = None
+    diagnostic_window_hours: Optional[float] = None
+    comparison_mode: Optional[str] = None
+    deep_log_scan: Optional[bool] = None
+    max_log_scan_mb: Optional[int] = None
+    include_metrics: Optional[bool] = None
+    include_change_history: Optional[bool] = None
+    include_native_diagnostics: Optional[bool] = None
     model_config = ConfigDict(extra="forbid")
 
 
-class AiDiagnosticRequest(BaseModel):
-    process_name: str
+class AiDiagnosticOptions(BaseModel):
     question: Optional[str] = None
+    preset: Optional[str] = None
     include_logs: Optional[bool] = None
     include_service_config: Optional[bool] = None
     include_dependency_graph: Optional[bool] = None
@@ -370,26 +405,160 @@ class AiDiagnosticRequest(BaseModel):
     include_process_list: Optional[bool] = None
     max_log_chars: Optional[int] = None
     max_docs_chars: Optional[int] = None
+    window_hours: Optional[float] = None
+    comparison: Optional[str] = None
+    deep_log_scan: Optional[bool] = None
+    max_log_scan_mb: Optional[int] = None
+    include_metrics: Optional[bool] = None
+    include_change_history: Optional[bool] = None
+    include_native_diagnostics: Optional[bool] = None
     dry_run: Optional[bool] = False
     model_config = ConfigDict(extra="forbid")
 
 
-class AiStackDiagnosticRequest(BaseModel):
-    question: Optional[str] = None
-    include_logs: Optional[bool] = None
+class AiDiagnosticRequest(AiDiagnosticOptions):
+    process_name: str
+
+
+class AiStackDiagnosticRequest(AiDiagnosticOptions):
     include_service_config: Optional[bool] = False
-    include_dependency_graph: Optional[bool] = None
-    include_docs_context: Optional[bool] = None
     include_process_list: Optional[bool] = True
-    max_log_chars: Optional[int] = None
-    max_docs_chars: Optional[int] = None
     max_services: Optional[int] = 60
-    dry_run: Optional[bool] = False
+
+
+class AiFollowUpRequest(BaseModel):
+    session_id: str
+    question: str
     model_config = ConfigDict(extra="forbid")
 
 
 class AiProviderRequest(AiSettingsUpdate):
     prompt: Optional[str] = None
+
+
+AI_PRESETS = {
+    "service": [
+        {
+            "id": "health",
+            "label": "Health check",
+            "question": (
+                "How has this service been running in the selected window? "
+                "Identify failures, restarts, new errors, and the most useful next action."
+            ),
+        },
+        {
+            "id": "performance",
+            "label": "Performance",
+            "question": (
+                "Has performance improved or regressed versus the baseline? "
+                "Use measured changes, explain evidence coverage, and suggest optimizations."
+            ),
+        },
+        {
+            "id": "since_change",
+            "label": "Since a change",
+            "question": (
+                "What changed after the most recent recorded configuration change? "
+                "Separate measured effects from correlations."
+            ),
+        },
+        {
+            "id": "errors",
+            "label": "Errors and recovery",
+            "question": (
+                "Summarize recurring and newly introduced errors, whether the service "
+                "recovered, and any unresolved impact."
+            ),
+        },
+    ],
+    "stack": [
+        {
+            "id": "stack_health",
+            "label": "Stack health",
+            "question": (
+                "How has the stack been running? Find unhealthy services, restart loops, "
+                "dependency problems, and the highest-value next actions."
+            ),
+        },
+        {
+            "id": "stack_performance",
+            "label": "Performance",
+            "question": (
+                "Which services changed most in CPU, memory, disk activity, errors, or "
+                "throughput versus the baseline, and what should be optimized first?"
+            ),
+        },
+        {
+            "id": "stack_changes",
+            "label": "Recent changes",
+            "question": (
+                "Correlate recent recorded configuration changes with service health and "
+                "performance. State where evidence is insufficient."
+            ),
+        },
+        {
+            "id": "stack_dependencies",
+            "label": "Dependencies",
+            "question": (
+                "Review startup order and dependency health. Identify broken or risky "
+                "chains and provide safe remediation steps."
+            ),
+        },
+    ],
+}
+_AI_SESSION_TTL_SECONDS = 3600
+_AI_SESSION_LIMIT = 50
+_ai_sessions: dict[str, dict] = {}
+_ai_sessions_lock = threading.Lock()
+
+
+def _prune_ai_sessions(now: float) -> None:
+    expired = [
+        session_id
+        for session_id, session in _ai_sessions.items()
+        if now - session["updated_at"] > _AI_SESSION_TTL_SECONDS
+    ]
+    for session_id in expired:
+        _ai_sessions.pop(session_id, None)
+    while len(_ai_sessions) >= _AI_SESSION_LIMIT:
+        oldest = min(
+            _ai_sessions,
+            key=lambda session_id: _ai_sessions[session_id]["updated_at"],
+        )
+        _ai_sessions.pop(oldest, None)
+
+
+def _create_ai_session(bundle: dict, question: str, answer: str) -> str:
+    now = time.time()
+    session_id = uuid.uuid4().hex
+    with _ai_sessions_lock:
+        _prune_ai_sessions(now)
+        _ai_sessions[session_id] = {
+            "bundle": bundle,
+            "turns": [{"question": question, "answer": answer}],
+            "updated_at": now,
+        }
+    return session_id
+
+
+def _get_ai_session(session_id: str) -> dict | None:
+    now = time.time()
+    with _ai_sessions_lock:
+        _prune_ai_sessions(now)
+        session = _ai_sessions.get(session_id)
+        if session:
+            session["updated_at"] = now
+        return session
+
+
+def _append_ai_session_turn(session_id: str, question: str, answer: str) -> None:
+    with _ai_sessions_lock:
+        session = _ai_sessions.get(session_id)
+        if not session:
+            return
+        session["turns"].append({"question": question, "answer": answer})
+        session["turns"] = session["turns"][-8:]
+        session["updated_at"] = time.time()
 
 
 def _find_service_config_with_path(
@@ -452,6 +621,30 @@ def _redact_value(value: Any) -> Any:
     return value
 
 
+def _redact_diagnostic_paths(value: Any) -> Any:
+    private_path_keys = {
+        "path",
+        "db_path",
+        "config_dir",
+        "data_dir",
+        "mount_point",
+        "connection_string",
+        "database_url",
+    }
+    if isinstance(value, dict):
+        return {
+            key: (
+                "[PATH REDACTED]"
+                if str(key).lower() in private_path_keys and child not in ("", None)
+                else _redact_diagnostic_paths(child)
+            )
+            for key, child in value.items()
+        }
+    if isinstance(value, list):
+        return [_redact_diagnostic_paths(item) for item in value]
+    return _redact_value(value)
+
+
 def _tail_log(path: Path, max_chars: int) -> str:
     max_chars = max(1000, min(int(max_chars or 20000), 200000))
     # UTF-8 chars can span bytes; read a little extra and trim decoded text.
@@ -471,6 +664,7 @@ def _docs_root_candidates() -> list[Path]:
     repo_root = Path(__file__).resolve().parents[2]
     candidates.extend(
         [
+            Path("/usr/share/dumb/docs"),
             Path("/docs"),
             Path("/DUMB_docs/docs"),
             Path("/workspace/DUMB_docs/docs"),
@@ -495,21 +689,61 @@ def _docs_url(path: str) -> str:
     return f"{DOCS_BASE_URL}/{route.strip('/')}/"
 
 
-def _normalize_doc_text(text: str) -> str:
-    text = re.sub(r"^---\n.*?\n---\n", "", text, flags=re.DOTALL)
-    text = re.sub(r"<(script|style)[^>]*>.*?</\1>", "", text, flags=re.DOTALL | re.I)
-    text = re.sub(r"<[^>]+>", " ", text)
-    text = re.sub(r"!\[[^\]]*]\([^)]+\)", "", text)
-    text = (
-        text.replace("&nbsp;", " ")
-        .replace("&amp;", "&")
-        .replace("&lt;", "<")
-        .replace("&gt;", ">")
-        .replace("&quot;", '"')
+def _extract_rendered_doc_content(text: str) -> str:
+    text = re.sub(
+        r"<(script|style|noscript|svg|template)\b[^>]*>.*?</\1>",
+        "",
+        text,
+        flags=re.DOTALL | re.I,
     )
-    text = re.sub(r"[ \t]{2,}", " ", text)
-    text = re.sub(r"\n{3,}", "\n\n", text)
-    return text.strip()
+    for tag in ("article", "main"):
+        matches = re.findall(
+            rf"<{tag}\b[^>]*>(.*?)</{tag}>",
+            text,
+            flags=re.DOTALL | re.I,
+        )
+        if matches:
+            text = max(matches, key=len)
+            break
+    text = re.sub(
+        r"<(nav|header|footer|aside)\b[^>]*>.*?</\1>",
+        "",
+        text,
+        flags=re.DOTALL | re.I,
+    )
+    text = re.sub(r"<br\s*/?>", "\n", text, flags=re.I)
+    text = re.sub(
+        r"</?(?:address|blockquote|div|dl|dt|dd|figure|figcaption|h[1-6]|hr|"
+        r"li|ol|p|pre|section|table|tbody|td|tfoot|th|thead|tr|ul)\b[^>]*>",
+        "\n",
+        text,
+        flags=re.I,
+    )
+    return re.sub(r"<[^>]+>", " ", text)
+
+
+def _normalize_doc_text(text: str, *, rendered_html: bool = False) -> str:
+    text = re.sub(r"^---\r?\n.*?\r?\n---\r?\n", "", text, flags=re.DOTALL)
+    if rendered_html:
+        text = _extract_rendered_doc_content(text)
+    text = re.sub(r"!\[[^\]]*]\([^)]+\)", "", text)
+    text = unescape(text).replace("\xa0", " ")
+
+    normalized_lines = []
+    previous_blank = False
+    for line in text.splitlines():
+        if rendered_html:
+            line = re.sub(r"[ \t]+", " ", line).strip()
+        else:
+            line = line.rstrip()
+        if not line:
+            if normalized_lines and not previous_blank:
+                normalized_lines.append("")
+            previous_blank = True
+            continue
+        normalized_lines.append(line)
+        previous_blank = False
+    return "\n".join(normalized_lines).strip()
 
 
 def _read_local_doc(docs_root: Path, path: str) -> str:
@@ -536,7 +770,7 @@ def _fetch_public_doc(path: str, timeout: int = 8) -> str:
         return ""
     if response.status_code >= 400:
         return ""
-    return _normalize_doc_text(response.text)
+    return _normalize_doc_text(response.text, rendered_html=True)
 
 
 def _read_doc_context_source(docs_root: Path | None, path: str) -> tuple[str, str]:
@@ -672,6 +906,8 @@ def _build_diagnostic_bundle(
     api_state,
     logger,
     current_user: str,
+    history_manager=None,
+    metrics_collector=None,
 ) -> dict:
     process_name = str(request.process_name or "").strip()
     if not process_name:
@@ -708,9 +944,48 @@ def _build_diagnostic_bundle(
         if request.include_process_list is None
         else request.include_process_list
     )
+    include_metrics = (
+        ai_config.get("include_metrics", True)
+        if request.include_metrics is None
+        else request.include_metrics
+    )
+    include_change_history = (
+        ai_config.get("include_change_history", True)
+        if request.include_change_history is None
+        else request.include_change_history
+    )
+    include_native_diagnostics = (
+        ai_config.get("include_native_diagnostics", True)
+        if request.include_native_diagnostics is None
+        else request.include_native_diagnostics
+    )
+    deep_log_scan = (
+        ai_config.get("deep_log_scan", True)
+        if request.deep_log_scan is None
+        else request.deep_log_scan
+    )
     max_log_chars = request.max_log_chars or ai_config.get("max_log_chars", 20000)
+    window_hours = request.window_hours or ai_config.get("diagnostic_window_hours", 24)
+    comparison = request.comparison or ai_config.get(
+        "comparison_mode", "previous_period"
+    )
+    max_log_scan_mb = request.max_log_scan_mb or ai_config.get("max_log_scan_mb", 128)
 
     key, instance_name = CONFIG_MANAGER.find_key_for_process(process_name)
+    all_events = (
+        DiagnosticEventStore().list(
+            process_name=process_name,
+            since=time.time() - (90 * 86400),
+            limit=500,
+        )
+        if include_change_history
+        else []
+    )
+    windows = resolve_windows(
+        window_hours=float(window_hours),
+        comparison=str(comparison),
+        events=all_events,
+    )
     bundle = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "dumb_product": DUMB_PRODUCT_FACTS,
@@ -724,6 +999,31 @@ def _build_diagnostic_bundle(
             else {}
         ),
         "question": request.question or "",
+        "preset": request.preset or "",
+        "diagnostic_window": {
+            "current": {
+                "start": datetime.fromtimestamp(
+                    windows["current"]["since"], tz=timezone.utc
+                ).isoformat(),
+                "end": datetime.fromtimestamp(
+                    windows["current"]["until"], tz=timezone.utc
+                ).isoformat(),
+            },
+            "baseline": (
+                {
+                    "start": datetime.fromtimestamp(
+                        windows["baseline"]["since"], tz=timezone.utc
+                    ).isoformat(),
+                    "end": datetime.fromtimestamp(
+                        windows["baseline"]["until"], tz=timezone.utc
+                    ).isoformat(),
+                }
+                if windows.get("baseline")
+                else None
+            ),
+            "comparison": windows["comparison"],
+            "boundary_event": strip_private_fields(windows.get("boundary_event")),
+        },
     }
 
     if include_service_config:
@@ -760,19 +1060,117 @@ def _build_diagnostic_bundle(
             for entry in _collect_process_entries()
         ]
 
+    log_scan = None
     if include_logs:
         log_path = find_log_file(process_name, logger)
         if log_path and log_path.exists():
             bundle["logs"] = {
-                "path": str(log_path),
+                "file": log_path.name,
                 "tail_chars": int(max_log_chars),
                 "content": _tail_log(log_path, int(max_log_chars)),
             }
+            if deep_log_scan:
+                log_scan = scan_retained_logs(
+                    log_path,
+                    since=windows["current"]["since"],
+                    until=windows["current"]["until"],
+                    question=request.question or "",
+                    max_scan_mb=int(max_log_scan_mb),
+                )
+                bundle["log_analysis"] = strip_private_fields(log_scan)
+                if windows.get("baseline"):
+                    baseline_scan = scan_retained_logs(
+                        log_path,
+                        since=windows["baseline"]["since"],
+                        until=windows["baseline"]["until"],
+                        question=request.question or "",
+                        max_scan_mb=int(max_log_scan_mb),
+                        max_excerpts=20,
+                    )
+                    bundle["log_analysis"]["baseline"] = strip_private_fields(
+                        baseline_scan
+                    )
         else:
             bundle["logs"] = {"content": "", "note": "No log file found."}
 
+    if include_change_history:
+        bundle["change_history"] = [
+            strip_private_fields(event)
+            for event in all_events
+            if event.get("timestamp", 0)
+            >= ((windows.get("baseline") or windows["current"])["since"])
+        ][:100]
+
+    if include_metrics and history_manager is not None:
+        baseline = windows.get("baseline")
+        bundle["runtime_metrics"] = build_runtime_comparison(
+            history_manager,
+            process_name,
+            since=windows["current"]["since"],
+            until=windows["current"]["until"],
+            comparison_since=baseline["since"] if baseline else None,
+            comparison_until=baseline["until"] if baseline else None,
+        )
+        if metrics_collector is not None:
+            try:
+                database_health = metrics_collector.database_health.snapshot(
+                    CONFIG_MANAGER.config,
+                    details=True,
+                    refresh_if_stale=False,
+                    process_name=process_name,
+                )
+                bundle["database_health"] = _redact_diagnostic_paths(database_health)
+            except Exception as exc:
+                logger.debug("AI database health evidence unavailable: %s", exc)
+                bundle["database_health"] = {
+                    "available": False,
+                    "reason": "Database health evidence is unavailable.",
+                }
+
+    if include_native_diagnostics:
+        bundle["native_diagnostics"] = collect_native_diagnostics(
+            key,
+            service_config,
+            windows=windows,
+            log_scan=log_scan,
+        )
+
+    bundle["recommendations"] = build_recommendation_context(
+        {
+            "logs": bundle.get("log_analysis") or {},
+            "runtime_metrics": bundle.get("runtime_metrics") or {},
+            "native": bundle.get("native_diagnostics") or {},
+        }
+    )
+    bundle["diagnostic_coverage"] = {
+        "status": True,
+        "config": bool(include_service_config),
+        "dependency_graph": bool(include_dependency_graph),
+        "retained_logs": bool(log_scan),
+        "metrics_history": bool((bundle.get("runtime_metrics") or {}).get("available")),
+        "database_health": bool(bundle.get("database_health")),
+        "change_history": bool(include_change_history),
+        "native_collector": bool(
+            (bundle.get("native_diagnostics") or {}).get("available")
+        ),
+        "docs": bool((bundle.get("docs_context") or {}).get("available")),
+    }
+
     if include_docs_context:
         bundle["docs_context"] = _build_docs_context(bundle, ai_config, request)
+        bundle["diagnostic_coverage"]["docs"] = bool(
+            bundle["docs_context"].get("available")
+        )
+    evidence_sources = sum(
+        bool(value)
+        for key, value in bundle["diagnostic_coverage"].items()
+        if key != "status"
+    )
+    bundle["diagnostic_coverage"]["confidence_hint"] = (
+        "high"
+        if evidence_sources >= 5
+        else "medium" if evidence_sources >= 3 else "low"
+    )
 
     return bundle
 
@@ -898,6 +1296,41 @@ def _stack_log_targets(stack_summary: dict) -> list[str]:
             if process_name and process_name not in targets:
                 targets.append(process_name)
     return targets[:12]
+
+
+def _stack_evidence_targets(
+    processes: list[dict],
+    stack_summary: dict,
+    question: str,
+    limit: int = 12,
+) -> list[str]:
+    targets = _stack_log_targets(stack_summary)
+    lowered_question = str(question or "").lower()
+    enabled = [
+        entry
+        for entry in processes
+        if entry.get("enabled") is True and entry.get("process_name")
+    ]
+    for entry in enabled:
+        names = (
+            entry.get("process_name"),
+            entry.get("name"),
+            entry.get("config_key"),
+        )
+        if any(name and str(name).lower() in lowered_question for name in names):
+            process_name = entry["process_name"]
+            if process_name not in targets:
+                targets.append(process_name)
+    if any(
+        term in lowered_question
+        for term in ("performance", "running", "health", "optimiz", "change")
+    ):
+        for entry in enabled:
+            if entry["process_name"] not in targets:
+                targets.append(entry["process_name"])
+            if len(targets) >= limit:
+                break
+    return targets[:limit]
 
 
 def _is_workflow_planning_question(question: str) -> bool:
@@ -1064,6 +1497,8 @@ def _build_stack_diagnostic_bundle(
     api_state,
     logger,
     current_user: str,
+    history_manager=None,
+    metrics_collector=None,
 ) -> dict:
     max_services = max(5, min(int(request.max_services or 60), 120))
     include_logs = (
@@ -1083,9 +1518,53 @@ def _build_stack_diagnostic_bundle(
         else request.include_docs_context
     )
     include_process_list = request.include_process_list is not False
+    include_metrics = (
+        ai_config.get("include_metrics", True)
+        if request.include_metrics is None
+        else request.include_metrics
+    )
+    include_change_history = (
+        ai_config.get("include_change_history", True)
+        if request.include_change_history is None
+        else request.include_change_history
+    )
+    include_native_diagnostics = (
+        ai_config.get("include_native_diagnostics", True)
+        if request.include_native_diagnostics is None
+        else request.include_native_diagnostics
+    )
+    deep_log_scan = (
+        ai_config.get("deep_log_scan", True)
+        if request.deep_log_scan is None
+        else request.deep_log_scan
+    )
     max_log_chars = max(
         500,
         min(int(request.max_log_chars or ai_config.get("max_log_chars", 20000)), 50000),
+    )
+    max_log_scan_mb = max(
+        1,
+        min(
+            int(request.max_log_scan_mb or ai_config.get("max_log_scan_mb", 128)),
+            1024,
+        ),
+    )
+    events = (
+        DiagnosticEventStore().list(
+            since=time.time() - (90 * 86400),
+            limit=1000,
+        )
+        if include_change_history
+        else []
+    )
+    windows = resolve_windows(
+        window_hours=float(
+            request.window_hours or ai_config.get("diagnostic_window_hours", 24)
+        ),
+        comparison=str(
+            request.comparison or ai_config.get("comparison_mode", "previous_period")
+        ),
+        events=events,
     )
 
     processes = _collect_process_entries()[:max_services]
@@ -1095,9 +1574,33 @@ def _build_stack_diagnostic_bundle(
         "dumb_product": DUMB_PRODUCT_FACTS,
         "scope": "stack",
         "question": request.question or "",
+        "preset": request.preset or "",
         "stack_summary": stack_summary,
         "dumb_service_catalog": DUMB_SERVICE_CATALOG,
         "dumb_workflow_rules": DUMB_WORKFLOW_RULES,
+        "diagnostic_window": {
+            "current": {
+                "start": datetime.fromtimestamp(
+                    windows["current"]["since"], tz=timezone.utc
+                ).isoformat(),
+                "end": datetime.fromtimestamp(
+                    windows["current"]["until"], tz=timezone.utc
+                ).isoformat(),
+            },
+            "baseline": (
+                {
+                    "start": datetime.fromtimestamp(
+                        windows["baseline"]["since"], tz=timezone.utc
+                    ).isoformat(),
+                    "end": datetime.fromtimestamp(
+                        windows["baseline"]["until"], tz=timezone.utc
+                    ).isoformat(),
+                }
+                if windows.get("baseline")
+                else None
+            ),
+            "comparison": windows["comparison"],
+        },
     }
 
     if include_process_list:
@@ -1120,21 +1623,110 @@ def _build_stack_diagnostic_bundle(
 
     if include_logs:
         logs = {}
+        log_analysis = {}
         per_service_chars = max(500, min(int(max_log_chars / 4), 8000))
-        for process_name in _stack_log_targets(stack_summary):
+        targets = _stack_evidence_targets(
+            processes,
+            stack_summary,
+            request.question or "",
+        )
+        per_service_scan_mb = max(1, int(max_log_scan_mb / max(1, len(targets))))
+        for process_name in targets:
             log_path = find_log_file(process_name, logger)
             if log_path and log_path.exists():
                 logs[process_name] = {
-                    "path": str(log_path),
+                    "file": log_path.name,
                     "tail_chars": per_service_chars,
                     "content": _tail_log(log_path, per_service_chars),
                 }
+                if deep_log_scan:
+                    log_analysis[process_name] = strip_private_fields(
+                        scan_retained_logs(
+                            log_path,
+                            since=windows["current"]["since"],
+                            until=windows["current"]["until"],
+                            question=request.question or "",
+                            max_scan_mb=per_service_scan_mb,
+                            max_excerpts=20,
+                        )
+                    )
             else:
                 logs[process_name] = {"content": "", "note": "No log file found."}
         bundle["logs"] = logs
+        if log_analysis:
+            bundle["log_analysis"] = log_analysis
+
+    process_names = [
+        entry["process_name"]
+        for entry in processes
+        if entry.get("enabled") is True and entry.get("process_name")
+    ]
+    if include_metrics and history_manager is not None:
+        baseline = windows.get("baseline")
+        bundle["runtime_metrics"] = build_stack_runtime_comparison(
+            history_manager,
+            process_names,
+            since=windows["current"]["since"],
+            until=windows["current"]["until"],
+            comparison_since=baseline["since"] if baseline else None,
+            comparison_until=baseline["until"] if baseline else None,
+        )
+
+    if include_change_history:
+        earliest = (windows.get("baseline") or windows["current"])["since"]
+        bundle["change_history"] = [
+            strip_private_fields(event)
+            for event in events
+            if event.get("timestamp", 0) >= earliest
+        ][:200]
+
+    if include_native_diagnostics:
+        native = {}
+        for entry in processes:
+            if entry.get("enabled") is not True:
+                continue
+            if str(entry.get("config_key") or "").lower() != "nzbdav":
+                continue
+            process_name = entry.get("process_name")
+            service_config, _ = _find_service_config_with_path(
+                CONFIG_MANAGER.config,
+                process_name,
+            )
+            if service_config:
+                native[process_name] = collect_native_diagnostics(
+                    entry.get("config_key"),
+                    service_config,
+                    windows=windows,
+                    log_scan=None,
+                )
+        if native:
+            bundle["native_diagnostics"] = native
+
+    bundle["diagnostic_coverage"] = {
+        "processes": len(process_names),
+        "retained_log_services": len(bundle.get("log_analysis") or {}),
+        "metrics_history": bool((bundle.get("runtime_metrics") or {}).get("available")),
+        "change_history": bool(include_change_history),
+        "native_collectors": len(bundle.get("native_diagnostics") or {}),
+        "dependency_graph": bool(include_dependency_graph),
+        "docs": False,
+    }
 
     if include_docs_context:
         bundle["docs_context"] = _build_docs_context(bundle, ai_config, request)
+        bundle["diagnostic_coverage"]["docs"] = bool(
+            bundle["docs_context"].get("available")
+        )
+    evidence_sources = sum(
+        (int(value > 0) if isinstance(value, (int, float)) else int(bool(value)))
+        for key, value in bundle["diagnostic_coverage"].items()
+        if key != "processes"
+    )
+    bundle["diagnostic_coverage"]["confidence_hint"] = (
+        "high"
+        if evidence_sources >= 4
+        else "medium" if evidence_sources >= 2 else "low"
+    )
 
     return bundle
 
@@ -1255,6 +1847,8 @@ def _compact_stack_bundle_for_provider(bundle: dict) -> dict:
             "counts": stack_summary.get("counts") or {},
             "attention": _compact_attention(stack_summary),
         },
+        "diagnostic_window": bundle.get("diagnostic_window"),
+        "diagnostic_coverage": bundle.get("diagnostic_coverage"),
     }
     if bundle.get("dumb_service_catalog"):
         compact["dumb_service_catalog"] = bundle.get("dumb_service_catalog")
@@ -1278,6 +1872,30 @@ def _compact_stack_bundle_for_provider(bundle: dict) -> dict:
             "Full service configs were omitted from the provider prompt to fit local model context. "
             "Use service-scoped AI for detailed config analysis."
         )
+    if bundle.get("log_analysis") and not planning_question:
+        compact["log_analysis"] = {
+            process_name: {
+                "coverage": payload.get("coverage"),
+                "levels": payload.get("levels"),
+                "restart_markers": payload.get("restart_markers"),
+                "stop_markers": payload.get("stop_markers"),
+                "top_error_signatures": (payload.get("top_error_signatures") or [])[:5],
+                "new_error_signatures": (payload.get("new_error_signatures") or [])[:5],
+                "excerpts": (payload.get("excerpts") or [])[:8],
+            }
+            for process_name, payload in (bundle.get("log_analysis") or {}).items()
+        }
+    if bundle.get("runtime_metrics"):
+        runtime = bundle.get("runtime_metrics") or {}
+        compact["runtime_metrics"] = {
+            "available": runtime.get("available"),
+            "truncated": runtime.get("truncated"),
+            "services": dict(list((runtime.get("services") or {}).items())[:30]),
+        }
+    if bundle.get("change_history"):
+        compact["change_history"] = (bundle.get("change_history") or [])[:20]
+    if bundle.get("native_diagnostics"):
+        compact["native_diagnostics"] = bundle.get("native_diagnostics")
     if bundle.get("docs_context"):
         compact["docs_context"] = _compact_docs_context(
             bundle.get("docs_context") or {}
@@ -1321,10 +1939,14 @@ def _diagnostic_messages(bundle: dict) -> list[dict]:
         "and the Arr/Prowlarr/rclone support roles. Do not recommend external SABnzbd "
         "or NZBGet as primary DUMB services unless the user explicitly asks for external "
         "clients; if you mention them, label them as external/non-DUMB. Do not merely "
-        "describe the JSON structure. Cite concrete "
-        "evidence from logs/status/config/docs, separate likely causes from guesses, "
-        "and suggest safe next actions. Do not invent configuration values or claim "
-        "changes were applied."
+        "describe the JSON structure. Write valid GitHub-flavored Markdown. Cite concrete "
+        "evidence with timestamps, metric names, log file names/line numbers, change "
+        "events, or documentation URLs when available. Always state the diagnostic "
+        "window, evidence coverage, and a confidence level. Separate facts, correlations, "
+        "likely causes, and guesses. Prefer measured before/after values over adjectives. "
+        "Recommend only reviewable actions and include impact, risk, and whether a restart "
+        "would be required. Do not invent configuration values, claim changes were "
+        "applied, or ask to run unrestricted shell commands or arbitrary SQL."
     )
     user = (
         "Answer the operator question using this DUMB diagnostic bundle. Prefer these "
@@ -1755,6 +2377,11 @@ def get_ai_settings(current_user: str = Depends(get_optional_current_user)):
     return _public_settings(_ai_config())
 
 
+@ai_router.get("/presets")
+def get_ai_presets(current_user: str = Depends(get_optional_current_user)):
+    return AI_PRESETS
+
+
 @ai_router.put("/settings")
 def update_ai_settings(
     request: AiSettingsUpdate,
@@ -1762,6 +2389,7 @@ def update_ai_settings(
 ):
     updates = request.model_dump(exclude_unset=True)
     current = _ai_config()
+    before = dict(current)
     current.update(updates)
     if current.get("timeout_sec") is not None:
         current["timeout_sec"] = max(5, min(int(current["timeout_sec"]), 300))
@@ -1771,11 +2399,30 @@ def update_ai_settings(
         current["max_docs_chars"] = max(
             1000, min(int(current["max_docs_chars"]), 60000)
         )
+    if current.get("diagnostic_window_hours") is not None:
+        current["diagnostic_window_hours"] = max(
+            0.25, min(float(current["diagnostic_window_hours"]), 24 * 30)
+        )
+    if current.get("comparison_mode") not in {
+        "previous_period",
+        "since_change",
+        "none",
+    }:
+        current["comparison_mode"] = "previous_period"
+    if current.get("max_log_scan_mb") is not None:
+        current["max_log_scan_mb"] = max(1, min(int(current["max_log_scan_mb"]), 1024))
     if current.get("temperature") is not None:
         current["temperature"] = max(0.0, min(float(current["temperature"]), 2.0))
 
     CONFIG_MANAGER.config.setdefault("dumb", {})["ai"] = current
     CONFIG_MANAGER.save_config()
+    record_ai_config_change(
+        before,
+        current,
+        process_name=None,
+        actor=current_user,
+        source="ai_settings",
+    )
     return _public_settings(current)
 
 
@@ -1802,6 +2449,8 @@ async def diagnose_service(
     request: AiDiagnosticRequest,
     api_state=Depends(get_api_state),
     logger=Depends(get_logger),
+    history_manager=Depends(get_metrics_history_manager),
+    metrics_collector=Depends(get_metrics_collector),
     current_user: str = Depends(get_optional_current_user),
 ):
     ai_config = _ai_config()
@@ -1812,6 +2461,8 @@ async def diagnose_service(
         api_state,
         logger,
         current_user,
+        history_manager,
+        metrics_collector,
     )
     if request.dry_run or not ai_config.get("enabled"):
         return {
@@ -1822,6 +2473,7 @@ async def diagnose_service(
             "bundle": bundle,
             "usage": {},
             "dry_run": True,
+            "session_id": "",
         }
 
     if not str(ai_config.get("model") or "").strip():
@@ -1829,6 +2481,11 @@ async def diagnose_service(
 
     provider_result = await run_in_threadpool(_call_ai_provider, ai_config, bundle)
     analysis = provider_result.get("content", "")
+    session_id = _create_ai_session(
+        bundle,
+        request.question or request.preset or "Initial analysis",
+        analysis,
+    )
     return {
         "enabled": True,
         "provider": ai_config.get("provider"),
@@ -1837,6 +2494,7 @@ async def diagnose_service(
         "bundle": bundle,
         "usage": provider_result.get("usage") or {},
         "dry_run": False,
+        "session_id": session_id,
     }
 
 
@@ -1845,6 +2503,8 @@ async def diagnose_stack(
     request: AiStackDiagnosticRequest,
     api_state=Depends(get_api_state),
     logger=Depends(get_logger),
+    history_manager=Depends(get_metrics_history_manager),
+    metrics_collector=Depends(get_metrics_collector),
     current_user: str = Depends(get_optional_current_user),
 ):
     ai_config = _ai_config()
@@ -1855,6 +2515,8 @@ async def diagnose_stack(
         api_state,
         logger,
         current_user,
+        history_manager,
+        metrics_collector,
     )
     if request.dry_run or not ai_config.get("enabled"):
         return {
@@ -1865,6 +2527,7 @@ async def diagnose_stack(
             "bundle": bundle,
             "usage": {},
             "dry_run": True,
+            "session_id": "",
         }
 
     if not str(ai_config.get("model") or "").strip():
@@ -1873,6 +2536,11 @@ async def diagnose_stack(
     provider_result = await run_in_threadpool(_call_ai_provider, ai_config, bundle)
     analysis = provider_result.get("content", "")
     analysis = _finalize_stack_analysis(bundle, analysis)
+    session_id = _create_ai_session(
+        bundle,
+        request.question or request.preset or "Initial analysis",
+        analysis,
+    )
     return {
         "enabled": True,
         "provider": ai_config.get("provider"),
@@ -1881,4 +2549,50 @@ async def diagnose_stack(
         "bundle": bundle,
         "usage": provider_result.get("usage") or {},
         "dry_run": False,
+        "session_id": session_id,
+    }
+
+
+@ai_router.post("/follow-up")
+async def follow_up(
+    request: AiFollowUpRequest,
+    current_user: str = Depends(get_optional_current_user),
+):
+    question = str(request.question or "").strip()
+    if not question:
+        raise HTTPException(status_code=400, detail="question is required")
+    session = _get_ai_session(str(request.session_id or "").strip())
+    if not session:
+        raise HTTPException(
+            status_code=404,
+            detail="Diagnostic session expired or was not found. Run a new analysis.",
+        )
+    ai_config = _ai_config()
+    if not ai_config.get("enabled"):
+        raise HTTPException(status_code=400, detail="AI provider calls are disabled")
+    if not str(ai_config.get("model") or "").strip():
+        raise HTTPException(status_code=400, detail="AI model is not configured")
+    follow_up_bundle = {
+        "scope": "diagnostic_follow_up",
+        "question": question,
+        "original_diagnostic_bundle": session["bundle"],
+        "prior_turns": session["turns"][-6:],
+        "instruction": (
+            "Answer the follow-up from the existing evidence. State clearly when the "
+            "question needs a fresh window or evidence that is not in the bundle."
+        ),
+    }
+    provider_result = await run_in_threadpool(
+        _call_ai_provider,
+        ai_config,
+        follow_up_bundle,
+    )
+    analysis = provider_result.get("content", "")
+    _append_ai_session_turn(request.session_id, question, analysis)
+    return {
+        "provider": ai_config.get("provider"),
+        "model": ai_config.get("model"),
+        "analysis": analysis,
+        "usage": provider_result.get("usage") or {},
+        "session_id": request.session_id,
     }

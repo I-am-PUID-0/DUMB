@@ -653,6 +653,7 @@ def _build_application_payload(
     arr_host: str,
     arr_api_key: str,
     instance_name: str,
+    prowlarr_host: str,
     tag_ids: Optional[list[int]] = None,
 ) -> dict:
     name = f"{app_name} ({instance_name})"
@@ -662,6 +663,7 @@ def _build_application_payload(
         "host": arr_host,
         "apiKey": arr_api_key,
         "syncLevel": "fullSync",
+        "prowlarrUrl": prowlarr_host,
     }
     if app_name.lower() == "whisparr":
         overrides["syncCategories"] = WHISPARR_SYNC_CATEGORIES
@@ -1173,6 +1175,7 @@ def patch_prowlarr_apps() -> Tuple[bool, Optional[str]]:
                     arr_host,
                     arr_key,
                     entry["instance"],
+                    host,
                     tag_ids=tag_ids,
                 )
                 match = _find_existing_application(

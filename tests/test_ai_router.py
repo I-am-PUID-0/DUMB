@@ -475,6 +475,51 @@ class AiRouterTests(unittest.TestCase):
         self.assertEqual(context["sources"][0]["source"], "web")
         self.assertIn("https://dumbarr.com/", get.call_args.args[0])
 
+    def test_public_docs_context_keeps_article_and_normalizes_whitespace(self):
+        rendered_page = """
+        <html>
+          <head><style>.hidden { display: none; }</style></head>
+          <body>
+            <header>Global header</header>
+            <nav>Documentation navigation</nav>
+            <main>
+              <aside>On this page</aside>
+              <article>
+                <h1>AI Assistant</h1>
+
+
+                <p>
+                  Use retained logs &amp; metrics.
+                </p>
+                <ul>
+                  <li>Preview the bundle</li>
+                  <li>Review evidence</li>
+                </ul>
+              </article>
+            </main>
+            <footer>Site footer</footer>
+            <script>window.secret = "not context";</script>
+          </body>
+        </html>
+        """
+
+        normalized = ai._normalize_doc_text(rendered_page, rendered_html=True)
+
+        self.assertIn("AI Assistant", normalized)
+        self.assertIn("Use retained logs & metrics.", normalized)
+        self.assertIn("Preview the bundle", normalized)
+        self.assertNotIn("Documentation navigation", normalized)
+        self.assertNotIn("On this page", normalized)
+        self.assertNotIn("window.secret", normalized)
+        self.assertNotRegex(normalized, r"\n{3,}")
+        self.assertFalse(any(line.isspace() for line in normalized.splitlines()))
+
+    def test_docs_candidates_include_bundled_snapshot(self):
+        with patch.dict(ai.os.environ, {}, clear=True):
+            candidates = ai._docs_root_candidates()
+
+        self.assertIn(Path("/usr/share/dumb/docs"), candidates)
+
     def test_docs_context_selects_usenet_workflow_docs_for_planning_question(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             docs_root = Path(tmpdir)

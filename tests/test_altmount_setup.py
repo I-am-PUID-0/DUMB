@@ -3,7 +3,7 @@ import tarfile
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import mock_open, patch
+from unittest.mock import MagicMock, mock_open, patch
 
 from utils import altmount_settings
 from utils import setup as setup_module
@@ -16,6 +16,69 @@ from utils.altmount_settings import (
 
 
 class AltMountSetupTests(unittest.TestCase):
+    def test_setup_normalizes_nested_rclone_ownership(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            binary = root / "altmount"
+            binary.write_text("#!/bin/sh\n", encoding="utf-8")
+            binary.chmod(0o755)
+            rclone_dir = root / "rclone"
+            rclone_dir.mkdir()
+            config = {
+                "enabled": True,
+                "process_name": "AltMount",
+                "config_dir": str(root),
+                "config_file": str(root / "config.yaml"),
+                "metadata_dir": str(root / "metadata"),
+                "log_file": str(root / "logs" / "altmount.log"),
+                "mount_path": str(root / "mount"),
+                "mount_type": "none",
+                "port": 8088,
+                "pinned_version": "latest",
+                "env": {
+                    "JWT_SECRET": "jwt-secret",
+                    "ALTMOUNT_API_KEY": "api-key",
+                    "PUID": "1000",
+                    "PGID": "1000",
+                    "PORT": "8088",
+                    "COOKIE_DOMAIN": "localhost",
+                },
+                "command": [
+                    str(binary),
+                    "serve",
+                    "--config",
+                    str(root / "config.yaml"),
+                ],
+            }
+            manager = MagicMock()
+            manager.get.side_effect = lambda key, default=None: {
+                "altmount": config,
+                "postgres": {},
+                "puid": 1000,
+                "pgid": 1000,
+            }.get(key, default)
+
+            with (
+                patch.object(setup_module, "CONFIG_MANAGER", manager),
+                patch.object(
+                    altmount_settings,
+                    "prepare_altmount_mount_path",
+                    return_value=(True, None),
+                ),
+                patch.object(altmount_settings, "write_altmount_default_config"),
+                patch.object(altmount_settings, "sync_altmount_managed_config"),
+                patch.object(setup_module, "service_postgres_database_name"),
+                patch.object(setup_module, "apply_service_postgres_config"),
+                patch.object(setup_module, "_chown_recursive_if_needed"),
+                patch.object(
+                    setup_module, "chown_recursive", return_value=(True, None)
+                ) as recursive_chown,
+            ):
+                success, error = setup_module.setup_altmount(object())
+
+            self.assertTrue(success, error)
+            recursive_chown.assert_called_once_with(str(rclone_dir), 1000, 1000)
+
     def test_write_default_config_creates_expected_paths_and_preserves_existing_file(
         self,
     ):

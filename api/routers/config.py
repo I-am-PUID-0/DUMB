@@ -9,6 +9,7 @@ from utils.dependencies import (
     get_optional_current_user,
 )
 from utils.config_loader import CONFIG_MANAGER, find_service_config
+from utils.ai_diagnostics import record_config_change
 from utils.traefik_setup import (
     ensure_ui_services_config,
     get_traefik_config_dir,
@@ -583,6 +584,7 @@ async def update_config(
         if not service_config:
             logger.error(f"Service not found: {process_name}")
             raise HTTPException(status_code=404, detail="Service not found.")
+        before_service_config = copy.deepcopy(service_config)
 
         path_parts = service_path.split(".")
         instance_schema = find_schema(
@@ -639,6 +641,14 @@ async def update_config(
         if persist:
             logger.info(f"Persisting updated config for service '{process_name}'")
             CONFIG_MANAGER.save_config(process_name=process_name)
+            record_config_change(
+                before_service_config,
+                service_config,
+                process_name=process_name,
+                actor=current_user,
+                source="dumb_config",
+                logger=logger,
+            )
             try:
                 config_key, _ = CONFIG_MANAGER.find_key_for_process(process_name)
                 if config_key in ("nzbdav", "sonarr", "radarr", "lidarr", "whisparr"):
@@ -658,6 +668,7 @@ async def update_config(
             "persisted": persist,
         }
 
+    before_global_config = copy.deepcopy(CONFIG_MANAGER.config)
     updates = _preserve_redacted_notification_secrets(
         request.updates, CONFIG_MANAGER.config
     )
@@ -699,6 +710,14 @@ async def update_config(
     _normalize_legacy_global_config(CONFIG_MANAGER.config)
 
     CONFIG_MANAGER.save_config()
+    record_config_change(
+        before_global_config,
+        CONFIG_MANAGER.config,
+        process_name=None,
+        actor=current_user,
+        source="dumb_config",
+        logger=logger,
+    )
     try:
         touched_keys = set(updates.keys())
         if touched_keys.intersection(
@@ -780,6 +799,7 @@ async def handle_service_config(
         raise HTTPException(status_code=404, detail="Config file not found.")
 
     raw_config, config_data, config_format = load_config_file(config_path)
+    before_service_file = copy.deepcopy(config_data)
 
     if updates:
         try:
@@ -791,6 +811,18 @@ async def handle_service_config(
             )
 
         logger.info(f"Config for {service_name} updated successfully.")
+        try:
+            _, after_service_file, _ = load_config_file(config_path)
+        except Exception:
+            after_service_file = config_data
+        record_config_change(
+            before_service_file,
+            after_service_file,
+            process_name=service_name,
+            actor=current_user,
+            source="service_config_file",
+            logger=logger,
+        )
         return {
             "status": "Config updated successfully",
             "service": service_name,

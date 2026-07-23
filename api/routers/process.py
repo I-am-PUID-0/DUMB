@@ -10,6 +10,7 @@ from utils.dependencies import (
     get_optional_current_user,
 )
 from utils.config_loader import CONFIG_MANAGER, find_service_config
+from utils.ai_diagnostics import record_diagnostic_event
 from utils.setup import ensure_managed_postgres_database, setup_project
 from utils.core_services import has_core_service
 from utils.dependency_map import (
@@ -1931,6 +1932,13 @@ async def start_service(
             if not process:
                 raise Exception(f"Error starting {process_name}: {error}")
             logger.info(f"{process_name} started successfully.")
+            record_diagnostic_event(
+                "service_start",
+                "Service started through the DUMB API",
+                process_name=process_name,
+                actor=current_user,
+                logger=logger,
+            )
 
             key, _ = CONFIG_MANAGER.find_key_for_process(process_name)
             if key in [
@@ -2036,6 +2044,13 @@ async def stop_service(
             logger.debug(f"Shutdown in progress: {api_state.shutdown_in_progress}")
             process_handler.stop_process(process_name)
             logger.info(f"{process_name} stopped successfully.")
+            record_diagnostic_event(
+                "service_stop",
+                "Service stopped through the DUMB API",
+                process_name=process_name,
+                actor=current_user,
+                logger=logger,
+            )
             return {
                 "status": "Service stopped successfully",
                 "process_name": process_name,
@@ -2164,6 +2179,13 @@ async def restart_service(
                     detail=f"Service did not restart successfully. Current status: {status}",
                 )
 
+            record_diagnostic_event(
+                "service_restart",
+                "Service restarted through the DUMB API",
+                process_name=process_name,
+                actor=current_user,
+                logger=logger,
+            )
             return {
                 "status": "Service restarted successfully",
                 "process_name": process_name,
@@ -2389,6 +2411,7 @@ async def update_check(
 async def update_install(
     request: UpdateInstallRequest,
     updater=Depends(get_updater),
+    logger=Depends(get_logger),
     current_user: str = Depends(get_optional_current_user),
 ):
     if not request.process_name:
@@ -2401,6 +2424,17 @@ async def update_install(
         request.process_name,
         bool(request.allow_override),
         request.target,
+    )
+    record_diagnostic_event(
+        "update_install",
+        "Manual update install completed through the DUMB API",
+        process_name=request.process_name,
+        actor=current_user,
+        details={
+            "target": request.target,
+            "allow_override": bool(request.allow_override),
+        },
+        logger=logger,
     )
     return payload
 
@@ -5149,4 +5183,9 @@ async def get_capabilities(current_user: str = Depends(get_optional_current_user
         "database_health_service_keys": sorted(SUPPORTED_SERVICE_KEYS),
         "notifications": True,
         "ai_diagnostics": True,
+        "ai_diagnostic_evidence": True,
+        "ai_deep_log_scan": True,
+        "ai_diagnostic_sessions": True,
+        "ai_native_diagnostics": True,
+        "ai_change_history": True,
     }

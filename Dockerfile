@@ -2,6 +2,7 @@
 
 ARG RCLONE_TAG=latest
 ARG GO_VERSION=1.26.5
+ARG DUMB_DOCS_REF=master
 
 FROM golang:${GO_VERSION}-bookworm AS go-runtime
 FROM mcr.microsoft.com/dotnet/aspnet:10.0-noble AS dotnet-runtime
@@ -246,7 +247,27 @@ RUN --mount=type=cache,target=/root/.cache/pip,sharing=shared \
     rm -rf /opt/poetry
 
 ####################################################################################################################################################
-# Stage 7: final-stage
+# Stage 7: DUMB documentation snapshot
+####################################################################################################################################################
+FROM base AS dumb-docs-builder
+ARG DUMB_DOCS_REF
+RUN test -n "${DUMB_DOCS_REF}" && \
+    mkdir -p /tmp/dumb-docs-source /dumb-docs && \
+    curl --fail --silent --show-error --location \
+      --retry 3 --retry-all-errors \
+      "https://github.com/I-am-PUID-0/DUMB_docs/archive/${DUMB_DOCS_REF}.zip" \
+      -o /tmp/dumb-docs.zip && \
+    unzip -q /tmp/dumb-docs.zip -d /tmp/dumb-docs-source && \
+    DOCS_SOURCE="$(find /tmp/dumb-docs-source -mindepth 2 -maxdepth 2 -type d -name docs -print -quit)" && \
+    test -n "${DOCS_SOURCE}" && \
+    cd "${DOCS_SOURCE}" && \
+    find . -type f -name '*.md' -print0 | tar --null -T - -cf - | tar -C /dumb-docs -xf - && \
+    test -s /dumb-docs/index.md && \
+    test -z "$(find /dumb-docs -type f ! -name '*.md' -print -quit)" && \
+    rm -rf /tmp/dumb-docs.zip /tmp/dumb-docs-source
+
+####################################################################################################################################################
+# Stage 8: final-stage
 ####################################################################################################################################################
 FROM rclone/rclone:${RCLONE_TAG} AS rclone-binary
 
@@ -271,6 +292,7 @@ COPY --from=zilean-builder /zilean/version.txt /zilean/version.txt
 COPY --from=dumb-frontend-builder /dumb/frontend /dumb/frontend
 COPY --from=cli_debrid-builder /cli_debrid /cli_debrid
 COPY --from=rclone-binary /usr/local/bin/rclone /usr/local/bin/rclone
+COPY --from=dumb-docs-builder /dumb-docs /usr/share/dumb/docs
 
 RUN LAVAPIPE_ICD="$(find /usr/share/vulkan/icd.d -name 'lvp_icd*.json' -print -quit)" && \
     test -n "$LAVAPIPE_ICD" && \
@@ -287,7 +309,8 @@ COPY . /./
 
 ENV XDG_CONFIG_HOME=/config \
     TERM=xterm \
-    DUMB_VERSION=${DEV_VERSION}
+    DUMB_VERSION=${DEV_VERSION} \
+    DUMB_DOCS_PATH=/usr/share/dumb/docs
 
 ENV PATH="/venv/bin:$PATH"
 

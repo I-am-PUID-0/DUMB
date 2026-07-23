@@ -82,6 +82,7 @@ jobs:
       PGADMIN_VERSION: ${{ steps.resolve_inputs.outputs.PGADMIN_VERSION }}
       POETRY_VERSION: ${{ steps.resolve_inputs.outputs.POETRY_VERSION }}
       APT_REFRESH: ${{ steps.resolve_inputs.outputs.APT_REFRESH }}
+      DUMB_DOCS_REF: ${{ steps.resolve_inputs.outputs.DUMB_DOCS_REF }}
     steps:
       - name: Resolve reproducible build inputs
         id: resolve_inputs
@@ -124,9 +125,10 @@ jobs:
           PGADMIN_VERSION=$(public_json https://pypi.org/pypi/pgadmin4/json | jq -er '.info.version')
           POETRY_VERSION=$(public_json https://pypi.org/pypi/poetry/json | jq -er '.info.version')
           APT_REFRESH=$(date -u +%Y-%m-%d)
+          DUMB_DOCS_REF=$(github_api https://api.github.com/repos/I-am-PUID-0/DUMB_docs/commits/master | jq -er '.sha')
 
           for name in SYS_STATS_TAG ZILEAN_TAG DUMB_FRONTEND_TAG CLI_DEBRID_TAG RCLONE_TAG ZURG_REF \
-            GO_VERSION NPM_VERSION PNPM_VERSION PGADMIN_VERSION POETRY_VERSION APT_REFRESH; do
+            GO_VERSION NPM_VERSION PNPM_VERSION PGADMIN_VERSION POETRY_VERSION APT_REFRESH DUMB_DOCS_REF; do
             value=${!name}
             [[ -n "$value" && "$value" != "null" ]] || { echo "Failed to resolve $name" >&2; exit 1; }
             echo "$name=$value" >> "$GITHUB_OUTPUT"
@@ -202,6 +204,7 @@ jobs:
             PGADMIN_VERSION=${{ needs.fetch-latest-tags.outputs.PGADMIN_VERSION }}
             POETRY_VERSION=${{ needs.fetch-latest-tags.outputs.POETRY_VERSION }}
             APT_REFRESH=${{ needs.fetch-latest-tags.outputs.APT_REFRESH }}
+            DUMB_DOCS_REF=${{ needs.fetch-latest-tags.outputs.DUMB_DOCS_REF }}
             DEV_VERSION=${{ needs.setup.outputs.DEV_VERSION }}
 
   build-arm64-digest:
@@ -274,6 +277,7 @@ jobs:
             PGADMIN_VERSION=${{ needs.fetch-latest-tags.outputs.PGADMIN_VERSION }}
             POETRY_VERSION=${{ needs.fetch-latest-tags.outputs.POETRY_VERSION }}
             APT_REFRESH=${{ needs.fetch-latest-tags.outputs.APT_REFRESH }}
+            DUMB_DOCS_REF=${{ needs.fetch-latest-tags.outputs.DUMB_DOCS_REF }}
             DEV_VERSION=${{ needs.setup.outputs.DEV_VERSION }}
 
   build-and-push:
@@ -366,6 +370,10 @@ jobs:
           docker exec $CONTAINER_ID grep -q "## rclone" /usr/share/doc/dumb/THIRD_PARTY_NOTICES.md
           docker exec $CONTAINER_ID grep -q "## EnterpriseDB system_stats" /usr/share/doc/dumb/THIRD_PARTY_NOTICES.md
           docker exec $CONTAINER_ID grep -q "## pgAdmin 4" /usr/share/doc/dumb/THIRD_PARTY_NOTICES.md
+          docker exec $CONTAINER_ID test -s /usr/share/dumb/docs/index.md
+          docker exec $CONTAINER_ID test -s /usr/share/dumb/docs/features/ai-assistant.md
+          docker exec $CONTAINER_ID sh -c \
+            'test -z "$(find /usr/share/dumb/docs -type f ! -name "*.md" -print -quit)"'
           PSQL_VERSION=$(docker exec $CONTAINER_ID psql --version | awk '{print $3}')
           PGADMIN_VERSION=$(docker exec $CONTAINER_ID /pgadmin/venv/bin/python -c "import importlib.metadata; print(importlib.metadata.version('pgadmin4'))" 2>/dev/null || echo "Not Installed")
           NODE_VERSION=$(docker exec $CONTAINER_ID node -v 2>/dev/null || echo "Not Installed")

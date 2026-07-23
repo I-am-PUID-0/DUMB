@@ -64,7 +64,14 @@
       "include_dependency_graph": true,
       "include_docs_context": true,
       "include_process_list": false,
-      "max_docs_chars": 12000
+      "max_docs_chars": 12000,
+      "diagnostic_window_hours": 24,
+      "comparison_mode": "previous_period",
+      "deep_log_scan": true,
+      "max_log_scan_mb": 128,
+      "include_metrics": true,
+      "include_change_history": true,
+      "include_native_diagnostics": true
     },
     "ffprobe_monitor": {
       "enabled": true,

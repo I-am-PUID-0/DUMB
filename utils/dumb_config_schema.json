@@ -249,6 +249,36 @@
               "type": "integer",
               "minimum": 1000,
               "maximum": 60000
+            },
+            "diagnostic_window_hours": {
+              "type": "number",
+              "minimum": 0.25,
+              "maximum": 720
+            },
+            "comparison_mode": {
+              "type": "string",
+              "enum": [
+                "previous_period",
+                "since_change",
+                "none"
+              ]
+            },
+            "deep_log_scan": {
+              "type": "boolean"
+            },
+            "max_log_scan_mb": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1024
+            },
+            "include_metrics": {
+              "type": "boolean"
+            },
+            "include_change_history": {
+              "type": "boolean"
+            },
+            "include_native_diagnostics": {
+              "type": "boolean"
             }
           },
           "required": [
@@ -265,7 +295,14 @@
             "include_dependency_graph",
             "include_docs_context",
             "include_process_list",
-            "max_docs_chars"
+            "max_docs_chars",
+            "diagnostic_window_hours",
+            "comparison_mode",
+            "deep_log_scan",
+            "max_log_scan_mb",
+            "include_metrics",
+            "include_change_history",
+            "include_native_diagnostics"
           ]
         },
         "ffprobe_monitor": {

@@ -128,6 +128,7 @@ APPLICATION_SCHEMA = {
         {"name": "apiKey", "value": "old-key"},
         {"name": "syncCategories", "value": [2000, 5000]},
         {"name": "syncLevel", "value": "addOnly"},
+        {"name": "prowlarrUrl", "value": "http://localhost:9696"},
     ],
 }
 
@@ -271,6 +272,7 @@ class ProwlarrPayloadHelperTests(unittest.TestCase):
             "http://127.0.0.1:6969",
             "arr-key",
             "default",
+            "http://127.0.0.1:9697",
             tag_ids=[42],
         )
         fields = {field["name"]: field["value"] for field in payload["fields"]}
@@ -280,6 +282,7 @@ class ProwlarrPayloadHelperTests(unittest.TestCase):
         self.assertEqual(payload["tags"], [42])
         self.assertEqual(fields["baseUrl"], "http://127.0.0.1:6969")
         self.assertEqual(fields["apiKey"], "arr-key")
+        self.assertEqual(fields["prowlarrUrl"], "http://127.0.0.1:9697")
         self.assertEqual(
             fields["syncCategories"], prowlarr_settings.WHISPARR_SYNC_CATEGORIES
         )
@@ -296,6 +299,7 @@ class ProwlarrPayloadHelperTests(unittest.TestCase):
             "http://127.0.0.1:7878",
             "arr-key",
             "movies",
+            "http://127.0.0.1:9697",
         )
         fields = {field["name"]: field["value"] for field in payload["fields"]}
 
