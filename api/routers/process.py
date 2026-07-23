@@ -5180,6 +5180,7 @@ async def get_capabilities(current_user: str = Depends(get_optional_current_user
         "metrics_history_hot_activation": True,
         "metrics_filesystem_selection": True,
         "metrics_network_interface_selection": True,
+        "plex_status_metric": True,
         "database_health_service_keys": sorted(SUPPORTED_SERVICE_KEYS),
         "notifications": True,
         "ai_diagnostics": True,

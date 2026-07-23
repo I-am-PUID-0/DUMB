@@ -152,6 +152,10 @@
         "interval_sec": 60,
         "log_tail_bytes": 262144,
         "services": {}
+      },
+      "plex_status": {
+        "enabled": false,
+        "interval_sec": 300
       }
     },
     "notifications": {

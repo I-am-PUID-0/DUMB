@@ -85,6 +85,22 @@ async def get_database_health(
     return result
 
 
+@metrics_router.get("/plex-status")
+async def get_plex_status(
+    refresh: bool = Query(default=False),
+    collector=Depends(get_metrics_collector),
+    current_user: str = Depends(get_optional_current_user),
+):
+    if refresh:
+        collector.plex_status.invalidate()
+    return await run_in_threadpool(
+        collector.plex_status.snapshot,
+        CONFIG_MANAGER.config,
+        True,
+        True,
+    )
+
+
 @metrics_router.get("/history")
 async def get_metrics_history(
     since: float | None = Query(default=None),

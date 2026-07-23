@@ -3,6 +3,7 @@ import time
 import psutil
 
 from utils.database_health import DatabaseHealthCollector
+from utils.plex_status import PlexStatusCollector
 
 DEFAULT_FILESYSTEM_PATHS = ["/"]
 DEFAULT_NETWORK_INTERFACES = ["all"]
@@ -56,6 +57,7 @@ class MetricsCollector:
         self._cgroup_last_cpu_usage = None
         self._cgroup_last_cpu_time = None
         self.database_health = DatabaseHealthCollector(logger=logger)
+        self.plex_status = PlexStatusCollector(logger=logger)
 
     def snapshot(
         self, external_limit=20, database_details=True, database_refresh=False
@@ -75,6 +77,10 @@ class MetricsCollector:
                 CONFIG_MANAGER.config,
                 details=database_details,
                 refresh_if_stale=database_refresh,
+            ),
+            "plex_status": self.plex_status.snapshot(
+                CONFIG_MANAGER.config,
+                refresh_if_stale=True,
             ),
         }
 

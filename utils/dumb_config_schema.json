@@ -656,6 +656,28 @@
                 "services"
               ],
               "additionalProperties": false
+            },
+            "plex_status": {
+              "type": "object",
+              "description": "Optional cached metric sourced from the public Plex status page.",
+              "properties": {
+                "enabled": {
+                  "type": "boolean",
+                  "default": false
+                },
+                "interval_sec": {
+                  "type": "integer",
+                  "minimum": 60,
+                  "maximum": 3600,
+                  "default": 300,
+                  "description": "Minimum seconds between requests to the Plex public status feed."
+                }
+              },
+              "required": [
+                "enabled",
+                "interval_sec"
+              ],
+              "additionalProperties": false
             }
           },
           "required": [
@@ -668,7 +690,8 @@
             "history_max_total_mb",
             "history_dir",
             "storage",
-            "database_health"
+            "database_health",
+            "plex_status"
           ]
         },
         "notifications": {
