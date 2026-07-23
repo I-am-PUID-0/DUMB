@@ -458,7 +458,6 @@ def setup_branch_version(process_handler, config, process_name, key):
 
     def _branch_state_path(target_dir: str, service_key: str) -> str:
         state_dir = "/config/.dumb_branch_state"
-        os.makedirs(state_dir, exist_ok=True)
         process_slug = re.sub(
             r"[^a-z0-9]+", "-", str(process_name or service_key).lower()
         ).strip("-")
@@ -493,6 +492,7 @@ def setup_branch_version(process_handler, config, process_name, key):
     def _write_branch_state(target_dir: str, service_key: str, state: dict):
         state_path = _branch_state_path(target_dir, service_key)
         try:
+            os.makedirs(os.path.dirname(state_path), exist_ok=True)
             with open(state_path, "w") as f:
                 json.dump(state, f, indent=2)
             chown_single(os.path.dirname(state_path), user_id, group_id)

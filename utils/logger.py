@@ -630,22 +630,7 @@ class WebSocketHandler(logging.Handler):
 
     def emit(self, record):
         log_message = self.format(record)
-        try:
-            loop = asyncio.get_running_loop()
-            asyncio.create_task(self.manager.broadcast(log_message))
-        except RuntimeError:
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            try:
-                loop.run_until_complete(self.manager.broadcast(log_message))
-            finally:
-                pending_tasks = asyncio.all_tasks(loop)
-                for task in pending_tasks:
-                    task.cancel()
-                loop.run_until_complete(
-                    asyncio.gather(*pending_tasks, return_exceptions=True)
-                )
-                loop.close()
+        self.manager.schedule_broadcast(log_message)
 
 
 def get_logger(log_name=None, log_dir=None, websocket_manager=None):

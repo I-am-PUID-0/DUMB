@@ -2497,7 +2497,12 @@ def symlink_backup_manifests(
     pattern = _snapshot_filename_glob(process_name, template)
     filename_pattern = os.path.basename(pattern)
     matches = []
-    for name in os.listdir(SYMLINK_SNAPSHOT_ROOT):
+    try:
+        snapshot_names = os.listdir(SYMLINK_SNAPSHOT_ROOT)
+    except FileNotFoundError:
+        snapshot_names = []
+
+    for name in snapshot_names:
         if not fnmatch.fnmatch(name, filename_pattern):
             continue
         if not re.match(r"^[A-Za-z0-9._-]+$", name):

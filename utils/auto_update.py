@@ -92,6 +92,32 @@ class Update:
                 return "release"
         return None
 
+    @staticmethod
+    def _configured_versions_match(current_version, configured_version):
+        current = str(current_version or "").strip().lower()
+        configured = str(configured_version or "").strip().lower()
+        if not current or not configured:
+            return False
+        if current == configured:
+            return True
+        return current.removeprefix("v") == configured.removeprefix("v")
+
+    @staticmethod
+    def _configured_target_label(config, block_reason):
+        if block_reason == "commit":
+            commit_sha = str(config.get("commit_sha") or "").strip().lower()
+            return f"commit {commit_sha[:12]}"
+        if block_reason == "branch":
+            branch = str(config.get("branch") or "main").strip() or "main"
+            return f"branch {branch}"
+        if block_reason == "release":
+            release = str(config.get("release_version") or "latest").strip() or "latest"
+            return f"release {release}"
+        if block_reason == "pinned_version":
+            version = str(config.get("pinned_version") or "").strip()
+            return f"version {version}"
+        return str(block_reason or "target").replace("_", " ")
+
     def _safe_record_update_status(self, process_name, payload):
         try:
             from utils.dependencies import get_api_state
@@ -452,7 +478,50 @@ class Update:
                 ),
                 "current_version": current_version or "unknown",
                 "available_version": configured_version,
+                "configured_target_kind": "commit",
                 "configured_target_installed": current_version == configured_version,
+                "checked_at": checked_at,
+                "auto_update_enabled": False,
+                "auto_update_interval": interval_hours,
+                "auto_update_start_time": start_time,
+                "next_check_at": None,
+            }
+
+        release_value = str(config.get("release_version") or "").strip()
+        if (
+            block_reason == "release"
+            and release_value
+            and release_value.lower() != "latest"
+        ):
+            current_version, current_error = versions.version_check(
+                process_name, instance_name, key
+            )
+            if not current_version:
+                return {
+                    "status": "error",
+                    "reason": "version_check_failed",
+                    "message": current_error,
+                    "checked_at": checked_at,
+                    "auto_update_enabled": False,
+                    "auto_update_interval": interval_hours,
+                    "auto_update_start_time": start_time,
+                    "next_check_at": None,
+                }
+            configured_target_installed = self._configured_versions_match(
+                current_version, release_value
+            )
+            return {
+                "status": ("no_update" if configured_target_installed else "blocked"),
+                "reason": "release",
+                "message": (
+                    "Configured release is installed"
+                    if configured_target_installed
+                    else "Configured release is ready to install"
+                ),
+                "current_version": current_version,
+                "available_version": release_value,
+                "configured_target_kind": "release",
+                "configured_target_installed": configured_target_installed,
                 "checked_at": checked_at,
                 "auto_update_enabled": False,
                 "auto_update_interval": interval_hours,
@@ -503,6 +572,8 @@ class Update:
                     "current_version": current_version,
                     "available_version": available_version,
                     "message": "No updates available",
+                    "configured_target_kind": "branch",
+                    "configured_target_installed": True,
                     "checked_at": checked_at,
                     "auto_update_enabled": auto_update_enabled,
                     "auto_update_interval": interval_hours,
@@ -520,6 +591,8 @@ class Update:
                 "available_version": available_version,
                 "reason": block_reason,
                 "message": "Branch update available",
+                "configured_target_kind": "branch",
+                "configured_target_installed": False,
                 "checked_at": checked_at,
                 "auto_update_enabled": auto_update_enabled,
                 "auto_update_interval": interval_hours,
@@ -560,7 +633,7 @@ class Update:
         current_version = update_info.get("current_version")
         latest_version = update_info.get("latest_version")
         if not update_needed:
-            return {
+            payload = {
                 "status": "no_update",
                 "current_version": current_version,
                 "available_version": latest_version,
@@ -571,12 +644,21 @@ class Update:
                 "auto_update_start_time": start_time,
                 "next_check_at": next_check_at,
             }
+            if block_reason == "release":
+                payload.update(
+                    {
+                        "reason": "release",
+                        "configured_target_kind": "release",
+                        "configured_target_installed": True,
+                    }
+                )
+            return payload
 
         status = "update_available"
         if block_reason:
             status = "blocked"
 
-        return {
+        payload = {
             "status": status,
             "current_version": current_version,
             "available_version": latest_version,
@@ -588,6 +670,14 @@ class Update:
             "auto_update_start_time": start_time,
             "next_check_at": next_check_at,
         }
+        if block_reason == "release":
+            payload.update(
+                {
+                    "configured_target_kind": "release",
+                    "configured_target_installed": False,
+                }
+            )
+        return payload
 
     def _manual_check_arr(
         self,
@@ -937,20 +1027,11 @@ class Update:
                     )
                 else:
                     if allow_override:
-                        preserve_branch_mode = (
-                            bool(original.get("branch_enabled"))
-                            and not str(original.get("commit_sha") or "").strip()
-                            and not target
-                        )
                         config["pinned_version"] = ""
                         config["commit_sha"] = ""
-                        if not preserve_branch_mode:
-                            config["branch_enabled"] = False
-                        if config.get(
-                            "release_version_enabled"
-                        ) and not self._release_is_nightly_or_prerelease(config):
-                            config["release_version_enabled"] = False
-                            config["release_version"] = ""
+                        config["branch_enabled"] = False
+                        config["release_version_enabled"] = False
+                        config["release_version"] = ""
                         temporary_source_guard.update(
                             {
                                 source_key: config.get(source_key)
@@ -1031,10 +1112,7 @@ class Update:
         if not process:
             return False, f"Failed to start {process_name}: {error}"
 
-        target_label = block_reason.replace("_", " ")
-        commit_sha = str(config.get("commit_sha") or "").strip().lower()
-        if commit_sha:
-            target_label = f"commit {commit_sha[:12]}"
+        target_label = self._configured_target_label(config, block_reason)
         return True, f"Installed configured {target_label} for {process_name}."
 
     def _cancel_auto_update_job(self, process_name):

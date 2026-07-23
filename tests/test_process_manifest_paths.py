@@ -24,6 +24,7 @@ def _install_process_router_stubs():
     fastapi.HTTPException = HTTPException
     fastapi.Depends = lambda *args, **kwargs: None
     fastapi.Query = lambda default=None, *args, **kwargs: default
+    fastapi.WebSocket = type("WebSocket", (), {})
     sys.modules["fastapi"] = fastapi
 
     fastapi_concurrency = types.ModuleType("fastapi.concurrency")
@@ -61,6 +62,8 @@ def _install_process_router_stubs():
     sys.modules["utils.config_loader"] = config_loader
 
     setup = types.ModuleType("utils.setup")
+    setup.COMMIT_PIN_SERVICE_KEYS = set()
+    setup.ensure_managed_postgres_database = lambda *args, **kwargs: None
     setup.setup_project = lambda *args, **kwargs: None
     sys.modules["utils.setup"] = setup
 
@@ -135,6 +138,31 @@ class ProcessManifestPathTests(unittest.TestCase):
                 "/config/symlink-repair/snapshots-old/latest.json",
             )
         )
+
+    def test_backup_manifest_list_is_empty_when_snapshot_root_is_missing(self):
+        with (
+            patch.object(
+                process_router.CONFIG_MANAGER,
+                "config",
+                {"decypharr": {"symlink_backup_path": ""}},
+                create=True,
+            ),
+            patch.object(
+                process_router,
+                "find_service_config",
+                return_value={"symlink_backup_path": ""},
+            ),
+            patch.object(
+                process_router.os,
+                "listdir",
+                side_effect=FileNotFoundError,
+            ),
+        ):
+            response = process_router.symlink_backup_manifests("Decypharr")
+
+        self.assertEqual(response["process_name"], "Decypharr")
+        self.assertEqual(response["manifests"], [])
+        self.assertEqual(response["count"], 0)
 
 
 if __name__ == "__main__":
