@@ -858,44 +858,62 @@ class Update:
 
     def manual_update_install(self, process_name, allow_override=False, target=None):
         key, instance_name = CONFIG_MANAGER.find_key_for_process(process_name)
-        config = CONFIG_MANAGER.get_instance(instance_name, key)
-        if not config:
-            payload = {
-                "status": "error",
-                "reason": "config_not_found",
-                "message": f"Configuration for {process_name} not found.",
-            }
-            self._safe_record_update_status(process_name, payload)
-            return payload
-        if not self.supports_manual_update(key, config):
-            payload = {
-                "status": "unsupported",
-                "reason": "unsupported",
-                "message": f"Manual updates are not supported for {process_name}.",
-            }
-            self._safe_record_update_status(process_name, payload)
-            return payload
-
-        block_reason = self._get_update_block_reason(config)
-        if block_reason and not allow_override:
-            payload = {
-                "status": "blocked",
-                "reason": block_reason,
-                "message": f"Updates blocked for {process_name}.",
-            }
-            self._safe_record_update_status(process_name, payload)
-            return payload
-
-        original = {
-            "pinned_version": config.get("pinned_version"),
-            "commit_sha": config.get("commit_sha"),
-            "release_version_enabled": config.get("release_version_enabled"),
-            "release_version": config.get("release_version"),
-            "branch_enabled": config.get("branch_enabled"),
-            "branch": config.get("branch"),
-        }
-
+        self.logger.info(
+            "Manual update install requested for %s (override=%s, target=%s).",
+            process_name,
+            bool(allow_override),
+            target or "configured",
+        )
         with self.updating:
+            # Resolve the live configuration after acquiring the update lock. A
+            # queued manual update must not act on source settings captured
+            # before an earlier install completed.
+            config = CONFIG_MANAGER.get_instance(instance_name, key)
+            if not config:
+                payload = {
+                    "status": "error",
+                    "reason": "config_not_found",
+                    "message": f"Configuration for {process_name} not found.",
+                }
+                self._safe_record_update_status(process_name, payload)
+                return payload
+            if not self.supports_manual_update(key, config):
+                payload = {
+                    "status": "unsupported",
+                    "reason": "unsupported",
+                    "message": f"Manual updates are not supported for {process_name}.",
+                }
+                self._safe_record_update_status(process_name, payload)
+                return payload
+
+            block_reason = self._get_update_block_reason(config)
+            if block_reason and not allow_override:
+                payload = {
+                    "status": "blocked",
+                    "reason": block_reason,
+                    "message": f"Updates blocked for {process_name}.",
+                }
+                self._safe_record_update_status(process_name, payload)
+                return payload
+
+            original = {
+                "pinned_version": config.get("pinned_version"),
+                "commit_sha": config.get("commit_sha"),
+                "release_version_enabled": config.get("release_version_enabled"),
+                "release_version": config.get("release_version"),
+                "branch_enabled": config.get("branch_enabled"),
+                "branch": config.get("branch"),
+            }
+            temporary_source_guard = {
+                source_key: config.get(source_key)
+                for source_key in (
+                    "pinned_version",
+                    "commit_sha",
+                    "release_version_enabled",
+                    "branch_enabled",
+                    "branch",
+                )
+            }
             try:
                 if allow_override:
                     preserve_branch_mode = (
@@ -912,11 +930,18 @@ class Update:
                     ) and not self._release_is_nightly_or_prerelease(config):
                         config["release_version_enabled"] = False
                         config["release_version"] = ""
+                    temporary_source_guard.update(
+                        {
+                            source_key: config.get(source_key)
+                            for source_key in temporary_source_guard
+                        }
+                    )
                 if target:
                     target_value = str(target).lower()
                     if target_value in {"prerelease", "nightly"}:
                         config["release_version_enabled"] = True
                         config["release_version"] = target_value
+                        temporary_source_guard["release_version_enabled"] = True
 
                 success, message = self.update_check(
                     process_name, config, key, instance_name
@@ -939,16 +964,56 @@ class Update:
                 self._safe_record_update_status(process_name, payload)
                 return payload
             finally:
-                config["pinned_version"] = original.get("pinned_version")
-                config["commit_sha"] = original.get("commit_sha")
-                config["release_version_enabled"] = original.get(
-                    "release_version_enabled"
+                source_changed_during_update = bool(
+                    any(
+                        config.get(source_key) != expected_value
+                        for source_key, expected_value in temporary_source_guard.items()
+                    )
                 )
-                config["release_version"] = original.get("release_version")
-                config["branch_enabled"] = original.get("branch_enabled")
-                config["branch"] = original.get("branch")
+                if source_changed_during_update:
+                    self.logger.info(
+                        "Preserving newer source selection for %s saved during manual update.",
+                        process_name,
+                    )
+                else:
+                    config["pinned_version"] = original.get("pinned_version")
+                    config["commit_sha"] = original.get("commit_sha")
+                    config["release_version_enabled"] = original.get(
+                        "release_version_enabled"
+                    )
+                    config["release_version"] = original.get("release_version")
+                    config["branch_enabled"] = original.get("branch_enabled")
+                    config["branch"] = original.get("branch")
+
+    def _cancel_auto_update_job(self, process_name):
+        existing_job = Update._jobs.get(process_name)
+        if existing_job:
+            try:
+                self.scheduler.cancel_job(existing_job)
+            except Exception:
+                pass
+            Update._jobs.pop(process_name, None)
+        Update._next_check_at.pop(process_name, None)
 
     def update_schedule(self, process_name, config, key, instance_name):
+        commit_sha = str(config.get("commit_sha") or "").strip().lower()
+        if commit_sha:
+            self._cancel_auto_update_job(process_name)
+            self._safe_record_update_status(
+                process_name,
+                {
+                    "status": "blocked",
+                    "reason": "commit",
+                    "message": (
+                        f"{process_name} is pinned to commit {commit_sha[:12]}. "
+                        "Automatic updates are disabled until the pin is changed or cleared."
+                    ),
+                    "auto_update_enabled": False,
+                    "next_check_at": None,
+                },
+            )
+            return
+
         interval_minutes = int(self.auto_update_interval(process_name, config) * 60)
         start_time = self.auto_update_start_time(process_name, config)
         self.logger.debug(
@@ -1028,19 +1093,21 @@ class Update:
         config = CONFIG_MANAGER.get_instance(instance_name, key)
         if not config:
             return False, "Configuration not found"
-        if not config.get("auto_update"):
-            existing_job = Update._jobs.get(process_name)
-            if existing_job:
-                try:
-                    self.scheduler.cancel_job(existing_job)
-                except Exception:
-                    pass
-                Update._jobs.pop(process_name, None)
-            Update._next_check_at.pop(process_name, None)
+        commit_sha = str(config.get("commit_sha") or "").strip().lower()
+        if not config.get("auto_update") or commit_sha:
+            self._cancel_auto_update_job(process_name)
+            blocked_by_commit = bool(commit_sha)
             self._safe_record_update_status(
                 process_name,
                 {
-                    "status": "disabled",
+                    "status": "blocked" if blocked_by_commit else "disabled",
+                    "reason": "commit" if blocked_by_commit else None,
+                    "message": (
+                        f"{process_name} is pinned to commit {commit_sha[:12]}. "
+                        "Automatic updates are disabled until the pin is changed or cleared."
+                        if blocked_by_commit
+                        else "Auto-update disabled"
+                    ),
                     "auto_update_enabled": False,
                     "auto_update_interval": self.auto_update_interval(
                         process_name, config
@@ -1051,6 +1118,8 @@ class Update:
                     "next_check_at": None,
                 },
             )
+            if blocked_by_commit:
+                return True, "Auto-update disabled by commit pin"
             return True, "Auto-update disabled"
 
         self.update_schedule(process_name, config, key, instance_name)
@@ -1396,6 +1465,23 @@ class Update:
         latest_config = CONFIG_MANAGER.get_instance(instance_name, key)
         if not latest_config:
             return
+        commit_sha = str(latest_config.get("commit_sha") or "").strip().lower()
+        if commit_sha:
+            self._cancel_auto_update_job(process_name)
+            self._safe_record_update_status(
+                process_name,
+                {
+                    "status": "blocked",
+                    "reason": "commit",
+                    "message": (
+                        f"{process_name} is pinned to commit {commit_sha[:12]}. "
+                        "Automatic updates are disabled until the pin is changed or cleared."
+                    ),
+                    "auto_update_enabled": False,
+                    "next_check_at": None,
+                },
+            )
+            return
         if not latest_config.get("auto_update"):
             return
 
@@ -1441,16 +1527,24 @@ class Update:
                 "Failed to reschedule symlink backup for %s: %s", process_name, e
             )
 
-        if (
+        commit_sha = str(config.get("commit_sha") or "").strip().lower()
+        if commit_sha:
+            enable_update = False
+            self._cancel_auto_update_job(process_name)
+            self.logger.info(
+                "Automatic updates disabled for %s because it is pinned to commit %s.",
+                process_name,
+                commit_sha[:12],
+            )
+        elif (
             config.get("pinned_version")
-            or str(config.get("commit_sha") or "").strip()
             or config.get("release_version_enabled")
             or config.get("branch_enabled")
         ):
             if not self._release_is_nightly_or_prerelease(config):
                 enable_update = False
                 self.logger.info(
-                    "Automatic updates disabled for %s due to pinned, commit, release, or branch configuration.",
+                    "Automatic updates disabled for %s due to pinned, release, or branch configuration.",
                     process_name,
                 )
 
@@ -1615,6 +1709,13 @@ class Update:
                     raise RuntimeError(error)
 
     def update_check(self, process_name, config, key, instance_name):
+        commit_sha = str(config.get("commit_sha") or "").strip().lower()
+        if commit_sha:
+            return (
+                False,
+                f"No updates available for {process_name}: pinned to commit {commit_sha[:12]}.",
+            )
+
         if key == "plex":
             return self.update_check_plex(process_name, config, key, instance_name)
         if key == "jellyfin":
@@ -1691,13 +1792,6 @@ class Update:
                 return self.update_check_arr_latest(
                     process_name, config, key, instance_name
                 )
-
-        commit_sha = str(config.get("commit_sha") or "").strip().lower()
-        if commit_sha:
-            return (
-                False,
-                f"{process_name} is pinned to commit {commit_sha[:12]}; no moving update target is configured.",
-            )
 
         if config.get("branch_enabled"):
             repo_owner = config.get("repo_owner")

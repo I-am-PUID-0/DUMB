@@ -9,6 +9,9 @@ from utils.auto_update import Update
 class UpdateNotificationTests(unittest.TestCase):
     def _updater(self):
         updater = object.__new__(Update)
+        updater.logger = Mock()
+        updater.scheduler = Mock()
+        updater.updating = threading.Lock()
         updater._safe_record_update_status = Mock()
         updater.supports_manual_update = Mock(return_value=True)
         return updater
@@ -49,6 +52,203 @@ class UpdateNotificationTests(unittest.TestCase):
         self.assertEqual(
             "commit",
             updater._get_update_block_reason({"commit_sha": "a" * 40}),
+        )
+
+    def test_commit_pin_disables_initial_update_even_for_prerelease_selector(self):
+        updater = self._updater()
+        updater.process_handler = Mock(
+            preinstall_complete=False,
+            preinstalled_processes=set(),
+        )
+        updater.reschedule_symlink_backup = Mock()
+        updater.initial_update_check = Mock()
+        updater.start_process = Mock(return_value=("started", None))
+        config_manager = Mock()
+        config_manager.find_key_for_process.return_value = ("nzbdav", None)
+        config_manager.get_instance.return_value = {
+            "process_name": "NzbDAV",
+            "auto_update": True,
+            "commit_sha": "a" * 40,
+            "release_version_enabled": True,
+            "release_version": "prerelease",
+        }
+        existing_job = object()
+        Update._jobs = {"NzbDAV": existing_job}
+        Update._next_check_at = {"NzbDAV": 123}
+
+        with (
+            patch("utils.auto_update.CONFIG_MANAGER", config_manager),
+            patch("utils.auto_update.setup_project", return_value=(True, None)),
+            patch("utils.auto_update.threading.Thread") as update_thread,
+        ):
+            process, error = updater.auto_update("NzbDAV", enable_update=True)
+
+        self.assertEqual("started", process)
+        self.assertIsNone(error)
+        updater.initial_update_check.assert_not_called()
+        update_thread.assert_not_called()
+        updater.scheduler.cancel_job.assert_called_once_with(existing_job)
+        self.assertNotIn("NzbDAV", Update._jobs)
+        self.assertNotIn("NzbDAV", Update._next_check_at)
+
+    def test_reschedule_cancels_existing_job_for_commit_pin(self):
+        updater = self._updater()
+        existing_job = object()
+        Update._jobs = {"NzbDAV": existing_job}
+        Update._next_check_at = {"NzbDAV": 123}
+        updater.update_schedule = Mock()
+        updater.auto_update_interval = Mock(return_value=24)
+        updater.auto_update_start_time = Mock(return_value="04:00")
+        config_manager = Mock()
+        config_manager.find_key_for_process.return_value = ("nzbdav", None)
+        config_manager.get_instance.return_value = {
+            "auto_update": True,
+            "commit_sha": "a" * 40,
+        }
+
+        with patch("utils.auto_update.CONFIG_MANAGER", config_manager):
+            success, message = updater.reschedule_auto_update("NzbDAV")
+
+        self.assertTrue(success)
+        self.assertEqual("Auto-update disabled by commit pin", message)
+        updater.scheduler.cancel_job.assert_called_once_with(existing_job)
+        updater.update_schedule.assert_not_called()
+        self.assertNotIn("NzbDAV", Update._jobs)
+        self.assertNotIn("NzbDAV", Update._next_check_at)
+        status = updater._safe_record_update_status.call_args.args[1]
+        self.assertEqual("blocked", status["status"])
+        self.assertEqual("commit", status["reason"])
+        self.assertFalse(status["auto_update_enabled"])
+
+    def test_stale_scheduled_callback_stops_when_commit_pin_is_detected(self):
+        updater = self._updater()
+        existing_job = object()
+        Update._jobs = {"NzbDAV": existing_job}
+        Update._next_check_at = {"NzbDAV": 123}
+        updater.scheduled_update_check = Mock()
+        config_manager = Mock()
+        config_manager.get_instance.return_value = {
+            "auto_update": True,
+            "commit_sha": "a" * 40,
+        }
+
+        with patch("utils.auto_update.CONFIG_MANAGER", config_manager):
+            updater._run_scheduled_update_if_due(
+                "NzbDAV",
+                {"auto_update": True},
+                "nzbdav",
+                None,
+            )
+
+        updater.scheduler.cancel_job.assert_called_once_with(existing_job)
+        updater.scheduled_update_check.assert_not_called()
+        self.assertNotIn("NzbDAV", Update._jobs)
+        self.assertNotIn("NzbDAV", Update._next_check_at)
+
+    def test_direct_update_check_never_resolves_latest_for_commit_pin(self):
+        updater = self._updater()
+        updater.process_handler = Mock()
+
+        with patch("utils.auto_update.Versions") as versions:
+            success, message = updater.update_check(
+                "NzbDAV",
+                {
+                    "commit_sha": "a" * 40,
+                    "release_version_enabled": False,
+                    "release_version": "latest",
+                },
+                "nzbdav",
+                None,
+            )
+
+        self.assertFalse(success)
+        self.assertIn("pinned to commit aaaaaaaaaaaa", message)
+        versions.assert_not_called()
+
+    def test_manual_override_preserves_commit_saved_while_install_is_running(self):
+        updater = self._updater()
+        commit_sha = "b" * 40
+        config = {
+            "repo_owner": "nzbdav",
+            "repo_name": "nzbdav",
+            "pinned_version": "",
+            "commit_sha": "",
+            "release_version_enabled": False,
+            "release_version": "latest",
+            "branch_enabled": True,
+            "branch": "main",
+        }
+        config_manager = Mock()
+        config_manager.find_key_for_process.return_value = ("nzbdav", None)
+        config_manager.get_instance.return_value = config
+
+        def install_while_source_changes(*_args):
+            config.update(
+                {
+                    "commit_sha": commit_sha,
+                    "release_version_enabled": False,
+                    "branch_enabled": False,
+                }
+            )
+            return True, "Updated NzbDAV."
+
+        updater.update_check = Mock(side_effect=install_while_source_changes)
+
+        with patch("utils.auto_update.CONFIG_MANAGER", config_manager):
+            payload = updater.manual_update_install("NzbDAV", allow_override=True)
+
+        self.assertEqual("updated", payload["status"])
+        self.assertEqual(commit_sha, config["commit_sha"])
+        self.assertFalse(config["release_version_enabled"])
+        self.assertFalse(config["branch_enabled"])
+        updater.logger.info.assert_any_call(
+            "Preserving newer source selection for %s saved during manual update.",
+            "NzbDAV",
+        )
+        updater.process_handler = Mock()
+        with patch("utils.auto_update.Versions") as versions:
+            success, message = Update.update_check(
+                updater,
+                "NzbDAV",
+                config,
+                "nzbdav",
+                None,
+            )
+        self.assertFalse(success)
+        self.assertIn("pinned to commit bbbbbbbbbbbb", message)
+        versions.assert_not_called()
+
+    def test_manual_latest_install_preserves_commit_saved_while_running(self):
+        updater = self._updater()
+        commit_sha = "c" * 40
+        config = {
+            "repo_owner": "nzbdav",
+            "repo_name": "nzbdav",
+            "pinned_version": "",
+            "commit_sha": "",
+            "release_version_enabled": False,
+            "release_version": "latest",
+            "branch_enabled": False,
+            "branch": "main",
+        }
+        config_manager = Mock()
+        config_manager.find_key_for_process.return_value = ("nzbdav", None)
+        config_manager.get_instance.return_value = config
+
+        def install_while_source_changes(*_args):
+            config["commit_sha"] = commit_sha
+            return True, "Updated NzbDAV."
+
+        updater.update_check = Mock(side_effect=install_while_source_changes)
+
+        with patch("utils.auto_update.CONFIG_MANAGER", config_manager):
+            payload = updater.manual_update_install("NzbDAV")
+
+        self.assertEqual("updated", payload["status"])
+        self.assertEqual(commit_sha, config["commit_sha"])
+        updater.logger.info.assert_any_call(
+            "Preserving newer source selection for %s saved during manual update.",
+            "NzbDAV",
         )
 
     @patch("utils.auto_update.Versions")
