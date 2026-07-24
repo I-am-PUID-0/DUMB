@@ -5024,22 +5024,27 @@
 <p class="admonition-title">First login credentials</p>
 <ul>
 <li><strong>Username:</strong> <code>admin</code></li>
-<li><strong>Password:</strong> <code>admin</code></li>
+<li><strong>Password:</strong> generated uniquely by MediaStorm on first start</li>
 </ul>
-<p>These are public upstream defaults. Change the password immediately after the first login and before exposing MediaStorm outside your trusted network.</p>
+<p>DUMB displays the generated password in a warning on the MediaStorm service page while
+<code>/data/mediastorm/cache/initial_admin_password.txt</code> exists. Reveal or copy it there, sign in,
+and change the password immediately. MediaStorm deletes the bootstrap credential file after
+the password changes, and the DUMB warning then disappears automatically.</p>
+<p>Some upstream builds use the compatibility filename <code>initial_admin_password</code> without the
+<code>.txt</code> suffix. DUMB recognizes either filename.</p>
 </div>
 <ol>
 <li>Select <strong>MediaStorm</strong> under Optional Services during onboarding, or enable it from its DUMB service configuration.</li>
 <li>Start MediaStorm. On first install, DUMB downloads and verifies the architecture-specific OCI layers, builds the local Python subtitle-helper environment, starts PostgreSQL, and waits for it before launching the service. The initial download is several hundred MiB.</li>
 <li>Open the MediaStorm embedded UI. It starts at <code>/admin</code>.</li>
-<li>Sign in with the first-login credentials shown above, then change the password under <strong>Admin UI → Accounts → Change Password</strong>.</li>
+<li>Sign in as <code>admin</code> with the generated password shown on the DUMB service page, then change the password under <strong>Admin UI → Accounts → Change Password</strong>.</li>
 <li>Add TMDB and TVDB API keys in MediaStorm's admin settings. Media discovery will be incomplete until both are configured.</li>
 <li>Configure the Debrid, torrent, or Usenet providers you intend to use.</li>
 <li>Open <code>/watch</code> for the browser client, or point a supported MediaStorm mobile/TV client at the reachable DUMB host and MediaStorm port.</li>
 </ol>
 <div class="admonition warning">
 <p class="admonition-title">Secure the administrative interface</p>
-<p>The initial credentials are public defaults, and <code>/admin</code> controls providers and users. Change the password before exposing MediaStorm beyond a trusted network. Prefer a VPN or a carefully tested authenticated reverse-proxy route; never publish the raw port with its default credentials.</p>
+<p>The generated bootstrap password is a sensitive credential, and <code>/admin</code> controls providers and users. Do not copy it into logs, screenshots, or support bundles. Change it before exposing MediaStorm beyond a trusted network. Prefer a VPN or a carefully tested authenticated reverse-proxy route; never publish the raw port before completing first-login setup.</p>
 </div>
 <hr />
 <h2 id="backups-and-updates">Backups and updates<a class="headerlink" href="#backups-and-updates" title="Permanent link">&para;</a></h2>
@@ -5048,6 +5053,10 @@
 <li>the DUMB-managed PostgreSQL <code>mediastorm</code> database; and</li>
 <li>the persistent <code>/mediastorm</code> directory, especially <code>settings.json</code> and cached application state. <code>/mediastorm/runtime</code> can be excluded when your backup process supports exclusions because DUMB can reinstall it.</li>
 </ul>
+<p>Before first-login setup is complete, backups of the cache may contain
+<code>initial_admin_password.txt</code> (or the extensionless compatibility filename). Treat that backup as
+credential-bearing data. The live bootstrap file is removed by MediaStorm after the admin password
+changes.</p>
 <p>When following <code>latest</code>, use <strong>Check for updates</strong> and <strong>Install update</strong> on the MediaStorm service page for one-time updates, or enable <code>auto_update</code> for scheduled checks. DUMB compares <code>/mediastorm/runtime/version.txt</code> with the latest GitHub release, downloads the official OCI runtime into a staging directory, verifies it, and atomically replaces the old runtime only after validation succeeds. A pin blocks normal update installation until you change/disable the pin or explicitly approve the frontend's override action. Before a major upgrade or rollback, preserve a matching database and settings/cache backup because application migrations can make rollback depend on restoring both together.</p>
 <p>Database Health Monitoring can observe the MediaStorm PostgreSQL database in Standard or Enhanced read-only mode when monitoring is explicitly enabled for the service.</p>
 <hr />
@@ -5058,6 +5067,7 @@
 <h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h2>
 <ul>
 <li><strong>Service waits or exits at startup:</strong> Check PostgreSQL status first, then inspect the MediaStorm service log. DUMB creates the database and connection URL during setup.</li>
+<li><strong>First-login password is not shown:</strong> Confirm MediaStorm has completed its first start, then refresh the service page. If the password was already changed, the bootstrap file and DUMB warning are expected to be gone. Otherwise verify that <code>/data/mediastorm/cache/initial_admin_password.txt</code> exists and is readable by the DUMB container.</li>
 <li><strong>Install fails during an OCI layer download:</strong> Confirm the DUMB container can reach Docker Hub and has enough free space for the compressed image plus the staged runtime. Retrying the start repeats the verified install.</li>
 <li><strong>OCI version mismatch:</strong> Upstream's <code>latest</code> image does not yet match its latest GitHub release. DUMB preserves the existing runtime and refuses to activate the mismatched image; retry after upstream finishes publishing.</li>
 <li><strong>Pinned version cannot be resolved:</strong> Confirm the value is a published MediaStorm release tag, full 40-character commit tag, or complete <code>sha256:</code> digest. Short commit hashes and branch names are intentionally rejected.</li>

@@ -1301,6 +1301,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#mediastorm-first-login-credential" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        MediaStorm first-login credential
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#database-migration-panel" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4833,6 +4844,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#mediastorm-first-login-credential" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        MediaStorm first-login credential
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#database-migration-panel" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -5090,6 +5112,17 @@ config key and process name in monospace.</p>
 <p>The DUMB API service does not show Start/Stop/Restart controls in the UI.</p>
 </div>
 <hr />
+<h2 id="mediastorm-first-login-credential">MediaStorm first-login credential<a class="headerlink" href="#mediastorm-first-login-credential" title="Permanent link">&para;</a></h2>
+<p>On a new MediaStorm installation, MediaStorm generates a one-time password for username <code>admin</code>.
+When the backend advertises <code>mediastorm_initial_admin_password</code>, the MediaStorm service page shows
+a prominent credential notice with masked reveal and copy controls. The password is fetched only
+through the DUMB process API under the same authentication policy as other process endpoints, is
+not stored in browser preferences, and is refreshed while the notice is visible.</p>
+<p>Change the password under <strong>Admin UI → Accounts → Change Password</strong>. MediaStorm then removes
+<code>/data/mediastorm/cache/initial_admin_password.txt</code>; the next frontend refresh detects that removal,
+clears the password from page state, and hides the notice. Some MediaStorm builds use the
+extensionless compatibility filename <code>initial_admin_password</code>, which DUMB also recognizes.</p>
+<hr />
 <h2 id="database-migration-panel">Database Migration panel<a class="headerlink" href="#database-migration-panel" title="Permanent link">&para;</a></h2>
 <p>On Sonarr, Radarr, Lidarr, Prowlarr, Whisparr, Bazarr, Pulsarr, Seerr, and AltMount service pages, <strong>Database Migration</strong> opens a guided SQLite-to-PostgreSQL workflow when the backend advertises <code>postgres_migration</code> and includes the service in <code>postgres_migration_service_keys</code>. Older backends retain the legacy Sonarr/Radarr capability path.</p>
 <p>The panel provides:</p>
@@ -5316,6 +5349,8 @@ Service configs should be saved to file.</p>
 <li>Review source coverage and confidence, then ask follow-up questions from the same evidence session.</li>
 </ol>
 <p>Provider and evidence settings are collapsed by default so routine diagnostics stay focused on the question and measured result. Reports render sanitized Markdown with working tables and include copy/download controls. The raw redacted bundle remains available in an expandable section.</p>
+<p>Provider settings support named saved profiles. Selecting a profile activates it in the backend for both this service page and Stack AI Assist and always repopulates its stored details. Editing those details changes the selector to <strong>Unsaved provider</strong> until the profile is updated; changing the provider type starts a new unsaved provider instead of silently rewriting the prior profile. Provider keys remain stored server-side and are represented in the UI only by a configured-key indicator. Native Gemini, OpenAI, and Anthropic profiles show a managed endpoint instead of an editable Base URL; gateway profiles continue to expose their URL.</p>
+<p>Model discovery retains provider-returned entries but labels known retirements, scheduled shutdown dates, and models incompatible with DUMB's text-diagnostics request. The metadata follows the official Google, OpenAI, and Anthropic lifecycle tables. Retired or incompatible models cannot be tested or used for analysis. Native OpenAI text/Codex models use the Responses API, while embeddings, moderation, media, realtime, and specialized tool-only entries are marked unsupported.</p>
 <p>Deep log scans are performed by the backend against retained files and are not limited by the frontend log table's displayed row count. The configured MiB budget bounds each scan.</p>
 <p>See <a href="../../features/ai-assistant/">AI Assistant</a> for evidence sources, provider configuration, privacy, and safety boundaries.</p>
 <hr />

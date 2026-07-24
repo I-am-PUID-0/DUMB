@@ -5293,6 +5293,30 @@ prerequisite/dependent stages around the selected service.</p>
 <p>Restores the job's preserved application configuration when applicable, persists <code>postgres_enabled: false</code>, and restarts the service against SQLite when it was running. This does not reverse-copy changes made after PostgreSQL cutover.</p>
 <p>The former <code>/process/arr-postgres-migration/*</code> paths remain available as hidden compatibility aliases for older dmbdb clients and existing Sonarr/Radarr deployments.</p>
 <hr />
+<h3 id="get-processmediastorm-initial-admin-password"><code>GET /process/mediastorm-initial-admin-password</code><a class="headerlink" href="#get-processmediastorm-initial-admin-password" title="Permanent link">&para;</a></h3>
+<p>Returns MediaStorm's generated bootstrap credential while its one-time password file exists:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;available&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;username&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;admin&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;password&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;generated-bootstrap-password&quot;</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>After the administrator changes the password, MediaStorm deletes the file and the endpoint returns:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;available&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;username&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;admin&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;password&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>The endpoint uses the existing DUMB authentication dependency, accepts no caller-supplied path, and
+reads only the fixed MediaStorm cache credential. It refuses symlinks, non-regular files, oversized
+values, and multiline values. Responses include <code>Cache-Control: no-store, private</code> and
+<code>Pragma: no-cache</code>; clients must not persist the password.</p>
+<p>DUMB checks <code>/data/mediastorm/cache/initial_admin_password.txt</code> through MediaStorm's configured
+persistent directory and also recognizes the extensionless <code>initial_admin_password</code> filename used
+by some upstream builds. Clients should gate this endpoint on the
+<code>mediastorm_initial_admin_password</code> capability.</p>
+<hr />
 <h3 id="get-processcapabilities"><code>GET /process/capabilities</code><a class="headerlink" href="#get-processcapabilities" title="Permanent link">&para;</a></h3>
 <p>Returns backend capabilities and feature flags. Used by the frontend to determine available features.</p>
 <h4 id="example-response_6">Example Response:<a class="headerlink" href="#example-response_6" title="Permanent link">&para;</a></h4>
@@ -5328,6 +5352,7 @@ prerequisite/dependent stages around the selected service.</p>
 <span class="w">  </span><span class="nt">&quot;metrics_history_hot_activation&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;metrics_filesystem_selection&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;metrics_network_interface_selection&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;mediastorm_initial_admin_password&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;notifications&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span>
 <span class="p">}</span>
 </code></pre></div>
@@ -5437,6 +5462,10 @@ prerequisite/dependent stages around the selected service.</p>
 <tr>
 <td><code>arr_postgres_migration*</code></td>
 <td>Legacy Sonarr/Radarr capability aliases retained for older clients</td>
+</tr>
+<tr>
+<td><code>mediastorm_initial_admin_password</code></td>
+<td>Whether the no-store MediaStorm bootstrap credential endpoint is available</td>
 </tr>
 </tbody>
 </table>

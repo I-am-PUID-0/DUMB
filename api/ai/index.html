@@ -3669,6 +3669,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#provider-profile-endpoints" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Provider Profile Endpoints
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#get-aipresets" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4767,6 +4778,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#provider-profile-endpoints" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Provider Profile Endpoints
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#get-aipresets" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4927,9 +4949,10 @@
 <p>The backend makes provider requests from inside the DUMB container. Use provider URLs that are reachable from that container, not just from your browser.</p>
 <h2 id="get-aisettings"><code>GET /ai/settings</code><a class="headerlink" href="#get-aisettings" title="Permanent link">&para;</a></h2>
 <p>Returns the active AI settings without exposing the stored API key.</p>
-<p>Response includes <code>api_key_configured: true</code> when a key is stored.</p>
+<p>Response includes <code>api_key_configured: true</code> when the active key is stored. It also includes <code>active_profile_id</code> and a <code>profiles</code> array. Each public profile contains provider metadata and <code>api_key_configured</code>, but never the stored <code>api_key</code>.</p>
 <h2 id="put-aisettings"><code>PUT /ai/settings</code><a class="headerlink" href="#put-aisettings" title="Permanent link">&para;</a></h2>
 <p>Updates the <code>dumb.ai</code> settings block. Omit <code>api_key</code> to keep the existing stored key.</p>
+<p>When <code>active_profile_id</code> identifies a saved profile, that profile is authoritative when settings are loaded, and changes to provider, base URL, model, API key, timeout, or temperature are synchronized back into it when settings are saved. Send <code>active_profile_id</code> as an empty string to save the top-level provider fields as an unsaved provider without modifying any saved profile.</p>
 <p>Example payload:</p>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
@@ -4957,11 +4980,11 @@
 </tr>
 <tr>
 <td><code>provider</code></td>
-<td><code>ollama</code>, <code>open_webui</code>, <code>openai</code>, <code>openai_compatible</code>, <code>compatible</code>, <code>litellm</code>, <code>anthropic</code>, or <code>claude</code>.</td>
+<td><code>ollama</code>, <code>gemini</code> (or <code>google_gemini</code>), <code>open_webui</code>, <code>openai</code>, <code>openai_compatible</code>, <code>compatible</code>, <code>litellm</code>, <code>anthropic</code>, or <code>claude</code>.</td>
 </tr>
 <tr>
 <td><code>base_url</code></td>
-<td>Provider endpoint reachable from the DUMB backend container.</td>
+<td>Provider endpoint reachable from the DUMB backend container. For native Gemini, OpenAI, and Anthropic, DUMB ignores custom values and uses the corresponding official endpoint.</td>
 </tr>
 <tr>
 <td><code>model</code></td>
@@ -4969,7 +4992,7 @@
 </tr>
 <tr>
 <td><code>api_key</code></td>
-<td>Optional for local providers; required for hosted OpenAI/Anthropic modes. Omit to preserve a stored key.</td>
+<td>Optional for local providers; required for Gemini and hosted OpenAI/Anthropic modes. Omit to preserve a stored key.</td>
 </tr>
 <tr>
 <td><code>timeout_sec</code></td>
@@ -4977,7 +5000,7 @@
 </tr>
 <tr>
 <td><code>temperature</code></td>
-<td>Provider temperature setting.</td>
+<td>Provider temperature setting where supported. Native Gemini, OpenAI Responses, and Anthropic adapters leave sampling at the model default for compatibility with current models.</td>
 </tr>
 <tr>
 <td><code>max_log_chars</code></td>
@@ -5037,6 +5060,27 @@
 </tr>
 </tbody>
 </table>
+<h2 id="provider-profile-endpoints">Provider Profile Endpoints<a class="headerlink" href="#provider-profile-endpoints" title="Permanent link">&para;</a></h2>
+<p>Provider profiles store multiple named AI providers while preserving the existing top-level active-provider fields for backward compatibility. A maximum of 20 profiles can be saved.</p>
+<p>Frontend clients should gate this UI with process capability <code>ai_provider_profiles</code>.</p>
+<h3 id="post-aiprofiles"><code>POST /ai/profiles</code><a class="headerlink" href="#post-aiprofiles" title="Permanent link">&para;</a></h3>
+<p>Creates a new profile when <code>id</code> is omitted, or updates an existing profile when its <code>id</code> is supplied. The saved profile becomes active.</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Free Gemini&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;provider&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;gemini&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;model&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;gemini-3.5-flash-lite&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;api_key&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;YOUR_GEMINI_API_KEY&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;timeout_sec&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">60</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;temperature&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.2</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>Profile names must be unique and no longer than 80 characters. Omit <code>api_key</code>, or send it blank, to preserve an existing profile key during an update. Native Gemini, OpenAI, and Anthropic profiles always store and use DUMB's managed official endpoints; use the <code>litellm</code> or <code>openai_compatible</code> provider for gateway URLs.</p>
+<p>The response is the complete public AI settings object with keys removed and <code>api_key_configured</code> flags added.</p>
+<h3 id="post-aiprofilesprofile_idactivate"><code>POST /ai/profiles/{profile_id}/activate</code><a class="headerlink" href="#post-aiprofilesprofile_idactivate" title="Permanent link">&para;</a></h3>
+<p>Activates a saved profile and mirrors its provider-specific values into the top-level active AI settings used by tests, diagnostics, and follow-ups.</p>
+<h3 id="delete-aiprofilesprofile_id"><code>DELETE /ai/profiles/{profile_id}</code><a class="headerlink" href="#delete-aiprofilesprofile_id" title="Permanent link">&para;</a></h3>
+<p>Deletes a saved profile. If the deleted profile was active, DUMB activates the first remaining profile. If none remain, it clears the active profile and restores the default Ollama provider fields.</p>
+<p>Profile operations follow the normal DUMB API authentication policy and are recorded in the redacted AI configuration-change ledger.</p>
 <h2 id="get-aipresets"><code>GET /ai/presets</code><a class="headerlink" href="#get-aipresets" title="Permanent link">&para;</a></h2>
 <p>Returns backend-provided prompt presets grouped under <code>service</code> and <code>stack</code>. Each item contains <code>id</code>, <code>label</code>, and <code>question</code>.</p>
 <h2 id="post-aitest"><code>POST /ai/test</code><a class="headerlink" href="#post-aitest" title="Permanent link">&para;</a></h2>
@@ -5097,12 +5141,20 @@
 <td><code>{base_url}/api/tags</code></td>
 </tr>
 <tr>
+<td><code>gemini</code> / <code>google_gemini</code></td>
+<td>Official Google Gemini <code>/models?pageSize=1000</code>, filtered to <code>generateContent</code> models</td>
+</tr>
+<tr>
+<td><code>anthropic</code> / <code>claude</code></td>
+<td>Managed official <code>https://api.anthropic.com/v1/models?limit=1000</code> endpoint</td>
+</tr>
+<tr>
 <td><code>open_webui</code></td>
 <td><code>{base_url}/api/models</code></td>
 </tr>
 <tr>
 <td><code>openai</code></td>
-<td><code>https://api.openai.com/v1/models</code> unless a custom base URL is provided</td>
+<td>Managed official <code>https://api.openai.com/v1/models</code> endpoint</td>
 </tr>
 <tr>
 <td><code>litellm</code></td>
@@ -5133,6 +5185,32 @@
 <span class="w">  </span><span class="p">]</span>
 <span class="p">}</span>
 </code></pre></div>
+<p>Native Gemini, OpenAI, and Anthropic model entries can include a <code>lifecycle</code> object when the model appears in that provider's published retirement schedule:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;gemini-2.0-flash-lite&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;source&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;external&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;source_detail&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;google&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;lifecycle&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;model&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;gemini-2.0-flash-lite&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;retired&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;shutdown_date&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2026-06-01&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;replacement&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;gemini-3.1-flash-lite&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;source_url&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;https://ai.google.dev/gemini-api/docs/deprecations&quot;</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<p><code>status</code> is <code>deprecated</code> before the published shutdown date and <code>retired</code> on or after that date. DUMB preserves lifecycle-marked entries in discovery results because providers can continue returning shut-down IDs, but calls using a known retired model are rejected with HTTP 400 and replacement guidance before contacting the provider. DUMB's weekly <code>AI model lifecycle</code> workflow compares the maintained catalog with the official Google, OpenAI, and Anthropic tables.</p>
+<p>Native provider model entries can also include:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;compatibility&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;model&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;text-embedding-3-small&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;unsupported&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;api_surface&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;responses&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;reason&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;This is an embedding or moderation model. DUMB AI Assist requires a model that returns diagnostic text.&quot;</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>The frontend marks incompatible entries and disables provider tests/analysis for them. Native OpenAI text and Codex requests use <code>POST https://api.openai.com/v1/responses</code>; Open WebUI, LiteLLM, and generic OpenAI-compatible providers retain <code>/chat/completions</code>.</p>
 <h2 id="post-aidiagnose"><code>POST /ai/diagnose</code><a class="headerlink" href="#post-aidiagnose" title="Permanent link">&para;</a></h2>
 <p>Builds a redacted service diagnostic bundle. If <code>dry_run</code> is true, or if AI is disabled, the endpoint returns the bundle without calling a provider. If AI is enabled and <code>dry_run</code> is false, DUMB sends the bundle to the configured provider and returns the analysis.</p>
 <p>Use <code>dry_run: true</code> before enabling provider calls to inspect the exact bundle that would be shared.</p>
@@ -5334,6 +5412,8 @@
 </table>
 <p>When <code>dry_run</code> is false, DUMB compacts stack bundles before sending them to the provider. The API response still includes the full built bundle, but the provider prompt uses shortened docs excerpts, targeted log snippets, capped graph nodes/edges, and omits full service configs with a note. This avoids common context-length failures with local models.</p>
 <p>Provider responses include a <code>usage</code> object when the provider reports token or evaluation counts. OpenAI-compatible providers usually return <code>prompt_tokens</code>, <code>completion_tokens</code>, and <code>total_tokens</code>. Ollama native responses return <code>prompt_eval_count</code> and <code>eval_count</code>; DUMB maps those to prompt/completion/total token fields and preserves timing fields such as <code>total_duration</code>.</p>
+<p>Native OpenAI Responses usage (<code>input_tokens</code>, <code>output_tokens</code>, and <code>total_tokens</code>) is mapped into the same common fields. DUMB sends <code>store: false</code> and converts system messages to Responses API developer messages.</p>
+<p>Gemini native responses expose <code>usageMetadata</code>. DUMB maps <code>promptTokenCount</code>, <code>candidatesTokenCount</code>, and <code>totalTokenCount</code> to the common prompt/completion/total fields and preserves cached/thought-token counts when Google returns them. Gemini requests use <code>POST https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent</code> with the API key in the <code>x-goog-api-key</code> header.</p>
 <h3 id="deterministic-finalizers">Deterministic Finalizers<a class="headerlink" href="#deterministic-finalizers" title="Permanent link">&para;</a></h3>
 <p>For selected stack questions, DUMB may post-process the provider response before returning <code>analysis</code>:</p>
 <ul>
