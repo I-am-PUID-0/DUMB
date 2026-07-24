@@ -19,6 +19,11 @@ import requests
 from api.routers.logs import find_log_file
 from api.routers.process import _collect_process_entries, dependency_graph
 from utils.config_loader import CONFIG_MANAGER
+from utils.ai_model_catalog import (
+    GEMINI_MODEL_LIFECYCLE,
+    model_compatibility,
+    model_lifecycle,
+)
 from utils.ai_diagnostics import (
     DiagnosticEventStore,
     build_recommendation_context,
@@ -47,6 +52,8 @@ DEFAULT_AI_CONFIG = {
     "base_url": "http://127.0.0.1:11434",
     "model": "",
     "api_key": "",
+    "active_profile_id": "",
+    "profiles": [],
     "timeout_sec": 60,
     "temperature": 0.2,
     "max_log_chars": 20000,
@@ -64,6 +71,75 @@ DEFAULT_AI_CONFIG = {
     "include_change_history": True,
     "include_native_diagnostics": True,
 }
+
+GEMINI_API_BASE_URL = "https://generativelanguage.googleapis.com/v1beta"
+OPENAI_API_BASE_URL = "https://api.openai.com/v1"
+ANTHROPIC_MESSAGES_URL = "https://api.anthropic.com/v1/messages"
+AI_PROVIDER_PROFILE_FIELDS = (
+    "provider",
+    "base_url",
+    "model",
+    "api_key",
+    "timeout_sec",
+    "temperature",
+)
+AI_PROVIDER_NAMES = {
+    "ollama",
+    "openai",
+    "openai_compatible",
+    "compatible",
+    "litellm",
+    "open_webui",
+    "anthropic",
+    "claude",
+    "gemini",
+    "google_gemini",
+}
+
+
+def _normalized_provider_base_url(provider: str, base_url: str = "") -> str:
+    normalized_provider = str(provider or "").strip().lower()
+    managed_urls = {
+        "gemini": GEMINI_API_BASE_URL,
+        "google_gemini": GEMINI_API_BASE_URL,
+        "openai": OPENAI_API_BASE_URL,
+        "anthropic": ANTHROPIC_MESSAGES_URL,
+        "claude": ANTHROPIC_MESSAGES_URL,
+    }
+    if normalized_provider in managed_urls:
+        return managed_urls[normalized_provider]
+    return str(base_url or "").strip()
+
+
+def _gemini_model_lifecycle(model: str, as_of: str | None = None) -> dict | None:
+    return model_lifecycle("gemini", model, as_of)
+
+
+def _reject_unavailable_model(provider: str, model: str) -> None:
+    lifecycle = model_lifecycle(provider, model)
+    if not lifecycle or lifecycle["status"] != "retired":
+        compatibility = model_compatibility(provider, model)
+        if not compatibility or compatibility["status"] != "unsupported":
+            return
+        raise HTTPException(status_code=400, detail=compatibility["reason"])
+    normalized_provider = str(provider or "").lower()
+    if normalized_provider in {"gemini", "google_gemini"}:
+        retired_label = "Google retired Gemini model"
+    elif normalized_provider in {"anthropic", "claude"}:
+        retired_label = "Anthropic retired model"
+    elif normalized_provider == "openai":
+        retired_label = "OpenAI retired model"
+    else:
+        retired_label = "AI provider retired model"
+    raise HTTPException(
+        status_code=400,
+        detail=(
+            f"{retired_label} {lifecycle['model']} on "
+            f"{lifecycle['shutdown_date']}, although it may still appear in "
+            f"the provider's model list. Use {lifecycle['replacement']} instead."
+        ),
+    )
+
 
 SECRET_KEY_HINTS = (
     "api_key",
@@ -94,6 +170,8 @@ DOCS_CONTEXT_INDEX = [
             "openai",
             "litellm",
             "claude",
+            "gemini",
+            "google",
         ],
     },
     {
@@ -372,6 +450,7 @@ DUMB_PRODUCT_FACTS = {
 
 class AiSettingsUpdate(BaseModel):
     enabled: Optional[bool] = None
+    active_profile_id: Optional[str] = None
     provider: Optional[str] = None
     base_url: Optional[str] = None
     model: Optional[str] = None
@@ -434,6 +513,18 @@ class AiFollowUpRequest(BaseModel):
 
 class AiProviderRequest(AiSettingsUpdate):
     prompt: Optional[str] = None
+
+
+class AiProviderProfileRequest(BaseModel):
+    id: Optional[str] = None
+    name: str
+    provider: str
+    base_url: str = ""
+    model: str = ""
+    api_key: Optional[str] = None
+    timeout_sec: int = 60
+    temperature: float = 0.2
+    model_config = ConfigDict(extra="forbid")
 
 
 AI_PRESETS = {
@@ -590,6 +681,37 @@ def _ai_config() -> dict:
     merged = dict(DEFAULT_AI_CONFIG)
     if isinstance(configured, dict):
         merged.update(configured)
+    merged["base_url"] = _normalized_provider_base_url(
+        merged.get("provider"), merged.get("base_url")
+    )
+    normalized_profiles = []
+    for profile in merged.get("profiles") or []:
+        if not isinstance(profile, dict):
+            continue
+        normalized_profile = dict(profile)
+        normalized_profile["base_url"] = _normalized_provider_base_url(
+            normalized_profile.get("provider"), normalized_profile.get("base_url")
+        )
+        normalized_profiles.append(normalized_profile)
+    merged["profiles"] = normalized_profiles
+    active_profile_id = str(merged.get("active_profile_id") or "").strip()
+    if active_profile_id:
+        active_profile = next(
+            (
+                profile
+                for profile in normalized_profiles
+                if str(profile.get("id") or "") == active_profile_id
+            ),
+            None,
+        )
+        if active_profile is None:
+            merged["active_profile_id"] = ""
+        else:
+            for field in AI_PROVIDER_PROFILE_FIELDS:
+                merged[field] = active_profile.get(field, DEFAULT_AI_CONFIG[field])
+            merged["base_url"] = _normalized_provider_base_url(
+                merged.get("provider"), merged.get("base_url")
+            )
     return merged
 
 
@@ -597,7 +719,97 @@ def _public_settings(config: dict) -> dict:
     public = dict(config)
     api_key = str(public.pop("api_key", "") or "")
     public["api_key_configured"] = bool(api_key.strip())
+    provider = str(public.get("provider") or "").strip().lower()
+    public["model_lifecycle"] = model_lifecycle(provider, public.get("model"))
+    public["model_compatibility"] = model_compatibility(provider, public.get("model"))
+    public_profiles = []
+    for profile in public.get("profiles") or []:
+        if not isinstance(profile, dict):
+            continue
+        public_profile = dict(profile)
+        profile_key = str(public_profile.pop("api_key", "") or "")
+        public_profile["api_key_configured"] = bool(profile_key.strip())
+        profile_provider = str(public_profile.get("provider") or "").strip().lower()
+        public_profile["model_lifecycle"] = model_lifecycle(
+            profile_provider, public_profile.get("model")
+        )
+        public_profile["model_compatibility"] = model_compatibility(
+            profile_provider, public_profile.get("model")
+        )
+        public_profiles.append(public_profile)
+    public["profiles"] = public_profiles
     return public
+
+
+def _provider_profiles(config: dict) -> list[dict]:
+    return [
+        dict(profile)
+        for profile in config.get("profiles") or []
+        if isinstance(profile, dict) and str(profile.get("id") or "").strip()
+    ]
+
+
+def _apply_provider_profile(config: dict, profile: dict) -> None:
+    for field in AI_PROVIDER_PROFILE_FIELDS:
+        config[field] = profile.get(field, DEFAULT_AI_CONFIG[field])
+    config["base_url"] = _normalized_provider_base_url(
+        config.get("provider"), config.get("base_url")
+    )
+    config["active_profile_id"] = str(profile.get("id") or "")
+
+
+def _sync_active_provider_profile(config: dict) -> None:
+    config["base_url"] = _normalized_provider_base_url(
+        config.get("provider"), config.get("base_url")
+    )
+    active_profile_id = str(config.get("active_profile_id") or "").strip()
+    if not active_profile_id:
+        return
+    profiles = _provider_profiles(config)
+    for profile in profiles:
+        if str(profile.get("id") or "") != active_profile_id:
+            continue
+        for field in AI_PROVIDER_PROFILE_FIELDS:
+            profile[field] = config.get(field, DEFAULT_AI_CONFIG[field])
+        config["profiles"] = profiles
+        return
+    config["active_profile_id"] = ""
+    config["profiles"] = profiles
+
+
+def _profile_from_request(
+    request: AiProviderProfileRequest, existing: dict | None = None
+) -> dict:
+    name = str(request.name or "").strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="Provider profile name is required")
+    if len(name) > 80:
+        raise HTTPException(
+            status_code=400,
+            detail="Provider profile name must be 80 characters or fewer",
+        )
+    provider = str(request.provider or "").strip().lower()
+    if provider not in AI_PROVIDER_NAMES:
+        raise HTTPException(
+            status_code=400, detail=f"Unsupported AI provider: {provider or 'empty'}"
+        )
+    existing = existing or {}
+    requested_key = request.api_key
+    api_key = (
+        str(existing.get("api_key") or "")
+        if requested_key in (None, "")
+        else str(requested_key).strip()
+    )
+    return {
+        "id": str(existing.get("id") or uuid.uuid4()),
+        "name": name,
+        "provider": provider,
+        "base_url": _normalized_provider_base_url(provider, request.base_url),
+        "model": str(request.model or "").strip(),
+        "api_key": api_key,
+        "timeout_sec": max(5, min(int(request.timeout_sec or 60), 300)),
+        "temperature": max(0.0, min(float(request.temperature), 2.0)),
+    }
 
 
 def _is_secret_key(key: str) -> bool:
@@ -2106,12 +2318,29 @@ def _effective_ai_config(request: AiProviderRequest | None = None) -> dict:
     if updates.get("api_key") in (None, "") and existing_key:
         updates.pop("api_key", None)
     config.update(updates)
+    config["base_url"] = _normalized_provider_base_url(
+        config.get("provider"), config.get("base_url")
+    )
     return config
 
 
 def _normalize_usage(data: dict, provider: str) -> dict:
     if not isinstance(data, dict):
         return {}
+    gemini_usage = (
+        data.get("usageMetadata") if isinstance(data.get("usageMetadata"), dict) else {}
+    )
+    if gemini_usage:
+        normalized = {
+            "provider": provider,
+            "prompt_tokens": gemini_usage.get("promptTokenCount"),
+            "completion_tokens": gemini_usage.get("candidatesTokenCount"),
+            "total_tokens": gemini_usage.get("totalTokenCount"),
+            "cached_tokens": gemini_usage.get("cachedContentTokenCount"),
+            "thoughts_tokens": gemini_usage.get("thoughtsTokenCount"),
+        }
+        return {key: value for key, value in normalized.items() if value is not None}
+
     usage = data.get("usage") if isinstance(data.get("usage"), dict) else {}
     if usage:
         prompt_tokens = usage.get("prompt_tokens", usage.get("input_tokens"))
@@ -2151,6 +2380,68 @@ def _normalize_usage(data: dict, provider: str) -> dict:
     return {key: value for key, value in normalized.items() if value is not None}
 
 
+def _gemini_api_base() -> str:
+    return GEMINI_API_BASE_URL
+
+
+def _gemini_contents(messages: list[dict]) -> tuple[str, list[dict]]:
+    system_parts = []
+    contents = []
+    for message in messages:
+        if not isinstance(message, dict):
+            continue
+        content = str(message.get("content") or "").strip()
+        if not content:
+            continue
+        role = str(message.get("role") or "user").lower()
+        if role == "system":
+            system_parts.append(content)
+            continue
+        contents.append(
+            {
+                "role": "model" if role in {"assistant", "model"} else "user",
+                "parts": [{"text": content}],
+            }
+        )
+    return "\n\n".join(system_parts), contents
+
+
+def _openai_response_input(messages: list[dict]) -> list[dict]:
+    response_input = []
+    for message in messages:
+        if not isinstance(message, dict):
+            continue
+        content = str(message.get("content") or "").strip()
+        if not content:
+            continue
+        role = str(message.get("role") or "user").lower()
+        if role == "system":
+            role = "developer"
+        elif role not in {"developer", "assistant", "user"}:
+            role = "user"
+        response_input.append({"role": role, "content": content})
+    return response_input
+
+
+def _openai_response_text(data: dict) -> str:
+    output_text = data.get("output_text")
+    if isinstance(output_text, str) and output_text.strip():
+        return output_text.strip()
+    text_parts = []
+    for output_item in data.get("output") or []:
+        if not isinstance(output_item, dict):
+            continue
+        for content_item in output_item.get("content") or []:
+            if not isinstance(content_item, dict):
+                continue
+            if content_item.get("type") not in {None, "output_text", "text"}:
+                continue
+            text = content_item.get("text")
+            if isinstance(text, str) and text.strip():
+                text_parts.append(text.strip())
+    return "\n".join(text_parts).strip()
+
+
 def _call_ai_messages_result(
     ai_config: dict, messages: list[dict], max_tokens: int = 1600
 ) -> dict:
@@ -2163,25 +2454,132 @@ def _call_ai_messages_result(
 
     local_default = DEFAULT_AI_CONFIG["base_url"].rstrip("/")
 
+    if provider in {"gemini", "google_gemini"}:
+        if not api_key:
+            raise HTTPException(
+                status_code=400, detail="Google Gemini API key is not configured"
+            )
+        selected_model = model.removeprefix("models/") or "gemini-3.5-flash-lite"
+        _reject_unavailable_model(provider, selected_model)
+        system_instruction, contents = _gemini_contents(messages)
+        if not contents:
+            raise HTTPException(
+                status_code=400, detail="Google Gemini request has no message content"
+            )
+        payload = {
+            "contents": contents,
+            "generationConfig": {"maxOutputTokens": max_tokens},
+        }
+        if system_instruction:
+            payload["systemInstruction"] = {"parts": [{"text": system_instruction}]}
+        data = _post_json(
+            f"{_gemini_api_base()}/models/{selected_model}:generateContent",
+            {
+                "x-goog-api-key": api_key,
+                "content-type": "application/json",
+            },
+            payload,
+            timeout,
+        )
+        candidates = data.get("candidates") or []
+        parts = (
+            candidates[0].get("content", {}).get("parts", [])
+            if candidates and isinstance(candidates[0], dict)
+            else []
+        )
+        text_parts = [
+            str(part.get("text") or "")
+            for part in parts
+            if isinstance(part, dict) and part.get("text") and not part.get("thought")
+        ]
+        if not text_parts:
+            text_parts = [
+                str(part.get("text") or "")
+                for part in parts
+                if isinstance(part, dict) and part.get("text")
+            ]
+        content = "\n".join(text_parts).strip()
+        if not content:
+            prompt_feedback = (
+                data.get("promptFeedback")
+                if isinstance(data.get("promptFeedback"), dict)
+                else {}
+            )
+            finish_reason = (
+                candidates[0].get("finishReason")
+                if candidates and isinstance(candidates[0], dict)
+                else None
+            )
+            reason = (
+                prompt_feedback.get("blockReason")
+                or finish_reason
+                or "no text candidate"
+            )
+            raise HTTPException(
+                status_code=502,
+                detail=f"Google Gemini returned no response text ({reason})",
+            )
+        return {"content": content, "usage": _normalize_usage(data, provider)}
+
+    if provider == "openai":
+        if not api_key:
+            raise HTTPException(
+                status_code=400, detail="OpenAI API key is not configured"
+            )
+        selected_model = model or "gpt-4.1-mini"
+        _reject_unavailable_model(provider, selected_model)
+        response_input = _openai_response_input(messages)
+        if not response_input:
+            raise HTTPException(
+                status_code=400, detail="OpenAI request has no message content"
+            )
+        data = _post_json(
+            f"{OPENAI_API_BASE_URL}/responses",
+            {
+                "authorization": f"Bearer {api_key}",
+                "content-type": "application/json",
+            },
+            {
+                "model": selected_model,
+                "input": response_input,
+                "max_output_tokens": max(max_tokens, 512),
+                "store": False,
+            },
+            timeout,
+        )
+        content = _openai_response_text(data)
+        if not content:
+            incomplete_details = (
+                data.get("incomplete_details")
+                if isinstance(data.get("incomplete_details"), dict)
+                else {}
+            )
+            reason = (
+                incomplete_details.get("reason")
+                or data.get("status")
+                or "no output_text item"
+            )
+            raise HTTPException(
+                status_code=502,
+                detail=f"OpenAI returned no response text ({reason})",
+            )
+        return {"content": content, "usage": _normalize_usage(data, provider)}
+
     if provider in {"anthropic", "claude"}:
         if not api_key:
             raise HTTPException(
                 status_code=400, detail="Anthropic API key is not configured"
             )
-        url = (
-            base_url
-            if base_url and base_url != local_default
-            else "https://api.anthropic.com/v1/messages"
-        )
+        selected_model = model or "claude-sonnet-4-6"
+        _reject_unavailable_model(provider, selected_model)
         payload = {
-            "model": model or "claude-3-5-sonnet-latest",
+            "model": selected_model,
             "max_tokens": max_tokens,
-            "temperature": temperature,
             "system": messages[0]["content"],
             "messages": [messages[1]],
         }
         data = _post_json(
-            url,
+            ANTHROPIC_MESSAGES_URL,
             {
                 "x-api-key": api_key,
                 "anthropic-version": "2023-06-01",
@@ -2197,18 +2595,12 @@ def _call_ai_messages_result(
         return {"content": content, "usage": _normalize_usage(data, provider)}
 
     if provider in {
-        "openai",
         "openai_compatible",
         "compatible",
         "litellm",
         "open_webui",
     }:
-        if provider == "openai" and not api_key:
-            raise HTTPException(
-                status_code=400, detail="OpenAI API key is not configured"
-            )
-        default_openai_url = "https://api.openai.com/v1" if provider == "openai" else ""
-        url = base_url if base_url and base_url != local_default else default_openai_url
+        url = base_url if base_url and base_url != local_default else ""
         if not url:
             raise HTTPException(
                 status_code=400, detail="OpenAI-compatible base URL is not configured"
@@ -2312,6 +2704,51 @@ def _list_provider_models(ai_config: dict) -> dict:
     api_key = str(ai_config.get("api_key") or "").strip()
     local_default = DEFAULT_AI_CONFIG["base_url"].rstrip("/")
 
+    if provider in {"gemini", "google_gemini"}:
+        if not api_key:
+            raise HTTPException(
+                status_code=400, detail="Google Gemini API key is not configured"
+            )
+        data = _get_json(
+            f"{_gemini_api_base()}/models?pageSize=1000",
+            {
+                "x-goog-api-key": api_key,
+                "content-type": "application/json",
+            },
+            timeout,
+        )
+        models = []
+        for model_entry in data.get("models") or []:
+            if not isinstance(model_entry, dict):
+                continue
+            supported_methods = (
+                model_entry.get("supportedGenerationMethods")
+                or model_entry.get("supportedActions")
+                or []
+            )
+            if supported_methods and "generateContent" not in supported_methods:
+                continue
+            name = str(model_entry.get("name") or "").strip().removeprefix("models/")
+            if name:
+                normalized = {
+                    "name": name,
+                    "display_name": model_entry.get("displayName"),
+                    "description": model_entry.get("description"),
+                    "input_token_limit": model_entry.get("inputTokenLimit"),
+                    "output_token_limit": model_entry.get("outputTokenLimit"),
+                    "source": "external",
+                    "source_detail": "google",
+                }
+                lifecycle = _gemini_model_lifecycle(name)
+                if lifecycle:
+                    normalized["lifecycle"] = lifecycle
+                compatibility = model_compatibility(provider, name)
+                if compatibility:
+                    normalized["compatibility"] = compatibility
+                models.append(normalized)
+        models.sort(key=lambda entry: entry["name"])
+        return {"provider": provider, "models": models}
+
     if provider == "ollama":
         url = base_url or local_default
         data = _get_json(
@@ -2332,6 +2769,46 @@ def _list_provider_models(ai_config: dict) -> dict:
                 )
         return {"provider": provider, "models": models}
 
+    if provider in {"anthropic", "claude"}:
+        if not api_key:
+            raise HTTPException(
+                status_code=400, detail="Anthropic API key is not configured"
+            )
+        data = _get_json(
+            f"{ANTHROPIC_MESSAGES_URL.rsplit('/messages', 1)[0]}/models?limit=1000",
+            {
+                "x-api-key": api_key,
+                "anthropic-version": "2023-06-01",
+                "content-type": "application/json",
+            },
+            timeout,
+        )
+        models = []
+        for model in data.get("data") or []:
+            if not isinstance(model, dict):
+                continue
+            name = str(model.get("id") or "").strip()
+            if not name:
+                continue
+            entry = {
+                "name": name,
+                "display_name": model.get("display_name"),
+                "created_at": model.get("created_at"),
+                "max_input_tokens": model.get("max_input_tokens"),
+                "max_tokens": model.get("max_tokens"),
+                "source": "external",
+                "source_detail": "anthropic",
+            }
+            lifecycle = model_lifecycle(provider, name)
+            if lifecycle:
+                entry["lifecycle"] = lifecycle
+            compatibility = model_compatibility(provider, name)
+            if compatibility:
+                entry["compatibility"] = compatibility
+            models.append(entry)
+        models.sort(key=lambda entry: entry["name"].lower())
+        return {"provider": provider, "models": models}
+
     if provider in {
         "openai",
         "openai_compatible",
@@ -2339,8 +2816,11 @@ def _list_provider_models(ai_config: dict) -> dict:
         "litellm",
         "open_webui",
     }:
-        default_openai_url = "https://api.openai.com/v1" if provider == "openai" else ""
-        url = base_url if base_url and base_url != local_default else default_openai_url
+        url = (
+            OPENAI_API_BASE_URL
+            if provider == "openai"
+            else (base_url if base_url and base_url != local_default else "")
+        )
         if not url:
             raise HTTPException(
                 status_code=400, detail="OpenAI-compatible base URL is not configured"
@@ -2358,17 +2838,33 @@ def _list_provider_models(ai_config: dict) -> dict:
             name = str(model.get("id") or "").strip()
             if name:
                 entry = {"name": name, "owned_by": model.get("owned_by")}
+                lifecycle = (
+                    model_lifecycle(provider, name)
+                    if provider == "openai"
+                    else model.get("lifecycle")
+                )
+                if isinstance(lifecycle, dict):
+                    entry["lifecycle"] = lifecycle
+                compatibility = (
+                    model_compatibility(provider, name)
+                    if provider == "openai"
+                    else model.get("compatibility")
+                )
+                if isinstance(compatibility, dict):
+                    entry["compatibility"] = compatibility
                 if provider in {"open_webui", "litellm"}:
                     source, source_detail = _infer_open_webui_model_source(model)
                     entry["source"] = source
                     if source_detail:
                         entry["source_detail"] = source_detail
                 models.append(entry)
+        if provider == "openai":
+            models.sort(key=lambda entry: entry["name"].lower())
         return {"provider": provider, "models": models}
 
     raise HTTPException(
         status_code=400,
-        detail="Model discovery is supported for Ollama, Open WebUI, LiteLLM, and OpenAI-compatible providers only",
+        detail="Model discovery is supported for Anthropic, Gemini, Ollama, OpenAI, Open WebUI, LiteLLM, and OpenAI-compatible providers only",
     )
 
 
@@ -2413,6 +2909,7 @@ def update_ai_settings(
         current["max_log_scan_mb"] = max(1, min(int(current["max_log_scan_mb"]), 1024))
     if current.get("temperature") is not None:
         current["temperature"] = max(0.0, min(float(current["temperature"]), 2.0))
+    _sync_active_provider_profile(current)
 
     CONFIG_MANAGER.config.setdefault("dumb", {})["ai"] = current
     CONFIG_MANAGER.save_config()
@@ -2422,6 +2919,131 @@ def update_ai_settings(
         process_name=None,
         actor=current_user,
         source="ai_settings",
+    )
+    return _public_settings(current)
+
+
+@ai_router.post("/profiles")
+def save_ai_provider_profile(
+    request: AiProviderProfileRequest,
+    current_user: str = Depends(get_optional_current_user),
+):
+    current = _ai_config()
+    before = dict(current)
+    profiles = _provider_profiles(current)
+    requested_id = str(request.id or "").strip()
+    existing = next(
+        (
+            profile
+            for profile in profiles
+            if str(profile.get("id") or "") == requested_id
+        ),
+        None,
+    )
+    if requested_id and existing is None:
+        raise HTTPException(status_code=404, detail="Provider profile was not found")
+    if not requested_id and len(profiles) >= 20:
+        raise HTTPException(
+            status_code=400, detail="A maximum of 20 provider profiles can be saved"
+        )
+
+    profile = _profile_from_request(request, existing)
+    duplicate_name = next(
+        (
+            item
+            for item in profiles
+            if str(item.get("id") or "") != profile["id"]
+            and str(item.get("name") or "").strip().casefold()
+            == profile["name"].casefold()
+        ),
+        None,
+    )
+    if duplicate_name:
+        raise HTTPException(
+            status_code=400, detail="Provider profile names must be unique"
+        )
+
+    if existing is None:
+        profiles.append(profile)
+    else:
+        profiles = [
+            profile if str(item.get("id") or "") == profile["id"] else item
+            for item in profiles
+        ]
+    current["profiles"] = profiles
+    _apply_provider_profile(current, profile)
+    CONFIG_MANAGER.config.setdefault("dumb", {})["ai"] = current
+    CONFIG_MANAGER.save_config()
+    record_ai_config_change(
+        before,
+        current,
+        process_name=None,
+        actor=current_user,
+        source="ai_provider_profile_save",
+    )
+    return _public_settings(current)
+
+
+@ai_router.post("/profiles/{profile_id}/activate")
+def activate_ai_provider_profile(
+    profile_id: str,
+    current_user: str = Depends(get_optional_current_user),
+):
+    current = _ai_config()
+    before = dict(current)
+    profile = next(
+        (
+            item
+            for item in _provider_profiles(current)
+            if str(item.get("id") or "") == str(profile_id or "").strip()
+        ),
+        None,
+    )
+    if profile is None:
+        raise HTTPException(status_code=404, detail="Provider profile was not found")
+    _apply_provider_profile(current, profile)
+    CONFIG_MANAGER.config.setdefault("dumb", {})["ai"] = current
+    CONFIG_MANAGER.save_config()
+    record_ai_config_change(
+        before,
+        current,
+        process_name=None,
+        actor=current_user,
+        source="ai_provider_profile_activate",
+    )
+    return _public_settings(current)
+
+
+@ai_router.delete("/profiles/{profile_id}")
+def delete_ai_provider_profile(
+    profile_id: str,
+    current_user: str = Depends(get_optional_current_user),
+):
+    current = _ai_config()
+    before = dict(current)
+    normalized_id = str(profile_id or "").strip()
+    profiles = _provider_profiles(current)
+    if not any(str(item.get("id") or "") == normalized_id for item in profiles):
+        raise HTTPException(status_code=404, detail="Provider profile was not found")
+    remaining = [
+        item for item in profiles if str(item.get("id") or "") != normalized_id
+    ]
+    current["profiles"] = remaining
+    if str(current.get("active_profile_id") or "") == normalized_id:
+        if remaining:
+            _apply_provider_profile(current, remaining[0])
+        else:
+            current["active_profile_id"] = ""
+            for field in AI_PROVIDER_PROFILE_FIELDS:
+                current[field] = DEFAULT_AI_CONFIG[field]
+    CONFIG_MANAGER.config.setdefault("dumb", {})["ai"] = current
+    CONFIG_MANAGER.save_config()
+    record_ai_config_change(
+        before,
+        current,
+        process_name=None,
+        actor=current_user,
+        source="ai_provider_profile_delete",
     )
     return _public_settings(current)
 

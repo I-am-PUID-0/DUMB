@@ -203,7 +203,9 @@
                 "litellm",
                 "open_webui",
                 "anthropic",
-                "claude"
+                "claude",
+                "gemini",
+                "google_gemini"
               ]
             },
             "base_url": {
@@ -214,6 +216,68 @@
             },
             "api_key": {
               "type": "string"
+            },
+            "active_profile_id": {
+              "type": "string"
+            },
+            "profiles": {
+              "type": "array",
+              "maxItems": 20,
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "provider": {
+                    "type": "string",
+                    "enum": [
+                      "ollama",
+                      "openai",
+                      "openai_compatible",
+                      "compatible",
+                      "litellm",
+                      "open_webui",
+                      "anthropic",
+                      "claude",
+                      "gemini",
+                      "google_gemini"
+                    ]
+                  },
+                  "base_url": {
+                    "type": "string"
+                  },
+                  "model": {
+                    "type": "string"
+                  },
+                  "api_key": {
+                    "type": "string"
+                  },
+                  "timeout_sec": {
+                    "type": "integer",
+                    "minimum": 5,
+                    "maximum": 300
+                  },
+                  "temperature": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 2
+                  }
+                },
+                "required": [
+                  "id",
+                  "name",
+                  "provider",
+                  "base_url",
+                  "model",
+                  "api_key",
+                  "timeout_sec",
+                  "temperature"
+                ]
+              }
             },
             "timeout_sec": {
               "type": "integer",
@@ -287,6 +351,8 @@
             "base_url",
             "model",
             "api_key",
+            "active_profile_id",
+            "profiles",
             "timeout_sec",
             "temperature",
             "max_log_chars",

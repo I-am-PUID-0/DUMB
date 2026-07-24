@@ -56,6 +56,8 @@
       "base_url": "http://127.0.0.1:11434",
       "model": "",
       "api_key": "",
+      "active_profile_id": "",
+      "profiles": [],
       "timeout_sec": 60,
       "temperature": 0.2,
       "max_log_chars": 20000,

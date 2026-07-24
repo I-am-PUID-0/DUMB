@@ -5205,6 +5205,7 @@ async def get_capabilities(current_user: str = Depends(get_optional_current_user
         "database_health_service_keys": sorted(SUPPORTED_SERVICE_KEYS),
         "notifications": True,
         "ai_diagnostics": True,
+        "ai_provider_profiles": True,
         "ai_diagnostic_evidence": True,
         "ai_deep_log_scan": True,
         "ai_diagnostic_sessions": True,

@@ -8,6 +8,54 @@ from api.routers import ai
 
 
 class AiRouterTests(unittest.TestCase):
+    def test_active_profile_is_authoritative_over_stale_top_level_fields(self):
+        profile = {
+            "id": "litellm-profile",
+            "name": "LiteLLM",
+            "provider": "litellm",
+            "base_url": "https://gateway.example.invalid/v1",
+            "model": "stack-model",
+            "api_key": "profile-secret",
+            "timeout_sec": 45,
+            "temperature": 0.3,
+        }
+        config = {
+            "dumb": {
+                "ai": {
+                    "provider": "gemini",
+                    "base_url": ai.GEMINI_API_BASE_URL,
+                    "model": "gemini-stale",
+                    "api_key": "stale-secret",
+                    "active_profile_id": profile["id"],
+                    "profiles": [profile],
+                }
+            }
+        }
+
+        with patch.object(ai.CONFIG_MANAGER, "config", config):
+            effective = ai._ai_config()
+
+        self.assertEqual(effective["provider"], "litellm")
+        self.assertEqual(effective["base_url"], "https://gateway.example.invalid/v1")
+        self.assertEqual(effective["model"], "stack-model")
+        self.assertEqual(effective["api_key"], "profile-secret")
+        self.assertEqual(effective["active_profile_id"], profile["id"])
+
+    def test_missing_active_profile_is_detached_on_load(self):
+        config = {
+            "dumb": {
+                "ai": {
+                    "active_profile_id": "missing-profile",
+                    "profiles": [],
+                }
+            }
+        }
+
+        with patch.object(ai.CONFIG_MANAGER, "config", config):
+            effective = ai._ai_config()
+
+        self.assertEqual(effective["active_profile_id"], "")
+
     def test_redact_value_masks_nested_secrets(self):
         payload = {
             "api_key": "abc123",
@@ -23,11 +71,281 @@ class AiRouterTests(unittest.TestCase):
         self.assertEqual(redacted["items"][0]["client_secret"], "[REDACTED]")
 
     def test_public_settings_do_not_return_api_key(self):
-        public = ai._public_settings({"api_key": "sk-test", "enabled": True})
+        public = ai._public_settings(
+            {
+                "api_key": "sk-test",
+                "enabled": True,
+                "provider": "gemini",
+                "model": "gemini-2.0-flash-lite",
+                "profiles": [
+                    {
+                        "id": "gemini-profile",
+                        "name": "Gemini",
+                        "provider": "gemini",
+                        "model": "gemini-2.0-flash-lite",
+                        "api_key": "gemini-secret",
+                    },
+                    {
+                        "id": "ollama-profile",
+                        "name": "Ollama",
+                        "api_key": "",
+                    },
+                ],
+            }
+        )
 
         self.assertNotIn("api_key", public)
         self.assertTrue(public["api_key_configured"])
         self.assertTrue(public["enabled"])
+        self.assertNotIn("api_key", public["profiles"][0])
+        self.assertTrue(public["profiles"][0]["api_key_configured"])
+        self.assertFalse(public["profiles"][1]["api_key_configured"])
+        self.assertEqual(public["model_lifecycle"]["status"], "retired")
+        self.assertEqual(
+            public["model_lifecycle"]["replacement"], "gemini-3.1-flash-lite"
+        )
+        self.assertEqual(public["profiles"][0]["model_lifecycle"]["status"], "retired")
+        self.assertIsNone(public["profiles"][1]["model_lifecycle"])
+        self.assertEqual(public["model_compatibility"]["status"], "supported")
+        self.assertIsNone(public["profiles"][1]["model_compatibility"])
+
+    def test_gemini_model_lifecycle_distinguishes_retired_and_deprecated(self):
+        retired = ai._gemini_model_lifecycle(
+            "models/gemini-2.0-flash-lite", as_of="2026-07-24"
+        )
+        deprecated = ai._gemini_model_lifecycle("gemini-2.5-flash", as_of="2026-07-24")
+
+        self.assertEqual(retired["status"], "retired")
+        self.assertEqual(retired["shutdown_date"], "2026-06-01")
+        self.assertEqual(retired["replacement"], "gemini-3.1-flash-lite")
+        self.assertEqual(deprecated["status"], "deprecated")
+        self.assertEqual(deprecated["shutdown_date"], "2026-10-16")
+        self.assertEqual(deprecated["replacement"], "gemini-3.6-flash")
+        self.assertIsNone(
+            ai._gemini_model_lifecycle("gemini-3.5-flash-lite", as_of="2026-07-24")
+        )
+
+    def test_save_provider_profile_creates_active_profile_and_hides_key(self):
+        config = {"dumb": {"ai": {}}}
+        request = ai.AiProviderProfileRequest(
+            name="Free Gemini",
+            provider="gemini",
+            base_url="https://gateway.example.invalid/gemini",
+            model="gemini-3.5-flash-lite",
+            api_key="gemini-secret",
+            timeout_sec=45,
+            temperature=0.4,
+        )
+
+        with (
+            patch.object(ai.CONFIG_MANAGER, "config", config),
+            patch.object(ai.CONFIG_MANAGER, "save_config") as save_config,
+            patch.object(ai, "record_ai_config_change"),
+        ):
+            result = ai.save_ai_provider_profile(request, current_user="tester")
+
+        stored = config["dumb"]["ai"]
+        self.assertEqual(len(stored["profiles"]), 1)
+        self.assertEqual(stored["active_profile_id"], stored["profiles"][0]["id"])
+        self.assertEqual(stored["provider"], "gemini")
+        self.assertEqual(stored["base_url"], ai.GEMINI_API_BASE_URL)
+        self.assertEqual(stored["api_key"], "gemini-secret")
+        self.assertEqual(stored["profiles"][0]["api_key"], "gemini-secret")
+        self.assertEqual(stored["profiles"][0]["base_url"], ai.GEMINI_API_BASE_URL)
+        self.assertTrue(result["api_key_configured"])
+        self.assertTrue(result["profiles"][0]["api_key_configured"])
+        self.assertNotIn("api_key", result)
+        self.assertNotIn("api_key", result["profiles"][0])
+        save_config.assert_called_once_with()
+
+    def test_save_provider_profile_preserves_stored_key_when_blank(self):
+        profile = {
+            "id": "profile-1",
+            "name": "Gemini",
+            "provider": "gemini",
+            "base_url": ai.GEMINI_API_BASE_URL,
+            "model": "gemini-3.5-flash-lite",
+            "api_key": "stored-secret",
+            "timeout_sec": 60,
+            "temperature": 0.2,
+        }
+        config = {
+            "dumb": {
+                "ai": {
+                    **{
+                        field: profile[field] for field in ai.AI_PROVIDER_PROFILE_FIELDS
+                    },
+                    "active_profile_id": "profile-1",
+                    "profiles": [profile],
+                }
+            }
+        }
+        request = ai.AiProviderProfileRequest(
+            id="profile-1",
+            name="Gemini Fast",
+            provider="gemini",
+            base_url=ai.GEMINI_API_BASE_URL,
+            model="gemini-3.6-flash",
+            api_key="",
+        )
+
+        with (
+            patch.object(ai.CONFIG_MANAGER, "config", config),
+            patch.object(ai.CONFIG_MANAGER, "save_config"),
+            patch.object(ai, "record_ai_config_change"),
+        ):
+            ai.save_ai_provider_profile(request, current_user="tester")
+
+        stored = config["dumb"]["ai"]
+        self.assertEqual(stored["profiles"][0]["name"], "Gemini Fast")
+        self.assertEqual(stored["profiles"][0]["model"], "gemini-3.6-flash")
+        self.assertEqual(stored["profiles"][0]["api_key"], "stored-secret")
+        self.assertEqual(stored["api_key"], "stored-secret")
+
+    def test_activate_and_delete_provider_profiles(self):
+        gemini = {
+            "id": "gemini-profile",
+            "name": "Gemini",
+            "provider": "gemini",
+            "base_url": ai.GEMINI_API_BASE_URL,
+            "model": "gemini-3.5-flash-lite",
+            "api_key": "gemini-secret",
+            "timeout_sec": 60,
+            "temperature": 0.2,
+        }
+        ollama = {
+            "id": "ollama-profile",
+            "name": "Local",
+            "provider": "ollama",
+            "base_url": "http://ollama:11434",
+            "model": "llama3.1",
+            "api_key": "",
+            "timeout_sec": 90,
+            "temperature": 0.1,
+        }
+        config = {
+            "dumb": {
+                "ai": {
+                    **{field: gemini[field] for field in ai.AI_PROVIDER_PROFILE_FIELDS},
+                    "active_profile_id": gemini["id"],
+                    "profiles": [gemini, ollama],
+                }
+            }
+        }
+
+        with (
+            patch.object(ai.CONFIG_MANAGER, "config", config),
+            patch.object(ai.CONFIG_MANAGER, "save_config"),
+            patch.object(ai, "record_ai_config_change"),
+        ):
+            activated = ai.activate_ai_provider_profile(
+                ollama["id"], current_user="tester"
+            )
+            deleted = ai.delete_ai_provider_profile(ollama["id"], current_user="tester")
+
+        self.assertEqual(activated["active_profile_id"], ollama["id"])
+        self.assertEqual(activated["provider"], "ollama")
+        self.assertFalse(activated["api_key_configured"])
+        self.assertEqual(deleted["active_profile_id"], gemini["id"])
+        self.assertEqual(deleted["provider"], "gemini")
+        self.assertTrue(deleted["api_key_configured"])
+        self.assertEqual(
+            [profile["id"] for profile in deleted["profiles"]],
+            [gemini["id"]],
+        )
+
+    def test_update_ai_settings_synchronizes_active_profile(self):
+        profile = {
+            "id": "profile-1",
+            "name": "Gemini",
+            "provider": "gemini",
+            "base_url": ai.GEMINI_API_BASE_URL,
+            "model": "gemini-3.5-flash-lite",
+            "api_key": "stored-secret",
+            "timeout_sec": 60,
+            "temperature": 0.2,
+        }
+        config = {
+            "dumb": {
+                "ai": {
+                    **{
+                        field: profile[field] for field in ai.AI_PROVIDER_PROFILE_FIELDS
+                    },
+                    "active_profile_id": profile["id"],
+                    "profiles": [profile],
+                }
+            }
+        }
+
+        with (
+            patch.object(ai.CONFIG_MANAGER, "config", config),
+            patch.object(ai.CONFIG_MANAGER, "save_config"),
+            patch.object(ai, "record_ai_config_change"),
+        ):
+            result = ai.update_ai_settings(
+                ai.AiSettingsUpdate(model="gemini-3.6-flash"),
+                current_user="tester",
+            )
+
+        self.assertEqual(result["model"], "gemini-3.6-flash")
+        self.assertEqual(
+            config["dumb"]["ai"]["profiles"][0]["model"],
+            "gemini-3.6-flash",
+        )
+        self.assertEqual(
+            config["dumb"]["ai"]["profiles"][0]["api_key"],
+            "stored-secret",
+        )
+
+    def test_update_ai_settings_can_detach_without_overwriting_profile(self):
+        profile = {
+            "id": "profile-1",
+            "name": "Saved Gemini",
+            "provider": "gemini",
+            "base_url": ai.GEMINI_API_BASE_URL,
+            "model": "gemini-saved",
+            "api_key": "stored-secret",
+            "timeout_sec": 60,
+            "temperature": 0.2,
+        }
+        config = {
+            "dumb": {
+                "ai": {
+                    **ai.DEFAULT_AI_CONFIG,
+                    **{
+                        field: profile[field] for field in ai.AI_PROVIDER_PROFILE_FIELDS
+                    },
+                    "active_profile_id": profile["id"],
+                    "profiles": [profile],
+                }
+            }
+        }
+
+        with (
+            patch.object(ai.CONFIG_MANAGER, "config", config),
+            patch.object(ai.CONFIG_MANAGER, "save_config"),
+            patch.object(ai, "record_ai_config_change"),
+        ):
+            result = ai.update_ai_settings(
+                ai.AiSettingsUpdate(
+                    active_profile_id="",
+                    provider="ollama",
+                    base_url="http://ollama:11434",
+                    model="llama3.1",
+                ),
+                current_user="tester",
+            )
+
+        self.assertEqual(result["active_profile_id"], "")
+        self.assertEqual(config["dumb"]["ai"]["provider"], "ollama")
+        self.assertEqual(
+            config["dumb"]["ai"]["profiles"][0]["model"],
+            "gemini-saved",
+        )
+        self.assertEqual(
+            config["dumb"]["ai"]["profiles"][0]["api_key"],
+            "stored-secret",
+        )
 
     def test_effective_ai_config_preserves_stored_api_key_when_blank(self):
         config = {
@@ -42,6 +360,7 @@ class AiRouterTests(unittest.TestCase):
         }
         request = ai.AiProviderRequest(
             provider="openai",
+            base_url="https://gateway.example.invalid/v1",
             model="gpt-4.1-mini",
             api_key="",
         )
@@ -50,6 +369,114 @@ class AiRouterTests(unittest.TestCase):
             effective = ai._effective_ai_config(request)
 
         self.assertEqual(effective["api_key"], "stored-key")
+        self.assertEqual(effective["base_url"], ai.OPENAI_API_BASE_URL)
+
+    def test_native_hosted_providers_ignore_custom_endpoints(self):
+        messages = [
+            {"role": "system", "content": "Be concise."},
+            {"role": "user", "content": "Test"},
+        ]
+
+        with patch.object(
+            ai,
+            "_post_json",
+            return_value={"content": [{"type": "text", "text": "Claude response"}]},
+        ) as anthropic_post:
+            result = ai._call_ai_messages_result(
+                {
+                    "provider": "anthropic",
+                    "base_url": "https://gateway.example.invalid/anthropic",
+                    "model": "claude-test",
+                    "api_key": "anthropic-key",
+                },
+                messages,
+            )
+
+        self.assertEqual(result["content"], "Claude response")
+        self.assertEqual(anthropic_post.call_args.args[0], ai.ANTHROPIC_MESSAGES_URL)
+        self.assertNotIn("temperature", anthropic_post.call_args.args[2])
+
+        with patch.object(
+            ai,
+            "_post_json",
+            return_value={
+                "output": [
+                    {
+                        "type": "message",
+                        "content": [{"type": "output_text", "text": "OpenAI response"}],
+                    }
+                ],
+                "usage": {"input_tokens": 2, "output_tokens": 1},
+            },
+        ) as openai_post:
+            result = ai._call_ai_messages_result(
+                {
+                    "provider": "openai",
+                    "base_url": "https://gateway.example.invalid/v1",
+                    "model": "gpt-test",
+                    "api_key": "openai-key",
+                },
+                messages,
+            )
+
+        self.assertEqual(result["content"], "OpenAI response")
+        self.assertEqual(
+            openai_post.call_args.args[0],
+            f"{ai.OPENAI_API_BASE_URL}/responses",
+        )
+        payload = openai_post.call_args.args[2]
+        self.assertEqual(payload["model"], "gpt-test")
+        self.assertEqual(payload["input"][0]["role"], "developer")
+        self.assertEqual(payload["input"][1]["role"], "user")
+        self.assertEqual(payload["max_output_tokens"], 1600)
+        self.assertFalse(payload["store"])
+        self.assertNotIn("temperature", payload)
+        self.assertEqual(result["usage"]["total_tokens"], 3)
+
+    def test_native_openai_rejects_retired_and_non_text_models(self):
+        messages = [{"role": "user", "content": "Test"}]
+        for model, detail in (
+            ("gpt-5-codex", "retired model gpt-5-codex"),
+            ("text-embedding-3-small", "embedding or moderation model"),
+        ):
+            with (
+                patch.object(ai, "_post_json") as post_json,
+                self.assertRaisesRegex(ai.HTTPException, detail),
+            ):
+                ai._call_ai_messages_result(
+                    {
+                        "provider": "openai",
+                        "model": model,
+                        "api_key": "openai-key",
+                    },
+                    messages,
+                )
+            post_json.assert_not_called()
+
+    def test_native_openai_returns_clear_error_when_response_has_no_text(self):
+        with (
+            patch.object(
+                ai,
+                "_post_json",
+                return_value={
+                    "status": "incomplete",
+                    "incomplete_details": {"reason": "max_output_tokens"},
+                    "output": [],
+                },
+            ),
+            self.assertRaisesRegex(
+                ai.HTTPException,
+                "OpenAI returned no response text \\(max_output_tokens\\)",
+            ),
+        ):
+            ai._call_ai_messages_result(
+                {
+                    "provider": "openai",
+                    "model": "gpt-5.3-codex",
+                    "api_key": "openai-key",
+                },
+                [{"role": "user", "content": "Test"}],
+            )
 
     def test_list_provider_models_reads_ollama_tags(self):
         ai_config = {
@@ -83,6 +510,84 @@ class AiRouterTests(unittest.TestCase):
         self.assertEqual(
             [model["name"] for model in result["models"]],
             ["llama3.1:latest", "qwen2.5:7b"],
+        )
+
+    def test_native_openai_model_discovery_adds_lifecycle_and_compatibility(self):
+        ai_config = {
+            "provider": "openai",
+            "api_key": "openai-key",
+            "timeout_sec": 15,
+        }
+        with patch.object(
+            ai,
+            "_get_json",
+            return_value={
+                "data": [
+                    {"id": "text-embedding-3-small", "owned_by": "openai"},
+                    {"id": "gpt-5.3-codex", "owned_by": "openai"},
+                    {"id": "gpt-5-codex", "owned_by": "openai"},
+                ]
+            },
+        ) as get_json:
+            result = ai._list_provider_models(ai_config)
+
+        self.assertEqual(
+            [entry["name"] for entry in result["models"]],
+            ["gpt-5-codex", "gpt-5.3-codex", "text-embedding-3-small"],
+        )
+        retired, current, embedding = result["models"]
+        self.assertEqual(retired["lifecycle"]["status"], "retired")
+        self.assertEqual(retired["compatibility"]["api_surface"], "responses")
+        self.assertNotIn("lifecycle", current)
+        self.assertEqual(current["compatibility"]["status"], "supported")
+        self.assertEqual(embedding["compatibility"]["status"], "unsupported")
+        get_json.assert_called_once_with(
+            f"{ai.OPENAI_API_BASE_URL}/models",
+            {
+                "content-type": "application/json",
+                "authorization": "Bearer openai-key",
+            },
+            15,
+        )
+
+    def test_anthropic_model_discovery_adds_lifecycle_metadata(self):
+        with patch.object(
+            ai,
+            "_get_json",
+            return_value={
+                "data": [
+                    {
+                        "id": "claude-opus-4-1-20250805",
+                        "display_name": "Claude Opus 4.1",
+                        "created_at": "2025-08-05T00:00:00Z",
+                    },
+                    {
+                        "id": "claude-sonnet-4-6",
+                        "display_name": "Claude Sonnet 4.6",
+                    },
+                ]
+            },
+        ) as get_json:
+            result = ai._list_provider_models(
+                {
+                    "provider": "anthropic",
+                    "api_key": "anthropic-key",
+                    "timeout_sec": 12,
+                }
+            )
+
+        retired, current = result["models"]
+        self.assertEqual(retired["lifecycle"]["status"], "deprecated")
+        self.assertEqual(retired["lifecycle"]["replacement"], "claude-opus-4-8")
+        self.assertEqual(current["compatibility"]["api_surface"], "messages")
+        get_json.assert_called_once_with(
+            "https://api.anthropic.com/v1/models?limit=1000",
+            {
+                "x-api-key": "anthropic-key",
+                "anthropic-version": "2023-06-01",
+                "content-type": "application/json",
+            },
+            12,
         )
 
     def test_open_webui_uses_api_routes_for_chat_and_models(self):
@@ -201,6 +706,153 @@ class AiRouterTests(unittest.TestCase):
         self.assertEqual(models["models"][0]["source"], "local")
         self.assertEqual(models["models"][0]["source_detail"], "local")
         self.assertEqual(models["models"][1]["source"], "external")
+
+    def test_gemini_uses_generate_content_and_normalizes_usage(self):
+        ai_config = {
+            "provider": "gemini",
+            "base_url": "https://gateway.example.invalid/gemini",
+            "api_key": "gemini-key",
+            "model": "gemini-3.5-flash-lite",
+            "timeout_sec": 20,
+            "temperature": 0.1,
+        }
+        messages = [
+            {"role": "system", "content": "Use DUMB evidence only."},
+            {"role": "user", "content": "What failed?"},
+        ]
+
+        with patch.object(
+            ai,
+            "_post_json",
+            return_value={
+                "candidates": [
+                    {
+                        "content": {
+                            "parts": [
+                                {"text": "Internal reasoning", "thought": True},
+                                {"text": "The service failed to start."},
+                            ]
+                        },
+                        "finishReason": "STOP",
+                    }
+                ],
+                "usageMetadata": {
+                    "promptTokenCount": 14,
+                    "candidatesTokenCount": 6,
+                    "thoughtsTokenCount": 3,
+                    "totalTokenCount": 23,
+                },
+            },
+        ) as post_json:
+            result = ai._call_ai_messages_result(ai_config, messages, max_tokens=120)
+
+        self.assertEqual(result["content"], "The service failed to start.")
+        self.assertEqual(result["usage"]["prompt_tokens"], 14)
+        self.assertEqual(result["usage"]["completion_tokens"], 6)
+        self.assertEqual(result["usage"]["thoughts_tokens"], 3)
+        self.assertEqual(result["usage"]["total_tokens"], 23)
+        self.assertEqual(
+            post_json.call_args.args[0],
+            "https://generativelanguage.googleapis.com/v1beta/models/"
+            "gemini-3.5-flash-lite:generateContent",
+        )
+        self.assertEqual(post_json.call_args.args[1]["x-goog-api-key"], "gemini-key")
+        payload = post_json.call_args.args[2]
+        self.assertEqual(
+            payload["systemInstruction"]["parts"][0]["text"],
+            "Use DUMB evidence only.",
+        )
+        self.assertEqual(payload["contents"][0]["role"], "user")
+        self.assertEqual(payload["generationConfig"]["maxOutputTokens"], 120)
+        self.assertNotIn("temperature", payload["generationConfig"])
+
+    def test_gemini_model_discovery_filters_non_generation_models(self):
+        ai_config = {
+            "provider": "google_gemini",
+            "base_url": "https://gateway.example.invalid/gemini",
+            "api_key": "gemini-key",
+            "timeout_sec": 10,
+        }
+
+        with patch.object(
+            ai,
+            "_get_json",
+            return_value={
+                "models": [
+                    {
+                        "name": "models/gemini-3.5-flash-lite",
+                        "displayName": "Gemini 3.5 Flash-Lite",
+                        "supportedGenerationMethods": [
+                            "generateContent",
+                            "countTokens",
+                        ],
+                        "inputTokenLimit": 1000000,
+                    },
+                    {
+                        "name": "models/gemini-2.0-flash-lite",
+                        "displayName": "Gemini 2.0 Flash-Lite",
+                        "supportedGenerationMethods": ["generateContent"],
+                    },
+                    {
+                        "name": "models/gemini-embedding-001",
+                        "supportedGenerationMethods": ["embedContent"],
+                    },
+                ]
+            },
+        ) as get_json:
+            result = ai._list_provider_models(ai_config)
+
+        self.assertEqual(result["provider"], "google_gemini")
+        self.assertEqual(
+            [model["name"] for model in result["models"]],
+            ["gemini-2.0-flash-lite", "gemini-3.5-flash-lite"],
+        )
+        retired = result["models"][0]
+        self.assertEqual(retired["source"], "external")
+        self.assertEqual(retired["source_detail"], "google")
+        self.assertEqual(retired["lifecycle"]["status"], "retired")
+        self.assertEqual(retired["lifecycle"]["replacement"], "gemini-3.1-flash-lite")
+        self.assertNotIn("lifecycle", result["models"][1])
+        get_json.assert_called_once_with(
+            "https://generativelanguage.googleapis.com/v1beta/models?pageSize=1000",
+            {
+                "x-goog-api-key": "gemini-key",
+                "content-type": "application/json",
+            },
+            10,
+        )
+
+    def test_retired_gemini_model_is_rejected_before_provider_call(self):
+        with (
+            patch.object(ai, "_post_json") as post_json,
+            self.assertRaisesRegex(
+                ai.HTTPException,
+                "retired Gemini model gemini-2.0-flash-lite",
+            ),
+        ):
+            ai._call_ai_messages_result(
+                {
+                    "provider": "gemini",
+                    "model": "gemini-2.0-flash-lite",
+                    "api_key": "gemini-key",
+                },
+                [{"role": "user", "content": "test"}],
+            )
+
+        post_json.assert_not_called()
+
+    def test_gemini_requires_api_key(self):
+        with self.assertRaisesRegex(
+            ai.HTTPException, "Google Gemini API key is not configured"
+        ):
+            ai._call_ai_messages_result(
+                {
+                    "provider": "gemini",
+                    "model": "gemini-3.5-flash-lite",
+                    "api_key": "",
+                },
+                [{"role": "user", "content": "test"}],
+            )
 
     def test_call_ai_messages_result_returns_ollama_counts(self):
         ai_config = {
