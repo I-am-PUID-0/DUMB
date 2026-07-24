@@ -246,6 +246,27 @@ def save_config_file(config_path, config_data, config_format, updates=None):
     yaml = YAML(typ="rt")
     safe_yaml = YAML(typ="safe")
     try:
+        if updates and config_format == "xml" and isinstance(updates, str):
+            try:
+                parsed_updates = json.loads(updates)
+            except json.JSONDecodeError:
+                try:
+                    xmltodict.parse(updates)
+                except Exception as exc:
+                    raise HTTPException(
+                        status_code=400,
+                        detail="XML updates must be valid XML or a JSON object.",
+                    ) from exc
+                write_to_file(config_path, updates)
+                return
+
+            if not isinstance(parsed_updates, dict):
+                raise HTTPException(
+                    status_code=400,
+                    detail="XML updates represented as JSON must be an object.",
+                )
+            updates = parsed_updates
+
         if updates:
             if isinstance(updates, dict):
                 if config_format == "xml":
@@ -275,9 +296,6 @@ def save_config_file(config_path, config_data, config_format, updates=None):
                     return
                 elif config_format == "python":
                     write_python_config(config_path, updates)
-                    return
-                elif config_format == "xml":
-                    write_to_file(config_path, updates)
                     return
                 elif config_format == "ini":
                     write_ini_config(config_path, updates)
@@ -317,10 +335,21 @@ def save_config_file(config_path, config_data, config_format, updates=None):
                 if stripped.startswith("<"):
                     indent_str = line[: len(line) - len(stripped)]
                     break
-            xml_text = xmltodict.unparse(config_data, pretty=True)
+            existing_body_lines = [
+                line
+                for line in existing_xml.splitlines()
+                if line.strip() and not line.lstrip().startswith("<?xml")
+            ]
+            pretty_xml = len(existing_body_lines) > 1
+            xml_text = xmltodict.unparse(
+                config_data,
+                pretty=pretty_xml,
+                full_document=existing_has_decl,
+                short_empty_elements=existing_xml.rstrip().endswith("/>"),
+            )
             if isinstance(xml_text, bytes):
                 xml_text = xml_text.decode("utf-8")
-            if indent_str is not None:
+            if pretty_xml and indent_str is not None:
                 xml_lines = []
                 for line in xml_text.splitlines():
                     tab_count = 0
@@ -338,6 +367,12 @@ def save_config_file(config_path, config_data, config_format, updates=None):
             if not existing_has_decl and xml_text.lstrip().startswith("<?xml"):
                 xml_text = xml_text.lstrip()
                 xml_text = "\n".join(xml_text.splitlines()[1:])
+            if existing_xml.endswith("\r\n"):
+                xml_text = xml_text.replace("\r\n", "\n").replace("\n", "\r\n")
+                if not xml_text.endswith("\r\n"):
+                    xml_text += "\r\n"
+            elif existing_xml.endswith("\n") and not xml_text.endswith("\n"):
+                xml_text += "\n"
             write_to_file(config_path, xml_text)
         elif config_format == "ini":
             write_ini_config(config_path, config_data)
@@ -345,6 +380,8 @@ def save_config_file(config_path, config_data, config_format, updates=None):
             raise HTTPException(
                 status_code=400, detail=f"Unsupported config format: {config_format}"
             )
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to save config file: {e}")
 
@@ -804,6 +841,9 @@ async def handle_service_config(
     if updates:
         try:
             save_config_file(config_path, config_data, config_format, updates)
+        except HTTPException:
+            logger.error("Failed to validate service config update.")
+            raise
         except Exception as e:
             logger.error(f"Failed to save config file: {e}")
             raise HTTPException(

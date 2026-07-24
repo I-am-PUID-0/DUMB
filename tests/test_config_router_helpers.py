@@ -6,6 +6,8 @@ import unittest
 from unittest.mock import patch
 from pathlib import Path
 
+import xmltodict as real_xmltodict
+
 
 def _install_runtime_stubs():
     fastapi = types.ModuleType("fastapi")
@@ -78,7 +80,7 @@ def _install_runtime_stubs():
 
     xmltodict = types.ModuleType("xmltodict")
     xmltodict.parse = lambda raw: {}
-    xmltodict.unparse = lambda data, pretty=True: ""
+    xmltodict.unparse = lambda data, **kwargs: ""
     sys.modules["xmltodict"] = xmltodict
 
 
@@ -674,6 +676,56 @@ class ConfigRouterHelperTests(unittest.TestCase):
                 config_router.save_config_file(path, {}, "yaml", updates="a: 2")
 
         self.assertIn("safe", created)
+
+    def test_save_xml_accepts_stringified_json_and_preserves_compact_layout(self):
+        original = '<Preferences FriendlyName="Before" MachineIdentifier="example"/>\n'
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            path = Path(temp_dir, "Preferences.xml")
+            path.write_text(original, encoding="utf-8")
+            updates = (
+                "{\n"
+                '  "Preferences": {\n'
+                '    "@FriendlyName": "After",\n'
+                '    "@MachineIdentifier": "example"\n'
+                "  }\n"
+                "}"
+            )
+
+            with patch.object(config_router, "xmltodict", real_xmltodict):
+                _, config_data, config_format = config_router.load_config_file(path)
+                config_router.save_config_file(
+                    path, config_data, config_format, updates=updates
+                )
+
+            rendered = path.read_text(encoding="utf-8")
+            parsed = real_xmltodict.parse(rendered)
+
+        self.assertEqual(parsed["Preferences"]["@FriendlyName"], "After")
+        self.assertEqual(parsed["Preferences"]["@MachineIdentifier"], "example")
+        self.assertEqual(len(rendered.splitlines()), 1)
+        self.assertTrue(rendered.rstrip().endswith("/>"))
+
+    def test_save_xml_rejects_invalid_text_without_overwriting_file(self):
+        original = '<Preferences FriendlyName="Before"/>\n'
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            path = Path(temp_dir, "Preferences.xml")
+            path.write_text(original, encoding="utf-8")
+
+            with (
+                patch.object(config_router, "xmltodict", real_xmltodict),
+                self.assertRaises(config_router.HTTPException) as ctx,
+            ):
+                _, config_data, config_format = config_router.load_config_file(path)
+                config_router.save_config_file(
+                    path, config_data, config_format, updates="{not valid"
+                )
+
+            rendered = path.read_text(encoding="utf-8")
+
+        self.assertEqual(ctx.exception.status_code, 400)
+        self.assertEqual(rendered, original)
 
     def test_update_config_service_rejects_keys_outside_config_schema_and_dynamic_set(
         self,
