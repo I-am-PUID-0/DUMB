@@ -1,5 +1,33 @@
 # Changelog
 
+## [2.11.0](https://github.com/I-am-PUID-0/DUMB/compare/2.10.0...2.11.0) (2026-07-24)
+
+
+### ✨ Features
+
+* **ai:** add evidence-backed diagnostics and local docs context ([feac22b](https://github.com/I-am-PUID-0/DUMB/commit/feac22bd551500ed3d093c48584795737d9a4611))
+* **ai:** add Gemini profiles and lifecycle-aware model discovery ([f835a09](https://github.com/I-am-PUID-0/DUMB/commit/f835a0909ff65779690a4ae0c7a32af2e34bebcb))
+* **mediastorm:** expose generated initial admin password ([80cc77c](https://github.com/I-am-PUID-0/DUMB/commit/80cc77c4c475c7eed99ad1fcb5beee1c67f77717))
+* **metrics:** add optional Plex cloud status monitoring ([f2d5c72](https://github.com/I-am-PUID-0/DUMB/commit/f2d5c72334cb68b31218a1e7f334ade1af14d4e9))
+* **services:** add immutable GitHub commit SHA pinning ([64abbfc](https://github.com/I-am-PUID-0/DUMB/commit/64abbfcb8c6340553648b77a2fc2a5f66a5bb537))
+
+
+### 🐛 Bug Fixes
+
+* **altmount:** harden ownership and Arr integration synchronization ([feac22b](https://github.com/I-am-PUID-0/DUMB/commit/feac22bd551500ed3d093c48584795737d9a4611))
+* **auto-update:** preserve commit pins across direct update operations ([7814e22](https://github.com/I-am-PUID-0/DUMB/commit/7814e227ac125f5dffef2b1dfe7d33440c8e6240))
+* **config:** safely handle text-mode XML service updates ([f82575e](https://github.com/I-am-PUID-0/DUMB/commit/f82575e7a0710cf4c2f487ed9f7e7131ee147bac))
+* harden update targeting and runtime diagnostics ([4593c8d](https://github.com/I-am-PUID-0/DUMB/commit/4593c8d3cd4460b7b448207c88fac3a753df5985))
+* **logging:** redact sensitive service-log data at every output boundary ([eb3b54f](https://github.com/I-am-PUID-0/DUMB/commit/eb3b54f4d9397a36d93fbff9a7e40aca1f2b8f05))
+* **prowlarr:** use the configured instance URL for applications ([feac22b](https://github.com/I-am-PUID-0/DUMB/commit/feac22bd551500ed3d093c48584795737d9a4611))
+* **updates:** install configured commit pins without stale cache skips ([e4526dd](https://github.com/I-am-PUID-0/DUMB/commit/e4526dd0b648c9649d6de62c664978fbe54ccf7d))
+
+
+### 🛠️ Build System
+
+* **deps:** bump docker/login-action from 4.5.0 to 4.5.1 ([eced9dc](https://github.com/I-am-PUID-0/DUMB/commit/eced9dc850d8fd5023e8ae8015628dfa1296ebc0)), closes [#277](https://github.com/I-am-PUID-0/DUMB/issues/277)
+* **deps:** refresh Python and Docker workflow dependencies ([8c1a483](https://github.com/I-am-PUID-0/DUMB/commit/8c1a483f806d1072b339f7e3e321e73574ee02de))
+
 ## [2.10.0](https://github.com/I-am-PUID-0/DUMB/compare/2.9.2...2.10.0) (2026-07-22)
 
 
