@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends, Query
 from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel, ConfigDict
+from starlette.responses import JSONResponse
 from typing import Optional, List, Dict, Any, Union
 from utils.dependencies import (
     get_process_handler,
@@ -33,6 +34,10 @@ from utils.service_postgres import (
 )
 from utils.postgres import initialize_postgres_databases
 from utils.database_health import SUPPORTED_SERVICE_KEYS
+from utils.mediastorm_credentials import (
+    MediaStormCredentialError,
+    read_initial_admin_password,
+)
 from utils.arr_postgres_migration import (
     SUPPORTED_SERVICES as POSTGRES_MIGRATION_SERVICES,
 )
@@ -5196,6 +5201,7 @@ async def get_capabilities(current_user: str = Depends(get_optional_current_user
         "metrics_filesystem_selection": True,
         "metrics_network_interface_selection": True,
         "plex_status_metric": True,
+        "mediastorm_initial_admin_password": True,
         "database_health_service_keys": sorted(SUPPORTED_SERVICE_KEYS),
         "notifications": True,
         "ai_diagnostics": True,
@@ -5205,3 +5211,31 @@ async def get_capabilities(current_user: str = Depends(get_optional_current_user
         "ai_native_diagnostics": True,
         "ai_change_history": True,
     }
+
+
+@process_router.get("/mediastorm-initial-admin-password")
+async def get_mediastorm_initial_admin_password(
+    current_user: str = Depends(get_optional_current_user),
+):
+    config = CONFIG_MANAGER.get("mediastorm") or {}
+    config_dir = config.get("config_dir") or "/mediastorm"
+
+    try:
+        password = read_initial_admin_password(config_dir)
+    except MediaStormCredentialError:
+        raise HTTPException(
+            status_code=500,
+            detail="MediaStorm's initial admin credential file is invalid or unreadable.",
+        ) from None
+
+    return JSONResponse(
+        content={
+            "available": password is not None,
+            "username": "admin",
+            "password": password,
+        },
+        headers={
+            "Cache-Control": "no-store, private",
+            "Pragma": "no-cache",
+        },
+    )

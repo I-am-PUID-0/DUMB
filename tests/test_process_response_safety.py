@@ -1,3 +1,4 @@
+import json
 import sys
 import types
 import unittest
@@ -24,6 +25,7 @@ def _install_process_router_stubs():
     fastapi.HTTPException = HTTPException
     fastapi.Depends = lambda *args, **kwargs: None
     fastapi.Query = lambda default=None, *args, **kwargs: default
+    fastapi.WebSocket = type("WebSocket", (), {})
     sys.modules["fastapi"] = fastapi
 
     fastapi_concurrency = types.ModuleType("fastapi.concurrency")
@@ -61,6 +63,8 @@ def _install_process_router_stubs():
     sys.modules["utils.config_loader"] = config_loader
 
     setup = types.ModuleType("utils.setup")
+    setup.COMMIT_PIN_SERVICE_KEYS = set()
+    setup.ensure_managed_postgres_database = lambda *args, **kwargs: None
     setup.setup_project = lambda *args, **kwargs: None
     sys.modules["utils.setup"] = setup
 
@@ -132,6 +136,61 @@ class ProcessResponseSanitizerTests(unittest.TestCase):
 
         self.assertIsInstance(response["items"], str)
         self.assertEqual(response["error"], "Internal error")
+
+
+class MediaStormCredentialResponseTests(unittest.IsolatedAsyncioTestCase):
+    async def test_credential_response_is_no_store_and_capability_gated(self):
+        with (
+            patch.object(
+                process_router.CONFIG_MANAGER,
+                "get",
+                return_value={"config_dir": "/mediastorm"},
+            ),
+            patch.object(
+                process_router,
+                "read_initial_admin_password",
+                return_value="generated-secret",
+            ),
+        ):
+            response = await process_router.get_mediastorm_initial_admin_password(None)
+
+        self.assertEqual(response.headers["cache-control"], "no-store, private")
+        self.assertEqual(response.headers["pragma"], "no-cache")
+        self.assertEqual(
+            json.loads(response.body),
+            {
+                "available": True,
+                "username": "admin",
+                "password": "generated-secret",
+            },
+        )
+
+        capabilities = await process_router.get_capabilities(None)
+        self.assertTrue(capabilities["mediastorm_initial_admin_password"])
+
+    async def test_missing_credential_does_not_return_a_password(self):
+        with (
+            patch.object(
+                process_router.CONFIG_MANAGER,
+                "get",
+                return_value={"config_dir": "/mediastorm"},
+            ),
+            patch.object(
+                process_router,
+                "read_initial_admin_password",
+                return_value=None,
+            ),
+        ):
+            response = await process_router.get_mediastorm_initial_admin_password(None)
+
+        self.assertEqual(
+            json.loads(response.body),
+            {
+                "available": False,
+                "username": "admin",
+                "password": None,
+            },
+        )
 
 
 if __name__ == "__main__":
