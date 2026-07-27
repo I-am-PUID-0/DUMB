@@ -3,35 +3,38 @@
 <html lang="en" class="no-js">
   <head>
     
-      <meta charset="utf-8">
-      <meta name="viewport" content="width=device-width,initial-scale=1">
-      
-        <meta name="description" content="DUMB Documentation">
-      
-      
-        <meta name="author" content="DUMB Team">
-      
-      
-        <link rel="canonical" href="https://dumbarr.com/deployment/truenas/">
-      
-      
-        <link rel="prev" href="../qnap/">
-      
-      
-        <link rel="next" href="../dockge/">
-      
-      
-        
-      
-      
-      <link rel="icon" href="../../assets/images/favicon.ico">
-      <meta name="generator" content="zensical-0.0.15">
+  
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Deploy DUMB on TrueNAS SCALE with Docker Compose, persistent datasets, mount propagation, permissions, networking, and optional devices.">
+  
+    <meta name="author" content="DUMB Team">
+  
+  
+    <link rel="canonical" href="https://dumbarr.com/deployment/truenas/">
+  
+  
+    <link rel="prev" href="../qnap/">
+  
+  
+    <link rel="next" href="../dockge/">
+  
+  
     
+  
+  
+  <link rel="icon" href="../../assets/images/favicon.ico">
+  <meta name="generator" content="zensical-0.0.15">
+
+    
+  
     
       
-        <title>Deploy with TrueNAS - Debrid Unlimited Media Bridge</title>
+        <title>Deploy with TrueNAS - Distributed Unlimited Media Bridge</title>
       
     
+  
+
     
       
         
@@ -97,6 +100,63 @@
 
     
     
+  
+  
+    
+    
+    
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
+    <meta property="og:type" content="website">
+    <meta property="og:locale" content="en_US">
+    <meta property="og:site_name" content="DUMB — Distributed Unlimited Media Bridge">
+    <meta property="og:title" content="Deploy with TrueNAS">
+    <meta property="og:description" content="Deploy DUMB on TrueNAS SCALE with Docker Compose, persistent datasets, mount propagation, permissions, networking, and optional devices.">
+    <meta property="og:url" content="https://dumbarr.com/deployment/truenas/">
+    <meta property="og:image" content="https://dumbarr.com/assets/images/DUMB.png">
+    <meta property="og:image:secure_url" content="https://dumbarr.com/assets/images/DUMB.png">
+    <meta property="og:image:type" content="image/png">
+    <meta property="og:image:width" content="1536">
+    <meta property="og:image:height" content="1024">
+    <meta property="og:image:alt" content="Distributed Unlimited Media Bridge ecosystem and architecture overview">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Deploy with TrueNAS">
+    <meta name="twitter:description" content="Deploy DUMB on TrueNAS SCALE with Docker Compose, persistent datasets, mount propagation, permissions, networking, and optional devices.">
+    <meta name="twitter:image" content="https://dumbarr.com/assets/images/DUMB.png">
+    <meta name="twitter:image:alt" content="Distributed Unlimited Media Bridge ecosystem and architecture overview">
+    
+      
+      <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          {
+            "@type": "ListItem",
+            "position": 1,
+            "name": "Home",
+            "item": "https://dumbarr.com/"
+          }
+          ,
+          {
+            "@type": "ListItem",
+            "position": 2,
+            "name": "Deployment",
+            "item": "https://dumbarr.com/deployment/"
+          }
+          
+          ,
+          {
+            "@type": "ListItem",
+            "position": 3,
+            "name": "Deploy with TrueNAS",
+            "item": "https://dumbarr.com/deployment/truenas/"
+          }
+        ]
+      }
+      </script>
+    
+  
+
   </head>
   
   
@@ -141,9 +201,9 @@
 
 <header class="md-header" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="../.." title="Debrid Unlimited Media Bridge" class="md-header__button md-logo" aria-label="Debrid Unlimited Media Bridge" data-md-component="logo">
+    <a href="../.." title="Distributed Unlimited Media Bridge" class="md-header__button md-logo" aria-label="Distributed Unlimited Media Bridge" data-md-component="logo">
       
-  <img src="../../assets/images/DUMB.png" alt="logo">
+  <img src="../../assets/images/logo.png" alt="logo">
 
     </a>
     <label class="md-header__button md-icon" for="__drawer">
@@ -154,7 +214,7 @@
       <div class="md-header__ellipsis">
         <div class="md-header__topic">
           <span class="md-ellipsis">
-            Debrid Unlimited Media Bridge
+            Distributed Unlimited Media Bridge
           </span>
         </div>
         <div class="md-header__topic" data-md-component="header-topic">
@@ -261,6 +321,25 @@
 
       </a>
     </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../getting-started/" class="md-tabs__link">
+          
+  
+  Getting Started
+
+        </a>
+      </li>
+    
   
 
       
@@ -488,12 +567,12 @@
 
 <nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="../.." title="Debrid Unlimited Media Bridge" class="md-nav__button md-logo" aria-label="Debrid Unlimited Media Bridge" data-md-component="logo">
+    <a href="../.." title="Distributed Unlimited Media Bridge" class="md-nav__button md-logo" aria-label="Distributed Unlimited Media Bridge" data-md-component="logo">
       
-  <img src="../../assets/images/DUMB.png" alt="logo">
+  <img src="../../assets/images/logo.png" alt="logo">
 
     </a>
-    Debrid Unlimited Media Bridge
+    Distributed Unlimited Media Bridge
   </label>
   
     <div class="md-nav__source">
@@ -554,6 +633,116 @@
       
         
       
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../getting-started/" class="md-nav__link ">
+              
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-rocket" viewBox="0 0 24 24"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09M12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.4 22.4 0 0 1-4 2"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_2" id="__nav_2_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting Started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/installation/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-download" viewBox="0 0 24 24"><path d="M12 15V3M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
         
       
         
@@ -593,7 +782,7 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
         
           
           <div class="md-nav__link md-nav__container">
@@ -617,14 +806,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_2" id="__nav_2_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_3" id="__nav_3_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_2">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -1071,7 +1260,7 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
         
           
           <div class="md-nav__link md-nav__container">
@@ -1095,14 +1284,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_3" id="__nav_3_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_4" id="__nav_4_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_3">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -1305,7 +1494,7 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
         
           
           <div class="md-nav__link md-nav__container">
@@ -1329,14 +1518,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_4" id="__nav_4_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_5" id="__nav_5_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_4">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -1481,7 +1670,7 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6" >
         
           
           <div class="md-nav__link md-nav__container">
@@ -1505,14 +1694,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_5" id="__nav_5_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_6" id="__nav_6_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_5">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -1556,7 +1745,7 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5_2" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6_2" >
         
           
           <div class="md-nav__link md-nav__container">
@@ -1580,14 +1769,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_5_2" id="__nav_5_2_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_6_2" id="__nav_6_2_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_2_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_5_2">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6_2">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -1727,7 +1916,7 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5_3" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6_3" >
         
           
           <div class="md-nav__link md-nav__container">
@@ -1751,14 +1940,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_5_3" id="__nav_5_3_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_6_3" id="__nav_6_3_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_3_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_5_3">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6_3">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -2296,7 +2485,7 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5_4" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6_4" >
         
           
           <div class="md-nav__link md-nav__container">
@@ -2320,14 +2509,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_5_4" id="__nav_5_4_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_6_4" id="__nav_6_4_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_4_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_5_4">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6_4">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -2545,7 +2734,7 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5_5" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6_5" >
         
           
           <div class="md-nav__link md-nav__container">
@@ -2569,14 +2758,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_5_5" id="__nav_5_5_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_6_5" id="__nav_6_5_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_5_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_5_5">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6_5">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -2784,7 +2973,7 @@
   <span class="md-ellipsis">
     
   
-    MediaStorm
+    mediastorm
   
 
     
@@ -2952,7 +3141,7 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" checked>
         
           
           <div class="md-nav__link md-nav__container">
@@ -2976,14 +3165,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_6" id="__nav_6_label" tabindex="">
+              <label class="md-nav__link " for="__nav_7" id="__nav_7_label" tabindex="">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="true">
-          <label class="md-nav__title" for="__nav_6">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_7">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -3427,7 +3616,7 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_7" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_8" >
         
           
           <div class="md-nav__link md-nav__container">
@@ -3451,14 +3640,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_7" id="__nav_7_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_8" id="__nav_8_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_7">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -3845,7 +4034,7 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_8" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_9" >
         
           
           <div class="md-nav__link md-nav__container">
@@ -3869,14 +4058,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_8" id="__nav_8_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_9" id="__nav_9_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_8">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -4099,10 +4288,10 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_9" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_10" >
         
           
-          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_10" id="__nav_10_label" tabindex="0">
             
   
   
@@ -4120,8 +4309,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_9">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_10_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_10">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -4834,11 +5023,11 @@
   
 
 
-<h1 id="deploy-with-truenas-scale">Deploy with TrueNAS SCALE<a class="headerlink" href="#deploy-with-truenas-scale" title="Permanent link">&para;</a></h1>
+<h1 id="deploy-with-truenas-scale">Deploy with TrueNAS SCALE<a class="headerlink" href="#deploy-with-truenas-scale" title="Permanent link">#</a></h1>
 <p>TrueNAS SCALE 24.10 and later use Docker for Apps and can deploy a custom
 application from Docker Compose YAML. Older 24.04 and earlier releases use the
 archived Kubernetes app model and are not covered by this Compose procedure.</p>
-<h2 id="prerequisites">Prerequisites<a class="headerlink" href="#prerequisites" title="Permanent link">&para;</a></h2>
+<h2 id="prerequisites">Prerequisites<a class="headerlink" href="#prerequisites" title="Permanent link">#</a></h2>
 <ul>
 <li>TrueNAS SCALE 24.10 or later with an Apps pool selected</li>
 <li>Datasets/directories for DUMB's persistent storage</li>
@@ -4847,7 +5036,7 @@ archived Kubernetes app model and are not covered by this Compose procedure.</p>
 </ul>
 <p>TrueNAS documents the current editor under
 <a href="https://www.truenas.com/docs/scale/apps/installcustomappscreens/#add-custom-app-screen">Install Custom App via YAML</a>.</p>
-<h2 id="create-datasets-and-directories">Create datasets and directories<a class="headerlink" href="#create-datasets-and-directories" title="Permanent link">&para;</a></h2>
+<h2 id="create-datasets-and-directories">Create datasets and directories<a class="headerlink" href="#create-datasets-and-directories" title="Permanent link">#</a></h2>
 <p>Create a dedicated dataset such as <code>tank/apps/dumb</code>, then create:</p>
 <div class="highlight"><pre><span></span><code>/mnt/tank/apps/dumb/
 ├── config/
@@ -4859,7 +5048,7 @@ archived Kubernetes app model and are not covered by this Compose procedure.</p>
 inspect than hidden app-managed volumes. Set ACLs/ownership for the UID/GID DUMB
 will run as; the TrueNAS <code>apps</code> user's default IDs are not automatically the
 right IDs for DUMB.</p>
-<h2 id="install-via-yaml">Install via YAML<a class="headerlink" href="#install-via-yaml" title="Permanent link">&para;</a></h2>
+<h2 id="install-via-yaml">Install via YAML<a class="headerlink" href="#install-via-yaml" title="Permanent link">#</a></h2>
 <ol>
 <li>Open <strong>Apps</strong> → <strong>Discover Apps</strong>.</li>
 <li>Use the menu beside <strong>Custom App</strong> and choose <strong>Install via YAML</strong>.</li>
@@ -4880,7 +5069,7 @@ right IDs for DUMB.</p>
 proxies DUMB's API under <code>/api</code>; do not expose native backend port <code>8000</code> unless
 you deliberately change its bind address, enable authentication, and restrict
 network access.</p>
-<h2 id="fuse-and-external-media-servers">FUSE and external media servers<a class="headerlink" href="#fuse-and-external-media-servers" title="Permanent link">&para;</a></h2>
+<h2 id="fuse-and-external-media-servers">FUSE and external media servers<a class="headerlink" href="#fuse-and-external-media-servers" title="Permanent link">#</a></h2>
 <p>The maintained Compose file includes <code>/dev/fuse</code>, <code>SYS_ADMIN</code>, and an unconfined
 AppArmor profile. Keep them for mount-producing workflows. Remove <code>/dev/dri</code>
 only if that device is absent and no configured service needs it.</p>
@@ -4889,7 +5078,7 @@ DUMB's <code>/mnt/debrid</code> host bind and a compatible slave propagation mod
 consumer. TrueNAS performs only basic YAML validation, so verify the effective
 container mounts after deployment rather than assuming the UI accepted every
 Compose option.</p>
-<h2 id="updates-and-backups">Updates and backups<a class="headerlink" href="#updates-and-backups" title="Permanent link">&para;</a></h2>
+<h2 id="updates-and-backups">Updates and backups<a class="headerlink" href="#updates-and-backups" title="Permanent link">#</a></h2>
 <ul>
 <li>Edit/redeploy the custom app to adopt Compose changes and pull a new image.</li>
 <li>Back up <code>config</code> and service data under <code>data</code>; preserve the chosen workflow's

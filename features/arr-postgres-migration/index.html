@@ -3,35 +3,38 @@
 <html lang="en" class="no-js">
   <head>
     
-      <meta charset="utf-8">
-      <meta name="viewport" content="width=device-width,initial-scale=1">
-      
-        <meta name="description" content="DUMB Documentation">
-      
-      
-        <meta name="author" content="DUMB Team">
-      
-      
-        <link rel="canonical" href="https://dumbarr.com/features/arr-postgres-migration/">
-      
-      
-        <link rel="prev" href="../auto-update/">
-      
-      
-        <link rel="next" href="../symlinks/">
-      
-      
-        
-      
-      
-      <link rel="icon" href="../../assets/images/favicon.ico">
-      <meta name="generator" content="zensical-0.0.15">
+  
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Rehearse, validate, cut over, and roll back supported DUMB services from SQLite to managed PostgreSQL with persistent backups and job status.">
+  
+    <meta name="author" content="DUMB Team">
+  
+  
+    <link rel="canonical" href="https://dumbarr.com/features/arr-postgres-migration/">
+  
+  
+    <link rel="prev" href="../auto-update/">
+  
+  
+    <link rel="next" href="../symlinks/">
+  
+  
     
+  
+  
+  <link rel="icon" href="../../assets/images/favicon.ico">
+  <meta name="generator" content="zensical-0.0.15">
+
+    
+  
     
       
-        <title>SQLite to PostgreSQL Migration - Debrid Unlimited Media Bridge</title>
+        <title>SQLite to PostgreSQL Migration - Distributed Unlimited Media Bridge</title>
       
     
+  
+
     
       
         
@@ -97,6 +100,63 @@
 
     
     
+  
+  
+    
+    
+    
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
+    <meta property="og:type" content="website">
+    <meta property="og:locale" content="en_US">
+    <meta property="og:site_name" content="DUMB — Distributed Unlimited Media Bridge">
+    <meta property="og:title" content="SQLite to PostgreSQL Migration">
+    <meta property="og:description" content="Rehearse, validate, cut over, and roll back supported DUMB services from SQLite to managed PostgreSQL with persistent backups and job status.">
+    <meta property="og:url" content="https://dumbarr.com/features/arr-postgres-migration/">
+    <meta property="og:image" content="https://dumbarr.com/assets/images/DUMB.png">
+    <meta property="og:image:secure_url" content="https://dumbarr.com/assets/images/DUMB.png">
+    <meta property="og:image:type" content="image/png">
+    <meta property="og:image:width" content="1536">
+    <meta property="og:image:height" content="1024">
+    <meta property="og:image:alt" content="Distributed Unlimited Media Bridge ecosystem and architecture overview">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="SQLite to PostgreSQL Migration">
+    <meta name="twitter:description" content="Rehearse, validate, cut over, and roll back supported DUMB services from SQLite to managed PostgreSQL with persistent backups and job status.">
+    <meta name="twitter:image" content="https://dumbarr.com/assets/images/DUMB.png">
+    <meta name="twitter:image:alt" content="Distributed Unlimited Media Bridge ecosystem and architecture overview">
+    
+      
+      <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          {
+            "@type": "ListItem",
+            "position": 1,
+            "name": "Home",
+            "item": "https://dumbarr.com/"
+          }
+          ,
+          {
+            "@type": "ListItem",
+            "position": 2,
+            "name": "Features",
+            "item": "https://dumbarr.com/features/"
+          }
+          
+          ,
+          {
+            "@type": "ListItem",
+            "position": 3,
+            "name": "SQLite to PostgreSQL Migration",
+            "item": "https://dumbarr.com/features/arr-postgres-migration/"
+          }
+        ]
+      }
+      </script>
+    
+  
+
   </head>
   
   
@@ -141,9 +201,9 @@
 
 <header class="md-header" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="../.." title="Debrid Unlimited Media Bridge" class="md-header__button md-logo" aria-label="Debrid Unlimited Media Bridge" data-md-component="logo">
+    <a href="../.." title="Distributed Unlimited Media Bridge" class="md-header__button md-logo" aria-label="Distributed Unlimited Media Bridge" data-md-component="logo">
       
-  <img src="../../assets/images/DUMB.png" alt="logo">
+  <img src="../../assets/images/logo.png" alt="logo">
 
     </a>
     <label class="md-header__button md-icon" for="__drawer">
@@ -154,7 +214,7 @@
       <div class="md-header__ellipsis">
         <div class="md-header__topic">
           <span class="md-ellipsis">
-            Debrid Unlimited Media Bridge
+            Distributed Unlimited Media Bridge
           </span>
         </div>
         <div class="md-header__topic" data-md-component="header-topic">
@@ -261,6 +321,25 @@
 
       </a>
     </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../getting-started/" class="md-tabs__link">
+          
+  
+  Getting Started
+
+        </a>
+      </li>
+    
   
 
       
@@ -488,12 +567,12 @@
 
 <nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="../.." title="Debrid Unlimited Media Bridge" class="md-nav__button md-logo" aria-label="Debrid Unlimited Media Bridge" data-md-component="logo">
+    <a href="../.." title="Distributed Unlimited Media Bridge" class="md-nav__button md-logo" aria-label="Distributed Unlimited Media Bridge" data-md-component="logo">
       
-  <img src="../../assets/images/DUMB.png" alt="logo">
+  <img src="../../assets/images/logo.png" alt="logo">
 
     </a>
-    Debrid Unlimited Media Bridge
+    Distributed Unlimited Media Bridge
   </label>
   
     <div class="md-nav__source">
@@ -535,6 +614,116 @@
   
 
       </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../getting-started/" class="md-nav__link ">
+              
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-rocket" viewBox="0 0 24 24"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09M12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.4 22.4 0 0 1-4 2"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_2" id="__nav_2_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting Started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/installation/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-download" viewBox="0 0 24 24"><path d="M12 15V3M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
     </li>
   
 
@@ -596,7 +785,7 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
         
           
           <div class="md-nav__link md-nav__container">
@@ -620,14 +809,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_2" id="__nav_2_label" tabindex="">
+              <label class="md-nav__link " for="__nav_3" id="__nav_3_label" tabindex="">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
-          <label class="md-nav__title" for="__nav_2">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -890,6 +1079,56 @@
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="Recommended flow">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-run-preflight" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Run preflight
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-run-a-rehearsal" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Run a rehearsal
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-run-guarded-cutover" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Run guarded cutover
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-validate-the-application" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Validate the application
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -1201,7 +1440,7 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
         
           
           <div class="md-nav__link md-nav__container">
@@ -1225,14 +1464,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_3" id="__nav_3_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_4" id="__nav_4_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_3">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -1435,7 +1674,7 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
         
           
           <div class="md-nav__link md-nav__container">
@@ -1459,14 +1698,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_4" id="__nav_4_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_5" id="__nav_5_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_4">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -1611,7 +1850,7 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6" >
         
           
           <div class="md-nav__link md-nav__container">
@@ -1635,14 +1874,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_5" id="__nav_5_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_6" id="__nav_6_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_5">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -1686,7 +1925,7 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5_2" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6_2" >
         
           
           <div class="md-nav__link md-nav__container">
@@ -1710,14 +1949,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_5_2" id="__nav_5_2_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_6_2" id="__nav_6_2_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_2_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_5_2">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6_2">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -1857,7 +2096,7 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5_3" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6_3" >
         
           
           <div class="md-nav__link md-nav__container">
@@ -1881,14 +2120,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_5_3" id="__nav_5_3_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_6_3" id="__nav_6_3_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_3_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_5_3">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6_3">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -2426,7 +2665,7 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5_4" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6_4" >
         
           
           <div class="md-nav__link md-nav__container">
@@ -2450,14 +2689,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_5_4" id="__nav_5_4_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_6_4" id="__nav_6_4_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_4_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_5_4">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6_4">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -2675,7 +2914,7 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5_5" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6_5" >
         
           
           <div class="md-nav__link md-nav__container">
@@ -2699,14 +2938,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_5_5" id="__nav_5_5_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_6_5" id="__nav_6_5_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_5_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_5_5">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6_5">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -2914,7 +3153,7 @@
   <span class="md-ellipsis">
     
   
-    MediaStorm
+    mediastorm
   
 
     
@@ -3079,7 +3318,7 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_7" >
         
           
           <div class="md-nav__link md-nav__container">
@@ -3103,14 +3342,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_6" id="__nav_6_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_7" id="__nav_7_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_6">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -3449,7 +3688,7 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_7" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_8" >
         
           
           <div class="md-nav__link md-nav__container">
@@ -3473,14 +3712,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_7" id="__nav_7_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_8" id="__nav_8_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_7">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -3867,7 +4106,7 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_8" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_9" >
         
           
           <div class="md-nav__link md-nav__container">
@@ -3891,14 +4130,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_8" id="__nav_8_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_9" id="__nav_9_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_8">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -4121,10 +4360,10 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_9" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_10" >
         
           
-          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_10" id="__nav_10_label" tabindex="0">
             
   
   
@@ -4142,8 +4381,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_9">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_10_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_10">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -4753,6 +4992,56 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Recommended flow">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-run-preflight" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Run preflight
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-run-a-rehearsal" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Run a rehearsal
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-run-guarded-cutover" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Run guarded cutover
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-validate-the-application" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Validate the application
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -4878,10 +5167,10 @@
   
 
 
-<h1 id="sqlite-to-postgresql-migration">SQLite to PostgreSQL Migration<a class="headerlink" href="#sqlite-to-postgresql-migration" title="Permanent link">&para;</a></h1>
+<h1 id="sqlite-to-postgresql-migration">SQLite to PostgreSQL Migration<a class="headerlink" href="#sqlite-to-postgresql-migration" title="Permanent link">#</a></h1>
 <p>DUMB provides a guarded tool for moving an existing supported service from SQLite to DUMB-managed PostgreSQL. Open the service page and select <strong>Database Migration</strong>.</p>
 <p>This tool is deliberately separate from <code>postgres_enabled</code>. Enabling PostgreSQL directly changes the database used at the next start; it does not copy existing SQLite data.</p>
-<h2 id="supported-services">Supported services<a class="headerlink" href="#supported-services" title="Permanent link">&para;</a></h2>
+<h2 id="supported-services">Supported services<a class="headerlink" href="#supported-services" title="Permanent link">#</a></h2>
 <table>
 <thead>
 <tr>
@@ -4948,8 +5237,8 @@
 </tr>
 </tbody>
 </table>
-<p>Services that use PostgreSQL only, such as MediaStorm, Riven Backend, Zilean, and Traefik Proxy Admin, do not have a SQLite source to migrate. Services without a confirmed PostgreSQL backend are not offered the tool.</p>
-<h2 id="what-dumb-automates">What DUMB automates<a class="headerlink" href="#what-dumb-automates" title="Permanent link">&para;</a></h2>
+<p>Services that use PostgreSQL only, such as mediastorm, Riven Backend, Zilean, and Traefik Proxy Admin, do not have a SQLite source to migrate. Services without a confirmed PostgreSQL backend are not offered the tool.</p>
+<h2 id="what-dumb-automates">What DUMB automates<a class="headerlink" href="#what-dumb-automates" title="Permanent link">#</a></h2>
 <p>The workflow:</p>
 <ol>
 <li>Confirms that the service is enabled, still configured for SQLite, and has a healthy SQLite source.</li>
@@ -4966,12 +5255,12 @@
 └── backups/
 </code></pre></div>
 <p>Existing Sonarr/Radarr job history and rollback backups therefore remain visible after upgrading. DUMB never deletes the source SQLite database.</p>
-<h2 id="recommended-flow">Recommended flow<a class="headerlink" href="#recommended-flow" title="Permanent link">&para;</a></h2>
-<h3 id="1-run-preflight">1. Run preflight<a class="headerlink" href="#1-run-preflight" title="Permanent link">&para;</a></h3>
+<h2 id="recommended-flow">Recommended flow<a class="headerlink" href="#recommended-flow" title="Permanent link">#</a></h2>
+<h3 id="1-run-preflight">1. Run preflight<a class="headerlink" href="#1-run-preflight" title="Permanent link">#</a></h3>
 <p>Open <strong>Database Migration</strong> on the service page and review every check. A failure blocks the job. A warning requires review but may be expected, such as a version that cannot be detected or a target database that already contains data.</p>
 <p>The panel shows the latest persisted job for the current service, including its service name and start time. Historical failed or completed jobs remain visible after navigation and restarts; opening a panel or running preflight does not start a migration.</p>
 <p>Preflight does not change the service configuration.</p>
-<h3 id="2-run-a-rehearsal">2. Run a rehearsal<a class="headerlink" href="#2-run-a-rehearsal" title="Permanent link">&para;</a></h3>
+<h3 id="2-run-a-rehearsal">2. Run a rehearsal<a class="headerlink" href="#2-run-a-rehearsal" title="Permanent link">#</a></h3>
 <p>Rehearsal is required before dmbdb enables cutover. It:</p>
 <ul>
 <li>takes a consistent SQLite snapshot;</li>
@@ -4985,32 +5274,32 @@
 <p>Closing the migration popup does not cancel an active job. dmbdb asks for confirmation, then keeps a <strong>Database migration running in the background</strong> indicator on the service page with current progress and an <strong>Open progress</strong> action. Reopen the panel at any time to resume the detailed event view. Do not restart the DUMB API or container while the job is active.</p>
 <p>When a guarded cutover finishes, the panel displays <strong>Migration completed successfully — PostgreSQL cutover is complete</strong>. If it finishes while the popup is closed, the service page replaces the running indicator with a dismissible completion notice. This confirms that DUMB imported and validated the snapshot and switched the database configuration; still verify service health, application data, and integrations afterward.</p>
 <p>When validation succeeds, the panel displays <strong>Rehearsal passed — ready for PostgreSQL cutover</strong> and automatically selects <strong>Cut over to PostgreSQL</strong>. The service is still using SQLite at this point. Review the safeguards, enter the confirmation text again, and click <strong>Start guarded cutover</strong> to perform the actual switch.</p>
-<h3 id="3-run-guarded-cutover">3. Run guarded cutover<a class="headerlink" href="#3-run-guarded-cutover" title="Permanent link">&para;</a></h3>
+<h3 id="3-run-guarded-cutover">3. Run guarded cutover<a class="headerlink" href="#3-run-guarded-cutover" title="Permanent link">#</a></h3>
 <p>Cutover stops the service, creates a fresh cold backup, resets the named PostgreSQL target databases, imports and validates the snapshot, switches the application configuration, and starts the service when it was running before the job.</p>
 <p>Downtime depends mainly on SQLite size and storage speed.</p>
-<h3 id="4-validate-the-application">4. Validate the application<a class="headerlink" href="#4-validate-the-application" title="Permanent link">&para;</a></h3>
+<h3 id="4-validate-the-application">4. Validate the application<a class="headerlink" href="#4-validate-the-application" title="Permanent link">#</a></h3>
 <p>Check the service's important objects and integrations, then perform a harmless write such as saving an unchanged setting. For an Arr, verify libraries, files, root folders, profiles, indexers, download clients, and history. For Bazarr, verify shows/movies, providers, history, and subtitle searches. For request services, verify users, requests, settings, and integrations.</p>
 <p>Keep the SQLite backup until PostgreSQL and its
 <a href="../../faq/pgadmin/#example-scheduled-backups-with-pgagent">backup schedule</a> have
 been proven with a test restore.</p>
-<h2 id="arr-log-databases-are-optional">Arr log databases are optional<a class="headerlink" href="#arr-log-databases-are-optional" title="Permanent link">&para;</a></h2>
+<h2 id="arr-log-databases-are-optional">Arr log databases are optional<a class="headerlink" href="#arr-log-databases-are-optional" title="Permanent link">#</a></h2>
 <p>The five Arr services have a separate <code>logs.db</code>. Leave <strong>Migrate the service log database too</strong> disabled unless old application log entries matter. The main database already contains application configuration, library state, and history; starting fresh for diagnostic logs shortens cutover.</p>
 <p>The option is hidden for Bazarr, Pulsarr, Seerr, and AltMount because they have one migrated SQLite database.</p>
-<h2 id="rollback-behavior">Rollback behavior<a class="headerlink" href="#rollback-behavior" title="Permanent link">&para;</a></h2>
+<h2 id="rollback-behavior">Rollback behavior<a class="headerlink" href="#rollback-behavior" title="Permanent link">#</a></h2>
 <p>For a completed cutover, the panel can restore the preserved application configuration, set <code>postgres_enabled: false</code>, and restart against the untouched SQLite database.</p>
 <div class="admonition warning">
 <p class="admonition-title">Rollback is not reverse migration</p>
 <p>Changes written after PostgreSQL cutover are not copied into SQLite. Roll back promptly if validation fails. A later rollback can lose settings, library changes, history, requests, or other PostgreSQL writes.</p>
 </div>
 <p>An active job is marked <code>interrupted</code> if the DUMB API restarts. Inspect its backup directory and restore SQLite before retrying.</p>
-<h2 id="postgresql-backups-after-migration">PostgreSQL backups after migration<a class="headerlink" href="#postgresql-backups-after-migration" title="Permanent link">&para;</a></h2>
+<h2 id="postgresql-backups-after-migration">PostgreSQL backups after migration<a class="headerlink" href="#postgresql-backups-after-migration" title="Permanent link">#</a></h2>
 <p>Application-native backups generally do not contain PostgreSQL data. Configure
 scheduled <code>pg_dump</code> backups for every migrated database by following the
 <a href="../../faq/pgadmin/#example-scheduled-backups-with-pgagent">pgAdmin and pgAgent example</a>,
 including retention and restore testing. Also protect the mounted data
 directory's <code>postgres</code> subtree (container path <code>/data/postgres</code>, service path
 <code>/postgres_data</code>) with the normal backup plan.</p>
-<h2 id="upstream-references">Upstream references<a class="headerlink" href="#upstream-references" title="Permanent link">&para;</a></h2>
+<h2 id="upstream-references">Upstream references<a class="headerlink" href="#upstream-references" title="Permanent link">#</a></h2>
 <ul>
 <li><a href="https://wiki.servarr.com/en/sonarr/postgres-setup">Sonarr PostgreSQL setup</a></li>
 <li><a href="https://wiki.servarr.com/radarr/postgres-setup">Radarr PostgreSQL setup</a></li>

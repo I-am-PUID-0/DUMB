@@ -3,35 +3,38 @@
 <html lang="en" class="no-js">
   <head>
     
-      <meta charset="utf-8">
-      <meta name="viewport" content="width=device-width,initial-scale=1">
-      
-        <meta name="description" content="DUMB Documentation">
-      
-      
-        <meta name="author" content="DUMB Team">
-      
-      
-        <link rel="canonical" href="https://dumbarr.com/services/core/seerr/">
-      
-      
-        <link rel="prev" href="../emby/">
-      
-      
-        <link rel="next" href="../riven-backend/">
-      
-      
-        
-      
-      
-      <link rel="icon" href="../../../assets/images/favicon.ico">
-      <meta name="generator" content="zensical-0.0.15">
+  
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Configure Seerr in DUMB for Plex or Jellyfin discovery, Sonarr and Radarr requests, guided onboarding, embedded access, and request synchronization.">
+  
+    <meta name="author" content="DUMB Team">
+  
+  
+    <link rel="canonical" href="https://dumbarr.com/services/core/seerr/">
+  
+  
+    <link rel="prev" href="../emby/">
+  
+  
+    <link rel="next" href="../riven-backend/">
+  
+  
     
+  
+  
+  <link rel="icon" href="../../../assets/images/favicon.ico">
+  <meta name="generator" content="zensical-0.0.15">
+
+    
+  
     
       
-        <title>Seerr - Debrid Unlimited Media Bridge</title>
+        <title>Seerr - Distributed Unlimited Media Bridge</title>
       
     
+  
+
     
       
         
@@ -97,6 +100,71 @@
 
     
     
+  
+  
+    
+    
+    
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
+    <meta property="og:type" content="website">
+    <meta property="og:locale" content="en_US">
+    <meta property="og:site_name" content="DUMB — Distributed Unlimited Media Bridge">
+    <meta property="og:title" content="Seerr">
+    <meta property="og:description" content="Configure Seerr in DUMB for Plex or Jellyfin discovery, Sonarr and Radarr requests, guided onboarding, embedded access, and request synchronization.">
+    <meta property="og:url" content="https://dumbarr.com/services/core/seerr/">
+    <meta property="og:image" content="https://dumbarr.com/assets/images/DUMB.png">
+    <meta property="og:image:secure_url" content="https://dumbarr.com/assets/images/DUMB.png">
+    <meta property="og:image:type" content="image/png">
+    <meta property="og:image:width" content="1536">
+    <meta property="og:image:height" content="1024">
+    <meta property="og:image:alt" content="Distributed Unlimited Media Bridge ecosystem and architecture overview">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Seerr">
+    <meta name="twitter:description" content="Configure Seerr in DUMB for Plex or Jellyfin discovery, Sonarr and Radarr requests, guided onboarding, embedded access, and request synchronization.">
+    <meta name="twitter:image" content="https://dumbarr.com/assets/images/DUMB.png">
+    <meta name="twitter:image:alt" content="Distributed Unlimited Media Bridge ecosystem and architecture overview">
+    
+      
+      <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          {
+            "@type": "ListItem",
+            "position": 1,
+            "name": "Home",
+            "item": "https://dumbarr.com/"
+          }
+          ,
+          {
+            "@type": "ListItem",
+            "position": 2,
+            "name": "Services",
+            "item": "https://dumbarr.com/services/"
+          }
+          
+          ,
+          {
+            "@type": "ListItem",
+            "position": 3,
+            "name": "Core",
+            "item": "https://dumbarr.com/services/core/"
+          }
+          
+          ,
+          {
+            "@type": "ListItem",
+            "position": 4,
+            "name": "Seerr",
+            "item": "https://dumbarr.com/services/core/seerr/"
+          }
+        ]
+      }
+      </script>
+    
+  
+
   </head>
   
   
@@ -141,9 +209,9 @@
 
 <header class="md-header" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="../../.." title="Debrid Unlimited Media Bridge" class="md-header__button md-logo" aria-label="Debrid Unlimited Media Bridge" data-md-component="logo">
+    <a href="../../.." title="Distributed Unlimited Media Bridge" class="md-header__button md-logo" aria-label="Distributed Unlimited Media Bridge" data-md-component="logo">
       
-  <img src="../../../assets/images/DUMB.png" alt="logo">
+  <img src="../../../assets/images/logo.png" alt="logo">
 
     </a>
     <label class="md-header__button md-icon" for="__drawer">
@@ -154,7 +222,7 @@
       <div class="md-header__ellipsis">
         <div class="md-header__topic">
           <span class="md-ellipsis">
-            Debrid Unlimited Media Bridge
+            Distributed Unlimited Media Bridge
           </span>
         </div>
         <div class="md-header__topic" data-md-component="header-topic">
@@ -261,6 +329,25 @@
 
       </a>
     </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../../getting-started/" class="md-tabs__link">
+          
+  
+  Getting Started
+
+        </a>
+      </li>
+    
   
 
       
@@ -488,12 +575,12 @@
 
 <nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="../../.." title="Debrid Unlimited Media Bridge" class="md-nav__button md-logo" aria-label="Debrid Unlimited Media Bridge" data-md-component="logo">
+    <a href="../../.." title="Distributed Unlimited Media Bridge" class="md-nav__button md-logo" aria-label="Distributed Unlimited Media Bridge" data-md-component="logo">
       
-  <img src="../../../assets/images/DUMB.png" alt="logo">
+  <img src="../../../assets/images/logo.png" alt="logo">
 
     </a>
-    Debrid Unlimited Media Bridge
+    Distributed Unlimited Media Bridge
   </label>
   
     <div class="md-nav__source">
@@ -554,6 +641,116 @@
       
         
       
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../../getting-started/" class="md-nav__link ">
+              
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-rocket" viewBox="0 0 24 24"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09M12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.4 22.4 0 0 1-4 2"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_2" id="__nav_2_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting Started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../getting-started/installation/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-download" viewBox="0 0 24 24"><path d="M12 15V3M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
         
       
         
@@ -593,7 +790,7 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
         
           
           <div class="md-nav__link md-nav__container">
@@ -617,14 +814,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_2" id="__nav_2_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_3" id="__nav_3_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_2">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -1071,7 +1268,7 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
         
           
           <div class="md-nav__link md-nav__container">
@@ -1095,14 +1292,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_3" id="__nav_3_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_4" id="__nav_4_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_3">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -1305,7 +1502,7 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
         
           
           <div class="md-nav__link md-nav__container">
@@ -1329,14 +1526,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_4" id="__nav_4_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_5" id="__nav_5_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_4">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -1484,7 +1681,7 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" checked>
         
           
           <div class="md-nav__link md-nav__container">
@@ -1508,14 +1705,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_5" id="__nav_5_label" tabindex="">
+              <label class="md-nav__link " for="__nav_6" id="__nav_6_label" tabindex="">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
-          <label class="md-nav__title" for="__nav_5">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_6">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -1562,7 +1759,7 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5_2" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6_2" >
         
           
           <div class="md-nav__link md-nav__container">
@@ -1586,14 +1783,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_5_2" id="__nav_5_2_label" tabindex="">
+              <label class="md-nav__link " for="__nav_6_2" id="__nav_6_2_label" tabindex="">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_2_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_5_2">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6_2">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -1736,7 +1933,7 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_3" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_3" checked>
         
           
           <div class="md-nav__link md-nav__container">
@@ -1760,14 +1957,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_5_3" id="__nav_5_3_label" tabindex="">
+              <label class="md-nav__link " for="__nav_6_3" id="__nav_6_3_label" tabindex="">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_3_label" aria-expanded="true">
-          <label class="md-nav__title" for="__nav_5_3">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_3_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_6_3">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -2091,6 +2288,40 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Configuration settings in dumb_config.json">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#seerr-instance-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Seerr instance configuration
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Seerr instance configuration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#seerr-instance-keys" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Seerr instance keys
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -2113,6 +2344,73 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Seerr Sync">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#high-level-overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        High-level overview
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#top-level-seerr_sync-settings" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Top-level seerr_sync settings
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Top-level seerr_sync settings">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#seerr-sync-keys" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Seerr Sync keys
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#per-instance-sync_role" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Per-instance sync_role
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#frontend-integration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Frontend integration
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -2134,6 +2432,34 @@
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="Connecting to media servers">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#plex-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Plex configuration
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#jellyfin-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Jellyfin configuration
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -2501,7 +2827,7 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5_4" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6_4" >
         
           
           <div class="md-nav__link md-nav__container">
@@ -2525,14 +2851,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_5_4" id="__nav_5_4_label" tabindex="">
+              <label class="md-nav__link " for="__nav_6_4" id="__nav_6_4_label" tabindex="">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_4_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_5_4">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6_4">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -2753,7 +3079,7 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5_5" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6_5" >
         
           
           <div class="md-nav__link md-nav__container">
@@ -2777,14 +3103,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_5_5" id="__nav_5_5_label" tabindex="">
+              <label class="md-nav__link " for="__nav_6_5" id="__nav_6_5_label" tabindex="">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_5_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_5_5">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6_5">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -2992,7 +3318,7 @@
   <span class="md-ellipsis">
     
   
-    MediaStorm
+    mediastorm
   
 
     
@@ -3157,7 +3483,7 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_7" >
         
           
           <div class="md-nav__link md-nav__container">
@@ -3181,14 +3507,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_6" id="__nav_6_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_7" id="__nav_7_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_6">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -3527,7 +3853,7 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_7" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_8" >
         
           
           <div class="md-nav__link md-nav__container">
@@ -3551,14 +3877,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_7" id="__nav_7_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_8" id="__nav_8_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_7">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -3945,7 +4271,7 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_8" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_9" >
         
           
           <div class="md-nav__link md-nav__container">
@@ -3969,14 +4295,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_8" id="__nav_8_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_9" id="__nav_9_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_8">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -4199,10 +4525,10 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_9" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_10" >
         
           
-          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_10" id="__nav_10_label" tabindex="0">
             
   
   
@@ -4220,8 +4546,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_9">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_10_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_10">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -4831,6 +5157,40 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Configuration settings in dumb_config.json">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#seerr-instance-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Seerr instance configuration
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Seerr instance configuration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#seerr-instance-keys" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Seerr instance keys
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -4853,6 +5213,73 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Seerr Sync">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#high-level-overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        High-level overview
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#top-level-seerr_sync-settings" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Top-level seerr_sync settings
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Top-level seerr_sync settings">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#seerr-sync-keys" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Seerr Sync keys
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#per-instance-sync_role" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Per-instance sync_role
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#frontend-integration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Frontend integration
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -4874,6 +5301,34 @@
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="Connecting to media servers">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#plex-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Plex configuration
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#jellyfin-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Jellyfin configuration
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -5040,10 +5495,10 @@
   
 
 
-<h1 id="seerr">Seerr<a class="headerlink" href="#seerr" title="Permanent link">&para;</a></h1>
+<h1 id="seerr">Seerr<a class="headerlink" href="#seerr" title="Permanent link">#</a></h1>
 <p>Seerr (Overseerr/Jellyseerr) is a media request and discovery platform that integrates with Plex, Jellyfin, Radarr, and Sonarr. It allows users to browse, request, and track media content through an intuitive web interface.</p>
 <hr />
-<h2 id="overview">Overview<a class="headerlink" href="#overview" title="Permanent link">&para;</a></h2>
+<h2 id="overview">Overview<a class="headerlink" href="#overview" title="Permanent link">#</a></h2>
 <p>Seerr provides:</p>
 <ul>
 <li><strong>Media discovery</strong> - Browse trending, popular, and upcoming content</li>
@@ -5053,7 +5508,7 @@
 <li><strong>Notifications</strong> - Alerts when requests are fulfilled</li>
 </ul>
 <hr />
-<h2 id="default-port">Default port<a class="headerlink" href="#default-port" title="Permanent link">&para;</a></h2>
+<h2 id="default-port">Default port<a class="headerlink" href="#default-port" title="Permanent link">#</a></h2>
 <table>
 <thead>
 <tr>
@@ -5069,8 +5524,8 @@
 </tbody>
 </table>
 <hr />
-<h2 id="configuration-settings-in-dumb_configjson">Configuration settings in <code>dumb_config.json</code><a class="headerlink" href="#configuration-settings-in-dumb_configjson" title="Permanent link">&para;</a></h2>
-<h3 id="seerr-instance-configuration">Seerr instance configuration<a class="headerlink" href="#seerr-instance-configuration" title="Permanent link">&para;</a></h3>
+<h2 id="configuration-settings-in-dumb_configjson">Configuration settings in <code>dumb_config.json</code><a class="headerlink" href="#configuration-settings-in-dumb_configjson" title="Permanent link">#</a></h2>
+<h3 id="seerr-instance-configuration">Seerr instance configuration<a class="headerlink" href="#seerr-instance-configuration" title="Permanent link">#</a></h3>
 <div class="highlight"><pre><span></span><code><span class="nt">&quot;seerr&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;instances&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">    </span><span class="nt">&quot;Default&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
@@ -5112,7 +5567,7 @@
 <span class="w">  </span><span class="p">}</span>
 <span class="p">}</span>
 </code></pre></div>
-<h4 id="seerr-instance-keys">Seerr instance keys<a class="headerlink" href="#seerr-instance-keys" title="Permanent link">&para;</a></h4>
+<h4 id="seerr-instance-keys">Seerr instance keys<a class="headerlink" href="#seerr-instance-keys" title="Permanent link">#</a></h4>
 <ul>
 <li><strong><code>enabled</code></strong>: Whether to start this Seerr instance.</li>
 <li><strong><code>postgres_enabled</code></strong>: Select DUMB-managed PostgreSQL after using the guided migration tool. SQLite remains the default.</li>
@@ -5142,14 +5597,14 @@
 <li><strong><code>log_file</code></strong>: Path to the Seerr log file.</li>
 <li><strong><code>env</code></strong>: Environment variables passed at runtime.</li>
 </ul>
-<h2 id="postgresql-migration">PostgreSQL migration<a class="headerlink" href="#postgresql-migration" title="Permanent link">&para;</a></h2>
+<h2 id="postgresql-migration">PostgreSQL migration<a class="headerlink" href="#postgresql-migration" title="Permanent link">#</a></h2>
 <p>Each Seerr instance can migrate its <code>/config/db/db.sqlite3</code> data independently. Open <strong>Database Migration</strong> on that instance's service page, complete rehearsal, review users/media/requests and full table-count validation, then cut over. DUMB lets Seerr initialize its own current PostgreSQL schema and does not copy Seerr's migration bookkeeping table.</p>
 <p>Setting <code>postgres_enabled: true</code> directly does not copy SQLite data. The preserved SQLite database can be restored, but writes made after PostgreSQL cutover are not merged back. See <a href="../../../features/arr-postgres-migration/">SQLite to PostgreSQL Migration</a> and <a href="https://docs.seerr.dev/extending-seerr/database-config/">Seerr database configuration</a>.</p>
 <hr />
-<h2 id="seerr-sync">Seerr Sync<a class="headerlink" href="#seerr-sync" title="Permanent link">&para;</a></h2>
+<h2 id="seerr-sync">Seerr Sync<a class="headerlink" href="#seerr-sync" title="Permanent link">#</a></h2>
 <p>Seerr Sync replicates requests from one <strong>primary</strong> Seerr instance to one or more <strong>subordinates</strong>. It is one‑way and is designed for multi‑Seerr setups where the primary is the source of truth.</p>
 <p>For a full overview and use‑case narrative, see <a href="../../../features/seerr-sync/">Seerr Sync</a>.</p>
-<h3 id="high-level-overview">High-level overview<a class="headerlink" href="#high-level-overview" title="Permanent link">&para;</a></h3>
+<h3 id="high-level-overview">High-level overview<a class="headerlink" href="#high-level-overview" title="Permanent link">#</a></h3>
 <p>Seerr Sync keeps multiple Seerr instances aligned by periodically polling the primary and applying changes to subordinates.</p>
 <p>How it works:</p>
 <ul>
@@ -5161,7 +5616,7 @@
 </ul>
 <p>Use case example:</p>
 <p>Multiple Seerr instances (for example, one per household) can share the same request library. Users submit requests on the primary and they appear on all subordinates, each tied to its own Arr stack.</p>
-<h3 id="top-level-seerr_sync-settings">Top-level <code>seerr_sync</code> settings<a class="headerlink" href="#top-level-seerr_sync-settings" title="Permanent link">&para;</a></h3>
+<h3 id="top-level-seerr_sync-settings">Top-level <code>seerr_sync</code> settings<a class="headerlink" href="#top-level-seerr_sync-settings" title="Permanent link">#</a></h3>
 <div class="highlight"><pre><span></span><code><span class="nt">&quot;seerr_sync&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;poll_interval_seconds&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">60</span><span class="p">,</span>
@@ -5183,7 +5638,7 @@
 <span class="w">  </span><span class="p">}</span>
 <span class="p">}</span>
 </code></pre></div>
-<h4 id="seerr-sync-keys">Seerr Sync keys<a class="headerlink" href="#seerr-sync-keys" title="Permanent link">&para;</a></h4>
+<h4 id="seerr-sync-keys">Seerr Sync keys<a class="headerlink" href="#seerr-sync-keys" title="Permanent link">#</a></h4>
 <ul>
 <li><strong><code>seerr_sync.enabled</code></strong>: Master toggle for Seerr Sync.</li>
 <li><strong><code>seerr_sync.poll_interval_seconds</code></strong>: Poll interval in seconds (minimum 10).</li>
@@ -5206,7 +5661,7 @@
 <li><strong><code>external_subordinates</code></strong>: External subordinate list (URL + API key required for each).</li>
 <li><strong><code>options</code></strong>: Toggles for request types and ownership mapping.</li>
 </ul>
-<h3 id="per-instance-sync_role">Per-instance <code>sync_role</code><a class="headerlink" href="#per-instance-sync_role" title="Permanent link">&para;</a></h3>
+<h3 id="per-instance-sync_role">Per-instance <code>sync_role</code><a class="headerlink" href="#per-instance-sync_role" title="Permanent link">#</a></h3>
 <p>Each Seerr instance has a sync role:</p>
 <div class="highlight"><pre><span></span><code><span class="nt">&quot;seerr&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;instances&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
@@ -5233,7 +5688,7 @@
 <li>External entries require both URL and API key.</li>
 </ul>
 </div>
-<h3 id="frontend-integration">Frontend integration<a class="headerlink" href="#frontend-integration" title="Permanent link">&para;</a></h3>
+<h3 id="frontend-integration">Frontend integration<a class="headerlink" href="#frontend-integration" title="Permanent link">#</a></h3>
 <p>The Seerr service page includes a <strong>Seerr Sync</strong> panel with:</p>
 <ul>
 <li>Enable toggle and polling interval</li>
@@ -5244,7 +5699,7 @@
 <li>Status + failed request reporting (with clear actions and scrollable list)</li>
 </ul>
 <hr />
-<h2 id="initial-setup">Initial setup<a class="headerlink" href="#initial-setup" title="Permanent link">&para;</a></h2>
+<h2 id="initial-setup">Initial setup<a class="headerlink" href="#initial-setup" title="Permanent link">#</a></h2>
 <p>After enabling Seerr and starting the service:</p>
 <ol>
 <li>Access the Seerr UI at <code>http://&lt;host&gt;:5055</code></li>
@@ -5255,22 +5710,22 @@
 <li>Set up user permissions</li>
 </ol>
 <hr />
-<h2 id="connecting-to-media-servers">Connecting to media servers<a class="headerlink" href="#connecting-to-media-servers" title="Permanent link">&para;</a></h2>
-<h3 id="plex-configuration">Plex configuration<a class="headerlink" href="#plex-configuration" title="Permanent link">&para;</a></h3>
+<h2 id="connecting-to-media-servers">Connecting to media servers<a class="headerlink" href="#connecting-to-media-servers" title="Permanent link">#</a></h2>
+<h3 id="plex-configuration">Plex configuration<a class="headerlink" href="#plex-configuration" title="Permanent link">#</a></h3>
 <p>Seerr can sync with your Plex server to:</p>
 <ul>
 <li>Show what content you already have</li>
 <li>Display watch status</li>
 <li>Allow Plex user authentication</li>
 </ul>
-<h3 id="jellyfin-configuration">Jellyfin configuration<a class="headerlink" href="#jellyfin-configuration" title="Permanent link">&para;</a></h3>
+<h3 id="jellyfin-configuration">Jellyfin configuration<a class="headerlink" href="#jellyfin-configuration" title="Permanent link">#</a></h3>
 <p>For Jellyfin users, Seerr (Jellyseerr variant) provides similar functionality:</p>
 <ul>
 <li>Library synchronization</li>
 <li>User authentication via Jellyfin</li>
 </ul>
 <hr />
-<h2 id="connecting-to-arr-services">Connecting to Arr services<a class="headerlink" href="#connecting-to-arr-services" title="Permanent link">&para;</a></h2>
+<h2 id="connecting-to-arr-services">Connecting to Arr services<a class="headerlink" href="#connecting-to-arr-services" title="Permanent link">#</a></h2>
 <p>Configure Radarr and Sonarr in Seerr settings:</p>
 <table>
 <thead>
@@ -5307,7 +5762,7 @@
 <p>If you have multiple Radarr or Sonarr instances (e.g., for 4K content), you can add them all to Seerr and let users choose during requests.</p>
 </div>
 <hr />
-<h2 id="user-management">User management<a class="headerlink" href="#user-management" title="Permanent link">&para;</a></h2>
+<h2 id="user-management">User management<a class="headerlink" href="#user-management" title="Permanent link">#</a></h2>
 <p>Seerr supports multiple user types:</p>
 <table>
 <thead>
@@ -5338,7 +5793,7 @@
 <li>Local Seerr account</li>
 </ul>
 <hr />
-<h2 id="request-workflow">Request workflow<a class="headerlink" href="#request-workflow" title="Permanent link">&para;</a></h2>
+<h2 id="request-workflow">Request workflow<a class="headerlink" href="#request-workflow" title="Permanent link">#</a></h2>
 <pre class="mermaid"><code>%%{ init: { "flowchart": { "curve": "basis" } } }%%
 flowchart TD
     A([User browses content])
@@ -5360,7 +5815,7 @@ flowchart TD
 <li><strong>Request limits</strong> - Limit requests per user per time period</li>
 </ul>
 <hr />
-<h2 id="accessing-via-dumb-frontend">Accessing via DUMB frontend<a class="headerlink" href="#accessing-via-dumb-frontend" title="Permanent link">&para;</a></h2>
+<h2 id="accessing-via-dumb-frontend">Accessing via DUMB frontend<a class="headerlink" href="#accessing-via-dumb-frontend" title="Permanent link">#</a></h2>
 <p>When embedded service UIs are enabled, Seerr appears in the DUMB frontend with:</p>
 <ul>
 <li>An embedded UI tab on the Seerr service page</li>
@@ -5368,7 +5823,7 @@ flowchart TD
 </ul>
 <p>This provides a unified interface without exposing Seerr's port directly.</p>
 <hr />
-<h2 id="tips">Tips<a class="headerlink" href="#tips" title="Permanent link">&para;</a></h2>
+<h2 id="tips">Tips<a class="headerlink" href="#tips" title="Permanent link">#</a></h2>
 <ul>
 <li>Configure request limits to prevent abuse in multi-user setups.</li>
 <li>Enable notifications (Discord, email, etc.) to alert users when content is available.</li>
@@ -5377,7 +5832,7 @@ flowchart TD
 <li>Logs can be viewed via DUMB's Frontend or at <code>/seerr/default/config/logs/jellyseerr.log</code>.</li>
 </ul>
 <hr />
-<h2 id="resources">Resources<a class="headerlink" href="#resources" title="Permanent link">&para;</a></h2>
+<h2 id="resources">Resources<a class="headerlink" href="#resources" title="Permanent link">#</a></h2>
 <ul>
 <li><a href="https://github.com/seerr-team/seerr">Seerr GitHub Repository</a></li>
 <li><a href="https://docs.seerr.dev/">Seerr Documentation</a></li>
