@@ -1,7 +1,10 @@
 import importlib
+import os
 import sys
+import tempfile
 import types
 import unittest
+from unittest.mock import patch
 
 
 def _install_stubs():
@@ -74,6 +77,26 @@ class UserManagementSecurityTests(unittest.TestCase):
         self.assertIsInstance(first, str)
         self.assertGreaterEqual(len(first), 16)
         self.assertNotEqual(first, second)
+
+    def test_startup_ownership_skips_healthy_top_level_tree(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            healthy = os.path.join(temp_dir, "healthy")
+            os.makedirs(healthy)
+            with open(os.path.join(healthy, "nested"), "w", encoding="utf-8") as handle:
+                handle.write("data")
+            stat_info = os.stat(temp_dir)
+
+            with patch.object(
+                user_management,
+                "chown_recursive",
+                wraps=user_management.chown_recursive,
+            ) as recursive:
+                success, error = user_management.chown_startup_directory(
+                    temp_dir, stat_info.st_uid, stat_info.st_gid
+                )
+
+            self.assertTrue(success, error)
+            recursive.assert_not_called()
 
 
 if __name__ == "__main__":

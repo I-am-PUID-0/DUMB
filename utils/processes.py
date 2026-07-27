@@ -12,6 +12,8 @@ from contextlib import contextmanager
 import shlex, os, time, signal, threading, subprocess, sys, uvicorn, socket, psutil, requests
 from json import dump
 
+STARTUP_TERMINAL_PHASES = {"ready", "degraded", "shutting_down"}
+
 
 class ProcessHandler:
     _instance = None
@@ -45,6 +47,152 @@ class ProcessHandler:
         self.preinstall_complete = False
         self.preinstalled_processes = set()
         self.preinstall_failures = {}
+        self.startup_phase = "initializing"
+        self.startup_started_at = time.time()
+        self.startup_completed_at = None
+        self.startup_expected_services = set()
+        self.startup_failures = {}
+        self.startup_lock = threading.RLock()
+        self.startup_complete_event = threading.Event()
+        self.startup_state_path = "/healthcheck/startup_state.json"
+        self._write_startup_state()
+
+    @staticmethod
+    def _normalize_process_name(name):
+        return str(name or "").replace(" ", "").replace("/ ", "/").strip().lower()
+
+    def _write_startup_state(self):
+        with self.startup_lock:
+            payload = {
+                "phase": self.startup_phase,
+                "started_at": self.startup_started_at,
+                "completed_at": self.startup_completed_at,
+                "expected_services": sorted(self.startup_expected_services),
+                "failures": dict(self.startup_failures),
+            }
+        directory = os.path.dirname(self.startup_state_path)
+        temporary_path = f"{self.startup_state_path}.tmp"
+        try:
+            os.makedirs(directory, exist_ok=True)
+            with open(temporary_path, "w", encoding="utf-8") as handle:
+                dump(payload, handle)
+                handle.flush()
+                os.fsync(handle.fileno())
+            os.replace(temporary_path, self.startup_state_path)
+        except Exception as error:
+            self.logger.error("Failed to write startup lifecycle state: %s", error)
+            try:
+                os.unlink(temporary_path)
+            except OSError:
+                pass
+
+    def set_startup_phase(self, phase):
+        with self.startup_lock:
+            self.startup_phase = str(phase)
+        self._write_startup_state()
+        self.logger.info("DUMB startup phase: %s", phase)
+
+    def set_startup_expected_services(self, process_names):
+        with self.startup_lock:
+            self.startup_expected_services = {
+                str(name).strip() for name in process_names if str(name).strip()
+            }
+        self._write_startup_state()
+
+    def is_startup_complete(self):
+        return self.startup_complete_event.is_set()
+
+    def wait_for_startup_complete(self, timeout=None):
+        return self.startup_complete_event.wait(timeout)
+
+    def complete_startup(self, failures=None):
+        failures = dict(failures or {})
+        with self.startup_lock:
+            self.startup_failures = failures
+            self.startup_completed_at = time.time()
+            self.startup_phase = "degraded" if failures else "ready"
+            self.startup_complete_event.set()
+        self._write_startup_state()
+        return self.get_startup_status()
+
+    def get_startup_status(self):
+        with self.startup_lock:
+            phase = self.startup_phase
+            expected = sorted(self.startup_expected_services)
+            failures = dict(self.startup_failures)
+            started_at = self.startup_started_at
+            completed_at = self.startup_completed_at
+        services = {name: self.get_service_readiness(name) for name in expected}
+        return {
+            "phase": phase,
+            "terminal": phase in STARTUP_TERMINAL_PHASES,
+            "started_at": started_at,
+            "completed_at": completed_at,
+            "expected_services": expected,
+            "services": services,
+            "failures": failures,
+        }
+
+    def _find_process_entry(self, process_name):
+        target = self._normalize_process_name(process_name)
+        for pid, info in list(self.processes.items()):
+            if self._normalize_process_name(info.get("name")) == target:
+                return pid, info.get("process_obj")
+        for name, pid in list(self.external_processes.items()):
+            if self._normalize_process_name(name) == target:
+                return pid, None
+        return None, None
+
+    def get_service_readiness(self, process_name):
+        pid, process = self._find_process_entry(process_name)
+        if not pid:
+            return {"state": "pending", "reason": "Process has not started."}
+        if process is not None and process.poll() is not None:
+            return {"state": "failed", "reason": "Process exited during startup."}
+        healthy, reason = self._check_process_health(process_name, pid)
+        return {
+            "state": "ready" if healthy else "starting",
+            "reason": reason,
+        }
+
+    def is_service_ready_for_monitoring(self, process_name):
+        normalized_name = self._normalize_process_name(process_name)
+        with self.startup_lock:
+            startup_complete = self.startup_phase in STARTUP_TERMINAL_PHASES
+            is_expected = any(
+                self._normalize_process_name(expected) == normalized_name
+                for expected in self.startup_expected_services
+            )
+        if startup_complete and not is_expected:
+            return True
+        return self.get_service_readiness(process_name).get("state") == "ready"
+
+    def wait_for_startup_readiness(
+        self, timeout_seconds=300, poll_interval_seconds=5, stabilization_seconds=15
+    ):
+        deadline = time.monotonic() + max(0, float(timeout_seconds))
+        stable_since = None
+        last_pending = {}
+        while not self.shutting_down:
+            status = self.get_startup_status()
+            last_pending = {
+                name: details.get("reason") or details.get("state")
+                for name, details in status["services"].items()
+                if details.get("state") != "ready"
+            }
+            if not last_pending:
+                stable_since = stable_since or time.monotonic()
+                if time.monotonic() - stable_since >= max(
+                    0, float(stabilization_seconds)
+                ):
+                    return {}
+            else:
+                stable_since = None
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                return last_pending
+            time.sleep(min(max(0.1, float(poll_interval_seconds)), remaining))
+        return {"DUMB": "Shutdown requested before startup readiness completed."}
 
     def _get_thread_state(self):
         state = getattr(self._thread_state, "state", None)
@@ -926,6 +1074,10 @@ class ProcessHandler:
 
     def shutdown(self, signum=None, frame=None, exit_code=0):
         self.shutting_down = True
+        with self.startup_lock:
+            self.startup_phase = "shutting_down"
+            self.startup_complete_event.set()
+        self._write_startup_state()
         self.logger.info("Shutdown signal received. Cleaning up...")
         processes_to_stop = list(self.process_names.keys())
         self.logger.info("Processes to stop: %s", ", ".join(processes_to_stop))
@@ -1098,12 +1250,16 @@ class ProcessHandler:
             return
 
         def monitor():
+            monitor_started_at = None
             while not self.shutting_down:
+                if not self.wait_for_startup_complete(timeout=5):
+                    continue
+                monitor_started_at = monitor_started_at or time.time()
                 cfg = self._get_auto_restart_config()
                 if not cfg.get("enabled", False):
                     time.sleep(5)
                     continue
-                grace_period = cfg.get("grace_period_seconds", 30)
+                default_grace_period = cfg.get("grace_period_seconds", 30)
                 for process_name, process in list(self.process_names.items()):
                     if self.shutting_down:
                         break
@@ -1116,7 +1272,12 @@ class ProcessHandler:
                         continue
                     if not process or process.poll() is not None:
                         continue
-                    if not self._is_ready_for_healthcheck(process_name, grace_period):
+                    grace_period = policy.get(
+                        "grace_period_seconds", default_grace_period
+                    )
+                    if not self._is_ready_for_healthcheck(
+                        process_name, grace_period, monitor_started_at
+                    ):
                         continue
                     if not self._is_healthcheck_due(process_name, policy):
                         continue
@@ -1170,6 +1331,9 @@ class ProcessHandler:
                 "last_exit_reason": None,
                 "last_healthcheck_time": None,
                 "unhealthy_count": 0,
+                "readiness_state": "pending",
+                "ready_at": None,
+                "awaiting_recovery": False,
             },
         )
 
@@ -1215,18 +1379,43 @@ class ProcessHandler:
 
     def _record_healthcheck_result(self, process_name, healthy, reason, policy):
         if healthy:
+            recovered_restart = False
             with self.auto_restart_lock:
                 state = self._get_restart_state(process_name)
                 state["unhealthy_count"] = 0
+                state["readiness_state"] = "ready"
+                state["ready_at"] = state.get("ready_at") or time.time()
+                if state.get("awaiting_recovery"):
+                    state["awaiting_recovery"] = False
+                    state["restart_successes"] += 1
+                    state["last_restart_time"] = time.time()
+                    state["last_failure_reason"] = None
+                    recovered_restart = True
+            if recovered_restart:
+                self.logger.warning(
+                    "Auto-restart recovery verified healthy for %s.", process_name
+                )
+                notify_event(
+                    "service.auto_restart.succeeded",
+                    "success",
+                    f"Auto-restart succeeded for {process_name}",
+                    "The restarted service passed its configured health checks.",
+                    service_name=process_name,
+                )
             return False
 
         threshold = policy.get("unhealthy_threshold", 3)
         with self.auto_restart_lock:
             state = self._get_restart_state(process_name)
+            state["readiness_state"] = "unhealthy"
             state["unhealthy_count"] += 1
             count = state["unhealthy_count"]
             if count >= threshold:
                 state["unhealthy_count"] = 0
+                if state.get("awaiting_recovery"):
+                    state["awaiting_recovery"] = False
+                    state["restart_failures"] += 1
+                    state["last_failure_reason"] = reason
                 notify_event(
                     "service.unhealthy",
                     "critical",
@@ -1243,6 +1432,8 @@ class ProcessHandler:
             state = self._get_restart_state(process_name)
             state["unhealthy_count"] = 0
             state["last_healthcheck_time"] = None
+            state["readiness_state"] = "starting"
+            state["ready_at"] = None
 
     def _set_restart_disabled(self, process_name, disabled):
         with self.auto_restart_lock:
@@ -1254,17 +1445,24 @@ class ProcessHandler:
             state = self._get_restart_state(process_name)
             return state.get("disabled", False)
 
-    def _is_ready_for_healthcheck(self, process_name, grace_period):
+    def _is_ready_for_healthcheck(
+        self, process_name, grace_period, monitor_started_at=None
+    ):
         for pid, info in self.processes.items():
             if info.get("name") == process_name:
                 start_time = info.get("start_time")
                 if not start_time:
                     return True
-                return (time.time() - start_time) >= grace_period
+                grace_started_at = max(start_time, monitor_started_at or start_time)
+                return (time.time() - grace_started_at) >= grace_period
         return True
 
     def _maybe_schedule_restart(self, process_name, reason):
-        if self.shutting_down or self._is_restart_disabled(process_name):
+        if (
+            self.shutting_down
+            or not self.is_startup_complete()
+            or self._is_restart_disabled(process_name)
+        ):
             return
         policy = self._get_service_restart_policy(process_name)
         if not policy:
@@ -1332,23 +1530,16 @@ class ProcessHandler:
                 state["pending"] = False
                 state["next_restart_time"] = None
                 if success:
-                    now_ts = time.time()
-                    state["restart_successes"] += 1
-                    state["last_restart_time"] = now_ts
-                    state["last_failure_reason"] = None
+                    state["awaiting_recovery"] = True
+                    state["readiness_state"] = "starting"
+                    state["ready_at"] = None
                 else:
                     state["restart_failures"] += 1
                     state["last_failure_reason"] = error
             if success:
                 self.logger.warning(
-                    f"Auto-restarted {process_name} after failure: {reason}"
-                )
-                notify_event(
-                    "service.auto_restart.succeeded",
-                    "success",
-                    f"Auto-restart succeeded for {process_name}",
-                    f"The service recovered after: {reason}",
-                    service_name=process_name,
+                    "Auto-restart launched %s after failure; waiting for health verification.",
+                    process_name,
                 )
             else:
                 self.logger.error(f"Auto-restart failed for {process_name}: {error}")
@@ -1444,4 +1635,7 @@ class ProcessHandler:
                 "last_exit_reason": state["last_exit_reason"],
                 "unhealthy_count": state["unhealthy_count"],
                 "unhealthy_threshold": unhealthy_threshold,
+                "readiness_state": state.get("readiness_state", "pending"),
+                "ready_at": state.get("ready_at"),
+                "awaiting_recovery": state.get("awaiting_recovery", False),
             }

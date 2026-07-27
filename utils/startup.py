@@ -118,3 +118,38 @@ def run_parallel_preinstall(
             except Exception as error:
                 failures[name] = str(error)
     return failures
+
+
+def run_grouped_preinstall(
+    targets: list[tuple[str, str]],
+    install_target: Callable[[str, str], None],
+    max_workers: int = 4,
+) -> dict[str, str]:
+    """Install instances of one service sequentially while parallelizing services."""
+    if not targets:
+        return {}
+
+    grouped: dict[str, list[str]] = {}
+    for key, name in targets:
+        grouped.setdefault(key, []).append(name)
+
+    failures: dict[str, str] = {}
+
+    def install_group(key: str, names: list[str]) -> dict[str, str]:
+        group_failures = {}
+        for name in names:
+            try:
+                install_target(key, name)
+            except Exception as error:
+                group_failures[name] = str(error)
+        return group_failures
+
+    worker_count = min(max_workers, max(1, len(grouped)))
+    with ThreadPoolExecutor(max_workers=worker_count) as executor:
+        futures = {
+            executor.submit(install_group, key, names): key
+            for key, names in grouped.items()
+        }
+        for future in as_completed(futures):
+            failures.update(future.result())
+    return failures

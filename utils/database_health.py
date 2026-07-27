@@ -92,9 +92,10 @@ LOG_PATTERNS = {
 class DatabaseHealthCollector:
     """Collect cached database pressure indicators for configured services."""
 
-    def __init__(self, logger=None, clock=time.time):
+    def __init__(self, logger=None, clock=time.time, process_handler=None):
         self.logger = logger
         self.clock = clock
+        self.process_handler = process_handler
         self._cache: dict[str, dict[str, Any]] = {}
         self._log_states: dict[str, dict[str, Any]] = {}
         self._postgres_previous: dict[tuple[str, str], dict[str, int]] = {}
@@ -162,6 +163,18 @@ class DatabaseHealthCollector:
                     disabled = self._disabled_result(candidate, globally_enabled, mode)
                     services.append(
                         disabled if details else self._compact_result(disabled)
+                    )
+                    continue
+
+                readiness_check = getattr(
+                    self.process_handler, "is_service_ready_for_monitoring", None
+                )
+                if callable(readiness_check) and not readiness_check(
+                    candidate["process_name"]
+                ):
+                    starting = self._starting_result(candidate, mode)
+                    services.append(
+                        starting if details else self._compact_result(starting)
                     )
                     continue
 
@@ -277,6 +290,24 @@ class DatabaseHealthCollector:
             "pressure": "collecting",
             "score": 0,
             "recommendation": "Waiting for the slower database-health collection interval.",
+            "databases": [],
+        }
+
+    @staticmethod
+    def _starting_result(candidate, mode):
+        return {
+            "id": candidate["id"],
+            "config_key": candidate["config_key"],
+            "instance_name": candidate["instance_name"],
+            "process_name": candidate["process_name"],
+            "provider": candidate["provider"],
+            "monitoring_enabled": True,
+            "mode": mode,
+            "pressure": "observing",
+            "score": 0,
+            "recommendation": (
+                "Database probes are paused while this service is still starting."
+            ),
             "databases": [],
         }
 

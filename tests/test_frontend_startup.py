@@ -1,10 +1,13 @@
 import json
 import tempfile
+import threading
+import time
 import unittest
 from pathlib import Path
 
 from utils.startup import (
     frontend_start_readiness,
+    run_grouped_preinstall,
     run_parallel_preinstall,
     start_control_plane_before_preinstall,
 )
@@ -122,6 +125,32 @@ class FrontendStartupTests(unittest.TestCase):
 
         self.assertCountEqual(attempted, ["Prowlarr", "Sonarr"])
         self.assertEqual(failures, {"Prowlarr": "archive validation failed"})
+
+    def test_grouped_preinstall_serializes_instances_of_same_service(self):
+        active_keys = set()
+        overlap = []
+        lock = threading.Lock()
+
+        def install_target(key, _name):
+            with lock:
+                if key in active_keys:
+                    overlap.append(key)
+                active_keys.add(key)
+            time.sleep(0.01)
+            with lock:
+                active_keys.remove(key)
+
+        failures = run_grouped_preinstall(
+            [
+                ("seerr", "Seerr Main"),
+                ("seerr", "Seerr NzbDAV"),
+                ("sonarr", "Sonarr Main"),
+            ],
+            install_target,
+        )
+
+        self.assertEqual(failures, {})
+        self.assertEqual(overlap, [])
 
 
 if __name__ == "__main__":

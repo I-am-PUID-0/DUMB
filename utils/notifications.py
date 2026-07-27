@@ -18,6 +18,7 @@ from utils.url_security import validate_url_scheme
 SEVERITY_RANK = {"info": 0, "success": 1, "warning": 2, "critical": 3}
 SUPPORTED_EVENT_TYPES = (
     "manual",
+    "dumb.startup.ready",
     "dumb.startup.degraded",
     "service.preinstall.failed",
     "service.start.failed",
@@ -40,6 +41,23 @@ SUPPORTED_EVENT_TYPES = (
     "database.collection.failed",
     "recovery",
 )
+STARTUP_SUPPRESSED_EVENT_TYPES = {
+    "service.preinstall.failed",
+    "service.start.failed",
+    "service.unhealthy",
+    "service.stopped.unexpectedly",
+    "service.auto_restart.attempt",
+    "service.auto_restart.succeeded",
+    "service.auto_restart.failed",
+    "service.auto_restart.suppressed",
+    "resource.cpu.high",
+    "resource.memory.high",
+    "resource.disk.high",
+    "resource.inode.high",
+    "database.pressure",
+    "database.collection.failed",
+    "recovery",
+}
 
 DEFAULT_NOTIFICATION_CONFIG = {
     "enabled": False,
@@ -152,6 +170,7 @@ class NotificationManager:
         self._storage_error = None
         self._storage_retry_at = 0.0
         self._storage_unavailable_logged = False
+        self._baselining_conditions = False
         initial_attempts = (
             _STORAGE_INITIALIZATION_ATTEMPTS
             if _notification_config().get("enabled")
@@ -490,6 +509,20 @@ class NotificationManager:
         config = _notification_config()
         if not force and not config.get("enabled"):
             return []
+        startup_complete = getattr(
+            self.process_handler, "is_startup_complete", lambda: True
+        )()
+        if (
+            not force
+            and startup_complete is False
+            and event_type in STARTUP_SUPPRESSED_EVENT_TYPES
+        ):
+            self._log(
+                "debug",
+                "Suppressing transient %s notification while DUMB startup is in progress.",
+                event_type,
+            )
+            return []
         if not self._ensure_storage_ready(force=force):
             if force:
                 raise self._storage_unavailable_exception()
@@ -808,15 +841,20 @@ class NotificationManager:
             return
         now = time.time()
         enabled = 1 if _notification_config().get("enabled") else 0
+        startup_complete = getattr(
+            self.process_handler, "is_startup_complete", lambda: True
+        )()
+        startup_ready = 0 if startup_complete is False else 1
         with self._db_lock, self._connect() as connection:
             rows = connection.execute(
                 """
                 SELECT * FROM deliveries
                 WHERE status IN ('queued', 'retrying') AND next_attempt_at <= ?
                     AND (? = 1 OR bypass_enabled = 1)
+                    AND (? = 1 OR bypass_enabled = 1)
                 ORDER BY created_at ASC LIMIT 20
                 """,
-                (now, enabled),
+                (now, enabled, startup_ready),
             ).fetchall()
         for row in rows:
             self._deliver(row)
@@ -949,12 +987,20 @@ class NotificationManager:
             )
 
     def _monitor_loop(self):
+        baseline_complete = False
         while not self._stop_event.is_set():
             config = _notification_config()
             interval = max(15, int(config.get("monitor_interval_sec", 30) or 30))
+            wait_for_startup = getattr(
+                self.process_handler, "wait_for_startup_complete", None
+            )
+            if callable(wait_for_startup) and not wait_for_startup(timeout=interval):
+                continue
             if config.get("enabled") and self._ensure_storage_ready():
                 try:
+                    self._baselining_conditions = not baseline_complete
                     self._collect_monitored_conditions(config)
+                    baseline_complete = True
                 except Exception as error:
                     if not self._handle_runtime_storage_error(error):
                         self._log(
@@ -962,6 +1008,8 @@ class NotificationManager:
                             "Notification monitor failed: %s",
                             _safe_error(error),
                         )
+                finally:
+                    self._baselining_conditions = False
                 if time.time() - self._last_prune > 3600:
                     self._prune_history(config)
             self._stop_event.wait(interval)
@@ -1122,6 +1170,10 @@ class NotificationManager:
     ):
         now = time.time()
         state = self._conditions.setdefault(key, {"first_seen": None, "active": False})
+        if self._baselining_conditions:
+            state["first_seen"] = now if active else None
+            state["active"] = False
+            return
         if active:
             state["first_seen"] = state.get("first_seen") or now
             if not state.get("active") and now - state["first_seen"] >= duration:

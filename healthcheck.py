@@ -21,6 +21,15 @@ def load_running_processes(file_path="/healthcheck/running_processes.json"):
         sys.exit(1)
 
 
+def load_startup_state(file_path="/healthcheck/startup_state.json"):
+    try:
+        with open(file_path, encoding="utf-8") as handle:
+            value = json.load(handle)
+            return value if isinstance(value, dict) else {}
+    except (FileNotFoundError, json.JSONDecodeError, OSError):
+        return {}
+
+
 def _collect_config_ports(config):
     ports = set()
     for key in ("port", "frontend_port", "backend_port", "webdav_port"):
@@ -98,8 +107,20 @@ def verify_processes(running_processes):
 
 def main():
     file_path = "/healthcheck/running_processes.json"
+    startup_state = load_startup_state()
+    phase = startup_state.get("phase")
+    if phase in {"initializing", "preinstalling", "starting_services", "stabilizing"}:
+        print(f"DUMB startup is in progress ({phase}).")
+        sys.exit(0)
+
     running_processes = load_running_processes(file_path)
     errors = verify_processes(running_processes)
+    if phase == "degraded":
+        failures = startup_state.get("failures") or {}
+        if failures:
+            errors.append("DUMB startup is degraded: " + ", ".join(sorted(failures)))
+    elif phase == "shutting_down":
+        errors.append("DUMB is shutting down.")
 
     if errors:
         print(" | ".join(errors), file=sys.stderr)

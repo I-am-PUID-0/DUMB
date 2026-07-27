@@ -9,7 +9,7 @@ from utils.auto_update import Update
 from utils.dependencies import initialize_dependencies
 from utils.core_services import get_core_services, has_core_service
 from utils.dependency_map import build_conditional_dependency_map
-from utils.startup import run_parallel_preinstall, start_control_plane_before_preinstall
+from utils.startup import run_grouped_preinstall, start_control_plane_before_preinstall
 from utils.notifications import notify_event
 from utils.plex_dbrepair import start_plex_dbrepair_worker
 from utils.ffprobe_monitor import start_ffprobe_monitor
@@ -782,7 +782,6 @@ def _collect_preinstall_targets(config_manager) -> list[tuple[str, str]]:
                     process_name = inst_cfg.get("process_name")
                     if process_name:
                         targets.append((key, process_name))
-                    break
             continue
         if cfg.get("enabled"):
             process_name = cfg.get("process_name")
@@ -815,32 +814,17 @@ def _preinstall_enabled_services(process_handler, config_manager) -> dict[str, s
             process_handler.preinstalled_processes.add(name)
             logger.info("Preinstall done: %s", name)
 
-    failures = run_parallel_preinstall(targets, _run_preinstall)
+    failures = run_grouped_preinstall(targets, _run_preinstall)
     process_handler.preinstall_failures = dict(failures)
     for name, error in failures.items():
         logger.error("Pre-install failed for %s: %s", name, error)
-        notify_event(
-            "service.preinstall.failed",
-            "critical",
-            f"Pre-install failed for {name}",
-            str(error),
-            service_name=name,
-        )
 
     process_handler.preinstall_complete = True
     if failures:
         logger.warning(
-            "Pre-install phase completed with %s failure(s). DUMB API and Frontend will remain available; failed services will retry during normal startup: %s",
+            "Pre-install phase completed with %s failure(s). DUMB API and Frontend remain available; failed services will retry during service startup: %s",
             len(failures),
             ", ".join(sorted(failures)),
-        )
-        notify_event(
-            "dumb.startup.degraded",
-            "critical",
-            "DUMB startup completed with degraded services",
-            "The control plane remains available. Failed services will retry during normal startup: "
-            + ", ".join(sorted(failures)),
-            metadata={"failed_services": sorted(failures)},
         )
     else:
         logger.info("Pre-install phase complete.")
@@ -884,7 +868,7 @@ def _build_dependency_map(config_manager) -> dict[str, set[str]]:
 
 def _start_processes_with_dependencies(
     process_handler, updater, config_manager, keys: list[str], dependency_map
-) -> None:
+) -> dict[str, str]:
     enabled = {
         key: _service_has_enabled_instance(config_manager.get(key, {})) for key in keys
     }
@@ -894,18 +878,19 @@ def _start_processes_with_dependencies(
         for key in pending
     }
 
-    def _start_key(key: str) -> None:
+    def _start_key(key: str) -> bool:
         cfg = config_manager.get(key, {})
-        start_configured_process(cfg, updater, key)
+        return start_configured_process(cfg, updater, key)
 
     in_progress = {}
     completed = set()
+    failures = {}
     with ThreadPoolExecutor() as executor:
         while pending or in_progress:
             if process_handler.shutting_down:
                 for future in list(in_progress):
                     future.cancel()
-                return
+                return failures
             ready = [key for key in list(pending) if deps.get(key, set()) <= completed]
             for key in ready:
                 if process_handler.shutting_down:
@@ -922,11 +907,37 @@ def _start_processes_with_dependencies(
             for future in done:
                 key = in_progress.pop(future)
                 try:
-                    future.result()
+                    if not future.result():
+                        failures[key] = (
+                            "One or more configured processes failed to start."
+                        )
                 except Exception as e:
                     logger.error("Failed while starting %s: %s", key, e)
-                    process_handler.shutdown(exit_code=1)
+                    failures[key] = str(e)
                 completed.add(key)
+    return failures
+
+
+def _collect_expected_process_names(config_manager, keys):
+    names = []
+    dumb_cfg = config_manager.get("dumb", {}) or {}
+    for subkey in ("api_service", "frontend"):
+        cfg = dumb_cfg.get(subkey, {}) or {}
+        if cfg.get("enabled") and cfg.get("process_name"):
+            names.append(cfg["process_name"])
+    for key in keys:
+        cfg = config_manager.get(key, {}) or {}
+        if "instances" in cfg and isinstance(cfg.get("instances"), dict):
+            for instance in cfg["instances"].values():
+                if (
+                    isinstance(instance, dict)
+                    and instance.get("enabled")
+                    and instance.get("process_name")
+                ):
+                    names.append(instance["process_name"])
+        elif cfg.get("enabled") and cfg.get("process_name"):
+            names.append(cfg["process_name"])
+    return names
 
 
 def main():
@@ -946,6 +957,7 @@ def main():
         logger=logger,
     )
     process_handler.start_auto_restart_monitor()
+    process_handler.set_startup_phase("initializing")
 
     try:
         user_management.create_system_user()
@@ -978,6 +990,7 @@ def main():
     if configure_service_postgres_runtime(config):
         config.save_config()
     try:
+        process_handler.set_startup_phase("preinstalling")
         _start_control_plane_and_preinstall(process_handler, updater, config)
     except Exception:
         process_handler.shutdown(exit_code=1)
@@ -1050,16 +1063,74 @@ def main():
             "mediastorm",
             "cloudflared",
         ]
+        process_handler.set_startup_expected_services(
+            _collect_expected_process_names(config, grouped_keys)
+        )
+        process_handler.set_startup_phase("starting_services")
         _migrate_huntarr_to_neutarr(config)
         _enable_neutarr_if_needed(config)
         dependency_map = _build_dependency_map(config)
-        _start_processes_with_dependencies(
+        startup_errors = _start_processes_with_dependencies(
             process_handler, updater, config, grouped_keys, dependency_map
         )
+        process_handler.set_startup_phase("stabilizing")
+        startup_cfg = (config.get("dumb", {}) or {}).get("startup", {}) or {}
+        readiness_failures = process_handler.wait_for_startup_readiness(
+            timeout_seconds=startup_cfg.get("readiness_timeout_seconds", 300),
+            poll_interval_seconds=startup_cfg.get("readiness_poll_interval_seconds", 5),
+            stabilization_seconds=startup_cfg.get("stabilization_seconds", 15),
+        )
+        startup_failures = dict(readiness_failures)
+        if startup_errors:
+            logger.warning(
+                "Service launch reported errors before readiness evaluation: %s",
+                startup_errors,
+            )
+        startup_status = process_handler.complete_startup(startup_failures)
+        if startup_failures:
+            failed_services = sorted(startup_failures)
+            logger.warning(
+                "DUMB startup reached its readiness deadline with %s degraded service(s): %s",
+                len(failed_services),
+                ", ".join(failed_services),
+            )
+            notify_event(
+                "dumb.startup.degraded",
+                "critical",
+                "DUMB startup completed with degraded services",
+                "The control plane remains available. Review these services: "
+                + ", ".join(failed_services),
+                metadata={
+                    "failed_services": failed_services,
+                    "failures": startup_failures,
+                },
+            )
+            for process_name, reason in startup_failures.items():
+                process_handler._maybe_schedule_restart(
+                    process_name, f"Startup readiness failed: {reason}"
+                )
+        else:
+            logger.info(
+                "DUMB startup is ready after %.1f seconds.",
+                startup_status["completed_at"] - startup_status["started_at"],
+            )
+            notify_event(
+                "dumb.startup.ready",
+                "success",
+                "DUMB startup is ready",
+                "All enabled services passed startup readiness checks.",
+            )
 
     except Exception as e:
         logger.error(e)
-        process_handler.shutdown(exit_code=1)
+        process_handler.complete_startup({"DUMB": str(e)})
+        notify_event(
+            "dumb.startup.degraded",
+            "critical",
+            "DUMB startup completed with degraded services",
+            "Startup orchestration failed. The control plane remains available; review DUMB logs.",
+            metadata={"failed_services": ["DUMB"]},
+        )
 
     start_ffprobe_monitor(process_handler, logger)
 

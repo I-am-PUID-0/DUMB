@@ -1,5 +1,6 @@
 import io
 import signal
+import tempfile
 import unittest
 from unittest.mock import Mock, patch
 
@@ -22,6 +23,7 @@ class ProcessNotificationTests(unittest.TestCase):
             "managed_service": managed_service,
         }
         handler.process_names[process_name] = process
+        handler.startup_complete_event.set()
         handler._maybe_schedule_restart = Mock()
         return handler
 
@@ -116,6 +118,102 @@ class ProcessNotificationTests(unittest.TestCase):
         )
         subprocess_logger.assert_not_called()
         notify_event.assert_called_once()
+
+    def test_startup_readiness_reports_pending_then_ready(self):
+        handler = object.__new__(ProcessHandler)
+        handler.init_attributes(Mock())
+        with tempfile.TemporaryDirectory() as temp_dir:
+            handler.startup_state_path = f"{temp_dir}/startup.json"
+            handler.set_startup_expected_services(["Example"])
+            self.assertEqual(
+                handler.get_startup_status()["services"]["Example"]["state"],
+                "pending",
+            )
+
+            process = Mock()
+            process.poll.return_value = None
+            handler.processes[1234] = {
+                "name": "Example",
+                "process_obj": process,
+                "start_time": 1,
+            }
+            handler._check_process_health = Mock(return_value=(True, None))
+
+            self.assertEqual(
+                handler.get_startup_status()["services"]["Example"]["state"],
+                "ready",
+            )
+
+    @patch("utils.processes.notify_event")
+    def test_auto_restart_success_waits_for_verified_health(self, notify_event):
+        handler = object.__new__(ProcessHandler)
+        handler.init_attributes(Mock())
+        state = handler._get_restart_state("Example")
+        state["awaiting_recovery"] = True
+
+        should_restart = handler._record_healthcheck_result(
+            "Example", True, None, {"unhealthy_threshold": 3}
+        )
+
+        self.assertFalse(should_restart)
+        self.assertEqual(state["restart_successes"], 1)
+        self.assertFalse(state["awaiting_recovery"])
+        notify_event.assert_called_once()
+        self.assertEqual(
+            notify_event.call_args.args[0], "service.auto_restart.succeeded"
+        )
+
+    def test_auto_restart_does_not_schedule_during_stack_startup(self):
+        handler = object.__new__(ProcessHandler)
+        handler.init_attributes(Mock())
+        handler._get_service_restart_policy = Mock(return_value={"enabled": True})
+
+        handler._maybe_schedule_restart("Example", "not ready")
+
+        handler._get_service_restart_policy.assert_not_called()
+
+    def test_auto_restart_uses_service_specific_grace_period(self):
+        handler = object.__new__(ProcessHandler)
+        handler.init_attributes(Mock())
+        process = Mock()
+        process.poll.return_value = None
+        handler.process_names["Example"] = process
+        handler.startup_complete_event.set()
+        handler.wait_for_startup_complete = Mock(return_value=True)
+        handler._get_auto_restart_config = Mock(
+            return_value={"enabled": True, "grace_period_seconds": 30}
+        )
+        handler._get_service_restart_policy = Mock(
+            return_value={
+                "enabled": True,
+                "restart_on_unhealthy": True,
+                "grace_period_seconds": 300,
+            }
+        )
+        handler._is_restart_disabled = Mock(return_value=False)
+        observed_grace_periods = []
+
+        def stop_after_observing(_process_name, grace_period, _monitor_started_at):
+            observed_grace_periods.append(grace_period)
+            handler.shutting_down = True
+            return False
+
+        handler._is_ready_for_healthcheck = stop_after_observing
+
+        handler.start_auto_restart_monitor()
+        handler.auto_restart_thread.join(timeout=1)
+
+        self.assertEqual(observed_grace_periods, [300])
+
+    def test_expected_service_monitoring_stays_paused_when_startup_is_degraded(self):
+        handler = object.__new__(ProcessHandler)
+        handler.init_attributes(Mock())
+        handler.startup_phase = "degraded"
+        handler.startup_complete_event.set()
+        handler.startup_expected_services = {"Example Service"}
+
+        self.assertFalse(handler.is_service_ready_for_monitoring("exampleservice"))
+        self.assertTrue(handler.is_service_ready_for_monitoring("Unrelated"))
 
 
 if __name__ == "__main__":

@@ -38,42 +38,74 @@ def chown_single(path, user_id, group_id):
         logger.error(f"Error changing ownership of '{path}': {e}")
 
 
-def log_directory_size(directory):
-    try:
-        num_files = sum([len(files) for r, d, files in os.walk(directory)])
-        logger.debug(f"Directory '{directory}' contains {num_files} files.")
-    except Exception as e:
-        logger.error(f"Error calculating size of directory '{directory}': {e}")
-
-
 def get_dynamic_workers():
-    return multiprocessing.cpu_count()
+    return min(max(1, multiprocessing.cpu_count()), 16)
 
 
 def chown_recursive(directory, user_id, group_id):
     try:
         max_workers = get_dynamic_workers()
         start_time = time.time()
-        log_directory_size(directory)
         logger.debug(f"Using {max_workers} workers for chown operation")
+        submitted = 0
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             for root, dirs, files in os.walk(directory):
                 for dir_name in dirs:
                     executor.submit(
                         chown_single, os.path.join(root, dir_name), user_id, group_id
                     )
+                    submitted += 1
                 for file_name in files:
                     executor.submit(
                         chown_single, os.path.join(root, file_name), user_id, group_id
                     )
+                    submitted += 1
             executor.submit(chown_single, directory, user_id, group_id)
+            submitted += 1
         end_time = time.time()
         logger.debug(
-            f"chown_recursive for {directory} took {end_time - start_time:.2f} seconds"
+            "chown_recursive for %s checked %s entries in %.2f seconds",
+            directory,
+            submitted,
+            end_time - start_time,
         )
         return True, None
     except Exception as e:
         return False, f"Error changing ownership of '{directory}': {e}"
+
+
+def chown_startup_directory(directory, user_id, group_id):
+    """Repair mismatched top-level ownership without walking healthy subtrees."""
+    try:
+        os.makedirs(directory, exist_ok=True)
+        chown_single(directory, user_id, group_id)
+        repaired = []
+        skipped = 0
+        with os.scandir(directory) as entries:
+            for entry in entries:
+                try:
+                    stat_info = entry.stat(follow_symlinks=False)
+                except FileNotFoundError:
+                    continue
+                if stat_info.st_uid == user_id and stat_info.st_gid == group_id:
+                    skipped += 1
+                    continue
+                repaired.append(entry.path)
+                if entry.is_dir(follow_symlinks=False):
+                    success, error = chown_recursive(entry.path, user_id, group_id)
+                    if not success:
+                        return False, error
+                else:
+                    chown_single(entry.path, user_id, group_id)
+        logger.debug(
+            "Startup ownership check for %s skipped %s healthy top-level trees and repaired %s.",
+            directory,
+            skipped,
+            len(repaired),
+        )
+        return True, None
+    except Exception as error:
+        return False, f"Error checking startup ownership of '{directory}': {error}"
 
 
 def is_mount(path):
@@ -302,7 +334,7 @@ def create_system_user(username="DUMB"):
                 group_id,
             )
         chown_recursive(log_dir, user_id, group_id)
-        chown_recursive(config_dir, user_id, group_id)
+        chown_startup_directory(config_dir, user_id, group_id)
         chown_recursive(riven_dir, user_id, group_id)
         chown_recursive(home_dir, user_id, group_id)
         chown_recursive(zilean_dir, user_id, group_id)

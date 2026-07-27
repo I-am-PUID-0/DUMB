@@ -56,7 +56,9 @@ class MetricsCollector:
         self.container_start_time = self._get_container_start_time()
         self._cgroup_last_cpu_usage = None
         self._cgroup_last_cpu_time = None
-        self.database_health = DatabaseHealthCollector(logger=logger)
+        self.database_health = DatabaseHealthCollector(
+            logger=logger, process_handler=process_handler
+        )
         self.plex_status = PlexStatusCollector(logger=logger)
 
     def snapshot(

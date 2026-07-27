@@ -2225,6 +2225,14 @@ def service_status(
     return response
 
 
+@process_router.get("/startup-status")
+def startup_status(
+    process_handler=Depends(get_process_handler),
+    current_user: str = Depends(get_optional_current_user),
+):
+    return process_handler.get_startup_status()
+
+
 @process_router.get("/update-status")
 def update_status(
     process_name: str = Query(..., description="The name of the process to check"),
@@ -5204,6 +5212,7 @@ async def get_capabilities(current_user: str = Depends(get_optional_current_user
         "mediastorm_initial_admin_password": True,
         "database_health_service_keys": sorted(SUPPORTED_SERVICE_KEYS),
         "notifications": True,
+        "startup_lifecycle": True,
         "ai_diagnostics": True,
         "ai_provider_profiles": True,
         "ai_diagnostic_evidence": True,

@@ -247,6 +247,27 @@ class NotificationManagerTests(unittest.TestCase):
         self.assertEqual(self.manager.get_delivery(forced_id)["status"], "sent")
 
     @patch("utils.notifications.requests.post")
+    def test_startup_pauses_queued_automatic_delivery_but_allows_test(self, post):
+        post.return_value.raise_for_status.return_value = None
+        regular_id = self.manager.emit(
+            "service.start.failed", "critical", "Failure", "Details"
+        )[0]
+        self.manager.process_handler.is_startup_complete.return_value = False
+        forced_id = self.manager.emit(
+            "manual",
+            "info",
+            "Test",
+            "Details",
+            destination_ids=["ops"],
+            force=True,
+        )[0]
+
+        self.manager._deliver_due()
+
+        self.assertEqual(self.manager.get_delivery(regular_id)["status"], "queued")
+        self.assertEqual(self.manager.get_delivery(forced_id)["status"], "sent")
+
+    @patch("utils.notifications.requests.post")
     def test_manual_send_skips_disabled_destination(self, post):
         self.config["destinations"][0]["enabled"] = False
 
@@ -520,6 +541,54 @@ class NotificationManagerTests(unittest.TestCase):
             {entry["event_type"] for entry in history},
             {"resource.cpu.high", "recovery"},
         )
+
+    def test_startup_suppresses_transient_automatic_events_but_not_manual_tests(self):
+        self.manager.process_handler.is_startup_complete.return_value = False
+
+        automatic = self.manager.emit(
+            "service.start.failed", "critical", "Failure", "Transient"
+        )
+        manual = self.manager.emit(
+            "manual",
+            "info",
+            "Test",
+            "Explicit",
+            destination_ids=["ops"],
+            force=True,
+        )
+
+        self.assertEqual(automatic, [])
+        self.assertEqual(len(manual), 1)
+
+    def test_startup_baseline_does_not_emit_a_stale_recovery(self):
+        self.config["destinations"][0]["event_types"] = [
+            "resource.cpu.high",
+            "recovery",
+        ]
+        self.manager._baselining_conditions = True
+        self.manager._condition(
+            "resource:cpu",
+            True,
+            0,
+            "resource.cpu.high",
+            "warning",
+            "CPU high",
+            "CPU is high",
+            value=95,
+        )
+        self.manager._baselining_conditions = False
+        self.manager._condition(
+            "resource:cpu",
+            False,
+            0,
+            "resource.cpu.high",
+            "warning",
+            "CPU high",
+            "CPU is high",
+            value=20,
+        )
+
+        self.assertEqual(self.manager.history(), [])
 
     def test_disabled_database_monitor_clears_latched_condition(self):
         self.config["destinations"][0]["event_types"] = ["database.pressure"]

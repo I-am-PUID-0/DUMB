@@ -103,6 +103,29 @@
             }
           }
         },
+        "startup": {
+          "type": "object",
+          "properties": {
+            "readiness_timeout_seconds": {
+              "type": "number",
+              "minimum": 0
+            },
+            "readiness_poll_interval_seconds": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "stabilization_seconds": {
+              "type": "number",
+              "minimum": 0
+            }
+          },
+          "required": [
+            "readiness_timeout_seconds",
+            "readiness_poll_interval_seconds",
+            "stabilization_seconds"
+          ],
+          "additionalProperties": false
+        },
         "auto_restart": {
           "type": "object",
           "properties": {
@@ -953,6 +976,7 @@
         "github_token",
         "github_username",
         "onboarding_completed",
+        "startup",
         "auto_restart",
         "ffprobe_monitor",
         "api_service",

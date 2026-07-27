@@ -3,7 +3,7 @@ import sqlite3
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 from utils.database_health import (
     SUPPORTED_SERVICE_KEYS,
@@ -55,6 +55,17 @@ class DatabaseHealthCollectorTests(unittest.TestCase):
         self.assertEqual(result["supported_count"], 1)
         self.assertEqual(result["services"][0]["id"], "nzbdav")
         self.assertEqual(result["services"][0]["pressure"], "disabled")
+
+    def test_database_probe_waits_until_service_startup_is_ready(self):
+        process_handler = Mock()
+        process_handler.is_service_ready_for_monitoring.return_value = False
+        collector = DatabaseHealthCollector(process_handler=process_handler)
+
+        result = collector.snapshot(_config("/missing", "/missing/log"))
+
+        self.assertEqual(result["services"][0]["pressure"], "observing")
+        self.assertIn("still starting", result["services"][0]["recommendation"])
+        self.assertEqual(collector._cache, {})
 
     def test_standard_mode_only_reads_file_metadata(self):
         with tempfile.TemporaryDirectory() as temp_dir:
