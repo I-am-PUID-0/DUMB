@@ -3071,23 +3071,6 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Configuration in dumb_config.json">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#version-selection" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Version selection
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
 </li>
       
         <li class="md-nav__item">
@@ -4968,23 +4951,6 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Configuration in dumb_config.json">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#version-selection" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Version selection
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
 </li>
       
         <li class="md-nav__item">
@@ -5139,10 +5105,10 @@
   
 
 
-<h1 id="mediastorm">mediastorm<a class="headerlink" href="#mediastorm" title="Permanent link">#</a></h1>
+<h1 id="mediastorm">mediastorm<a class="headerlink" href="#mediastorm" title="Permanent link">&para;</a></h1>
 <p>mediastorm is a self-hosted streaming server and client ecosystem for Debrid, torrent, and Usenet sources. DUMB installs its server, browser client, subtitle helpers, Deno runtime, and Iroh companion from mediastorm's official OCI image, then runs it as an optional PostgreSQL-backed service.</p>
 <hr />
-<h2 id="what-dumb-manages">What DUMB manages<a class="headerlink" href="#what-dumb-manages" title="Permanent link">#</a></h2>
+<h2 id="what-dumb-manages">What DUMB manages<a class="headerlink" href="#what-dumb-manages" title="Permanent link">&para;</a></h2>
 <ul>
 <li>mediastorm listens on port <code>7777</code>.</li>
 <li>The embedded service UI opens the administrative interface at <code>/admin</code>.</li>
@@ -5173,7 +5139,7 @@
 </tbody>
 </table>
 <hr />
-<h2 id="configuration-in-dumb_configjson">Configuration in <code>dumb_config.json</code><a class="headerlink" href="#configuration-in-dumb_configjson" title="Permanent link">#</a></h2>
+<h2 id="configuration-in-dumb_configjson">Configuration in <code>dumb_config.json</code><a class="headerlink" href="#configuration-in-dumb_configjson" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="nt">&quot;mediastorm&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;process_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;mediastorm&quot;</span><span class="p">,</span>
@@ -5214,7 +5180,7 @@
 <span class="p">}</span>
 </code></pre></div>
 <p>DUMB fills <code>DATABASE_URL</code> from the managed PostgreSQL credentials during setup. Do not copy the generated credential-bearing value into documentation, screenshots, or support logs. The installer always uses the fixed official <code>godver3/mediastorm</code> repository and does not accept an arbitrary registry URL from service configuration.</p>
-<h3 id="version-selection">Version selection<a class="headerlink" href="#version-selection" title="Permanent link">#</a></h3>
+<h3 id="version-selection">Version selection<a class="headerlink" href="#version-selection" title="Permanent link">&para;</a></h3>
 <p>Leave <code>release_version_enabled</code> set to <code>false</code> to follow <code>godver3/mediastorm:latest</code>. To install and retain a specific build, set it to <code>true</code> and choose one of these <code>release_version</code> forms:</p>
 <table>
 <thead>
@@ -5250,7 +5216,7 @@
 <p>DUMB writes the selected value to <code>/mediastorm/runtime/install-selector.txt</code>, the resolved upstream tag to <code>oci-reference.txt</code>, and the verified manifest digest to <code>image-digest.txt</code>. On restart, it compares the selected value with the installed marker and reinstalls only when the selection changes.</p>
 <p>Pinned releases, commits, and digests disable automatic updates through DUMB's standard pin behavior. Disable the pin to return to <code>latest</code>, or change <code>release_version</code> to perform an intentional upgrade or rollback. Branch names and arbitrary image tags are rejected.</p>
 <hr />
-<h2 id="initial-setup">Initial setup<a class="headerlink" href="#initial-setup" title="Permanent link">#</a></h2>
+<h2 id="initial-setup">Initial setup<a class="headerlink" href="#initial-setup" title="Permanent link">&para;</a></h2>
 <div class="admonition warning">
 <p class="admonition-title">First login credentials</p>
 <ul>
@@ -5278,7 +5244,7 @@ the password changes, and the DUMB warning then disappears automatically.</p>
 <p>The generated bootstrap password is a sensitive credential, and <code>/admin</code> controls providers and users. Do not copy it into logs, screenshots, or support bundles. Change it before exposing mediastorm beyond a trusted network. Prefer a VPN or a carefully tested authenticated reverse-proxy route; never publish the raw port before completing first-login setup.</p>
 </div>
 <hr />
-<h2 id="backups-and-updates">Backups and updates<a class="headerlink" href="#backups-and-updates" title="Permanent link">#</a></h2>
+<h2 id="backups-and-updates">Backups and updates<a class="headerlink" href="#backups-and-updates" title="Permanent link">&para;</a></h2>
 <p>Back up both parts of mediastorm state:</p>
 <ul>
 <li>the DUMB-managed PostgreSQL <code>mediastorm</code> database; and</li>
@@ -5291,11 +5257,11 @@ changes.</p>
 <p>When following <code>latest</code>, use <strong>Check for updates</strong> and <strong>Install update</strong> on the mediastorm service page for one-time updates, or enable <code>auto_update</code> for scheduled checks. DUMB compares <code>/mediastorm/runtime/version.txt</code> with the latest GitHub release, downloads the official OCI runtime into a staging directory, verifies it, and atomically replaces the old runtime only after validation succeeds. A pin blocks normal update installation until you change/disable the pin or explicitly approve the frontend's override action. Before a major upgrade or rollback, preserve a matching database and settings/cache backup because application migrations can make rollback depend on restoring both together.</p>
 <p>Database Health Monitoring can observe the mediastorm PostgreSQL database in Standard or Enhanced read-only mode when monitoring is explicitly enabled for the service.</p>
 <hr />
-<h2 id="embedded-ui-and-direct-access">Embedded UI and direct access<a class="headerlink" href="#embedded-ui-and-direct-access" title="Permanent link">#</a></h2>
+<h2 id="embedded-ui-and-direct-access">Embedded UI and direct access<a class="headerlink" href="#embedded-ui-and-direct-access" title="Permanent link">&para;</a></h2>
 <p>mediastorm uses root-relative routes for <code>/admin</code>, <code>/watch</code>, accounts, sharing, and <code>/api/*</code>. The DUMB Frontend keeps those requests attached to the active mediastorm iframe so they do not collide with DUMB's own routes.</p>
 <p>For troubleshooting, direct access is <code>http://&lt;host&gt;:7777</code> when you publish that port. DUMB's embedded UI does not require the port to be published separately.</p>
 <hr />
-<h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">#</a></h2>
+<h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h2>
 <ul>
 <li><strong>Service waits or exits at startup:</strong> Check PostgreSQL status first, then inspect the mediastorm service log. DUMB creates the database and connection URL during setup.</li>
 <li><strong>First-login password is not shown:</strong> Confirm mediastorm has completed its first start, then refresh the service page. If the password was already changed, the bootstrap file and DUMB warning are expected to be gone. Otherwise verify that <code>/data/mediastorm/cache/initial_admin_password.txt</code> exists and is readable by the DUMB container.</li>
@@ -5308,7 +5274,7 @@ changes.</p>
 <li><strong>Remote invitation fails:</strong> Check the mediastorm log for Iroh errors and confirm outbound networking is available from the DUMB container.</li>
 </ul>
 <hr />
-<h2 id="related-links">Related links<a class="headerlink" href="#related-links" title="Permanent link">#</a></h2>
+<h2 id="related-links">Related links<a class="headerlink" href="#related-links" title="Permanent link">&para;</a></h2>
 <ul>
 <li><a href="https://github.com/godver3/mediastorm">mediastorm repository</a></li>
 <li><a href="https://github.com/godver3/mediastorm/releases">mediastorm releases</a></li>
