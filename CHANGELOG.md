@@ -1,5 +1,18 @@
 # Changelog
 
+## [2.11.1](https://github.com/I-am-PUID-0/DUMB/compare/2.11.0...2.11.1) (2026-07-27)
+
+
+### 🐛 Bug Fixes
+
+* **websocket:** serialize sends and complete DUMB rebrand ([e400639](https://github.com/I-am-PUID-0/DUMB/commit/e400639db30d71d5db2d6968b0b3529232d65b4e))
+
+
+### 🤡 Other Changes
+
+* **deps:** update fastapi to version 0.140.0 ([8fd3395](https://github.com/I-am-PUID-0/DUMB/commit/8fd33954549adb438f131a1b34a1c66383ad4fb4))
+* **metadata:** improve DUMB project discoverability ([0ea52f2](https://github.com/I-am-PUID-0/DUMB/commit/0ea52f218dc90ec7506a8c4c09bafde394e1c165))
+
 ## [2.11.0](https://github.com/I-am-PUID-0/DUMB/compare/2.10.0...2.11.0) (2026-07-24)
 
 
