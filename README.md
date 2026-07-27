@@ -1,9 +1,9 @@
 ﻿<div align="center" style="max-width: 100%; height: auto;">
-  <h1>🎬 Debrid Unlimited Media Bridge 🎬</h1>
+  <h1>🎬 Distributed Unlimited Media Bridge 🎬</h1>
   <a href="https://github.com/I-am-PUID-0/DUMB">
     <picture>
       <source media="(prefers-color-scheme: dark)" srcset="https://dumbarr.com/assets/images/DUMB.png">
-      <img alt="DUMB" src="https://dumbarr.com/assets/images/DUMB.png" style="max-width: 100%; height: auto;">
+      <img alt="Distributed Unlimited Media Bridge ecosystem banner" src="https://dumbarr.com/assets/images/DUMB.png" style="max-width: 100%; height: auto;">
     </picture>
   </a>
 </div>
@@ -63,7 +63,7 @@
 
 ## 📜 Description
 
-**Debrid Unlimited Media Bridge (DUMB)** is an All-In-One (AIO) Docker image for building and operating a complete automated media stack from one container. It brings together Debrid and Usenet workflows, Arr automation, media servers, request/watchlist tools, service management, logs, metrics, notifications, updates, and embedded service UIs behind a guided setup experience.
+**Distributed Unlimited Media Bridge (DUMB)** is an All-In-One (AIO) Docker image for building and operating a complete automated media stack from one container. It brings together Debrid and Usenet workflows, Arr automation, media servers, request/watchlist tools, service management, logs, metrics, notifications, updates, and embedded service UIs behind a guided setup experience.
 
 DUMB is designed to reduce the glue work that usually comes with multi-service media deployments. You can choose the services that fit your workflow, let DUMB wire the required dependencies, manage them from the DUMB dashboard, and optionally expose selected UIs or public routes through the bundled Traefik access layer.
 
@@ -81,7 +81,7 @@ DUMB is designed to reduce the glue work that usually comes with multi-service m
 | [Emby Media Server](https://emby.media) | [Emby, LLC](https://emby.media)                                     | [Support](https://emby.media/support/)                                                                                                              | [Donate](https://emby.media/premiere.html) (via Emby Premiere)                                           |
 | [Jellyfin Media Server](https://jellyfin.org/)                    | [Jellyfin Team](https://github.com/jellyfin)                         | [Docs](https://jellyfin.org/docs/) • [Support](https://jellyfin.org/contact/)                                                                   | [Donate](https://opencollective.com/jellyfin)                                                     |
 | [Maintainerr](https://github.com/Maintainerr/Maintainerr)        | [Maintainerr Team](https://github.com/Maintainerr)                   | [Docs](https://docs.maintainerr.info/) • [Issues](https://github.com/Maintainerr/Maintainerr/issues)                                              | [Support](https://opencollective.com/maintainerr)                                                |
-| [MediaStorm](https://github.com/godver3/mediastorm)              | [godver3](https://github.com/godver3)                                | [README](https://github.com/godver3/mediastorm#readme) • [Issues](https://github.com/godver3/mediastorm/issues)                                  | [Sponsor](https://github.com/sponsors/godver3)                                                   |
+| [mediastorm](https://github.com/godver3/mediastorm)              | [godver3](https://github.com/godver3)                                | [README](https://github.com/godver3/mediastorm#readme) • [Issues](https://github.com/godver3/mediastorm/issues)                                  | [Sponsor](https://github.com/sponsors/godver3)                                                   |
 | [NeutArr](https://github.com/I-am-PUID-0/NeutArr)                | [I-am-PUID-0](https://github.com/I-am-PUID-0)                            | [Issues](https://github.com/I-am-PUID-0/NeutArr/issues)                                     | [Donate](https://github.com/sponsors/I-am-PUID-0)                                      |
 | [Lidarr](https://lidarr.audio/)                                   | [Lidarr Team](https://github.com/Lidarr/Lidarr)                      | [Docs](https://wiki.servarr.com/) • [Discord](https://lidarr.audio/discord)                                                                       | [Sponsor](https://github.com/sponsors/Lidarr)                                                     |
 | [NzbDAV (DUMB default fork)](https://github.com/nzbdav/nzbdav)  | [nzbdav](https://github.com/nzbdav)                                  | [Fork docs](https://github.com/nzbdav/nzbdav) • [Fork issues](https://github.com/nzbdav/nzbdav/issues) • [Original repository](https://github.com/nzbdav-dev/nzbdav)              | —                                                                                                   |

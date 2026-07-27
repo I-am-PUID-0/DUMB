@@ -144,7 +144,7 @@ def apply_mediastorm_layer(
                     # container symlink inside DUMB's staged runtime.
                     continue
                 raise MediaStormInstallError(
-                    f"MediaStorm OCI runtime contains an unsupported link: {source_path}"
+                    f"mediastorm OCI runtime contains an unsupported link: {source_path}"
                 )
             if member.isdir():
                 if destination.exists() and not destination.is_dir():
@@ -154,12 +154,12 @@ def apply_mediastorm_layer(
                 continue
             if not member.isfile():
                 raise MediaStormInstallError(
-                    f"MediaStorm OCI runtime contains an unsupported entry: {source_path}"
+                    f"mediastorm OCI runtime contains an unsupported entry: {source_path}"
                 )
             extracted_bytes += int(member.size or 0)
             if extracted_bytes > _MAX_EXTRACTED_BYTES:
                 raise MediaStormInstallError(
-                    "MediaStorm OCI runtime exceeds the size limit."
+                    "mediastorm OCI runtime exceeds the size limit."
                 )
             destination.parent.mkdir(parents=True, exist_ok=True)
             if destination.exists() or destination.is_symlink():
@@ -167,7 +167,7 @@ def apply_mediastorm_layer(
             source = archive.extractfile(member)
             if source is None:
                 raise MediaStormInstallError(
-                    f"Unable to read MediaStorm OCI entry: {source_path}"
+                    f"Unable to read mediastorm OCI entry: {source_path}"
                 )
             with source, destination.open("wb") as handle:
                 shutil.copyfileobj(source, handle, length=1024 * 1024)
@@ -184,7 +184,7 @@ def normalize_mediastorm_version(raw_value: str) -> str:
 
 
 def mediastorm_app_version_text(raw_value: str) -> str:
-    """Convert DUMB's normalized marker back to MediaStorm's file format."""
+    """Convert DUMB's normalized marker back to mediastorm's file format."""
     normalized = normalize_mediastorm_version(raw_value)
     value = normalized.removeprefix("v")
     release_match = _MEDIASTORM_RELEASE_PATTERN.fullmatch(value)
@@ -203,7 +203,7 @@ def mediastorm_install_selector(config: dict) -> str:
     selector = str(config.get("release_version") or "").strip()
     if not selector:
         raise MediaStormInstallError(
-            "MediaStorm release pinning is enabled but release_version is empty."
+            "mediastorm release pinning is enabled but release_version is empty."
         )
     if selector.lower() == "latest":
         return MEDIASTORM_OCI_REFERENCE
@@ -216,7 +216,7 @@ def _mediastorm_install_request(config: dict, requested_version: str) -> dict:
         expected_version = normalize_mediastorm_version(requested_version)
         if not expected_version or expected_version == "vlatest":
             raise MediaStormInstallError(
-                "A concrete MediaStorm release is required for latest."
+                "A concrete mediastorm release is required for latest."
             )
         return {
             "selector": selector,
@@ -272,7 +272,7 @@ def _mediastorm_install_request(config: dict, requested_version: str) -> dict:
         }
 
     raise MediaStormInstallError(
-        "Invalid MediaStorm release_version. Use latest, a release tag "
+        "Invalid mediastorm release_version. Use latest, a release tag "
         "(for example 1.5.0 or v1.5.0-20260711), a full 40-character "
         "commit SHA, or a sha256 OCI digest."
     )
@@ -313,7 +313,7 @@ def mediastorm_runtime_ready(runtime_dir: str | Path) -> bool:
 def _build_python_environment(runtime_dir: Path) -> None:
     python_executable = shutil.which("python3.11")
     if not python_executable:
-        raise MediaStormInstallError("Python 3.11 is required to install MediaStorm.")
+        raise MediaStormInstallError("Python 3.11 is required to install mediastorm.")
     commands = (
         [python_executable, "-m", "venv", str(runtime_dir / "python-venv")],
         [
@@ -337,7 +337,7 @@ def _build_python_environment(runtime_dir: Path) -> None:
             detail = (result.stderr or result.stdout or "").strip().splitlines()
             tail = detail[-1] if detail else "unknown error"
             raise MediaStormInstallError(
-                f"Failed to prepare MediaStorm Python environment: {tail}"
+                f"Failed to prepare mediastorm Python environment: {tail}"
             )
 
 
@@ -381,7 +381,7 @@ def install_mediastorm_runtime(
             resolve_errors.append(f"{reference}: {exc}")
     if manifest is None:
         raise MediaStormInstallError(
-            "Unable to resolve the requested MediaStorm OCI reference: "
+            "Unable to resolve the requested mediastorm OCI reference: "
             + "; ".join(resolve_errors)
         )
 
@@ -396,7 +396,7 @@ def install_mediastorm_runtime(
         for index, descriptor in enumerate(layers, start=1):
             size_mb = int(descriptor.get("size", 0) or 0) / (1024 * 1024)
             logger.info(
-                "Downloading MediaStorm OCI layer %d/%d (%.1f MiB).",
+                "Downloading mediastorm OCI layer %d/%d (%.1f MiB).",
                 index,
                 len(layers),
                 size_mb,
@@ -419,7 +419,7 @@ def install_mediastorm_runtime(
             )
         except OSError as exc:
             raise MediaStormInstallError(
-                "MediaStorm OCI image contains no version marker."
+                "mediastorm OCI image contains no version marker."
             ) from exc
         expected_version = install_request["expected_version"]
         expected_prefix = install_request["expected_prefix"]
@@ -431,7 +431,7 @@ def install_mediastorm_runtime(
         if version_mismatch or prefix_mismatch:
             expectation = expected_version or f"{expected_prefix} release"
             raise MediaStormInstallError(
-                "MediaStorm OCI version mismatch: "
+                "mediastorm OCI version mismatch: "
                 f"expected {expectation}, found {actual_version or 'unknown'}."
             )
         _build_python_environment(staged_runtime)
@@ -461,7 +461,7 @@ def install_mediastorm_runtime(
             script.chmod(0o644)
         if not mediastorm_runtime_ready(staged_runtime):
             raise MediaStormInstallError(
-                "Downloaded MediaStorm OCI runtime is incomplete."
+                "Downloaded mediastorm OCI runtime is incomplete."
             )
         _atomic_replace_runtime(staged_runtime, runtime_dir)
 

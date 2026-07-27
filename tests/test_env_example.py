@@ -117,6 +117,23 @@ class ConfigLoaderMigrationTests(unittest.TestCase):
                 "/bazarr/data/config/config.yaml",
             )
 
+    def test_mediastorm_process_name_is_canonicalized(self):
+        config_manager = _load_config_manager_class()
+        with tempfile.TemporaryDirectory() as temp_dir:
+            config = json.loads((ROOT / "utils" / "dumb_config.json").read_text())
+            config["mediastorm"]["process_name"] = "Media" + "Storm"
+            config_path = Path(temp_dir) / "dumb_config.json"
+            config_path.write_text(json.dumps(config), encoding="utf-8")
+
+            manager = config_manager(
+                file_path=str(config_path),
+                schema_path=str(ROOT / "utils" / "dumb_config_schema.json"),
+            )
+
+            persisted = json.loads(config_path.read_text(encoding="utf-8"))
+            self.assertEqual(manager.get("mediastorm")["process_name"], "mediastorm")
+            self.assertEqual(persisted["mediastorm"]["process_name"], "mediastorm")
+
 
 if __name__ == "__main__":
     unittest.main()

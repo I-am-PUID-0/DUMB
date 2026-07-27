@@ -1,5 +1,5 @@
 import asyncio
-from typing import Set
+from typing import Dict, Set
 from fastapi import WebSocket
 from starlette.websockets import WebSocketDisconnect, WebSocketState
 
@@ -9,6 +9,7 @@ class ConnectionManager:
         self.active_connections: Set[WebSocket] = set()
         self.lock = asyncio.Lock()
         self.broadcast_lock = asyncio.Lock()
+        self.send_locks: Dict[WebSocket, asyncio.Lock] = {}
         self.event_loop = None
 
     async def connect(self, websocket: WebSocket):
@@ -16,10 +17,24 @@ class ConnectionManager:
         self.event_loop = asyncio.get_running_loop()
         async with self.lock:
             self.active_connections.add(websocket)
+            self.send_locks[websocket] = asyncio.Lock()
 
     async def disconnect(self, websocket: WebSocket):
         async with self.lock:
             self.active_connections.discard(websocket)
+            self.send_locks.pop(websocket, None)
+
+    async def send(self, websocket: WebSocket, message: str) -> bool:
+        async with self.lock:
+            send_lock = self.send_locks.get(websocket)
+        if send_lock is None:
+            return False
+
+        async with send_lock:
+            sent = await self._safe_send(websocket, message)
+        if not sent:
+            await self.disconnect(websocket)
+        return sent
 
     async def broadcast(self, message: str):
         async with self.broadcast_lock:
@@ -28,15 +43,9 @@ class ConnectionManager:
             if not connections:
                 return
             tasks = [
-                asyncio.create_task(self._safe_send(conn, message))
-                for conn in connections
+                asyncio.create_task(self.send(conn, message)) for conn in connections
             ]
-            results = await asyncio.gather(*tasks)
-            stale = [conn for conn, ok in zip(connections, results) if not ok]
-            if stale:
-                async with self.lock:
-                    for conn in stale:
-                        self.active_connections.discard(conn)
+            await asyncio.gather(*tasks)
 
     def schedule_broadcast(self, message: str) -> bool:
         loop = self.event_loop
@@ -72,6 +81,7 @@ class ConnectionManager:
         async with self.lock:
             connections = list(self.active_connections)
             self.active_connections.clear()
+            self.send_locks.clear()
         if connections:
             tasks = [asyncio.create_task(conn.close()) for conn in connections]
             await asyncio.gather(*tasks, return_exceptions=True)

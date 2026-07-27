@@ -81,7 +81,7 @@ def _normalize_cors_origins(origins):
 
 def create_app() -> FastAPI:
     app = FastAPI(
-        title="Debrid Unlimited Media Bridge",
+        title="Distributed Unlimited Media Bridge",
         version=get_version_from_pyproject(),
         redoc_url=None,
         lifespan=lifespan,

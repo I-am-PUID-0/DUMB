@@ -983,7 +983,7 @@ class AiRouterTests(unittest.TestCase):
 
         system = messages[0]["content"]
         user = messages[1]["content"]
-        self.assertIn("Debrid Unlimited Media Bridge", system)
+        self.assertIn("Distributed Unlimited Media Bridge", system)
         self.assertIn("DUMB PRODUCT FACTS", user)
         self.assertIn("Docker Universal Media Box", user)
         self.assertIn("dumb_service_catalog", system)
@@ -1051,7 +1051,7 @@ class AiRouterTests(unittest.TestCase):
 
         finalized = ai._finalize_stack_analysis(bundle, provider)
 
-        self.assertIn("Debrid Unlimited Media Bridge", finalized)
+        self.assertIn("Distributed Unlimited Media Bridge", finalized)
         self.assertIn("Do not use other acronym expansions", finalized)
         self.assertNotIn("Decentralized Usenet Media Butler", finalized)
 
@@ -1322,7 +1322,7 @@ class AiRouterTests(unittest.TestCase):
 
         self.assertEqual(bundle["scope"], "stack")
         self.assertEqual(
-            bundle["dumb_product"]["expansion"], "Debrid Unlimited Media Bridge"
+            bundle["dumb_product"]["expansion"], "Distributed Unlimited Media Bridge"
         )
         self.assertEqual(bundle["stack_summary"]["counts"]["enabled"], 2)
         self.assertEqual(bundle["stack_summary"]["counts"]["unhealthy"], 1)

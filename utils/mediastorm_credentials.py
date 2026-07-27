@@ -9,11 +9,11 @@ MAX_INITIAL_ADMIN_PASSWORD_BYTES = 4096
 
 
 class MediaStormCredentialError(ValueError):
-    """Raised when MediaStorm's bootstrap credential file is unsafe or invalid."""
+    """Raised when mediastorm's bootstrap credential file is unsafe or invalid."""
 
 
 def read_initial_admin_password(config_dir: str) -> str | None:
-    """Read MediaStorm's one-time initial admin password without following symlinks."""
+    """Read mediastorm's one-time initial admin password without following symlinks."""
 
     cache_dir = os.path.join(config_dir, "cache")
     for filename in INITIAL_ADMIN_PASSWORD_FILENAMES:
@@ -27,18 +27,18 @@ def read_initial_admin_password(config_dir: str) -> str | None:
             continue
         except OSError as exc:
             raise MediaStormCredentialError(
-                "MediaStorm's initial credential file could not be opened safely."
+                "mediastorm's initial credential file could not be opened safely."
             ) from exc
 
         try:
             file_stat = os.fstat(descriptor)
             if not stat.S_ISREG(file_stat.st_mode):
                 raise MediaStormCredentialError(
-                    "MediaStorm's initial credential path is not a regular file."
+                    "mediastorm's initial credential path is not a regular file."
                 )
             if file_stat.st_size > MAX_INITIAL_ADMIN_PASSWORD_BYTES:
                 raise MediaStormCredentialError(
-                    "MediaStorm's initial credential file is unexpectedly large."
+                    "mediastorm's initial credential file is unexpectedly large."
                 )
 
             value = os.read(descriptor, MAX_INITIAL_ADMIN_PASSWORD_BYTES + 1)
@@ -47,19 +47,19 @@ def read_initial_admin_password(config_dir: str) -> str | None:
 
         if len(value) > MAX_INITIAL_ADMIN_PASSWORD_BYTES:
             raise MediaStormCredentialError(
-                "MediaStorm's initial credential file is unexpectedly large."
+                "mediastorm's initial credential file is unexpectedly large."
             )
 
         try:
             password = value.decode("utf-8").rstrip("\r\n")
         except UnicodeDecodeError as exc:
             raise MediaStormCredentialError(
-                "MediaStorm's initial credential file is not valid UTF-8."
+                "mediastorm's initial credential file is not valid UTF-8."
             ) from exc
 
         if not password or "\x00" in password or "\r" in password or "\n" in password:
             raise MediaStormCredentialError(
-                "MediaStorm's initial credential file has an invalid value."
+                "mediastorm's initial credential file has an invalid value."
             )
 
         return password

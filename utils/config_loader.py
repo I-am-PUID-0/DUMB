@@ -157,6 +157,7 @@ class ConfigManager:
 
             existing_config = self._load_config()
             bazarr_config_migrated = False
+            mediastorm_process_name_migrated = False
 
             # Bazarr treats --config as its data root and stores the YAML file
             # in a nested config directory. Correct DUMB's former default so
@@ -168,6 +169,16 @@ class ConfigManager:
             ):
                 bazarr_cfg["config_file"] = "/bazarr/data/config/config.yaml"
                 bazarr_config_migrated = True
+
+            mediastorm_cfg = existing_config.get("mediastorm")
+            if (
+                isinstance(mediastorm_cfg, dict)
+                and str(mediastorm_cfg.get("process_name") or "").casefold()
+                == "mediastorm"
+                and mediastorm_cfg.get("process_name") != "mediastorm"
+            ):
+                mediastorm_cfg["process_name"] = "mediastorm"
+                mediastorm_process_name_migrated = True
 
             # Migrate legacy Decypharr embedded toggle to mount_type before merge/prune
             dec_cfg = existing_config.get("decypharr")
@@ -212,7 +223,11 @@ class ConfigManager:
 
             pruned_config = self._prune_extraneous_keys(merged_config, default_config)
 
-            if pruned_config != existing_config or bazarr_config_migrated:
+            if (
+                pruned_config != existing_config
+                or bazarr_config_migrated
+                or mediastorm_process_name_migrated
+            ):
                 backup_path = self.file_path + ".bak"
                 shutil.copyfile(self.file_path, backup_path)
                 self._atomic_write(pruned_config)

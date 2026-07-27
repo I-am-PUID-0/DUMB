@@ -62,7 +62,8 @@ async def websocket_metrics(
                 bucket_seconds=history_bucket,
                 max_points=history_points,
             )
-            await websocket.send_text(
+            if not await metrics_manager.send(
+                websocket,
                 json.dumps(
                     {
                         "type": "bootstrap",
@@ -74,8 +75,9 @@ async def websocket_metrics(
                         "stats": stats,
                         "bucket_seconds": bucket_seconds,
                     }
-                )
-            )
+                ),
+            ):
+                return
         elif history_enabled:
             items, truncated = await run_in_threadpool(
                 history_manager.read,
@@ -84,9 +86,11 @@ async def websocket_metrics(
                 limit=history_limit,
                 default_hours=6,
             )
-            await websocket.send_text(
-                json.dumps({"type": "history", "items": items, "truncated": truncated})
-            )
+            if not await metrics_manager.send(
+                websocket,
+                json.dumps({"type": "history", "items": items, "truncated": truncated}),
+            ):
+                return
 
         await _ensure_publisher(collector, metrics_manager, interval)
         while True:

@@ -447,7 +447,7 @@ CORE_SERVICE_NAMES = {
     "neutarr": "NeutArr",
     "profilarr": "Profilarr",
     "maintainerr": "Maintainerr",
-    "mediastorm": "MediaStorm",
+    "mediastorm": "mediastorm",
     "bazarr": "Bazarr",
     "tautulli": "Tautulli",
     "pgadmin": "pgAdmin",
@@ -621,7 +621,7 @@ OPTIONAL_SERVICES = {
     "bazarr": "Bazarr",
     "pulsarr": "Pulsarr",
     "maintainerr": "Maintainerr",
-    "mediastorm": "MediaStorm",
+    "mediastorm": "mediastorm",
     "traefik_proxy_admin": "Traefik Proxy Admin",
     "cloudflared": "Cloudflared",
 }
@@ -685,7 +685,7 @@ Maintainerr
 
 Documentation: https://dumbarr.com/services/optional/maintainerr""",
     "mediastorm": """\
-MediaStorm
+mediastorm
 - Fully self-hosted streaming server for Debrid, Torrent, and Usenet sources.
 - Includes an admin UI and browser player plus native mobile and TV clients.
 - Uses DUMB-managed PostgreSQL for accounts, watch history, and playback state.
@@ -5132,11 +5132,11 @@ async def get_optional_services(
         if key == "mediastorm":
             if "release_version_enabled" in svc_opt_desc:
                 svc_opt_desc["release_version_enabled"] = (
-                    "Pin MediaStorm to the OCI release_version instead of following latest."
+                    "Pin mediastorm to the OCI release_version instead of following latest."
                 )
             if "release_version" in svc_opt_desc:
                 svc_opt_desc["release_version"] = (
-                    "MediaStorm OCI version: latest, a release tag such as 1.5.0, "
+                    "mediastorm OCI version: latest, a release tag such as 1.5.0, "
                     "a GitHub release such as v1.5.0-20260711, a full commit SHA, "
                     "or a sha256 digest."
                 )
@@ -5226,7 +5226,7 @@ async def get_mediastorm_initial_admin_password(
     except MediaStormCredentialError:
         raise HTTPException(
             status_code=500,
-            detail="MediaStorm's initial admin credential file is invalid or unreadable.",
+            detail="mediastorm's initial admin credential file is invalid or unreadable.",
         ) from None
 
     return JSONResponse(

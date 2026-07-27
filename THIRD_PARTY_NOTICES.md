@@ -31,13 +31,13 @@ components and transitive dependencies.
 
 ---
 
-## MediaStorm
+## mediastorm
 
 - Project: <https://github.com/godver3/mediastorm>
 - Upstream license declaration: MIT in the project README
 - Maintainer review: the upstream repository does not currently publish a
   standalone license file containing the applicable license text.
-- Note: the DUMB-installed MediaStorm runtime also includes Deno (MIT), yt-dlp
+- Note: the DUMB-installed mediastorm runtime also includes Deno (MIT), yt-dlp
   (Unlicense), and the upstream Iroh bridge and their transitive dependencies.
   Python package license files remain under
   `/mediastorm/runtime/python-venv/` where supplied by their distributions.

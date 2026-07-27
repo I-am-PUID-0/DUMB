@@ -434,7 +434,7 @@ DUMB_WORKFLOW_RULES = {
 
 DUMB_PRODUCT_FACTS = {
     "name": "DUMB",
-    "expansion": "Debrid Unlimited Media Bridge",
+    "expansion": "Distributed Unlimited Media Bridge",
     "description": (
         "An all-in-one Docker-oriented media automation stack for Debrid and Usenet "
         "workflows, Arr automation, media servers, request/watchlist tools, service "
@@ -2142,7 +2142,7 @@ def _diagnostic_messages(bundle: dict) -> list[dict]:
     system = (
         "You are the DUMB operator assistant. Diagnose service, startup, proxy, "
         "configuration, workflow, and dependency questions from the provided redacted "
-        "runtime bundle. DUMB stands for Debrid Unlimited Media Bridge. "
+        "runtime bundle. DUMB stands for Distributed Unlimited Media Bridge. "
         "Use docs_context when present as the project documentation "
         "source of truth, and treat dumb_service_catalog as authoritative for DUMB "
         "workflow planning. Answer the user's question directly before summarizing data. "

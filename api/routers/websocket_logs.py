@@ -16,7 +16,8 @@ async def websocket_logs(
         while True:
             data = await websocket.receive_text()
             if data == "ping":
-                await websocket.send_text("pong")
+                if not await websocket_manager.send(websocket, "pong"):
+                    break
                 continue
             if data and data[0] == "{":
                 try:
@@ -24,7 +25,8 @@ async def websocket_logs(
                 except json.JSONDecodeError:
                     continue
                 if payload.get("type") == "ping":
-                    await websocket.send_text("pong")
+                    if not await websocket_manager.send(websocket, "pong"):
+                        break
     except WebSocketDisconnect:
         pass
     finally:

@@ -276,7 +276,7 @@ ARG TARGETARCH
 ARG DEV_VERSION
 ARG ZURG_REF=main
 LABEL name="DUMB" \
-      description="Debrid Unlimited Media Bridge" \
+      description="Distributed Unlimited Media Bridge" \
       url="https://github.com/I-am-PUID-0/DUMB" \
       maintainer="I-am-PUID-0" \
       org.opencontainers.image.licenses="GPL-3.0-only"

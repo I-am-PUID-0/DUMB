@@ -315,7 +315,7 @@ def setup_release_version(process_handler, config, process_name, key):
         if not success:
             return False, error
         logger.info(
-            "Installed MediaStorm %s from OCI image %s:%s@%s.",
+            "Installed mediastorm %s from OCI image %s:%s@%s.",
             result["version"],
             "godver3/mediastorm",
             result["oci_reference"],
@@ -5782,7 +5782,7 @@ def _ensure_mediastorm_runtime_link(
     source: str, target: str, *, replace_file: bool = False
 ) -> tuple[bool, str | None]:
     if not os.path.exists(source):
-        return False, f"Bundled MediaStorm runtime asset not found: {source}"
+        return False, f"Bundled mediastorm runtime asset not found: {source}"
     if os.path.islink(target):
         if os.readlink(target) == source:
             return True, None
@@ -5793,7 +5793,7 @@ def _ensure_mediastorm_runtime_link(
         else:
             return (
                 False,
-                f"Cannot install MediaStorm runtime link over existing path: {target}",
+                f"Cannot install mediastorm runtime link over existing path: {target}",
             )
     os.symlink(source, target)
     return True, None
@@ -5816,7 +5816,7 @@ def _ensure_mediastorm_app_version(
         except OSError as exc:
             if os.path.exists(temporary):
                 os.unlink(temporary)
-            return False, f"Failed preparing MediaStorm app version metadata: {exc}"
+            return False, f"Failed preparing mediastorm app version metadata: {exc}"
 
     return _ensure_mediastorm_runtime_link(
         source,
@@ -5831,12 +5831,12 @@ def setup_mediastorm(
     del process_handler
     config = CONFIG_MANAGER.get("mediastorm")
     if not config:
-        return False, "MediaStorm configuration not found."
+        return False, "mediastorm configuration not found."
     if not config.get("enabled", False):
-        logger.debug("Skipping disabled MediaStorm service.")
+        logger.debug("Skipping disabled mediastorm service.")
         return True, None
     if install_only and configure_only:
-        return False, "Invalid MediaStorm setup phase."
+        return False, "Invalid mediastorm setup phase."
 
     config_dir = config.get("config_dir") or "/mediastorm"
     runtime_dir = os.path.join(config_dir, "runtime")
@@ -5859,7 +5859,7 @@ def setup_mediastorm(
         if configure_only:
             return (
                 False,
-                "MediaStorm runtime is missing or does not match the selected version; "
+                "mediastorm runtime is missing or does not match the selected version; "
                 "run the install phase.",
             )
         requested_version = str(config.get("release_version") or "latest")
@@ -5877,7 +5877,7 @@ def setup_mediastorm(
         if not success:
             return False, error
         logger.info(
-            "Installed MediaStorm %s from OCI image %s:%s@%s.",
+            "Installed mediastorm %s from OCI image %s:%s@%s.",
             result["version"],
             "godver3/mediastorm",
             result["oci_reference"],
@@ -5961,9 +5961,9 @@ def setup_mediastorm(
         changed = True
 
     if changed and not install_only:
-        CONFIG_MANAGER.save_config(config.get("process_name", "MediaStorm"))
+        CONFIG_MANAGER.save_config(config.get("process_name", "mediastorm"))
 
-    logger.info("MediaStorm setup complete.")
+    logger.info("mediastorm setup complete.")
     return True, None
 
 

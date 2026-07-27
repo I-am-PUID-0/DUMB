@@ -719,7 +719,7 @@
   },
   "mediastorm": {
     "enabled": false,
-    "process_name": "MediaStorm",
+    "process_name": "mediastorm",
     "repo_owner": "godver3",
     "repo_name": "mediastorm",
     "release_version_enabled": false,

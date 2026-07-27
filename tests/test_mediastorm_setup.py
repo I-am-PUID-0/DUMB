@@ -43,7 +43,7 @@ class MediaStormSetupTests(unittest.TestCase):
             self._runtime_tree(runtime)
             config = {
                 "enabled": True,
-                "process_name": "MediaStorm",
+                "process_name": "mediastorm",
                 "port": 7788,
                 "config_dir": str(config_dir),
                 "command": [],
@@ -117,7 +117,7 @@ class MediaStormSetupTests(unittest.TestCase):
             )
             ensure_database.assert_called_once_with("mediastorm")
             initialize_databases.assert_called_once_with()
-            save_config.assert_called_once_with("MediaStorm")
+            save_config.assert_called_once_with("mediastorm")
 
     def test_missing_runtime_requests_install_phase(self):
         with (
@@ -143,7 +143,7 @@ class MediaStormSetupTests(unittest.TestCase):
             links_dir.mkdir()
             config = {
                 "enabled": True,
-                "process_name": "MediaStorm",
+                "process_name": "mediastorm",
                 "repo_owner": "godver3",
                 "repo_name": "mediastorm",
                 "config_dir": str(config_dir),
@@ -294,7 +294,7 @@ class MediaStormSetupTests(unittest.TestCase):
             patch.object(setup, "chown_recursive", return_value=(True, None)),
         ):
             success, error = setup.setup_release_version(
-                object(), config, "MediaStorm", "mediastorm"
+                object(), config, "mediastorm", "mediastorm"
             )
 
         self.assertTrue(success, error)
@@ -321,7 +321,7 @@ class MediaStormSetupTests(unittest.TestCase):
             patch.object(setup, "chown_recursive", return_value=(True, None)),
         ):
             success, error = setup.setup_release_version(
-                object(), config, "MediaStorm", "mediastorm"
+                object(), config, "mediastorm", "mediastorm"
             )
 
         self.assertTrue(success, error)

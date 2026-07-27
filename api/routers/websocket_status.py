@@ -36,8 +36,14 @@ async def websocket_status(
             else:
                 running = api_state.get_running_processes()
                 payload = {"type": "status", "running": running}
-            await websocket.send_text(json.dumps(payload))
-            await asyncio.sleep(interval)
+            if not await status_manager.send(websocket, json.dumps(payload)):
+                break
+            try:
+                message = await asyncio.wait_for(websocket.receive(), timeout=interval)
+                if message.get("type") == "websocket.disconnect":
+                    break
+            except asyncio.TimeoutError:
+                pass
     except WebSocketDisconnect:
         pass
     finally:
