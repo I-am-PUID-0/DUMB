@@ -10,6 +10,59 @@ from utils import setup
 
 
 class NzbDAVSetupTests(unittest.TestCase):
+    def test_source_discovery_prefers_known_layout_without_walking_runtime_data(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            backend_project = root / "backend" / "NzbWebDAV.csproj"
+            backend_project.parent.mkdir()
+            backend_project.write_text("<Project />", encoding="utf-8")
+            frontend_dir = root / "frontend"
+            frontend_dir.mkdir()
+            (frontend_dir / "package.json").write_text("{}", encoding="utf-8")
+            (root / "blobs" / "aa" / "bb").mkdir(parents=True)
+
+            with patch.object(
+                setup.os,
+                "walk",
+                side_effect=AssertionError("known layouts must not be walked"),
+            ):
+                found_backend, error = setup._find_nzbdav_backend_project(str(root), {})
+                found_frontend = setup._find_nzbdav_frontend_dir(str(root), {})
+
+        self.assertIsNone(error)
+        self.assertEqual(str(backend_project), found_backend)
+        self.assertEqual(str(frontend_dir), found_frontend)
+
+    def test_source_discovery_fallback_prunes_runtime_data(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            backend_project = root / "source" / "server" / "Fork.csproj"
+            backend_project.parent.mkdir(parents=True)
+            backend_project.write_text("<Project />", encoding="utf-8")
+            frontend_dir = root / "source" / "ui"
+            frontend_dir.mkdir()
+            (frontend_dir / "package.json").write_text("{}", encoding="utf-8")
+
+            runtime_dir = root / "blobs" / "aa" / "bb"
+            runtime_dir.mkdir(parents=True)
+            (runtime_dir / "Runtime.csproj").write_text("<Project />", encoding="utf-8")
+            (runtime_dir / "package.json").write_text("{}", encoding="utf-8")
+
+            real_scandir = os.scandir
+
+            def guarded_scandir(path):
+                if Path(path) == root / "blobs":
+                    raise AssertionError("runtime data must not be traversed")
+                return real_scandir(path)
+
+            with patch.object(setup.os, "scandir", side_effect=guarded_scandir):
+                found_backend, error = setup._find_nzbdav_backend_project(str(root), {})
+                found_frontend = setup._find_nzbdav_frontend_dir(str(root), {})
+
+        self.assertIsNone(error)
+        self.assertEqual(str(backend_project), found_backend)
+        self.assertEqual(str(frontend_dir), found_frontend)
+
     def test_commit_pin_requires_full_sha_and_normalizes_case(self):
         commit_sha = "A" * 40
 

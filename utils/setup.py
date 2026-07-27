@@ -3607,14 +3607,53 @@ def _write_nzbdav_start_script(config_dir, backend_command, frontend_dir, backen
     return script_path
 
 
+_NZBDAV_DISCOVERY_EXCLUDED_DIRS = frozenset(
+    {
+        ".git",
+        ".pnpm-store",
+        ".venv",
+        "__pycache__",
+        "bin",
+        "node_modules",
+        "obj",
+    }
+)
+
+_NZBDAV_TOP_LEVEL_RUNTIME_DIRS = frozenset(
+    {
+        ".cache",
+        ".cursor",
+        ".dotnet",
+        ".dotnet-sdk",
+        ".local",
+        ".nuget",
+        "app",
+        "backups",
+        "blobs",
+        "data",
+        "data-protection",
+        "logs",
+    }
+)
+
+
+def _walk_nzbdav_source_tree(config_dir):
+    config_root = os.path.abspath(config_dir)
+    for root, dirs, files in os.walk(config_root):
+        excluded_dirs = _NZBDAV_DISCOVERY_EXCLUDED_DIRS
+        if root == config_root:
+            excluded_dirs = excluded_dirs | _NZBDAV_TOP_LEVEL_RUNTIME_DIRS
+        dirs[:] = [d for d in dirs if d.lower() not in excluded_dirs]
+        yield root, files
+
+
 def _find_nzbdav_backend_project(config_dir, config):
+    known_project = os.path.join(config_dir, "backend", "NzbWebDAV.csproj")
+    if os.path.isfile(known_project):
+        return known_project, None
+
     candidates = []
-    for root, dirs, files in os.walk(config_dir):
-        dirs[:] = [
-            d
-            for d in dirs
-            if d not in ("node_modules", "bin", "obj", ".git", ".pnpm-store", ".venv")
-        ]
+    for root, files in _walk_nzbdav_source_tree(config_dir):
         for file in files:
             if file.endswith(".csproj"):
                 candidates.append(os.path.join(root, file))
@@ -3637,13 +3676,12 @@ def _find_nzbdav_backend_project(config_dir, config):
 
 
 def _find_nzbdav_frontend_dir(config_dir, config):
+    known_frontend = os.path.join(config_dir, "frontend")
+    if os.path.isfile(os.path.join(known_frontend, "package.json")):
+        return known_frontend
+
     candidates = []
-    for root, dirs, files in os.walk(config_dir):
-        dirs[:] = [
-            d
-            for d in dirs
-            if d not in ("node_modules", "bin", "obj", ".git", ".pnpm-store", ".venv")
-        ]
+    for root, files in _walk_nzbdav_source_tree(config_dir):
         if "package.json" in files:
             candidates.append(root)
 
