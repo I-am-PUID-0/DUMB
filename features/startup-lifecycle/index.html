@@ -6,31 +6,31 @@
   
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="description" content="Configure AltMount in DUMB for Usenet streaming through WebDAV, FUSE, rclone, symlinks, or STRM files with Arr and NNTP provider integration.">
+  <meta name="description" content="Understand DUMB startup phases, readiness checks, degraded startup, Docker health, notification baselining, and startup performance controls.">
   
     <meta name="author" content="DUMB Team">
   
   
-    <link rel="canonical" href="https://dumbarr.com/services/core/altmount/">
+    <link rel="canonical" href="https://dumbarr.com/features/startup-lifecycle/">
   
   
-    <link rel="prev" href="../nzbdav/">
+    <link rel="prev" href="../auto-restart/">
   
   
-    <link rel="next" href="../plex-media-server/">
+    <link rel="next" href="../auto-update/">
   
   
     
   
   
-  <link rel="icon" href="../../../assets/images/favicon.ico">
+  <link rel="icon" href="../../assets/images/favicon.ico">
   <meta name="generator" content="zensical-0.0.15">
 
     
   
     
       
-        <title>AltMount - Distributed Unlimited Media Bridge</title>
+        <title>Startup lifecycle - Distributed Unlimited Media Bridge</title>
       
     
   
@@ -39,12 +39,12 @@
       
         
       
-      <link rel="stylesheet" href="../../../assets/stylesheets/modern/main.f1b6466b.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/modern/main.f1b6466b.min.css">
       
         
           
         
-        <link rel="stylesheet" href="../../../assets/stylesheets/modern/palette.dfe2e883.min.css">
+        <link rel="stylesheet" href="../../assets/stylesheets/modern/palette.dfe2e883.min.css">
       
       
   
@@ -92,9 +92,9 @@
       
     
     
-      <link rel="stylesheet" href="../../../assets/css/main.css">
+      <link rel="stylesheet" href="../../assets/css/main.css">
     
-    <script>__md_scope=new URL("../../..",location),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,a=__md_scope)=>JSON.parse(t.getItem(a.pathname+"."+e)),__md_set=(e,t,a=localStorage,_=__md_scope)=>{try{a.setItem(_.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,a=__md_scope)=>JSON.parse(t.getItem(a.pathname+"."+e)),__md_set=(e,t,a=localStorage,_=__md_scope)=>{try{a.setItem(_.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
     
       
 
@@ -109,9 +109,9 @@
     <meta property="og:type" content="website">
     <meta property="og:locale" content="en_US">
     <meta property="og:site_name" content="DUMB — Distributed Unlimited Media Bridge">
-    <meta property="og:title" content="AltMount">
-    <meta property="og:description" content="Configure AltMount in DUMB for Usenet streaming through WebDAV, FUSE, rclone, symlinks, or STRM files with Arr and NNTP provider integration.">
-    <meta property="og:url" content="https://dumbarr.com/services/core/altmount/">
+    <meta property="og:title" content="Startup lifecycle">
+    <meta property="og:description" content="Understand DUMB startup phases, readiness checks, degraded startup, Docker health, notification baselining, and startup performance controls.">
+    <meta property="og:url" content="https://dumbarr.com/features/startup-lifecycle/">
     <meta property="og:image" content="https://dumbarr.com/assets/images/DUMB.png">
     <meta property="og:image:secure_url" content="https://dumbarr.com/assets/images/DUMB.png">
     <meta property="og:image:type" content="image/png">
@@ -119,8 +119,8 @@
     <meta property="og:image:height" content="1024">
     <meta property="og:image:alt" content="Distributed Unlimited Media Bridge ecosystem and architecture overview">
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="AltMount">
-    <meta name="twitter:description" content="Configure AltMount in DUMB for Usenet streaming through WebDAV, FUSE, rclone, symlinks, or STRM files with Arr and NNTP provider integration.">
+    <meta name="twitter:title" content="Startup lifecycle">
+    <meta name="twitter:description" content="Understand DUMB startup phases, readiness checks, degraded startup, Docker health, notification baselining, and startup performance controls.">
     <meta name="twitter:image" content="https://dumbarr.com/assets/images/DUMB.png">
     <meta name="twitter:image:alt" content="Distributed Unlimited Media Bridge ecosystem and architecture overview">
     
@@ -140,24 +140,16 @@
           {
             "@type": "ListItem",
             "position": 2,
-            "name": "Services",
-            "item": "https://dumbarr.com/services/"
+            "name": "Features",
+            "item": "https://dumbarr.com/features/"
           }
           
           ,
           {
             "@type": "ListItem",
             "position": 3,
-            "name": "Core",
-            "item": "https://dumbarr.com/services/core/"
-          }
-          
-          ,
-          {
-            "@type": "ListItem",
-            "position": 4,
-            "name": "AltMount",
-            "item": "https://dumbarr.com/services/core/altmount/"
+            "name": "Startup lifecycle",
+            "item": "https://dumbarr.com/features/startup-lifecycle/"
           }
         ]
       }
@@ -184,7 +176,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#altmount-core-service" class="md-skip">
+        <a href="#startup-lifecycle" class="md-skip">
           Skip to content
         </a>
       
@@ -209,9 +201,9 @@
 
 <header class="md-header" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="../../.." title="Distributed Unlimited Media Bridge" class="md-header__button md-logo" aria-label="Distributed Unlimited Media Bridge" data-md-component="logo">
+    <a href="../.." title="Distributed Unlimited Media Bridge" class="md-header__button md-logo" aria-label="Distributed Unlimited Media Bridge" data-md-component="logo">
       
-  <img src="../../../assets/images/logo.png" alt="logo">
+  <img src="../../assets/images/logo.png" alt="logo">
 
     </a>
     <label class="md-header__button md-icon" for="__drawer">
@@ -228,7 +220,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              AltMount
+              Startup lifecycle
             
           </span>
         </div>
@@ -322,7 +314,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../../.." class="md-tabs__link">
+      <a href="../.." class="md-tabs__link">
         
   
   Home
@@ -340,7 +332,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../../getting-started/" class="md-tabs__link">
+        <a href="../../getting-started/" class="md-tabs__link">
           
   
   Getting Started
@@ -355,11 +347,13 @@
   
   
   
+    
+  
   
     
     
-      <li class="md-tabs__item">
-        <a href="../../../features/" class="md-tabs__link">
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../" class="md-tabs__link">
           
   
   Features
@@ -378,7 +372,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../../frontend/" class="md-tabs__link">
+        <a href="../../frontend/" class="md-tabs__link">
           
   
   Frontend
@@ -397,7 +391,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../../architecture/" class="md-tabs__link">
+        <a href="../../architecture/" class="md-tabs__link">
           
   
   Architecture
@@ -412,13 +406,11 @@
   
   
   
-    
-  
   
     
     
-      <li class="md-tabs__item md-tabs__item--active">
-        <a href="../../" class="md-tabs__link">
+      <li class="md-tabs__item">
+        <a href="../../services/" class="md-tabs__link">
           
   
   Services
@@ -437,7 +429,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../../deployment/" class="md-tabs__link">
+        <a href="../../deployment/" class="md-tabs__link">
           
   
   Deployment
@@ -456,7 +448,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../../api/" class="md-tabs__link">
+        <a href="../../api/" class="md-tabs__link">
           
   
   API
@@ -475,7 +467,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../../reference/" class="md-tabs__link">
+        <a href="../../reference/" class="md-tabs__link">
           
   
   Reference
@@ -494,7 +486,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../../faq/general/" class="md-tabs__link">
+        <a href="../../faq/general/" class="md-tabs__link">
           
   
   FAQ
@@ -511,7 +503,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../../../changelog/" class="md-tabs__link">
+      <a href="../../changelog/" class="md-tabs__link">
         
   
   Changelog
@@ -527,7 +519,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../../../contributing/" class="md-tabs__link">
+      <a href="../../contributing/" class="md-tabs__link">
         
   
   Contributing
@@ -543,7 +535,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../../../about/" class="md-tabs__link">
+      <a href="../../about/" class="md-tabs__link">
         
   
   About
@@ -575,9 +567,9 @@
 
 <nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="../../.." title="Distributed Unlimited Media Bridge" class="md-nav__button md-logo" aria-label="Distributed Unlimited Media Bridge" data-md-component="logo">
+    <a href="../.." title="Distributed Unlimited Media Bridge" class="md-nav__button md-logo" aria-label="Distributed Unlimited Media Bridge" data-md-component="logo">
       
-  <img src="../../../assets/images/logo.png" alt="logo">
+  <img src="../../assets/images/logo.png" alt="logo">
 
     </a>
     Distributed Unlimited Media Bridge
@@ -604,7 +596,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../.." class="md-nav__link">
+      <a href="../.." class="md-nav__link">
         
   
   
@@ -660,7 +652,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../getting-started/" class="md-nav__link ">
+            <a href="../../getting-started/" class="md-nav__link ">
               
   
   
@@ -706,7 +698,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../getting-started/installation/" class="md-nav__link">
+      <a href="../../getting-started/installation/" class="md-nav__link">
         
   
   
@@ -740,6 +732,8 @@
       
   
   
+    
+  
   
   
     
@@ -781,22 +775,23 @@
     
     
       
+        
+        
+      
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
       
         
         
-          
-        
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../features/" class="md-nav__link ">
+            <a href="../" class="md-nav__link ">
               
   
   
@@ -816,13 +811,13 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_3" id="__nav_3_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_3" id="__nav_3_label" tabindex="">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_3">
             <span class="md-nav__icon md-icon"></span>
             
@@ -842,7 +837,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../features/configuration/" class="md-nav__link">
+      <a href="../configuration/" class="md-nav__link">
         
   
   
@@ -872,7 +867,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../features/usage/" class="md-nav__link">
+      <a href="../usage/" class="md-nav__link">
         
   
   
@@ -902,7 +897,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../features/authentication/" class="md-nav__link">
+      <a href="../authentication/" class="md-nav__link">
         
   
   
@@ -932,7 +927,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../features/auto-restart/" class="md-nav__link">
+      <a href="../auto-restart/" class="md-nav__link">
         
   
   
@@ -959,10 +954,39 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../../../features/startup-lifecycle/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-activity" viewBox="0 0 24 24"><path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    Startup lifecycle
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -980,6 +1004,82 @@
   
 
       </a>
+      
+        
+
+
+<nav class="md-nav md-nav--secondary" aria-label="On this page">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      On this page
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#readiness-and-stabilization" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Readiness and stabilization
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#startup-safe-monitoring" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Startup-safe monitoring
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#preinstall-behavior" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Preinstall behavior
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ownership-and-network-storage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Ownership and network storage
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#api" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        API
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -992,7 +1092,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../features/auto-update/" class="md-nav__link">
+      <a href="../auto-update/" class="md-nav__link">
         
   
   
@@ -1022,7 +1122,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../features/arr-postgres-migration/" class="md-nav__link">
+      <a href="../arr-postgres-migration/" class="md-nav__link">
         
   
   
@@ -1052,7 +1152,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../features/symlinks/" class="md-nav__link">
+      <a href="../symlinks/" class="md-nav__link">
         
   
   
@@ -1082,7 +1182,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../features/seerr-sync/" class="md-nav__link">
+      <a href="../seerr-sync/" class="md-nav__link">
         
   
   
@@ -1112,7 +1212,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../features/ffprobe-monitor/" class="md-nav__link">
+      <a href="../ffprobe-monitor/" class="md-nav__link">
         
   
   
@@ -1142,7 +1242,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../features/metrics/" class="md-nav__link">
+      <a href="../metrics/" class="md-nav__link">
         
   
   
@@ -1172,7 +1272,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../features/notifications/" class="md-nav__link">
+      <a href="../notifications/" class="md-nav__link">
         
   
   
@@ -1202,7 +1302,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../features/ai-assistant/" class="md-nav__link">
+      <a href="../ai-assistant/" class="md-nav__link">
         
   
   
@@ -1232,7 +1332,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../features/embedded-ui/" class="md-nav__link">
+      <a href="../embedded-ui/" class="md-nav__link">
         
   
   
@@ -1304,7 +1404,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../frontend/" class="md-nav__link ">
+            <a href="../../frontend/" class="md-nav__link ">
               
   
   
@@ -1350,7 +1450,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../frontend/dashboard/" class="md-nav__link">
+      <a href="../../frontend/dashboard/" class="md-nav__link">
         
   
   
@@ -1380,7 +1480,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../frontend/onboarding/" class="md-nav__link">
+      <a href="../../frontend/onboarding/" class="md-nav__link">
         
   
   
@@ -1410,7 +1510,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../frontend/settings/" class="md-nav__link">
+      <a href="../../frontend/settings/" class="md-nav__link">
         
   
   
@@ -1440,7 +1540,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../frontend/service-pages/" class="md-nav__link">
+      <a href="../../frontend/service-pages/" class="md-nav__link">
         
   
   
@@ -1470,7 +1570,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../frontend/metrics/" class="md-nav__link">
+      <a href="../../frontend/metrics/" class="md-nav__link">
         
   
   
@@ -1538,7 +1638,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../architecture/" class="md-nav__link ">
+            <a href="../../architecture/" class="md-nav__link ">
               
   
   
@@ -1584,7 +1684,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../architecture/backend/" class="md-nav__link">
+      <a href="../../architecture/backend/" class="md-nav__link">
         
   
   
@@ -1614,7 +1714,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../architecture/frontend/" class="md-nav__link">
+      <a href="../../architecture/frontend/" class="md-nav__link">
         
   
   
@@ -1644,7 +1744,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../architecture/traefik/" class="md-nav__link">
+      <a href="../../architecture/traefik/" class="md-nav__link">
         
   
   
@@ -1678,8 +1778,6 @@
       
   
   
-    
-  
   
   
     
@@ -1701,23 +1799,22 @@
     
     
       
-        
-        
-      
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" checked>
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6" >
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../" class="md-nav__link ">
+            <a href="../../services/" class="md-nav__link ">
               
   
   
@@ -1737,13 +1834,13 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_6" id="__nav_6_label" tabindex="">
+              <label class="md-nav__link " for="__nav_6" id="__nav_6_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_6">
             <span class="md-nav__icon md-icon"></span>
             
@@ -1779,13 +1876,10 @@
       
       
         
-          
-          
-        
       
     
     
-    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
@@ -1795,7 +1889,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../dumb/" class="md-nav__link ">
+            <a href="../../services/dumb/" class="md-nav__link ">
               
   
   
@@ -1815,7 +1909,7 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_6_2" id="__nav_6_2_label" tabindex="">
+              <label class="md-nav__link " for="__nav_6_2" id="__nav_6_2_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
@@ -1841,7 +1935,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../dumb/api/" class="md-nav__link">
+      <a href="../../services/dumb/api/" class="md-nav__link">
         
   
   
@@ -1871,7 +1965,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../dumb/dumb-frontend/" class="md-nav__link">
+      <a href="../../services/dumb/dumb-frontend/" class="md-nav__link">
         
   
   
@@ -1906,8 +2000,6 @@
                 
   
   
-    
-  
   
   
     
@@ -1955,21 +2047,20 @@
       
       
         
-          
-          
-        
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_3" checked>
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6_3" >
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../" class="md-nav__link ">
+            <a href="../../services/core/" class="md-nav__link ">
               
   
   
@@ -1989,13 +2080,13 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_6_3" id="__nav_6_3_label" tabindex="">
+              <label class="md-nav__link " for="__nav_6_3" id="__nav_6_3_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_3_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_3_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_6_3">
             <span class="md-nav__icon md-icon"></span>
             
@@ -2015,7 +2106,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../cli-debrid/" class="md-nav__link">
+      <a href="../../services/core/cli-debrid/" class="md-nav__link">
         
   
   
@@ -2045,7 +2136,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../decypharr/" class="md-nav__link">
+      <a href="../../services/core/decypharr/" class="md-nav__link">
         
   
   
@@ -2075,7 +2166,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../nzbdav/" class="md-nav__link">
+      <a href="../../services/core/nzbdav/" class="md-nav__link">
         
   
   
@@ -2102,39 +2193,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-hard-drive-download" viewBox="0 0 24 24"><path d="M12 2v8M16 6l-4 4-4-4"/><rect width="20" height="8" x="2" y="14" rx="2"/><path d="M6 18h.01M10 18h.01"/></svg>
-  
-  <span class="md-ellipsis">
-    
-  
-    AltMount
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../../services/core/altmount/" class="md-nav__link">
         
   
   
@@ -2152,270 +2214,6 @@
   
 
       </a>
-      
-        
-
-
-<nav class="md-nav md-nav--secondary" aria-label="On this page">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      On this page
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#workflow-diagram" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Workflow diagram
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#service-relationships" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Service relationships
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#what-altmount-provides" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        What AltMount provides
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#what-dumb-manages" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        What DUMB manages
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#default-port-and-urls" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Default port and URLs
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#configuration-in-dumb_configjson" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Configuration in dumb_config.json
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Configuration in dumb_config.json">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#important-fields" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Important fields
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#mount-modes" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Mount modes
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#import-strategy-and-library-paths" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Import strategy and library paths
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#dumb-to-altmount-arr-integration" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        DUMB-to-AltMount Arr integration
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#first-start-checklist" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        First-start checklist
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#postgresql-migration" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        PostgreSQL migration
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#files-and-persistence" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Files and persistence
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#embedded-ui-behavior" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Embedded UI behavior
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#troubleshooting" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Troubleshooting
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Troubleshooting">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#altmount-does-not-start" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        AltMount does not start
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#provider-or-streaming-failures" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Provider or streaming failures
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#arr-download-client-setup-is-missing" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Arr download-client setup is missing
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#import-completes-but-the-library-cannot-see-the-file" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Import completes but the library cannot see the file
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#embedded-uiapi-requests-open-dumb-instead-of-altmount" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Embedded UI/API requests open DUMB instead of AltMount
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#related-links" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Related links
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -2428,7 +2226,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../plex-media-server/" class="md-nav__link">
+      <a href="../../services/core/plex-media-server/" class="md-nav__link">
         
   
   
@@ -2458,7 +2256,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../jellyfin/" class="md-nav__link">
+      <a href="../../services/core/jellyfin/" class="md-nav__link">
         
   
   
@@ -2488,7 +2286,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../emby/" class="md-nav__link">
+      <a href="../../services/core/emby/" class="md-nav__link">
         
   
   
@@ -2518,7 +2316,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../seerr/" class="md-nav__link">
+      <a href="../../services/core/seerr/" class="md-nav__link">
         
   
   
@@ -2548,7 +2346,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../riven-backend/" class="md-nav__link">
+      <a href="../../services/core/riven-backend/" class="md-nav__link">
         
   
   
@@ -2578,7 +2376,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../sonarr/" class="md-nav__link">
+      <a href="../../services/core/sonarr/" class="md-nav__link">
         
   
   
@@ -2608,7 +2406,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../radarr/" class="md-nav__link">
+      <a href="../../services/core/radarr/" class="md-nav__link">
         
   
   
@@ -2638,7 +2436,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../lidarr/" class="md-nav__link">
+      <a href="../../services/core/lidarr/" class="md-nav__link">
         
   
   
@@ -2668,7 +2466,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../prowlarr/" class="md-nav__link">
+      <a href="../../services/core/prowlarr/" class="md-nav__link">
         
   
   
@@ -2698,7 +2496,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../whisparr/" class="md-nav__link">
+      <a href="../../services/core/whisparr/" class="md-nav__link">
         
   
   
@@ -2728,7 +2526,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../neutarr/" class="md-nav__link">
+      <a href="../../services/core/neutarr/" class="md-nav__link">
         
   
   
@@ -2758,7 +2556,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../profilarr/" class="md-nav__link">
+      <a href="../../services/core/profilarr/" class="md-nav__link">
         
   
   
@@ -2818,13 +2616,10 @@
       
       
         
-          
-          
-        
       
     
     
-    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
@@ -2834,7 +2629,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../dependent/" class="md-nav__link ">
+            <a href="../../services/dependent/" class="md-nav__link ">
               
   
   
@@ -2854,7 +2649,7 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_6_4" id="__nav_6_4_label" tabindex="">
+              <label class="md-nav__link " for="__nav_6_4" id="__nav_6_4_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
@@ -2880,7 +2675,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../dependent/cli-battery/" class="md-nav__link">
+      <a href="../../services/dependent/cli-battery/" class="md-nav__link">
         
   
   
@@ -2910,7 +2705,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../dependent/phalanx-db/" class="md-nav__link">
+      <a href="../../services/dependent/phalanx-db/" class="md-nav__link">
         
   
   
@@ -2940,7 +2735,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../dependent/postgres/" class="md-nav__link">
+      <a href="../../services/dependent/postgres/" class="md-nav__link">
         
   
   
@@ -2970,7 +2765,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../dependent/rclone/" class="md-nav__link">
+      <a href="../../services/dependent/rclone/" class="md-nav__link">
         
   
   
@@ -3000,7 +2795,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../dependent/zurg/" class="md-nav__link">
+      <a href="../../services/dependent/zurg/" class="md-nav__link">
         
   
   
@@ -3070,13 +2865,10 @@
       
       
         
-          
-          
-        
       
     
     
-    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
@@ -3086,7 +2878,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../optional/" class="md-nav__link ">
+            <a href="../../services/optional/" class="md-nav__link ">
               
   
   
@@ -3106,7 +2898,7 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_6_5" id="__nav_6_5_label" tabindex="">
+              <label class="md-nav__link " for="__nav_6_5" id="__nav_6_5_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
@@ -3132,7 +2924,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../optional/pgadmin/" class="md-nav__link">
+      <a href="../../services/optional/pgadmin/" class="md-nav__link">
         
   
   
@@ -3162,7 +2954,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../optional/riven-frontend/" class="md-nav__link">
+      <a href="../../services/optional/riven-frontend/" class="md-nav__link">
         
   
   
@@ -3192,7 +2984,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../optional/tautulli/" class="md-nav__link">
+      <a href="../../services/optional/tautulli/" class="md-nav__link">
         
   
   
@@ -3222,7 +3014,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../optional/bazarr/" class="md-nav__link">
+      <a href="../../services/optional/bazarr/" class="md-nav__link">
         
   
   
@@ -3252,7 +3044,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../optional/pulsarr/" class="md-nav__link">
+      <a href="../../services/optional/pulsarr/" class="md-nav__link">
         
   
   
@@ -3282,7 +3074,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../optional/maintainerr/" class="md-nav__link">
+      <a href="../../services/optional/maintainerr/" class="md-nav__link">
         
   
   
@@ -3312,7 +3104,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../optional/mediastorm/" class="md-nav__link">
+      <a href="../../services/optional/mediastorm/" class="md-nav__link">
         
   
   
@@ -3342,7 +3134,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../optional/traefik-proxy-admin/" class="md-nav__link">
+      <a href="../../services/optional/traefik-proxy-admin/" class="md-nav__link">
         
   
   
@@ -3372,7 +3164,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../optional/cloudflared/" class="md-nav__link">
+      <a href="../../services/optional/cloudflared/" class="md-nav__link">
         
   
   
@@ -3402,7 +3194,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../optional/zilean/" class="md-nav__link">
+      <a href="../../services/optional/zilean/" class="md-nav__link">
         
   
   
@@ -3490,7 +3282,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../deployment/" class="md-nav__link ">
+            <a href="../../deployment/" class="md-nav__link ">
               
   
   
@@ -3536,7 +3328,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../deployment/docker/" class="md-nav__link">
+      <a href="../../deployment/docker/" class="md-nav__link">
         
   
   
@@ -3566,7 +3358,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../deployment/portainer/" class="md-nav__link">
+      <a href="../../deployment/portainer/" class="md-nav__link">
         
   
   
@@ -3596,7 +3388,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../deployment/unraid/" class="md-nav__link">
+      <a href="../../deployment/unraid/" class="md-nav__link">
         
   
   
@@ -3626,7 +3418,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../deployment/wsl/" class="md-nav__link">
+      <a href="../../deployment/wsl/" class="md-nav__link">
         
   
   
@@ -3656,7 +3448,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../deployment/proxmox/" class="md-nav__link">
+      <a href="../../deployment/proxmox/" class="md-nav__link">
         
   
   
@@ -3686,7 +3478,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../deployment/synology/" class="md-nav__link">
+      <a href="../../deployment/synology/" class="md-nav__link">
         
   
   
@@ -3716,7 +3508,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../deployment/qnap/" class="md-nav__link">
+      <a href="../../deployment/qnap/" class="md-nav__link">
         
   
   
@@ -3746,7 +3538,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../deployment/truenas/" class="md-nav__link">
+      <a href="../../deployment/truenas/" class="md-nav__link">
         
   
   
@@ -3776,7 +3568,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../deployment/dockge/" class="md-nav__link">
+      <a href="../../deployment/dockge/" class="md-nav__link">
         
   
   
@@ -3860,7 +3652,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../api/" class="md-nav__link ">
+            <a href="../../api/" class="md-nav__link ">
               
   
   
@@ -3906,7 +3698,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../api/auth/" class="md-nav__link">
+      <a href="../../api/auth/" class="md-nav__link">
         
   
   
@@ -3936,7 +3728,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../api/health/" class="md-nav__link">
+      <a href="../../api/health/" class="md-nav__link">
         
   
   
@@ -3966,7 +3758,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../api/process/" class="md-nav__link">
+      <a href="../../api/process/" class="md-nav__link">
         
   
   
@@ -3996,7 +3788,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../api/config/" class="md-nav__link">
+      <a href="../../api/config/" class="md-nav__link">
         
   
   
@@ -4026,7 +3818,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../api/logs/" class="md-nav__link">
+      <a href="../../api/logs/" class="md-nav__link">
         
   
   
@@ -4056,7 +3848,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../api/metrics/" class="md-nav__link">
+      <a href="../../api/metrics/" class="md-nav__link">
         
   
   
@@ -4086,7 +3878,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../api/notifications/" class="md-nav__link">
+      <a href="../../api/notifications/" class="md-nav__link">
         
   
   
@@ -4116,7 +3908,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../api/ai/" class="md-nav__link">
+      <a href="../../api/ai/" class="md-nav__link">
         
   
   
@@ -4146,7 +3938,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../api/seerr-sync/" class="md-nav__link">
+      <a href="../../api/seerr-sync/" class="md-nav__link">
         
   
   
@@ -4176,7 +3968,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../api/websocket/" class="md-nav__link">
+      <a href="../../api/websocket/" class="md-nav__link">
         
   
   
@@ -4206,7 +3998,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../api/websocket_logs/" class="md-nav__link">
+      <a href="../../api/websocket_logs/" class="md-nav__link">
         
   
   
@@ -4278,7 +4070,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../reference/" class="md-nav__link ">
+            <a href="../../reference/" class="md-nav__link ">
               
   
   
@@ -4324,7 +4116,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../reference/ports/" class="md-nav__link">
+      <a href="../../reference/ports/" class="md-nav__link">
         
   
   
@@ -4354,7 +4146,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../reference/environment-variables/" class="md-nav__link">
+      <a href="../../reference/environment-variables/" class="md-nav__link">
         
   
   
@@ -4384,7 +4176,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../reference/config-schema/" class="md-nav__link">
+      <a href="../../reference/config-schema/" class="md-nav__link">
         
   
   
@@ -4414,7 +4206,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../reference/instances/" class="md-nav__link">
+      <a href="../../reference/instances/" class="md-nav__link">
         
   
   
@@ -4444,7 +4236,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../reference/core-service/" class="md-nav__link">
+      <a href="../../reference/core-service/" class="md-nav__link">
         
   
   
@@ -4567,7 +4359,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../faq/general/" class="md-nav__link">
+      <a href="../../faq/general/" class="md-nav__link">
         
   
   
@@ -4597,7 +4389,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../faq/authentication/" class="md-nav__link">
+      <a href="../../faq/authentication/" class="md-nav__link">
         
   
   
@@ -4627,7 +4419,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../faq/cli-debrid/" class="md-nav__link">
+      <a href="../../faq/cli-debrid/" class="md-nav__link">
         
   
   
@@ -4657,7 +4449,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../faq/decypharr/" class="md-nav__link">
+      <a href="../../faq/decypharr/" class="md-nav__link">
         
   
   
@@ -4687,7 +4479,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../faq/dumb/" class="md-nav__link">
+      <a href="../../faq/dumb/" class="md-nav__link">
         
   
   
@@ -4717,7 +4509,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../faq/neutarr/" class="md-nav__link">
+      <a href="../../faq/neutarr/" class="md-nav__link">
         
   
   
@@ -4747,7 +4539,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../faq/pgadmin/" class="md-nav__link">
+      <a href="../../faq/pgadmin/" class="md-nav__link">
         
   
   
@@ -4777,7 +4569,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../faq/plex/" class="md-nav__link">
+      <a href="../../faq/plex/" class="md-nav__link">
         
   
   
@@ -4807,7 +4599,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../faq/postgres/" class="md-nav__link">
+      <a href="../../faq/postgres/" class="md-nav__link">
         
   
   
@@ -4837,7 +4629,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../faq/rclone/" class="md-nav__link">
+      <a href="../../faq/rclone/" class="md-nav__link">
         
   
   
@@ -4867,7 +4659,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../faq/riven/" class="md-nav__link">
+      <a href="../../faq/riven/" class="md-nav__link">
         
   
   
@@ -4897,7 +4689,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../faq/seerr/" class="md-nav__link">
+      <a href="../../faq/seerr/" class="md-nav__link">
         
   
   
@@ -4927,7 +4719,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../faq/tautulli/" class="md-nav__link">
+      <a href="../../faq/tautulli/" class="md-nav__link">
         
   
   
@@ -4957,7 +4749,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../faq/zilean/" class="md-nav__link">
+      <a href="../../faq/zilean/" class="md-nav__link">
         
   
   
@@ -4987,7 +4779,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../faq/zurg/" class="md-nav__link">
+      <a href="../../faq/zurg/" class="md-nav__link">
         
   
   
@@ -5024,7 +4816,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../changelog/" class="md-nav__link">
+      <a href="../../changelog/" class="md-nav__link">
         
   
   
@@ -5051,7 +4843,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../contributing/" class="md-nav__link">
+      <a href="../../contributing/" class="md-nav__link">
         
   
   
@@ -5080,7 +4872,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../about/" class="md-nav__link">
+      <a href="../../about/" class="md-nav__link">
         
   
   
@@ -5130,10 +4922,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#workflow-diagram" class="md-nav__link">
+  <a href="#readiness-and-stabilization" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Workflow diagram
+        Readiness and stabilization
       
     </span>
   </a>
@@ -5141,10 +4933,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#service-relationships" class="md-nav__link">
+  <a href="#startup-safe-monitoring" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Service relationships
+        Startup-safe monitoring
       
     </span>
   </a>
@@ -5152,10 +4944,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#what-altmount-provides" class="md-nav__link">
+  <a href="#preinstall-behavior" class="md-nav__link">
     <span class="md-ellipsis">
       
-        What AltMount provides
+        Preinstall behavior
       
     </span>
   </a>
@@ -5163,10 +4955,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#what-dumb-manages" class="md-nav__link">
+  <a href="#ownership-and-network-storage" class="md-nav__link">
     <span class="md-ellipsis">
       
-        What DUMB manages
+        Ownership and network storage
       
     </span>
   </a>
@@ -5174,198 +4966,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#default-port-and-urls" class="md-nav__link">
+  <a href="#api" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Default port and URLs
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#configuration-in-dumb_configjson" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Configuration in dumb_config.json
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Configuration in dumb_config.json">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#important-fields" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Important fields
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#mount-modes" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Mount modes
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#import-strategy-and-library-paths" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Import strategy and library paths
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#dumb-to-altmount-arr-integration" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        DUMB-to-AltMount Arr integration
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#first-start-checklist" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        First-start checklist
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#postgresql-migration" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        PostgreSQL migration
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#files-and-persistence" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Files and persistence
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#embedded-ui-behavior" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Embedded UI behavior
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#troubleshooting" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Troubleshooting
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Troubleshooting">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#altmount-does-not-start" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        AltMount does not start
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#provider-or-streaming-failures" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Provider or streaming failures
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#arr-download-client-setup-is-missing" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Arr download-client setup is missing
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#import-completes-but-the-library-cannot-see-the-file" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Import completes but the library cannot see the file
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#embedded-uiapi-requests-open-dumb-instead-of-altmount" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Embedded UI/API requests open DUMB instead of AltMount
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#related-links" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Related links
+        API
       
     </span>
   </a>
@@ -5397,7 +5001,7 @@
   
   
     <li class="md-path__item">
-      <a href="../../.." class="md-path__link">
+      <a href="../.." class="md-path__link">
         
   <span class="md-ellipsis">
     Home
@@ -5415,28 +5019,10 @@
     
     
       <li class="md-path__item">
-        <a href="../../" class="md-path__link">
-          
-  <span class="md-ellipsis">
-    Services
-  </span>
-
-        </a>
-      </li>
-    
-  
-
-      
-        
-  
-  
-    
-    
-      <li class="md-path__item">
         <a href="../" class="md-path__link">
           
   <span class="md-ellipsis">
-    Core
+    Features
   </span>
 
         </a>
@@ -5453,7 +5039,7 @@
                 
                   
   
-    <a href="https://github.com/I-am-PUID-0/DUMB_docs/edit/master/docs/services/core/altmount.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+    <a href="https://github.com/I-am-PUID-0/DUMB_docs/edit/master/docs/features/startup-lifecycle.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
       
       <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-file-pen" viewBox="0 0 24 24"><path d="M12.659 22H18a2 2 0 0 0 2-2V8a2.4 2.4 0 0 0-.706-1.706l-3.588-3.588A2.4 2.4 0 0 0 14 2H6a2 2 0 0 0-2 2v9.34"/><path d="M14 2v5a1 1 0 0 0 1 1h5M10.378 12.622a1 1 0 0 1 3 3.003L8.36 20.637a2 2 0 0 1-.854.506l-2.867.837a.5.5 0 0 1-.62-.62l.836-2.869a2 2 0 0 1 .506-.853z"/></svg>
     </a>
@@ -5462,419 +5048,116 @@
     
       
     
-    <a href="https://github.com/I-am-PUID-0/DUMB_docs/raw/master/docs/services/core/altmount.md" title="View source of this page" class="md-content__button md-icon">
+    <a href="https://github.com/I-am-PUID-0/DUMB_docs/raw/master/docs/features/startup-lifecycle.md" title="View source of this page" class="md-content__button md-icon">
       
       <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-file-code-2" viewBox="0 0 24 24"><path d="M4 12.15V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.706.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2h-3.35"/><path d="M14 2v5a1 1 0 0 0 1 1h5M5 16l-3 3 3 3M9 22l3-3-3-3"/></svg>
     </a>
   
 
 
-<h1 id="altmount-core-service">AltMount (Core Service)<a class="headerlink" href="#altmount-core-service" title="Permanent link">#</a></h1>
-<p><strong>AltMount</strong> is a Usenet-backed WebDAV and streaming service. It accepts NZBs from Arr applications through a SABnzbd-compatible API, reads content from one or more NNTP providers, and makes that content available through WebDAV, a built-in FUSE or rclone mount, symlinks, or STRM files.</p>
-<p>In DUMB, AltMount is a core Usenet workflow service. DUMB installs and starts AltMount, supplies its baseline configuration, embeds its UI, and connects enabled Sonarr, Radarr, Lidarr, and Whisparr instances whose <code>core_service</code> includes <code>altmount</code>.</p>
-<hr />
-<h2 id="workflow-diagram">Workflow diagram<a class="headerlink" href="#workflow-diagram" title="Permanent link">#</a></h2>
-<pre class="mermaid"><code>%%{ init: { "flowchart": { "curve": "basis" } } }%%
-flowchart TD
-    A([Request Sources:&lt;br/&gt;Seerr, Trakt,&lt;br/&gt;Plex Watchlist,&lt;br/&gt;NeutArr])
-    B[Arr Services:&lt;br/&gt;Sonarr, Radarr,&lt;br/&gt;Lidarr, Whisparr]
-    C[[Prowlarr / Usenet Indexers]]
-    D[AltMount&lt;br/&gt;SABnzbd-compatible API]
-    E@{shape: cloud, label: "NNTP Providers"}
-    F[[Content Access:&lt;br/&gt;WebDAV + selected&lt;br/&gt;mount mode]]
-    G[Import Strategy:&lt;br/&gt;NONE / SYMLINK / STRM]
-    H[Arr Import +&lt;br/&gt;Library Organization]
-    I([Media Servers:&lt;br/&gt;Plex, Jellyfin, Emby])
-    J[DUMB Setup + Onboarding]
-
-    A ==&gt; B
-    C &lt;==&gt; B
-    B e1@==&gt; D
-    D e2@&lt;==&gt; E
-    D ==&gt; F
-    F ==&gt; G
-    G e3@==&gt; H
-    H e4@==&gt; I
-    J -. installs and configures .-&gt; D
-    J -. wires linked Arr clients .-&gt; B
-
-    classDef animate stroke-dasharray: 9,5,stroke-dashoffset: 900,animation: dash 25s linear infinite;
-    class e1,e2,e3,e4 animate</code></pre>
-<p>The dashed arrows are DUMB automation. The solid arrows are the normal request and media flow after setup.</p>
-<hr />
-<h2 id="service-relationships">Service relationships<a class="headerlink" href="#service-relationships" title="Permanent link">#</a></h2>
+<h1 id="startup-lifecycle">Startup lifecycle<a class="headerlink" href="#startup-lifecycle" title="Permanent link">#</a></h1>
+<p>DUMB distinguishes a service that is still starting from one that is unhealthy
+in steady state. The lifecycle is:</p>
+<ol>
+<li><code>initializing</code></li>
+<li><code>preinstalling</code></li>
+<li><code>starting_services</code></li>
+<li><code>stabilizing</code></li>
+<li><code>ready</code> or <code>degraded</code></li>
+<li><code>shutting_down</code></li>
+</ol>
+<p>The DUMB API starts before enabled-service preinstall. An already-installed
+frontend can also start early, so the dashboard can show startup progress while
+large service installs or migrations continue.</p>
+<h2 id="readiness-and-stabilization">Readiness and stabilization<a class="headerlink" href="#readiness-and-stabilization" title="Permanent link">#</a></h2>
+<p>During <code>stabilizing</code>, DUMB checks every enabled process and each configured
+<code>port</code>, <code>frontend_port</code>, <code>backend_port</code>, and <code>webdav_port</code>. Every enabled
+service must remain ready for the stabilization window before the lifecycle
+becomes <code>ready</code>.</p>
+<div class="highlight"><pre><span></span><code><span class="nt">&quot;dumb&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;startup&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;readiness_timeout_seconds&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">300</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;readiness_poll_interval_seconds&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">5</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;stabilization_seconds&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">15</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
 <table>
 <thead>
 <tr>
-<th>Classification</th>
-<th>Role</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Core Service</td>
-<td>Usenet WebDAV, streaming, and Arr download-client workflow</td>
-</tr>
-<tr>
-<td>DUMB Dependencies</td>
-<td>None by default; PostgreSQL is enabled only for an optional database cutover</td>
-</tr>
-<tr>
-<td>External Requirement</td>
-<td>At least one usable NNTP provider account</td>
-</tr>
-<tr>
-<td>Integrates With</td>
-<td>Sonarr, Radarr, Lidarr, Whisparr, Prowlarr, request services, and media servers</td>
-</tr>
-<tr>
-<td>Exposes UI</td>
-<td>Yes, on the configured AltMount port and through DUMB's embedded UI</td>
-</tr>
-</tbody>
-</table>
-<p><code>external_rclone</code> does <strong>not</strong> create or start a DUMB-managed <a href="../../dependent/rclone/">rclone</a> instance. In that mode AltMount exposes its rclone RC service, while you remain responsible for the external mount process.</p>
-<hr />
-<h2 id="what-altmount-provides">What AltMount provides<a class="headerlink" href="#what-altmount-provides" title="Permanent link">#</a></h2>
-<ul>
-<li>A modern web UI and API for configuration, queue visibility, and health monitoring</li>
-<li>WebDAV access and range-based streaming directly from Usenet</li>
-<li>A SABnzbd-compatible download-client API for Arr applications</li>
-<li>Multiple NNTP providers with load distribution and failover</li>
-<li>Transparent handling of NZB content and supported archive formats</li>
-<li><code>NONE</code>, <code>SYMLINK</code>, and <code>STRM</code> import strategies</li>
-<li>Built-in FUSE and rclone mount modes, plus an external-rclone mode</li>
-<li>Local metadata with optional SQLite-to-PostgreSQL migration through DUMB</li>
-</ul>
-<p>AltMount owns the media-processing behavior. DUMB supplies the service lifecycle and integration around it.</p>
-<h2 id="what-dumb-manages">What DUMB manages<a class="headerlink" href="#what-dumb-manages" title="Permanent link">#</a></h2>
-<table>
-<thead>
-<tr>
-<th>DUMB manages</th>
-<th>You manage in AltMount</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Downloads the architecture-specific release binary and records its version</td>
-<td>Initial AltMount administrator registration</td>
-</tr>
-<tr>
-<td>Creates the config, metadata, logs, rclone, and mount directories</td>
-<td>NNTP provider hostnames, credentials, connection limits, and TLS settings</td>
-</tr>
-<tr>
-<td>Generates <code>JWT_SECRET</code> and <code>ALTMOUNT_API_KEY</code> when missing</td>
-<td>WebDAV credentials and any public/reverse-proxy cookie-domain changes</td>
-</tr>
-<tr>
-<td>Maps DUMB's mount choice into AltMount's native <code>mount_type</code></td>
-<td>Import strategy, import directory, streaming cache, health monitoring, and advanced provider behavior</td>
-</tr>
-<tr>
-<td>Enables SABnzbd compatibility and adds standard media categories</td>
-<td>Arr root folders, media-server library paths, and validation of the complete import path</td>
-</tr>
-<tr>
-<td>Adds linked Arr instances to AltMount and adds AltMount as their download client</td>
-<td>Optional AltMount webhooks and any tuning beyond DUMB's baseline</td>
-</tr>
-<tr>
-<td>Proxies the root-style web application into the service page</td>
-<td>AltMount user accounts and application-level access policy</td>
-</tr>
-</tbody>
-</table>
-<div class="admonition important">
-<p class="admonition-title">DUMB preserves most AltMount settings, but some fields are authoritative</p>
-<p>DUMB creates <code>/altmount/config.yaml</code> only when the file is missing. On later setup or restart passes, it preserves providers and other AltMount-owned settings while synchronizing the DUMB-managed mount path/type, rclone mode, API prefix/key, SABnzbd enablement/categories, and Arr integration structure.</p>
-</div>
-<h2 id="default-port-and-urls">Default port and URLs<a class="headerlink" href="#default-port-and-urls" title="Permanent link">#</a></h2>
-<table>
-<thead>
-<tr>
-<th>Endpoint</th>
+<th>Setting</th>
 <th>Default</th>
 <th>Purpose</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>Native listener</td>
-<td><code>8088</code></td>
-<td>AltMount web UI, WebDAV, SABnzbd-compatible API, and application API</td>
+<td><code>readiness_timeout_seconds</code></td>
+<td><code>300</code></td>
+<td>Maximum time to wait for all enabled services</td>
 </tr>
 <tr>
-<td>Health probe</td>
-<td><code>http://127.0.0.1:8088/live</code></td>
-<td>Used by DUMB while completing post-start Arr integration</td>
+<td><code>readiness_poll_interval_seconds</code></td>
+<td><code>5</code></td>
+<td>Delay between readiness checks</td>
 </tr>
 <tr>
-<td>DUMB embedded route</td>
-<td><code>/service/ui/altmount</code></td>
-<td>Traefik-backed service UI route</td>
-</tr>
-<tr>
-<td>Frontend iframe route</td>
-<td><code>/ui/altmount</code></td>
-<td>Internal dmbdb iframe/proxy context; open it from the AltMount service page</td>
+<td><code>stabilization_seconds</code></td>
+<td><code>15</code></td>
+<td>Continuous healthy period required before <code>ready</code></td>
 </tr>
 </tbody>
 </table>
-<p>The native port is inside the DUMB container. It is directly reachable from the host only if your deployment publishes or otherwise exposes it.</p>
-<h2 id="configuration-in-dumb_configjson">Configuration in <code>dumb_config.json</code><a class="headerlink" href="#configuration-in-dumb_configjson" title="Permanent link">#</a></h2>
-<p>The current default block is:</p>
-<div class="highlight"><pre><span></span><code><span class="nt">&quot;altmount&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<span class="w">  </span><span class="nt">&quot;enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;postgres_enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;postgres_database&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;process_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;AltMount&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;repo_owner&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;javi11&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;repo_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;altmount&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;pinned_version&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;latest&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;suppress_logging&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;log_level&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;INFO&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;port&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">8088</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;auto_update&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;auto_update_interval&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">24</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;auto_update_start_time&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;04:00&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;mount_type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;rclone&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;config_dir&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/altmount&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;config_file&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/altmount/config.yaml&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;metadata_dir&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/altmount/metadata&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;mount_path&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/mnt/debrid/altmount&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;log_file&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/altmount/logs/altmount.log&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;command&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
-<span class="w">    </span><span class="s2">&quot;/altmount/altmount&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="s2">&quot;serve&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="s2">&quot;--config&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="s2">&quot;/altmount/config.yaml&quot;</span>
-<span class="w">  </span><span class="p">],</span>
-<span class="w">  </span><span class="nt">&quot;env&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<span class="w">    </span><span class="nt">&quot;PUID&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;{puid}&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;PGID&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;{pgid}&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;PORT&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;{port}&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;JWT_SECRET&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;COOKIE_DOMAIN&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;localhost&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;ALTMOUNT_API_KEY&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&quot;</span>
-<span class="w">  </span><span class="p">}</span>
-<span class="p">}</span>
+<p>If the deadline expires, DUMB enters <code>degraded</code> instead of shutting down the
+API/frontend. The dashboard identifies services that missed readiness, and one
+consolidated degraded-startup notification can be routed to operators.</p>
+<h2 id="startup-safe-monitoring">Startup-safe monitoring<a class="headerlink" href="#startup-safe-monitoring" title="Permanent link">#</a></h2>
+<p>Until startup reaches <code>ready</code> or <code>degraded</code>:</p>
+<ul>
+<li>Auto-restart does not health-check or restart services.</li>
+<li>Automatic service, resource, database, and recovery notifications are
+  suppressed.</li>
+<li>Database Health does not probe a service that is still starting.</li>
+<li>Manual notification tests remain available.</li>
+<li>Docker health reports startup progress instead of declaring the container
+  unhealthy merely because a slow service is still initializing.</li>
+</ul>
+<p>When startup becomes terminal, notification monitoring records a fresh
+baseline. It does not send recovery messages for failures that existed only
+during startup. Persistent conditions must still satisfy their normal duration
+threshold before they alert.</p>
+<p>Auto-restart then applies its grace period. A successful process spawn is only
+an attempt; DUMB records <code>service.auto_restart.succeeded</code> after the restarted
+service passes health checks.</p>
+<h2 id="preinstall-behavior">Preinstall behavior<a class="headerlink" href="#preinstall-behavior" title="Permanent link">#</a></h2>
+<p>Every enabled instance is preinstalled. Instances of the same service key run
+sequentially so shared source/runtime trees are not modified concurrently,
+while different service keys can still preinstall in parallel.</p>
+<p>A failed preinstall is retried through normal service startup. Startup is
+reported as degraded only if the service still misses the final readiness
+deadline.</p>
+<h2 id="ownership-and-network-storage">Ownership and network storage<a class="headerlink" href="#ownership-and-network-storage" title="Permanent link">#</a></h2>
+<p>Startup ownership repair no longer performs a full count pass followed by a
+second walk. It caps ownership workers and treats correctly owned top-level
+trees as healthy, avoiding repeated traversal of large package caches on NFS.
+Service-specific setup still repairs a subtree when its top-level ownership is
+wrong.</p>
+<p>JavaScript package caches are disposable. For NFS-backed <code>/config</code>, consider
+moving these existing cache roots to host-local storage with the matching
+environment overrides:</p>
+<ul>
+<li><code>DUMB_PNPM_STORE_ROOT</code></li>
+<li><code>DUMB_BUN_CACHE_ROOT</code></li>
+<li><code>DUMB_YARN_CACHE_ROOT</code></li>
+</ul>
+<p>Keep durable service configuration and databases on storage appropriate for
+their recovery requirements.</p>
+<h2 id="api">API<a class="headerlink" href="#api" title="Permanent link">#</a></h2>
+<p>When capability <code>startup_lifecycle</code> is true:</p>
+<div class="highlight"><pre><span></span><code><span class="err">GET /api/process/startup-status</span>
 </code></pre></div>
-<h3 id="important-fields">Important fields<a class="headerlink" href="#important-fields" title="Permanent link">#</a></h3>
-<ul>
-<li><code>enabled</code>: Starts AltMount under DUMB's process manager.</li>
-<li><code>pinned_version</code>: Uses the latest upstream release or a specific release tag. DUMB installs the matching architecture-specific <code>altmount-cli</code> asset.</li>
-<li><code>port</code>: Sets the native AltMount listener and is copied into <code>env.PORT</code>.</li>
-<li><code>mount_type</code>: Selects DUMB's operator-facing mount mode.</li>
-<li><code>mount_path</code>: Shared path where the selected internal mount is exposed; DUMB synchronizes this into AltMount's root-level configuration.</li>
-<li><code>config_dir</code>, <code>config_file</code>, <code>metadata_dir</code>, <code>log_file</code>: Persistent paths managed by DUMB.</li>
-<li><code>auto_update</code>, <code>auto_update_interval</code>, <code>auto_update_start_time</code>: Use DUMB's normal update scheduler.</li>
-<li><code>postgres_enabled</code>, <code>postgres_database</code>: Select the optional PostgreSQL backend after completing the guarded migration workflow.</li>
-<li><code>env.JWT_SECRET</code>, <code>env.ALTMOUNT_API_KEY</code>: Generated and saved by DUMB when blank. Treat both as secrets.</li>
-<li><code>env.COOKIE_DOMAIN</code>: Defaults to <code>localhost</code>; change it only when your direct or reverse-proxied AltMount access model requires another cookie domain.</li>
-</ul>
-<p><code>command</code>, <code>PUID</code>, <code>PGID</code>, and <code>PORT</code> are reconciled by setup. Avoid treating them as independent AltMount UI settings.</p>
-<h2 id="mount-modes">Mount modes<a class="headerlink" href="#mount-modes" title="Permanent link">#</a></h2>
-<table>
-<thead>
-<tr>
-<th>DUMB value</th>
-<th>AltMount value</th>
-<th>Behavior</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>dfs</code></td>
-<td><code>fuse</code></td>
-<td>AltMount's native FUSE mount at <code>mount_path</code></td>
-</tr>
-<tr>
-<td><code>rclone</code></td>
-<td><code>rclone</code></td>
-<td>Default; AltMount starts its built-in rclone mount and RC service</td>
-</tr>
-<tr>
-<td><code>external_rclone</code></td>
-<td><code>rclone_external</code></td>
-<td>AltMount starts the RC service but does not mount; you provide the external rclone process</td>
-</tr>
-<tr>
-<td><code>none</code></td>
-<td><code>none</code></td>
-<td>AltMount does not start a FUSE or rclone mount; WebDAV remains available</td>
-</tr>
-</tbody>
-</table>
-<p>DUMB creates <code>/mnt/debrid/altmount</code> by default and normalizes its ownership. During an install/update pass, DUMB also unmounts a stale FUSE mount at that exact path before replacing the AltMount binary. A non-FUSE mount is preserved rather than removed automatically.</p>
-<div class="admonition note">
-<p class="admonition-title">Mount mode and import strategy are different decisions</p>
-<p><code>mount_type</code> controls how AltMount content becomes visible as a filesystem. The AltMount-owned import strategy controls what Arr imports from that content.</p>
-</div>
-<h2 id="import-strategy-and-library-paths">Import strategy and library paths<a class="headerlink" href="#import-strategy-and-library-paths" title="Permanent link">#</a></h2>
-<p>Configure the import strategy in <strong>AltMount → Configuration → Import</strong>:</p>
-<table>
-<thead>
-<tr>
-<th>Strategy</th>
-<th>Behavior</th>
-<th>Typical use</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>NONE</code></td>
-<td>Arr reads directly from the mounted content</td>
-<td>Simplest direct-mount workflow</td>
-</tr>
-<tr>
-<td><code>SYMLINK</code></td>
-<td>AltMount creates category-based links in an import directory</td>
-<td>Upstream's recommended choice for most Arr workflows</td>
-</tr>
-<tr>
-<td><code>STRM</code></td>
-<td>AltMount writes <code>.strm</code> files that point to WebDAV URLs</td>
-<td>Common with Emby/Jellyfin or URL-based playback</td>
-</tr>
-</tbody>
-</table>
-<p>DUMB does not currently choose the import strategy, create its <code>import_dir</code>, or set Arr root folders/media-server libraries for AltMount. Keep every path inside the shared DUMB namespace—normally under <code>/mnt/debrid</code>—and make sure AltMount, the linked Arr, and the media server all see the same container path.</p>
-<p>For <code>SYMLINK</code> or <code>STRM</code>, create and validate the chosen import directory before sending a real release. For <code>NONE</code>, confirm the linked Arr can browse the mounted category path under <code>/mnt/debrid/altmount</code>.</p>
-<p>See AltMount's <a href="https://altmount.kipsilabs.top/docs/Configuration/integration/">ARR integration guide</a> for the application-level import and webhook options.</p>
-<h2 id="dumb-to-altmount-arr-integration">DUMB-to-AltMount Arr integration<a class="headerlink" href="#dumb-to-altmount-arr-integration" title="Permanent link">#</a></h2>
-<p>For an enabled Sonarr, Radarr, Lidarr, or Whisparr instance, set:</p>
-<div class="highlight"><pre><span></span><code><span class="nt">&quot;core_service&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;altmount&quot;</span>
-</code></pre></div>
-<p>For a shared Arr instance that uses several workflow services, use a list or the equivalent comma-separated UI selection:</p>
-<div class="highlight"><pre><span></span><code><span class="nt">&quot;core_service&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;decypharr&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;nzbdav&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;altmount&quot;</span><span class="p">]</span>
-</code></pre></div>
-<p>During guided onboarding, DUMB then:</p>
-<ol>
-<li>Installs/configures AltMount and generates its internal secrets if needed.</li>
-<li>Starts the selected Arr services and AltMount.</li>
-<li>Reads each linked Arr API key from its application config.</li>
-<li>Upserts the Arr instance URL/API key into AltMount's <code>arrs</code> section.</li>
-<li>Enables AltMount's SABnzbd-compatible API and standard categories (<code>movies</code>, <code>tv</code>, <code>music</code>, and <code>adult</code>).</li>
-<li>Creates or updates an <code>altmount</code> SABnzbd download client in each linked Arr with the matching category.</li>
-</ol>
-<p>The integration is scoped by <code>core_service</code>; DUMB does not add every enabled Arr automatically. Existing AltMount Arr entries are updated by name or URL rather than replaced wholesale.</p>
-<div class="admonition warning">
-<p class="admonition-title">Finish the AltMount-owned setup</p>
-<p>DUMB intentionally leaves <code>providers</code> empty. Add at least one NNTP provider, choose and validate the import strategy, confirm the Arr root/import paths, and test playback before relying on automation.</p>
-</div>
-<h2 id="first-start-checklist">First-start checklist<a class="headerlink" href="#first-start-checklist" title="Permanent link">#</a></h2>
-<ol>
-<li>Select <strong>AltMount</strong> as the Usenet workflow in guided onboarding, then choose its mount mode.</li>
-<li>Open AltMount from the DUMB service page and create the first AltMount administrator account.</li>
-<li>Replace the generated first-run WebDAV credentials (<code>usenet</code> / <code>usenet</code>) before exposing the endpoint outside a trusted network.</li>
-<li>Add and test at least one TLS-enabled NNTP provider in AltMount.</li>
-<li>Review the DUMB-selected mount type/path in AltMount's Mount settings.</li>
-<li>Choose <code>NONE</code>, <code>SYMLINK</code>, or <code>STRM</code> and configure any required import directory.</li>
-<li>Verify the linked Arr instances and their <code>altmount</code> download clients.</li>
-<li>Send a small test NZB and confirm queue, import, library scan, and playback behavior end to end.</li>
-</ol>
-<h2 id="postgresql-migration">PostgreSQL migration<a class="headerlink" href="#postgresql-migration" title="Permanent link">#</a></h2>
-<p>AltMount supports SQLite and PostgreSQL. New/default installs use <code>/altmount/altmount.db</code>.</p>
-<p>For an existing SQLite-backed service, open <strong>Database Migration</strong> on the AltMount service page, run a rehearsal, validate the imported table counts against AltMount's application-created PostgreSQL schema, and only then run cutover. DUMB writes the PostgreSQL DSN into <code>/altmount/config.yaml</code>, registers the target database (<code>altmount</code> by default), and retains the SQLite file and migration backups for rollback.</p>
-<p>Do not enable <code>postgres_enabled</code> directly when existing data must be retained. DUMB has not found an upstream application-specific data migration tool, so the guarded DUMB workflow and post-cutover application checks are important. See <a href="../../../features/arr-postgres-migration/">SQLite to PostgreSQL Migration</a>.</p>
-<div class="admonition info">
-<p class="admonition-title">AltMount v0.3.2 migration compatibility</p>
-<p>AltMount <code>v0.3.2</code> contains invalid PostgreSQL syntax in its bundled migration 10 expression index. DUMB applies the intended index only in an isolated staging database whose latest Goose version is exactly 9 and which contains the expected <code>import_queue.metadata</code> column. Any mismatch refuses the repair and restores SQLite instead of skipping unknown schema work.</p>
-</div>
-<h2 id="files-and-persistence">Files and persistence<a class="headerlink" href="#files-and-persistence" title="Permanent link">#</a></h2>
-<table>
-<thead>
-<tr>
-<th>Path</th>
-<th>Purpose</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>/altmount/altmount</code></td>
-<td>DUMB-installed release binary</td>
-</tr>
-<tr>
-<td><code>/altmount/config.yaml</code></td>
-<td>AltMount runtime configuration, including provider credentials</td>
-</tr>
-<tr>
-<td><code>/altmount/altmount.db</code></td>
-<td>Default SQLite database</td>
-</tr>
-<tr>
-<td><code>/altmount/metadata</code></td>
-<td>NZB metadata root</td>
-</tr>
-<tr>
-<td><code>/altmount/rclone</code></td>
-<td>AltMount's managed rclone files/state</td>
-</tr>
-<tr>
-<td><code>/altmount/logs/altmount.log</code></td>
-<td>AltMount application log</td>
-</tr>
-<tr>
-<td><code>/altmount/version.txt</code></td>
-<td>DUMB-managed installed-version marker</td>
-</tr>
-<tr>
-<td><code>/mnt/debrid/altmount</code></td>
-<td>Default selected mount path</td>
-</tr>
-</tbody>
-</table>
-<p>In the maintained Compose layout, back up <code>/data/altmount</code> (the persistence target behind internal <code>/altmount</code>) as sensitive application data. It can contain NNTP credentials, API keys, user data, and the SQLite database.</p>
-<h2 id="embedded-ui-behavior">Embedded UI behavior<a class="headerlink" href="#embedded-ui-behavior" title="Permanent link">#</a></h2>
-<p>AltMount is a root-route React-style application. dmbdb keeps its root navigation and root <code>/api/*</code> calls in the AltMount iframe context so they do not collide with DUMB's own application or API routes. Open the UI from the AltMount service page rather than browsing directly to <code>/ui/altmount</code>.</p>
-<p>If the embedded UI loses routing context, reload the DUMB service page. The direct Traefik-backed route is <code>/service/ui/altmount</code> when embedded service UIs are enabled.</p>
-<h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">#</a></h2>
-<h3 id="altmount-does-not-start">AltMount does not start<a class="headerlink" href="#altmount-does-not-start" title="Permanent link">#</a></h3>
-<ul>
-<li>Check the DUMB service log and <code>/altmount/logs/altmount.log</code>.</li>
-<li>Confirm <code>/altmount/altmount</code> exists and is executable.</li>
-<li>Verify the configured port is free and <code>/altmount/config.yaml</code> is valid YAML.</li>
-<li>For FUSE/rclone modes, check whether <code>/mnt/debrid/altmount</code> is a stale, dangling, read-only, or busy mount path.</li>
-</ul>
-<h3 id="provider-or-streaming-failures">Provider or streaming failures<a class="headerlink" href="#provider-or-streaming-failures" title="Permanent link">#</a></h3>
-<ul>
-<li>Confirm at least one provider is enabled and its credentials, TLS mode, and connection limit are valid.</li>
-<li>Do not allocate more combined connections than the provider account permits.</li>
-<li>Review AltMount's queue and health pages for missing articles, masked files, or cache pressure.</li>
-</ul>
-<h3 id="arr-download-client-setup-is-missing">Arr download-client setup is missing<a class="headerlink" href="#arr-download-client-setup-is-missing" title="Permanent link">#</a></h3>
-<ul>
-<li>Confirm the Arr instance is enabled and <code>core_service</code> includes <code>altmount</code>.</li>
-<li>Confirm DUMB can read the Arr API key and AltMount's generated <code>ALTMOUNT_API_KEY</code> is still present.</li>
-<li>Verify both services are running, then restart AltMount or rerun the guided start so DUMB can repeat the integration pass.</li>
-<li>Check that the Arr category matches the DUMB defaults for its application type.</li>
-</ul>
-<h3 id="import-completes-but-the-library-cannot-see-the-file">Import completes but the library cannot see the file<a class="headerlink" href="#import-completes-but-the-library-cannot-see-the-file" title="Permanent link">#</a></h3>
-<ul>
-<li>Confirm <code>mount_path</code>, the AltMount <code>import_dir</code>, the Arr root folder, and the media-server library use paths visible inside the DUMB container.</li>
-<li>For <code>SYMLINK</code>, inspect the link target from inside the container and verify it remains under a shared path.</li>
-<li>For <code>STRM</code>, confirm the WebDAV URL written into the file is reachable by the player.</li>
-<li>Use Arr Manual Import to separate path visibility problems from download-client problems.</li>
-</ul>
-<h3 id="embedded-uiapi-requests-open-dumb-instead-of-altmount">Embedded UI/API requests open DUMB instead of AltMount<a class="headerlink" href="#embedded-uiapi-requests-open-dumb-instead-of-altmount" title="Permanent link">#</a></h3>
-<ul>
-<li>Reopen the AltMount service page and reload the iframe to refresh <code>dumb_ui_service</code> context.</li>
-<li>Verify embedded service UIs are enabled and <code>/service/ui/altmount</code> responds.</li>
-<li>Check dmbdb proxy logs for root-route or <code>/api/*</code> routing errors.</li>
-</ul>
-<h2 id="related-links">Related links<a class="headerlink" href="#related-links" title="Permanent link">#</a></h2>
-<ul>
-<li><a href="https://altmount.kipsilabs.top/">AltMount documentation</a></li>
-<li><a href="https://altmount.kipsilabs.top/docs/intro/">AltMount getting started</a></li>
-<li><a href="https://altmount.kipsilabs.top/docs/Configuration/integration/">AltMount ARR integration</a></li>
-<li><a href="https://altmount.kipsilabs.top/docs/Configuration/streaming/">AltMount streaming configuration</a></li>
-<li><a href="https://github.com/javi11/altmount">AltMount repository</a></li>
-<li><a href="../../../reference/core-service/">Core-service routing</a></li>
-<li><a href="../nzbdav/">NzbDAV</a></li>
-<li><a href="../decypharr/">Decypharr</a></li>
-</ul>
+<p>The response includes the current phase, timestamps, expected services,
+per-service <code>pending</code>/<code>starting</code>/<code>ready</code> state, and terminal failures.</p>
 
 
 
@@ -5915,7 +5198,7 @@ flowchart TD
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../nzbdav/" class="md-footer__link md-footer__link--prev" aria-label="Previous: NzbDAV">
+          <a href="../auto-restart/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Auto-restart">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-arrow-left" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7M19 12H5"/></svg>
@@ -5925,20 +5208,20 @@ flowchart TD
                 Previous
               </span>
               <div class="md-ellipsis">
-                NzbDAV
+                Auto-restart
               </div>
             </div>
           </a>
         
         
           
-          <a href="../plex-media-server/" class="md-footer__link md-footer__link--next" aria-label="Next: Plex Media Server">
+          <a href="../auto-update/" class="md-footer__link md-footer__link--next" aria-label="Next: Auto-update">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Plex Media Server
+                Auto-update
               </div>
             </div>
             <div class="md-footer__button md-icon">
@@ -6011,16 +5294,16 @@ flowchart TD
       
       
       
-      <script id="__config" type="application/json">{"annotate":null,"base":"../../..","features":["navigation.instant","navigation.instant.progress","navigation.expand","navigation.tabs","navigation.path","navigation.indexes","navigation.top","navigation.footer","navigation.sections","navigation.tracking","toc.follow","search.suggest","search.highlight","search.share","content.action.edit","content.action.view","content.code.copy","content.code.annotate"],"search":"../../../assets/javascripts/workers/search.e2d2d235.min.js","tags":null,"translations":{"clipboard.copied":"Copied to clipboard","clipboard.copy":"Copy to clipboard","search.result.more.one":"1 more on this page","search.result.more.other":"# more on this page","search.result.none":"No matching documents","search.result.one":"1 matching document","search.result.other":"# matching documents","search.result.placeholder":"Type to start searching","search.result.term.missing":"Missing","select.version":"Select version"},"version":null}</script>
+      <script id="__config" type="application/json">{"annotate":null,"base":"../..","features":["navigation.instant","navigation.instant.progress","navigation.expand","navigation.tabs","navigation.path","navigation.indexes","navigation.top","navigation.footer","navigation.sections","navigation.tracking","toc.follow","search.suggest","search.highlight","search.share","content.action.edit","content.action.view","content.code.copy","content.code.annotate"],"search":"../../assets/javascripts/workers/search.e2d2d235.min.js","tags":null,"translations":{"clipboard.copied":"Copied to clipboard","clipboard.copy":"Copy to clipboard","search.result.more.one":"1 more on this page","search.result.more.other":"# more on this page","search.result.none":"No matching documents","search.result.one":"1 matching document","search.result.other":"# matching documents","search.result.placeholder":"Type to start searching","search.result.term.missing":"Missing","select.version":"Select version"},"version":null}</script>
     
     
-      <script src="../../../assets/javascripts/bundle.00c35305.min.js"></script>
+      <script src="../../assets/javascripts/bundle.00c35305.min.js"></script>
       
         <script src="https://cdn.jsdelivr.net/npm/medium-zoom@1.1.0/dist/medium-zoom.min.js"></script>
       
-        <script src="../../../assets/js/zoom.js"></script>
+        <script src="../../assets/js/zoom.js"></script>
       
-        <script src="../../../assets/js/github-meta.js"></script>
+        <script src="../../assets/js/github-meta.js"></script>
       
     
   </body>
