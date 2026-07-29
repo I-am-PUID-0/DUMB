@@ -7,6 +7,7 @@ from utils.logger import (
 from utils.config_loader import CONFIG_MANAGER
 from utils.wait_for_url import wait_for_urls
 from utils.notifications import notify_event
+from utils.service_health import ServiceHealthMonitor
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from contextlib import contextmanager
 import shlex, os, time, signal, threading, subprocess, sys, uvicorn, socket, psutil, requests
@@ -55,6 +56,7 @@ class ProcessHandler:
         self.startup_lock = threading.RLock()
         self.startup_complete_event = threading.Event()
         self.startup_state_path = "/healthcheck/startup_state.json"
+        self.service_health_monitor = ServiceHealthMonitor(logger=logger)
         self._write_startup_state()
 
     @staticmethod
@@ -149,10 +151,15 @@ class ProcessHandler:
             return {"state": "pending", "reason": "Process has not started."}
         if process is not None and process.poll() is not None:
             return {"state": "failed", "reason": "Process exited during startup."}
-        healthy, reason = self._check_process_health(process_name, pid)
+        health = self.get_process_health(process_name, pid)
+        health_status = health["status"]
         return {
-            "state": "ready" if healthy else "starting",
-            "reason": reason,
+            "state": (
+                "ready" if health_status in {"healthy", "degraded"} else "starting"
+            ),
+            "reason": health["reason"],
+            "health_status": health_status,
+            "health_details": health.get("details"),
         }
 
     def is_service_ready_for_monitoring(self, process_name):
@@ -1580,36 +1587,109 @@ class ProcessHandler:
         except OSError:
             return False
 
-    def _get_process_config(self, process_name):
+    def _get_process_context(self, process_name):
         if not CONFIG_MANAGER:
-            return None
+            return None, None
         key, instance_name = CONFIG_MANAGER.find_key_for_process(process_name)
         if not key and not instance_name:
-            return None
-        return CONFIG_MANAGER.get_instance(instance_name, key)
+            return None, None
+        return key, CONFIG_MANAGER.get_instance(instance_name, key)
 
     def _check_process_health(self, process_name, pid):
+        health = self.get_process_health(process_name, pid)
+        return health["status"] != "unhealthy", health["reason"]
+
+    def get_process_health(self, process_name, pid):
         if not pid or not psutil.pid_exists(pid):
-            return False, "Process PID not running"
+            return {
+                "status": "unhealthy",
+                "healthy": False,
+                "reason": "Process PID not running",
+                "details": {"probe": "process"},
+            }
 
         try:
             proc = psutil.Process(pid)
             if not proc.is_running() or proc.status() == psutil.STATUS_ZOMBIE:
-                return False, "Process not healthy"
+                return {
+                    "status": "unhealthy",
+                    "healthy": False,
+                    "reason": "Process not healthy",
+                    "details": {"probe": "process"},
+                }
         except (psutil.NoSuchProcess, psutil.AccessDenied):
-            return False, "Process could not be inspected"
+            return {
+                "status": "unhealthy",
+                "healthy": False,
+                "reason": "Process could not be inspected",
+                "details": {"probe": "process"},
+            }
 
-        config = self._get_process_config(process_name)
+        config_key, config = self._get_process_context(process_name)
         if not config:
-            return True, None
+            return {
+                "status": "healthy",
+                "healthy": True,
+                "reason": None,
+                "details": {"probe": "process"},
+            }
 
         host = self._normalize_host(config.get("host"))
         ports = self._collect_config_ports(config)
         for port in ports:
             if not self._is_port_open(host, port):
-                return False, f"Port {host}:{port} not responding"
+                return {
+                    "status": "unhealthy",
+                    "healthy": False,
+                    "reason": f"Port {host}:{port} not responding",
+                    "details": {
+                        "probe": "port",
+                        "host": host,
+                        "port": port,
+                    },
+                }
 
-        return True, None
+        monitor = getattr(self, "service_health_monitor", None)
+        if monitor is None:
+            monitor = ServiceHealthMonitor(logger=getattr(self, "logger", None))
+            self.service_health_monitor = monitor
+        try:
+            application_health = monitor.check(
+                config_key,
+                process_name,
+                config,
+                process_identity=pid,
+            )
+        except Exception as error:
+            self.logger.warning(
+                "Application health probe failed safely for %s: %s",
+                process_name,
+                type(error).__name__,
+            )
+            return {
+                "status": "degraded",
+                "healthy": True,
+                "reason": (
+                    "Application health probe could not be evaluated; "
+                    "using process and port checks"
+                ),
+                "details": {
+                    "probe": "application",
+                    "error_type": type(error).__name__,
+                },
+            }
+        if application_health is not None:
+            return application_health
+
+        return {
+            "status": "healthy",
+            "healthy": True,
+            "reason": None,
+            "details": {
+                "probe": "process_and_ports",
+                "ports": ports,
+            },
+        }
 
     def get_restart_stats(self, process_name):
         policy = self._get_service_restart_policy(process_name)

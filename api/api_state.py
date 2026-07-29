@@ -1,4 +1,4 @@
-import os, socket, psutil, threading, time, uuid, json, re
+import os, threading, time, uuid, json, re
 from json import load
 from utils.config_loader import CONFIG_MANAGER
 from utils.project_metadata import get_project_version
@@ -498,14 +498,16 @@ class APIState:
         if not include_health:
             return {"status": status}
 
-        healthy, reason = self._check_health(matched_name, pid, status)
+        health = self._get_health_details(matched_name, pid, status)
         restart_stats = self.process_handler.get_restart_stats(
             matched_name or process_name
         )
         return {
             "status": status,
-            "healthy": healthy,
-            "health_reason": reason,
+            "healthy": health["healthy"],
+            "health_status": health["status"],
+            "health_reason": health["reason"],
+            "health_details": health.get("details"),
             "restart": restart_stats,
         }
 
@@ -517,78 +519,50 @@ class APIState:
             return list(running_processes.keys())
         snapshot = []
         for name, pid in running_processes.items():
-            healthy, reason = self._check_health(name, pid, "running")
+            health = self._get_health_details(name, pid, "running")
             snapshot.append(
                 {
                     "process_name": name,
                     "status": "running",
-                    "healthy": healthy,
-                    "health_reason": reason,
+                    "healthy": health["healthy"],
+                    "health_status": health["status"],
+                    "health_reason": health["reason"],
+                    "health_details": health.get("details"),
                     "restart": self.process_handler.get_restart_stats(name),
                 }
             )
         return snapshot
 
-    def _collect_config_ports(self, config):
-        ports = set()
-        for key in ("port", "frontend_port", "backend_port", "webdav_port"):
-            value = config.get(key)
-            if isinstance(value, int):
-                ports.add(value)
-        env = config.get("env", {})
-        for key in ("PORT", "FRONTEND_PORT", "BACKEND_PORT", "WEBDAV_PORT"):
-            value = env.get(key)
-            if isinstance(value, str) and value.isdigit():
-                ports.add(int(value))
-        return sorted(ports)
-
-    def _normalize_host(self, host):
-        if not host or host in {"0.0.0.0", "::"}:
-            return "127.0.0.1"
-        return host
-
-    def _is_port_open(self, host, port, timeout=1.5):
-        try:
-            with socket.create_connection((host, port), timeout=timeout):
-                return True
-        except OSError:
-            return False
-
-    def _get_process_config(self, process_name):
-        if not CONFIG_MANAGER:
-            return None
-        key, instance_name = CONFIG_MANAGER.find_key_for_process(process_name)
-        if not key and not instance_name:
-            return None
-        return CONFIG_MANAGER.get_instance(instance_name, key)
-
     def _check_health(self, process_name, pid, status):
+        health = self._get_health_details(process_name, pid, status)
+        return health["healthy"], health["reason"]
+
+    def _get_health_details(self, process_name, pid, status):
         if status == "idle":
-            return True, "Process idle"
+            return {
+                "status": "healthy",
+                "healthy": True,
+                "reason": "Process idle",
+                "details": {"probe": "process"},
+            }
         if status != "running" or not process_name:
-            return False, "Process not running"
+            return {
+                "status": "unhealthy",
+                "healthy": False,
+                "reason": "Process not running",
+                "details": {"probe": "process"},
+            }
 
-        if not pid or not psutil.pid_exists(pid):
-            return False, "Process PID not running"
+        checker = getattr(self.process_handler, "get_process_health", None)
+        if callable(checker):
+            return checker(process_name, pid)
 
-        try:
-            proc = psutil.Process(pid)
-            if not proc.is_running() or proc.status() == psutil.STATUS_ZOMBIE:
-                return False, "Process not healthy"
-        except (psutil.NoSuchProcess, psutil.AccessDenied):
-            return False, "Process could not be inspected"
-
-        config = self._get_process_config(process_name)
-        if not config:
-            return True, None
-
-        host = self._normalize_host(config.get("host"))
-        ports = self._collect_config_ports(config)
-        for port in ports:
-            if not self._is_port_open(host, port):
-                return False, f"Port {host}:{port} not responding"
-
-        return True, None
+        return {
+            "status": "healthy",
+            "healthy": True,
+            "reason": None,
+            "details": {"probe": "process"},
+        }
 
     def debug_state(self):
         self.logger.info(f"Current APIState: {self.service_status}")

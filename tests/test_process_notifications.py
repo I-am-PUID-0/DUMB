@@ -137,12 +137,63 @@ class ProcessNotificationTests(unittest.TestCase):
                 "process_obj": process,
                 "start_time": 1,
             }
-            handler._check_process_health = Mock(return_value=(True, None))
+            handler.get_process_health = Mock(
+                return_value={
+                    "status": "healthy",
+                    "healthy": True,
+                    "reason": None,
+                    "details": {"probe": "application"},
+                }
+            )
 
             self.assertEqual(
                 handler.get_startup_status()["services"]["Example"]["state"],
                 "ready",
             )
+
+    def test_starting_application_health_does_not_complete_startup_readiness(self):
+        handler = object.__new__(ProcessHandler)
+        handler.init_attributes(Mock())
+        process = Mock()
+        process.poll.return_value = None
+        handler.processes[1234] = {
+            "name": "NzbDAV",
+            "process_obj": process,
+            "start_time": 1,
+        }
+        handler.get_process_health = Mock(
+            return_value={
+                "status": "starting",
+                "healthy": True,
+                "reason": "NzbDAV reports migrating",
+                "details": {
+                    "probe": "NzbDAV backend health",
+                    "http_status": 503,
+                },
+            }
+        )
+
+        readiness = handler.get_service_readiness("NzbDAV")
+
+        self.assertEqual(readiness["state"], "starting")
+        self.assertEqual(readiness["health_status"], "starting")
+        self.assertIn("migrating", readiness["reason"])
+
+    def test_starting_health_does_not_count_as_auto_restart_failure(self):
+        handler = object.__new__(ProcessHandler)
+        handler.get_process_health = Mock(
+            return_value={
+                "status": "starting",
+                "healthy": True,
+                "reason": "NzbDAV reports migrating",
+                "details": {"probe": "NzbDAV backend health"},
+            }
+        )
+
+        healthy, reason = handler._check_process_health("NzbDAV", 1234)
+
+        self.assertTrue(healthy)
+        self.assertIn("migrating", reason)
 
     @patch("utils.processes.notify_event")
     def test_auto_restart_success_waits_for_verified_health(self, notify_event):

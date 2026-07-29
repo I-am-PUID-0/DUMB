@@ -69,19 +69,34 @@ class APIStateHelperTests(unittest.TestCase):
         state = self._state()
         state._refresh_status_cache = lambda: {}
         state.process_handler = types.SimpleNamespace(
-            get_restart_stats=lambda process_name: {"process_name": process_name}
+            get_restart_stats=lambda process_name: {"process_name": process_name},
+            get_process_health=lambda process_name, pid: {
+                "status": "degraded",
+                "healthy": True,
+                "reason": "Application dependency is degraded",
+                "details": {
+                    "probe": "application",
+                    "components": [
+                        {"name": "provider", "status": "degraded"},
+                    ],
+                },
+            },
         )
 
         with patch("api.api_state.os.getpid", return_value=4321):
-            with patch.object(
-                state, "_check_health", return_value=(True, None)
-            ) as check_health:
-                details = state.get_status_details("DUMB API", include_health=True)
+            details = state.get_status_details("DUMB API", include_health=True)
 
-        check_health.assert_called_once_with("DUMB API", 4321, "running")
         self.assertEqual(details["status"], "running")
         self.assertTrue(details["healthy"])
-        self.assertIsNone(details["health_reason"])
+        self.assertEqual(details["health_status"], "degraded")
+        self.assertEqual(
+            details["health_reason"],
+            "Application dependency is degraded",
+        )
+        self.assertEqual(
+            details["health_details"]["components"],
+            [{"name": "provider", "status": "degraded"}],
+        )
         self.assertEqual(details["restart"], {"process_name": "DUMB API"})
 
     def test_first_run_update_notice_uses_release_url_for_release_version(self):
