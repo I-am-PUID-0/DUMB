@@ -25,19 +25,43 @@ class PortProbeTests(unittest.TestCase):
             self.assertFalse(port_probe.is_port_available(5572))
         check_bind.assert_not_called()
 
-    def test_checks_both_wildcard_families_without_listening(self):
+    def test_checks_both_loopback_families_without_listening(self):
         with (
             patch.object(port_probe.psutil, "net_connections", return_value=[]),
+            patch.object(port_probe.psutil, "net_if_addrs", return_value={}),
             patch.object(port_probe, "_check_bind", side_effect=[True, None]) as check,
         ):
             self.assertTrue(port_probe.is_port_available(5572))
         self.assertEqual(
             check.call_args_list,
             [
-                call(port_probe.socket.AF_INET, "0.0.0.0", 5572),
-                call(port_probe.socket.AF_INET6, "::", 5572),
+                call(port_probe.socket.AF_INET, "127.0.0.1", 5572),
+                call(port_probe.socket.AF_INET6, "::1", 5572),
             ],
         )
+
+    def test_checks_specific_interface_addresses_without_wildcards(self):
+        interface_addresses = {
+            "eth0": [
+                SimpleNamespace(
+                    family=port_probe.socket.AF_INET,
+                    address="192.0.2.10",
+                ),
+            ]
+        }
+        with patch.object(
+            port_probe.psutil,
+            "net_if_addrs",
+            return_value=interface_addresses,
+        ):
+            self.assertEqual(
+                port_probe._probe_addresses(),
+                [
+                    (port_probe.socket.AF_INET, "127.0.0.1"),
+                    (port_probe.socket.AF_INET, "192.0.2.10"),
+                    (port_probe.socket.AF_INET6, "::1"),
+                ],
+            )
 
     def test_bind_conflict_is_unavailable_and_socket_is_closed(self):
         sock = MagicMock()
@@ -46,7 +70,7 @@ class PortProbeTests(unittest.TestCase):
             self.assertFalse(
                 port_probe._check_bind(
                     port_probe.socket.AF_INET,
-                    "0.0.0.0",
+                    "127.0.0.1",
                     5572,
                 )
             )

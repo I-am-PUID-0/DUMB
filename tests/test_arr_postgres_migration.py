@@ -2,6 +2,7 @@ import json
 import sqlite3
 import tempfile
 import unittest
+import uuid
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import ANY, Mock, call, patch
@@ -121,6 +122,13 @@ def create_sqlite(path, table="Series", rows=2):
 
 
 class ArrPostgresMigrationTests(unittest.TestCase):
+    @staticmethod
+    def persist_job(
+        manager: ArrPostgresMigrationManager,
+        payload: dict,
+    ) -> None:
+        manager._create_job(uuid.UUID(hex=payload["job_id"]), payload)
+
     def test_supported_inventory_includes_every_confirmed_dual_backend_service(self):
         self.assertEqual(
             set(SUPPORTED_SERVICES),
@@ -413,6 +421,7 @@ class ArrPostgresMigrationTests(unittest.TestCase):
                 "status": "queued",
                 "events": [],
             }
+            self.persist_job(manager, payload)
             with (
                 patch(
                     "utils.arr_postgres_migration._initialize_database_names"
@@ -487,6 +496,23 @@ class ArrPostgresMigrationTests(unittest.TestCase):
 
             self.assertIsNone(manager.get_job(job_id))
 
+    def test_job_status_rejects_mismatched_persisted_job_id(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            manager = ArrPostgresMigrationManager(temp_dir)
+            manager.jobs_dir.mkdir(parents=True)
+            requested_job_id = "f" * 32
+            (manager.jobs_dir / f"{requested_job_id}.json").write_text(
+                json.dumps(
+                    {
+                        "job_id": "e" * 32,
+                        "status": "completed",
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            self.assertIsNone(manager.get_job(requested_job_id))
+
     def test_rollback_accepts_legacy_config_xml_backup_location(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             config, process_handler, api_state = self.make_runtime(temp_dir)
@@ -503,7 +529,7 @@ class ArrPostgresMigrationTests(unittest.TestCase):
                 "backup_dir": str(backup_dir),
                 "events": [],
             }
-            manager._save(payload)
+            self.persist_job(manager, payload)
 
             with patch.object(
                 manager,
@@ -532,6 +558,7 @@ class ArrPostgresMigrationTests(unittest.TestCase):
                 "status": "queued",
                 "events": [],
             }
+            self.persist_job(manager, payload)
             import_result = {
                 "database": "stage",
                 "tables": 1,
@@ -584,6 +611,7 @@ class ArrPostgresMigrationTests(unittest.TestCase):
                 "status": "queued",
                 "events": [],
             }
+            self.persist_job(manager, payload)
             with (
                 patch("utils.arr_postgres_migration._initialize_database_names"),
                 patch("utils.arr_postgres_migration._wait_for_schema"),
@@ -637,6 +665,7 @@ class ArrPostgresMigrationTests(unittest.TestCase):
                 "status": "queued",
                 "events": [],
             }
+            self.persist_job(manager, payload)
             with (
                 patch("utils.arr_postgres_migration._initialize_database_names"),
                 patch("utils.arr_postgres_migration._wait_for_schema"),

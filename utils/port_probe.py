@@ -8,6 +8,27 @@ import socket
 import psutil
 
 
+def _probe_addresses() -> list[tuple[int, str]]:
+    """Return concrete local addresses without wildcard bind targets."""
+
+    addresses = {
+        (socket.AF_INET, "127.0.0.1"),
+        (socket.AF_INET6, "::1"),
+    }
+    try:
+        for interface_addresses in psutil.net_if_addrs().values():
+            for interface_address in interface_addresses:
+                if interface_address.family not in {socket.AF_INET, socket.AF_INET6}:
+                    continue
+                address = str(interface_address.address or "").strip()
+                if not address or address in {"0.0.0.0", "::"}:
+                    continue
+                addresses.add((interface_address.family, address))
+    except Exception:
+        pass
+    return sorted(addresses, key=lambda item: (item[0], item[1]))
+
+
 def _check_bind(family: int, address: str, port: int) -> bool | None:
     sock = None
     try:
@@ -21,9 +42,6 @@ def _check_bind(family: int, address: str, port: int) -> bool | None:
 
         # This is a transient availability probe. The socket is never placed
         # into listening mode, never accepts traffic, and is closed immediately.
-        # Wildcard binding is required to detect conflicts that would prevent a
-        # managed service from subsequently binding the same wildcard address.
-        # codeql[py/bind-socket-all-network-interfaces]
         sock.bind((address, port))
         return True
     except OSError as exc:
@@ -38,7 +56,7 @@ def _check_bind(family: int, address: str, port: int) -> bool | None:
 
 
 def is_port_available(port: int) -> bool:
-    """Return whether both IPv4 and IPv6 wildcard binds are available."""
+    """Return whether a port is free for a managed service to bind."""
 
     if not isinstance(port, int) or isinstance(port, bool) or not 0 < port <= 65535:
         return False
@@ -56,10 +74,7 @@ def is_port_available(port: int) -> bool:
         # visibility is restricted.
         pass
 
-    for family, address in (
-        (socket.AF_INET, "0.0.0.0"),
-        (socket.AF_INET6, "::"),
-    ):
+    for family, address in _probe_addresses():
         if _check_bind(family, address, port) is False:
             return False
     return True
