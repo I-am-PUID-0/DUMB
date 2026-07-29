@@ -35,6 +35,7 @@ from utils.service_postgres import (
 from utils.postgres import initialize_postgres_databases
 from utils.database_health import SUPPORTED_SERVICE_KEYS
 from utils.mediastorm_credentials import (
+    DEFAULT_INITIAL_ADMIN_PASSWORD,
     MediaStormCredentialError,
     read_initial_admin_password,
 )
@@ -689,7 +690,8 @@ mediastorm
 - Fully self-hosted streaming server for Debrid, Torrent, and Usenet sources.
 - Includes an admin UI and browser player plus native mobile and TV clients.
 - Uses DUMB-managed PostgreSQL for accounts, watch history, and playback state.
-- First admin login uses username `admin` and password `admin`; change this public default immediately.
+- Current builds use `admin` / `admin` for first login and require a replacement password during
+  that same sign-in before creating the first admin session.
 
 Documentation: https://dumbarr.com/services/optional/mediastorm""",
     "traefik_proxy_admin": """\
@@ -5243,6 +5245,11 @@ async def get_mediastorm_initial_admin_password(
             "available": password is not None,
             "username": "admin",
             "password": password,
+            "credential_kind": (
+                "default"
+                if password == DEFAULT_INITIAL_ADMIN_PASSWORD
+                else "installation_specific" if password is not None else None
+            ),
         },
         headers={
             "Cache-Control": "no-store, private",

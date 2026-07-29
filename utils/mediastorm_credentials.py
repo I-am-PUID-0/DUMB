@@ -5,6 +5,7 @@ INITIAL_ADMIN_PASSWORD_FILENAMES = (
     "initial_admin_password.txt",
     "initial_admin_password",
 )
+DEFAULT_INITIAL_ADMIN_PASSWORD = "admin"
 MAX_INITIAL_ADMIN_PASSWORD_BYTES = 4096
 
 

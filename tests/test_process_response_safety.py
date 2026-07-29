@@ -162,6 +162,7 @@ class MediaStormCredentialResponseTests(unittest.IsolatedAsyncioTestCase):
                 "available": True,
                 "username": "admin",
                 "password": "generated-secret",
+                "credential_kind": "installation_specific",
             },
         )
 
@@ -189,6 +190,32 @@ class MediaStormCredentialResponseTests(unittest.IsolatedAsyncioTestCase):
                 "available": False,
                 "username": "admin",
                 "password": None,
+                "credential_kind": None,
+            },
+        )
+
+    async def test_default_credential_is_identified(self):
+        with (
+            patch.object(
+                process_router.CONFIG_MANAGER,
+                "get",
+                return_value={"config_dir": "/mediastorm"},
+            ),
+            patch.object(
+                process_router,
+                "read_initial_admin_password",
+                return_value="admin",
+            ),
+        ):
+            response = await process_router.get_mediastorm_initial_admin_password(None)
+
+        self.assertEqual(
+            json.loads(response.body),
+            {
+                "available": True,
+                "username": "admin",
+                "password": "admin",
+                "credential_kind": "default",
             },
         )
 
