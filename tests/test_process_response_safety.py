@@ -94,6 +94,15 @@ from api.routers import process as process_router
 
 
 class ProcessResponseSanitizerTests(unittest.TestCase):
+    def test_nzbdav_project_links_include_maintained_fork_sponsor(self):
+        repo_url, sponsorship_url = process_router._service_project_urls(
+            "nzbdav",
+            {"repo_owner": "nzbdav", "repo_name": "nzbdav"},
+        )
+
+        self.assertEqual(repo_url, "https://github.com/nzbdav/nzbdav")
+        self.assertEqual(sponsorship_url, "https://buymeacoffee.com/hoivikaj")
+
     def test_sanitizes_traceback_keys_recursively(self):
         payload = {
             "status": "error",

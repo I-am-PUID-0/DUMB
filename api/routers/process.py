@@ -317,12 +317,26 @@ SPONSORSHIP_URLS_BY_KEY = {
     "pulsarr": "https://ko-fi.com/jamcalli",
     "maintainerr": "https://opencollective.com/maintainerr",
     "mediastorm": "https://github.com/sponsors/godver3",
+    "nzbdav": "https://buymeacoffee.com/hoivikaj",
     "traefik": "https://github.com/sponsors/traefik",
     "traefik_proxy_admin": "https://github.com/sponsors/I-am-PUID-0",
     "cloudflared": "https://github.com/sponsors/cloudflare",
     "neutarr": "https://github.com/sponsors/I-am-PUID-0",
     "zilean": "https://ko-fi.com/W7W616IBNG",
 }
+
+
+def _service_project_urls(
+    config_key: str, config: dict
+) -> tuple[str | None, str | None]:
+    repo_owner = config.get("repo_owner")
+    repo_name = config.get("repo_name")
+    if repo_owner and repo_name:
+        repo_url = f"https://github.com/{repo_owner}/{repo_name}"
+    else:
+        repo_url = STATIC_URLS_BY_KEY.get(config_key)
+    return repo_url, SPONSORSHIP_URLS_BY_KEY.get(config_key)
+
 
 DEFAULT_SERVICE_PORTS = {
     "radarr": 7878,
@@ -812,6 +826,7 @@ def fetch_process(
         supports_manual_update = False
         if updater:
             supports_manual_update = updater.supports_manual_update(config_key, config)
+        repo_url, sponsorship_url = _service_project_urls(config_key, config)
 
         return _safe_api_response(
             {
@@ -822,6 +837,8 @@ def fetch_process(
                 "update_status": update_status,
                 "symlink_backup_status": symlink_backup_status,
                 "supports_manual_update": supports_manual_update,
+                "repo_url": repo_url,
+                "sponsorship_url": sponsorship_url,
             }
         )
     except HTTPException:
@@ -3749,13 +3766,7 @@ def _collect_process_entries() -> list[dict]:
                     instance_name=instance_name,
                     key=config_key,
                 )
-                repo_owner = value.get("repo_owner")
-                repo_name = value.get("repo_name")
-                if repo_owner and repo_name:
-                    repo_url = f"https://github.com/{repo_owner}/{repo_name}"
-                else:
-                    repo_url = STATIC_URLS_BY_KEY.get(config_key)
-                sponsorship_url = SPONSORSHIP_URLS_BY_KEY.get(config_key)
+                repo_url, sponsorship_url = _service_project_urls(config_key, value)
                 processes.append(
                     {
                         "name": display_name,
