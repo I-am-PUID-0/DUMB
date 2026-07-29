@@ -1,5 +1,34 @@
 # Changelog
 
+## [2.12.0](https://github.com/I-am-PUID-0/DUMB/compare/2.11.1...2.12.0) (2026-07-29)
+
+
+### ✨ Features
+
+* **health:** add application-aware service health probes ([59ee217](https://github.com/I-am-PUID-0/DUMB/commit/59ee217036c993a299510a407a63eae9c62262b7))
+* **process:** expose NzbDAV sponsorship metadata ([0f131d0](https://github.com/I-am-PUID-0/DUMB/commit/0f131d0e2eded632b56dabf76c3a1f434c20da35))
+* **startup:** add readiness-aware service lifecycle ([93ac964](https://github.com/I-am-PUID-0/DUMB/commit/93ac9640386c89acbf17f473ab978765f9e010ca))
+
+
+### 🐛 Bug Fixes
+
+* **mediastorm:** classify restored first-login credentials ([83cef39](https://github.com/I-am-PUID-0/DUMB/commit/83cef391c63e8ccc20cb12fb5cb04b577c9ddf8e))
+* **nzbdav:** avoid walking runtime data during source discovery ([54cb293](https://github.com/I-am-PUID-0/DUMB/commit/54cb293a7385b191c317e82c8e6df5575f53739f))
+* **security:** eliminate remaining CodeQL path and socket flows ([156d789](https://github.com/I-am-PUID-0/DUMB/commit/156d789a24ab70a86d3008c82c648e4debc0711e))
+* **security:** resolve CodeQL path, credential, and socket findings ([3ada0d1](https://github.com/I-am-PUID-0/DUMB/commit/3ada0d12092f81a09bb7dae2f73056f8f42170cd))
+* **security:** restrict port probes to explicit loopback addresses ([596d569](https://github.com/I-am-PUID-0/DUMB/commit/596d56907b58a2cbf464f0c7887b06363d73c61b))
+
+
+### 📖 Documentation
+
+* **legal:** record dmbdb GPL licensing ([22fed97](https://github.com/I-am-PUID-0/DUMB/commit/22fed979509cbb5e927bce885fd4746bb2dbe391))
+
+
+### 🛠️ Build System
+
+* **deps:** refresh Python and Docker workflow dependencies ([f5657b9](https://github.com/I-am-PUID-0/DUMB/commit/f5657b9b8ebf9ea28c7d026202fefcf10450a3c1))
+* **deps:** refresh Python and Docker workflow dependencies ([496f477](https://github.com/I-am-PUID-0/DUMB/commit/496f477f0e9c7b900bf6a1d7849ade2e22e5222c))
+
 ## [2.11.1](https://github.com/I-am-PUID-0/DUMB/compare/2.11.0...2.11.1) (2026-07-27)
 
 
