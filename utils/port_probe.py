@@ -8,27 +8,6 @@ import socket
 import psutil
 
 
-def _probe_addresses() -> list[tuple[int, str]]:
-    """Return concrete local addresses without wildcard bind targets."""
-
-    addresses = {
-        (socket.AF_INET, "127.0.0.1"),
-        (socket.AF_INET6, "::1"),
-    }
-    try:
-        for interface_addresses in psutil.net_if_addrs().values():
-            for interface_address in interface_addresses:
-                if interface_address.family not in {socket.AF_INET, socket.AF_INET6}:
-                    continue
-                address = str(interface_address.address or "").strip()
-                if not address or address in {"0.0.0.0", "::"}:
-                    continue
-                addresses.add((interface_address.family, address))
-    except Exception:
-        pass
-    return sorted(addresses, key=lambda item: (item[0], item[1]))
-
-
 def _check_bind(family: int, address: str, port: int) -> bool | None:
     sock = None
     try:
@@ -74,7 +53,10 @@ def is_port_available(port: int) -> bool:
         # visibility is restricted.
         pass
 
-    for family, address in _probe_addresses():
+    for family, address in (
+        (socket.AF_INET, "127.0.0.1"),
+        (socket.AF_INET6, "::1"),
+    ):
         if _check_bind(family, address, port) is False:
             return False
     return True
