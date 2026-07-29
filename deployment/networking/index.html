@@ -6,18 +6,18 @@
   
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="description" content="Learn about Service ports in DUMB, the Distributed Unlimited Media Bridge platform for Debrid, Usenet, Arr apps, and media server automation.">
+  <meta name="description" content="Choose between Docker bridge port publishing and host networking for DUMB, with Compose examples, security tradeoffs, and WSL considerations.">
   
     <meta name="author" content="DUMB Team">
   
   
-    <link rel="canonical" href="https://dumbarr.com/reference/ports/">
+    <link rel="canonical" href="https://dumbarr.com/deployment/networking/">
   
   
-    <link rel="prev" href="../">
+    <link rel="prev" href="../docker/">
   
   
-    <link rel="next" href="../environment-variables/">
+    <link rel="next" href="../portainer/">
   
   
     
@@ -30,7 +30,7 @@
   
     
       
-        <title>Service ports - Distributed Unlimited Media Bridge</title>
+        <title>Docker networking and ports - Distributed Unlimited Media Bridge</title>
       
     
   
@@ -109,9 +109,9 @@
     <meta property="og:type" content="website">
     <meta property="og:locale" content="en_US">
     <meta property="og:site_name" content="DUMB — Distributed Unlimited Media Bridge">
-    <meta property="og:title" content="Service ports">
-    <meta property="og:description" content="Learn about Service ports in DUMB, the Distributed Unlimited Media Bridge platform for Debrid, Usenet, Arr apps, and media server automation.">
-    <meta property="og:url" content="https://dumbarr.com/reference/ports/">
+    <meta property="og:title" content="Docker networking and ports">
+    <meta property="og:description" content="Choose between Docker bridge port publishing and host networking for DUMB, with Compose examples, security tradeoffs, and WSL considerations.">
+    <meta property="og:url" content="https://dumbarr.com/deployment/networking/">
     <meta property="og:image" content="https://dumbarr.com/assets/images/DUMB.png">
     <meta property="og:image:secure_url" content="https://dumbarr.com/assets/images/DUMB.png">
     <meta property="og:image:type" content="image/png">
@@ -119,8 +119,8 @@
     <meta property="og:image:height" content="1024">
     <meta property="og:image:alt" content="Distributed Unlimited Media Bridge ecosystem and architecture overview">
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Service ports">
-    <meta name="twitter:description" content="Learn about Service ports in DUMB, the Distributed Unlimited Media Bridge platform for Debrid, Usenet, Arr apps, and media server automation.">
+    <meta name="twitter:title" content="Docker networking and ports">
+    <meta name="twitter:description" content="Choose between Docker bridge port publishing and host networking for DUMB, with Compose examples, security tradeoffs, and WSL considerations.">
     <meta name="twitter:image" content="https://dumbarr.com/assets/images/DUMB.png">
     <meta name="twitter:image:alt" content="Distributed Unlimited Media Bridge ecosystem and architecture overview">
     
@@ -140,16 +140,16 @@
           {
             "@type": "ListItem",
             "position": 2,
-            "name": "Reference",
-            "item": "https://dumbarr.com/reference/"
+            "name": "Deployment",
+            "item": "https://dumbarr.com/deployment/"
           }
           
           ,
           {
             "@type": "ListItem",
             "position": 3,
-            "name": "Service ports",
-            "item": "https://dumbarr.com/reference/ports/"
+            "name": "Docker networking and ports",
+            "item": "https://dumbarr.com/deployment/networking/"
           }
         ]
       }
@@ -176,7 +176,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#service-ports" class="md-skip">
+        <a href="#docker-networking-and-ports" class="md-skip">
           Skip to content
         </a>
       
@@ -220,7 +220,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Service ports
+              Docker networking and ports
             
           </span>
         </div>
@@ -423,11 +423,13 @@
   
   
   
+    
+  
   
     
     
-      <li class="md-tabs__item">
-        <a href="../../deployment/" class="md-tabs__link">
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../" class="md-tabs__link">
           
   
   Deployment
@@ -461,13 +463,11 @@
   
   
   
-    
-  
   
     
     
-      <li class="md-tabs__item md-tabs__item--active">
-        <a href="../" class="md-tabs__link">
+      <li class="md-tabs__item">
+        <a href="../../reference/" class="md-tabs__link">
           
   
   Reference
@@ -3128,6 +3128,8 @@
       
   
   
+    
+  
   
   
     
@@ -3161,22 +3163,23 @@
     
     
       
+        
+        
+      
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
       
         
         
-          
-        
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_7" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" checked>
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../deployment/" class="md-nav__link ">
+            <a href="../" class="md-nav__link ">
               
   
   
@@ -3196,13 +3199,13 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_7" id="__nav_7_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_7" id="__nav_7_label" tabindex="">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_7">
             <span class="md-nav__icon md-icon"></span>
             
@@ -3222,7 +3225,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../deployment/docker/" class="md-nav__link">
+      <a href="../docker/" class="md-nav__link">
         
   
   
@@ -3249,10 +3252,39 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../../deployment/networking/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-network" viewBox="0 0 24 24"><rect width="6" height="6" x="16" y="16" rx="1"/><rect width="6" height="6" x="2" y="16" rx="1"/><rect width="6" height="6" x="9" y="2" rx="1"/><path d="M5 16v-3a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3M12 12V8"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    Networking and Ports
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -3270,6 +3302,60 @@
   
 
       </a>
+      
+        
+
+
+<nav class="md-nav md-nav--secondary" aria-label="On this page">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      On this page
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#option-1-publish-selected-ports-recommended" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Option 1: Publish Selected Ports (Recommended)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#option-2-use-host-networking" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Option 2: Use Host Networking
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#apply-and-verify-the-change" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Apply and Verify the Change
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -3282,7 +3368,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../deployment/portainer/" class="md-nav__link">
+      <a href="../portainer/" class="md-nav__link">
         
   
   
@@ -3312,7 +3398,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../deployment/unraid/" class="md-nav__link">
+      <a href="../unraid/" class="md-nav__link">
         
   
   
@@ -3342,7 +3428,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../deployment/wsl/" class="md-nav__link">
+      <a href="../wsl/" class="md-nav__link">
         
   
   
@@ -3372,7 +3458,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../deployment/proxmox/" class="md-nav__link">
+      <a href="../proxmox/" class="md-nav__link">
         
   
   
@@ -3402,7 +3488,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../deployment/synology/" class="md-nav__link">
+      <a href="../synology/" class="md-nav__link">
         
   
   
@@ -3432,7 +3518,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../deployment/qnap/" class="md-nav__link">
+      <a href="../qnap/" class="md-nav__link">
         
   
   
@@ -3462,7 +3548,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../deployment/truenas/" class="md-nav__link">
+      <a href="../truenas/" class="md-nav__link">
         
   
   
@@ -3492,7 +3578,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../deployment/dockge/" class="md-nav__link">
+      <a href="../dockge/" class="md-nav__link">
         
   
   
@@ -3956,8 +4042,6 @@
       
   
   
-    
-  
   
   
     
@@ -3981,23 +4065,22 @@
     
     
       
-        
-        
-      
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9" checked>
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_9" >
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../" class="md-nav__link ">
+            <a href="../../reference/" class="md-nav__link ">
               
   
   
@@ -4017,13 +4100,13 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_9" id="__nav_9_label" tabindex="">
+              <label class="md-nav__link " for="__nav_9" id="__nav_9_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_9">
             <span class="md-nav__icon md-icon"></span>
             
@@ -4040,39 +4123,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-network" viewBox="0 0 24 24"><rect width="6" height="6" x="16" y="16" rx="1"/><rect width="6" height="6" x="2" y="16" rx="1"/><rect width="6" height="6" x="9" y="2" rx="1"/><path d="M5 16v-3a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3M12 12V8"/></svg>
-  
-  <span class="md-ellipsis">
-    
-  
-    Service Ports
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../../reference/ports/" class="md-nav__link">
         
   
   
@@ -4090,598 +4144,6 @@
   
 
       </a>
-      
-        
-
-
-<nav class="md-nav md-nav--secondary" aria-label="On this page">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      On this page
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#quick-reference" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Quick reference
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#dumb-core-services" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        DUMB core services
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="DUMB core services">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#dumb-api" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        DUMB API
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#dumb-frontend" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        DUMB Frontend
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#traefik-proxy" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Traefik proxy
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#traefik-dashboardapi" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Traefik dashboard/API
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#media-servers" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Media servers
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Media servers">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#plex-media-server" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Plex Media Server
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#jellyfin" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Jellyfin
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#emby" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Emby
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#content-management" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Content management
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Content management">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#riven" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Riven
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#cli-debrid" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        CLI Debrid
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#decypharr" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Decypharr
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#nzbdav" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        NzbDAV
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#altmount" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        AltMount
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#arr-suite" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Arr suite
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Arr suite">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#sonarr-tv-shows" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Sonarr (TV shows)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#radarr-movies" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Radarr (Movies)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#lidarr-music" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Lidarr (Music)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#whisparr-adult" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Whisparr (Adult)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#prowlarr-indexers" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Prowlarr (Indexers)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#neutarr" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        NeutArr
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#seerr" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Seerr
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#optional-services" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Optional services
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Optional services">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#pulsarr" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Pulsarr
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#maintainerr" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Maintainerr
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#mediastorm" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        mediastorm
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#bazarr" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Bazarr
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#tautulli" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Tautulli
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#zilean" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Zilean
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#traefik-proxy-admin" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Traefik Proxy Admin
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#cloudflared" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Cloudflared
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#dependent-services" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Dependent services
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Dependent services">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#zurg" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Zurg
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#phalanx-db" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Phalanx DB
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#database-services" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Database services
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Database services">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#postgresql" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        PostgreSQL
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#pgadmin" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        pgAdmin
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#port-ranges-by-category" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Port ranges by category
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Port ranges by category">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#web-uis-browser-access" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Web UIs (browser access)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#apis-service-communication" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        APIs (service communication)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#proxy" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Proxy
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#firewall-configuration" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Firewall configuration
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Firewall configuration">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#minimum-required-ports" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Minimum required ports
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#full-access" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Full access
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#related-pages" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Related pages
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -4694,7 +4156,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../environment-variables/" class="md-nav__link">
+      <a href="../../reference/environment-variables/" class="md-nav__link">
         
   
   
@@ -4724,7 +4186,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../config-schema/" class="md-nav__link">
+      <a href="../../reference/config-schema/" class="md-nav__link">
         
   
   
@@ -4754,7 +4216,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../instances/" class="md-nav__link">
+      <a href="../../reference/instances/" class="md-nav__link">
         
   
   
@@ -4784,7 +4246,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../core-service/" class="md-nav__link">
+      <a href="../../reference/core-service/" class="md-nav__link">
         
   
   
@@ -5470,10 +4932,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#quick-reference" class="md-nav__link">
+  <a href="#option-1-publish-selected-ports-recommended" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Quick reference
+        Option 1: Publish Selected Ports (Recommended)
       
     </span>
   </a>
@@ -5481,559 +4943,21 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#dumb-core-services" class="md-nav__link">
+  <a href="#option-2-use-host-networking" class="md-nav__link">
     <span class="md-ellipsis">
       
-        DUMB core services
+        Option 2: Use Host Networking
       
     </span>
   </a>
-  
-    <nav class="md-nav" aria-label="DUMB core services">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#dumb-api" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        DUMB API
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#dumb-frontend" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        DUMB Frontend
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#traefik-proxy" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Traefik proxy
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#traefik-dashboardapi" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Traefik dashboard/API
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#media-servers" class="md-nav__link">
+  <a href="#apply-and-verify-the-change" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Media servers
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Media servers">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#plex-media-server" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Plex Media Server
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#jellyfin" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Jellyfin
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#emby" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Emby
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#content-management" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Content management
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Content management">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#riven" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Riven
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#cli-debrid" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        CLI Debrid
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#decypharr" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Decypharr
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#nzbdav" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        NzbDAV
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#altmount" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        AltMount
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#arr-suite" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Arr suite
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Arr suite">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#sonarr-tv-shows" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Sonarr (TV shows)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#radarr-movies" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Radarr (Movies)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#lidarr-music" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Lidarr (Music)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#whisparr-adult" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Whisparr (Adult)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#prowlarr-indexers" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Prowlarr (Indexers)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#neutarr" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        NeutArr
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#seerr" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Seerr
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#optional-services" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Optional services
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Optional services">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#pulsarr" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Pulsarr
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#maintainerr" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Maintainerr
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#mediastorm" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        mediastorm
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#bazarr" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Bazarr
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#tautulli" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Tautulli
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#zilean" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Zilean
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#traefik-proxy-admin" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Traefik Proxy Admin
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#cloudflared" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Cloudflared
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#dependent-services" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Dependent services
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Dependent services">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#zurg" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Zurg
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#phalanx-db" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Phalanx DB
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#database-services" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Database services
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Database services">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#postgresql" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        PostgreSQL
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#pgadmin" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        pgAdmin
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#port-ranges-by-category" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Port ranges by category
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Port ranges by category">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#web-uis-browser-access" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Web UIs (browser access)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#apis-service-communication" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        APIs (service communication)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#proxy" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Proxy
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#firewall-configuration" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Firewall configuration
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Firewall configuration">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#minimum-required-ports" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Minimum required ports
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#full-access" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Full access
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#related-pages" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Related pages
+        Apply and Verify the Change
       
     </span>
   </a>
@@ -6086,7 +5010,7 @@
         <a href="../" class="md-path__link">
           
   <span class="md-ellipsis">
-    Reference
+    Deployment
   </span>
 
         </a>
@@ -6103,7 +5027,7 @@
                 
                   
   
-    <a href="https://github.com/I-am-PUID-0/DUMB_docs/edit/master/docs/reference/ports.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+    <a href="https://github.com/I-am-PUID-0/DUMB_docs/edit/master/docs/deployment/networking.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
       
       <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-file-pen" viewBox="0 0 24 24"><path d="M12.659 22H18a2 2 0 0 0 2-2V8a2.4 2.4 0 0 0-.706-1.706l-3.588-3.588A2.4 2.4 0 0 0 14 2H6a2 2 0 0 0-2 2v9.34"/><path d="M14 2v5a1 1 0 0 0 1 1h5M10.378 12.622a1 1 0 0 1 3 3.003L8.36 20.637a2 2 0 0 1-.854.506l-2.867.837a.5.5 0 0 1-.62-.62l.836-2.869a2 2 0 0 1 .506-.853z"/></svg>
     </a>
@@ -6112,988 +5036,158 @@
     
       
     
-    <a href="https://github.com/I-am-PUID-0/DUMB_docs/raw/master/docs/reference/ports.md" title="View source of this page" class="md-content__button md-icon">
+    <a href="https://github.com/I-am-PUID-0/DUMB_docs/raw/master/docs/deployment/networking.md" title="View source of this page" class="md-content__button md-icon">
       
       <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-file-code-2" viewBox="0 0 24 24"><path d="M4 12.15V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.706.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2h-3.35"/><path d="M14 2v5a1 1 0 0 0 1 1h5M5 16l-3 3 3 3M9 22l3-3-3-3"/></svg>
     </a>
   
 
 
-<h1 id="service-ports">Service ports<a class="headerlink" href="#service-ports" title="Permanent link">#</a></h1>
-<p>This reference documents all ports used by DUMB services. Use this guide to configure firewall rules, reverse proxies, and understand network requirements.</p>
-<hr />
-<div class="admonition info">
-<p class="admonition-title">Service UI access</p>
-<p>Most service UIs require the port to be exposed in your compose file before you
-can access them directly. The exceptions are when you route traffic through a
-reverse proxy or use DUMB’s embedded UIs via Traefik.</p>
-</div>
-<h2 id="quick-reference">Quick reference<a class="headerlink" href="#quick-reference" title="Permanent link">#</a></h2>
+<h1 id="docker-networking-and-ports">Docker Networking and Ports<a class="headerlink" href="#docker-networking-and-ports" title="Permanent link">#</a></h1>
+<p>Docker controls how applications inside the DUMB container become reachable
+from the Docker host and other devices. Choose one of the following Compose
+configurations.</p>
 <table>
 <thead>
 <tr>
-<th>Port</th>
-<th>Service</th>
-<th>Type</th>
+<th></th>
+<th>Selected port publishing</th>
+<th>Host networking</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>3000</td>
-<td>Riven Frontend</td>
-<td>Web UI</td>
+<td>Compose setting</td>
+<td><code>ports:</code></td>
+<td><code>network_mode: host</code></td>
 </tr>
 <tr>
-<td>3000</td>
-<td>NzbDAV Frontend</td>
-<td>Web UI</td>
+<td>Exposed listeners</td>
+<td>Only listed ports</td>
+<td>All non-loopback listeners</td>
 </tr>
 <tr>
-<td>3003</td>
-<td>Pulsarr</td>
-<td>Web UI</td>
+<td>Host-to-container port translation</td>
+<td>Supported</td>
+<td>Not available</td>
 </tr>
 <tr>
-<td>3004</td>
-<td>Traefik Proxy Admin</td>
-<td>Web UI/API</td>
+<td>Docker network isolation</td>
+<td>Retained</td>
+<td>Removed</td>
 </tr>
 <tr>
-<td>3005</td>
-<td>DUMB Frontend and API gateway</td>
-<td>Web UI/API</td>
-</tr>
-<tr>
-<td>5000</td>
-<td>CLI Debrid</td>
-<td>Web UI</td>
-</tr>
-<tr>
-<td>5001</td>
-<td>CLI Battery</td>
-<td>API</td>
-</tr>
-<tr>
-<td>5050</td>
-<td>pgAdmin</td>
-<td>Web UI</td>
-</tr>
-<tr>
-<td>5055</td>
-<td>Seerr</td>
-<td>Web UI</td>
-</tr>
-<tr>
-<td>5432</td>
-<td>PostgreSQL</td>
-<td>Database</td>
-</tr>
-<tr>
-<td>6246</td>
-<td>Maintainerr</td>
-<td>Web UI/API</td>
-</tr>
-<tr>
-<td>6767</td>
-<td>Bazarr</td>
-<td>Web UI/API</td>
-</tr>
-<tr>
-<td>6969</td>
-<td>Whisparr</td>
-<td>Web UI</td>
-</tr>
-<tr>
-<td>7777</td>
-<td>mediastorm</td>
-<td>Web UI/API</td>
-</tr>
-<tr>
-<td>7878</td>
-<td>Radarr (first/default instance)</td>
-<td>Web UI</td>
-</tr>
-<tr>
-<td>7879</td>
-<td>Radarr (typical second instance)</td>
-<td>Web UI</td>
-</tr>
-<tr>
-<td>8000</td>
-<td>DUMB API (container loopback by default)</td>
-<td>API</td>
-</tr>
-<tr>
-<td>8080</td>
-<td>Riven Backend</td>
-<td>API</td>
-</tr>
-<tr>
-<td>8080</td>
-<td>NzbDAV Backend</td>
-<td>API</td>
-</tr>
-<tr>
-<td>8088</td>
-<td>AltMount</td>
-<td>Web UI/API</td>
-</tr>
-<tr>
-<td>8096</td>
-<td>Jellyfin</td>
-<td>Web UI</td>
-</tr>
-<tr>
-<td>8096</td>
-<td>Emby</td>
-<td>Web UI</td>
-</tr>
-<tr>
-<td>8181</td>
-<td>Tautulli</td>
-<td>Web UI</td>
-</tr>
-<tr>
-<td>8182</td>
-<td>Zilean</td>
-<td>Web UI/API</td>
-</tr>
-<tr>
-<td>8282</td>
-<td>Decypharr</td>
-<td>Web UI</td>
-</tr>
-<tr>
-<td>8686</td>
-<td>Lidarr</td>
-<td>Web UI</td>
-</tr>
-<tr>
-<td>8888</td>
-<td>Phalanx DB</td>
-<td>API</td>
-</tr>
-<tr>
-<td>8989</td>
-<td>Sonarr (first/default instance)</td>
-<td>Web UI</td>
-</tr>
-<tr>
-<td>8990</td>
-<td>Sonarr (typical second instance)</td>
-<td>Web UI</td>
-</tr>
-<tr>
-<td>9090</td>
-<td>Zurg (first/default instance)</td>
-<td>API</td>
-</tr>
-<tr>
-<td>9091</td>
-<td>Zurg (typical second instance)</td>
-<td>API</td>
-</tr>
-<tr>
-<td>9696</td>
-<td>Prowlarr</td>
-<td>Web UI</td>
-</tr>
-<tr>
-<td>9705</td>
-<td>NeutArr</td>
-<td>Web UI</td>
-</tr>
-<tr>
-<td>18080</td>
-<td>Traefik</td>
-<td>Proxy</td>
-</tr>
-<tr>
-<td>18081</td>
-<td>Traefik Dashboard/API</td>
-<td>Web UI/API</td>
-</tr>
-<tr>
-<td>32400</td>
-<td>Plex Media Server</td>
-<td>Web UI</td>
+<td>Best for</td>
+<td>Most installations</td>
+<td>Direct access to many service ports</td>
 </tr>
 </tbody>
 </table>
-<div class="admonition warning">
-<p class="admonition-title">Dynamic port reassignment</p>
-<p>On startup, DUMB checks enabled-service ports for conflicts and availability.
-If a port is already in use, DUMB automatically shifts that service to the next free port and saves the updated value to <code>dumb_config.json</code>.
-This applies to single-port services and NzbDAV's <code>frontend_port</code>/<code>backend_port</code>.</p>
-</div>
-<hr />
-<h2 id="dumb-core-services">DUMB core services<a class="headerlink" href="#dumb-core-services" title="Permanent link">#</a></h2>
-<h3 id="dumb-api">DUMB API<a class="headerlink" href="#dumb-api" title="Permanent link">#</a></h3>
-<table>
-<thead>
-<tr>
-<th>Property</th>
-<th>Value</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><strong>Port</strong></td>
-<td>8000</td>
-</tr>
-<tr>
-<td><strong>Type</strong></td>
-<td>REST API</td>
-</tr>
-<tr>
-<td><strong>Protocol</strong></td>
-<td>HTTP</td>
-</tr>
-</tbody>
-</table>
-<p>The backend API that powers service management, configuration, and monitoring. It listens on <code>127.0.0.1</code> inside the container and is not host-published by the maintained Compose file.</p>
-<div class="highlight"><pre><span></span><code>http://localhost:8000/process/processes  # backend-native, from inside the container
-http://localhost:3005/api/process/processes  # normal frontend proxy
-</code></pre></div>
-<h3 id="dumb-frontend">DUMB Frontend<a class="headerlink" href="#dumb-frontend" title="Permanent link">#</a></h3>
-<table>
-<thead>
-<tr>
-<th>Property</th>
-<th>Value</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><strong>Port</strong></td>
-<td>3005</td>
-</tr>
-<tr>
-<td><strong>Type</strong></td>
-<td>Web UI / REST and WebSocket gateway</td>
-</tr>
-<tr>
-<td><strong>Protocol</strong></td>
-<td>HTTP</td>
-</tr>
-</tbody>
-</table>
-<p>The main dashboard for managing DUMB services.</p>
-<p>The same listener exposes backend REST routes under <code>/api/*</code> and WebSocket
-routes under <code>/ws/*</code>. REST requests have <code>/api</code> removed before they are sent to
-the loopback-only backend on port <code>8000</code>.</p>
-<div class="highlight"><pre><span></span><code>http://localhost:3005
-</code></pre></div>
-<h3 id="traefik-proxy">Traefik proxy<a class="headerlink" href="#traefik-proxy" title="Permanent link">#</a></h3>
-<table>
-<thead>
-<tr>
-<th>Property</th>
-<th>Value</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><strong>Port</strong></td>
-<td>18080</td>
-</tr>
-<tr>
-<td><strong>Type</strong></td>
-<td>Reverse Proxy</td>
-</tr>
-<tr>
-<td><strong>Protocol</strong></td>
-<td>HTTP</td>
-</tr>
-</tbody>
-</table>
-<p>Provides unified access to embedded service UIs when enabled.</p>
-<div class="highlight"><pre><span></span><code>http://localhost:18080/service/ui/&lt;service_name&gt;
-</code></pre></div>
-<h3 id="traefik-dashboardapi">Traefik dashboard/API<a class="headerlink" href="#traefik-dashboardapi" title="Permanent link">#</a></h3>
-<table>
-<thead>
-<tr>
-<th>Property</th>
-<th>Value</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><strong>Port</strong></td>
-<td>18081</td>
-</tr>
-<tr>
-<td><strong>Type</strong></td>
-<td>Dashboard / API</td>
-</tr>
-<tr>
-<td><strong>Protocol</strong></td>
-<td>HTTP</td>
-</tr>
-</tbody>
-</table>
-<p>Traefik exposes its dashboard/API on the Traefik entrypoint plus one port. TPA uses this internally through <code>TRAEFIK_API_URL=http://127.0.0.1:18081</code>.</p>
-<hr />
-<h2 id="media-servers">Media servers<a class="headerlink" href="#media-servers" title="Permanent link">#</a></h2>
-<h3 id="plex-media-server">Plex Media Server<a class="headerlink" href="#plex-media-server" title="Permanent link">#</a></h3>
-<table>
-<thead>
-<tr>
-<th>Property</th>
-<th>Value</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><strong>Port</strong></td>
-<td>32400</td>
-</tr>
-<tr>
-<td><strong>Type</strong></td>
-<td>Web UI / API</td>
-</tr>
-<tr>
-<td><strong>Protocol</strong></td>
-<td>HTTP/HTTPS</td>
-</tr>
-</tbody>
-</table>
-<div class="highlight"><pre><span></span><code>http://localhost:32400/web
-</code></pre></div>
-<h3 id="jellyfin">Jellyfin<a class="headerlink" href="#jellyfin" title="Permanent link">#</a></h3>
-<table>
-<thead>
-<tr>
-<th>Property</th>
-<th>Value</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><strong>Port</strong></td>
-<td>8096</td>
-</tr>
-<tr>
-<td><strong>Type</strong></td>
-<td>Web UI / API</td>
-</tr>
-<tr>
-<td><strong>Protocol</strong></td>
-<td>HTTP</td>
-</tr>
-</tbody>
-</table>
-<div class="highlight"><pre><span></span><code>http://localhost:8096
-</code></pre></div>
-<h3 id="emby">Emby<a class="headerlink" href="#emby" title="Permanent link">#</a></h3>
-<table>
-<thead>
-<tr>
-<th>Property</th>
-<th>Value</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><strong>Port</strong></td>
-<td>8096</td>
-</tr>
-<tr>
-<td><strong>Type</strong></td>
-<td>Web UI / API</td>
-</tr>
-<tr>
-<td><strong>Protocol</strong></td>
-<td>HTTP</td>
-</tr>
-</tbody>
-</table>
-<div class="highlight"><pre><span></span><code>http://localhost:8096
-</code></pre></div>
-<hr />
-<h2 id="content-management">Content management<a class="headerlink" href="#content-management" title="Permanent link">#</a></h2>
-<h3 id="riven">Riven<a class="headerlink" href="#riven" title="Permanent link">#</a></h3>
-<table>
-<thead>
-<tr>
-<th>Component</th>
-<th>Port</th>
-<th>Type</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Backend</td>
-<td>8080</td>
-<td>API</td>
-</tr>
-<tr>
-<td>Frontend</td>
-<td>3000</td>
-<td>Web UI</td>
-</tr>
-</tbody>
-</table>
-<div class="highlight"><pre><span></span><code>http://localhost:3000  # Frontend
-http://localhost:8080  # API
-</code></pre></div>
-<h3 id="cli-debrid">CLI Debrid<a class="headerlink" href="#cli-debrid" title="Permanent link">#</a></h3>
-<table>
-<thead>
-<tr>
-<th>Component</th>
-<th>Port</th>
-<th>Type</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>CLI Debrid</td>
-<td>5000</td>
-<td>Web UI</td>
-</tr>
-<tr>
-<td>CLI Battery</td>
-<td>5001</td>
-<td>API</td>
-</tr>
-</tbody>
-</table>
-<div class="highlight"><pre><span></span><code>http://localhost:5000
-</code></pre></div>
-<h3 id="decypharr">Decypharr<a class="headerlink" href="#decypharr" title="Permanent link">#</a></h3>
-<table>
-<thead>
-<tr>
-<th>Property</th>
-<th>Value</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><strong>Port</strong></td>
-<td>8282</td>
-</tr>
-<tr>
-<td><strong>Type</strong></td>
-<td>Web UI</td>
-</tr>
-<tr>
-<td><strong>Protocol</strong></td>
-<td>HTTP</td>
-</tr>
-</tbody>
-</table>
-<div class="highlight"><pre><span></span><code>http://localhost:8282
-</code></pre></div>
-<h3 id="nzbdav">NzbDAV<a class="headerlink" href="#nzbdav" title="Permanent link">#</a></h3>
-<table>
-<thead>
-<tr>
-<th>Component</th>
-<th>Port</th>
-<th>Type</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Frontend</td>
-<td>3000</td>
-<td>Web UI</td>
-</tr>
-<tr>
-<td>Backend</td>
-<td>8080</td>
-<td>API</td>
-</tr>
-</tbody>
-</table>
-<div class="highlight"><pre><span></span><code>http://localhost:3000  # Frontend
-</code></pre></div>
 <div class="admonition note">
-<p class="admonition-title">NzbDAV and Riven desired defaults overlap</p>
-<p>The default NzbDAV ports (<code>3000</code> and <code>8080</code>) overlap with Riven defaults.
-DUMB's startup port allocator normally moves a conflicting enabled service to the next free port and persists the result. Use the runtime configuration/UI—not this default table—as the authority for a running stack.</p>
+<p class="admonition-title">WSL users</p>
+<p>On WSL, the Docker host is the Linux distribution running inside WSL.
+Complete the <a href="../wsl/#mirrored-mode-networking">WSL mirrored networking configuration</a>
+before using the Windows machine's IPv4 address to access DUMB.</p>
 </div>
-<h3 id="altmount">AltMount<a class="headerlink" href="#altmount" title="Permanent link">#</a></h3>
-<table>
-<thead>
-<tr>
-<th>Setting</th>
-<th>Default</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>port</code></td>
-<td><code>8088</code></td>
-</tr>
-<tr>
-<td><code>config_file</code></td>
-<td><code>/altmount/config.yaml</code></td>
-</tr>
-<tr>
-<td><code>metadata_dir</code></td>
-<td><code>/altmount/metadata</code></td>
-</tr>
-<tr>
-<td><code>mount_path</code></td>
-<td><code>/mnt/debrid/altmount</code></td>
-</tr>
-<tr>
-<td><code>log_file</code></td>
-<td><code>/altmount/logs/altmount.log</code></td>
-</tr>
-</tbody>
-</table>
-<p>AltMount also exposes <code>/live</code>; DUMB probes it while completing the post-start
-Arr integration pass.</p>
-<hr />
-<h2 id="arr-suite">Arr suite<a class="headerlink" href="#arr-suite" title="Permanent link">#</a></h2>
-<p>The Arr applications support multiple instances for different workflows (for example Decypharr, NzbDAV, or AltMount). The first instance starts from the application's base default; additional/conflicting instances are assigned the next free port and saved to <code>/config/dumb_config.json</code>.</p>
-<h3 id="sonarr-tv-shows">Sonarr (TV shows)<a class="headerlink" href="#sonarr-tv-shows" title="Permanent link">#</a></h3>
-<table>
-<thead>
-<tr>
-<th>Instance</th>
-<th>Typical port</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>First/default</td>
-<td>8989</td>
-</tr>
-<tr>
-<td>Second</td>
-<td>8990</td>
-</tr>
-</tbody>
-</table>
-<div class="highlight"><pre><span></span><code>http://localhost:8989  # typical first instance
-http://localhost:8990  # typical second instance
+<h2 id="option-1-publish-selected-ports-recommended">Option 1: Publish Selected Ports (Recommended)<a class="headerlink" href="#option-1-publish-selected-ports-recommended" title="Permanent link">#</a></h2>
+<p>The maintained DUMB Compose file uses Docker's normal bridge networking and
+publishes only the DUMB Frontend:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">services</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">DUMB</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">ports</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;3005:3005&quot;</span>
 </code></pre></div>
-<h3 id="radarr-movies">Radarr (Movies)<a class="headerlink" href="#radarr-movies" title="Permanent link">#</a></h3>
-<table>
-<thead>
-<tr>
-<th>Instance</th>
-<th>Typical port</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>First/default</td>
-<td>7878</td>
-</tr>
-<tr>
-<td>Second</td>
-<td>7879</td>
-</tr>
-</tbody>
-</table>
-<div class="highlight"><pre><span></span><code>http://localhost:7878  # typical first instance
-http://localhost:7879  # typical second instance
+<p>Open the dashboard at:</p>
+<div class="highlight"><pre><span></span><code>http://localhost:3005
+http://&lt;docker-host-ip&gt;:3005
 </code></pre></div>
-<h3 id="lidarr-music">Lidarr (Music)<a class="headerlink" href="#lidarr-music" title="Permanent link">#</a></h3>
-<table>
-<thead>
-<tr>
-<th>Property</th>
-<th>Value</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><strong>Port</strong></td>
-<td>8686</td>
-</tr>
-<tr>
-<td><strong>Type</strong></td>
-<td>Web UI</td>
-</tr>
-</tbody>
-</table>
-<div class="highlight"><pre><span></span><code>http://localhost:8686
+<p>Add another mapping for each service that must be accessed directly. For
+example:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">services</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">DUMB</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">ports</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;3005:3005&quot;</span><span class="w"> </span><span class="c1"># DUMB Frontend and API gateway</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;7878:7878&quot;</span><span class="w"> </span><span class="c1"># Radarr</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;8989:8989&quot;</span><span class="w"> </span><span class="c1"># Sonarr</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;32400:32400&quot;</span><span class="w"> </span><span class="c1"># Plex</span>
 </code></pre></div>
-<h3 id="whisparr-adult">Whisparr (Adult)<a class="headerlink" href="#whisparr-adult" title="Permanent link">#</a></h3>
-<table>
-<thead>
-<tr>
-<th>Property</th>
-<th>Value</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><strong>Port</strong></td>
-<td>6969</td>
-</tr>
-<tr>
-<td><strong>Type</strong></td>
-<td>Web UI</td>
-</tr>
-</tbody>
-</table>
-<div class="highlight"><pre><span></span><code>http://localhost:6969
-</code></pre></div>
-<h3 id="prowlarr-indexers">Prowlarr (Indexers)<a class="headerlink" href="#prowlarr-indexers" title="Permanent link">#</a></h3>
-<table>
-<thead>
-<tr>
-<th>Property</th>
-<th>Value</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><strong>Port</strong></td>
-<td>9696</td>
-</tr>
-<tr>
-<td><strong>Type</strong></td>
-<td>Web UI</td>
-</tr>
-</tbody>
-</table>
-<div class="highlight"><pre><span></span><code>http://localhost:9696
-</code></pre></div>
-<h3 id="neutarr">NeutArr<a class="headerlink" href="#neutarr" title="Permanent link">#</a></h3>
-<table>
-<thead>
-<tr>
-<th>Instance</th>
-<th>Port</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Default</td>
-<td>9705</td>
-</tr>
-</tbody>
-</table>
-<div class="highlight"><pre><span></span><code>http://localhost:9705  # Default instance
-</code></pre></div>
-<h3 id="seerr">Seerr<a class="headerlink" href="#seerr" title="Permanent link">#</a></h3>
-<table>
-<thead>
-<tr>
-<th>Property</th>
-<th>Value</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><strong>Port</strong></td>
-<td>5055</td>
-</tr>
-<tr>
-<td><strong>Type</strong></td>
-<td>Web UI</td>
-</tr>
-</tbody>
-</table>
-<div class="highlight"><pre><span></span><code>http://localhost:5055
-</code></pre></div>
-<hr />
-<h2 id="optional-services">Optional services<a class="headerlink" href="#optional-services" title="Permanent link">#</a></h2>
-<h3 id="pulsarr">Pulsarr<a class="headerlink" href="#pulsarr" title="Permanent link">#</a></h3>
-<table>
-<thead>
-<tr>
-<th>Property</th>
-<th>Value</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><strong>Port</strong></td>
-<td>3003</td>
-</tr>
-<tr>
-<td><strong>Type</strong></td>
-<td>Web UI</td>
-</tr>
-</tbody>
-</table>
-<div class="highlight"><pre><span></span><code>http://localhost:3003
-</code></pre></div>
-<h3 id="maintainerr">Maintainerr<a class="headerlink" href="#maintainerr" title="Permanent link">#</a></h3>
-<table>
-<thead>
-<tr>
-<th>Property</th>
-<th>Value</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><strong>Port</strong></td>
-<td>6246</td>
-</tr>
-<tr>
-<td><strong>Type</strong></td>
-<td>Web UI/API</td>
-</tr>
-</tbody>
-</table>
-<div class="highlight"><pre><span></span><code>http://localhost:6246
-</code></pre></div>
-<h3 id="mediastorm">mediastorm<a class="headerlink" href="#mediastorm" title="Permanent link">#</a></h3>
-<table>
-<thead>
-<tr>
-<th>Property</th>
-<th>Value</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><strong>Port</strong></td>
-<td>7777</td>
-</tr>
-<tr>
-<td><strong>Type</strong></td>
-<td>Web UI / API</td>
-</tr>
-</tbody>
-</table>
-<p>The embedded UI opens at <code>/admin</code>.</p>
-<div class="highlight"><pre><span></span><code>http://localhost:7777/admin
-</code></pre></div>
-<h3 id="bazarr">Bazarr<a class="headerlink" href="#bazarr" title="Permanent link">#</a></h3>
-<table>
-<thead>
-<tr>
-<th>Property</th>
-<th>Value</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><strong>Port</strong></td>
-<td>6767</td>
-</tr>
-<tr>
-<td><strong>Type</strong></td>
-<td>Web UI / API</td>
-</tr>
-</tbody>
-</table>
-<div class="highlight"><pre><span></span><code>http://localhost:6767
-</code></pre></div>
-<h3 id="tautulli">Tautulli<a class="headerlink" href="#tautulli" title="Permanent link">#</a></h3>
-<table>
-<thead>
-<tr>
-<th>Property</th>
-<th>Value</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><strong>Port</strong></td>
-<td>8181</td>
-</tr>
-<tr>
-<td><strong>Type</strong></td>
-<td>Web UI</td>
-</tr>
-</tbody>
-</table>
-<div class="highlight"><pre><span></span><code>http://localhost:8181
-</code></pre></div>
-<h3 id="zilean">Zilean<a class="headerlink" href="#zilean" title="Permanent link">#</a></h3>
-<table>
-<thead>
-<tr>
-<th>Property</th>
-<th>Value</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><strong>Port</strong></td>
-<td>8182</td>
-</tr>
-<tr>
-<td><strong>Type</strong></td>
-<td>Web UI / API</td>
-</tr>
-</tbody>
-</table>
-<div class="highlight"><pre><span></span><code>http://localhost:8182
-</code></pre></div>
-<h3 id="traefik-proxy-admin">Traefik Proxy Admin<a class="headerlink" href="#traefik-proxy-admin" title="Permanent link">#</a></h3>
-<table>
-<thead>
-<tr>
-<th>Property</th>
-<th>Value</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><strong>Port</strong></td>
-<td>3004</td>
-</tr>
-<tr>
-<td><strong>Type</strong></td>
-<td>Web UI / API</td>
-</tr>
-</tbody>
-</table>
-<div class="highlight"><pre><span></span><code>http://localhost:3004
-</code></pre></div>
-<h3 id="cloudflared">Cloudflared<a class="headerlink" href="#cloudflared" title="Permanent link">#</a></h3>
-<p>Cloudflared does not expose a local web UI port. It opens an outbound tunnel connection to Cloudflare and forwards public hostname traffic to DUMB Traefik.</p>
-<hr />
-<h2 id="dependent-services">Dependent services<a class="headerlink" href="#dependent-services" title="Permanent link">#</a></h2>
-<h3 id="zurg">Zurg<a class="headerlink" href="#zurg" title="Permanent link">#</a></h3>
-<table>
-<thead>
-<tr>
-<th>Instance</th>
-<th>Port</th>
-<th>Use Case</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>First/default</td>
-<td>9090</td>
-<td>Any linked workflow</td>
-</tr>
-<tr>
-<td>Typical second</td>
-<td>9091</td>
-<td>Any additional linked workflow</td>
-</tr>
-</tbody>
-</table>
-<div class="highlight"><pre><span></span><code>http://localhost:9090  # typical first instance
-http://localhost:9091  # typical second instance
-</code></pre></div>
-<h3 id="phalanx-db">Phalanx DB<a class="headerlink" href="#phalanx-db" title="Permanent link">#</a></h3>
-<table>
-<thead>
-<tr>
-<th>Property</th>
-<th>Value</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><strong>Port</strong></td>
-<td>8888</td>
-</tr>
-<tr>
-<td><strong>Type</strong></td>
-<td>API</td>
-</tr>
-</tbody>
-</table>
-<div class="highlight"><pre><span></span><code>http://localhost:8888
-</code></pre></div>
-<hr />
-<h2 id="database-services">Database services<a class="headerlink" href="#database-services" title="Permanent link">#</a></h2>
-<h3 id="postgresql">PostgreSQL<a class="headerlink" href="#postgresql" title="Permanent link">#</a></h3>
-<table>
-<thead>
-<tr>
-<th>Property</th>
-<th>Value</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><strong>Port</strong></td>
-<td>5432</td>
-</tr>
-<tr>
-<td><strong>Type</strong></td>
-<td>Database</td>
-</tr>
-<tr>
-<td><strong>Protocol</strong></td>
-<td>PostgreSQL</td>
-</tr>
-</tbody>
-</table>
-<div class="highlight"><pre><span></span><code>postgresql://&lt;user&gt;:&lt;password&gt;@localhost:5432/&lt;configured_database&gt;
-</code></pre></div>
-<h3 id="pgadmin">pgAdmin<a class="headerlink" href="#pgadmin" title="Permanent link">#</a></h3>
-<table>
-<thead>
-<tr>
-<th>Property</th>
-<th>Value</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><strong>Port</strong></td>
-<td>5050</td>
-</tr>
-<tr>
-<td><strong>Type</strong></td>
-<td>Web UI</td>
-</tr>
-</tbody>
-</table>
-<div class="highlight"><pre><span></span><code>http://localhost:5050
-</code></pre></div>
-<hr />
-<h2 id="port-ranges-by-category">Port ranges by category<a class="headerlink" href="#port-ranges-by-category" title="Permanent link">#</a></h2>
-<h3 id="web-uis-browser-access">Web UIs (browser access)<a class="headerlink" href="#web-uis-browser-access" title="Permanent link">#</a></h3>
-<div class="highlight"><pre><span></span><code>3000-3005, 5000, 5050, 5055, 6969, 7878-7879, 8088, 8096,
-8181-8182, 8282, 8686, 8989-8990, 9696, 9705, 18081, 32400
-</code></pre></div>
-<h3 id="apis-service-communication">APIs (service communication)<a class="headerlink" href="#apis-service-communication" title="Permanent link">#</a></h3>
-<div class="highlight"><pre><span></span><code>5001, 5432, 8000, 8080, 8888, 9090-9091
-</code></pre></div>
-<h3 id="proxy">Proxy<a class="headerlink" href="#proxy" title="Permanent link">#</a></h3>
-<div class="highlight"><pre><span></span><code>18080
-</code></pre></div>
-<hr />
-<h2 id="firewall-configuration">Firewall configuration<a class="headerlink" href="#firewall-configuration" title="Permanent link">#</a></h2>
-<h3 id="minimum-required-ports">Minimum required ports<a class="headerlink" href="#minimum-required-ports" title="Permanent link">#</a></h3>
-<p>For basic DUMB operation, publish only:</p>
-<table>
-<thead>
-<tr>
-<th>Port</th>
-<th>Required For</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>3005</td>
-<td>DUMB Frontend and its <code>/api</code>/<code>/ws</code> proxy</td>
-</tr>
-</tbody>
-</table>
-<h3 id="full-access">Full access<a class="headerlink" href="#full-access" title="Permanent link">#</a></h3>
-<p>For complete functionality including all service UIs:</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Example UFW configuration</span>
-sudo<span class="w"> </span>ufw<span class="w"> </span>allow<span class="w"> </span><span class="m">3005</span>/tcp<span class="w">  </span><span class="c1"># DUMB Frontend</span>
-sudo<span class="w"> </span>ufw<span class="w"> </span>allow<span class="w"> </span><span class="m">18080</span>/tcp<span class="w"> </span><span class="c1"># Traefik (embedded UIs)</span>
-sudo<span class="w"> </span>ufw<span class="w"> </span>allow<span class="w"> </span><span class="m">32400</span>/tcp<span class="w"> </span><span class="c1"># Plex</span>
-</code></pre></div>
-<p>The backend port <code>8000</code> is loopback-only and unpublished by default. Expose it only when a direct API consumer requires it, after changing <code>dumb.api_service.host</code> to <code>0.0.0.0</code>, enabling authentication, and restricting network access.</p>
-<div class="admonition tip">
-<p class="admonition-title">Use Traefik for consolidated access</p>
-<p>Instead of exposing all service ports, enable embedded UIs and access services through Traefik on port 18080. See <a href="../../features/embedded-ui/">Embedded UIs</a>.</p>
-</div>
-<hr />
-<h2 id="related-pages">Related pages<a class="headerlink" href="#related-pages" title="Permanent link">#</a></h2>
+<p>Use the <a href="../../reference/ports/">Service ports</a> reference and the actual port
+saved in DUMB when adding mappings. DUMB can move a service to the next
+available port when its preferred port is already in use.</p>
+<p>This mode:</p>
 <ul>
-<li><a href="../../features/embedded-ui/">Embedded UIs</a></li>
-<li><a href="../../features/configuration/">Configuration</a></li>
-<li><a href="../../services/">Services Overview</a></li>
+<li>Keeps the container on an isolated Docker network</li>
+<li>Exposes only the ports listed under <code>ports:</code></li>
+<li>Lets the host-side port differ from the container port, such as
+  <code>"17878:7878"</code></li>
+<li>Requires updating and recreating the container when you add a direct service
+  port</li>
 </ul>
+<div class="admonition tip">
+<p class="admonition-title">Embedded service UIs</p>
+<p>If you use service UIs through the DUMB Frontend and its Traefik proxy, you
+may only need to publish <code>3005</code>. Publish individual service ports when
+another device or application must connect to those services directly.</p>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">DUMB backend port 8000</p>
+<p>Do not publish port <code>8000</code> for normal use. The DUMB Frontend proxies the API
+under <code>http://&lt;host&gt;:3005/api</code>, while the native backend listener binds to
+container loopback by default.</p>
+</div>
+<h2 id="option-2-use-host-networking">Option 2: Use Host Networking<a class="headerlink" href="#option-2-use-host-networking" title="Permanent link">#</a></h2>
+<p>Host networking makes the DUMB container share the Docker host's network
+namespace. Services that listen on non-loopback addresses become reachable on
+the same port without adding a Compose mapping for each one.</p>
+<p>Replace the entire <code>ports:</code> section with <code>network_mode: host</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">services</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">DUMB</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">network_mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">host</span>
+</code></pre></div>
+<p>Do not keep <code>ports:</code> alongside <code>network_mode: host</code>. Port publishing is not
+used in host mode, and current Docker Compose versions reject that combination.</p>
+<p>This mode:</p>
+<ul>
+<li>Makes direct access to many DUMB-managed service ports more convenient</li>
+<li>Avoids maintaining a long <code>ports:</code> list</li>
+<li>Removes Docker's network isolation for the DUMB container</li>
+<li>Prevents Docker from translating a conflicting host port to a different
+  container port</li>
+<li>Can expose more listeners than intended through the Docker host</li>
+</ul>
+<p>Use host networking only when you want direct access to most service ports and
+are prepared to manage port conflicts and firewall rules. Keep DUMB
+authentication enabled. The native DUMB backend still binds to loopback; use
+the supported <code>:3005/api</code> gateway instead of relying on direct port <code>8000</code>
+access.</p>
+<div class="admonition info">
+<p class="admonition-title">Platform support</p>
+<p>These instructions target Docker Engine on Linux, including Docker Engine
+installed inside WSL. See Docker's
+<a href="https://docs.docker.com/engine/network/drivers/host/">host network driver</a>
+documentation for platform-specific support and limitations.</p>
+</div>
+<h2 id="apply-and-verify-the-change">Apply and Verify the Change<a class="headerlink" href="#apply-and-verify-the-change" title="Permanent link">#</a></h2>
+<p>After changing <code>ports:</code> or <code>network_mode</code>, recreate DUMB:</p>
+<div class="highlight"><pre><span></span><code>sudo<span class="w"> </span>docker<span class="w"> </span>compose<span class="w"> </span>down
+sudo<span class="w"> </span>docker<span class="w"> </span>compose<span class="w"> </span>up<span class="w"> </span>-d
+</code></pre></div>
+<p>Then verify the effective network configuration:</p>
+<div class="highlight"><pre><span></span><code>sudo<span class="w"> </span>docker<span class="w"> </span>compose<span class="w"> </span>config
+sudo<span class="w"> </span>docker<span class="w"> </span>ps
+</code></pre></div>
+<p>If a service is not reachable:</p>
+<ul>
+<li>Confirm its current port in DUMB rather than assuming its default port</li>
+<li>Check the Docker host's firewall</li>
+<li>On WSL, check both Windows Firewall and the Hyper-V firewall</li>
+<li>Confirm that <code>ports:</code> contains the current service port, or that host
+  networking is active</li>
+</ul>
+<p>For Compose syntax details, see Docker's
+<a href="https://docs.docker.com/reference/compose-file/services/#network_mode"><code>network_mode</code></a>
+and <a href="https://docs.docker.com/reference/compose-file/services/#ports"><code>ports</code></a>
+documentation.</p>
 
 
 
@@ -7134,7 +5228,7 @@ sudo<span class="w"> </span>ufw<span class="w"> </span>allow<span class="w"> </s
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../" class="md-footer__link md-footer__link--prev" aria-label="Previous: Overview">
+          <a href="../docker/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Docker">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-arrow-left" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7M19 12H5"/></svg>
@@ -7144,20 +5238,20 @@ sudo<span class="w"> </span>ufw<span class="w"> </span>allow<span class="w"> </s
                 Previous
               </span>
               <div class="md-ellipsis">
-                Overview
+                Docker
               </div>
             </div>
           </a>
         
         
           
-          <a href="../environment-variables/" class="md-footer__link md-footer__link--next" aria-label="Next: Environment Variables">
+          <a href="../portainer/" class="md-footer__link md-footer__link--next" aria-label="Next: Portainer">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Environment Variables
+                Portainer
               </div>
             </div>
             <div class="md-footer__button md-icon">
