@@ -30,6 +30,32 @@ user_management = importlib.import_module("utils.user_management")
 
 
 class UserManagementSecurityTests(unittest.TestCase):
+    def test_validate_managed_user_ids_accepts_positive_ids(self):
+        user_management.validate_managed_user_ids(1000, 1000)
+
+    def test_validate_managed_user_ids_rejects_non_positive_ids(self):
+        invalid_values = (
+            (0, 1000, "PUID=0"),
+            (1000, 0, "PGID=0"),
+            (-1, 1000, "PUID=-1"),
+            (1000, -1, "PGID=-1"),
+        )
+
+        for puid, pgid, expected in invalid_values:
+            with self.subTest(puid=puid, pgid=pgid):
+                with self.assertRaisesRegex(ValueError, expected):
+                    user_management.validate_managed_user_ids(puid, pgid)
+
+    def test_create_system_user_rejects_root_ids_before_account_lookup(self):
+        with (
+            patch.object(user_management, "user_id", 0),
+            patch.object(user_management.grp, "getgrgid") as group_lookup,
+            self.assertRaisesRegex(ValueError, "PUID=0"),
+        ):
+            user_management.create_system_user()
+
+        group_lookup.assert_not_called()
+
     def test_hash_user_password_uses_stdin_without_shell(self):
         calls = []
 

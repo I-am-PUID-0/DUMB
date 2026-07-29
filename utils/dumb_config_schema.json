@@ -2,10 +2,12 @@
   "type": "object",
   "properties": {
     "puid": {
-      "type": "integer"
+      "type": "integer",
+      "minimum": 1
     },
     "pgid": {
-      "type": "integer"
+      "type": "integer",
+      "minimum": 1
     },
     "tz": {
       "type": "string"

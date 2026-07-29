@@ -178,8 +178,8 @@ Variables required by DUMB:
 
 | Variable       | Default  | Description                                                       |
 | -------------- | -------- | ------------------------------------------------------------------|
-| `PUID`         | `1000`   | Your User ID |
-| `PGID`         | `1000`   | Your Group ID |
+| `PUID`         | `1000`   | Managed-service user ID; must be greater than `0` |
+| `PGID`         | `1000`   | Managed-service group ID; must be greater than `0` |
 | `TZ`           | `(null)` | Your time zone listed as `Area/Location` |
 
 See the [.env.example](https://github.com/I-am-PUID-0/DUMB/blob/master/.env.example)

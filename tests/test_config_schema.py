@@ -52,6 +52,21 @@ class DumbConfigSchemaTests(unittest.TestCase):
             ],
         )
 
+    def test_schema_rejects_non_positive_managed_user_ids(self):
+        validator = Draft7Validator(self.schema)
+
+        for key in ("puid", "pgid"):
+            for value in (0, -1):
+                with self.subTest(key=key, value=value):
+                    invalid_config = json.loads(json.dumps(self.config))
+                    invalid_config[key] = value
+                    errors = list(validator.iter_errors(invalid_config))
+
+                    self.assertTrue(
+                        any(list(error.path) == [key] for error in errors),
+                        f"Expected {key}={value} to fail schema validation",
+                    )
+
     def test_source_build_services_declare_full_commit_sha_pins(self):
         service_paths = (
             ("dumb", "frontend"),

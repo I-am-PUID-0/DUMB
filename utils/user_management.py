@@ -7,6 +7,20 @@ user_id = config.get("puid")
 group_id = config.get("pgid")
 
 
+def validate_managed_user_ids(puid, pgid):
+    invalid = []
+    for name, value in (("PUID", puid), ("PGID", pgid)):
+        if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
+            invalid.append(f"{name}={value!r}")
+
+    if invalid:
+        raise ValueError(
+            "PUID and PGID must be positive integers greater than 0; "
+            "UID/GID 0 would run managed services with root privileges "
+            f"(invalid: {', '.join(invalid)})."
+        )
+
+
 def _generate_user_password():
     return secrets.token_urlsafe(18)
 
@@ -258,6 +272,8 @@ def migrate_symlinks():
 
 
 def create_system_user(username="DUMB"):
+    validate_managed_user_ids(user_id, group_id)
+
     try:
         start_time = time.time()
         group_check_start = time.time()
