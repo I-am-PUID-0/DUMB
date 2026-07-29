@@ -19,8 +19,9 @@ from utils.arr_postgres import configure_arr_postgres_runtime
 from utils.service_postgres import configure_service_postgres_runtime
 from utils.postgres import stop_existing_postgres_for_data_directory
 from utils.metrics_postgres import ensure_metrics_postgres_config
+from utils.port_probe import is_port_available as _is_port_available
 from concurrent.futures import ThreadPoolExecutor, wait, FIRST_COMPLETED
-import subprocess, threading, time, os, socket, errno, psutil, json, urllib.parse, sys
+import subprocess, threading, time, os, json, urllib.parse, sys
 
 
 def log_ascii_art():
@@ -59,48 +60,6 @@ def _find_free_port(start_port: int, used_ports: set[int]) -> int:
     while port in used_ports or not _is_port_available(port):
         port += 1
     return port
-
-
-def _check_bind(family: int, addr: str, port: int) -> bool | None:
-    sock = None
-    try:
-        sock = socket.socket(family, socket.SOCK_STREAM)
-        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        if family == socket.AF_INET6:
-            try:
-                sock.setsockopt(socket.IPPROTO_IPV6, socket.IPV6_V6ONLY, 1)
-            except OSError:
-                pass
-        sock.bind((addr, port))
-        return True
-    except OSError as exc:
-        if exc.errno in (errno.EADDRINUSE, errno.EACCES, errno.EPERM):
-            return False
-        if exc.errno in (errno.EAFNOSUPPORT, errno.EADDRNOTAVAIL, errno.EINVAL):
-            return None
-        return False
-    finally:
-        if sock is not None:
-            sock.close()
-
-
-def _is_port_available(port: int) -> bool:
-    try:
-        for conn in psutil.net_connections(kind="inet"):
-            if conn.status == psutil.CONN_LISTEN and conn.laddr:
-                if conn.laddr.port == port:
-                    return False
-    except Exception:
-        pass
-    checks = [
-        (socket.AF_INET, "0.0.0.0"),
-        (socket.AF_INET6, "::"),
-    ]
-    for family, addr in checks:
-        result = _check_bind(family, addr, port)
-        if result is False:
-            return False
-    return True
 
 
 def _reserve_port(

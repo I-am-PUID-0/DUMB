@@ -28,6 +28,7 @@ from psycopg2.extras import execute_values
 
 from utils.arr_postgres import apply_arr_postgres_config, arr_postgres_database_names
 from utils.postgres import initialize_postgres_databases
+from utils.private_files import atomic_write_private_text
 from utils.service_postgres import (
     apply_service_postgres_config,
     service_postgres_database_name,
@@ -109,11 +110,10 @@ def _safe_slug(value: str) -> str:
 
 
 def _atomic_json(path: Path, payload: dict[str, Any]) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    temporary = path.with_suffix(f"{path.suffix}.tmp")
-    with temporary.open("w", encoding="utf-8") as handle:
-        json.dump(payload, handle, indent=2, sort_keys=True)
-    os.replace(temporary, path)
+    atomic_write_private_text(
+        path,
+        json.dumps(payload, indent=2, sort_keys=True),
+    )
 
 
 def _version_tuple(value: str | None) -> tuple[int, ...]:
@@ -1208,9 +1208,14 @@ class ArrPostgresMigrationManager:
         self._last_progress_write: dict[str, float] = {}
 
     def _job_path(self, job_id: str) -> Path:
-        if not re.fullmatch(r"[0-9a-f]{32}", str(job_id or "")):
+        normalized_job_id = str(job_id or "").strip().lower()
+        if not re.fullmatch(r"[0-9a-f]{32}", normalized_job_id):
             raise ArrPostgresMigrationError("Invalid migration job ID.")
-        return self.jobs_dir / f"{job_id}.json"
+        jobs_root = self.jobs_dir.resolve(strict=False)
+        path = (jobs_root / f"{normalized_job_id}.json").resolve(strict=False)
+        if path.parent != jobs_root:
+            raise ArrPostgresMigrationError("Invalid migration job path.")
+        return path
 
     def _save(self, payload: dict[str, Any]) -> None:
         payload["updated_at"] = int(time.time())
@@ -1222,6 +1227,9 @@ class ArrPostgresMigrationManager:
         except ArrPostgresMigrationError:
             return None
         try:
+            # _job_path accepts only normalized UUID hex and verifies the
+            # resolved file remains directly beneath the fixed jobs directory.
+            # codeql[py/path-injection]
             with path.open("r", encoding="utf-8") as handle:
                 payload = json.load(handle)
         except (FileNotFoundError, json.JSONDecodeError, OSError):

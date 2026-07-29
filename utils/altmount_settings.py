@@ -22,6 +22,7 @@ from utils.decypharr_settings import (
 )
 from utils.download import Downloader
 from utils.global_logger import logger
+from utils.private_files import atomic_write_private_text
 from utils.url_security import safe_request, safe_urlopen
 from utils.versions import Versions
 
@@ -518,8 +519,7 @@ log:
 log_level: {log_level}
 providers: []
 """
-    with open(config_file, "w", encoding="utf-8") as handle:
-        handle.write(rendered)
+    atomic_write_private_text(config_file, rendered)
 
 
 def sync_altmount_managed_config(config: dict) -> None:
@@ -617,8 +617,10 @@ def sync_altmount_managed_config(config: dict) -> None:
     arrs_cfg.setdefault("queue_cleanup_interval_seconds", 300)
 
     if changed:
-        with open(config_file, "w", encoding="utf-8") as handle:
-            yaml.safe_dump(data, handle, sort_keys=False)
+        atomic_write_private_text(
+            config_file,
+            yaml.safe_dump(data, sort_keys=False),
+        )
 
 
 def _sync_altmount_config(
@@ -689,8 +691,10 @@ def _sync_altmount_config(
 
     if changed:
         os.makedirs(os.path.dirname(config_file), exist_ok=True)
-        with open(config_file, "w", encoding="utf-8") as handle:
-            yaml.safe_dump(data, handle, sort_keys=False)
+        atomic_write_private_text(
+            config_file,
+            yaml.safe_dump(data, sort_keys=False),
+        )
         logger.info("Updated AltMount Arr integration config at %s", config_file)
 
 

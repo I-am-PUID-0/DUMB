@@ -71,8 +71,10 @@ class RcloneSetupTests(unittest.TestCase):
                 patch.object(setup, "_is_rclone_rc_port_available", return_value=True),
             ):
                 success, error = setup.rclone_setup()
+            config_mode = Path(instance["config_file"]).stat().st_mode & 0o777
 
         self.assertTrue(success, error)
+        self.assertEqual(config_mode, 0o600)
         self.assertIn("--dir-cache-time=20s", instance["command"])
         self.assertNotIn("--dir-cache-time=10s", instance["command"])
         self.assertIn("--rc", instance["command"])

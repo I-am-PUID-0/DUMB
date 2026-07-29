@@ -472,6 +472,21 @@ class ArrPostgresMigrationTests(unittest.TestCase):
             manager = ArrPostgresMigrationManager(temp_dir)
             self.assertIsNone(manager.get_job("../../dumb_config"))
 
+    def test_job_status_rejects_job_file_symlink_outside_jobs_directory(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            manager = ArrPostgresMigrationManager(root / "migration")
+            manager.jobs_dir.mkdir(parents=True)
+            job_id = "f" * 32
+            outside = root / "outside.json"
+            outside.write_text(
+                json.dumps({"job_id": job_id, "status": "completed"}),
+                encoding="utf-8",
+            )
+            (manager.jobs_dir / f"{job_id}.json").symlink_to(outside)
+
+            self.assertIsNone(manager.get_job(job_id))
+
     def test_rollback_accepts_legacy_config_xml_backup_location(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             config, process_handler, api_state = self.make_runtime(temp_dir)

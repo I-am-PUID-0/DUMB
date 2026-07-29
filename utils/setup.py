@@ -7,6 +7,8 @@ from utils.plex import PlexInstaller
 from utils.traefik_setup import setup_traefik
 from utils.user_management import chown_recursive, chown_single
 from utils.apt_lock import run_locked
+from utils.port_probe import is_port_available as _is_port_available
+from utils.private_files import atomic_write_private_text
 from utils.arr_postgres import apply_arr_postgres_config
 from utils.service_postgres import (
     apply_service_postgres_config,
@@ -24,7 +26,7 @@ from utils.mediastorm_installer import (
 )
 import defusedxml.ElementTree as ET
 import yaml
-import os, shutil, random, subprocess, re, glob, secrets, shlex, time, urllib.parse, base64, threading, sys, hashlib, json, requests, copy, socket
+import os, shutil, random, subprocess, re, glob, secrets, shlex, time, urllib.parse, base64, threading, sys, hashlib, json, requests, copy
 
 user_id = CONFIG_MANAGER.get("puid")
 group_id = CONFIG_MANAGER.get("pgid")
@@ -7976,12 +7978,7 @@ def _extract_rclone_rc_port(command):
 
 
 def _is_rclone_rc_port_available(port):
-    try:
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-            sock.bind(("0.0.0.0", port))
-        return True
-    except OSError:
-        return False
+    return _is_port_available(port)
 
 
 def _select_rclone_rc_port(
@@ -8038,10 +8035,11 @@ def rclone_setup():
         return config_data
 
     def write_config(config_file, config_data):
-        with open(config_file, "w") as f:
-            for section, lines in config_data.items():
-                f.write(f"[{section}]\n")
-                f.write("\n".join(lines) + "\n")
+        rendered = "".join(
+            f"[{section}]\n" + "\n".join(lines) + "\n"
+            for section, lines in config_data.items()
+        )
+        atomic_write_private_text(config_file, rendered)
 
     def scrub_rclone_log_file_flag(instance):
         existing = instance.get("command", [])
@@ -8328,6 +8326,7 @@ def rclone_setup():
                     instance["wait_for_url"] = [wait_entry]
 
             write_config(config_file, config_data)
+            chown_single(config_file, user_id, group_id)
 
             full_path, error = ensure_directory(mount_dir, mount_name)
             if error:

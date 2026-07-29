@@ -42,8 +42,9 @@ from utils.mediastorm_credentials import (
 from utils.arr_postgres_migration import (
     SUPPORTED_SERVICES as POSTGRES_MIGRATION_SERVICES,
 )
+from utils.port_probe import is_port_available as _is_port_available
 from utils.versions import Versions
-import json, copy, time, glob, re, socket, errno, psutil, os, threading, fnmatch
+import json, copy, time, glob, re, os, threading, fnmatch
 
 
 class ServiceRequest(BaseModel):
@@ -3528,48 +3529,6 @@ def _find_free_port(start_port: int, used_ports: set[int], service_key: str) -> 
         if high is not None and port > high:
             high = None
         port += 1
-
-
-def _check_bind(family: int, addr: str, port: int) -> bool | None:
-    sock = None
-    try:
-        sock = socket.socket(family, socket.SOCK_STREAM)
-        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        if family == socket.AF_INET6:
-            try:
-                sock.setsockopt(socket.IPPROTO_IPV6, socket.IPV6_V6ONLY, 1)
-            except OSError:
-                pass
-        sock.bind((addr, port))
-        return True
-    except OSError as exc:
-        if exc.errno in (errno.EADDRINUSE, errno.EACCES, errno.EPERM):
-            return False
-        if exc.errno in (errno.EAFNOSUPPORT, errno.EADDRNOTAVAIL, errno.EINVAL):
-            return None
-        return False
-    finally:
-        if sock is not None:
-            sock.close()
-
-
-def _is_port_available(port: int) -> bool:
-    try:
-        for conn in psutil.net_connections(kind="inet"):
-            if conn.status == psutil.CONN_LISTEN and conn.laddr:
-                if conn.laddr.port == port:
-                    return False
-    except Exception:
-        pass
-    checks = [
-        (socket.AF_INET, "0.0.0.0"),
-        (socket.AF_INET6, "::"),
-    ]
-    for family, addr in checks:
-        result = _check_bind(family, addr, port)
-        if result is False:
-            return False
-    return True
 
 
 def _normalize_dep_token(value: Any) -> str:

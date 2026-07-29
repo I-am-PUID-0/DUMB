@@ -110,6 +110,7 @@ class AltMountSetupTests(unittest.TestCase):
             self.assertIn("  rc_enabled: true", rendered)
             self.assertIn(f"  file: {log_file}", rendered)
             self.assertIn("providers: []", rendered)
+            self.assertEqual(config_file.stat().st_mode & 0o777, 0o600)
 
             config_file.write_text("custom: true\n")
             write_altmount_default_config(config)
