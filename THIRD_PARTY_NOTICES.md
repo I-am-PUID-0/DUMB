@@ -31,6 +31,17 @@ components and transitive dependencies.
 
 ---
 
+## dmbdb
+
+- Project: <https://github.com/nicocapalbo/dmbdb>
+- License: GNU General Public License version 3 only
+- Upstream license:
+  <https://github.com/nicocapalbo/dmbdb/blob/main/LICENSE>
+- Note: DUMB redistributes the compiled dmbdb frontend in its container image.
+  The complete corresponding source is available from the upstream repository.
+
+---
+
 ## mediastorm
 
 - Project: <https://github.com/godver3/mediastorm>
@@ -181,7 +192,6 @@ supply files in the DUMB image did not publish a license or notice file on their
 default branch:
 
 - Zilean: <https://github.com/iPromKnight/zilean>
-- dmbdb: <https://github.com/nicocapalbo/dmbdb>
 - cli_debrid: <https://github.com/godver3/cli_debrid>
 - zurg-testing configuration and script files:
   <https://github.com/debridmediamanager/zurg-testing>
