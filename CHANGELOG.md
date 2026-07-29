@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.12.1](https://github.com/I-am-PUID-0/DUMB/compare/2.12.0...2.12.1) (2026-07-29)
+
+
+### 🐛 Bug Fixes
+
+* **health:** recognize native service responses and gate rclone RC probes ([e1e59a4](https://github.com/I-am-PUID-0/DUMB/commit/e1e59a4038f23ed5361c965f2370dcf5957a9b01))
+* **security:** reject root managed-service IDs ([bfd86fd](https://github.com/I-am-PUID-0/DUMB/commit/bfd86fd633ede4c2a59fb8b919341c5a9f6dc28a))
+
 ## [2.12.0](https://github.com/I-am-PUID-0/DUMB/compare/2.11.1...2.12.0) (2026-07-29)
 
 
