@@ -28,6 +28,7 @@ HEALTHY_STATES = {
     "operational",
     "pass",
     "passing",
+    "ping",
     "pong",
     "ready",
     "running",
@@ -334,7 +335,10 @@ class ServiceHealthMonitor:
         config: dict[str, Any],
     ) -> dict[str, Any] | None:
         command = config.get("command")
-        if not isinstance(command, list) or "--rc" not in command:
+        if not isinstance(command, list) or not self._command_flag_enabled(
+            command,
+            "--rc",
+        ):
             return None
 
         address = self._command_option(command, "--rc-addr") or "127.0.0.1:5572"
@@ -375,6 +379,23 @@ class ServiceHealthMonitor:
             if value.startswith(f"{option}="):
                 return value.split("=", 1)[1]
         return None
+
+    @staticmethod
+    def _command_flag_enabled(command: list[Any], option: str) -> bool:
+        truthy = {"1", "on", "true", "yes"}
+        falsey = {"0", "false", "no", "off"}
+        for index, raw_value in enumerate(command):
+            value = str(raw_value).strip()
+            if value == option:
+                if index + 1 < len(command):
+                    next_value = str(command[index + 1]).strip().lower()
+                    if next_value in truthy | falsey:
+                        return next_value in truthy
+                return True
+            if value.startswith(f"{option}="):
+                flag_value = value.split("=", 1)[1].strip().lower()
+                return flag_value in truthy
+        return False
 
     def _probe_http(
         self,
@@ -442,7 +463,12 @@ class ServiceHealthMonitor:
                     f"{process_name} health endpoint returned an unexpected response",
                     {**details, "validation": validation_failure},
                 )
-            final_status = status or ("degraded" if reported else "healthy")
+            if probe.get("required_text") and status is None:
+                reported = None
+                details.pop("reported_status", None)
+                final_status = "healthy"
+            else:
+                final_status = status or ("degraded" if reported else "healthy")
         elif response_status in {401, 403, 404, 405, 429}:
             details["supported"] = response_status != 404
             final_status = status or "degraded"

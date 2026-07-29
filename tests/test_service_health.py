@@ -151,6 +151,59 @@ class ServiceHealthMonitorTests(unittest.TestCase):
         self.assertFalse(result["details"]["supported"])
 
     @patch("utils.service_health.requests.request")
+    def test_plex_identity_xml_marker_is_healthy(self, request):
+        request.return_value = FakeResponse(
+            body=(
+                '<?xml version="1.0" encoding="UTF-8"?>'
+                '<MediaContainer size="0" apiVersion="1.2.7.0" />'
+            ),
+            content_type="application/xml",
+        )
+
+        result = self.monitor.check(
+            "plex",
+            "Plex Media Server",
+            {"port": 32400},
+        )
+
+        self.assertEqual(result["status"], "healthy")
+        self.assertTrue(result["healthy"])
+        self.assertIsNone(result["reason"])
+        self.assertNotIn("reported_status", result["details"])
+
+    @patch("utils.service_health.requests.request")
+    def test_plex_identity_without_marker_remains_degraded(self, request):
+        request.return_value = FakeResponse(
+            body="<html><body>Unexpected response</body></html>",
+            content_type="text/html",
+        )
+
+        result = self.monitor.check(
+            "plex",
+            "Plex Media Server",
+            {"port": 32400},
+        )
+
+        self.assertEqual(result["status"], "degraded")
+        self.assertTrue(result["healthy"])
+        self.assertEqual(result["details"]["validation"], "identity marker missing")
+
+    @patch("utils.service_health.requests.request")
+    def test_pgadmin_ping_response_is_healthy(self, request):
+        request.return_value = FakeResponse(body="PING")
+
+        result = self.monitor.check(
+            "pgadmin",
+            "pgAdmin4",
+            {"port": 5050},
+        )
+
+        self.assertEqual(result["status"], "healthy")
+        self.assertTrue(result["healthy"])
+        self.assertIsNone(result["reason"])
+        self.assertEqual(result["details"]["reported_status"], "PING")
+
+    @patch("utils.service_health.requests.request")
     def test_rclone_uses_local_rc_endpoint_and_post(self, request):
         request.return_value = FakeResponse(
             body=json.dumps({"version": "v1.74.4"}),
@@ -178,6 +231,66 @@ class ServiceHealthMonitorTests(unittest.TestCase):
         _, url = request.call_args.args
         self.assertEqual(url, "http://127.0.0.1:5572/core/version")
         self.assertEqual(request.call_args.args[0], "POST")
+
+    @patch("utils.service_health.requests.request")
+    def test_rclone_without_rc_server_has_no_application_probe(self, request):
+        result = self.monitor.check(
+            "rclone",
+            "Rclone w/ RealDebrid",
+            {
+                "command": [
+                    "rclone",
+                    "mount",
+                    "realdebrid:",
+                    "/mnt/debrid/realdebrid",
+                ]
+            },
+        )
+
+        self.assertIsNone(result)
+        request.assert_not_called()
+
+    @patch("utils.service_health.requests.request")
+    def test_rclone_explicitly_disabled_rc_has_no_application_probe(self, request):
+        disabled_commands = (
+            ["rclone", "mount", "remote:", "/mnt/remote", "--rc=false"],
+            ["rclone", "mount", "remote:", "/mnt/remote", "--rc", "false"],
+        )
+        for command in disabled_commands:
+            with self.subTest(command=command):
+                result = self.monitor.check(
+                    "rclone",
+                    "Rclone",
+                    {"command": command},
+                )
+                self.assertIsNone(result)
+
+        request.assert_not_called()
+
+    @patch("utils.service_health.requests.request")
+    def test_rclone_explicitly_enabled_rc_uses_application_probe(self, request):
+        request.return_value = FakeResponse(
+            body=json.dumps({"version": "v1.74.4"}),
+            content_type="application/json",
+        )
+
+        result = self.monitor.check(
+            "rclone",
+            "Rclone",
+            {
+                "command": [
+                    "rclone",
+                    "mount",
+                    "remote:",
+                    "/mnt/remote",
+                    "--rc=true",
+                    "--rc-addr=127.0.0.1:5572",
+                ]
+            },
+        )
+
+        self.assertEqual(result["status"], "healthy")
+        request.assert_called_once()
 
     @patch("utils.service_health.requests.request")
     def test_probe_results_are_cached_per_process_identity(self, request):
