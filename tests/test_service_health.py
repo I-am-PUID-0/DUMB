@@ -314,12 +314,31 @@ class ServiceHealthMonitorTests(unittest.TestCase):
         result = self.monitor.check(
             "postgres",
             "PostgreSQL",
-            {"port": 5432},
+            {"port": 5432, "user": "DUMB"},
         )
 
         self.assertEqual(result["status"], "starting")
         self.assertTrue(result["healthy"])
         self.assertIn("rejecting connections", result["reason"])
+        run.assert_called_once_with(
+            [
+                "/usr/bin/pg_isready",
+                "-U",
+                "DUMB",
+                "-d",
+                "postgres",
+                "-h",
+                "127.0.0.1",
+                "-p",
+                "5432",
+                "-t",
+                "2",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=3.5,
+            check=False,
+        )
 
     def test_unknown_service_has_no_application_probe(self):
         self.assertIsNone(

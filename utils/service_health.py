@@ -527,6 +527,7 @@ class ServiceHealthMonitor:
         config: dict[str, Any],
     ) -> dict[str, Any]:
         port = self._config_port(config, "port")
+        postgres_user = str(config.get("user") or "DUMB")
         executable = shutil.which("pg_isready")
         if executable is None:
             candidates = sorted(
@@ -556,6 +557,10 @@ class ServiceHealthMonitor:
             completed = subprocess.run(
                 [
                     executable,
+                    "-U",
+                    postgres_user,
+                    "-d",
+                    "postgres",
                     "-h",
                     "127.0.0.1",
                     "-p",
