@@ -1,5 +1,17 @@
 # Changelog
 
+## [2.12.2](https://github.com/I-am-PUID-0/DUMB/compare/2.12.1...2.12.2) (2026-07-30)
+
+
+### 🐛 Bug Fixes
+
+* **postgres:** use configured role for readiness probes ([0ba24ef](https://github.com/I-am-PUID-0/DUMB/commit/0ba24efe6bf11de718b354671797873b87454aa3))
+
+
+### 🤡 Other Changes
+
+* **deps:** update dependencies ([5e550b5](https://github.com/I-am-PUID-0/DUMB/commit/5e550b5bd52b81385b1e52e69fd98baab5ffee81))
+
 ## [2.12.1](https://github.com/I-am-PUID-0/DUMB/compare/2.12.0...2.12.1) (2026-07-29)
 
 
