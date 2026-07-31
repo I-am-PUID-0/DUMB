@@ -97,6 +97,7 @@ HTTP_PROBES = {
         "Traefik Proxy Admin health",
         "/api/health",
     ),
+    "authelia": HttpProbe("Authelia health", "/api/health"),
 }
 
 

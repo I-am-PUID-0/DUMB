@@ -74,6 +74,7 @@ DUMB is designed to reduce the glue work that usually comes with multi-service m
 | Project                                                            | Author                                                               | Community / Docs / Support                                                                                                                     | 🍻 Support Dev                                                                                      |
 |--------------------------------------------------------------------|----------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------|
 | [AltMount](https://github.com/javi11/altmount)                    | [javi11](https://github.com/javi11)                                  | [Docs](https://altmount.kipsilabs.top/) • [Issues](https://github.com/javi11/altmount/issues)                                                   | —                                                                                                   |
+| [Authelia](https://github.com/authelia/authelia)                  | [Authelia Team](https://github.com/authelia)                         | [Docs](https://www.authelia.com/) • [Issues](https://github.com/authelia/authelia/issues)                                                       | [Sponsor](https://github.com/sponsors/authelia)                                                           |
 | [Bazarr](https://www.bazarr.media/)                              | [Bazarr Team](https://github.com/morpheus65535)                      | [Docs](https://wiki.bazarr.media/) • [Issues](https://github.com/morpheus65535/bazarr/issues)                                                   | [Donate](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=XHHRWXT9YB7WE&source=url) |
 | [cli_debrid](https://github.com/godver3/cli_debrid)               | [godver3](https://github.com/godver3)                                | [Discord](https://discord.gg/ynqnXGJ4hU)                                                                                                         | [Sponsor](https://github.com/sponsors/godver3)                                                    |
 | [dmbdb](https://github.com/nicocapalbo/dmbdb)                     | [nicocapalbo](https://github.com/nicocapalbo)                        | [Issues](https://github.com/nicocapalbo/dmbdb/issues)                                                                                           | —                                                                                                   |
@@ -120,6 +121,8 @@ stacks, including:
 - Service installation, configuration, lifecycle management, logs, health checks,
   updates, and recovery automation
 - Embedded service UIs with optional Traefik and Cloudflare access tooling
+- Optional DUMB-managed Authelia identity provider with DUMB and Traefik Proxy
+  Admin OIDC linking plus reusable Traefik ForwardAuth protection
 - Metrics, database-health diagnostics, alerts, notifications, and operator
   migration or repair utilities
 
@@ -207,6 +210,7 @@ The following table describes the ports used by the container. The mappings are 
 | `6246`         | TCP      | Maintainerr - Web UI accessible at the assigned port                                  |
 | `6767`         | TCP      | Bazarr - Web UI accessible at the assigned port                                      |
 | `3004`         | TCP      | Traefik Proxy Admin - Web UI/API accessible at the assigned port                     |
+| `9091`         | TCP      | Authelia - Identity portal/API accessible at the assigned port                       |
 | `18080`        | TCP      | Traefik - Reverse proxy entrypoint for embedded UIs and TPA-managed routes           |
 | `18081`        | TCP      | Traefik - Dashboard/API used by Traefik Proxy Admin diagnostics                      |
 | `8080`         | TCP      | NzbDAV backend - The API is accessible at the assigned port                          |

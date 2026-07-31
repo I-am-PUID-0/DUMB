@@ -151,6 +151,7 @@ class DumbConfigSchemaTests(unittest.TestCase):
         ]["sidebar"]["properties"]
 
         self.assertEqual(set(sidebar_defaults), set(sidebar_schema))
+        self.assertTrue(sidebar_defaults["auto_hide_on_navigation"])
 
     def test_rclone_direct_provider_credentials_are_defaulted_and_schema_declared(
         self,

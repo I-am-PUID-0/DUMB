@@ -10,6 +10,13 @@ from utils.apt_lock import run_locked
 from utils.port_probe import is_port_available as _is_port_available
 from utils.private_files import atomic_write_private_text
 from utils.arr_postgres import apply_arr_postgres_config
+from utils.authelia_settings import (
+    AutheliaSetupError,
+    authelia_environment,
+    install_release as install_authelia_release,
+    managed_tpa_sso_allow_hosts,
+    render_configuration as render_authelia_configuration,
+)
 from utils.service_postgres import (
     apply_service_postgres_config,
     service_postgres_database_name,
@@ -300,6 +307,25 @@ def _source_build_enabled(config: dict) -> bool:
 
 def setup_release_version(process_handler, config, process_name, key):
     logger.info(f"Using release version {config['release_version']} for {process_name}")
+
+    if key == "authelia":
+        try:
+            installed = install_authelia_release(
+                config.get("install_dir") or "/authelia",
+                str(config.get("release_version") or "latest"),
+            )
+            config["release_version"] = installed
+            versions.version_write(
+                process_name,
+                key,
+                version_path=os.path.join(
+                    config.get("install_dir") or "/authelia", "version.txt"
+                ),
+                version=installed,
+            )
+        except (AutheliaSetupError, requests.RequestException) as exc:
+            return False, str(exc)
+        return additional_setup(process_handler, process_name, config, key)
 
     if key == "mediastorm":
         requested_version = str(config.get("release_version") or "latest")
@@ -1371,6 +1397,14 @@ def _setup_project(
                 return False, error
         if key == "traefik_proxy_admin":
             success, error = setup_traefik_proxy_admin(
+                process_handler,
+                install_only=install_phase and not configure_phase,
+                configure_only=configure_phase and not install_phase,
+            )
+            if not success:
+                return False, error
+        if key == "authelia":
+            success, error = setup_authelia(
                 process_handler,
                 install_only=install_phase and not configure_phase,
                 configure_only=configure_phase and not install_phase,
@@ -5023,6 +5057,22 @@ def setup_traefik_proxy_admin(
     if not env.get("ADMIN_AUTH_SECRET"):
         env["ADMIN_AUTH_SECRET"] = secrets.token_urlsafe(48)
         changed = True
+    if not env.get("DUMB_INTEGRATION_TOKEN"):
+        env["DUMB_INTEGRATION_TOKEN"] = secrets.token_urlsafe(48)
+        changed = True
+    authelia_config = CONFIG_MANAGER.get("authelia") or {}
+    managed_sso_hosts = managed_tpa_sso_allow_hosts(authelia_config)
+    if managed_sso_hosts:
+        allowed_sso_hosts = {
+            item.strip().lower()
+            for item in str(env.get("SSO_ENDPOINT_ALLOW_HOSTS") or "").split(",")
+            if item.strip()
+        }
+        merged_sso_hosts = allowed_sso_hosts | managed_sso_hosts
+        merged_sso_value = ",".join(sorted(merged_sso_hosts))
+        if env.get("SSO_ENDPOINT_ALLOW_HOSTS") != merged_sso_value:
+            env["SSO_ENDPOINT_ALLOW_HOSTS"] = merged_sso_value
+            changed = True
     existing_path = env.get("PATH") or os.environ.get("PATH", "")
     default_target_test_cidrs = "10.0.0.0/16,172.20.0.0/16,192.168.0.0/16,127.0.0.0/8"
     legacy_target_test_cidrs = {
@@ -5078,7 +5128,11 @@ def setup_traefik_proxy_admin(
         config["command"] = expected_command
         changed = True
 
-    if changed and not install_only:
+    # The preinstall/update path can be the only phase that runs when TPA is
+    # already present in the setup tracker. Persist generated runtime secrets
+    # and normalized environment values here so a newly installed TPA revision
+    # does not start without its DUMB integration token.
+    if changed:
         CONFIG_MANAGER.save_config(config.get("process_name", "Traefik Proxy Admin"))
 
     _chown_recursive_if_needed(
@@ -5212,6 +5266,128 @@ def setup_traefik_proxy_admin(
         return True, None
 
     logger.info("Traefik Proxy Admin setup complete.")
+    return True, None
+
+
+def setup_authelia(
+    process_handler, install_only: bool = False, configure_only: bool = False
+):
+    config = CONFIG_MANAGER.get("authelia")
+    if not config:
+        return False, "Authelia configuration not found."
+    if not config.get("enabled", False):
+        return True, None
+    if install_only and configure_only:
+        return False, "Invalid Authelia setup phase."
+
+    config_dir = config.get("config_dir") or "/config/authelia"
+    install_dir = config.get("install_dir") or "/authelia"
+    config["config_dir"] = config_dir
+    config["install_dir"] = install_dir
+    os.makedirs(config_dir, exist_ok=True)
+    os.makedirs(install_dir, exist_ok=True)
+    os.makedirs("/log", exist_ok=True)
+
+    changed = False
+    if _ensure_traefik_enabled(process_handler):
+        changed = True
+    if _ensure_postgres_enabled():
+        changed = True
+    if _ensure_postgres_database_config("authelia"):
+        changed = True
+    success, error = _initialize_postgres_databases_if_running()
+    if not success:
+        return False, error
+
+    binary = os.path.join(install_dir, "authelia")
+    version_marker = os.path.join(install_dir, "version.txt")
+    if not os.path.isfile(binary):
+        if configure_only:
+            return False, "Authelia is not installed."
+        try:
+            installed = install_authelia_release(
+                install_dir, str(config.get("release_version") or "latest")
+            )
+        except (AutheliaSetupError, requests.RequestException) as exc:
+            return False, str(exc)
+        config["release_version"] = installed
+        versions.version_write(
+            config.get("process_name", "Authelia"),
+            "authelia",
+            version_path=version_marker,
+            version=installed,
+        )
+        changed = True
+
+    if (
+        not str(config.get("public_url") or "").strip()
+        or not str(config.get("cookie_domain") or "").strip()
+    ):
+        if changed:
+            CONFIG_MANAGER.save_config(config.get("process_name", "Authelia"))
+        if install_only:
+            return True, None
+        return (
+            False,
+            "Complete the DUMB-managed Authelia bootstrap wizard before starting it.",
+        )
+
+    postgres_config = CONFIG_MANAGER.get("postgres") or {}
+    try:
+        configuration_path = render_authelia_configuration(config, postgres_config)
+    except AutheliaSetupError as exc:
+        return False, str(exc)
+
+    env = config.get("env") if isinstance(config.get("env"), dict) else {}
+    for name, value in authelia_environment(config).items():
+        if env.get(name) != value:
+            env[name] = value
+            changed = True
+    config["env"] = env
+    expected_command = [binary, "--config", configuration_path]
+    if config.get("command") != expected_command:
+        config["command"] = expected_command
+        changed = True
+
+    expected_wait = [
+        {
+            "name": "PostgreSQL",
+            "host": postgres_config.get("host", "127.0.0.1"),
+            "port": int(postgres_config.get("port", 5432)),
+            "timeout": 2,
+        }
+    ]
+    if config.get("wait_for_tcp") != expected_wait:
+        config["wait_for_tcp"] = expected_wait
+        changed = True
+
+    validation_env = os.environ.copy()
+    validation_env.update({key: str(value) for key, value in env.items()})
+    try:
+        result = subprocess.run(
+            [binary, "config", "validate", "--config", configuration_path],
+            cwd=config_dir,
+            env=validation_env,
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+    except (OSError, subprocess.SubprocessError) as exc:
+        return False, f"Unable to validate Authelia configuration: {exc}"
+    if result.returncode != 0:
+        # Authelia writes the actionable validation findings to stdout and the
+        # generic Cobra usage wrapper to stderr. Prefer stdout so the API tells
+        # the operator which setting actually failed validation.
+        detail = (result.stdout or result.stderr or "validation failed").strip()
+        return False, f"Authelia configuration validation failed: {detail[:1200]}"
+
+    chown_recursive(config_dir, CONFIG_MANAGER.get("puid"), CONFIG_MANAGER.get("pgid"))
+    chown_recursive(install_dir, CONFIG_MANAGER.get("puid"), CONFIG_MANAGER.get("pgid"))
+    if changed and not install_only:
+        CONFIG_MANAGER.save_config(config.get("process_name", "Authelia"))
+    if install_only:
+        return True, None
+    logger.info("Authelia setup complete.")
     return True, None
 
 

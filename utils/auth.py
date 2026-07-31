@@ -1,8 +1,8 @@
 import os
 from datetime import datetime, timedelta, timezone
-from typing import Optional
+from typing import List, Optional
 import jwt
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 # Workaround for passlib + bcrypt 5.x compatibility issue
 # passlib tries to access bcrypt.__about__.__version__ which doesn't exist in bcrypt 5.x
@@ -62,6 +62,8 @@ class TokenPayload(BaseModel):
     sub: str  # username
     exp: datetime
     type: str  # "access" or "refresh"
+    provider: str = "local"
+    groups: List[str] = Field(default_factory=list)
 
 
 class TokenResponse(BaseModel):
@@ -122,7 +124,10 @@ def get_password_hash(password: str) -> str:
 
 
 def create_access_token(
-    username: str, expires_delta: Optional[timedelta] = None
+    username: str,
+    expires_delta: Optional[timedelta] = None,
+    provider: str = "local",
+    groups: Optional[List[str]] = None,
 ) -> str:
     """
     Create a JWT access token.
@@ -141,13 +146,22 @@ def create_access_token(
             minutes=JWT_ACCESS_TOKEN_EXPIRE_MINUTES
         )
 
-    to_encode = {"sub": username, "exp": expire, "type": "access"}
+    to_encode = {
+        "sub": username,
+        "exp": expire,
+        "type": "access",
+        "provider": provider,
+        "groups": groups or [],
+    }
     encoded_jwt = jwt.encode(to_encode, get_jwt_secret(), algorithm=JWT_ALGORITHM)
     return encoded_jwt
 
 
 def create_refresh_token(
-    username: str, expires_delta: Optional[timedelta] = None
+    username: str,
+    expires_delta: Optional[timedelta] = None,
+    provider: str = "local",
+    groups: Optional[List[str]] = None,
 ) -> str:
     """
     Create a JWT refresh token.
@@ -162,11 +176,16 @@ def create_refresh_token(
     if expires_delta:
         expire = datetime.now(timezone.utc) + expires_delta
     else:
-        expire = datetime.now(timezone.utc) + timedelta(
-            days=JWT_REFRESH_TOKEN_EXPIRE_DAYS
-        )
+        refresh_days = 1 if provider == "oidc" else JWT_REFRESH_TOKEN_EXPIRE_DAYS
+        expire = datetime.now(timezone.utc) + timedelta(days=refresh_days)
 
-    to_encode = {"sub": username, "exp": expire, "type": "refresh"}
+    to_encode = {
+        "sub": username,
+        "exp": expire,
+        "type": "refresh",
+        "provider": provider,
+        "groups": groups or [],
+    }
     encoded_jwt = jwt.encode(to_encode, get_jwt_secret(), algorithm=JWT_ALGORITHM)
     return encoded_jwt
 
@@ -193,6 +212,12 @@ def decode_token(token: str) -> Optional[TokenPayload]:
             sub=username,
             exp=datetime.fromtimestamp(payload.get("exp"), tz=timezone.utc),
             type=token_type,
+            provider=str(payload.get("provider") or "local"),
+            groups=[
+                str(group)
+                for group in (payload.get("groups") or [])
+                if isinstance(group, str)
+            ],
         )
     except jwt.ExpiredSignatureError:
         return None
@@ -200,7 +225,9 @@ def decode_token(token: str) -> Optional[TokenPayload]:
         return None
 
 
-def create_token_pair(username: str) -> TokenResponse:
+def create_token_pair(
+    username: str, provider: str = "local", groups: Optional[List[str]] = None
+) -> TokenResponse:
     """
     Create both access and refresh tokens for a user.
 
@@ -210,7 +237,9 @@ def create_token_pair(username: str) -> TokenResponse:
     Returns:
         TokenResponse containing both access and refresh tokens
     """
-    access_token = create_access_token(username)
-    refresh_token = create_refresh_token(username)
+    access_token = create_access_token(username, provider=provider, groups=groups or [])
+    refresh_token = create_refresh_token(
+        username, provider=provider, groups=groups or []
+    )
 
     return TokenResponse(access_token=access_token, refresh_token=refresh_token)

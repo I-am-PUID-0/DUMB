@@ -1,8 +1,10 @@
-import os
 import json
+import os
 import secrets
-from typing import Optional, Dict, List
+from typing import Dict, List, Optional
+
 from pydantic import BaseModel, Field
+
 from utils.auth import get_password_hash, verify_password
 
 
@@ -24,6 +26,8 @@ class UserConfig(BaseModel):
     users: List[User] = []
     jwt_secret: Optional[str] = None  # JWT secret key for token signing
     setup_skipped: bool = False  # Track if user explicitly skipped auth setup
+    mode: str = "local"
+    oidc: Dict[str, object] = Field(default_factory=dict)
 
 
 class AuthConfigManager:
@@ -101,10 +105,29 @@ class AuthConfigManager:
             ],
             "jwt_secret": self.config.jwt_secret,
             "setup_skipped": self.config.setup_skipped,
+            "mode": self.get_auth_mode(),
+            "oidc": dict(self.config.oidc or {}),
         }
 
-        with open(self.config_path, "w") as f:
-            json.dump(config_dict, f, indent=2)
+        directory = os.path.dirname(self.config_path)
+        os.makedirs(directory, exist_ok=True)
+        temp_path = os.path.join(
+            directory,
+            f".{os.path.basename(self.config_path)}.{secrets.token_hex(8)}.tmp",
+        )
+        try:
+            with open(temp_path, "w") as f:
+                json.dump(config_dict, f, indent=2)
+                f.flush()
+                os.fsync(f.fileno())
+            os.chmod(temp_path, 0o600)
+            os.replace(temp_path, self.config_path)
+        finally:
+            try:
+                if os.path.exists(temp_path):
+                    os.unlink(temp_path)
+            except OSError:
+                pass
 
     def is_auth_enabled(self) -> bool:
         """
@@ -114,6 +137,59 @@ class AuthConfigManager:
             True if authentication is enabled, False otherwise
         """
         return self.config.enabled
+
+    def get_auth_mode(self) -> str:
+        """Return the configured auth mode, normalizing legacy values."""
+        mode = str(self.config.mode or "local").strip().lower()
+        return mode if mode in {"local", "oidc", "hybrid"} else "local"
+
+    def local_login_enabled(self) -> bool:
+        return self.get_auth_mode() in {"local", "hybrid"}
+
+    def oidc_login_enabled(self) -> bool:
+        return self.get_auth_mode() in {"oidc", "hybrid"} and bool(
+            (self.config.oidc or {}).get("enabled")
+        )
+
+    def get_oidc_config(self) -> Dict[str, object]:
+        return dict(self.config.oidc or {})
+
+    def update_auth_provider(
+        self, mode: str, oidc: Optional[Dict[str, object]] = None
+    ) -> None:
+        normalized = str(mode or "").strip().lower()
+        if normalized not in {"local", "oidc", "hybrid"}:
+            raise ValueError("Authentication mode must be local, oidc, or hybrid")
+        self.config.mode = normalized
+        if oidc is not None:
+            self.config.oidc = dict(oidc)
+        self.save_config()
+
+    def validate_token_principal(self, payload) -> bool:
+        """Validate that a decoded DUMB token is still permitted."""
+        provider = getattr(payload, "provider", "local") or "local"
+        if provider == "local":
+            if not self.local_login_enabled():
+                return False
+            user = self.get_user(payload.sub)
+            return bool(user and not user.disabled)
+
+        if provider != "oidc" or not self.oidc_login_enabled():
+            return False
+
+        allowed_groups = {
+            str(group).strip().casefold()
+            for group in (self.config.oidc or {}).get("allowed_groups", [])
+            if str(group).strip()
+        }
+        if not allowed_groups:
+            return True
+        token_groups = {
+            str(group).strip().casefold()
+            for group in (getattr(payload, "groups", None) or [])
+            if str(group).strip()
+        }
+        return bool(allowed_groups.intersection(token_groups))
 
     def get_user(self, username: str) -> Optional[User]:
         """
@@ -141,7 +217,7 @@ class AuthConfigManager:
         Returns:
             User object if authentication succeeds, None otherwise
         """
-        if not self.config.enabled:
+        if not self.config.enabled or not self.local_login_enabled():
             # If auth is disabled, deny all authentication attempts
             return None
 

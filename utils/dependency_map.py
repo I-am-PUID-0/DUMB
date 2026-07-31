@@ -66,6 +66,7 @@ def build_conditional_dependency_map(
         "pgadmin": {"postgres"},
         "mediastorm": {"postgres"},
         "traefik_proxy_admin": {"postgres"},
+        "authelia": {"postgres"},
         "cloudflared": {"traefik"},
     }
 

@@ -92,6 +92,21 @@ class ConfigLoaderEnvParsingTests(unittest.TestCase):
             {"PORT": "3004"},
         )
 
+    def test_pruning_preserves_generated_and_custom_environment_values(self):
+        config = {
+            "env": {
+                "NODE_ENV": "production",
+                "ADMIN_AUTH_SECRET": "generated-admin-secret",
+                "DUMB_INTEGRATION_TOKEN": "generated-integration-token",
+                "CUSTOM_UPSTREAM_SETTING": "operator-value",
+            }
+        }
+        reference = {"env": {"NODE_ENV": "production"}}
+
+        pruned = self.manager._prune_extraneous_keys(config, reference)
+
+        self.assertEqual(config["env"], pruned["env"])
+
 
 class ConfigLoaderMigrationTests(unittest.TestCase):
     def test_bazarr_legacy_config_path_is_persisted(self):

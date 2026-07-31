@@ -141,6 +141,9 @@ class _AuthConfig:
     def get_user(self, username):
         return self.user
 
+    def validate_token_principal(self, payload):
+        return bool(self.user and not self.user.disabled)
+
 
 class _Payload:
     def __init__(self, sub="alice", token_type="access"):
@@ -208,7 +211,8 @@ class DependencyAuthTests(unittest.TestCase):
 
         self.assertEqual(ctx.exception.status_code, 401)
         self.assertEqual(
-            ctx.exception.detail, "User account is disabled or does not exist"
+            ctx.exception.detail,
+            "User account or identity provider is no longer authorized",
         )
 
     def test_optional_current_user_returns_valid_username(self):

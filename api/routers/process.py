@@ -253,6 +253,7 @@ NON_CORE_HARD_DEPENDENCIES = {
     "pgadmin": ["postgres"],
     "mediastorm": ["postgres"],
     "traefik_proxy_admin": ["postgres"],
+    "authelia": ["postgres"],
     "cloudflared": ["traefik"],
 }
 DOCUMENTED_INTEGRATION_LINKS = {
@@ -285,6 +286,7 @@ STATIC_URLS_BY_KEY = {
     "altmount": "https://github.com/javi11/altmount",
     "traefik": "https://traefik.io/",
     "traefik_proxy_admin": "https://github.com/I-am-PUID-0/traefik-proxy-admin",
+    "authelia": "https://github.com/authelia/authelia",
     "cloudflared": "https://github.com/cloudflare/cloudflared",
     "neutarr": "https://github.com/I-am-PUID-0/NeutArr",
 }
@@ -321,6 +323,7 @@ SPONSORSHIP_URLS_BY_KEY = {
     "nzbdav": "https://buymeacoffee.com/hoivikaj",
     "traefik": "https://github.com/sponsors/traefik",
     "traefik_proxy_admin": "https://github.com/sponsors/I-am-PUID-0",
+    "authelia": "https://github.com/sponsors/authelia",
     "cloudflared": "https://github.com/sponsors/cloudflare",
     "neutarr": "https://github.com/sponsors/I-am-PUID-0",
     "zilean": "https://ko-fi.com/W7W616IBNG",
@@ -358,6 +361,7 @@ DEFAULT_SERVICE_PORTS = {
     "mediastorm": 7777,
     "altmount": 8088,
     "traefik_proxy_admin": 3004,
+    "authelia": 9091,
 }
 ## Future support for restricting service port ranges
 SERVICE_PORT_RANGES = {
@@ -474,6 +478,7 @@ CORE_SERVICE_NAMES = {
     "zurg": "Zurg",
     "traefik": "Traefik",
     "traefik_proxy_admin": "Traefik Proxy Admin",
+    "authelia": "Authelia",
     "cloudflared": "Cloudflared",
     "dumb_api_service": "DUMB API",
     "dumb_frontend": "DUMB Frontend",
@@ -639,6 +644,7 @@ OPTIONAL_SERVICES = {
     "maintainerr": "Maintainerr",
     "mediastorm": "mediastorm",
     "traefik_proxy_admin": "Traefik Proxy Admin",
+    "authelia": "Authelia",
     "cloudflared": "Cloudflared",
 }
 
@@ -716,6 +722,15 @@ Traefik Proxy Admin
 - Uses DUMB PostgreSQL for persistent domains, services, auth rules, and backup/restore data.
 
 Documentation: https://dumbarr.com/services/optional/traefik-proxy-admin""",
+    "authelia": """\
+Authelia
+- DUMB-managed identity provider and forward-auth portal for Traefik routes.
+- Supports one-factor or two-factor access policies and OpenID Connect clients.
+- Uses DUMB PostgreSQL and keeps generated secrets under /config/authelia.
+- Onboarding installs Authelia but intentionally leaves it stopped until you
+  complete the managed bootstrap from the Authelia service page.
+
+Documentation: https://dumbarr.com/services/optional/authelia""",
     "cloudflared": """\
 Cloudflared
 - Runs a Cloudflare Tunnel client inside the DUMB container.
@@ -772,6 +787,10 @@ SERVICE_OPTION_DESCRIPTIONS = {
     "webdav_password": "Password for accessing the NzbDAV WebDAV service. Leave blank to auto-generate.",
     "pinned_version": "The specific binary release version to deploy, or latest.",
     "tunnel_token": "Cloudflare Tunnel token used by cloudflared to connect this DUMB instance to Cloudflare.",
+    "public_url": "Public HTTPS URL for the Authelia portal, such as https://auth.example.com.",
+    "cookie_domain": "Cookie domain Authelia protects, such as example.com.",
+    "default_redirection_url": "Optional HTTPS destination used after visiting Authelia directly.",
+    "authorization_policy": "Default Authelia policy for protected routes: one_factor or two_factor.",
 }
 
 
@@ -4103,6 +4122,7 @@ def _run_startup(request: UnifiedStartRequest, updater, api_state, logger):
         "pgadmin",
         "mediastorm",
         "traefik_proxy_admin",
+        "authelia",
     }
     selected_postgres_optionals = set(optional_services) & postgres_required_optionals
     if selected_postgres_optionals:
@@ -4113,6 +4133,7 @@ def _run_startup(request: UnifiedStartRequest, updater, api_state, logger):
         managed_databases = {
             "mediastorm": "mediastorm",
             "traefik_proxy_admin": "traefik_proxy_admin",
+            "authelia": "authelia",
         }
         for service_key in sorted(selected_postgres_optionals):
             database_name = managed_databases.get(service_key)
@@ -5083,7 +5104,12 @@ async def get_optional_services(
     ) in OPTIONAL_SERVICES.items():
         if key in core_deps:
             continue
-        if key == "postgres" and picked & {"zilean", "pgadmin", "traefik_proxy_admin"}:
+        if key == "postgres" and picked & {
+            "zilean",
+            "pgadmin",
+            "traefik_proxy_admin",
+            "authelia",
+        }:
             continue
         raw = default_conf.get(key, {})
         svc_opts = {}
@@ -5182,6 +5208,9 @@ async def get_capabilities(current_user: str = Depends(get_optional_current_user
         "metrics_network_interface_selection": True,
         "plex_status_metric": True,
         "mediastorm_initial_admin_password": True,
+        "authelia_integration": True,
+        "auth_oidc": True,
+        "auth_hybrid": True,
         "database_health_service_keys": sorted(SUPPORTED_SERVICE_KEYS),
         "notifications": True,
         "startup_lifecycle": True,

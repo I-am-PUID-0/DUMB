@@ -4,7 +4,8 @@ from utils.global_logger import logger
 from utils.versions import Versions
 from typing import Any, Dict, List, Optional, Tuple
 from pathlib import Path
-import os, re, shlex, shutil, tempfile, threading, yaml
+import copy, os, re, shlex, shutil, tempfile, threading, yaml
+from urllib.parse import urlparse
 from ruamel.yaml import YAML
 
 UI_SERVICE_DEFS = [
@@ -40,6 +41,7 @@ UI_SERVICE_DEFS = [
     {"name": "pulsarr", "config_key": "pulsarr"},
     {"name": "maintainerr", "config_key": "maintainerr"},
     {"name": "mediastorm", "config_key": "mediastorm", "path": "/admin"},
+    {"name": "authelia", "config_key": "authelia"},
     {"name": "altmount", "config_key": "altmount"},
     {"name": "pgadmin4", "config_key": "pgadmin"},
     {"name": "prowlarr", "config_key": "prowlarr"},
@@ -130,6 +132,29 @@ def _parse_entrypoint_port(address: str, fallback: int) -> int:
         return int(match.group(1))
     except ValueError:
         return fallback
+
+
+def _prepare_entrypoints(configured: object) -> Dict[str, Any]:
+    """Return static entrypoints with the minimum Nuxt/Vite path compatibility."""
+    entrypoints = (
+        copy.deepcopy(configured)
+        if isinstance(configured, dict)
+        else {"web": {"address": ":18080"}}
+    )
+    web = entrypoints.setdefault("web", {"address": ":18080"})
+    if not isinstance(web, dict):
+        web = {"address": ":18080"}
+        entrypoints["web"] = web
+    http = web.setdefault("http", {})
+    if not isinstance(http, dict):
+        http = {}
+        web["http"] = http
+    encoded_characters = http.setdefault("encodedCharacters", {})
+    if not isinstance(encoded_characters, dict):
+        encoded_characters = {}
+        http["encodedCharacters"] = encoded_characters
+    encoded_characters.setdefault("allowEncodedSlash", True)
+    return entrypoints
 
 
 def ensure_traefik_config() -> None:
@@ -274,6 +299,8 @@ def _resolve_ui_service(service_def: Dict[str, Any]) -> List[Dict[str, Any]]:
         "path_prefix": service_def.get("path_prefix", ""),
         "internal_service": internal_service,
     }
+    if config_key == "authelia":
+        service["public_url"] = str(cfg.get("public_url") or "").strip()
     if config_key == "nzbdav":
         direct_url_template = cfg.get("direct_url")
         if direct_url_template:
@@ -343,6 +370,23 @@ def generate_traefik_config(services: List[Dict[str, Any]]) -> Dict[str, Any]:
 
         middlewares = [strip_middleware]
         add_prefix_middleware = None
+
+        if service_name == "authelia":
+            public_url = str(service.get("public_url") or "").strip()
+            parsed_public_url = urlparse(public_url)
+            public_host = parsed_public_url.hostname
+            if parsed_public_url.scheme == "https" and public_host:
+                origin_middleware = f"{service_name}_public_origin"
+                traefik_config["http"]["middlewares"][origin_middleware] = {
+                    "headers": {
+                        "customRequestHeaders": {
+                            "X-Forwarded-Host": public_host,
+                            "X-Forwarded-Proto": "https",
+                            "X-Forwarded-Ssl": "on",
+                        }
+                    }
+                }
+                middlewares.append(origin_middleware)
 
         # Add the root path replacement first (before prefix middleware)
         # This ensures /$ gets replaced with /web/index.html before the prefix middleware runs
@@ -677,7 +721,7 @@ def _setup_traefik_locked(
 
     logger.info("Setting up Traefik configuration in %s", config_dir)
 
-    entrypoints = traefik_config.get("entrypoints") or {"web": {"address": ":18080"}}
+    entrypoints = _prepare_entrypoints(traefik_config.get("entrypoints"))
     web_address = entrypoints.get("web", {}).get("address", ":18080")
     web_port = _parse_entrypoint_port(web_address, fallback=18080)
     entrypoints["traefik"] = {"address": f":{web_port + 1}"}

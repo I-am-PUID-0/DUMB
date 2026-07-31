@@ -1003,6 +1003,7 @@ def main():
             "altmount",
             "rclone",
             "postgres",
+            "authelia",
             "traefik_proxy_admin",
             "pgadmin",
             "zilean",

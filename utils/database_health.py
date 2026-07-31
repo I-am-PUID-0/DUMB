@@ -47,6 +47,7 @@ POSTGRES_SERVICE_DATABASES = {
     "mediastorm": "mediastorm",
     "riven_backend": "riven",
     "traefik_proxy_admin": "traefik_proxy_admin",
+    "authelia": "authelia",
     "zilean": "zilean",
 }
 CUSTOM_STORE_PROVIDERS = {

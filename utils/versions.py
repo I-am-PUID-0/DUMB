@@ -282,6 +282,14 @@ class Versions:
                     config.get("config_dir", "/traefik-proxy-admin"), "version.txt"
                 )
                 is_file = True
+            elif key == "authelia":
+                config = CONFIG_MANAGER.get_instance(instance_name, key)
+                if not config:
+                    raise ValueError(f"Configuration for {process_name} not found.")
+                version_path = os.path.join(
+                    config.get("install_dir", "/authelia"), "version.txt"
+                )
+                is_file = True
             elif key == "cloudflared":
                 config = CONFIG_MANAGER.get_instance(instance_name, key)
                 if not config:
@@ -524,6 +532,7 @@ class Versions:
                             or key == "mediastorm"
                             or key == "altmount"
                             or key == "traefik_proxy_admin"
+                            or key == "authelia"
                             or key == "cloudflared"
                             or key == "profilarr"
                             or key == "emby"
@@ -590,6 +599,10 @@ class Versions:
                     f.write(version)
             elif key == "traefik_proxy_admin":
                 version_path = version_path or "/traefik-proxy-admin/version.txt"
+                with open(version_path, "w") as f:
+                    f.write(version)
+            elif key == "authelia":
+                version_path = version_path or "/authelia/version.txt"
                 with open(version_path, "w") as f:
                     f.write(version)
             elif key == "cloudflared":

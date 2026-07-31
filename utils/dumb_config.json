@@ -25,6 +25,7 @@
         "show_all_services": false,
         "compact_mode": false,
         "tools_open": false,
+        "auto_hide_on_navigation": true,
         "quick_filter": "all",
         "service_search": "",
         "service_order": [],
@@ -194,7 +195,12 @@
     "port": 18080,
     "entrypoints": {
       "web": {
-        "address": ":18080"
+        "address": ":18080",
+        "http": {
+          "encodedCharacters": {
+            "allowEncodedSlash": true
+          }
+        }
       }
     },
     "command": [
@@ -254,6 +260,50 @@
       "npm_config_cache": "/config/.pnpm-store/traefik-proxy-admin-runtime/npm-cache",
       "npm_config_store_dir": "/config/.pnpm-store/traefik-proxy-admin-runtime/store"
     },
+    "wait_for_tcp": [
+      {
+        "name": "PostgreSQL",
+        "host": "127.0.0.1",
+        "port": 5432,
+        "timeout": 2
+      }
+    ]
+  },
+  "authelia": {
+    "enabled": false,
+    "process_name": "Authelia",
+    "repo_owner": "authelia",
+    "repo_name": "authelia",
+    "release_version_enabled": false,
+    "release_version": "latest",
+    "suppress_logging": false,
+    "log_level": "INFO",
+    "port": 9091,
+    "auto_update": false,
+    "auto_update_interval": 24,
+    "auto_update_start_time": "04:00",
+    "install_dir": "/authelia",
+    "config_dir": "/config/authelia",
+    "config_file": "/config/authelia/configuration.yml",
+    "log_file": "/log/authelia.log",
+    "public_url": "",
+    "cookie_domain": "",
+    "default_redirection_url": "",
+    "authorization_policy": "two_factor",
+    "notifier": {
+      "type": "filesystem",
+      "address": "",
+      "username": "",
+      "sender": "",
+      "startup_check_address": "",
+      "disable_require_tls": false
+    },
+    "command": [
+      "/authelia/authelia",
+      "--config",
+      "/config/authelia/configuration.yml"
+    ],
+    "env": {},
     "wait_for_tcp": [
       {
         "name": "PostgreSQL",

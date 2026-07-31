@@ -28,6 +28,7 @@ from api.routers.auth import auth_router
 from api.routers.seerr_sync import seerr_sync_router
 from api.routers.ai import ai_router
 from api.routers.notifications import notifications_router
+from api.routers.authelia import authelia_router
 from utils.config_loader import CONFIG_MANAGER
 from utils.project_metadata import get_project_version
 import threading
@@ -106,6 +107,9 @@ def create_app() -> FastAPI:
     app.include_router(ai_router, prefix="/ai", tags=["AI Assistant"])
     app.include_router(
         notifications_router, prefix="/notifications", tags=["Notifications"]
+    )
+    app.include_router(
+        authelia_router, prefix="/integrations/authelia", tags=["Authelia"]
     )
     app.include_router(websocket_router, prefix="/ws", tags=["WebSocket Logs"])
     app.include_router(

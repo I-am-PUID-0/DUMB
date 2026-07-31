@@ -116,6 +116,15 @@ class ConfigManager:
                 pruned["instances"] = pruned_instances
                 continue
 
+            # Service environment blocks are intentionally open-ended. Setup
+            # code generates runtime secrets and operators may add supported
+            # upstream variables that are not part of the default template.
+            # Recursively pruning env against the defaults deletes those values
+            # on the next ConfigManager initialization.
+            if key == "env" and isinstance(config.get(key), dict):
+                pruned[key] = copy.deepcopy(config[key])
+                continue
+
             if key in config:
                 cfg_val = config[key]
                 if isinstance(cfg_val, dict) and isinstance(ref_val, dict):

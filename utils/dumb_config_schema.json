@@ -80,6 +80,9 @@
                 "tools_open": {
                   "type": "boolean"
                 },
+                "auto_hide_on_navigation": {
+                  "type": "boolean"
+                },
                 "quick_filter": {
                   "type": "string"
                 },
@@ -4675,6 +4678,157 @@
         "env"
       ]
     },
+    "authelia": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "process_name": {
+          "type": "string"
+        },
+        "repo_owner": {
+          "type": "string"
+        },
+        "repo_name": {
+          "type": "string"
+        },
+        "release_version_enabled": {
+          "type": "boolean"
+        },
+        "release_version": {
+          "type": "string"
+        },
+        "suppress_logging": {
+          "type": "boolean"
+        },
+        "log_level": {
+          "type": "string"
+        },
+        "port": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535
+        },
+        "auto_update": {
+          "type": "boolean"
+        },
+        "auto_update_interval": {
+          "type": "integer"
+        },
+        "auto_update_start_time": {
+          "type": "string"
+        },
+        "install_dir": {
+          "type": "string"
+        },
+        "config_dir": {
+          "type": "string"
+        },
+        "config_file": {
+          "type": "string"
+        },
+        "log_file": {
+          "type": "string"
+        },
+        "public_url": {
+          "type": "string"
+        },
+        "cookie_domain": {
+          "type": "string"
+        },
+        "default_redirection_url": {
+          "type": "string"
+        },
+        "authorization_policy": {
+          "type": "string",
+          "enum": [
+            "one_factor",
+            "two_factor"
+          ]
+        },
+        "notifier": {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "filesystem",
+                "smtp"
+              ]
+            },
+            "address": {
+              "type": "string"
+            },
+            "username": {
+              "type": "string"
+            },
+            "sender": {
+              "type": "string"
+            },
+            "startup_check_address": {
+              "type": "string"
+            },
+            "disable_require_tls": {
+              "type": "boolean"
+            }
+          }
+        },
+        "command": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "env": {
+          "type": "object"
+        },
+        "wait_for_tcp": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "host": {
+                "type": "string"
+              },
+              "port": {
+                "type": "integer"
+              },
+              "timeout": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "host",
+              "port"
+            ]
+          }
+        }
+      },
+      "required": [
+        "enabled",
+        "process_name",
+        "repo_owner",
+        "repo_name",
+        "release_version",
+        "suppress_logging",
+        "log_level",
+        "port",
+        "install_dir",
+        "config_dir",
+        "config_file",
+        "log_file",
+        "public_url",
+        "cookie_domain",
+        "authorization_policy",
+        "notifier",
+        "command",
+        "env"
+      ]
+    },
     "cloudflared": {
       "type": "object",
       "properties": {
@@ -4812,6 +4966,7 @@
     "zilean",
     "zurg",
     "traefik_proxy_admin",
+    "authelia",
     "cloudflared"
   ]
 }

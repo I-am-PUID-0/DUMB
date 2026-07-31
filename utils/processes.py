@@ -590,6 +590,7 @@ class ProcessHandler:
                 "mediastorm",
                 "altmount",
                 "traefik_proxy_admin",
+                "authelia",
                 "cloudflared",
             }:
                 log_file = config.get("log_file")
@@ -1101,6 +1102,7 @@ class ProcessHandler:
                     "maintainerr",
                     "mediastorm",
                     "traefik_proxy_admin",
+                    "authelia",
                     "prowlarr",
                     "bazarr",
                     "sonarr",

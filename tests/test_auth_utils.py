@@ -54,6 +54,17 @@ class AuthUtilityTests(unittest.TestCase):
         self.assertEqual(auth.decode_token(pair.access_token).type, "access")
         self.assertEqual(auth.decode_token(pair.refresh_token).type, "refresh")
 
+    def test_oidc_token_pair_retains_provider_and_groups(self):
+        pair = auth.create_token_pair(
+            "alice@example.com", provider="oidc", groups=["admins", "operators"]
+        )
+
+        access = auth.decode_token(pair.access_token)
+        refresh = auth.decode_token(pair.refresh_token)
+        self.assertEqual(access.provider, "oidc")
+        self.assertEqual(access.groups, ["admins", "operators"])
+        self.assertEqual(refresh.provider, "oidc")
+
     def test_password_hash_verifies_correct_password_only(self):
         hashed = auth.get_password_hash("correct horse battery staple")
 

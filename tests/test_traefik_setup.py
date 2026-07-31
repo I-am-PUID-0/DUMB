@@ -73,6 +73,31 @@ class TraefikSetupHelperTests(unittest.TestCase):
         self.assertEqual(traefik_setup._parse_entrypoint_port("web", 80), 80)
         self.assertEqual(traefik_setup._parse_entrypoint_port(":bad", 80), 80)
 
+    def test_prepare_entrypoints_allows_only_encoded_slashes_by_default(self):
+        configured = {"web": {"address": ":18080"}}
+
+        result = traefik_setup._prepare_entrypoints(configured)
+
+        self.assertEqual(
+            result["web"]["http"]["encodedCharacters"],
+            {"allowEncodedSlash": True},
+        )
+        self.assertNotIn("http", configured["web"])
+
+    def test_prepare_entrypoints_preserves_explicit_encoded_slash_hardening(self):
+        result = traefik_setup._prepare_entrypoints(
+            {
+                "web": {
+                    "address": ":18080",
+                    "http": {"encodedCharacters": {"allowEncodedSlash": False}},
+                }
+            }
+        )
+
+        self.assertFalse(
+            result["web"]["http"]["encodedCharacters"]["allowEncodedSlash"]
+        )
+
     def test_resolve_traefik_service_uses_dashboard_api_port(self):
         traefik_setup.CONFIG_MANAGER.config = {
             "traefik": {"entrypoints": {"web": {"address": ":18080"}}}
@@ -137,6 +162,61 @@ class TraefikSetupHelperTests(unittest.TestCase):
         self.assertEqual(services[0]["name"], "Sonarr Main")
         self.assertEqual(services[0]["host"], "127.0.0.1")
         self.assertEqual(services[0]["port"], 8989)
+
+    def test_build_ui_services_includes_enabled_authelia_portal(self):
+        traefik_setup.CONFIG_MANAGER.config = {
+            "authelia": {
+                "enabled": True,
+                "host": "0.0.0.0",
+                "port": 9091,
+                "process_name": "Authelia",
+                "public_url": "https://auth.example.com",
+            }
+        }
+
+        services = traefik_setup.build_ui_services()
+
+        authelia = next(
+            service for service in services if service["config_key"] == "authelia"
+        )
+        self.assertEqual(authelia["name"], "authelia")
+        self.assertEqual(authelia["process_name"], "Authelia")
+        self.assertEqual(authelia["host"], "127.0.0.1")
+        self.assertEqual(authelia["port"], 9091)
+        self.assertEqual(authelia["public_url"], "https://auth.example.com")
+
+        generated = traefik_setup.generate_traefik_config([authelia])
+        self.assertEqual(
+            generated["http"]["middlewares"]["authelia_public_origin"],
+            {
+                "headers": {
+                    "customRequestHeaders": {
+                        "X-Forwarded-Host": "auth.example.com",
+                        "X-Forwarded-Proto": "https",
+                        "X-Forwarded-Ssl": "on",
+                    }
+                }
+            },
+        )
+        self.assertEqual(
+            generated["http"]["routers"]["authelia_router"]["middlewares"],
+            ["authelia_strip", "authelia_public_origin", "ui_frame_headers"],
+        )
+
+    def test_authelia_embedded_route_ignores_unsafe_public_origin(self):
+        generated = traefik_setup.generate_traefik_config(
+            [
+                {
+                    "name": "authelia",
+                    "config_key": "authelia",
+                    "host": "127.0.0.1",
+                    "port": 9091,
+                    "public_url": "http://localhost:9091",
+                }
+            ]
+        )
+
+        self.assertNotIn("authelia_public_origin", generated["http"]["middlewares"])
 
 
 if __name__ == "__main__":

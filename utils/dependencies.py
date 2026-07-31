@@ -137,12 +137,10 @@ def get_optional_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    # Verify user still exists and is not disabled
-    user = auth_config.get_user(payload.sub)
-    if not user or user.disabled:
+    if not auth_config.validate_token_principal(payload):
         raise HTTPException(
             status_code=401,
-            detail="User account is disabled or does not exist",
+            detail="User account or identity provider is no longer authorized",
             headers={"WWW-Authenticate": "Bearer"},
         )
 
@@ -180,11 +178,10 @@ async def get_websocket_current_user(websocket: WebSocket) -> Optional[str]:
             code=status.WS_1008_POLICY_VIOLATION, reason="Invalid or expired token"
         )
 
-    # Verify user still exists and is not disabled
-    user = auth_config.get_user(payload.sub)
-    if not user or user.disabled:
+    if not auth_config.validate_token_principal(payload):
         raise WebSocketException(
-            code=status.WS_1008_POLICY_VIOLATION, reason="User account is disabled"
+            code=status.WS_1008_POLICY_VIOLATION,
+            reason="User account or identity provider is no longer authorized",
         )
 
     return payload.sub
