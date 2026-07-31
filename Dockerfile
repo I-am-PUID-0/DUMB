@@ -93,19 +93,19 @@ RUN echo "export PATH=/usr/lib/postgresql/16/bin:\$PATH" >> /root/.bashrc
 # Stage 1: pgadmin-builder
 ####################################################################################################################################################
 FROM base AS pgadmin-builder
-ARG PGADMIN_VERSION=9.16
+ARG PGADMIN_VERSION=9.17
 RUN --mount=type=cache,target=/root/.cache/pip,sharing=shared \
     python3.11 -m venv /pgadmin/venv && \
     /pgadmin/venv/bin/python -m pip install --upgrade pip setuptools wheel && \
     /pgadmin/venv/bin/python -m pip install "pgadmin4==${PGADMIN_VERSION}" && \
-    # pgAdmin 9.16 pins setuptools to 82.x on Python >3.9, but setuptools 83
-    # contains the CVE-2026-59890 fix and remains runtime-compatible. Widen
-    # the installed package metadata before upgrading so pip check remains a
-    # meaningful compatibility gate.
+    # Recent pgAdmin releases pin setuptools to either 82.x or 83.x on
+    # Python >3.9. Setuptools 83 contains the CVE-2026-59890 fix and remains
+    # runtime-compatible. Normalize the installed package metadata to the
+    # bounded secured range before upgrading so pip check remains meaningful.
     PGADMIN_METADATA="$(find /pgadmin/venv/lib/python3.11/site-packages \
       -path '*/pgadmin4-*.dist-info/METADATA' -print -quit)" && \
     test -n "${PGADMIN_METADATA}" && \
-    sed -i 's/setuptools==82\.\*/setuptools>=83,<84/' "${PGADMIN_METADATA}" && \
+    sed -E -i 's/setuptools==(82|83)\.\*/setuptools>=83,<84/' "${PGADMIN_METADATA}" && \
     grep -q 'Requires-Dist: setuptools>=83,<84; python_version > "3.9"' "${PGADMIN_METADATA}" && \
     /pgadmin/venv/bin/python -m pip install --upgrade --no-deps \
       "setuptools>=83,<84" && \
