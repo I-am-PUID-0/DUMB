@@ -41,7 +41,7 @@ jobs:
     name: Python ${{ matrix.python-version }}
     runs-on: ubuntu-latest
     env:
-      DUMB_AUTH_CONFIG_PATH: ${{ runner.temp }}/dumb-ci/users.json
+      DUMB_AUTH_CONFIG_PATH: /tmp/dumb-ci/users.json
     strategy:
       fail-fast: false
       matrix:
