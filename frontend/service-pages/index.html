@@ -2980,6 +2980,8 @@
       
         
       
+        
+      
     
     
     
@@ -3265,6 +3267,36 @@
     
   
     Traefik Proxy Admin
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/optional/authelia/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-shield" viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    Authelia
   
 
     
@@ -5646,11 +5678,23 @@ is allowlisted for logs:</p>
 tab appears.</p>
 <p>Features:</p>
 <ul>
-<li><strong>Open in new tab</strong> (only shown for local/private access)</li>
+<li><strong>Open Public URL</strong> when an enabled TPA route matches the service</li>
+<li><strong>Open in new tab</strong> for a local/private direct address when no public route is available</li>
 <li><strong>Full window</strong> toggle</li>
 <li>UI path selector for services with multiple entry points (for example Zilean)</li>
 </ul>
 <p>NzbDAV uses a trailing slash in its embedded UI path to match its frontend routing.</p>
+<p>DUMB discovers public routes through its authenticated loopback integration
+with TPA. A route must be enabled and match the managed service's target port;
+non-loopback targets must also match the service name. dmbdb never guesses a
+domain and never receives TPA's integration token. Services without a confirmed
+TPA match retain their existing local/direct behavior.</p>
+<p>Authelia is a security-specific exception. Its service tab launches the
+configured public HTTPS portal instead of framing the login page because
+Authelia deliberately sends anti-clickjacking headers that prohibit iframe
+embedding. TPA's embedded UI remains usable with a local break-glass account;
+start Authelia-backed TPA SSO from <strong>Open TPA for SSO</strong> so both authorization
+and callback run on their registered public HTTPS origins.</p>
 <hr />
 <h2 id="default-tab-selection">Default tab selection<a class="headerlink" href="#default-tab-selection" title="Permanent link">&para;</a></h2>
 <p>You can choose a default tab for each service page (for example, always open logs).
@@ -5663,6 +5707,9 @@ The selection is stored in the UI preferences.</p>
 <li><strong>Search filter</strong> for process name/config key matching</li>
 <li><strong>Saved views</strong> to store and re-apply filter/search/toggle combinations</li>
 <li><strong>Compact mode</strong> to reduce service-row density in the sidebar</li>
+<li><strong>Auto-hide on navigation</strong> to close the sidebar after opening DUMB, Stack AI
+  Assist, RTL, or a service; enabled by default and safe to disable for a
+  permanently open desktop sidebar</li>
 <li><strong>Command palette</strong> (<code>Ctrl/Cmd + K</code>) to jump directly to service pages</li>
 <li><strong>Assignable service shortcuts</strong> configured from command-palette results by entering shortcut-capture mode and pressing the combo</li>
 <li><strong>Collapsible Sidebar tools</strong> section to keep controls hidden when not needed</li>

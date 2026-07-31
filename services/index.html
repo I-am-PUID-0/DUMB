@@ -2763,6 +2763,8 @@
       
         
       
+        
+      
     
     
     
@@ -3051,6 +3053,36 @@
     
   
     Traefik Proxy Admin
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="optional/authelia/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-shield" viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    Authelia
   
 
     
@@ -5040,7 +5072,7 @@
 <li>
 <p><strong>Database Layer</strong></p>
 <ul>
-<li><strong>PostgreSQL</strong> stores data for Riven, Zilean, pgAdmin, Traefik Proxy Admin, mediastorm, optional Metrics history, and services deliberately migrated from SQLite</li>
+<li><strong>PostgreSQL</strong> stores data for Riven, Zilean, pgAdmin, Authelia, Traefik Proxy Admin, mediastorm, optional Metrics history, and services deliberately migrated from SQLite</li>
 <li><strong>pgAdmin</strong> is a GUI for exploring PostgreSQL databases</li>
 </ul>
 </li>
@@ -5048,6 +5080,7 @@
 <p><strong>Access Layer</strong></p>
 <ul>
 <li><strong>Traefik</strong> serves DUMB-owned embedded UI routes from <code>/config/traefik/dynamic/services.yaml</code></li>
+<li><strong>Authelia</strong> can provide DUMB/TPA OIDC and a reusable Traefik ForwardAuth middleware</li>
 <li><strong>Traefik Proxy Admin</strong> owns user-managed LAN or public host routes through Traefik's HTTP provider</li>
 <li><strong>Cloudflared</strong> can carry Cloudflare Tunnel traffic to DUMB Traefik without direct port forwarding</li>
 </ul>
@@ -5213,6 +5246,11 @@
 <td><a href="../services/optional/mediastorm/">mediastorm</a></td>
 <td>Optional</td>
 <td>Self-hosted Debrid, torrent, and Usenet streaming</td>
+</tr>
+<tr>
+<td><a href="../services/optional/authelia/">Authelia</a></td>
+<td>Optional</td>
+<td>OIDC identity provider and Traefik ForwardAuth</td>
 </tr>
 <tr>
 <td><a href="../services/optional/traefik-proxy-admin/">Traefik Proxy Admin</a></td>

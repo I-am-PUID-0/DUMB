@@ -2925,6 +2925,8 @@
       
         
       
+        
+      
     
     
     
@@ -3210,6 +3212,36 @@
     
   
     Traefik Proxy Admin
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/optional/authelia/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-shield" viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    Authelia
   
 
     
@@ -5400,6 +5432,11 @@ return to the DUMB backend without requiring a full-page refresh.</p>
 <td>9705</td>
 </tr>
 <tr>
+<td>Authelia</td>
+<td><code>/service/ui/authelia</code></td>
+<td>9091</td>
+</tr>
+<tr>
 <td>Traefik Dashboard</td>
 <td><code>/service/ui/traefik</code></td>
 <td>18081</td>
@@ -5465,9 +5502,27 @@ return to the DUMB backend without requiring a full-page refresh.</p>
 <p>Each service page includes an embedded UI tab when the service exposes a UI. From there you can:</p>
 <ul>
 <li>Switch between available UI base paths when the service exposes multiple entry points</li>
-<li>Open the UI in a new browser tab using the proxied direct link</li>
+<li>Open an enabled matching TPA public HTTPS route in a new browser tab</li>
+<li>Fall back to the local/private direct link when no public route is configured</li>
 <li>Expand the UI into a full-window view without leaving the service page</li>
 </ul>
+<p>Public links are discovered through DUMB's authenticated loopback integration
+with TPA. dmbdb receives only sanitized route names, ports, loopback flags, and
+HTTPS origins; it never receives the integration token or TPA authentication
+configuration. DUMB requires a matching target port and, for non-loopback
+targets, a matching service name before the action appears.</p>
+<p>Root-path applications are routed with their active service context so their
+assets, navigation, and APIs remain inside the iframe.</p>
+<p>Authelia is an intentional exception. Its public responses use anti-framing
+controls such as <code>frame-ancestors 'none'</code> and <code>X-Frame-Options: DENY</code> to protect
+password and 2FA screens from clickjacking. DUMB preserves those protections.
+The Authelia service tab is therefore a secure launcher for the configured
+public HTTPS portal, not an iframe containing the login page.</p>
+<p>The same boundary applies to Traefik Proxy Admin admin SSO. The embedded TPA UI
+remains available for local break-glass login and normal administration, but
+<strong>Continue with SSO</strong> must be used from TPA's public HTTPS URL. The Authelia
+authorization page and TPA callback then remain top-level pages on their
+registered public origins.</p>
 <h3 id="split-view-mode">Split view mode<a class="headerlink" href="#split-view-mode" title="Permanent link">&para;</a></h3>
 <ol>
 <li>Open a service from the dashboard</li>
@@ -5518,6 +5573,22 @@ return to the DUMB backend without requiring a full-page refresh.</p>
 <li>Check if the path prefix is correct</li>
 <li>Ensure Traefik has reloaded the configuration</li>
 <li>For root-style apps, reload from the service page so the frontend can refresh the active embedded UI context cookie</li>
+</ul>
+<h3 id="tpa-sso-started-from-embedded-ui-fails-or-authelia-refuses-to-connect">TPA SSO started from Embedded UI fails or Authelia refuses to connect<a class="headerlink" href="#tpa-sso-started-from-embedded-ui-fails-or-authelia-refuses-to-connect" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Use <strong>Open TPA for SSO</strong> and complete authentication in the new top-level tab.</li>
+<li>Do not remove or override Authelia's <code>frame-ancestors</code> or <code>X-Frame-Options</code>
+  protections to make the identity provider render inside DUMB.</li>
+<li>Verify TPA's configured callback is its browser-facing HTTPS FQDN, for example
+  <code>https://proxy.example.com/api/auth/sso/callback</code>.</li>
+</ul>
+<h3 id="authelia-is-not-shown-inside-the-embedded-ui-frame">Authelia is not shown inside the Embedded UI frame<a class="headerlink" href="#authelia-is-not-shown-inside-the-embedded-ui-frame" title="Permanent link">&para;</a></h3>
+<ul>
+<li>This is expected. Select <strong>Open Authelia Portal</strong> to use its public HTTPS URL.</li>
+<li>If no launch button is available, finish Step 1 of the managed Authelia setup
+  and publish its public route first.</li>
+<li>Never add ForwardAuth, TPA Service SSO, or another authentication middleware
+  to the Authelia route itself.</li>
 </ul>
 <h3 id="slow-loading">Slow loading<a class="headerlink" href="#slow-loading" title="Permanent link">&para;</a></h3>
 <ul>

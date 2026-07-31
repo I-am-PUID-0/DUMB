@@ -17,7 +17,7 @@
     <link rel="prev" href="../mediastorm/">
   
   
-    <link rel="next" href="../cloudflared/">
+    <link rel="next" href="../authelia/">
   
   
     
@@ -2773,6 +2773,8 @@
       
         
       
+        
+      
     
     
     
@@ -3169,6 +3171,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#link-dumb-managed-authelia" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Link DUMB-managed Authelia
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#admin-cookie-security" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3293,6 +3306,36 @@
   
 </nav>
       
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../authelia/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-shield" viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    Authelia
+  
+
+    
+  </span>
+  
+  
+
+      </a>
     </li>
   
 
@@ -5150,6 +5193,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#link-dumb-managed-authelia" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Link DUMB-managed Authelia
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#admin-cookie-security" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -5377,6 +5431,9 @@
 <li><strong>Built-in Traefik integration</strong> - DUMB enables Traefik and points Traefik's HTTP provider at TPA's generated config endpoint.</li>
 <li><strong>Persistent storage</strong> - TPA uses DUMB PostgreSQL database <code>traefik_proxy_admin</code>.</li>
 <li><strong>Admin authentication</strong> - TPA defaults to local admin auth and generates a persistent <code>ADMIN_AUTH_SECRET</code> on first setup.</li>
+<li><strong>Authelia linking</strong> - DUMB can create a reusable TPA SSO provider and
+  optionally make it the TPA admin provider without exposing the generated
+  client secret in the browser.</li>
 <li><strong>External-service support</strong> - Routes can target services outside the DUMB container when the target host is reachable from the DUMB container.</li>
 <li><strong>Target reachability tests</strong> - TPA can test TCP connectivity to allowed private ranges before you save a service.</li>
 </ul>
@@ -5463,6 +5520,54 @@
 <p class="admonition-title">SSO can come later</p>
 <p>Start with local admin auth so you have a known-good break-glass login. You can configure admin SSO later from TPA's Security page.</p>
 </div>
+<h2 id="link-dumb-managed-authelia">Link DUMB-managed Authelia<a class="headerlink" href="#link-dumb-managed-authelia" title="Permanent link">&para;</a></h2>
+<p>After creating the first local TPA admin, open the Authelia service page in DUMB
+and use <strong>Set up this DUMB-managed Authelia instance</strong>:</p>
+<ol>
+<li>Select an existing TPA root domain during bootstrap. DUMB prefills the
+   Authelia hostname and cookie domain and can create or reuse its HTTPS route.</li>
+<li>Link DUMB authentication.</li>
+<li>Enter TPA's public browser/OAuth URL and select <strong>Link TPA</strong>.</li>
+<li>Keep <strong>Allow local fallback</strong> enabled until SSO login is proven.</li>
+</ol>
+<p>DUMB discovers the safe domain choices and provisions the portal route through
+<code>GET/POST /api/integrations/dumb/authelia/route</code>. Route creation preserves the
+selected domain's certificate resolver, entry points, and other TLS settings,
+uses the DUMB loopback Authelia target, and never attaches authentication to
+Authelia itself. A compatible route is reused; a conflicting hostname is
+reported without modifying the existing service.</p>
+<p>DUMB creates a distinct OIDC client for TPA and sends its configuration over
+the container loopback endpoint
+<code>POST /api/integrations/dumb/authelia/link</code>. All three integration requests
+require the DUMB-generated <code>DUMB_INTEGRATION_TOKEN</code>; normal browser requests
+cannot use them without that bearer token. TPA upserts the reusable provider
+named <strong>DUMB-managed Authelia</strong> and can select it for admin SSO.</p>
+<p>The managed client uses Authelia's declared <code>client_secret_basic</code> token-endpoint
+authentication. TPA stores that method with the provider and sends the client
+credentials in the HTTP Basic authorization header during the authorization-code
+exchange. Other providers retain their configured/default
+<code>client_secret_post</code> behavior.</p>
+<p>The managed link uses the public HTTPS Authelia issuer for authorization, token
+exchange, and userinfo. Keeping all provider endpoints under the same issuer
+avoids an internal HTTP request being rejected by Authelia as the wrong
+effective issuer. DUMB preserves existing <code>SSO_ENDPOINT_ALLOW_HOSTS</code> entries
+and adds the public issuer hostname once the managed TPA client exists. This
+also supports trusted split-DNS deployments where that hostname resolves to a
+private address inside the DUMB container.</p>
+<p>This allowlist permits private resolution for that exact hostname; it does not
+disable TLS certificate validation or allow arbitrary loopback destinations.
+External Authelia and other OIDC providers must still present certificates
+trusted by TPA. DUMB persists the TPA environment before linking, but TPA must
+restart before changed environment values are active. The wizard's <strong>Link and
+restart TPA</strong> action performs that restart. API callers that set <code>restart_tpa</code>
+to <code>false</code> receive <code>restartRequired: true</code> and <code>integrationActive: false</code> when
+an environment change remains unloaded.</p>
+<p>The TPA callback URL is:</p>
+<div class="highlight"><pre><span></span><code>https://tpa.example.com/api/auth/sso/callback
+</code></pre></div>
+<p>Standalone TPA deployments can leave <code>DUMB_INTEGRATION_TOKEN</code> unset and
+configure external Authelia or another OIDC provider from <strong>Security → Admin
+Authentication</strong> instead.</p>
 <hr />
 <h2 id="admin-cookie-security">Admin cookie security<a class="headerlink" href="#admin-cookie-security" title="Permanent link">&para;</a></h2>
 <p>DUMB runs TPA with <code>ADMIN_COOKIE_SECURE=false</code> by default. This allows local admin login to work when you open TPA over plain HTTP on a LAN address, such as <code>http://&lt;host&gt;:3004</code>. Without this, browsers can store the secure admin session cookie but refuse to send it back over HTTP, which looks like a successful login that immediately returns to the login page.</p>
@@ -5783,6 +5888,16 @@ disables automatic updates until changed or cleared.</p>
 <td>Keep <code>ADMIN_COOKIE_SECURE=false</code> for local HTTP access, or access TPA through HTTPS and set it to <code>true</code>. Clear the old <code>tpa-admin-session</code> cookie after changing this value.</td>
 </tr>
 <tr>
+<td>Authelia accepts 2FA but TPA reports <code>token_exchange_failed</code> / <code>invalid_request</code></td>
+<td>TPA has an older managed provider record that submits the secret with the wrong token authentication method</td>
+<td>Update TPA, then run <strong>Link and restart TPA</strong> again from DUMB's Authelia wizard so the provider is saved as <code>client_secret_basic</code>. Keep local fallback available until the next login succeeds.</td>
+</tr>
+<tr>
+<td>Embedded TPA SSO shows Authelia refused to connect</td>
+<td>Authelia correctly blocks its sign-in page from running inside an iframe</td>
+<td>Select <strong>Open TPA for SSO</strong> and sign in through TPA's public HTTPS URL. Keep the embedded TPA view for local break-glass login and normal administration; do not weaken Authelia's anti-framing headers.</td>
+</tr>
+<tr>
 <td>Traefik logs HTTP provider decode errors</td>
 <td>TPA provider endpoint returned invalid or partial config</td>
 <td>Restart TPA, then Traefik. DUMB waits for a top-level <code>http</code> provider response before starting Traefik.</td>
@@ -5874,13 +5989,13 @@ disables automatic updates until changed or cleared.</p>
         
         
           
-          <a href="../cloudflared/" class="md-footer__link md-footer__link--next" aria-label="Next: Cloudflared">
+          <a href="../authelia/" class="md-footer__link md-footer__link--next" aria-label="Next: Authelia">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Cloudflared
+                Authelia
               </div>
             </div>
             <div class="md-footer__button md-icon">

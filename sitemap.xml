@@ -193,6 +193,9 @@
         <loc>https://dumbarr.com/services/optional/traefik-proxy-admin/</loc>
       </url>
       <url>
+        <loc>https://dumbarr.com/services/optional/authelia/</loc>
+      </url>
+      <url>
         <loc>https://dumbarr.com/services/optional/cloudflared/</loc>
       </url>
       <url>

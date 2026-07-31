@@ -2773,6 +2773,8 @@
       
         
       
+        
+      
     
     
     
@@ -3059,6 +3061,36 @@
     
   
     Traefik Proxy Admin
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="authelia/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-shield" viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    Authelia
   
 
     
@@ -5082,6 +5114,11 @@
 <td>Traefik, PostgreSQL</td>
 </tr>
 <tr>
+<td><a href="../optional/authelia/">Authelia</a></td>
+<td>Identity provider, DUMB/TPA OIDC, and Traefik ForwardAuth</td>
+<td>Traefik, PostgreSQL</td>
+</tr>
+<tr>
 <td><a href="../optional/cloudflared/">Cloudflared</a></td>
 <td>Cloudflare Tunnel connector for DUMB Traefik</td>
 <td>Traefik</td>
@@ -5105,6 +5142,7 @@
 <li><strong><a href="../optional/maintainerr/">Maintainerr</a></strong> builds review collections from media-server and automation data, then applies delayed cleanup actions you explicitly configure.</li>
 <li><strong><a href="../optional/mediastorm/">mediastorm</a></strong> provides its own accounts and clients for streaming from configured Debrid, torrent, and Usenet sources.</li>
 <li><strong><a href="../optional/traefik-proxy-admin/">Traefik Proxy Admin</a></strong> lets operators create Traefik reverse proxy routes for services inside or outside the DUMB container. It owns user-managed host routes while DUMB continues to own embedded UI routes.</li>
+<li><strong><a href="../optional/authelia/">Authelia</a></strong> provides a DUMB-managed identity portal, native OIDC sign-in for DUMB and TPA, and an optional ForwardAuth middleware for selected Traefik routes.</li>
 <li><strong><a href="../optional/cloudflared/">Cloudflared</a></strong> runs a Cloudflare Tunnel connector inside DUMB so public traffic can reach the built-in Traefik entrypoint without direct port forwarding. Cloudflared carries traffic to Traefik; Traefik and TPA still decide which service receives it.</li>
 <li><strong><a href="../optional/zilean/">Zilean</a></strong> improves scraping efficiency by caching previous results from <a href="https://debridmediamanager.com/">Debrid Media Manager</a> hash lists shared by users and reducing redundant queries. Core services like Riven and CLI Debrid can use it as a scraping backend.</li>
 </ul>

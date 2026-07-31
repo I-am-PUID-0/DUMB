@@ -2870,6 +2870,8 @@
       
         
       
+        
+      
     
     
     
@@ -3155,6 +3157,36 @@
     
   
     Traefik Proxy Admin
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/optional/authelia/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-shield" viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    Authelia
   
 
     
@@ -5118,6 +5150,7 @@
 <li>Adds path prefixes for UI services under <code>/service/ui/&lt;service&gt;</code></li>
 <li>Supports embedded iframes in the frontend</li>
 <li>Can poll Traefik Proxy Admin for user-managed host-based reverse proxy routes</li>
+<li>Can load the optional DUMB-managed Authelia ForwardAuth middleware</li>
 <li>Can receive public traffic through the optional Cloudflared service</li>
 </ul>
 <hr />
@@ -5177,6 +5210,11 @@
 <td><code>/config/traefik/dynamic/dynamic_config.yml</code></td>
 </tr>
 <tr>
+<td>DUMB</td>
+<td>Optional Authelia ForwardAuth middleware</td>
+<td><code>/config/traefik/dynamic/authelia.yml</code></td>
+</tr>
+<tr>
 <td>Traefik Proxy Admin</td>
 <td>User-managed reverse proxy routes</td>
 <td><code>http://127.0.0.1:3004/api/traefik/config</code></td>
@@ -5188,6 +5226,8 @@
 <ul>
 <li>DUMB can safely regenerate embedded UI routes whenever services change.</li>
 <li>TPA can manage host-based routes, auth, and middleware without DUMB overwriting them.</li>
+<li>The Authelia wizard can publish <code>dumb-authelia-forward-auth@file</code>, which TPA
+  may attach to selected routes.</li>
 <li>Cloudflared can bring external traffic to Traefik without replacing either DUMB's routes or TPA's routes.</li>
 </ul>
 <hr />
@@ -5227,11 +5267,15 @@ middleware. Some upstream apps have their own login and some do not. If you
 expose Traefik outside your LAN, use protected TPA routes, Cloudflare Access,
 or another deliberate authentication layer and verify it before publishing.</p>
 </div>
+<p>Do not protect the Authelia portal with its own ForwardAuth middleware. Also
+avoid combining the Authelia ForwardAuth middleware with TPA Service SSO on one
+router unless two sequential login gates are intentional.</p>
 <hr />
 <h2 id="related-pages">Related pages<a class="headerlink" href="#related-pages" title="Permanent link">&para;</a></h2>
 <ul>
 <li><a href="../../features/embedded-ui/">Embedded UIs</a></li>
 <li><a href="../../services/optional/traefik-proxy-admin/">Traefik Proxy Admin</a></li>
+<li><a href="../../services/optional/authelia/">Authelia</a></li>
 <li><a href="../../services/optional/cloudflared/">Cloudflared</a></li>
 <li><a href="../../reference/ports/">Service ports</a></li>
 </ul>

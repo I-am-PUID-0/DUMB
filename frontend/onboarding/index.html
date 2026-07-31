@@ -2914,6 +2914,8 @@
       
         
       
+        
+      
     
     
     
@@ -3199,6 +3201,36 @@
     
   
     Traefik Proxy Admin
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/optional/authelia/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-shield" viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    Authelia
   
 
     
@@ -5360,12 +5392,22 @@ flowchart TD
 <td>mediastorm</td>
 </tr>
 <tr>
-<td><strong>Reverse proxy/exposure</strong></td>
-<td>Traefik Proxy Admin, Cloudflared</td>
+<td><strong>Identity/reverse proxy/exposure</strong></td>
+<td>Authelia, Traefik Proxy Admin, Cloudflared</td>
 </tr>
 </tbody>
 </table>
 <p>Optional services are filtered based on core dependencies and earlier selections. For example, PostgreSQL may be enabled/hidden automatically when a selected service requires it.</p>
+<p>Authelia is additionally gated by the backend's <code>authelia_integration</code>
+capability. dmbdb removes it from the Optional Services list when connected to
+an older backend instead of submitting unsupported setup options.</p>
+<p>Selecting Authelia enables PostgreSQL and installs the Authelia runtime, but
+intentionally does not start Authelia during onboarding. After onboarding, a
+<strong>Stopped</strong> or <strong>Unhealthy</strong> Authelia status is expected until you open its
+service page and complete <strong>Step 1: Configure and start Authelia</strong>. Only that
+first step is required; the DUMB OIDC, TPA OIDC, and ForwardAuth steps are
+optional. DNS and an HTTPS Traefik route are required before browser SSO can
+work.</p>
 <div class="admonition warning">
 <p class="admonition-title">mediastorm first login</p>
 <p>Current mediastorm builds use the public first-login credentials <code>admin</code> / <code>admin</code>. During that same sign-in, the login form requires a new password and confirmation before creating the first admin session; this works through Docker and reverse proxies. The later mediastorm onboarding page recognizes that the password is already secured and does not require a second change. DUMB's Optional Services step directs you to the mediastorm service page, where the protected bootstrap file keeps older, pinned, or explicitly customized first-login passwords compatible. mediastorm removes the file and DUMB hides the notice after the password changes.</p>

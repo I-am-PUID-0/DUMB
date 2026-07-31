@@ -6,7 +6,7 @@
   
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="description" content="Secure the DUMB dashboard and API with optional JWT authentication, local users, token lifetimes, setup controls, and protected routes.">
+  <meta name="description" content="Secure DUMB with local accounts, external OpenID Connect, or hybrid sign-in while preserving a deliberate recovery path.">
   
     <meta name="author" content="DUMB Team">
   
@@ -110,7 +110,7 @@
     <meta property="og:locale" content="en_US">
     <meta property="og:site_name" content="DUMB — Distributed Unlimited Media Bridge">
     <meta property="og:title" content="Authentication">
-    <meta property="og:description" content="Secure the DUMB dashboard and API with optional JWT authentication, local users, token lifetimes, setup controls, and protected routes.">
+    <meta property="og:description" content="Secure DUMB with local accounts, external OpenID Connect, or hybrid sign-in while preserving a deliberate recovery path.">
     <meta property="og:url" content="https://dumbarr.com/features/authentication/">
     <meta property="og:image" content="https://dumbarr.com/assets/images/DUMB.png">
     <meta property="og:image:secure_url" content="https://dumbarr.com/assets/images/DUMB.png">
@@ -120,7 +120,7 @@
     <meta property="og:image:alt" content="Distributed Unlimited Media Bridge ecosystem and architecture overview">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="Authentication">
-    <meta name="twitter:description" content="Secure the DUMB dashboard and API with optional JWT authentication, local users, token lifetimes, setup controls, and protected routes.">
+    <meta name="twitter:description" content="Secure DUMB with local accounts, external OpenID Connect, or hybrid sign-in while preserving a deliberate recovery path.">
     <meta name="twitter:image" content="https://dumbarr.com/assets/images/DUMB.png">
     <meta name="twitter:image:alt" content="Distributed Unlimited Media Bridge ecosystem and architecture overview">
     
@@ -973,6 +973,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#authentication-modes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Authentication modes
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#authentication-flow" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1043,6 +1054,28 @@
     <span class="md-ellipsis">
       
         Configuration
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#configure-an-oidc-provider" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Configure an OIDC provider
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#oidc-versus-forwardauth" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OIDC versus ForwardAuth
       
     </span>
   </a>
@@ -2914,6 +2947,8 @@
       
         
       
+        
+      
     
     
     
@@ -3199,6 +3234,36 @@
     
   
     Traefik Proxy Admin
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/optional/authelia/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-shield" viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    Authelia
   
 
     
@@ -5020,6 +5085,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#authentication-modes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Authentication modes
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#authentication-flow" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -5090,6 +5166,28 @@
     <span class="md-ellipsis">
       
         Configuration
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#configure-an-oidc-provider" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Configure an OIDC provider
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#oidc-versus-forwardauth" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OIDC versus ForwardAuth
       
     </span>
   </a>
@@ -5198,14 +5296,18 @@
 
 
 <h1 id="authentication">Authentication<a class="headerlink" href="#authentication" title="Permanent link">&para;</a></h1>
-<p>DUMB includes an optional JWT-based authentication system to secure access to the API and web interface. Authentication can be enabled during initial setup or at any time through the settings page.</p>
+<p>DUMB includes optional authentication for the API and web interface. It can use
+local accounts, an external OpenID Connect (OIDC) provider, or both.</p>
 <hr />
 <h2 id="overview">Overview<a class="headerlink" href="#overview" title="Permanent link">&para;</a></h2>
 <p>The authentication system provides:</p>
 <ul>
-<li><strong>JWT token-based security</strong> with access and refresh tokens</li>
+<li><strong>Local, OIDC, or hybrid sign-in</strong></li>
+<li><strong>JWT token-based DUMB sessions</strong> after either login method succeeds</li>
 <li><strong>User management</strong> with create, update, and delete capabilities</li>
 <li><strong>First-time setup wizard</strong> for creating the initial local user</li>
+<li><strong>External Authelia and generic standards-compatible OIDC providers</strong></li>
+<li><strong>DUMB-managed Authelia linking</strong> from the Authelia service page</li>
 <li><strong>Optional authentication</strong> - can be skipped for local/trusted environments</li>
 <li><strong>Session persistence</strong> with "Remember Me" functionality</li>
 </ul>
@@ -5214,10 +5316,46 @@
 <p>DUMB currently has one authenticated privilege level. Every enabled user can reach the same service-control, configuration, and user-management endpoints; usernames are not viewer/editor/admin roles.</p>
 </div>
 <hr />
+<h2 id="authentication-modes">Authentication modes<a class="headerlink" href="#authentication-modes" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Mode</th>
+<th>Sign-in choices</th>
+<th>Recommended use</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Local</strong></td>
+<td>DUMB username and password</td>
+<td>Simple trusted-LAN deployments</td>
+</tr>
+<tr>
+<td><strong>Hybrid</strong></td>
+<td>OIDC plus local accounts</td>
+<td>Recommended while introducing or operating SSO</td>
+</tr>
+<tr>
+<td><strong>OIDC only</strong></td>
+<td>External identity provider</td>
+<td>Only after provider login and recovery access are proven</td>
+</tr>
+</tbody>
+</table>
+<p>Hybrid mode keeps local password login as a break-glass path if DNS, TLS, the
+identity provider, or its database is unavailable. OIDC-only mode requires an
+explicit lockout-risk confirmation in Settings or the Authelia wizard.</p>
+<div class="admonition important">
+<p class="admonition-title">One DUMB privilege level</p>
+<p>OIDC groups can limit who may sign in, but DUMB does not currently map
+groups to viewer/editor/admin roles. Every accepted identity receives the
+same DUMB operator privilege.</p>
+</div>
 <h2 id="authentication-flow">Authentication flow<a class="headerlink" href="#authentication-flow" title="Permanent link">&para;</a></h2>
 <pre class="mermaid"><code>flowchart TD
     A[App Start] --&gt; B{Auth Status Check}
-    B --&gt;|No Users Exist| C[Setup Page]
+    B --&gt;|No Local Users and no OIDC| C[Setup Page]
     B --&gt;|Auth Disabled| D[Dashboard]
     B --&gt;|Auth Enabled| E{Token Valid?}
     E --&gt;|Yes| D
@@ -5226,7 +5364,7 @@
     C --&gt;|Skip Setup| H[Auth Disabled]
     G --&gt; D
     H --&gt; D
-    F --&gt;|Login Success| D</code></pre>
+    F --&gt;|Local or OIDC login succeeds| D</code></pre>
 <hr />
 <h2 id="first-time-setup">First-time setup<a class="headerlink" href="#first-time-setup" title="Permanent link">&para;</a></h2>
 <p>When DUMB starts for the first time, the frontend detects that no users exist and redirects to the setup page.</p>
@@ -5261,13 +5399,25 @@
 <hr />
 <h2 id="login-process">Login process<a class="headerlink" href="#login-process" title="Permanent link">&para;</a></h2>
 <p>When authentication is enabled, users must log in to access the dashboard and API.</p>
-<h3 id="login-steps">Login steps<a class="headerlink" href="#login-steps" title="Permanent link">&para;</a></h3>
+<h3 id="local-login">Local login<a class="headerlink" href="#local-login" title="Permanent link">&para;</a></h3>
 <ol>
 <li>Navigate to the DUMB frontend</li>
 <li>Enter your username and password</li>
 <li>Optionally check <strong>Remember Me</strong> for persistent sessions</li>
 <li>Click <strong>Login</strong></li>
 </ol>
+<h3 id="oidc-login">OIDC login<a class="headerlink" href="#oidc-login" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Select <strong>Continue with <em>provider</em></strong>.</li>
+<li>DUMB starts Authorization Code flow with PKCE and redirects to the provider.</li>
+<li>Complete the provider's authentication policy.</li>
+<li>The provider returns to <code>/api/auth/oidc/callback</code>.</li>
+<li>DUMB validates state, nonce, issuer, audience, signature, token lifetime, and
+   any configured group restriction.</li>
+<li>The browser redeems a short-lived, one-time exchange code for DUMB tokens.</li>
+</ol>
+<p>Provider tokens are not placed in the browser URL. DUMB issues its own access
+and refresh tokens after successful OIDC validation.</p>
 <h3 id="token-management">Token management<a class="headerlink" href="#token-management" title="Permanent link">&para;</a></h3>
 <table>
 <thead>
@@ -5286,10 +5436,16 @@
 <td>API requests</td>
 </tr>
 <tr>
-<td>Refresh Token</td>
+<td>Local refresh token</td>
 <td>30 days</td>
 <td>Session/Local Storage</td>
-<td>Obtain new access tokens</td>
+<td>Renew a local session</td>
+</tr>
+<tr>
+<td>OIDC refresh token</td>
+<td>1 day</td>
+<td>Session/Local Storage</td>
+<td>Renew a provider-backed DUMB session</td>
 </tr>
 </tbody>
 </table>
@@ -5386,6 +5542,7 @@ create accounts for multiple people.</p>
 <p>Authentication state is stored in <code>/config/users.json</code>:</p>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;mode&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;hybrid&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;users&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
 <span class="w">    </span><span class="p">{</span>
 <span class="w">      </span><span class="nt">&quot;username&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;admin&quot;</span><span class="p">,</span>
@@ -5393,6 +5550,19 @@ create accounts for multiple people.</p>
 <span class="w">      </span><span class="nt">&quot;disabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span>
 <span class="w">    </span><span class="p">}</span>
 <span class="w">  </span><span class="p">],</span>
+<span class="w">  </span><span class="nt">&quot;oidc&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;provider_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Authelia&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;source&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;external_authelia&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;issuer_url&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;https://auth.example.com&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;client_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;dumb&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;client_secret&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&lt;stored-secret&gt;&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;redirect_uri&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;https://dumb.example.com/api/auth/oidc/callback&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;scopes&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;openid&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;profile&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;email&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;groups&quot;</span><span class="p">],</span>
+<span class="w">    </span><span class="nt">&quot;username_claim&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;preferred_username&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;groups_claim&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;groups&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;allowed_groups&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;dumb-users&quot;</span><span class="p">]</span>
+<span class="w">  </span><span class="p">},</span>
 <span class="w">  </span><span class="nt">&quot;jwt_secret&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;auto-generated-secret-key&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;setup_skipped&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span>
 <span class="p">}</span>
@@ -5410,8 +5580,16 @@ create accounts for multiple people.</p>
 <td>Whether authentication is required</td>
 </tr>
 <tr>
+<td><code>mode</code></td>
+<td><code>local</code>, <code>hybrid</code>, or <code>oidc</code></td>
+</tr>
+<tr>
 <td><code>users</code></td>
 <td>Array of user accounts; <code>password</code> contains the bcrypt hash, not plain text</td>
+</tr>
+<tr>
+<td><code>oidc</code></td>
+<td>Provider endpoints, client credentials, claim mapping, and optional allowed groups</td>
 </tr>
 <tr>
 <td><code>jwt_secret</code></td>
@@ -5427,6 +5605,90 @@ create accounts for multiple people.</p>
 <p class="admonition-title">Password security</p>
 <p>Passwords are hashed using bcrypt with automatic salt generation. The original password is never stored.</p>
 </div>
+<p><code>users.json</code> contains the OIDC client secret and DUMB JWT signing secret. Keep
+the file private and include it in protected configuration backups.</p>
+<h2 id="configure-an-oidc-provider">Configure an OIDC provider<a class="headerlink" href="#configure-an-oidc-provider" title="Permanent link">&para;</a></h2>
+<p>Open <strong>Settings → Authentication → Sign-in provider</strong>. The <strong>Provider preset</strong>
+list includes:</p>
+<ul>
+<li>DUMB-managed Authelia, when DUMB reports that its managed instance has been
+  bootstrapped;</li>
+<li>external Authelia;</li>
+<li>Google, Authentik, Keycloak, Microsoft Entra ID, Auth0, Okta, ZITADEL, and
+  Dex;</li>
+<li>Custom / Generic OIDC for another standards-compatible provider.</li>
+</ul>
+<p>Presets fill safe known values, labels, claim defaults, scopes, and
+provider-specific examples. Some providers have tenant-, realm-, or
+deployment-specific issuers, so those presets explain the expected URL rather
+than guessing it. The Google preset fills its fixed issuer and
+<a href="https://developers.google.com/identity/openid-connect/reference">official discovery URL</a>.</p>
+<p>Except for DUMB-managed Authelia, first create an OIDC/OAuth <strong>web
+application</strong> at the provider. Then supply:</p>
+<ul>
+<li>provider and issuer names;</li>
+<li>issuer URL, or an explicit discovery URL when necessary;</li>
+<li>client ID and secret;</li>
+<li>the exact browser-facing DUMB callback URL;</li>
+<li>scopes and username/groups claim names;</li>
+<li>optional allowed groups.</li>
+</ul>
+<p>Register the <strong>Redirect URI</strong> shown in DUMB as an exact allowed callback at the
+provider. It normally has this form:</p>
+<div class="highlight"><pre><span></span><code>https://&lt;dumb-public-host&gt;/api/auth/oidc/callback
+</code></pre></div>
+<p>Use the normal browser-facing HTTPS FQDN. DUMB does not accept <code>localhost</code>, an
+IP address, a single-label hostname, HTTP, or a DUMB embedded-service URL as an
+OIDC callback. Opening Settings through a local/IP address therefore leaves the
+field blank instead of presenting that origin as a usable default.</p>
+<p>For Google, standard OpenID Connect does not return Google Group membership in
+DUMB's <code>groups</code> claim. Leave <strong>Allowed groups</strong> blank unless an intermediary or
+custom provider mapping deliberately supplies that claim.</p>
+<p>Use <strong>Check discovery</strong> before saving. This fetches and validates provider
+metadata without changing the active login configuration.</p>
+<h3 id="provider-connection-safety">Provider connection safety<a class="headerlink" href="#provider-connection-safety" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Option</th>
+<th>What it does</th>
+<th>Recommended state</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Verify provider TLS</strong></td>
+<td>Validates the provider HTTPS certificate and hostname</td>
+<td>On</td>
+</tr>
+<tr>
+<td><strong>Allow private endpoint IPs</strong></td>
+<td>Allows DUMB's backend to contact provider endpoints that resolve to loopback, RFC1918, or other private addresses</td>
+<td>Off unless using a trusted self-hosted provider</td>
+</tr>
+<tr>
+<td><strong>Allow HTTP</strong></td>
+<td>Allows unencrypted provider endpoints</td>
+<td>Off; use only on an isolated trusted network when HTTPS is unavailable</td>
+</tr>
+</tbody>
+</table>
+<p>These controls apply to outbound DUMB-to-provider requests, not
+browser-to-DUMB TLS. Changing provider presets resets them to the safe defaults
+so an exception intended for an internal provider is not silently carried to a
+different provider.</p>
+<p>When a bootstrapped DUMB-managed Authelia instance is available, its preset
+fills the issuer and <code>dumb</code> client ID automatically. <strong>Link managed Authelia</strong>
+creates or reuses the dedicated client and transfers its generated secret
+without exposing it in the browser. Use the
+<a href="../../services/optional/authelia/">Authelia service-page wizard</a> for the initial
+bootstrap, TPA linking, ForwardAuth publishing, or later integration changes.</p>
+<h2 id="oidc-versus-forwardauth">OIDC versus ForwardAuth<a class="headerlink" href="#oidc-versus-forwardauth" title="Permanent link">&para;</a></h2>
+<p>OIDC changes how users sign in to DUMB or TPA. ForwardAuth is a Traefik
+middleware that protects a routed service before its upstream receives the
+request. They solve different problems and may be enabled independently.</p>
+<p>Do not attach both Authelia ForwardAuth and TPA Service SSO to the same router
+unless you intentionally want two authentication gates.</p>
 <hr />
 <h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h2>
 <h3 id="invalid-credentials-error">"Invalid credentials" error<a class="headerlink" href="#invalid-credentials-error" title="Permanent link">&para;</a></h3>
@@ -5446,7 +5708,8 @@ create accounts for multiple people.</p>
 <ol>
 <li>Stop the DUMB container</li>
 <li>Edit <code>/config/users.json</code></li>
-<li>Set <code>"enabled": false</code></li>
+<li>Set <code>"mode": "local"</code> if a working local account remains, or set
+   <code>"enabled": false</code> for emergency recovery</li>
 <li>Restart the container</li>
 <li>Access the dashboard and create a new user or reset your password</li>
 </ol>

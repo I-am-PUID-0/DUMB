@@ -6,31 +6,31 @@
   
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="description" content="Learn about Authentication API in DUMB, the Distributed Unlimited Media Bridge platform for Debrid, Usenet, Arr apps, and media server automation.">
+  <meta name="description" content="Deploy and link a DUMB-managed Authelia identity provider for DUMB sign-in, Traefik Proxy Admin SSO, and selected Traefik ForwardAuth routes.">
   
     <meta name="author" content="DUMB Team">
   
   
-    <link rel="canonical" href="https://dumbarr.com/api/auth/">
+    <link rel="canonical" href="https://dumbarr.com/services/optional/authelia/">
   
   
-    <link rel="prev" href="../">
+    <link rel="prev" href="../traefik-proxy-admin/">
   
   
-    <link rel="next" href="../health/">
+    <link rel="next" href="../cloudflared/">
   
   
     
   
   
-  <link rel="icon" href="../../assets/images/favicon.ico">
+  <link rel="icon" href="../../../assets/images/favicon.ico">
   <meta name="generator" content="zensical-0.0.15">
 
     
   
     
       
-        <title>Authentication API - Distributed Unlimited Media Bridge</title>
+        <title>Authelia - Distributed Unlimited Media Bridge</title>
       
     
   
@@ -39,12 +39,12 @@
       
         
       
-      <link rel="stylesheet" href="../../assets/stylesheets/modern/main.f1b6466b.min.css">
+      <link rel="stylesheet" href="../../../assets/stylesheets/modern/main.f1b6466b.min.css">
       
         
           
         
-        <link rel="stylesheet" href="../../assets/stylesheets/modern/palette.dfe2e883.min.css">
+        <link rel="stylesheet" href="../../../assets/stylesheets/modern/palette.dfe2e883.min.css">
       
       
   
@@ -92,9 +92,9 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/css/main.css">
+      <link rel="stylesheet" href="../../../assets/css/main.css">
     
-    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,a=__md_scope)=>JSON.parse(t.getItem(a.pathname+"."+e)),__md_set=(e,t,a=localStorage,_=__md_scope)=>{try{a.setItem(_.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    <script>__md_scope=new URL("../../..",location),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,a=__md_scope)=>JSON.parse(t.getItem(a.pathname+"."+e)),__md_set=(e,t,a=localStorage,_=__md_scope)=>{try{a.setItem(_.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
     
       
 
@@ -109,9 +109,9 @@
     <meta property="og:type" content="website">
     <meta property="og:locale" content="en_US">
     <meta property="og:site_name" content="DUMB — Distributed Unlimited Media Bridge">
-    <meta property="og:title" content="Authentication API">
-    <meta property="og:description" content="Learn about Authentication API in DUMB, the Distributed Unlimited Media Bridge platform for Debrid, Usenet, Arr apps, and media server automation.">
-    <meta property="og:url" content="https://dumbarr.com/api/auth/">
+    <meta property="og:title" content="Authelia">
+    <meta property="og:description" content="Deploy and link a DUMB-managed Authelia identity provider for DUMB sign-in, Traefik Proxy Admin SSO, and selected Traefik ForwardAuth routes.">
+    <meta property="og:url" content="https://dumbarr.com/services/optional/authelia/">
     <meta property="og:image" content="https://dumbarr.com/assets/images/DUMB.png">
     <meta property="og:image:secure_url" content="https://dumbarr.com/assets/images/DUMB.png">
     <meta property="og:image:type" content="image/png">
@@ -119,8 +119,8 @@
     <meta property="og:image:height" content="1024">
     <meta property="og:image:alt" content="Distributed Unlimited Media Bridge ecosystem and architecture overview">
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Authentication API">
-    <meta name="twitter:description" content="Learn about Authentication API in DUMB, the Distributed Unlimited Media Bridge platform for Debrid, Usenet, Arr apps, and media server automation.">
+    <meta name="twitter:title" content="Authelia">
+    <meta name="twitter:description" content="Deploy and link a DUMB-managed Authelia identity provider for DUMB sign-in, Traefik Proxy Admin SSO, and selected Traefik ForwardAuth routes.">
     <meta name="twitter:image" content="https://dumbarr.com/assets/images/DUMB.png">
     <meta name="twitter:image:alt" content="Distributed Unlimited Media Bridge ecosystem and architecture overview">
     
@@ -140,16 +140,24 @@
           {
             "@type": "ListItem",
             "position": 2,
-            "name": "API",
-            "item": "https://dumbarr.com/api/"
+            "name": "Services",
+            "item": "https://dumbarr.com/services/"
           }
           
           ,
           {
             "@type": "ListItem",
             "position": 3,
-            "name": "Authentication API",
-            "item": "https://dumbarr.com/api/auth/"
+            "name": "Optional",
+            "item": "https://dumbarr.com/services/optional/"
+          }
+          
+          ,
+          {
+            "@type": "ListItem",
+            "position": 4,
+            "name": "Authelia",
+            "item": "https://dumbarr.com/services/optional/authelia/"
           }
         ]
       }
@@ -176,7 +184,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#authentication-api" class="md-skip">
+        <a href="#authelia" class="md-skip">
           Skip to content
         </a>
       
@@ -201,9 +209,9 @@
 
 <header class="md-header" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="../.." title="Distributed Unlimited Media Bridge" class="md-header__button md-logo" aria-label="Distributed Unlimited Media Bridge" data-md-component="logo">
+    <a href="../../.." title="Distributed Unlimited Media Bridge" class="md-header__button md-logo" aria-label="Distributed Unlimited Media Bridge" data-md-component="logo">
       
-  <img src="../../assets/images/logo.png" alt="logo">
+  <img src="../../../assets/images/logo.png" alt="logo">
 
     </a>
     <label class="md-header__button md-icon" for="__drawer">
@@ -220,7 +228,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Authentication API
+              Authelia
             
           </span>
         </div>
@@ -314,7 +322,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../.." class="md-tabs__link">
+      <a href="../../.." class="md-tabs__link">
         
   
   Home
@@ -332,7 +340,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../getting-started/" class="md-tabs__link">
+        <a href="../../../getting-started/" class="md-tabs__link">
           
   
   Getting Started
@@ -351,7 +359,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../features/" class="md-tabs__link">
+        <a href="../../../features/" class="md-tabs__link">
           
   
   Features
@@ -370,7 +378,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../frontend/" class="md-tabs__link">
+        <a href="../../../frontend/" class="md-tabs__link">
           
   
   Frontend
@@ -389,7 +397,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../architecture/" class="md-tabs__link">
+        <a href="../../../architecture/" class="md-tabs__link">
           
   
   Architecture
@@ -404,11 +412,13 @@
   
   
   
+    
+  
   
     
     
-      <li class="md-tabs__item">
-        <a href="../../services/" class="md-tabs__link">
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../../" class="md-tabs__link">
           
   
   Services
@@ -427,7 +437,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../deployment/" class="md-tabs__link">
+        <a href="../../../deployment/" class="md-tabs__link">
           
   
   Deployment
@@ -442,13 +452,11 @@
   
   
   
-    
-  
   
     
     
-      <li class="md-tabs__item md-tabs__item--active">
-        <a href="../" class="md-tabs__link">
+      <li class="md-tabs__item">
+        <a href="../../../api/" class="md-tabs__link">
           
   
   API
@@ -467,7 +475,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../reference/" class="md-tabs__link">
+        <a href="../../../reference/" class="md-tabs__link">
           
   
   Reference
@@ -486,7 +494,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../faq/general/" class="md-tabs__link">
+        <a href="../../../faq/general/" class="md-tabs__link">
           
   
   FAQ
@@ -503,7 +511,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../../changelog/" class="md-tabs__link">
+      <a href="../../../changelog/" class="md-tabs__link">
         
   
   Changelog
@@ -519,7 +527,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../../contributing/" class="md-tabs__link">
+      <a href="../../../contributing/" class="md-tabs__link">
         
   
   Contributing
@@ -535,7 +543,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../../about/" class="md-tabs__link">
+      <a href="../../../about/" class="md-tabs__link">
         
   
   About
@@ -567,9 +575,9 @@
 
 <nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="../.." title="Distributed Unlimited Media Bridge" class="md-nav__button md-logo" aria-label="Distributed Unlimited Media Bridge" data-md-component="logo">
+    <a href="../../.." title="Distributed Unlimited Media Bridge" class="md-nav__button md-logo" aria-label="Distributed Unlimited Media Bridge" data-md-component="logo">
       
-  <img src="../../assets/images/logo.png" alt="logo">
+  <img src="../../../assets/images/logo.png" alt="logo">
 
     </a>
     Distributed Unlimited Media Bridge
@@ -596,7 +604,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../.." class="md-nav__link">
+      <a href="../../.." class="md-nav__link">
         
   
   
@@ -652,7 +660,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../getting-started/" class="md-nav__link ">
+            <a href="../../../getting-started/" class="md-nav__link ">
               
   
   
@@ -698,7 +706,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../getting-started/installation/" class="md-nav__link">
+      <a href="../../../getting-started/installation/" class="md-nav__link">
         
   
   
@@ -788,7 +796,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../features/" class="md-nav__link ">
+            <a href="../../../features/" class="md-nav__link ">
               
   
   
@@ -834,7 +842,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/configuration/" class="md-nav__link">
+      <a href="../../../features/configuration/" class="md-nav__link">
         
   
   
@@ -864,7 +872,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/usage/" class="md-nav__link">
+      <a href="../../../features/usage/" class="md-nav__link">
         
   
   
@@ -894,7 +902,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/authentication/" class="md-nav__link">
+      <a href="../../../features/authentication/" class="md-nav__link">
         
   
   
@@ -924,7 +932,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/auto-restart/" class="md-nav__link">
+      <a href="../../../features/auto-restart/" class="md-nav__link">
         
   
   
@@ -954,7 +962,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/startup-lifecycle/" class="md-nav__link">
+      <a href="../../../features/startup-lifecycle/" class="md-nav__link">
         
   
   
@@ -984,7 +992,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/auto-update/" class="md-nav__link">
+      <a href="../../../features/auto-update/" class="md-nav__link">
         
   
   
@@ -1014,7 +1022,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/arr-postgres-migration/" class="md-nav__link">
+      <a href="../../../features/arr-postgres-migration/" class="md-nav__link">
         
   
   
@@ -1044,7 +1052,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/symlinks/" class="md-nav__link">
+      <a href="../../../features/symlinks/" class="md-nav__link">
         
   
   
@@ -1074,7 +1082,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/seerr-sync/" class="md-nav__link">
+      <a href="../../../features/seerr-sync/" class="md-nav__link">
         
   
   
@@ -1104,7 +1112,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/ffprobe-monitor/" class="md-nav__link">
+      <a href="../../../features/ffprobe-monitor/" class="md-nav__link">
         
   
   
@@ -1134,7 +1142,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/metrics/" class="md-nav__link">
+      <a href="../../../features/metrics/" class="md-nav__link">
         
   
   
@@ -1164,7 +1172,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/notifications/" class="md-nav__link">
+      <a href="../../../features/notifications/" class="md-nav__link">
         
   
   
@@ -1194,7 +1202,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/ai-assistant/" class="md-nav__link">
+      <a href="../../../features/ai-assistant/" class="md-nav__link">
         
   
   
@@ -1224,7 +1232,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/embedded-ui/" class="md-nav__link">
+      <a href="../../../features/embedded-ui/" class="md-nav__link">
         
   
   
@@ -1296,7 +1304,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../frontend/" class="md-nav__link ">
+            <a href="../../../frontend/" class="md-nav__link ">
               
   
   
@@ -1342,7 +1350,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../frontend/dashboard/" class="md-nav__link">
+      <a href="../../../frontend/dashboard/" class="md-nav__link">
         
   
   
@@ -1372,7 +1380,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../frontend/onboarding/" class="md-nav__link">
+      <a href="../../../frontend/onboarding/" class="md-nav__link">
         
   
   
@@ -1402,7 +1410,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../frontend/settings/" class="md-nav__link">
+      <a href="../../../frontend/settings/" class="md-nav__link">
         
   
   
@@ -1432,7 +1440,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../frontend/service-pages/" class="md-nav__link">
+      <a href="../../../frontend/service-pages/" class="md-nav__link">
         
   
   
@@ -1462,7 +1470,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../frontend/metrics/" class="md-nav__link">
+      <a href="../../../frontend/metrics/" class="md-nav__link">
         
   
   
@@ -1530,7 +1538,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../architecture/" class="md-nav__link ">
+            <a href="../../../architecture/" class="md-nav__link ">
               
   
   
@@ -1576,7 +1584,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../architecture/backend/" class="md-nav__link">
+      <a href="../../../architecture/backend/" class="md-nav__link">
         
   
   
@@ -1606,7 +1614,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../architecture/frontend/" class="md-nav__link">
+      <a href="../../../architecture/frontend/" class="md-nav__link">
         
   
   
@@ -1636,7 +1644,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../architecture/traefik/" class="md-nav__link">
+      <a href="../../../architecture/traefik/" class="md-nav__link">
         
   
   
@@ -1670,6 +1678,8 @@
       
   
   
+    
+  
   
   
     
@@ -1691,22 +1701,23 @@
     
     
       
+        
+        
+      
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
       
         
         
-          
-        
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" checked>
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../services/" class="md-nav__link ">
+            <a href="../../" class="md-nav__link ">
               
   
   
@@ -1726,13 +1737,13 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_6" id="__nav_6_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_6" id="__nav_6_label" tabindex="">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_6">
             <span class="md-nav__icon md-icon"></span>
             
@@ -1768,10 +1779,13 @@
       
       
         
+          
+          
+        
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
       
         
         
@@ -1781,7 +1795,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../services/dumb/" class="md-nav__link ">
+            <a href="../../dumb/" class="md-nav__link ">
               
   
   
@@ -1801,7 +1815,7 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_6_2" id="__nav_6_2_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_6_2" id="__nav_6_2_label" tabindex="">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
@@ -1827,7 +1841,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/dumb/api/" class="md-nav__link">
+      <a href="../../dumb/api/" class="md-nav__link">
         
   
   
@@ -1857,7 +1871,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/dumb/dumb-frontend/" class="md-nav__link">
+      <a href="../../dumb/dumb-frontend/" class="md-nav__link">
         
   
   
@@ -1939,10 +1953,13 @@
       
       
         
+          
+          
+        
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
       
         
         
@@ -1952,7 +1969,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../services/core/" class="md-nav__link ">
+            <a href="../../core/" class="md-nav__link ">
               
   
   
@@ -1972,7 +1989,7 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_6_3" id="__nav_6_3_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_6_3" id="__nav_6_3_label" tabindex="">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
@@ -1998,7 +2015,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/core/cli-debrid/" class="md-nav__link">
+      <a href="../../core/cli-debrid/" class="md-nav__link">
         
   
   
@@ -2028,7 +2045,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/core/decypharr/" class="md-nav__link">
+      <a href="../../core/decypharr/" class="md-nav__link">
         
   
   
@@ -2058,7 +2075,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/core/nzbdav/" class="md-nav__link">
+      <a href="../../core/nzbdav/" class="md-nav__link">
         
   
   
@@ -2088,7 +2105,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/core/altmount/" class="md-nav__link">
+      <a href="../../core/altmount/" class="md-nav__link">
         
   
   
@@ -2118,7 +2135,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/core/plex-media-server/" class="md-nav__link">
+      <a href="../../core/plex-media-server/" class="md-nav__link">
         
   
   
@@ -2148,7 +2165,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/core/jellyfin/" class="md-nav__link">
+      <a href="../../core/jellyfin/" class="md-nav__link">
         
   
   
@@ -2178,7 +2195,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/core/emby/" class="md-nav__link">
+      <a href="../../core/emby/" class="md-nav__link">
         
   
   
@@ -2208,7 +2225,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/core/seerr/" class="md-nav__link">
+      <a href="../../core/seerr/" class="md-nav__link">
         
   
   
@@ -2238,7 +2255,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/core/riven-backend/" class="md-nav__link">
+      <a href="../../core/riven-backend/" class="md-nav__link">
         
   
   
@@ -2268,7 +2285,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/core/sonarr/" class="md-nav__link">
+      <a href="../../core/sonarr/" class="md-nav__link">
         
   
   
@@ -2298,7 +2315,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/core/radarr/" class="md-nav__link">
+      <a href="../../core/radarr/" class="md-nav__link">
         
   
   
@@ -2328,7 +2345,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/core/lidarr/" class="md-nav__link">
+      <a href="../../core/lidarr/" class="md-nav__link">
         
   
   
@@ -2358,7 +2375,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/core/prowlarr/" class="md-nav__link">
+      <a href="../../core/prowlarr/" class="md-nav__link">
         
   
   
@@ -2388,7 +2405,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/core/whisparr/" class="md-nav__link">
+      <a href="../../core/whisparr/" class="md-nav__link">
         
   
   
@@ -2418,7 +2435,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/core/neutarr/" class="md-nav__link">
+      <a href="../../core/neutarr/" class="md-nav__link">
         
   
   
@@ -2448,7 +2465,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/core/profilarr/" class="md-nav__link">
+      <a href="../../core/profilarr/" class="md-nav__link">
         
   
   
@@ -2508,10 +2525,13 @@
       
       
         
+          
+          
+        
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
       
         
         
@@ -2521,7 +2541,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../services/dependent/" class="md-nav__link ">
+            <a href="../../dependent/" class="md-nav__link ">
               
   
   
@@ -2541,7 +2561,7 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_6_4" id="__nav_6_4_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_6_4" id="__nav_6_4_label" tabindex="">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
@@ -2567,7 +2587,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/dependent/cli-battery/" class="md-nav__link">
+      <a href="../../dependent/cli-battery/" class="md-nav__link">
         
   
   
@@ -2597,7 +2617,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/dependent/phalanx-db/" class="md-nav__link">
+      <a href="../../dependent/phalanx-db/" class="md-nav__link">
         
   
   
@@ -2627,7 +2647,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/dependent/postgres/" class="md-nav__link">
+      <a href="../../dependent/postgres/" class="md-nav__link">
         
   
   
@@ -2657,7 +2677,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/dependent/rclone/" class="md-nav__link">
+      <a href="../../dependent/rclone/" class="md-nav__link">
         
   
   
@@ -2687,7 +2707,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/dependent/zurg/" class="md-nav__link">
+      <a href="../../dependent/zurg/" class="md-nav__link">
         
   
   
@@ -2722,6 +2742,8 @@
                 
   
   
+    
+  
   
   
     
@@ -2759,20 +2781,21 @@
       
       
         
-      
-    
-    
-    <li class="md-nav__item md-nav__item--nested">
-      
-        
-        
+          
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6_5" >
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_5" checked>
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../services/optional/" class="md-nav__link ">
+            <a href="../" class="md-nav__link ">
               
   
   
@@ -2792,13 +2815,13 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_6_5" id="__nav_6_5_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_6_5" id="__nav_6_5_label" tabindex="">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_5_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_5_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_6_5">
             <span class="md-nav__icon md-icon"></span>
             
@@ -2818,7 +2841,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/optional/pgadmin/" class="md-nav__link">
+      <a href="../pgadmin/" class="md-nav__link">
         
   
   
@@ -2848,7 +2871,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/optional/riven-frontend/" class="md-nav__link">
+      <a href="../riven-frontend/" class="md-nav__link">
         
   
   
@@ -2878,7 +2901,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/optional/tautulli/" class="md-nav__link">
+      <a href="../tautulli/" class="md-nav__link">
         
   
   
@@ -2908,7 +2931,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/optional/bazarr/" class="md-nav__link">
+      <a href="../bazarr/" class="md-nav__link">
         
   
   
@@ -2938,7 +2961,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/optional/pulsarr/" class="md-nav__link">
+      <a href="../pulsarr/" class="md-nav__link">
         
   
   
@@ -2968,7 +2991,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/optional/maintainerr/" class="md-nav__link">
+      <a href="../maintainerr/" class="md-nav__link">
         
   
   
@@ -2998,7 +3021,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/optional/mediastorm/" class="md-nav__link">
+      <a href="../mediastorm/" class="md-nav__link">
         
   
   
@@ -3028,7 +3051,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/optional/traefik-proxy-admin/" class="md-nav__link">
+      <a href="../traefik-proxy-admin/" class="md-nav__link">
         
   
   
@@ -3055,10 +3078,39 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../../services/optional/authelia/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-shield" viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    Authelia
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -3076,6 +3128,170 @@
   
 
       </a>
+      
+        
+
+
+<nav class="md-nav md-nav--secondary" aria-label="On this page">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      On this page
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#what-dumb-manages" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What DUMB manages
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#requirements" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Requirements
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#plan-the-addresses" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Plan the addresses
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#guided-setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Guided setup
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#open-the-authelia-portal" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Open the Authelia portal
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#publish-the-authelia-portal" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Publish the Authelia portal
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#dumb-sign-in-modes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DUMB sign-in modes
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#dumb-managed-external-or-other-oidc-providers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DUMB-managed, external, or other OIDC providers
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#oidc-versus-forwardauth" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OIDC versus ForwardAuth
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#files-and-ports" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Files and ports
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#integration-api" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Integration API
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#recovery" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Recovery
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#related-resources" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Related resources
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -3088,7 +3304,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/optional/cloudflared/" class="md-nav__link">
+      <a href="../cloudflared/" class="md-nav__link">
         
   
   
@@ -3118,7 +3334,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/optional/zilean/" class="md-nav__link">
+      <a href="../zilean/" class="md-nav__link">
         
   
   
@@ -3208,7 +3424,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../deployment/" class="md-nav__link ">
+            <a href="../../../deployment/" class="md-nav__link ">
               
   
   
@@ -3254,7 +3470,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../deployment/docker/" class="md-nav__link">
+      <a href="../../../deployment/docker/" class="md-nav__link">
         
   
   
@@ -3284,7 +3500,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../deployment/networking/" class="md-nav__link">
+      <a href="../../../deployment/networking/" class="md-nav__link">
         
   
   
@@ -3314,7 +3530,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../deployment/portainer/" class="md-nav__link">
+      <a href="../../../deployment/portainer/" class="md-nav__link">
         
   
   
@@ -3344,7 +3560,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../deployment/unraid/" class="md-nav__link">
+      <a href="../../../deployment/unraid/" class="md-nav__link">
         
   
   
@@ -3374,7 +3590,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../deployment/wsl/" class="md-nav__link">
+      <a href="../../../deployment/wsl/" class="md-nav__link">
         
   
   
@@ -3404,7 +3620,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../deployment/proxmox/" class="md-nav__link">
+      <a href="../../../deployment/proxmox/" class="md-nav__link">
         
   
   
@@ -3434,7 +3650,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../deployment/synology/" class="md-nav__link">
+      <a href="../../../deployment/synology/" class="md-nav__link">
         
   
   
@@ -3464,7 +3680,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../deployment/qnap/" class="md-nav__link">
+      <a href="../../../deployment/qnap/" class="md-nav__link">
         
   
   
@@ -3494,7 +3710,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../deployment/truenas/" class="md-nav__link">
+      <a href="../../../deployment/truenas/" class="md-nav__link">
         
   
   
@@ -3524,7 +3740,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../deployment/dockge/" class="md-nav__link">
+      <a href="../../../deployment/dockge/" class="md-nav__link">
         
   
   
@@ -3558,8 +3774,6 @@
       
   
   
-    
-  
   
   
     
@@ -3595,23 +3809,22 @@
     
     
       
-        
-        
-      
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" checked>
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_8" >
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../" class="md-nav__link ">
+            <a href="../../../api/" class="md-nav__link ">
               
   
   
@@ -3631,13 +3844,13 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_8" id="__nav_8_label" tabindex="">
+              <label class="md-nav__link " for="__nav_8" id="__nav_8_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_8">
             <span class="md-nav__icon md-icon"></span>
             
@@ -3654,39 +3867,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-key" viewBox="0 0 24 24"><path d="m15.5 7.5 2.3 2.3a1 1 0 0 0 1.4 0l2.1-2.1a1 1 0 0 0 0-1.4L19 4M21 2l-9.6 9.6"/><circle cx="7.5" cy="15.5" r="5.5"/></svg>
-  
-  <span class="md-ellipsis">
-    
-  
-    Authentication
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../../../api/auth/" class="md-nav__link">
         
   
   
@@ -3704,104 +3888,6 @@
   
 
       </a>
-      
-        
-
-
-<nav class="md-nav md-nav--secondary" aria-label="On this page">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      On this page
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#overview" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Overview
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#endpoints" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Endpoints
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#user-management-endpoints" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        User management endpoints
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#token-structure" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Token structure
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#using-authentication-with-other-endpoints" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Using authentication with other endpoints
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#error-handling" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Error handling
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#related-pages" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Related pages
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -3814,7 +3900,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../health/" class="md-nav__link">
+      <a href="../../../api/health/" class="md-nav__link">
         
   
   
@@ -3844,7 +3930,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../process/" class="md-nav__link">
+      <a href="../../../api/process/" class="md-nav__link">
         
   
   
@@ -3874,7 +3960,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../config/" class="md-nav__link">
+      <a href="../../../api/config/" class="md-nav__link">
         
   
   
@@ -3904,7 +3990,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../logs/" class="md-nav__link">
+      <a href="../../../api/logs/" class="md-nav__link">
         
   
   
@@ -3934,7 +4020,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../metrics/" class="md-nav__link">
+      <a href="../../../api/metrics/" class="md-nav__link">
         
   
   
@@ -3964,7 +4050,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../notifications/" class="md-nav__link">
+      <a href="../../../api/notifications/" class="md-nav__link">
         
   
   
@@ -3994,7 +4080,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../ai/" class="md-nav__link">
+      <a href="../../../api/ai/" class="md-nav__link">
         
   
   
@@ -4024,7 +4110,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../seerr-sync/" class="md-nav__link">
+      <a href="../../../api/seerr-sync/" class="md-nav__link">
         
   
   
@@ -4054,7 +4140,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../websocket/" class="md-nav__link">
+      <a href="../../../api/websocket/" class="md-nav__link">
         
   
   
@@ -4084,7 +4170,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../websocket_logs/" class="md-nav__link">
+      <a href="../../../api/websocket_logs/" class="md-nav__link">
         
   
   
@@ -4156,7 +4242,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../reference/" class="md-nav__link ">
+            <a href="../../../reference/" class="md-nav__link ">
               
   
   
@@ -4202,7 +4288,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../reference/ports/" class="md-nav__link">
+      <a href="../../../reference/ports/" class="md-nav__link">
         
   
   
@@ -4232,7 +4318,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../reference/environment-variables/" class="md-nav__link">
+      <a href="../../../reference/environment-variables/" class="md-nav__link">
         
   
   
@@ -4262,7 +4348,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../reference/config-schema/" class="md-nav__link">
+      <a href="../../../reference/config-schema/" class="md-nav__link">
         
   
   
@@ -4292,7 +4378,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../reference/instances/" class="md-nav__link">
+      <a href="../../../reference/instances/" class="md-nav__link">
         
   
   
@@ -4322,7 +4408,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../reference/core-service/" class="md-nav__link">
+      <a href="../../../reference/core-service/" class="md-nav__link">
         
   
   
@@ -4445,7 +4531,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../faq/general/" class="md-nav__link">
+      <a href="../../../faq/general/" class="md-nav__link">
         
   
   
@@ -4475,7 +4561,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../faq/authentication/" class="md-nav__link">
+      <a href="../../../faq/authentication/" class="md-nav__link">
         
   
   
@@ -4505,7 +4591,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../faq/cli-debrid/" class="md-nav__link">
+      <a href="../../../faq/cli-debrid/" class="md-nav__link">
         
   
   
@@ -4535,7 +4621,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../faq/decypharr/" class="md-nav__link">
+      <a href="../../../faq/decypharr/" class="md-nav__link">
         
   
   
@@ -4565,7 +4651,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../faq/dumb/" class="md-nav__link">
+      <a href="../../../faq/dumb/" class="md-nav__link">
         
   
   
@@ -4595,7 +4681,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../faq/neutarr/" class="md-nav__link">
+      <a href="../../../faq/neutarr/" class="md-nav__link">
         
   
   
@@ -4625,7 +4711,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../faq/pgadmin/" class="md-nav__link">
+      <a href="../../../faq/pgadmin/" class="md-nav__link">
         
   
   
@@ -4655,7 +4741,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../faq/plex/" class="md-nav__link">
+      <a href="../../../faq/plex/" class="md-nav__link">
         
   
   
@@ -4685,7 +4771,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../faq/postgres/" class="md-nav__link">
+      <a href="../../../faq/postgres/" class="md-nav__link">
         
   
   
@@ -4715,7 +4801,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../faq/rclone/" class="md-nav__link">
+      <a href="../../../faq/rclone/" class="md-nav__link">
         
   
   
@@ -4745,7 +4831,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../faq/riven/" class="md-nav__link">
+      <a href="../../../faq/riven/" class="md-nav__link">
         
   
   
@@ -4775,7 +4861,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../faq/seerr/" class="md-nav__link">
+      <a href="../../../faq/seerr/" class="md-nav__link">
         
   
   
@@ -4805,7 +4891,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../faq/tautulli/" class="md-nav__link">
+      <a href="../../../faq/tautulli/" class="md-nav__link">
         
   
   
@@ -4835,7 +4921,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../faq/zilean/" class="md-nav__link">
+      <a href="../../../faq/zilean/" class="md-nav__link">
         
   
   
@@ -4865,7 +4951,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../faq/zurg/" class="md-nav__link">
+      <a href="../../../faq/zurg/" class="md-nav__link">
         
   
   
@@ -4902,7 +4988,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../changelog/" class="md-nav__link">
+      <a href="../../../changelog/" class="md-nav__link">
         
   
   
@@ -4929,7 +5015,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../contributing/" class="md-nav__link">
+      <a href="../../../contributing/" class="md-nav__link">
         
   
   
@@ -4958,7 +5044,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../about/" class="md-nav__link">
+      <a href="../../../about/" class="md-nav__link">
         
   
   
@@ -5008,10 +5094,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#overview" class="md-nav__link">
+  <a href="#what-dumb-manages" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Overview
+        What DUMB manages
       
     </span>
   </a>
@@ -5019,10 +5105,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#endpoints" class="md-nav__link">
+  <a href="#requirements" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Endpoints
+        Requirements
       
     </span>
   </a>
@@ -5030,10 +5116,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#user-management-endpoints" class="md-nav__link">
+  <a href="#plan-the-addresses" class="md-nav__link">
     <span class="md-ellipsis">
       
-        User management endpoints
+        Plan the addresses
       
     </span>
   </a>
@@ -5041,10 +5127,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#token-structure" class="md-nav__link">
+  <a href="#guided-setup" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Token structure
+        Guided setup
       
     </span>
   </a>
@@ -5052,10 +5138,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#using-authentication-with-other-endpoints" class="md-nav__link">
+  <a href="#open-the-authelia-portal" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Using authentication with other endpoints
+        Open the Authelia portal
       
     </span>
   </a>
@@ -5063,10 +5149,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#error-handling" class="md-nav__link">
+  <a href="#publish-the-authelia-portal" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Error handling
+        Publish the Authelia portal
       
     </span>
   </a>
@@ -5074,10 +5160,76 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#related-pages" class="md-nav__link">
+  <a href="#dumb-sign-in-modes" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Related pages
+        DUMB sign-in modes
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#dumb-managed-external-or-other-oidc-providers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DUMB-managed, external, or other OIDC providers
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#oidc-versus-forwardauth" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OIDC versus ForwardAuth
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#files-and-ports" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Files and ports
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#integration-api" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Integration API
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#recovery" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Recovery
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#related-resources" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Related resources
       
     </span>
   </a>
@@ -5109,7 +5261,7 @@
   
   
     <li class="md-path__item">
-      <a href="../.." class="md-path__link">
+      <a href="../../.." class="md-path__link">
         
   <span class="md-ellipsis">
     Home
@@ -5127,10 +5279,28 @@
     
     
       <li class="md-path__item">
+        <a href="../../" class="md-path__link">
+          
+  <span class="md-ellipsis">
+    Services
+  </span>
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+    
+    
+      <li class="md-path__item">
         <a href="../" class="md-path__link">
           
   <span class="md-ellipsis">
-    API
+    Optional
   </span>
 
         </a>
@@ -5147,7 +5317,7 @@
                 
                   
   
-    <a href="https://github.com/I-am-PUID-0/DUMB_docs/edit/master/docs/api/auth.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+    <a href="https://github.com/I-am-PUID-0/DUMB_docs/edit/master/docs/services/optional/authelia.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
       
       <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-file-pen" viewBox="0 0 24 24"><path d="M12.659 22H18a2 2 0 0 0 2-2V8a2.4 2.4 0 0 0-.706-1.706l-3.588-3.588A2.4 2.4 0 0 0 14 2H6a2 2 0 0 0-2 2v9.34"/><path d="M14 2v5a1 1 0 0 0 1 1h5M10.378 12.622a1 1 0 0 1 3 3.003L8.36 20.637a2 2 0 0 1-.854.506l-2.867.837a.5.5 0 0 1-.62-.62l.836-2.869a2 2 0 0 1 .506-.853z"/></svg>
     </a>
@@ -5156,530 +5326,535 @@
     
       
     
-    <a href="https://github.com/I-am-PUID-0/DUMB_docs/raw/master/docs/api/auth.md" title="View source of this page" class="md-content__button md-icon">
+    <a href="https://github.com/I-am-PUID-0/DUMB_docs/raw/master/docs/services/optional/authelia.md" title="View source of this page" class="md-content__button md-icon">
       
       <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-file-code-2" viewBox="0 0 24 24"><path d="M4 12.15V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.706.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2h-3.35"/><path d="M14 2v5a1 1 0 0 0 1 1h5M5 16l-3 3 3 3M9 22l3-3-3-3"/></svg>
     </a>
   
 
 
-<h1 id="authentication-api">Authentication API<a class="headerlink" href="#authentication-api" title="Permanent link">&para;</a></h1>
-<p>The Authentication API provides local login, OIDC Authorization Code with PKCE,
-DUMB token handling, provider configuration, and user management.</p>
-<hr />
-<h2 id="overview">Overview<a class="headerlink" href="#overview" title="Permanent link">&para;</a></h2>
-<p>Backend-native authentication endpoints are prefixed with <code>/auth</code>. Through the normal DUMB Frontend proxy, add <code>/api</code> (for example, <code>/api/auth/login</code>). When authentication is enabled, protected API endpoints require a valid JWT token in the <code>Authorization: Bearer &lt;token&gt;</code> header.</p>
-<hr />
-<h2 id="endpoints">Endpoints<a class="headerlink" href="#endpoints" title="Permanent link">&para;</a></h2>
-<h3 id="get-authstatus"><code>GET /auth/status</code><a class="headerlink" href="#get-authstatus" title="Permanent link">&para;</a></h3>
-<p>Returns the current authentication status.</p>
-<h4 id="response">Response<a class="headerlink" href="#response" title="Permanent link">&para;</a></h4>
-<div class="highlight"><pre><span></span><code><span class="p">{</span>
-<span class="w">  </span><span class="nt">&quot;enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;has_users&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;setup_skipped&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;mode&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;hybrid&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;local_login_enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;oidc_login_enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;oidc_provider_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Authelia&quot;</span>
-<span class="p">}</span>
-</code></pre></div>
+<h1 id="authelia">Authelia<a class="headerlink" href="#authelia" title="Permanent link">&para;</a></h1>
+<p><a href="https://www.authelia.com/">Authelia</a> is an identity and access-management
+portal. DUMB can install and manage one Authelia instance, use it as an OpenID
+Connect (OIDC) provider for DUMB and Traefik Proxy Admin (TPA), and publish a
+reusable Traefik ForwardAuth middleware for selected application routes.</p>
+<p>Authelia is optional. You can instead connect DUMB authentication to an
+external Authelia deployment or another standards-compatible OIDC provider.</p>
+<h2 id="what-dumb-manages">What DUMB manages<a class="headerlink" href="#what-dumb-manages" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
-<th>Field</th>
-<th>Type</th>
-<th>Description</th>
+<th>Item</th>
+<th>DUMB behavior</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>enabled</code></td>
-<td>boolean</td>
-<td>Whether authentication is currently required</td>
+<td>Runtime</td>
+<td>Downloads the official Linux release for AMD64, ARM64, or ARM and verifies its SHA-256 checksum</td>
 </tr>
 <tr>
-<td><code>has_users</code></td>
-<td>boolean</td>
-<td>Whether any user accounts exist</td>
+<td>Database</td>
+<td>Enables DUMB PostgreSQL and creates database <code>authelia</code></td>
 </tr>
 <tr>
-<td><code>setup_skipped</code></td>
-<td>boolean</td>
-<td>Whether initial setup was skipped</td>
+<td>Configuration</td>
+<td>Generates <code>/config/authelia/configuration.yml</code> and validates it before start</td>
 </tr>
 <tr>
-<td><code>mode</code></td>
-<td>string</td>
-<td><code>local</code>, <code>hybrid</code>, or <code>oidc</code></td>
+<td>Users</td>
+<td>Stores bcrypt hashes in <code>/config/authelia/users_database.yml</code>; plaintext bootstrap passwords are not persisted</td>
 </tr>
 <tr>
-<td><code>local_login_enabled</code></td>
-<td>boolean</td>
-<td>Whether password login is available</td>
+<td>Secrets</td>
+<td>Generates private session, storage-encryption, reset-password, OIDC HMAC, and RSA signing secrets under <code>/config/authelia/secrets</code></td>
 </tr>
 <tr>
-<td><code>oidc_login_enabled</code></td>
-<td>boolean</td>
-<td>Whether the OIDC login flow is available</td>
+<td>OIDC clients</td>
+<td>Creates separate credentials for DUMB and TPA instead of sharing one client</td>
 </tr>
 <tr>
-<td><code>oidc_provider_name</code></td>
-<td>string</td>
-<td>Display name shown by the login UI</td>
+<td>Notifications</td>
+<td>Supports filesystem notification output for setup/labs or SMTP for production</td>
+</tr>
+<tr>
+<td>Updates</td>
+<td>Uses normal DUMB manual/scheduled release-update controls; auto-update defaults off</td>
 </tr>
 </tbody>
 </table>
-<hr />
-<h3 id="get-authprovider"><code>GET /auth/provider</code><a class="headerlink" href="#get-authprovider" title="Permanent link">&para;</a></h3>
-<p>Returns the current mode and redacted OIDC provider configuration. The stored
-client secret is never returned; <code>client_secret_configured</code> indicates whether
-one exists.</p>
-<h3 id="put-authprovider"><code>PUT /auth/provider</code><a class="headerlink" href="#put-authprovider" title="Permanent link">&para;</a></h3>
-<p>Saves local, hybrid, or OIDC-only authentication. OIDC and hybrid requests
-include the issuer, client credentials, callback URL, scopes, claim mapping,
-optional allowed groups, and transport policy.</p>
-<p>The callback must be the exact <code>/api/auth/oidc/callback</code> path on DUMB's
-browser-facing HTTPS FQDN. The API rejects HTTP, <code>localhost</code>, IP addresses,
-single-label hostnames, credentials, query strings, and fragments.</p>
-<p>Set <code>confirm_oidc_only=true</code> when selecting OIDC-only mode. A blank
-<code>client_secret</code> preserves the existing stored secret.</p>
-<h3 id="post-authoidctest"><code>POST /auth/oidc/test</code><a class="headerlink" href="#post-authoidctest" title="Permanent link">&para;</a></h3>
-<p>Validates the proposed OIDC configuration and resolves provider metadata without
-saving it.</p>
-<h3 id="get-authoidcstartreturn_to"><code>GET /auth/oidc/start?return_to=/</code><a class="headerlink" href="#get-authoidcstartreturn_to" title="Permanent link">&para;</a></h3>
-<p>Creates bounded state, nonce, and PKCE values and returns:</p>
-<div class="highlight"><pre><span></span><code><span class="p">{</span>
-<span class="w">  </span><span class="nt">&quot;authorization_url&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;https://auth.example.com/api/oidc/authorization?...&quot;</span>
-<span class="p">}</span>
-</code></pre></div>
-<h3 id="get-authoidccallback"><code>GET /auth/oidc/callback</code><a class="headerlink" href="#get-authoidccallback" title="Permanent link">&para;</a></h3>
-<p>Browser callback registered with the identity provider. DUMB validates the
-provider response and redirects to <code>/login</code> with a short-lived one-time exchange
-code in the URL fragment.</p>
-<h3 id="post-authoidcexchange"><code>POST /auth/oidc/exchange</code><a class="headerlink" href="#post-authoidcexchange" title="Permanent link">&para;</a></h3>
-<p>Redeems the one-time callback code for DUMB access and refresh tokens:</p>
-<div class="highlight"><pre><span></span><code><span class="p">{</span>
-<span class="w">  </span><span class="nt">&quot;code&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&lt;one-time-exchange-code&gt;&quot;</span>
-<span class="p">}</span>
-</code></pre></div>
-<p>The code is single-use and does not contain provider tokens.</p>
-<hr />
-<h3 id="post-authlogin"><code>POST /auth/login</code><a class="headerlink" href="#post-authlogin" title="Permanent link">&para;</a></h3>
-<p>Authenticates a user and returns JWT tokens.</p>
-<h4 id="request-body">Request body<a class="headerlink" href="#request-body" title="Permanent link">&para;</a></h4>
-<div class="highlight"><pre><span></span><code><span class="p">{</span>
-<span class="w">  </span><span class="nt">&quot;username&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;admin&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;password&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;yourpassword&quot;</span>
-<span class="p">}</span>
-</code></pre></div>
-<h4 id="response_1">Response<a class="headerlink" href="#response_1" title="Permanent link">&para;</a></h4>
-<div class="highlight"><pre><span></span><code><span class="p">{</span>
-<span class="w">  </span><span class="nt">&quot;access_token&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;eyJhbGciOiJIUzI1NiIs...&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;refresh_token&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;eyJhbGciOiJIUzI1NiIs...&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;token_type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;bearer&quot;</span>
-<span class="p">}</span>
-</code></pre></div>
-<h4 id="error-responses">Error responses<a class="headerlink" href="#error-responses" title="Permanent link">&para;</a></h4>
-<table>
-<thead>
-<tr>
-<th>Status</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>401</td>
-<td>Invalid credentials</td>
-</tr>
-<tr>
-<td>401</td>
-<td>User account is disabled or the credentials are invalid</td>
-</tr>
-</tbody>
-</table>
-<h4 id="example">Example<a class="headerlink" href="#example" title="Permanent link">&para;</a></h4>
-<p>Directly against the backend from inside the DUMB container, or after intentionally publishing port <code>8000</code>:</p>
-<div class="highlight"><pre><span></span><code>curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://127.0.0.1:8000/auth/login<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Content-Type: application/json&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{&quot;username&quot;: &quot;admin&quot;, &quot;password&quot;: &quot;yourpassword&quot;}&#39;</span>
-</code></pre></div>
-<p>From the host in the standard deployment, use the DUMB Frontend proxy on the published port:</p>
-<div class="highlight"><pre><span></span><code>curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://localhost:3005/api/auth/login<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Content-Type: application/json&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{&quot;username&quot;: &quot;admin&quot;, &quot;password&quot;: &quot;yourpassword&quot;}&#39;</span>
-</code></pre></div>
-<hr />
-<h3 id="post-authrefresh"><code>POST /auth/refresh</code><a class="headerlink" href="#post-authrefresh" title="Permanent link">&para;</a></h3>
-<p>Exchanges a refresh token for new access and refresh tokens.</p>
-<h4 id="request-body_1">Request body<a class="headerlink" href="#request-body_1" title="Permanent link">&para;</a></h4>
-<div class="highlight"><pre><span></span><code><span class="p">{</span>
-<span class="w">  </span><span class="nt">&quot;refresh_token&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;eyJhbGciOiJIUzI1NiIs...&quot;</span>
-<span class="p">}</span>
-</code></pre></div>
-<h4 id="response_2">Response<a class="headerlink" href="#response_2" title="Permanent link">&para;</a></h4>
-<div class="highlight"><pre><span></span><code><span class="p">{</span>
-<span class="w">  </span><span class="nt">&quot;access_token&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;eyJhbGciOiJIUzI1NiIs...&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;refresh_token&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;eyJhbGciOiJIUzI1NiIs...&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;token_type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;bearer&quot;</span>
-<span class="p">}</span>
-</code></pre></div>
-<h4 id="error-responses_1">Error responses<a class="headerlink" href="#error-responses_1" title="Permanent link">&para;</a></h4>
-<table>
-<thead>
-<tr>
-<th>Status</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>401</td>
-<td>Invalid or expired refresh token</td>
-</tr>
-</tbody>
-</table>
-<hr />
-<h3 id="post-authverify"><code>POST /auth/verify</code><a class="headerlink" href="#post-authverify" title="Permanent link">&para;</a></h3>
-<p>Verifies that an access token is valid.</p>
-<p>Pass the access token in the required <code>token</code> query parameter:</p>
-<div class="highlight"><pre><span></span><code>POST /auth/verify?token=eyJhbGciOiJIUzI1NiIs...
-</code></pre></div>
-<h4 id="response_3">Response<a class="headerlink" href="#response_3" title="Permanent link">&para;</a></h4>
-<div class="highlight"><pre><span></span><code><span class="p">{</span>
-<span class="w">  </span><span class="nt">&quot;valid&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;username&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;admin&quot;</span>
-<span class="p">}</span>
-</code></pre></div>
-<hr />
-<h3 id="post-authsetup"><code>POST /auth/setup</code><a class="headerlink" href="#post-authsetup" title="Permanent link">&para;</a></h3>
-<p>Creates the first user account and enables authentication. Only works when no users exist.</p>
-<h4 id="request-body_2">Request body<a class="headerlink" href="#request-body_2" title="Permanent link">&para;</a></h4>
-<div class="highlight"><pre><span></span><code><span class="p">{</span>
-<span class="w">  </span><span class="nt">&quot;username&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;admin&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;password&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;yourpassword&quot;</span>
-<span class="p">}</span>
-</code></pre></div>
-<h4 id="response_4">Response<a class="headerlink" href="#response_4" title="Permanent link">&para;</a></h4>
-<div class="highlight"><pre><span></span><code><span class="p">{</span>
-<span class="w">  </span><span class="nt">&quot;access_token&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;eyJhbGciOiJIUzI1NiIs...&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;refresh_token&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;eyJhbGciOiJIUzI1NiIs...&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;token_type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;bearer&quot;</span>
-<span class="p">}</span>
-</code></pre></div>
-<h4 id="error-responses_2">Error responses<a class="headerlink" href="#error-responses_2" title="Permanent link">&para;</a></h4>
-<table>
-<thead>
-<tr>
-<th>Status</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>400</td>
-<td>Users already exist</td>
-</tr>
-<tr>
-<td>400</td>
-<td>Username is shorter than 3 characters or password is outside the 8–72 character range</td>
-</tr>
-</tbody>
-</table>
-<hr />
-<h3 id="post-authskip-setup"><code>POST /auth/skip-setup</code><a class="headerlink" href="#post-authskip-setup" title="Permanent link">&para;</a></h3>
-<p>Skips the initial setup wizard, leaving authentication disabled.</p>
-<h4 id="response_5">Response<a class="headerlink" href="#response_5" title="Permanent link">&para;</a></h4>
-<div class="highlight"><pre><span></span><code><span class="p">{</span>
-<span class="w">  </span><span class="nt">&quot;message&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Authentication setup skipped successfully&quot;</span>
-<span class="p">}</span>
-</code></pre></div>
-<hr />
-<h3 id="post-authenable"><code>POST /auth/enable</code><a class="headerlink" href="#post-authenable" title="Permanent link">&para;</a></h3>
-<p>Enables authentication. Requires at least one user to exist.</p>
-<h4 id="response_6">Response<a class="headerlink" href="#response_6" title="Permanent link">&para;</a></h4>
-<div class="highlight"><pre><span></span><code><span class="p">{</span>
-<span class="w">  </span><span class="nt">&quot;message&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Authentication enabled successfully&quot;</span>
-<span class="p">}</span>
-</code></pre></div>
-<h4 id="error-responses_3">Error responses<a class="headerlink" href="#error-responses_3" title="Permanent link">&para;</a></h4>
-<table>
-<thead>
-<tr>
-<th>Status</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>400</td>
-<td>No users exist - create a user first</td>
-</tr>
-</tbody>
-</table>
-<hr />
-<h3 id="post-authdisable"><code>POST /auth/disable</code><a class="headerlink" href="#post-authdisable" title="Permanent link">&para;</a></h3>
-<p>Disables authentication, allowing unauthenticated access to all endpoints.</p>
 <div class="admonition danger">
-<p class="admonition-title">Security warning</p>
-<p>Disabling authentication exposes all DUMB functionality without any access control.</p>
+<p class="admonition-title">Back up the complete Authelia config directory</p>
+<p>Back up <code>/config/authelia</code>, especially its storage encryption key and OIDC
+signing material. PostgreSQL alone is not a complete backup. Losing the
+encryption key can make encrypted database values unrecoverable.</p>
 </div>
-<h4 id="response_7">Response<a class="headerlink" href="#response_7" title="Permanent link">&para;</a></h4>
-<div class="highlight"><pre><span></span><code><span class="p">{</span>
-<span class="w">  </span><span class="nt">&quot;message&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Authentication disabled successfully&quot;</span>
-<span class="p">}</span>
-</code></pre></div>
-<hr />
-<h2 id="user-management-endpoints">User management endpoints<a class="headerlink" href="#user-management-endpoints" title="Permanent link">&para;</a></h2>
-<p>These endpoints require authentication when auth is enabled.</p>
-<h3 id="get-authusers"><code>GET /auth/users</code><a class="headerlink" href="#get-authusers" title="Permanent link">&para;</a></h3>
-<p>Lists all user accounts.</p>
-<h4 id="response_8">Response<a class="headerlink" href="#response_8" title="Permanent link">&para;</a></h4>
-<div class="highlight"><pre><span></span><code><span class="p">{</span>
-<span class="w">  </span><span class="nt">&quot;users&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
-<span class="w">    </span><span class="p">{</span>
-<span class="w">      </span><span class="nt">&quot;username&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;admin&quot;</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;disabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span>
-<span class="w">    </span><span class="p">},</span>
-<span class="w">    </span><span class="p">{</span>
-<span class="w">      </span><span class="nt">&quot;username&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;readonly&quot;</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;disabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span>
-<span class="w">    </span><span class="p">}</span>
-<span class="w">  </span><span class="p">]</span>
-<span class="p">}</span>
-</code></pre></div>
-<hr />
-<h3 id="post-authusers"><code>POST /auth/users</code><a class="headerlink" href="#post-authusers" title="Permanent link">&para;</a></h3>
-<p>Creates a new user account.</p>
-<h4 id="request-body_3">Request body<a class="headerlink" href="#request-body_3" title="Permanent link">&para;</a></h4>
-<div class="highlight"><pre><span></span><code><span class="p">{</span>
-<span class="w">  </span><span class="nt">&quot;username&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;newuser&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;password&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;userpassword&quot;</span>
-<span class="p">}</span>
-</code></pre></div>
-<h4 id="response_9">Response<a class="headerlink" href="#response_9" title="Permanent link">&para;</a></h4>
-<div class="highlight"><pre><span></span><code><span class="p">{</span>
-<span class="w">  </span><span class="nt">&quot;username&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;newuser&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;disabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span>
-<span class="p">}</span>
-</code></pre></div>
-<h4 id="error-responses_4">Error responses<a class="headerlink" href="#error-responses_4" title="Permanent link">&para;</a></h4>
-<table>
-<thead>
-<tr>
-<th>Status</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>400</td>
-<td>Username already exists</td>
-</tr>
-<tr>
-<td>400</td>
-<td>Username is shorter than 3 characters or password is outside the 8–72 character range</td>
-</tr>
-</tbody>
-</table>
-<hr />
-<h3 id="put-authusersusername"><code>PUT /auth/users/{username}</code><a class="headerlink" href="#put-authusersusername" title="Permanent link">&para;</a></h3>
-<p>Updates a user account (enable/disable).</p>
-<h4 id="path-parameters">Path parameters<a class="headerlink" href="#path-parameters" title="Permanent link">&para;</a></h4>
-<table>
-<thead>
-<tr>
-<th>Parameter</th>
-<th>Type</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>username</code></td>
-<td>string</td>
-<td>The username to update</td>
-</tr>
-</tbody>
-</table>
-<h4 id="request-body_4">Request body<a class="headerlink" href="#request-body_4" title="Permanent link">&para;</a></h4>
-<div class="highlight"><pre><span></span><code><span class="p">{</span>
-<span class="w">  </span><span class="nt">&quot;disabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span>
-<span class="p">}</span>
-</code></pre></div>
-<h4 id="response_10">Response<a class="headerlink" href="#response_10" title="Permanent link">&para;</a></h4>
-<div class="highlight"><pre><span></span><code><span class="p">{</span>
-<span class="w">  </span><span class="nt">&quot;username&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;readonly&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;disabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span>
-<span class="p">}</span>
-</code></pre></div>
-<h4 id="error-responses_5">Error responses<a class="headerlink" href="#error-responses_5" title="Permanent link">&para;</a></h4>
-<table>
-<thead>
-<tr>
-<th>Status</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>400</td>
-<td>Cannot disable the last active user</td>
-</tr>
-<tr>
-<td>400</td>
-<td>User not found</td>
-</tr>
-</tbody>
-</table>
-<hr />
-<h3 id="delete-authusersusername"><code>DELETE /auth/users/{username}</code><a class="headerlink" href="#delete-authusersusername" title="Permanent link">&para;</a></h3>
-<p>Deletes a user account.</p>
-<h4 id="path-parameters_1">Path parameters<a class="headerlink" href="#path-parameters_1" title="Permanent link">&para;</a></h4>
-<table>
-<thead>
-<tr>
-<th>Parameter</th>
-<th>Type</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>username</code></td>
-<td>string</td>
-<td>The username to delete</td>
-</tr>
-</tbody>
-</table>
-<h4 id="response_11">Response<a class="headerlink" href="#response_11" title="Permanent link">&para;</a></h4>
-<div class="highlight"><pre><span></span><code><span class="p">{</span>
-<span class="w">  </span><span class="nt">&quot;message&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;User deleted successfully&quot;</span>
-<span class="p">}</span>
-</code></pre></div>
-<h4 id="error-responses_6">Error responses<a class="headerlink" href="#error-responses_6" title="Permanent link">&para;</a></h4>
-<table>
-<thead>
-<tr>
-<th>Status</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>400</td>
-<td>Cannot delete yourself, cannot delete the last user, or user not found</td>
-</tr>
-</tbody>
-</table>
-<hr />
-<h2 id="token-structure">Token structure<a class="headerlink" href="#token-structure" title="Permanent link">&para;</a></h2>
-<p>JWT tokens contain the following claims:</p>
-<div class="highlight"><pre><span></span><code><span class="p">{</span>
-<span class="w">  </span><span class="nt">&quot;sub&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;admin&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;exp&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1704067200</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;access&quot;</span>
-<span class="p">}</span>
-</code></pre></div>
-<table>
-<thead>
-<tr>
-<th>Claim</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>sub</code></td>
-<td>Username (subject)</td>
-</tr>
-<tr>
-<td><code>exp</code></td>
-<td>Expiration timestamp (Unix epoch)</td>
-</tr>
-<tr>
-<td><code>type</code></td>
-<td>Token type: <code>access</code> or <code>refresh</code></td>
-</tr>
-</tbody>
-</table>
-<h3 id="token-lifetimes">Token lifetimes<a class="headerlink" href="#token-lifetimes" title="Permanent link">&para;</a></h3>
-<table>
-<thead>
-<tr>
-<th>Token Type</th>
-<th>Default Lifetime</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Access Token</td>
-<td>60 minutes</td>
-</tr>
-<tr>
-<td>Refresh Token</td>
-<td>30 days</td>
-</tr>
-</tbody>
-</table>
-<hr />
-<h2 id="using-authentication-with-other-endpoints">Using authentication with other endpoints<a class="headerlink" href="#using-authentication-with-other-endpoints" title="Permanent link">&para;</a></h2>
-<p>When authentication is enabled, include the access token in the <code>Authorization</code> header:</p>
-<div class="highlight"><pre><span></span><code>curl<span class="w"> </span>-X<span class="w"> </span>GET<span class="w"> </span>http://localhost:3005/api/process/processes<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Authorization: Bearer eyJhbGciOiJIUzI1NiIs...&quot;</span>
-</code></pre></div>
-<h3 id="websocket-authentication">WebSocket authentication<a class="headerlink" href="#websocket-authentication" title="Permanent link">&para;</a></h3>
-<p>For WebSocket connections, pass the token as a query parameter:</p>
-<div class="highlight"><pre><span></span><code>ws://localhost:3005/ws/status?token=eyJhbGciOiJIUzI1NiIs...
-</code></pre></div>
-<hr />
-<h2 id="error-handling">Error handling<a class="headerlink" href="#error-handling" title="Permanent link">&para;</a></h2>
-<h3 id="common-error-responses">Common error responses<a class="headerlink" href="#common-error-responses" title="Permanent link">&para;</a></h3>
-<table>
-<thead>
-<tr>
-<th>Status</th>
-<th>Error</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>401</td>
-<td><code>Unauthorized</code></td>
-<td>Missing or invalid token</td>
-</tr>
-<tr>
-<td>401</td>
-<td><code>Token expired</code></td>
-<td>Access token has expired</td>
-</tr>
-<tr>
-<td>403</td>
-<td><code>Forbidden</code></td>
-<td>User account is disabled</td>
-</tr>
-<tr>
-<td>422</td>
-<td><code>Validation Error</code></td>
-<td>Invalid request body</td>
-</tr>
-</tbody>
-</table>
-<h3 id="token-refresh-flow">Token refresh flow<a class="headerlink" href="#token-refresh-flow" title="Permanent link">&para;</a></h3>
-<p>When receiving a 401 response:</p>
-<ol>
-<li>Send the refresh token to <code>POST /auth/refresh</code> (or <code>/api/auth/refresh</code> through the frontend proxy)</li>
-<li>If successful, retry the original request with the new access token</li>
-<li>If refresh fails, redirect the user to login</li>
-</ol>
-<hr />
-<h2 id="related-pages">Related pages<a class="headerlink" href="#related-pages" title="Permanent link">&para;</a></h2>
+<h2 id="requirements">Requirements<a class="headerlink" href="#requirements" title="Permanent link">&para;</a></h2>
 <ul>
-<li><a href="../../features/authentication/">Authentication Feature Guide</a></li>
-<li><a href="../websocket/">WebSocket API</a></li>
-<li><a href="../process/">Process Management API</a></li>
+<li>A dedicated browser-reachable HTTPS hostname, such as
+  <code>https://auth.example.com</code>.</li>
+<li>A cookie domain that equals or is a parent of that hostname, such as
+  <code>example.com</code>.</li>
+<li>DNS and Traefik routing for the Authelia hostname.</li>
+<li>PostgreSQL storage; DUMB enables and initializes it automatically.</li>
+<li>SMTP for production password-reset and second-factor enrollment messages.
+  The filesystem notifier is useful for initial testing but writes messages to
+  <code>/config/authelia/notification.txt</code>.</li>
+</ul>
+<p>Authelia requires an identity-verification message before the first TOTP device
+can be enrolled, but that does not force you to configure an email provider for
+initial setup. The filesystem notifier supplies the same one-time code through
+the managed notification file. Use SMTP when users need to receive enrollment
+and recovery messages without access to DUMB's local management interface.</p>
+<p>Authelia's session cookie configuration requires a normal HTTPS hostname. Do
+not use <code>localhost</code>, a bare IP address, or a public suffix as the cookie domain.</p>
+<h2 id="plan-the-addresses">Plan the addresses<a class="headerlink" href="#plan-the-addresses" title="Permanent link">&para;</a></h2>
+<p>The wizard asks only for browser-facing addresses. DUMB supplies internal
+loopback addresses, callback paths, client IDs, and generated client secrets.</p>
+<table>
+<thead>
+<tr>
+<th>Wizard value</th>
+<th>Example</th>
+<th>When it is needed</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>TPA root domain</td>
+<td><code>example.com</code></td>
+<td>Offered from existing TPA domains when TPA is enabled</td>
+</tr>
+<tr>
+<td>Authelia public URL</td>
+<td><code>https://auth.example.com</code></td>
+<td>Required in step 1</td>
+</tr>
+<tr>
+<td>Cookie domain</td>
+<td><code>example.com</code></td>
+<td>Required in step 1; normally the selected TPA root domain</td>
+</tr>
+<tr>
+<td>DUMB public URL</td>
+<td><code>https://dumb.example.com</code></td>
+<td>Only when enabling Authelia sign-in for DUMB in step 2</td>
+</tr>
+<tr>
+<td>TPA public URL</td>
+<td><code>https://proxy.example.com</code></td>
+<td>Only when enabling Authelia admin sign-in for TPA in step 3</td>
+</tr>
+<tr>
+<td>Internal Authelia target</td>
+<td><code>http://127.0.0.1:9091</code></td>
+<td>DUMB/Traefik-managed; do not enter this as a public URL</td>
+</tr>
+</tbody>
+</table>
+<p>Do not enter a DUMB embedded path such as <code>/ui/authelia</code>, an internal service
+port, or <code>localhost</code> in a public URL field.</p>
+<h2 id="guided-setup">Guided setup<a class="headerlink" href="#guided-setup" title="Permanent link">&para;</a></h2>
+<p>The frontend shows Authelia in onboarding and mounts the managed service-page
+wizard only when the connected backend advertises the
+<code>authelia_integration</code> capability. On an older backend, Authelia is omitted
+from onboarding and any manually retained Authelia service entry keeps its
+normal service controls without calling unsupported integration endpoints.</p>
+<ol>
+<li>
+<p>Enable <strong>Authelia</strong> from onboarding's Optional Services step or its DUMB
+   service configuration.</p>
+<p>Onboarding installs Authelia and enables PostgreSQL, but intentionally does
+not start Authelia. A <strong>Stopped</strong> or <strong>Unhealthy</strong> status immediately after
+onboarding is expected and does not mean installation failed.</p>
+</li>
+<li>
+<p>Open the <strong>Authelia</strong> service page and use
+   <strong>Set up this DUMB-managed Authelia instance</strong>.</p>
+</li>
+<li>Complete <strong>Step 1: Configure and start Authelia</strong>. This is the only required
+   wizard step. When TPA is enabled, DUMB checks its existing domains and offers
+   them in the bootstrap form. Selecting <code>example.com</code> prefills
+   <code>https://auth.example.com</code> and the <code>example.com</code> cookie domain. Manual entry
+   remains available for external routing or a domain not managed by TPA.</li>
+<li>Leave <strong>Create or reuse this route in TPA after bootstrap</strong> selected to
+   publish the <a href="#publish-the-authelia-portal">Authelia portal route</a>
+   automatically, or create the route manually. Confirm its public HTTPS URL
+   opens before configuring sign-in.</li>
+<li>
+<p>Choose any optional integrations:</p>
+</li>
+<li>
+<p><strong>Step 2: DUMB sign-in</strong> appears when the backend advertises <code>auth_oidc</code>
+     and creates a dedicated DUMB OIDC client. <strong>SSO + local fallback</strong> is
+     offered only with <code>auth_hybrid</code>; keep it until sign-in is tested. When the
+     connected TPA release advertises DUMB application-route support, the same
+     step first creates or verifies the prerequisite Authelia portal route, then
+     creates or reuses the DUMB frontend's public route.</p>
+</li>
+<li><strong>Step 3: TPA admin sign-in</strong> creates a separate TPA OIDC client. Skip it
+     when TPA is not installed. A compatible TPA release also lets this step
+     create or reuse TPA's own public route before configuring admin SSO.</li>
+<li><strong>Step 4: ForwardAuth</strong> creates a reusable middleware for selected apps
+     that do not have their own OIDC login.</li>
+</ol>
+<h3 id="enroll-the-first-authenticator">Enroll the first authenticator<a class="headerlink" href="#enroll-the-first-authenticator" title="Permanent link">&para;</a></h3>
+<p>When Step 1 uses the recommended <strong>Two factor</strong> policy, the expanded walkthrough
+includes <strong>First login — enroll your authenticator</strong>. Complete Step 2 before
+starting this flow so Authelia can return to DUMB after authentication.</p>
+<ol>
+<li>Keep the existing signed-in DUMB tab open.</li>
+<li>Open DUMB in another tab and choose <strong>Continue with Authelia</strong>.</li>
+<li>Enter the Authelia username and password created in Step 1.</li>
+<li>In Authelia, open <strong>Settings</strong>. Under <strong>One-Time Password</strong>, choose <strong>Add</strong>.
+   If Authelia instead shows <strong>Register device</strong> during sign-in, that link opens
+   the same enrollment flow.</li>
+<li>Return to the original DUMB tab. In the <strong>Filesystem verification code</strong> box
+   immediately below the enrollment steps, choose
+   <strong>Reveal latest verification code</strong>.</li>
+<li>Enter the code DUMB displays into Authelia's <strong>One-Time Code</strong> field. For
+   SMTP, retrieve the code from the user's email instead.</li>
+<li>Scan Authelia's QR code with an authenticator app, enter the generated TOTP,
+   and finish sign-in. The original login tab should redirect back to DUMB.</li>
+</ol>
+<p>The filesystem helper deliberately requires authentication to be enabled and a
+valid signed-in DUMB session. It reads only the fixed
+<code>/config/authelia/notification.txt</code> file, returns only the newest delimited
+verification code, uses <code>Cache-Control: no-store</code>, and never returns the
+recipient, full notification, or revocation link. dmbdb keeps the revealed code
+only in component memory and clears it after 60 seconds or when the walkthrough
+is collapsed. If DUMB authentication is disabled, read the managed file from
+the container instead; DUMB will not expose the code through an unauthenticated
+API.</p>
+<p>If the code is rejected, return to <strong>Settings → One-Time Password → Add</strong> and
+reveal the newest code. A previously generated code may have expired or been
+superseded.</p>
+<p>DUMB renders and validates the configuration before the first start. It also
+creates OIDC clients and transfers their generated secrets; no manual Authelia
+client configuration is required. Adding the first or changing a managed OIDC
+client performs a real Authelia stop/start so the provider and discovery
+endpoints are loaded before the consuming application is enabled.</p>
+<p>The entire walkthrough can be collapsed at any time, including before Step 1
+is complete, so the normal service tabs and configuration editor remain
+available. Before bootstrap it becomes an <strong>Authelia setup is not complete</strong>
+summary with an <strong>Open Authelia setup</strong> button. After Step 1 succeeds it
+automatically collapses to <strong>Authelia bootstrap complete</strong>; select
+<strong>Open setup &amp; integrations</strong> to return to Steps 2–4 or revise the managed
+setup.</p>
+<h2 id="open-the-authelia-portal">Open the Authelia portal<a class="headerlink" href="#open-the-authelia-portal" title="Permanent link">&para;</a></h2>
+<p>After bootstrap starts Authelia, the Authelia service page offers <strong>Open
+Authelia Portal</strong> in its integration summary and <strong>Embedded UI</strong> tab. The button
+opens the configured public HTTPS address, such as
+<code>https://auth.example.com</code>, in a top-level browser tab.</p>
+<p>Authelia intentionally protects its password, account, and 2FA screens with
+anti-framing headers. DUMB does not strip or weaken those controls, so Authelia
+is launched instead of rendered inside an iframe. This protects the identity
+provider from clickjacking and also keeps its session cookie on the correct
+public origin.</p>
+<p>Do not use a <code>/ui/authelia</code> address in bootstrap or OIDC fields. DUMB and TPA
+OIDC discovery, authorization redirects, and normal user sign-in all use the
+dedicated public HTTPS URL. The Authelia route must remain reachable and must
+not have ForwardAuth, TPA Service SSO, or another login middleware attached to
+it.</p>
+<h2 id="publish-the-authelia-portal">Publish the Authelia portal<a class="headerlink" href="#publish-the-authelia-portal" title="Permanent link">&para;</a></h2>
+<p>Authelia must have its own HTTPS route before browser login works. If an
+existing TPA domain is selected during bootstrap, DUMB can create or reuse the
+route automatically:</p>
+<table>
+<thead>
+<tr>
+<th>TPA field</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Hostname</td>
+<td>The hostname from <strong>Authelia public URL</strong></td>
+</tr>
+<tr>
+<td>Target host</td>
+<td><code>127.0.0.1</code></td>
+</tr>
+<tr>
+<td>Target port</td>
+<td>The configured Authelia port; default <code>9091</code></td>
+</tr>
+<tr>
+<td>Target HTTPS</td>
+<td>Off; Traefik terminates browser TLS</td>
+</tr>
+<tr>
+<td>Authentication middleware</td>
+<td>None</td>
+</tr>
+</tbody>
+</table>
+<p>Do not protect the Authelia portal with its own ForwardAuth middleware.</p>
+<p>The automatic action is deliberately narrow. It inherits the selected TPA
+domain's existing TLS/certificate configuration without changing it, targets
+only DUMB's loopback Authelia listener, and adds no authentication middleware.
+If another TPA service already owns the requested hostname, DUMB reports the
+conflict and leaves that service unchanged. Authelia remains running, so you can
+choose another hostname or resolve the TPA route manually.</p>
+<p>After bootstrap, the completed setup summary retains a <strong>Create/reuse Authelia
+route</strong> action. Use it when TPA was unavailable during bootstrap or when the
+route was skipped. Step 2 also performs this prerequisite check before linking
+DUMB authentication, because OIDC discovery cannot succeed until the public
+Authelia issuer route is reachable.</p>
+<p>The optional route controls in Steps 2 and 3 use the same safety model:</p>
+<table>
+<thead>
+<tr>
+<th>Application</th>
+<th>Default public hostname</th>
+<th>Loopback target</th>
+<th>TPA service authentication</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>DUMB frontend</td>
+<td><code>dumb.example.com</code></td>
+<td>DUMB frontend port; default <code>3005</code></td>
+<td>None; DUMB enforces its own login</td>
+</tr>
+<tr>
+<td>TPA admin UI</td>
+<td><code>proxy.example.com</code></td>
+<td>TPA port; default <code>3004</code></td>
+<td>None; TPA enforces its own admin login</td>
+</tr>
+</tbody>
+</table>
+<p>The controls appear only when TPA advertises support for the requested route
+application. This prevents an updated DUMB frontend from asking an older TPA
+release to create a route using the legacy Authelia-only contract.</p>
+<p>In a normal DUMB deployment, the DUMB frontend route targets
+<code>127.0.0.1:3005</code>. During development, dmbdb may run in a separate devcontainer
+while <code>dumb.frontend.enabled</code> is false. In that topology the wizard asks for a
+frontend target host and port instead of requiring the managed frontend. Enter
+an address reachable from the Traefik process in <code>dumb_dev</code>. A container name
+such as <code>dmbdb_dev</code> works only when both containers share a user-defined Docker
+network that provides container-name DNS; otherwise use a reachable container
+IP for temporary testing or configure a shared development network. The wizard
+rejects schemes and paths in this field.</p>
+<p>Nuxt's development server requests virtual modules through paths containing an
+encoded slash (<code>%2F</code>). Traefik 3.6.4 through 3.6.6 rejects these paths by default
+with an empty HTTP 400 response. DUMB's generated Traefik entrypoint explicitly
+allows encoded slashes while leaving the other encoded reserved characters at
+Traefik's secure defaults. Restart DUMB after updating so the static Traefik
+configuration is regenerated and the Traefik process is restarted. This setting
+is needed for a public route targeting the dmbdb development server; production
+dmbdb builds normally serve compiled asset paths that do not use Vite virtual
+module URLs.</p>
+<p>If Cloudflare Tunnel terminates public TLS, route traffic to DUMB Traefik as
+described in the <a href="../cloudflared/">Cloudflared guide</a>. The browser-facing
+Authelia URL must still use HTTPS.</p>
+<h2 id="dumb-sign-in-modes">DUMB sign-in modes<a class="headerlink" href="#dumb-sign-in-modes" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Mode</th>
+<th>Behavior</th>
+<th>Recommended use</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Local</td>
+<td>Existing DUMB usernames/passwords only</td>
+<td>Isolated or simple deployments</td>
+</tr>
+<tr>
+<td>Hybrid</td>
+<td>OIDC button plus local accounts</td>
+<td>Default SSO rollout and break-glass recovery</td>
+</tr>
+<tr>
+<td>OIDC only</td>
+<td>OIDC button; local login disabled</td>
+<td>Only after a successful SSO test and recovery planning</td>
+</tr>
+</tbody>
+</table>
+<p>DUMB uses Authorization Code with PKCE and validates state, nonce, issuer,
+audience, signature, expiry, and the provider's JWKS. The callback creates a
+short-lived, one-time exchange code; DUMB access and refresh tokens are not
+placed in callback query strings.</p>
+<p>The managed callback is:</p>
+<div class="highlight"><pre><span></span><code>https://&lt;dumb-public-host&gt;/api/auth/oidc/callback
+</code></pre></div>
+<p>OIDC identities have the same DUMB privileges as local users. DUMB does not
+currently have viewer/editor/admin role separation. An optional allowed-groups
+list can deny sign-in unless the provider returns at least one matching group.</p>
+<h2 id="dumb-managed-external-or-other-oidc-providers">DUMB-managed, external, or other OIDC providers<a class="headerlink" href="#dumb-managed-external-or-other-oidc-providers" title="Permanent link">&para;</a></h2>
+<p>Open <strong>DUMB Settings → Authentication → Sign-in provider</strong> and select:</p>
+<ul>
+<li><strong>DUMB-managed Authelia</strong> when this service has completed bootstrap. DUMB
+  prefills its public issuer and <code>dumb</code> client ID, then creates or reuses the
+  generated client when you select <strong>Link managed Authelia</strong>.</li>
+<li><strong>External Authelia</strong> for an independently managed Authelia deployment.</li>
+<li>A named preset for Google, Authentik, Keycloak, Microsoft Entra ID, Auth0,
+  Okta, ZITADEL, or Dex.</li>
+<li><strong>Custom / Generic OIDC</strong> for another compatible provider.</li>
+</ul>
+<p>External providers require a provider-side web application and the exact DUMB
+redirect URI, public issuer URL, client ID, and client secret. Discovery
+normally comes from:</p>
+<div class="highlight"><pre><span></span><code>https://&lt;issuer&gt;/.well-known/openid-configuration
+</code></pre></div>
+<p>The DUMB redirect URI must use its browser-facing HTTPS FQDN. <code>localhost</code>, IP
+addresses, single-label hostnames, HTTP, and embedded <code>/ui/...</code> routes are not
+accepted.</p>
+<p>Private/reserved provider addresses and plain HTTP are blocked unless you
+explicitly enable the corresponding advanced option. Keep TLS verification on
+whenever possible.</p>
+<p>The managed TPA link uses Authelia's public HTTPS token and userinfo endpoints
+so Authelia can enforce one consistent issuer across browser authorization and
+server-side code exchange. DUMB does not rewrite endpoints supplied for
+external Authelia or generic OIDC providers. HTTPS endpoints must present
+certificates trusted by the DUMB or TPA process that connects to them; an
+endpoint allowlist is not a TLS-verification bypass.</p>
+<h2 id="oidc-versus-forwardauth">OIDC versus ForwardAuth<a class="headerlink" href="#oidc-versus-forwardauth" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Use <strong>OIDC</strong> for DUMB or TPA sign-in. The application creates its own session
+  and can apply provider group mappings.</li>
+<li>Use <strong>ForwardAuth</strong> when Traefik should gate an application that does not have
+  suitable OIDC support.</li>
+<li>Do not attach both Authelia ForwardAuth and TPA Service SSO to the same
+  router. That creates two login/session layers and confusing redirects.</li>
+<li>Do not automatically protect the DUMB hostname with ForwardAuth. First prove
+  native DUMB OIDC works and retain a recovery route.</li>
+</ul>
+<p>After step 4, TPA discovers:</p>
+<div class="highlight"><pre><span></span><code>dumb-authelia-forward-auth@file
+</code></pre></div>
+<p>Attach it only to the TPA services you intend to protect.</p>
+<h2 id="files-and-ports">Files and ports<a class="headerlink" href="#files-and-ports" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Location</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Authelia portal</td>
+<td>TCP <code>9091</code></td>
+</tr>
+<tr>
+<td>Generated config</td>
+<td><code>/config/authelia/configuration.yml</code></td>
+</tr>
+<tr>
+<td>File users</td>
+<td><code>/config/authelia/users_database.yml</code></td>
+</tr>
+<tr>
+<td>Generated secrets and signing key</td>
+<td><code>/config/authelia/secrets/</code></td>
+</tr>
+<tr>
+<td>DUMB-managed OIDC client state</td>
+<td><code>/config/authelia/dumb-managed.json</code></td>
+</tr>
+<tr>
+<td>Filesystem notifications</td>
+<td><code>/config/authelia/notification.txt</code></td>
+</tr>
+<tr>
+<td>Binary and version marker</td>
+<td><code>/authelia/</code></td>
+</tr>
+<tr>
+<td>Logs</td>
+<td><code>/log/authelia.log</code></td>
+</tr>
+<tr>
+<td>ForwardAuth middleware file</td>
+<td><code>/config/traefik/dynamic/authelia.yml</code></td>
+</tr>
+</tbody>
+</table>
+<h2 id="integration-api">Integration API<a class="headerlink" href="#integration-api" title="Permanent link">&para;</a></h2>
+<p>Backend-native routes use <code>/integrations/authelia</code>; through the normal DUMB
+Frontend proxy use <code>/api/integrations/authelia</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Method and route</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>GET /integrations/authelia/status</code></td>
+<td>Return redacted managed, DUMB auth, TPA, and ForwardAuth state</td>
+</tr>
+<tr>
+<td><code>GET /integrations/authelia/verification-code</code></td>
+<td>Return only the newest filesystem-delivered identity-verification code; requires an authenticated DUMB session and is never available for SMTP</td>
+</tr>
+<tr>
+<td><code>GET /integrations/authelia/tpa-domains</code></td>
+<td>Return safe existing TPA domain choices, supported managed-route applications, and sanitized public routes for service-page links</td>
+</tr>
+<tr>
+<td><code>POST /integrations/authelia/tpa-route</code></td>
+<td>Create or reuse an unprotected TPA route for Authelia, DUMB, or TPA itself</td>
+</tr>
+<tr>
+<td><code>POST /integrations/authelia/bootstrap</code></td>
+<td>Save managed settings, create/update the bootstrap user, render configuration, and optionally start Authelia</td>
+</tr>
+<tr>
+<td><code>POST /integrations/authelia/link-dumb</code></td>
+<td>Create or accept an OIDC client and configure DUMB hybrid/OIDC auth</td>
+</tr>
+<tr>
+<td><code>POST /integrations/authelia/link-tpa</code></td>
+<td>Create the TPA client and call TPA's token-authenticated managed-provider linker</td>
+</tr>
+<tr>
+<td><code>POST /integrations/authelia/forward-auth</code></td>
+<td>Publish the managed or external Authelia file-provider middleware</td>
+</tr>
+</tbody>
+</table>
+<p>These routes use DUMB's normal authentication policy. Responses do not return
+generated client secrets, user passwords, database credentials, or Authelia
+secret material.</p>
+<h2 id="recovery">Recovery<a class="headerlink" href="#recovery" title="Permanent link">&para;</a></h2>
+<p>If OIDC is misconfigured:</p>
+<ol>
+<li>Use <strong>Use local account</strong> on DUMB or TPA when hybrid/local fallback is
+   enabled.</li>
+<li>Correct the provider URL, client redirect URI, or group mapping.</li>
+<li>Re-run the managed link step to update or rotate the client.</li>
+<li>Restart Authelia after configuration changes and restart TPA when its
+   provider environment changes.</li>
+</ol>
+<p>If Authelia accepts the password and 2FA but TPA returns
+<code>token_exchange_failed</code> with <code>invalid_request</code>, update TPA and run
+<strong>Link and restart TPA</strong> again. The managed Authelia client requires
+<code>client_secret_basic</code>; relinking records that method without exposing or
+manually copying the generated client secret.</p>
+<p>If OIDC-only mode caused a DUMB lockout, edit <code>/config/users.json</code> from the
+container host and restore <code>"mode": "hybrid"</code> or <code>"mode": "local"</code>, then
+restart DUMB. Protect that file: it contains DUMB's JWT and OIDC client
+secrets.</p>
+<h2 id="related-resources">Related resources<a class="headerlink" href="#related-resources" title="Permanent link">&para;</a></h2>
+<ul>
+<li><a href="../../../features/authentication/">DUMB authentication</a></li>
+<li><a href="../../../api/auth/">Authentication API</a></li>
+<li><a href="../traefik-proxy-admin/">Traefik Proxy Admin</a></li>
+<li><a href="https://www.authelia.com/integration/proxies/traefik/">Authelia Traefik integration</a></li>
+<li><a href="https://www.authelia.com/overview/authentication/one-time-password/">Authelia one-time password enrollment</a></li>
+<li><a href="https://www.authelia.com/configuration/notifications/introduction/">Authelia notification providers</a></li>
+<li><a href="https://www.authelia.com/configuration/identity-providers/openid-connect/provider/">Authelia OIDC provider</a></li>
+<li><a href="https://www.authelia.com/configuration/session/introduction/">Authelia session configuration</a></li>
 </ul>
 
 
@@ -5721,7 +5896,7 @@ code in the URL fragment.</p>
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../" class="md-footer__link md-footer__link--prev" aria-label="Previous: Overview">
+          <a href="../traefik-proxy-admin/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Traefik Proxy Admin">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-arrow-left" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7M19 12H5"/></svg>
@@ -5731,20 +5906,20 @@ code in the URL fragment.</p>
                 Previous
               </span>
               <div class="md-ellipsis">
-                Overview
+                Traefik Proxy Admin
               </div>
             </div>
           </a>
         
         
           
-          <a href="../health/" class="md-footer__link md-footer__link--next" aria-label="Next: Health">
+          <a href="../cloudflared/" class="md-footer__link md-footer__link--next" aria-label="Next: Cloudflared">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Health
+                Cloudflared
               </div>
             </div>
             <div class="md-footer__button md-icon">
@@ -5817,16 +5992,16 @@ code in the URL fragment.</p>
       
       
       
-      <script id="__config" type="application/json">{"annotate":null,"base":"../..","features":["navigation.instant","navigation.instant.progress","navigation.expand","navigation.tabs","navigation.path","navigation.indexes","navigation.top","navigation.footer","navigation.sections","navigation.tracking","toc.follow","search.suggest","search.highlight","search.share","content.action.edit","content.action.view","content.code.copy","content.code.annotate"],"search":"../../assets/javascripts/workers/search.e2d2d235.min.js","tags":null,"translations":{"clipboard.copied":"Copied to clipboard","clipboard.copy":"Copy to clipboard","search.result.more.one":"1 more on this page","search.result.more.other":"# more on this page","search.result.none":"No matching documents","search.result.one":"1 matching document","search.result.other":"# matching documents","search.result.placeholder":"Type to start searching","search.result.term.missing":"Missing","select.version":"Select version"},"version":null}</script>
+      <script id="__config" type="application/json">{"annotate":null,"base":"../../..","features":["navigation.instant","navigation.instant.progress","navigation.expand","navigation.tabs","navigation.path","navigation.indexes","navigation.top","navigation.footer","navigation.sections","navigation.tracking","toc.follow","search.suggest","search.highlight","search.share","content.action.edit","content.action.view","content.code.copy","content.code.annotate"],"search":"../../../assets/javascripts/workers/search.e2d2d235.min.js","tags":null,"translations":{"clipboard.copied":"Copied to clipboard","clipboard.copy":"Copy to clipboard","search.result.more.one":"1 more on this page","search.result.more.other":"# more on this page","search.result.none":"No matching documents","search.result.one":"1 matching document","search.result.other":"# matching documents","search.result.placeholder":"Type to start searching","search.result.term.missing":"Missing","select.version":"Select version"},"version":null}</script>
     
     
-      <script src="../../assets/javascripts/bundle.00c35305.min.js"></script>
+      <script src="../../../assets/javascripts/bundle.00c35305.min.js"></script>
       
         <script src="https://cdn.jsdelivr.net/npm/medium-zoom@1.1.0/dist/medium-zoom.min.js"></script>
       
-        <script src="../../assets/js/zoom.js"></script>
+        <script src="../../../assets/js/zoom.js"></script>
       
-        <script src="../../assets/js/github-meta.js"></script>
+        <script src="../../../assets/js/github-meta.js"></script>
       
     
   </body>
