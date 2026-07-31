@@ -40,6 +40,8 @@ jobs:
   python-checks:
     name: Python ${{ matrix.python-version }}
     runs-on: ubuntu-latest
+    env:
+      DUMB_AUTH_CONFIG_PATH: ${{ runner.temp }}/dumb-ci/users.json
     strategy:
       fail-fast: false
       matrix:
@@ -84,4 +86,3 @@ jobs:
 
       - name: Security checks
         run: make security
-

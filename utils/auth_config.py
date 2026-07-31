@@ -30,17 +30,28 @@ class UserConfig(BaseModel):
     oidc: Dict[str, object] = Field(default_factory=dict)
 
 
+DEFAULT_AUTH_CONFIG_PATH = "/config/users.json"
+AUTH_CONFIG_PATH_ENV = "DUMB_AUTH_CONFIG_PATH"
+
+
 class AuthConfigManager:
     """Manages user authentication configuration"""
 
-    def __init__(self, config_path: str = "/config/users.json"):
+    def __init__(self, config_path: Optional[str] = None):
         """
         Initialize the auth config manager.
 
         Args:
-            config_path: Path to the users.json configuration file
+            config_path: Path to the users.json configuration file. When omitted,
+                ``DUMB_AUTH_CONFIG_PATH`` may override the production default of
+                ``/config/users.json``.
         """
-        self.config_path = os.path.abspath(config_path)
+        resolved_path = (
+            config_path
+            or os.environ.get(AUTH_CONFIG_PATH_ENV)
+            or DEFAULT_AUTH_CONFIG_PATH
+        )
+        self.config_path = os.path.abspath(resolved_path)
         self._ensure_config_exists()
         self.config = self._load_config()
 

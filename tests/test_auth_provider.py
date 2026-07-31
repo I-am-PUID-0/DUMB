@@ -37,6 +37,32 @@ from utils.authelia_settings import (
 
 
 class AuthProviderConfigTests(unittest.TestCase):
+    def test_default_config_path_can_be_overridden_for_isolated_runtimes(self):
+        with tempfile.TemporaryDirectory() as directory:
+            configured_path = Path(directory, "auth", "users.json")
+            with patch.dict(
+                os.environ,
+                {"DUMB_AUTH_CONFIG_PATH": str(configured_path)},
+            ):
+                manager = AuthConfigManager()
+
+            self.assertEqual(manager.config_path, str(configured_path))
+            self.assertTrue(configured_path.is_file())
+
+    def test_explicit_config_path_wins_over_environment_override(self):
+        with tempfile.TemporaryDirectory() as directory:
+            explicit_path = Path(directory, "explicit", "users.json")
+            environment_path = Path(directory, "environment", "users.json")
+            with patch.dict(
+                os.environ,
+                {"DUMB_AUTH_CONFIG_PATH": str(environment_path)},
+            ):
+                manager = AuthConfigManager(str(explicit_path))
+
+            self.assertEqual(manager.config_path, str(explicit_path))
+            self.assertTrue(explicit_path.is_file())
+            self.assertFalse(environment_path.exists())
+
     def test_legacy_config_defaults_to_local_mode(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory, "users.json")
