@@ -9,6 +9,15 @@ import os, re, asyncio
 
 logs_router = APIRouter()
 
+DUMB_API_PROCESS_NAMES = {
+    "dmb",
+    "dmb api",
+    "dmb api service",
+    "dumb",
+    "dumb api",
+    "dumb api service",
+}
+
 
 class LogFileResponse(BaseModel):
     process_name: str
@@ -16,7 +25,13 @@ class LogFileResponse(BaseModel):
     cursor: int
     chunk: str
     reset: bool
+    file_id: Optional[str] = None
     log: Optional[str] = None
+
+
+def _is_dumb_api_process(process_name: str) -> bool:
+    normalized = " ".join(str(process_name or "").lower().replace("_", " ").split())
+    return normalized in DUMB_API_PROCESS_NAMES
 
 
 def find_log_file(process_name: str, logger):
@@ -28,7 +43,7 @@ def find_log_file(process_name: str, logger):
         if log_file:
             return resolve_path(log_file)
 
-    if "dumb" in process_name.lower() or "dmb" in process_name.lower():
+    if _is_dumb_api_process(process_name):
         log_dir = resolve_path("/log")
         if log_dir.exists():
             log_files = sorted(
@@ -110,27 +125,76 @@ def filter_dumb_log(log_path, logger):
         return ""
 
 
-def _read_complete_chunk(path: Path, start: int) -> tuple[bytes, int]:
-    """Read complete log lines without exposing fragments across API polls."""
+def _read_complete_chunk_from_handle(f, start: int, snapshot_size: int):
+    safe_start = max(0, start)
+    if safe_start:
+        f.seek(safe_start - 1)
+        if f.read(1) not in {b"\n", b"\r"}:
+            # An arbitrary/tail cursor can land inside a sensitive line.
+            # Skip that fragment rather than returning an unredactable tail.
+            f.readline(max(0, snapshot_size - safe_start))
+            safe_start = f.tell()
 
-    with open(path, "rb") as f:
-        safe_start = max(0, start)
-        if safe_start:
-            f.seek(safe_start - 1)
-            if f.read(1) not in {b"\n", b"\r"}:
-                # An arbitrary/tail cursor can land inside a sensitive line.
-                # Skip that fragment rather than returning an unredactable tail.
-                f.readline()
-                safe_start = f.tell()
-
-        f.seek(safe_start)
-        data = f.read()
+    f.seek(safe_start)
+    data = f.read(max(0, snapshot_size - safe_start))
 
     final_newline = data.rfind(b"\n")
     if final_newline < 0:
         return b"", safe_start
     complete = data[: final_newline + 1]
     return complete, safe_start + len(complete)
+
+
+def _read_complete_chunk(
+    path: Path, start: int, snapshot_size: int | None = None
+) -> tuple[bytes, int]:
+    """Read complete log lines from a fixed-size file snapshot."""
+
+    with open(path, "rb") as f:
+        if snapshot_size is None:
+            snapshot_size = os.fstat(f.fileno()).st_size
+        return _read_complete_chunk_from_handle(f, start, snapshot_size)
+
+
+def _bounded_log_start(size: int, cursor: int, tail_bytes: int) -> tuple[int, bool]:
+    """Return a bounded read offset and whether the client buffer must reset."""
+
+    reset = cursor > size or size - cursor > tail_bytes
+    if reset:
+        return max(0, size - tail_bytes), True
+    return cursor, False
+
+
+def _log_file_id(stat_result: os.stat_result) -> str:
+    """Return an opaque generation identifier for one opened log file."""
+
+    return f"{stat_result.st_dev:x}:{stat_result.st_ino:x}"
+
+
+def _read_log_snapshot(
+    path: Path,
+    cursor: int | None,
+    tail_bytes: int,
+    expected_file_id: str | None = None,
+) -> tuple[bytes, int, int, str, bool]:
+    """Read a bounded snapshot and detect rotation by opened-file identity."""
+
+    with open(path, "rb") as f:
+        snapshot_stat = os.fstat(f.fileno())
+        size = snapshot_stat.st_size
+        file_id = _log_file_id(snapshot_stat)
+
+        if cursor is None:
+            start = max(0, size - tail_bytes)
+            reset = True
+        elif expected_file_id is not None and expected_file_id != file_id:
+            start = max(0, size - tail_bytes)
+            reset = True
+        else:
+            start, reset = _bounded_log_start(size, cursor, tail_bytes)
+
+        data, safe_cursor = _read_complete_chunk_from_handle(f, start, size)
+        return data, safe_cursor, size, file_id, reset
 
 
 @logs_router.get("", response_model=LogFileResponse)
@@ -144,6 +208,11 @@ async def get_log_file(
         ge=1024,
         le=8_388_608,
         description="Initial bytes from end when no cursor",
+    ),
+    file_id: str | None = Query(
+        None,
+        max_length=128,
+        description="Opaque file generation returned by the previous request",
     ),
     logger=Depends(get_logger),
     current_user: str = Depends(get_optional_current_user),
@@ -159,60 +228,45 @@ async def get_log_file(
                 "cursor": 0,
                 "chunk": "",
                 "reset": True,
+                "file_id": None,
             }
-
-        size = log_path.stat().st_size
 
         # Initial load (no cursor): for DUMB/DMB return from the last startup banner once,
         # otherwise a tail slice. Mark as reset so the client replaces its buffer.
-        if cursor is None:
-            if "dumb" in process_name.lower() or "dmb" in process_name.lower():
-                text = redact_sensitive_log_data(filter_dumb_log(log_path, logger))
-                # After initial snapshot, cursor should point to EOF
-                return {
-                    "process_name": process_name,
-                    "size": size,
-                    "cursor": size,
-                    "chunk": text,
-                    "reset": True,
-                }
-            start = max(0, size - int(tail_bytes))
-            data, safe_cursor = _read_complete_chunk(log_path, start)
+        if cursor is None and _is_dumb_api_process(process_name):
+            snapshot_stat = log_path.stat()
+            size = snapshot_stat.st_size
+            text = redact_sensitive_log_data(filter_dumb_log(log_path, logger))
             return {
                 "process_name": process_name,
                 "size": size,
-                "cursor": safe_cursor,
-                "chunk": redact_sensitive_log_data(data.decode("utf-8", "replace")),
+                "cursor": size,
+                "chunk": text,
                 "reset": True,
+                "file_id": _log_file_id(snapshot_stat),
             }
 
-        # Incremental load: handle truncation/rotation
-        if cursor > size:
-            # file rotated/truncated; tail fresh bytes
-            start = max(0, size - int(tail_bytes))
-            data, safe_cursor = _read_complete_chunk(log_path, start)
-            return {
-                "process_name": process_name,
-                "size": size,
-                "cursor": safe_cursor,
-                "chunk": redact_sensitive_log_data(data.decode("utf-8", "replace")),
-                "reset": True,
-            }
-
-        # Normal delta
-        data, new_cursor = _read_complete_chunk(log_path, cursor)
+        data, new_cursor, size, current_file_id, reset = _read_log_snapshot(
+            log_path,
+            cursor,
+            int(tail_bytes),
+            expected_file_id=file_id,
+        )
         return {
             "process_name": process_name,
             "size": size,
             "cursor": new_cursor,
             "chunk": redact_sensitive_log_data(data.decode("utf-8", "replace")),
-            "reset": False,
+            "reset": reset,
+            "file_id": current_file_id,
         }
 
     result = await loop.run_in_executor(None, work)
 
-    # Back-compat for any callers expecting {log: "..."} on first fetch
-    if result.get("reset"):
+    # Back-compat for callers expecting {log: "..."} on their first fetch.
+    # Incremental rotation resets already use the cursor protocol; duplicating
+    # a large tail there makes the browser decode the same payload twice.
+    if cursor is None:
         result["log"] = result.get("chunk", "")
 
     return result
