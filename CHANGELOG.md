@@ -1,5 +1,20 @@
 # Changelog
 
+## [2.13.0](https://github.com/I-am-PUID-0/DUMB/compare/2.12.2...2.13.0) (2026-08-01)
+
+
+### ✨ Features
+
+* **auth:** add managed Authelia and OIDC integration ([2da5af2](https://github.com/I-am-PUID-0/DUMB/commit/2da5af27360c28dc8c346d0de7880e0994d11156))
+
+
+### 🐛 Bug Fixes
+
+* **ci:** isolate auth configuration during tests ([37a37b6](https://github.com/I-am-PUID-0/DUMB/commit/37a37b637836110cb867500abbaf3aa83bcca613))
+* **ci:** use a valid job-level auth config path ([61cea93](https://github.com/I-am-PUID-0/DUMB/commit/61cea937c9217200708d12542f4e07072d757b09))
+* **docker:** support latest pgAdmin setuptools metadata ([a0ebf5c](https://github.com/I-am-PUID-0/DUMB/commit/a0ebf5c1ffc7e878ab3e0bb8f9ffa5fbdb35ccf7))
+* **logs:** make incremental reads safe across file rollover ([109884a](https://github.com/I-am-PUID-0/DUMB/commit/109884ae13cfcbe8aca089a3ad5dab98f6443bd7))
+
 ## [2.12.2](https://github.com/I-am-PUID-0/DUMB/compare/2.12.1...2.12.2) (2026-07-30)
 
 
