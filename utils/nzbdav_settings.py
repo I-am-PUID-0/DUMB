@@ -95,6 +95,27 @@ def _collect_arr_entries() -> Tuple[list[dict], list[dict], list[dict], list[dic
     return radarr_entries, sonarr_entries, lidarr_entries, whisparr_entries
 
 
+def get_nzbdav_arr_categories() -> list[dict]:
+    """Return non-secret category metadata for DUMB-managed NzbDAV Arr links."""
+    buckets = _collect_arr_entries()
+    result = []
+    seen = set()
+    for service, entries in zip(("radarr", "sonarr", "lidarr", "whisparr"), buckets):
+        for entry in entries:
+            category = (entry.get("Category") or "").strip().lower()
+            if not category or category in seen:
+                continue
+            seen.add(category)
+            result.append(
+                {
+                    "service": service,
+                    "instance_name": (entry.get("Instance") or "").strip(),
+                    "category": category,
+                }
+            )
+    return result
+
+
 def _instance_core_services(svc_name: str, instance_name: str) -> list[str]:
     svc_cfg = CONFIG_MANAGER.get(svc_name) or {}
     instances = (svc_cfg.get("instances") or {}) or {}

@@ -6,7 +6,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from utils import rclone_optimizer
+from utils import nzbdav_settings, rclone_optimizer
 
 
 class _ConfigManager:
@@ -42,6 +42,162 @@ class _ConfigManager:
 
 
 class RcloneOptimizerTests(unittest.TestCase):
+    def test_nzbdav_categories_follow_enabled_arr_instance_names(self):
+        config = unittest.mock.Mock()
+        config.get.side_effect = lambda key, default=None: {
+            "radarr": {
+                "instances": {
+                    "NzbDAV": {
+                        "enabled": True,
+                        "core_service": "nzbdav",
+                        "port": 7878,
+                        "config_file": "/config/radarr-nzbdav.xml",
+                    },
+                    "Other": {
+                        "enabled": True,
+                        "core_service": "decypharr",
+                        "port": 7879,
+                        "config_file": "/config/radarr-other.xml",
+                    },
+                }
+            }
+        }.get(key, default)
+
+        with (
+            patch.object(nzbdav_settings, "CONFIG_MANAGER", config),
+            patch.object(
+                nzbdav_settings, "_parse_arr_api_key", return_value="test-key"
+            ),
+        ):
+            categories = nzbdav_settings.get_nzbdav_arr_categories()
+
+        self.assertEqual(
+            [
+                {
+                    "service": "radarr",
+                    "instance_name": "NzbDAV",
+                    "category": "radarr-nzbdav",
+                }
+            ],
+            categories,
+        )
+
+    def test_discover_content_uses_only_active_arr_categories(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            mount = root / "mount" / "nzbdav"
+            active_media = mount / "content" / "radarr-nzbdav" / "visible.mkv"
+            inactive_media = mount / "content" / "stale-category" / "ignored.mkv"
+            hidden_media = (
+                mount / "content" / "radarr-nzbdav" / ".internal" / "ignored.mkv"
+            )
+            for media in (active_media, inactive_media, hidden_media):
+                media.parent.mkdir(parents=True, exist_ok=True)
+                with media.open("wb") as handle:
+                    handle.truncate(16 * 1024 * 1024)
+            config = _ConfigManager(root / "cache")
+            config.instance["mount_dir"] = str(root / "mount")
+
+            with (
+                patch.object(rclone_optimizer, "CONFIG_MANAGER", config),
+                patch.object(
+                    rclone_optimizer,
+                    "get_nzbdav_arr_categories",
+                    return_value=[
+                        {
+                            "service": "radarr",
+                            "instance_name": "NzbDAV",
+                            "category": "radarr-nzbdav",
+                        }
+                    ],
+                ),
+            ):
+                manager = rclone_optimizer.RcloneOptimizerManager(
+                    process_handler=object(),
+                    logger=unittest.mock.Mock(),
+                    base_dir=str(root / "optimizer"),
+                )
+                discovered = manager.discover_content("rclone w/ NzbDAV")
+
+        self.assertEqual("active_arr_categories", discovered["discovery_mode"])
+        self.assertEqual(str(mount / "content"), discovered["content_base"])
+        self.assertEqual(1, discovered["active_categories"][0]["found"])
+        self.assertEqual(1, len(discovered["files"]))
+        self.assertEqual(
+            "content/radarr-nzbdav/visible.mkv", discovered["files"][0]["path"]
+        )
+        self.assertEqual(
+            "content/radarr-nzbdav/visible.mkv",
+            discovered["files"][0]["display_path"],
+        )
+
+    def test_discover_content_maps_category_symlink_to_rclone_target(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            mount = root / "mount" / "nzbdav"
+            target = mount / ".ids" / "a" / "opaque-id"
+            target.parent.mkdir(parents=True)
+            with target.open("wb") as handle:
+                handle.truncate(16 * 1024 * 1024)
+            media = mount / "content" / "radarr-nzbdav" / "visible.mkv"
+            media.parent.mkdir(parents=True)
+            media.symlink_to(target)
+            config = _ConfigManager(root / "cache")
+            config.instance["mount_dir"] = str(root / "mount")
+
+            with (
+                patch.object(rclone_optimizer, "CONFIG_MANAGER", config),
+                patch.object(
+                    rclone_optimizer,
+                    "get_nzbdav_arr_categories",
+                    return_value=[
+                        {
+                            "service": "radarr",
+                            "instance_name": "NzbDAV",
+                            "category": "radarr-nzbdav",
+                        }
+                    ],
+                ),
+            ):
+                manager = rclone_optimizer.RcloneOptimizerManager(
+                    process_handler=object(),
+                    logger=unittest.mock.Mock(),
+                    base_dir=str(root / "optimizer"),
+                )
+                discovered = manager.discover_content("rclone w/ NzbDAV")
+
+        self.assertEqual(1, len(discovered["files"]))
+        self.assertEqual(".ids/a/opaque-id", discovered["files"][0]["path"])
+        self.assertEqual(
+            "content/radarr-nzbdav/visible.mkv",
+            discovered["files"][0]["display_path"],
+        )
+
+    def test_discover_content_requires_an_active_nzbdav_arr_category(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            mount = root / "mount" / "nzbdav"
+            mount.mkdir(parents=True)
+            config = _ConfigManager(root / "cache")
+            config.instance["mount_dir"] = str(root / "mount")
+
+            with (
+                patch.object(rclone_optimizer, "CONFIG_MANAGER", config),
+                patch.object(
+                    rclone_optimizer, "get_nzbdav_arr_categories", return_value=[]
+                ),
+            ):
+                manager = rclone_optimizer.RcloneOptimizerManager(
+                    process_handler=object(),
+                    logger=unittest.mock.Mock(),
+                    base_dir=str(root / "optimizer"),
+                )
+                with self.assertRaisesRegex(
+                    rclone_optimizer.RcloneOptimizerError,
+                    "No enabled Arr instances",
+                ):
+                    manager.discover_content("rclone w/ NzbDAV")
+
     def test_managed_flag_merge_preserves_user_flags_and_paths(self):
         command = [
             "rclone",

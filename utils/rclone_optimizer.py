@@ -28,6 +28,7 @@ from uuid import UUID, uuid4
 import psutil
 
 from utils.config_loader import CONFIG_MANAGER
+from utils.nzbdav_settings import get_nzbdav_arr_categories
 from utils.notifications import notify_event
 from utils.port_probe import is_port_available
 from utils.url_security import safe_request, safe_urlopen
@@ -49,6 +50,7 @@ TERMINAL_STATUSES = {
     "rolled_back",
 }
 JOB_ID_RE = re.compile(r"^[0-9a-f]{32}$")
+CATEGORY_RE = re.compile(r"^[a-z0-9][a-z0-9_-]*$")
 MEDIA_EXTENSIONS = {
     ".3g2",
     ".3gp",
@@ -395,44 +397,83 @@ class RcloneOptimizerManager:
         self, process_name: str, max_files: int = 4000
     ) -> dict[str, Any]:
         _name, instance = self._resolve_instance(process_name)
-        root = self._mount_path(instance)
+        root = self._mount_path(instance).resolve()
         if not root.is_dir():
             raise RcloneOptimizerError("The production rclone mount is not available.")
+        active_categories = [
+            item
+            for item in get_nzbdav_arr_categories()
+            if CATEGORY_RE.fullmatch(str(item.get("category") or ""))
+        ]
+        if not active_categories:
+            raise RcloneOptimizerError(
+                "No enabled Arr instances are linked to NzbDAV, so no active content categories could be discovered."
+            )
         started = time.monotonic()
         items: list[dict[str, Any]] = []
+        seen_targets: set[str] = set()
+        category_results = []
         scanned = 0
-        for current_root, directories, files in os.walk(root):
-            directories[:] = sorted(directories)[:250]
-            for filename in sorted(files):
-                scanned += 1
+        for category_item in active_categories:
+            category = category_item["category"]
+            category_root = root / "content" / category
+            available = category_root.is_dir()
+            category_result = {**category_item, "available": available, "found": 0}
+            category_results.append(category_result)
+            if not available:
+                continue
+            try:
+                category_root.resolve(strict=True).relative_to(root)
+            except (OSError, ValueError):
+                category_result["available"] = False
+                continue
+            for current_root, directories, files in os.walk(category_root):
+                directories[:] = [
+                    directory
+                    for directory in sorted(directories)
+                    if not directory.startswith(".")
+                ][:250]
+                for filename in sorted(files):
+                    scanned += 1
+                    if scanned > max_files or time.monotonic() - started > 15:
+                        break
+                    source_path = Path(current_root) / filename
+                    if source_path.suffix.lower() not in MEDIA_EXTENSIONS:
+                        continue
+                    try:
+                        target_path = source_path.resolve(strict=True)
+                        relative = target_path.relative_to(root).as_posix()
+                        if relative in seen_targets:
+                            continue
+                        stat = target_path.stat()
+                        if not target_path.is_file() or stat.st_size < 8 * 1024 * 1024:
+                            continue
+                        source_stat = source_path.lstat()
+                        display_path = source_path.relative_to(root).as_posix()
+                    except (OSError, ValueError):
+                        continue
+                    seen_targets.add(relative)
+                    category_result["found"] += 1
+                    items.append(
+                        {
+                            "path": relative,
+                            "display_path": display_path,
+                            "size_bytes": stat.st_size,
+                            "size_label": _bytes_label(stat.st_size),
+                            "modified_at": datetime.fromtimestamp(
+                                source_stat.st_mtime, timezone.utc
+                            ).isoformat(),
+                            "mtime": source_stat.st_mtime,
+                        }
+                    )
                 if scanned > max_files or time.monotonic() - started > 15:
                     break
-                path = Path(current_root) / filename
-                if path.suffix.lower() not in MEDIA_EXTENSIONS:
-                    continue
-                try:
-                    stat = path.stat()
-                    if not path.is_file() or stat.st_size < 8 * 1024 * 1024:
-                        continue
-                    relative = path.relative_to(root).as_posix()
-                except (OSError, ValueError):
-                    continue
-                items.append(
-                    {
-                        "path": relative,
-                        "size_bytes": stat.st_size,
-                        "size_label": _bytes_label(stat.st_size),
-                        "modified_at": datetime.fromtimestamp(
-                            stat.st_mtime, timezone.utc
-                        ).isoformat(),
-                        "mtime": stat.st_mtime,
-                    }
-                )
             if scanned > max_files or time.monotonic() - started > 15:
                 break
         if not items:
+            categories = ", ".join(item["category"] for item in active_categories)
             raise RcloneOptimizerError(
-                "No suitable media files were found in the mount."
+                f"No suitable media files were found in the active NzbDAV categories: {categories}."
             )
         ordered = sorted(items, key=lambda item: item["mtime"], reverse=True)
         picks: list[tuple[str, dict[str, Any]]] = [
@@ -456,9 +497,12 @@ class RcloneOptimizerManager:
         return {
             "process_name": process_name,
             "mount_path": str(root),
+            "discovery_mode": "active_arr_categories",
+            "content_base": str(root / "content"),
+            "active_categories": category_results,
             "scanned": scanned,
             "truncated": scanned > max_files or time.monotonic() - started > 15,
-            "selection_note": "Recent/older are cache-likelihood heuristics; NzbDAV telemetry determines what actually happened during each read.",
+            "selection_note": "DUMB-derived Arr categories select representative NzbDAV content. Each entry is resolved to a safe mount-relative read path and opened on every isolated rclone shadow mount. Recent/older are cache-likelihood heuristics; NzbDAV telemetry determines what actually happened during each read.",
             "automatic_selection": selected,
             "files": items[:500],
         }
@@ -492,6 +536,7 @@ class RcloneOptimizerManager:
             "recommendation": None,
             "warnings": [
                 "The test reads real data through NzbDAV and its configured Usenet providers.",
+                "For reliable results, stop Plex, Jellyfin, Emby, and other media servers, then wait until NzbDAV is idle with no imports, library ingestion, or unrelated active reads before starting the test.",
                 "No provider cache purge is performed; recent and older samples are reported separately.",
             ],
             "error": None,
