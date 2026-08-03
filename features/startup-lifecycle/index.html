@@ -771,6 +771,8 @@
       
         
       
+        
+      
     
     
     
@@ -1252,6 +1254,36 @@
     
   
     Metrics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../rclone-optimizer/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-gauge" viewBox="0 0 24 24"><path d="m12 14 4-4M3.34 19a10 10 0 1 1 17.32 0"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    Rclone Streaming Optimizer
   
 
     
@@ -5119,7 +5151,7 @@
   
 
 
-<h1 id="startup-lifecycle">Startup lifecycle<a class="headerlink" href="#startup-lifecycle" title="Permanent link">&para;</a></h1>
+<h1 id="startup-lifecycle">Startup lifecycle<a class="headerlink" href="#startup-lifecycle" title="Permanent link">#</a></h1>
 <p>DUMB distinguishes a service that is still starting from one that is unhealthy
 in steady state. The lifecycle is:</p>
 <ol>
@@ -5133,7 +5165,7 @@ in steady state. The lifecycle is:</p>
 <p>The DUMB API starts before enabled-service preinstall. An already-installed
 frontend can also start early, so the dashboard can show startup progress while
 large service installs or migrations continue.</p>
-<h2 id="readiness-and-stabilization">Readiness and stabilization<a class="headerlink" href="#readiness-and-stabilization" title="Permanent link">&para;</a></h2>
+<h2 id="readiness-and-stabilization">Readiness and stabilization<a class="headerlink" href="#readiness-and-stabilization" title="Permanent link">#</a></h2>
 <p>During <code>stabilizing</code>, DUMB checks every enabled process and each configured
 <code>port</code>, <code>frontend_port</code>, <code>backend_port</code>, and <code>webdav_port</code>. Every enabled
 service must remain ready for the stabilization window before the lifecycle
@@ -5175,7 +5207,7 @@ becomes <code>ready</code>.</p>
 <p>If the deadline expires, DUMB enters <code>degraded</code> instead of shutting down the
 API/frontend. The dashboard identifies services that missed readiness, and one
 consolidated degraded-startup notification can be routed to operators.</p>
-<h2 id="startup-safe-monitoring">Startup-safe monitoring<a class="headerlink" href="#startup-safe-monitoring" title="Permanent link">&para;</a></h2>
+<h2 id="startup-safe-monitoring">Startup-safe monitoring<a class="headerlink" href="#startup-safe-monitoring" title="Permanent link">#</a></h2>
 <p>Until startup reaches <code>ready</code> or <code>degraded</code>:</p>
 <ul>
 <li>Auto-restart does not health-check or restart services.</li>
@@ -5193,14 +5225,14 @@ threshold before they alert.</p>
 <p>Auto-restart then applies its grace period. A successful process spawn is only
 an attempt; DUMB records <code>service.auto_restart.succeeded</code> after the restarted
 service passes health checks.</p>
-<h2 id="preinstall-behavior">Preinstall behavior<a class="headerlink" href="#preinstall-behavior" title="Permanent link">&para;</a></h2>
+<h2 id="preinstall-behavior">Preinstall behavior<a class="headerlink" href="#preinstall-behavior" title="Permanent link">#</a></h2>
 <p>Every enabled instance is preinstalled. Instances of the same service key run
 sequentially so shared source/runtime trees are not modified concurrently,
 while different service keys can still preinstall in parallel.</p>
 <p>A failed preinstall is retried through normal service startup. Startup is
 reported as degraded only if the service still misses the final readiness
 deadline.</p>
-<h2 id="ownership-and-network-storage">Ownership and network storage<a class="headerlink" href="#ownership-and-network-storage" title="Permanent link">&para;</a></h2>
+<h2 id="ownership-and-network-storage">Ownership and network storage<a class="headerlink" href="#ownership-and-network-storage" title="Permanent link">#</a></h2>
 <p>Startup ownership repair no longer performs a full count pass followed by a
 second walk. It caps ownership workers and treats correctly owned top-level
 trees as healthy, avoiding repeated traversal of large package caches on NFS.
@@ -5216,7 +5248,7 @@ environment overrides:</p>
 </ul>
 <p>Keep durable service configuration and databases on storage appropriate for
 their recovery requirements.</p>
-<h2 id="api">API<a class="headerlink" href="#api" title="Permanent link">&para;</a></h2>
+<h2 id="api">API<a class="headerlink" href="#api" title="Permanent link">#</a></h2>
 <p>When capability <code>startup_lifecycle</code> is true:</p>
 <div class="highlight"><pre><span></span><code><span class="err">GET /api/process/startup-status</span>
 </code></pre></div>

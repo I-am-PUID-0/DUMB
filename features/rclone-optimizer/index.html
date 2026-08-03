@@ -6,18 +6,18 @@
   
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="description" content="Secure DUMB with local accounts, external OpenID Connect, or hybrid sign-in while preserving a deliberate recovery path.">
+  <meta name="description" content="Benchmark bounded rclone VFS profiles through NzbDAV and its live Usenet providers, compare startup and streaming performance, and explicitly apply or roll back a recommendation.">
   
     <meta name="author" content="DUMB Team">
   
   
-    <link rel="canonical" href="https://dumbarr.com/features/authentication/">
+    <link rel="canonical" href="https://dumbarr.com/features/rclone-optimizer/">
   
   
-    <link rel="prev" href="../usage/">
+    <link rel="prev" href="../metrics/">
   
   
-    <link rel="next" href="../auto-restart/">
+    <link rel="next" href="../notifications/">
   
   
     
@@ -30,7 +30,7 @@
   
     
       
-        <title>Authentication - Distributed Unlimited Media Bridge</title>
+        <title>Rclone Streaming Optimizer - Distributed Unlimited Media Bridge</title>
       
     
   
@@ -109,9 +109,9 @@
     <meta property="og:type" content="website">
     <meta property="og:locale" content="en_US">
     <meta property="og:site_name" content="DUMB — Distributed Unlimited Media Bridge">
-    <meta property="og:title" content="Authentication">
-    <meta property="og:description" content="Secure DUMB with local accounts, external OpenID Connect, or hybrid sign-in while preserving a deliberate recovery path.">
-    <meta property="og:url" content="https://dumbarr.com/features/authentication/">
+    <meta property="og:title" content="Rclone Streaming Optimizer">
+    <meta property="og:description" content="Benchmark bounded rclone VFS profiles through NzbDAV and its live Usenet providers, compare startup and streaming performance, and explicitly apply or roll back a recommendation.">
+    <meta property="og:url" content="https://dumbarr.com/features/rclone-optimizer/">
     <meta property="og:image" content="https://dumbarr.com/assets/images/DUMB.png">
     <meta property="og:image:secure_url" content="https://dumbarr.com/assets/images/DUMB.png">
     <meta property="og:image:type" content="image/png">
@@ -119,8 +119,8 @@
     <meta property="og:image:height" content="1024">
     <meta property="og:image:alt" content="Distributed Unlimited Media Bridge ecosystem and architecture overview">
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Authentication">
-    <meta name="twitter:description" content="Secure DUMB with local accounts, external OpenID Connect, or hybrid sign-in while preserving a deliberate recovery path.">
+    <meta name="twitter:title" content="Rclone Streaming Optimizer">
+    <meta name="twitter:description" content="Benchmark bounded rclone VFS profiles through NzbDAV and its live Usenet providers, compare startup and streaming performance, and explicitly apply or roll back a recommendation.">
     <meta name="twitter:image" content="https://dumbarr.com/assets/images/DUMB.png">
     <meta name="twitter:image:alt" content="Distributed Unlimited Media Bridge ecosystem and architecture overview">
     
@@ -148,8 +148,8 @@
           {
             "@type": "ListItem",
             "position": 3,
-            "name": "Authentication",
-            "item": "https://dumbarr.com/features/authentication/"
+            "name": "Rclone Streaming Optimizer",
+            "item": "https://dumbarr.com/features/rclone-optimizer/"
           }
         ]
       }
@@ -176,7 +176,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#authentication" class="md-skip">
+        <a href="#rclone-streaming-optimizer" class="md-skip">
           Skip to content
         </a>
       
@@ -220,7 +220,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Authentication
+              Rclone Streaming Optimizer
             
           </span>
         </div>
@@ -896,39 +896,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-lock" viewBox="0 0 24 24"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-  
-  <span class="md-ellipsis">
-    
-  
-    Authentication
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../authentication/" class="md-nav__link">
         
   
   
@@ -946,377 +917,6 @@
   
 
       </a>
-      
-        
-
-
-<nav class="md-nav md-nav--secondary" aria-label="On this page">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      On this page
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#overview" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Overview
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#authentication-modes" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Authentication modes
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#authentication-flow" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Authentication flow
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#first-time-setup" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        First-time setup
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="First-time setup">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#setup-options" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Setup options
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#login-process" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Login process
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Login process">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#local-login" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Local login
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#oidc-login" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        OIDC login
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#token-management" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Token management
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#user-management" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        User management
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="User management">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#available-operations" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Available operations
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#managing-users-via-settings" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Managing users via settings
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#enabling-or-disabling-authentication" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Enabling or disabling authentication
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Enabling or disabling authentication">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#enable-authentication" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Enable authentication
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#disable-authentication" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Disable authentication
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#api-authentication" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        API authentication
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="API authentication">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#request-format" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Request format
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#websocket-authentication" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        WebSocket authentication
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#handling-token-expiration" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Handling token expiration
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#configuration" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Configuration
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#configure-an-oidc-provider" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Configure an OIDC provider
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Configure an OIDC provider">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#provider-connection-safety" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Provider connection safety
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#oidc-versus-forwardauth" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        OIDC versus ForwardAuth
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#troubleshooting" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Troubleshooting
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Troubleshooting">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#invalid-credentials-error" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        "Invalid credentials" error
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#token-expired-errors" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        "Token expired" errors
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#locked-out-of-the-system" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Locked out of the system
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#related-pages" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Related pages
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -1566,10 +1166,39 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../rclone-optimizer/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-gauge" viewBox="0 0 24 24"><path d="m12 14 4-4M3.34 19a10 10 0 1 1 17.32 0"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    Rclone Streaming Optimizer
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -1587,6 +1216,126 @@
   
 
       </a>
+      
+        
+
+
+<nav class="md-nav md-nav--secondary" aria-label="On this page">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      On this page
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#what-the-test-actually-reads" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What the test actually reads
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#measurements" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Measurements
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#content-selection" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Content selection
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#candidate-matrix" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Candidate matrix
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#safety-limits" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Safety limits
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#background-jobs-and-notifications" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Background jobs and notifications
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#apply-and-rollback" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Apply and rollback
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#provider-risk-guidance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Provider-risk guidance
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#related-guides" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Related guides
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -5313,10 +5062,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#overview" class="md-nav__link">
+  <a href="#what-the-test-actually-reads" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Overview
+        What the test actually reads
       
     </span>
   </a>
@@ -5324,10 +5073,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#authentication-modes" class="md-nav__link">
+  <a href="#measurements" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Authentication modes
+        Measurements
       
     </span>
   </a>
@@ -5335,10 +5084,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#authentication-flow" class="md-nav__link">
+  <a href="#content-selection" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Authentication flow
+        Content selection
       
     </span>
   </a>
@@ -5346,216 +5095,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#first-time-setup" class="md-nav__link">
+  <a href="#candidate-matrix" class="md-nav__link">
     <span class="md-ellipsis">
       
-        First-time setup
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="First-time setup">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#setup-options" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Setup options
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#login-process" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Login process
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Login process">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#local-login" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Local login
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#oidc-login" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        OIDC login
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#token-management" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Token management
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#user-management" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        User management
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="User management">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#available-operations" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Available operations
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#managing-users-via-settings" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Managing users via settings
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#enabling-or-disabling-authentication" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Enabling or disabling authentication
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Enabling or disabling authentication">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#enable-authentication" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Enable authentication
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#disable-authentication" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Disable authentication
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#api-authentication" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        API authentication
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="API authentication">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#request-format" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Request format
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#websocket-authentication" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        WebSocket authentication
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#handling-token-expiration" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Handling token expiration
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#configuration" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Configuration
+        Candidate matrix
       
     </span>
   </a>
@@ -5563,38 +5106,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#configure-an-oidc-provider" class="md-nav__link">
+  <a href="#safety-limits" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Configure an OIDC provider
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Configure an OIDC provider">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#provider-connection-safety" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Provider connection safety
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#oidc-versus-forwardauth" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        OIDC versus ForwardAuth
+        Safety limits
       
     </span>
   </a>
@@ -5602,60 +5117,43 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#troubleshooting" class="md-nav__link">
+  <a href="#background-jobs-and-notifications" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Troubleshooting
+        Background jobs and notifications
       
     </span>
   </a>
-  
-    <nav class="md-nav" aria-label="Troubleshooting">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#invalid-credentials-error" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        "Invalid credentials" error
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#token-expired-errors" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        "Token expired" errors
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#locked-out-of-the-system" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Locked out of the system
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#related-pages" class="md-nav__link">
+  <a href="#apply-and-rollback" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Related pages
+        Apply and rollback
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#provider-risk-guidance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Provider-risk guidance
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#related-guides" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Related guides
       
     </span>
   </a>
@@ -5725,7 +5223,7 @@
                 
                   
   
-    <a href="https://github.com/I-am-PUID-0/DUMB_docs/edit/master/docs/features/authentication.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+    <a href="https://github.com/I-am-PUID-0/DUMB_docs/edit/master/docs/features/rclone-optimizer.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
       
       <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-file-pen" viewBox="0 0 24 24"><path d="M12.659 22H18a2 2 0 0 0 2-2V8a2.4 2.4 0 0 0-.706-1.706l-3.588-3.588A2.4 2.4 0 0 0 14 2H6a2 2 0 0 0-2 2v9.34"/><path d="M14 2v5a1 1 0 0 0 1 1h5M10.378 12.622a1 1 0 0 1 3 3.003L8.36 20.637a2 2 0 0 1-.854.506l-2.867.837a.5.5 0 0 1-.62-.62l.836-2.869a2 2 0 0 1 .506-.853z"/></svg>
     </a>
@@ -5734,441 +5232,165 @@
     
       
     
-    <a href="https://github.com/I-am-PUID-0/DUMB_docs/raw/master/docs/features/authentication.md" title="View source of this page" class="md-content__button md-icon">
+    <a href="https://github.com/I-am-PUID-0/DUMB_docs/raw/master/docs/features/rclone-optimizer.md" title="View source of this page" class="md-content__button md-icon">
       
       <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-file-code-2" viewBox="0 0 24 24"><path d="M4 12.15V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.706.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2h-3.35"/><path d="M14 2v5a1 1 0 0 0 1 1h5M5 16l-3 3 3 3M9 22l3-3-3-3"/></svg>
     </a>
   
 
 
-<h1 id="authentication">Authentication<a class="headerlink" href="#authentication" title="Permanent link">#</a></h1>
-<p>DUMB includes optional authentication for the API and web interface. It can use
-local accounts, an external OpenID Connect (OIDC) provider, or both.</p>
-<hr />
-<h2 id="overview">Overview<a class="headerlink" href="#overview" title="Permanent link">#</a></h2>
-<p>The authentication system provides:</p>
+<h1 id="rclone-streaming-optimizer">Rclone Streaming Optimizer<a class="headerlink" href="#rclone-streaming-optimizer" title="Permanent link">#</a></h1>
+<p>The rclone streaming optimizer measures how an <strong>NzbDAV-backed DUMB-managed rclone instance</strong> behaves on the current deployment. It accounts for the combined effects of the provider, network, CPU, memory, cache storage, NzbDAV, and rclone instead of assuming one flag set is right for every server.</p>
+<p>The optimizer is currently limited to NzbDAV. It appears on the specific <strong>rclone service page</strong>, not as an NzbDAV configuration tool. When an associated test is active, the NzbDAV service page shows a link to that rclone job.</p>
+<h2 id="what-the-test-actually-reads">What the test actually reads<a class="headerlink" href="#what-the-test-actually-reads" title="Permanent link">#</a></h2>
+<p>Each candidate uses this path:</p>
+<div class="highlight"><pre><span></span><code>optimizer reader
+  -&gt; isolated read-only rclone shadow mount
+  -&gt; NzbDAV WebDAV
+  -&gt; NzbDAV&#39;s configured Usenet provider(s)
+</code></pre></div>
+<p>The shadow mount uses the same rclone remote/configuration as the production mount, but has its own mount path, VFS cache directory, and loopback RC port. It does not stop the production mount, purge its cache, or reuse its cache for candidate reads.</p>
+<p>These are <strong>real provider reads</strong>. They can consume provider traffic and are subject to provider connection, automation, and acceptable-use policies.</p>
+<h2 id="measurements">Measurements<a class="headerlink" href="#measurements" title="Permanent link">#</a></h2>
+<p>For every candidate and selected file, DUMB records:</p>
 <ul>
-<li><strong>Local, OIDC, or hybrid sign-in</strong></li>
-<li><strong>JWT token-based DUMB sessions</strong> after either login method succeeds</li>
-<li><strong>User management</strong> with create, update, and delete capabilities</li>
-<li><strong>First-time setup wizard</strong> for creating the initial local user</li>
-<li><strong>External Authelia and generic standards-compatible OIDC providers</strong></li>
-<li><strong>DUMB-managed Authelia linking</strong> from the Authelia service page</li>
-<li><strong>Optional authentication</strong> - can be skipped for local/trusted environments</li>
-<li><strong>Session persistence</strong> with "Remember Me" functionality</li>
+<li>file-open time;</li>
+<li>time to first byte;</li>
+<li>time to fill the configured startup buffer (32 MiB by default);</li>
+<li>early/sequential throughput;</li>
+<li>seek latency near the end of the file;</li>
+<li>rclone process memory, CPU, cache use, and RC statistics; and</li>
+<li>NzbDAV active reads, bytes, errors, provider latency, retries, circuit state, failover data, and stream-trace count when the maintained NzbDAV API supplies them.</li>
 </ul>
-<div class="admonition important">
-<p class="admonition-title">No role separation</p>
-<p>DUMB currently has one authenticated privilege level. Every enabled user can reach the same service-control, configuration, and user-management endpoints; usernames are not viewer/editor/admin roles.</p>
-</div>
-<hr />
-<h2 id="authentication-modes">Authentication modes<a class="headerlink" href="#authentication-modes" title="Permanent link">#</a></h2>
+<p>Failed or unavailable files remain visible in the report but are excluded from performance scoring. The recommendation score favors startup time and first-byte latency while also considering seek latency, throughput, resource use, and excluded/error samples.</p>
+<h2 id="content-selection">Content selection<a class="headerlink" href="#content-selection" title="Permanent link">#</a></h2>
+<p>Open the NzbDAV-backed rclone service and select <strong>Rclone Optimizer</strong>. DUMB performs a bounded scan of media files already visible in that rclone mount and suggests a small, stratified set:</p>
+<ul>
+<li>recently modified content, which is more likely to be warm;</li>
+<li>older content, which is more likely to be cold;</li>
+<li>a large/high-bitrate candidate; and</li>
+<li>a typical file near the middle of the observed set.</li>
+</ul>
+<p>Age is only a <strong>cache-likelihood heuristic</strong>. It does not prove whether an article is cached by NzbDAV or a provider. The report keeps recent/likely-warm and older/likely-cold startup results separate, while NzbDAV's live metrics and stream traces explain what happened during the reads.</p>
+<p>You can replace the automatic selection with any listed media files. Select between one and eight files. The scan is intentionally bounded by file count and time so discovering content does not recursively enumerate an unlimited remote library.</p>
+<h2 id="candidate-matrix">Candidate matrix<a class="headerlink" href="#candidate-matrix" title="Permanent link">#</a></h2>
+<p>The optimizer does not try every possible rclone flag permutation. That would consume excessive time and provider traffic while producing noisy results. Instead, it tests known-shape profiles:</p>
 <table>
 <thead>
 <tr>
-<th>Mode</th>
-<th>Sign-in choices</th>
-<th>Recommended use</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><strong>Local</strong></td>
-<td>DUMB username and password</td>
-<td>Simple trusted-LAN deployments</td>
-</tr>
-<tr>
-<td><strong>Hybrid</strong></td>
-<td>OIDC plus local accounts</td>
-<td>Recommended while introducing or operating SSO</td>
-</tr>
-<tr>
-<td><strong>OIDC only</strong></td>
-<td>External identity provider</td>
-<td>Only after provider login and recovery access are proven</td>
-</tr>
-</tbody>
-</table>
-<p>Hybrid mode keeps local password login as a break-glass path if DNS, TLS, the
-identity provider, or its database is unavailable. OIDC-only mode requires an
-explicit lockout-risk confirmation in Settings or the Authelia wizard.</p>
-<div class="admonition important">
-<p class="admonition-title">One DUMB privilege level</p>
-<p>OIDC groups can limit who may sign in, but DUMB does not currently map
-groups to viewer/editor/admin roles. Every accepted identity receives the
-same DUMB operator privilege.</p>
-</div>
-<h2 id="authentication-flow">Authentication flow<a class="headerlink" href="#authentication-flow" title="Permanent link">#</a></h2>
-<pre class="mermaid"><code>flowchart TD
-    A[App Start] --&gt; B{Auth Status Check}
-    B --&gt;|No Local Users and no OIDC| C[Setup Page]
-    B --&gt;|Auth Disabled| D[Dashboard]
-    B --&gt;|Auth Enabled| E{Token Valid?}
-    E --&gt;|Yes| D
-    E --&gt;|No| F[Login Page]
-    C --&gt;|Create User| G[Auth Enabled]
-    C --&gt;|Skip Setup| H[Auth Disabled]
-    G --&gt; D
-    H --&gt; D
-    F --&gt;|Local or OIDC login succeeds| D</code></pre>
-<hr />
-<h2 id="first-time-setup">First-time setup<a class="headerlink" href="#first-time-setup" title="Permanent link">#</a></h2>
-<p>When DUMB starts for the first time, the frontend detects that no users exist and redirects to the setup page.</p>
-<h3 id="setup-options">Setup options<a class="headerlink" href="#setup-options" title="Permanent link">#</a></h3>
-<div class="tabbed-set tabbed-alternate" data-tabs="1:2"><input checked="checked" id="setup-options-create-first-account" name="__tabbed_1" type="radio" /><input id="setup-options-skip-authentication" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="setup-options-create-first-account">Create first account</label><label for="setup-options-skip-authentication">Skip authentication</label></div>
-<div class="tabbed-content">
-<div class="tabbed-block">
-<ol>
-<li>Navigate to the DUMB frontend (default: <code>http://localhost:3005</code>)</li>
-<li>You will be redirected to <code>/setup</code></li>
-<li>Enter a username and password</li>
-<li>Click <strong>Create Account</strong></li>
-<li>Authentication is automatically enabled</li>
-<li>You are logged in and redirected to the dashboard</li>
-</ol>
-</div>
-<div class="tabbed-block">
-<ol>
-<li>Navigate to the DUMB frontend</li>
-<li>On the setup page, click <strong>Skip Setup</strong></li>
-<li>Authentication remains disabled</li>
-<li>All API endpoints are accessible without tokens</li>
-<li>You can enable authentication later in Settings</li>
-</ol>
-</div>
-</div>
-</div>
-<div class="admonition warning">
-<p class="admonition-title">Security consideration</p>
-<p>Skipping authentication is only recommended for local development or fully isolated environments. If your DUMB instance is accessible from the network, enable authentication to protect your services.</p>
-</div>
-<hr />
-<h2 id="login-process">Login process<a class="headerlink" href="#login-process" title="Permanent link">#</a></h2>
-<p>When authentication is enabled, users must log in to access the dashboard and API.</p>
-<h3 id="local-login">Local login<a class="headerlink" href="#local-login" title="Permanent link">#</a></h3>
-<ol>
-<li>Navigate to the DUMB frontend</li>
-<li>Enter your username and password</li>
-<li>Optionally check <strong>Remember Me</strong> for persistent sessions</li>
-<li>Click <strong>Login</strong></li>
-</ol>
-<h3 id="oidc-login">OIDC login<a class="headerlink" href="#oidc-login" title="Permanent link">#</a></h3>
-<ol>
-<li>Select <strong>Continue with <em>provider</em></strong>.</li>
-<li>DUMB starts Authorization Code flow with PKCE and redirects to the provider.</li>
-<li>Complete the provider's authentication policy.</li>
-<li>The provider returns to <code>/api/auth/oidc/callback</code>.</li>
-<li>DUMB validates state, nonce, issuer, audience, signature, token lifetime, and
-   any configured group restriction.</li>
-<li>The browser redeems a short-lived, one-time exchange code for DUMB tokens.</li>
-</ol>
-<p>Provider tokens are not placed in the browser URL. DUMB issues its own access
-and refresh tokens after successful OIDC validation.</p>
-<h3 id="token-management">Token management<a class="headerlink" href="#token-management" title="Permanent link">#</a></h3>
-<table>
-<thead>
-<tr>
-<th>Token Type</th>
-<th>Lifetime</th>
-<th>Storage</th>
+<th>Depth</th>
+<th style="text-align: right;">Profiles</th>
 <th>Purpose</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>Access Token</td>
-<td>60 minutes</td>
-<td>Session/Local Storage</td>
-<td>API requests</td>
+<td>Quick</td>
+<td style="text-align: right;">2</td>
+<td>Current tuning with the cache ceiling enforced, and one balanced alternative</td>
 </tr>
 <tr>
-<td>Local refresh token</td>
-<td>30 days</td>
-<td>Session/Local Storage</td>
-<td>Renew a local session</td>
+<td>Standard</td>
+<td style="text-align: right;">4</td>
+<td>Bounded current tuning, balanced, lower-memory, and fast-start profiles</td>
 </tr>
 <tr>
-<td>OIDC refresh token</td>
-<td>1 day</td>
-<td>Session/Local Storage</td>
-<td>Renew a provider-backed DUMB session</td>
+<td>Thorough</td>
+<td style="text-align: right;">6</td>
+<td>Standard profiles plus high-throughput and large-chunk variants</td>
 </tr>
 </tbody>
 </table>
-<ul>
-<li><strong>Remember Me checked</strong>: Tokens stored in <code>localStorage</code> (persist across browser sessions)</li>
-<li><strong>Remember Me unchecked</strong>: Tokens stored in <code>sessionStorage</code> (cleared when browser closes)</li>
-</ul>
-<hr />
-<h2 id="user-management">User management<a class="headerlink" href="#user-management" title="Permanent link">#</a></h2>
-<p>Any authenticated user can manage users through the Settings page or API. This
-is why DUMB should be treated as an operator/admin control plane even when you
-create accounts for multiple people.</p>
-<h3 id="available-operations">Available operations<a class="headerlink" href="#available-operations" title="Permanent link">#</a></h3>
+<p>Only optimizer-managed streaming flags are changed in a candidate or recommendation. Other user flags, the remote, mount paths, credentials, filtering, and required DUMB flags are preserved.</p>
+<h2 id="safety-limits">Safety limits<a class="headerlink" href="#safety-limits" title="Permanent link">#</a></h2>
+<p>Configure the limits before starting a job:</p>
 <table>
 <thead>
 <tr>
-<th>Operation</th>
-<th>Description</th>
+<th>Limit</th>
+<th style="text-align: right;">Default</th>
+<th>Behavior</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><strong>Create User</strong></td>
-<td>Add a new user with username and password</td>
+<td>Maximum VFS cache</td>
+<td style="text-align: right;">5 GiB</td>
+<td>Passed to each isolated candidate as <code>--vfs-cache-max-size</code></td>
 </tr>
 <tr>
-<td><strong>Disable User</strong></td>
-<td>Temporarily disable a user account</td>
+<td>Minimum free disk</td>
+<td style="text-align: right;">10 GiB</td>
+<td>Checked before and during testing; reaching it stops the matrix</td>
 </tr>
 <tr>
-<td><strong>Enable User</strong></td>
-<td>Re-enable a disabled user account</td>
+<td>Maximum optimizer memory</td>
+<td style="text-align: right;">2048 MiB</td>
+<td>Candidates over the limit are rejected and further testing stops</td>
 </tr>
 <tr>
-<td><strong>Delete User</strong></td>
-<td>Permanently remove a user account</td>
+<td>Maximum test/provider budget</td>
+<td style="text-align: right;">4 GiB</td>
+<td>Shared requested-read budget, reconciled with NzbDAV's observed provider-byte delta after each profile</td>
+</tr>
+<tr>
+<td>Maximum duration</td>
+<td style="text-align: right;">20 minutes</td>
+<td>Shared wall-clock deadline for the job</td>
+</tr>
+<tr>
+<td>Concurrent streams</td>
+<td style="text-align: right;">1</td>
+<td>May be raised to 3 only when deliberate concurrency testing is needed</td>
+</tr>
+<tr>
+<td>Startup buffer target</td>
+<td style="text-align: right;">32 MiB</td>
+<td>Amount read before startup time is considered satisfied</td>
+</tr>
+<tr>
+<td>Bandwidth limit</td>
+<td style="text-align: right;">Unlimited</td>
+<td>Optional Mbps ceiling, converted to rclone's byte-rate limit</td>
 </tr>
 </tbody>
 </table>
+<div class="admonition warning">
+<p class="admonition-title">VFS maximum is not a hard filesystem quota</p>
+<p><code>--vfs-cache-max-size</code> drives rclone eviction. Temporary overshoot can occur, so retain free-space headroom and use the minimum-free-disk guard.</p>
+</div>
 <div class="admonition note">
-<p class="admonition-title">Last active user protection</p>
-<p>The last active (non-disabled) user cannot be disabled or deleted. This prevents accidentally locking yourself out of the system.</p>
+<p class="admonition-title">Provider budget can have a small final overshoot</p>
+<p>The reader stops reserving bytes at the configured shared limit, and DUMB also subtracts NzbDAV's observed provider-byte delta after each profile. Rclone chunking/read-ahead and in-flight provider requests can fetch beyond the exact bytes consumed by the reader, so this is a conservative safety control rather than a provider-side quota.</p>
 </div>
-<h3 id="managing-users-via-settings">Managing users via settings<a class="headerlink" href="#managing-users-via-settings" title="Permanent link">#</a></h3>
+<p>Testing stops early when NzbDAV indicates a provider circuit is open or reports strong throttling/authentication/rate-limit signals. Errors, retries, and failover remain in the report. This reduces provider risk but cannot guarantee that a provider will permit benchmarking; review your provider's rules and keep concurrency/data limits conservative.</p>
+<h2 id="background-jobs-and-notifications">Background jobs and notifications<a class="headerlink" href="#background-jobs-and-notifications" title="Permanent link">#</a></h2>
+<p>The job continues in the DUMB backend when you close the panel or navigate away. The rclone service page keeps an active-job banner, and the frontend posts a completion or failure toast while it is open. If DUMB notifications are configured for the optimizer event types, the backend can also queue the completion/failure event.</p>
+<p>If DUMB restarts during a test, the job is marked <strong>interrupted</strong>, the temporary mount/cache is cleaned up, and the matrix is not resumed. Start a fresh test so candidate conditions remain comparable.</p>
+<h2 id="apply-and-rollback">Apply and rollback<a class="headerlink" href="#apply-and-rollback" title="Permanent link">#</a></h2>
+<p>Finishing a test creates a report and recommendation. It does <strong>not</strong> change rclone.</p>
 <ol>
-<li>Navigate to <strong>Settings</strong> in the sidebar</li>
-<li>Scroll to the <strong>User Management</strong> section</li>
-<li>Use the interface to add, disable, or delete users</li>
+<li>Review all candidate results, warm/cold samples, exclusions, resources, and NzbDAV evidence.</li>
+<li>Select <strong>Apply recommendation</strong>.</li>
+<li>DUMB merges only the recommended optimizer flags into the saved rclone command.</li>
+<li>DUMB restarts that rclone process and verifies its production mount.</li>
 </ol>
-<hr />
-<h2 id="enabling-or-disabling-authentication">Enabling or disabling authentication<a class="headerlink" href="#enabling-or-disabling-authentication" title="Permanent link">#</a></h2>
-<p>Authentication can be toggled at any time through the Settings page.</p>
-<h3 id="enable-authentication">Enable authentication<a class="headerlink" href="#enable-authentication" title="Permanent link">#</a></h3>
-<ol>
-<li>Go to <strong>Settings</strong></li>
-<li>Find the <strong>Authentication</strong> section</li>
-<li>Click <strong>Enable Authentication</strong></li>
-<li>If no users exist, you will be prompted to create one</li>
-</ol>
-<h3 id="disable-authentication">Disable authentication<a class="headerlink" href="#disable-authentication" title="Permanent link">#</a></h3>
-<ol>
-<li>Go to <strong>Settings</strong></li>
-<li>Find the <strong>Authentication</strong> section</li>
-<li>Click <strong>Disable Authentication</strong></li>
-<li>All API endpoints become accessible without tokens</li>
-</ol>
-<div class="admonition danger">
-<p class="admonition-title">Security warning</p>
-<p>Disabling authentication exposes all DUMB functionality to anyone who can reach the API. Only disable authentication in trusted, isolated environments.</p>
-</div>
-<hr />
-<h2 id="api-authentication">API authentication<a class="headerlink" href="#api-authentication" title="Permanent link">#</a></h2>
-<p>When authentication is enabled, protected API requests require a valid JWT token in the <code>Authorization</code> header.</p>
-<p>The normal browser-facing API is proxied by the DUMB Frontend at port <code>3005</code> under <code>/api</code>. The backend-native form, used only when you deliberately expose port <code>8000</code>, has no <code>/api</code> prefix.</p>
-<h3 id="request-format">Request format<a class="headerlink" href="#request-format" title="Permanent link">#</a></h3>
-<div class="highlight"><pre><span></span><code>curl<span class="w"> </span>-X<span class="w"> </span>GET<span class="w"> </span>http://localhost:3005/api/process/processes<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Authorization: Bearer &lt;access_token&gt;&quot;</span>
-</code></pre></div>
-<h3 id="websocket-authentication">WebSocket authentication<a class="headerlink" href="#websocket-authentication" title="Permanent link">#</a></h3>
-<p>WebSocket connections pass the token as a query parameter:</p>
-<div class="highlight"><pre><span></span><code><span class="kd">const</span><span class="w"> </span><span class="nx">ws</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="ow">new</span><span class="w"> </span><span class="nx">WebSocket</span><span class="p">(</span><span class="s1">&#39;ws://localhost:3005/ws/status?token=&lt;access_token&gt;&#39;</span><span class="p">);</span>
-</code></pre></div>
-<h3 id="handling-token-expiration">Handling token expiration<a class="headerlink" href="#handling-token-expiration" title="Permanent link">#</a></h3>
-<p>When an access token expires, the API returns a <code>401 Unauthorized</code> response. The frontend automatically:</p>
-<ol>
-<li>Catches the 401 response</li>
-<li>Sends the refresh token to <code>/api/auth/refresh</code></li>
-<li>Receives new access and refresh tokens</li>
-<li>Retries the original request</li>
-</ol>
-<p>If the refresh token is also expired, the user is redirected to the login page.</p>
-<hr />
-<h2 id="configuration">Configuration<a class="headerlink" href="#configuration" title="Permanent link">#</a></h2>
-<p>Authentication state is stored in <code>/config/users.json</code>:</p>
-<div class="highlight"><pre><span></span><code><span class="p">{</span>
-<span class="w">  </span><span class="nt">&quot;enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;mode&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;hybrid&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;users&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
-<span class="w">    </span><span class="p">{</span>
-<span class="w">      </span><span class="nt">&quot;username&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;admin&quot;</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;password&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;$2b$12$...&quot;</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;disabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span>
-<span class="w">    </span><span class="p">}</span>
-<span class="w">  </span><span class="p">],</span>
-<span class="w">  </span><span class="nt">&quot;oidc&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<span class="w">    </span><span class="nt">&quot;enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;provider_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Authelia&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;source&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;external_authelia&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;issuer_url&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;https://auth.example.com&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;client_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;dumb&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;client_secret&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&lt;stored-secret&gt;&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;redirect_uri&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;https://dumb.example.com/api/auth/oidc/callback&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;scopes&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;openid&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;profile&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;email&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;groups&quot;</span><span class="p">],</span>
-<span class="w">    </span><span class="nt">&quot;username_claim&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;preferred_username&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;groups_claim&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;groups&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;allowed_groups&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;dumb-users&quot;</span><span class="p">]</span>
-<span class="w">  </span><span class="p">},</span>
-<span class="w">  </span><span class="nt">&quot;jwt_secret&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;auto-generated-secret-key&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;setup_skipped&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span>
-<span class="p">}</span>
-</code></pre></div>
-<table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>enabled</code></td>
-<td>Whether authentication is required</td>
-</tr>
-<tr>
-<td><code>mode</code></td>
-<td><code>local</code>, <code>hybrid</code>, or <code>oidc</code></td>
-</tr>
-<tr>
-<td><code>users</code></td>
-<td>Array of user accounts; <code>password</code> contains the bcrypt hash, not plain text</td>
-</tr>
-<tr>
-<td><code>oidc</code></td>
-<td>Provider endpoints, client credentials, claim mapping, and optional allowed groups</td>
-</tr>
-<tr>
-<td><code>jwt_secret</code></td>
-<td>Auto-generated secret for signing tokens</td>
-</tr>
-<tr>
-<td><code>setup_skipped</code></td>
-<td>Whether initial setup was skipped</td>
-</tr>
-</tbody>
-</table>
-<div class="admonition tip">
-<p class="admonition-title">Password security</p>
-<p>Passwords are hashed using bcrypt with automatic salt generation. The original password is never stored.</p>
-</div>
-<p><code>users.json</code> contains the OIDC client secret and DUMB JWT signing secret. Keep
-the file private and include it in protected configuration backups.</p>
-<h2 id="configure-an-oidc-provider">Configure an OIDC provider<a class="headerlink" href="#configure-an-oidc-provider" title="Permanent link">#</a></h2>
-<p>Open <strong>Settings → Authentication → Sign-in provider</strong>. The <strong>Provider preset</strong>
-list includes:</p>
+<p>The pre-apply command is stored privately in the job record. Select <strong>Roll back</strong> to restore it, restart rclone, and verify the mount again. If apply fails, DUMB attempts that rollback automatically.</p>
+<h2 id="provider-risk-guidance">Provider-risk guidance<a class="headerlink" href="#provider-risk-guidance" title="Permanent link">#</a></h2>
 <ul>
-<li>DUMB-managed Authelia, when DUMB reports that its managed instance has been
-  bootstrapped;</li>
-<li>external Authelia;</li>
-<li>Google, Authentik, Keycloak, Microsoft Entra ID, Auth0, Okta, ZITADEL, and
-  Dex;</li>
-<li>Custom / Generic OIDC for another standards-compatible provider.</li>
+<li>Start with <strong>Quick</strong>, one stream, and a small data budget.</li>
+<li>Do not run repeated tests back-to-back merely to chase small score changes.</li>
+<li>Avoid testing while normal users are already saturating the provider or ISP connection.</li>
+<li>Treat retries, failover, open circuits, authorization failures, and rate-limit messages as reasons to stop and investigate.</li>
+<li>Do not assume older content is uncached or recent content is cached.</li>
+<li>Keep the report as deployment-specific evidence; another user's result is not a universal rclone preset.</li>
 </ul>
-<p>Presets fill safe known values, labels, claim defaults, scopes, and
-provider-specific examples. Some providers have tenant-, realm-, or
-deployment-specific issuers, so those presets explain the expected URL rather
-than guessing it. The Google preset fills its fixed issuer and
-<a href="https://developers.google.com/identity/openid-connect/reference">official discovery URL</a>.</p>
-<p>Except for DUMB-managed Authelia, first create an OIDC/OAuth <strong>web
-application</strong> at the provider. Then supply:</p>
+<h2 id="related-guides">Related guides<a class="headerlink" href="#related-guides" title="Permanent link">#</a></h2>
 <ul>
-<li>provider and issuer names;</li>
-<li>issuer URL, or an explicit discovery URL when necessary;</li>
-<li>client ID and secret;</li>
-<li>the exact browser-facing DUMB callback URL;</li>
-<li>scopes and username/groups claim names;</li>
-<li>optional allowed groups.</li>
-</ul>
-<p>Register the <strong>Redirect URI</strong> shown in DUMB as an exact allowed callback at the
-provider. It normally has this form:</p>
-<div class="highlight"><pre><span></span><code>https://&lt;dumb-public-host&gt;/api/auth/oidc/callback
-</code></pre></div>
-<p>Use the normal browser-facing HTTPS FQDN. DUMB does not accept <code>localhost</code>, an
-IP address, a single-label hostname, HTTP, or a DUMB embedded-service URL as an
-OIDC callback. Opening Settings through a local/IP address therefore leaves the
-field blank instead of presenting that origin as a usable default.</p>
-<p>For Google, standard OpenID Connect does not return Google Group membership in
-DUMB's <code>groups</code> claim. Leave <strong>Allowed groups</strong> blank unless an intermediary or
-custom provider mapping deliberately supplies that claim.</p>
-<p>Use <strong>Check discovery</strong> before saving. This fetches and validates provider
-metadata without changing the active login configuration.</p>
-<h3 id="provider-connection-safety">Provider connection safety<a class="headerlink" href="#provider-connection-safety" title="Permanent link">#</a></h3>
-<table>
-<thead>
-<tr>
-<th>Option</th>
-<th>What it does</th>
-<th>Recommended state</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><strong>Verify provider TLS</strong></td>
-<td>Validates the provider HTTPS certificate and hostname</td>
-<td>On</td>
-</tr>
-<tr>
-<td><strong>Allow private endpoint IPs</strong></td>
-<td>Allows DUMB's backend to contact provider endpoints that resolve to loopback, RFC1918, or other private addresses</td>
-<td>Off unless using a trusted self-hosted provider</td>
-</tr>
-<tr>
-<td><strong>Allow HTTP</strong></td>
-<td>Allows unencrypted provider endpoints</td>
-<td>Off; use only on an isolated trusted network when HTTPS is unavailable</td>
-</tr>
-</tbody>
-</table>
-<p>These controls apply to outbound DUMB-to-provider requests, not
-browser-to-DUMB TLS. Changing provider presets resets them to the safe defaults
-so an exception intended for an internal provider is not silently carried to a
-different provider.</p>
-<p>When a bootstrapped DUMB-managed Authelia instance is available, its preset
-fills the issuer and <code>dumb</code> client ID automatically. <strong>Link managed Authelia</strong>
-creates or reuses the dedicated client and transfers its generated secret
-without exposing it in the browser. Use the
-<a href="../../services/optional/authelia/">Authelia service-page wizard</a> for the initial
-bootstrap, TPA linking, ForwardAuth publishing, or later integration changes.</p>
-<h2 id="oidc-versus-forwardauth">OIDC versus ForwardAuth<a class="headerlink" href="#oidc-versus-forwardauth" title="Permanent link">#</a></h2>
-<p>OIDC changes how users sign in to DUMB or TPA. ForwardAuth is a Traefik
-middleware that protects a routed service before its upstream receives the
-request. They solve different problems and may be enabled independently.</p>
-<p>Do not attach both Authelia ForwardAuth and TPA Service SSO to the same router
-unless you intentionally want two authentication gates.</p>
-<hr />
-<h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">#</a></h2>
-<h3 id="invalid-credentials-error">"Invalid credentials" error<a class="headerlink" href="#invalid-credentials-error" title="Permanent link">#</a></h3>
-<ul>
-<li>Verify the username is spelled correctly (case-sensitive)</li>
-<li>Ensure the password is correct</li>
-<li>Check if the user account is disabled</li>
-</ul>
-<h3 id="token-expired-errors">"Token expired" errors<a class="headerlink" href="#token-expired-errors" title="Permanent link">#</a></h3>
-<ul>
-<li>The frontend should automatically refresh tokens</li>
-<li>If issues persist, try logging out and back in</li>
-<li>Clear browser storage and re-authenticate</li>
-</ul>
-<h3 id="locked-out-of-the-system">Locked out of the system<a class="headerlink" href="#locked-out-of-the-system" title="Permanent link">#</a></h3>
-<p>If you cannot access your account:</p>
-<ol>
-<li>Stop the DUMB container</li>
-<li>Edit <code>/config/users.json</code></li>
-<li>Set <code>"mode": "local"</code> if a working local account remains, or set
-   <code>"enabled": false</code> for emergency recovery</li>
-<li>Restart the container</li>
-<li>Access the dashboard and create a new user or reset your password</li>
-</ol>
-<p>Because the current API has no password-change endpoint, recovery means creating
-a temporary user, re-enabling authentication, signing in as that user, and
-recreating the forgotten account. See the <a href="../../faq/authentication/#i-forgot-my-password-how-do-i-reset-it">Authentication FAQ</a>
-for the safe sequence.</p>
-<hr />
-<h2 id="related-pages">Related pages<a class="headerlink" href="#related-pages" title="Permanent link">#</a></h2>
-<ul>
-<li><a href="../../api/auth/">Authentication API</a></li>
-<li><a href="../../api/websocket/">WebSocket API</a></li>
-<li><a href="../../services/dumb/dumb-frontend/">DUMB Frontend</a></li>
+<li><a href="../../services/dependent/rclone/">rclone service</a></li>
+<li><a href="../../services/core/nzbdav/">NzbDAV</a></li>
+<li><a href="../../frontend/service-pages/">Service pages</a></li>
+<li><a href="../../api/process/#rclone-streaming-optimizer">Process Management API</a></li>
 </ul>
 
 
@@ -6210,7 +5432,7 @@ for the safe sequence.</p>
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../usage/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Usage">
+          <a href="../metrics/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Metrics">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-arrow-left" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7M19 12H5"/></svg>
@@ -6220,20 +5442,20 @@ for the safe sequence.</p>
                 Previous
               </span>
               <div class="md-ellipsis">
-                Usage
+                Metrics
               </div>
             </div>
           </a>
         
         
           
-          <a href="../auto-restart/" class="md-footer__link md-footer__link--next" aria-label="Next: Auto-restart">
+          <a href="../notifications/" class="md-footer__link md-footer__link--next" aria-label="Next: Notifications">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Auto-restart
+                Notifications
               </div>
             </div>
             <div class="md-footer__button md-icon">
