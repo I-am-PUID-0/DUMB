@@ -2228,6 +2228,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#tracking-a-moving-nzbdav-release-tag" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tracking a moving NzbDAV release tag
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#pinning-an-exact-nzbdav-commit" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -5283,6 +5294,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#tracking-a-moving-nzbdav-release-tag" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tracking a moving NzbDAV release tag
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#pinning-an-exact-nzbdav-commit" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -5736,6 +5758,29 @@ link through the frontend's NzbDAV service page and <strong>Settings → About</
 <p>If <code>webdav_password</code> is blank, DUMB generates one at startup and stores it in the config.
 Change the password before exposing NzbDAV outside your trusted network.</p>
 </div>
+<h3 id="tracking-a-moving-nzbdav-release-tag">Tracking a moving NzbDAV release tag<a class="headerlink" href="#tracking-a-moving-nzbdav-release-tag" title="Permanent link">#</a></h3>
+<p>NzbDAV tags do not need a matching GitHub Release. To track a tag such as
+<code>dev</code>, enable the release selector and use the tag name:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">&quot;nzbdav&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;release_version_enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;release_version&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;dev&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;commit_sha&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;branch_enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;auto_update&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>DUMB treats any digit-free NzbDAV tag, such as <code>dev</code>, <code>lts</code>, or <code>edge</code>, as a
+moving release channel. With <code>auto_update: true</code>, DUMB checks it at the normal
+configured interval and installs it when the underlying commit changes. Manual
+<strong>Check for updates</strong> and <strong>Install update</strong> remain available.</p>
+<p>The installed marker is recorded as <code>dev-&lt;short-sha&gt;</code>. The source archive is
+downloaded by the resolved full SHA, so the installed source and recorded
+marker remain consistent even if the tag moves during the update.</p>
+<p>Existing installations whose marker is only <code>dev</code> perform one update to adopt
+the commit-aware marker. Tags containing any digit, such as <code>v0.9.5</code>,
+<code>2026.08.03</code>, or <code>dev2</code>, remain pinned configured releases and do not enable
+scheduled automatic updates. Use <strong>Install configured release</strong> to apply those
+tags intentionally.</p>
 <h3 id="pinning-an-exact-nzbdav-commit">Pinning an exact NzbDAV commit<a class="headerlink" href="#pinning-an-exact-nzbdav-commit" title="Permanent link">#</a></h3>
 <p>Set <code>commit_sha</code> to the complete SHA from the configured <code>repo_owner</code> and
 <code>repo_name</code>:</p>

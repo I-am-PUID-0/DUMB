@@ -5969,10 +5969,12 @@ flowchart TD
 <div class="admonition warning">
 <p class="admonition-title">Auto-update and strategy interaction</p>
 <p>Automatic scheduling is disabled when <code>pinned_version</code>, <code>commit_sha</code>,
-<code>release_version_enabled</code>, or <code>branch_enabled</code> are set. The only exception is
-a <code>nightly</code> or <code>prerelease</code> release selector with no commit, pinned-version,
-or branch selector taking precedence. A non-empty <code>commit_sha</code> always
-disables moving update checks, including the initial post-setup check.</p>
+<code>release_version_enabled</code>, or <code>branch_enabled</code> are set. Exceptions are a
+<code>nightly</code> or <code>prerelease</code> release selector and a digit-free NzbDAV release
+tag such as <code>dev</code>, <code>lts</code>, or <code>edge</code>, provided no commit, pinned-version, or
+branch selector takes precedence. NzbDAV tags containing a digit remain
+fixed configured releases. A non-empty <code>commit_sha</code> always disables moving
+update checks, including the initial post-setup check.</p>
 </div>
 <p>After changing a fixed release, branch, or commit selection, use <strong>Check for
 updates</strong>. When the configured target differs from the installed version, the
