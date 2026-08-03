@@ -5625,9 +5625,11 @@ config key and process name in monospace.</p>
 <p>The DUMB API service does not show Start/Stop/Restart controls in the UI.</p>
 </div>
 <h3 id="rclone-optimizer-tab">Rclone Optimizer tab<a class="headerlink" href="#rclone-optimizer-tab" title="Permanent link">#</a></h3>
-<p>NzbDAV-backed rclone pages expose content selection, safety limits, live job
-progress, candidate results, warm/cold startup comparison, and explicit
-apply/rollback controls. Jobs continue when the tab or page closes. A global
+<p>NzbDAV-backed rclone pages expose active Arr-category content selection, the
+content base and per-category discovery counts, safety limits, live job progress,
+candidate results, warm/cold startup comparison, and explicit apply/rollback
+controls. Safely resolved mount-relative NzbDAV read paths are opened on isolated
+rclone shadow mounts; the production mount is used only for metadata discovery. Jobs continue when the tab or page closes. A global
 frontend poll posts a toast when an observed job completes or fails, while the
 rclone page's banner remains the primary active-job indicator. See
 <a href="../../features/rclone-optimizer/">Rclone Streaming Optimizer</a>.</p>

@@ -7427,7 +7427,7 @@ whose <code>key_type</code> is <code>NzbDAV</code> are eligible.</p>
 <tr>
 <td><code>GET</code></td>
 <td><code>/process/rclone-optimizer/content?process_name=...</code></td>
-<td>Perform bounded media discovery and return automatic recent/older/large/typical suggestions</td>
+<td>Derive active NzbDAV Arr categories, perform bounded <code>content/&lt;category&gt;</code> discovery, and return automatic recent/older/large/typical suggestions</td>
 </tr>
 <tr>
 <td><code>POST</code></td>
@@ -7469,7 +7469,7 @@ whose <code>key_type</code> is <code>NzbDAV</code> are eligible.</p>
 <p>Start request:</p>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;process_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;rclone w/ NzbDAV&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;selected_paths&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;movies/Example Movie (2026)/Example Movie (2026).mkv&quot;</span><span class="p">],</span>
+<span class="w">  </span><span class="nt">&quot;selected_paths&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;content/radarr-nzbdav/Example Movie (2026).mkv&quot;</span><span class="p">],</span>
 <span class="w">  </span><span class="nt">&quot;depth&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;standard&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;limits&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">    </span><span class="nt">&quot;max_vfs_cache_gib&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">5</span><span class="p">,</span>
@@ -7483,6 +7483,10 @@ whose <code>key_type</code> is <code>NzbDAV</code> are eligible.</p>
 <span class="w">  </span><span class="p">}</span>
 <span class="p">}</span>
 </code></pre></div>
+<p>Content discovery returns <code>discovery_mode=active_arr_categories</code>, <code>content_base</code>,
+and an <code>active_categories</code> list containing service, instance, category,
+availability, and discovered-file count. Each file includes the mount-relative
+<code>path</code> used by the job and a friendly <code>display_path</code> under NzbDAV <code>content</code>.</p>
 <p>The response never returns the full saved, recommended, or rollback rclone command
 because commands may contain RC credentials or other private values. Public job
 records expose only the managed recommendation flags. Job IDs are 32-character

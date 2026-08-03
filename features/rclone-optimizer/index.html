@@ -5244,13 +5244,34 @@
 <p>The optimizer is currently limited to NzbDAV. It appears on the specific <strong>rclone service page</strong>, not as an NzbDAV configuration tool. When an associated test is active, the NzbDAV service page shows a link to that rclone job.</p>
 <h2 id="what-the-test-actually-reads">What the test actually reads<a class="headerlink" href="#what-the-test-actually-reads" title="Permanent link">#</a></h2>
 <p>Each candidate uses this path:</p>
-<div class="highlight"><pre><span></span><code>optimizer reader
+<div class="highlight"><pre><span></span><code>DUMB-managed Arr instance -&gt; active NzbDAV category
+  -&gt; production rclone mount/content/&lt;category&gt; (metadata discovery only)
+  -&gt; safe mount-relative read path
+  -&gt; optimizer reader
   -&gt; isolated read-only rclone shadow mount
   -&gt; NzbDAV WebDAV
   -&gt; NzbDAV&#39;s configured Usenet provider(s)
 </code></pre></div>
 <p>The shadow mount uses the same rclone remote/configuration as the production mount, but has its own mount path, VFS cache directory, and loopback RC port. It does not stop the production mount, purge its cache, or reuse its cache for candidate reads.</p>
+<p>DUMB uses the production mount only for bounded directory metadata discovery.
+It does not measure file reads there because that would reuse the production VFS
+cache and make candidate comparisons unreliable. Each category entry is resolved
+to a safe mount-relative read path and opened on every isolated shadow mount. For
+a regular entry this can be <code>content/radarr-nzbdav/example.mkv</code>; a symlink-backed
+entry can resolve to its mount-internal backing path while the UI retains the
+friendly category path.</p>
 <p>These are <strong>real provider reads</strong>. They can consume provider traffic and are subject to provider connection, automation, and acceptable-use policies.</p>
+<div class="admonition warning">
+<p class="admonition-title">Stop media activity before testing</p>
+<p>Stop Plex, Jellyfin, Emby, and any other media server before starting the
+optimizer. Wait until NzbDAV is idle with no active imports, library
+ingestion, or unrelated reads. In particular, do not benchmark while NzbDAV
+is importing an entire existing library.</p>
+<p>Playback, media-library scans, imports, and other reads compete for the same
+provider connections, bandwidth, CPU, memory, cache storage, and disks. This
+can distort startup and throughput measurements, produce an unsuitable
+recommendation, and add unnecessary load against the configured providers.</p>
+</div>
 <h2 id="measurements">Measurements<a class="headerlink" href="#measurements" title="Permanent link">#</a></h2>
 <p>For every candidate and selected file, DUMB records:</p>
 <ul>
@@ -5264,7 +5285,15 @@
 </ul>
 <p>Failed or unavailable files remain visible in the report but are excluded from performance scoring. The recommendation score favors startup time and first-byte latency while also considering seek latency, throughput, resource use, and excluded/error samples.</p>
 <h2 id="content-selection">Content selection<a class="headerlink" href="#content-selection" title="Permanent link">#</a></h2>
-<p>Open the NzbDAV-backed rclone service and select <strong>Rclone Optimizer</strong>. DUMB performs a bounded scan of media files already visible in that rclone mount and suggests a small, stratified set:</p>
+<p>Open the NzbDAV-backed rclone service and select <strong>Rclone Optimizer</strong>. DUMB first
+reuses the same Arr-to-NzbDAV category derivation used during integration setup.
+Only enabled Radarr, Sonarr, Lidarr, and Whisparr instances whose <code>core_service</code>
+includes <code>nzbdav</code> contribute categories. For example, a Radarr instance named
+<code>NzbDAV</code> produces <code>radarr-nzbdav</code>.</p>
+<p>The configured rclone instance supplies the user-defined mount base through
+<code>mount_dir</code> plus <code>mount_name</code>. DUMB scans only
+<code>&lt;mount&gt;/content/&lt;active-category&gt;</code>, reports missing/empty categories in the
+panel, and suggests a small, stratified set:</p>
 <ul>
 <li>recently modified content, which is more likely to be warm;</li>
 <li>older content, which is more likely to be cold;</li>
@@ -5272,7 +5301,7 @@
 <li>a typical file near the middle of the observed set.</li>
 </ul>
 <p>Age is only a <strong>cache-likelihood heuristic</strong>. It does not prove whether an article is cached by NzbDAV or a provider. The report keeps recent/likely-warm and older/likely-cold startup results separate, while NzbDAV's live metrics and stream traces explain what happened during the reads.</p>
-<p>You can replace the automatic selection with any listed media files. Select between one and eight files. The scan is intentionally bounded by file count and time so discovering content does not recursively enumerate an unlimited remote library.</p>
+<p>You can replace the automatic selection with any listed media files. Select between one and eight files. The scan is intentionally bounded by file count and time so discovering content does not recursively enumerate an unlimited remote library. No <code>/mnt/debrid/...</code> mount path or category name is hard-coded into the optimizer.</p>
 <h2 id="candidate-matrix">Candidate matrix<a class="headerlink" href="#candidate-matrix" title="Permanent link">#</a></h2>
 <p>The optimizer does not try every possible rclone flag permutation. That would consume excessive time and provider traffic while producing noisy results. Instead, it tests known-shape profiles:</p>
 <table>
