@@ -5427,7 +5427,60 @@ the suggested starting set after manual changes.</p>
 </tr>
 </tbody>
 </table>
-<p>Only optimizer-managed streaming flags are changed in a candidate or recommendation. Other user flags, the remote, mount paths, credentials, filtering, and required DUMB flags are preserved.</p>
+<p>The report deliberately separates the settings into four roles:</p>
+<table>
+<thead>
+<tr>
+<th>Role</th>
+<th>Values</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Actually varied</td>
+<td><code>--buffer-size</code>, <code>--vfs-read-chunk-size</code>, <code>--vfs-read-chunk-size-limit</code>, <code>--vfs-read-ahead</code></td>
+<td>Streaming-oriented dimensions that differ across predefined alternative profiles and drive the bundle comparison</td>
+</tr>
+<tr>
+<td>Fixed test constraints</td>
+<td><code>--vfs-cache-max-size</code>, bandwidth, memory, free disk, duration, and concurrency</td>
+<td>Deployment-specific safety/resource boundaries held constant across every candidate; these are not tuned</td>
+</tr>
+<tr>
+<td>Bundled assumptions</td>
+<td><code>--vfs-cache-mode</code>, <code>--vfs-cache-max-age</code>, <code>--dir-cache-time</code></td>
+<td>Profile assumptions changed together rather than independently; a winning profile does not prove any one of these values is optimal</td>
+</tr>
+<tr>
+<td>Preserved</td>
+<td>Every other existing user flag</td>
+<td>Passed into each shadow command unchanged and not evaluated, except for the temporary isolation/safety plumbing described below</td>
+</tr>
+</tbody>
+</table>
+<p>The UI shows the complete optimizer-relevant effective settings for <strong>every</strong>
+candidate, including current-to-tested changes and the role of each value. The
+winning recommendation is therefore a <strong>bundle recommendation</strong>, not a claim
+that every displayed setting was individually optimized.</p>
+<p>Preserved flags are outside the optimizer's intended streaming dimensions and
+normally should not determine this comparison. However, an unusual custom
+rclone flag can still change runtime behavior and must be reviewed manually.
+Their values are intentionally omitted from public job reports because rclone
+commands can contain credentials or other private values. The remote source,
+provider credentials, filtering, and user behavior flags remain preserved, and
+the production mount command is not modified during testing.
+The shadow process necessarily substitutes its temporary mount path and cache
+directory, binds a loopback RC endpoint without production RC credentials,
+forces read-only behavior and a test log level, and optionally adds the fixed
+bandwidth ceiling. Those isolation controls are not candidate tuning dimensions.</p>
+<p>In particular, <code>--dir-cache-time</code> governs directory metadata refresh and should
+not determine media-byte throughput once a file is open.
+<code>--vfs-cache-max-age</code> primarily governs retention of inactive cached data between
+reads. <code>--vfs-cache-mode</code> establishes VFS behavior and can matter, but is tested
+only as a bundled prerequisite. The UI explains the expected streaming relevance
+of each displayed flag; these statements describe expected scope, not a guarantee
+that arbitrary custom combinations can never influence playback.</p>
 <h2 id="safety-limits">Safety limits<a class="headerlink" href="#safety-limits" title="Permanent link">#</a></h2>
 <p>The values initially shown in the optimizer are <strong>generic starting placeholders,
 not recommendations</strong>. DUMB does not derive them from the deployment's CPU, RAM,
@@ -5498,10 +5551,17 @@ provides a native tooltip on each control explaining its purpose.</p>
 <h2 id="background-jobs-and-notifications">Background jobs and notifications<a class="headerlink" href="#background-jobs-and-notifications" title="Permanent link">#</a></h2>
 <p>The job continues in the DUMB backend when you close the panel or navigate away. The rclone service page keeps an active-job banner, and the frontend posts a completion or failure toast while it is open. If DUMB notifications are configured for the optimizer event types, the backend can also queue the completion/failure event.</p>
 <p>If DUMB restarts during a test, the job is marked <strong>interrupted</strong>, the temporary mount/cache is cleaned up, and the matrix is not resumed. Start a fresh test so candidate conditions remain comparable.</p>
+<p>Each candidate verifies that its isolated shadow mount is no longer mounted
+before the result is accepted. Before a job can report <strong>completed</strong>, DUMB also
+verifies that all job shadow mounts, the runtime directory, and the candidate
+cache directory are gone. The rclone page reports those three cleanup checks. If
+cleanup cannot be verified, the job fails instead of presenting a completed
+recommendation, leaves the runtime path available for a later safe retry, and
+retries cleanup during finalization and the next DUMB startup.</p>
 <h2 id="apply-and-rollback">Apply and rollback<a class="headerlink" href="#apply-and-rollback" title="Permanent link">#</a></h2>
 <p>Finishing a test creates a report and recommendation. It does <strong>not</strong> change rclone.</p>
 <ol>
-<li>Review all candidate results, warm/cold samples, exclusions, resources, and NzbDAV evidence.</li>
+<li>Review every candidate's complete settings/roles, warm/cold samples, exclusions, resources, cleanup status, and NzbDAV evidence.</li>
 <li>Select <strong>Apply recommendation</strong>.</li>
 <li>DUMB merges only the recommended optimizer flags into the saved rclone command.</li>
 <li>DUMB restarts that rclone process and verifies its production mount.</li>

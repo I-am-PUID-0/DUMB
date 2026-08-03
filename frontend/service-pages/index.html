@@ -5630,6 +5630,12 @@ content base and per-category discovery counts, safety limits, live job progress
 candidate results, warm/cold startup comparison, and explicit apply/rollback
 controls. Safely resolved mount-relative NzbDAV read paths are opened on isolated
 rclone shadow mounts; the production mount is used only for metadata discovery.
+The report labels values as actually varied, fixed constraints, bundled
+assumptions, or preserved; shows current-to-tested effective values for every
+candidate; and warns that the winner is a profile-bundle result rather than
+proof that each flag is independently optimal. Unrelated preserved command
+values remain hidden because they can contain credentials. Completed jobs also
+show verified shadow-mount, runtime-directory, and candidate-cache cleanup.
 Representative automatic files are pinned to the top with selection-reason
 labels, but operators can keep, replace, or mix those files. Safety-limit values
 are clearly labeled as generic starting placeholders and expose native tooltips;

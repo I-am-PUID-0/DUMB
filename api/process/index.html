@@ -7494,9 +7494,25 @@ while allowing the operator to replace it.</p>
 stream tracing was available, enabled or retained, the retained session count,
 and overflow state. An unavailable capture is distinct from an available capture
 whose retained sessions did not match the selected paths.</p>
+<p>Jobs include a <code>setting_model</code> that declares the four comparison roles:
+<code>actually_varied</code>, <code>fixed_constraints</code>, <code>bundled_assumptions</code>, and <code>preserved</code>.
+Every candidate result includes <code>setting_comparison</code>, an ordered list of the
+complete optimizer-relevant effective settings. Each entry contains <code>flag</code>,
+<code>current_value</code>, <code>tested_value</code>, <code>changed_from_current</code>, <code>role</code>, and
+<code>varied_across_candidates</code>. It also returns <code>independently_evaluated=false</code>
+because even the actually-varied values move inside profiles rather than in
+one-variable-at-a-time experiments. The recommendation repeats the winner's comparison
+and includes <code>confidence_note</code> to make clear that the selected profile is a
+bundle result rather than independent proof for every flag.</p>
+<p>Each accepted candidate result records
+<code>shadow_mount_cleanup_verified=true</code>. Terminal jobs expose <code>cleanup</code> with
+<code>shadow_mounts_verified</code>, <code>runtime_removed</code>, and <code>cache_removed</code>. A job is not
+marked completed unless all three are true; an unverifiable cleanup changes the
+job to failed and remains eligible for a later startup cleanup retry.</p>
 <p>The response never returns the full saved, recommended, or rollback rclone command
 because commands may contain RC credentials or other private values. Public job
-records expose only the managed recommendation flags. Job IDs are 32-character
+records expose the complete optimizer-relevant setting comparison but not the
+values of unrelated preserved flags. Job IDs are 32-character
 hex values; job files are stored privately under <code>/config/rclone-optimizer/jobs</code>.
 Jobs active during a DUMB restart are marked interrupted and are not resumed.</p>
 <p>See <a href="../../features/rclone-optimizer/">Rclone Streaming Optimizer</a> for test and
