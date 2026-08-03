@@ -7486,7 +7486,14 @@ whose <code>key_type</code> is <code>NzbDAV</code> are eligible.</p>
 <p>Content discovery returns <code>discovery_mode=active_arr_categories</code>, <code>content_base</code>,
 and an <code>active_categories</code> list containing service, instance, category,
 availability, and discovered-file count. Each file includes the mount-relative
-<code>path</code> used by the job and a friendly <code>display_path</code> under NzbDAV <code>content</code>.</p>
+<code>path</code> used by the job and a friendly <code>display_path</code> under NzbDAV <code>content</code>.
+<code>automatic_selection</code> is ordered first in <code>files</code> and includes <code>selection_key</code>,
+<code>selection_label</code>, and <code>selection_reason</code> so clients can explain each suggestion
+while allowing the operator to replace it.</p>
+<p>Each candidate result includes <code>trace_capture</code>, which reports whether NzbDAV
+stream tracing was available, enabled or retained, the retained session count,
+and overflow state. An unavailable capture is distinct from an available capture
+whose retained sessions did not match the selected paths.</p>
 <p>The response never returns the full saved, recommended, or rollback rclone command
 because commands may contain RC credentials or other private values. Public job
 records expose only the managed recommendation flags. Job IDs are 32-character

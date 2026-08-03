@@ -5629,7 +5629,12 @@ config key and process name in monospace.</p>
 content base and per-category discovery counts, safety limits, live job progress,
 candidate results, warm/cold startup comparison, and explicit apply/rollback
 controls. Safely resolved mount-relative NzbDAV read paths are opened on isolated
-rclone shadow mounts; the production mount is used only for metadata discovery. Jobs continue when the tab or page closes. A global
+rclone shadow mounts; the production mount is used only for metadata discovery.
+Representative automatic files are pinned to the top with selection-reason
+labels, but operators can keep, replace, or mix those files. Safety-limit values
+are clearly labeled as generic starting placeholders and expose native tooltips;
+they must be adjusted for the deployment's hardware, bandwidth, workload, and
+provider. Jobs continue when the tab or page closes. A global
 frontend poll posts a toast when an observed job completes or fails, while the
 rclone page's banner remains the primary active-job indicator. See
 <a href="../../features/rclone-optimizer/">Rclone Streaming Optimizer</a>.</p>
