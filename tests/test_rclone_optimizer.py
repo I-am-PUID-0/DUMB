@@ -1,4 +1,5 @@
 import json
+import os
 import tempfile
 import threading
 import time
@@ -173,6 +174,51 @@ class RcloneOptimizerTests(unittest.TestCase):
             discovered["files"][0]["display_path"],
         )
 
+    def test_automatic_content_suggestions_are_labeled_and_listed_first(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            mount = root / "mount" / "nzbdav"
+            category_root = mount / "content" / "radarr-nzbdav"
+            category_root.mkdir(parents=True)
+            now = time.time()
+            for index in range(6):
+                media = category_root / f"sample-{index}.mkv"
+                with media.open("wb") as handle:
+                    handle.truncate((16 + index) * 1024 * 1024)
+                os.utime(media, (now - index * 86400, now - index * 86400))
+            config = _ConfigManager(root / "cache")
+            config.instance["mount_dir"] = str(root / "mount")
+
+            with (
+                patch.object(rclone_optimizer, "CONFIG_MANAGER", config),
+                patch.object(
+                    rclone_optimizer,
+                    "get_nzbdav_arr_categories",
+                    return_value=[
+                        {
+                            "service": "radarr",
+                            "instance_name": "NzbDAV",
+                            "category": "radarr-nzbdav",
+                        }
+                    ],
+                ),
+            ):
+                manager = rclone_optimizer.RcloneOptimizerManager(
+                    process_handler=object(),
+                    logger=unittest.mock.Mock(),
+                    base_dir=str(root / "optimizer"),
+                )
+                discovered = manager.discover_content("rclone w/ NzbDAV")
+
+        automatic = discovered["automatic_selection"]
+        automatic_paths = [item["path"] for item in automatic]
+        self.assertEqual(
+            automatic_paths,
+            [item["path"] for item in discovered["files"][: len(automatic)]],
+        )
+        self.assertTrue(all(item.get("selection_label") for item in automatic))
+        self.assertTrue(all(item.get("selection_reason") for item in automatic))
+
     def test_discover_content_requires_an_active_nzbdav_arr_category(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
@@ -342,6 +388,64 @@ class RcloneOptimizerTests(unittest.TestCase):
         self.assertEqual(2, summary["active_reads"])
         self.assertEqual(30, summary["provider_latency_p95_ms"])
         self.assertEqual("closed", summary["providers"][0]["circuit_state"])
+
+    def test_nzbdav_post_uses_an_empty_form_body(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            config = unittest.mock.Mock()
+            config.get.side_effect = lambda key, default=None: (
+                {
+                    "env": {"FRONTEND_BACKEND_API_KEY": "test-api-key"},
+                    "backend_port": 8080,
+                }
+                if key == "nzbdav"
+                else default
+            )
+            response = unittest.mock.MagicMock()
+            response.__enter__.return_value = response
+            response.read.return_value = b'{"status":true,"enabled":true}'
+            request = object()
+            with (
+                patch.object(rclone_optimizer, "CONFIG_MANAGER", config),
+                patch.object(
+                    rclone_optimizer, "safe_request", return_value=request
+                ) as safe_request_mock,
+                patch.object(rclone_optimizer, "safe_urlopen", return_value=response),
+            ):
+                manager = rclone_optimizer.RcloneOptimizerManager(
+                    process_handler=object(),
+                    logger=unittest.mock.Mock(),
+                    base_dir=str(Path(temp_dir) / "optimizer"),
+                )
+                result = manager._nzbdav_json(
+                    "/api/set-stream-tracing?enabled=true", method="POST"
+                )
+
+        self.assertTrue(result["enabled"])
+        request_args = safe_request_mock.call_args
+        self.assertEqual(b"", request_args.kwargs["data"])
+        self.assertEqual("POST", request_args.kwargs["method"])
+        self.assertEqual(
+            "application/x-www-form-urlencoded",
+            request_args.kwargs["headers"]["Content-Type"],
+        )
+
+    def test_trace_capture_summary_distinguishes_unavailable_and_available(self):
+        unavailable = rclone_optimizer.RcloneOptimizerManager._trace_capture_summary(
+            None
+        )
+        available = rclone_optimizer.RcloneOptimizerManager._trace_capture_summary(
+            {
+                "enabled": True,
+                "retained": False,
+                "sessionCount": 3,
+                "overflowed": True,
+            }
+        )
+
+        self.assertFalse(unavailable["available"])
+        self.assertTrue(available["available"])
+        self.assertEqual(3, available["session_count"])
+        self.assertTrue(available["overflowed"])
 
     def test_read_sample_obeys_shared_download_budget(self):
         with tempfile.TemporaryDirectory() as temp_dir:

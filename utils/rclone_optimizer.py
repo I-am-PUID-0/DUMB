@@ -476,24 +476,62 @@ class RcloneOptimizerManager:
                 f"No suitable media files were found in the active NzbDAV categories: {categories}."
             )
         ordered = sorted(items, key=lambda item: item["mtime"], reverse=True)
-        picks: list[tuple[str, dict[str, Any]]] = [
-            ("recent_likely_warm", ordered[0]),
-            ("older_likely_cold", ordered[-1]),
-            ("large_high_bitrate", max(items, key=lambda item: item["size_bytes"])),
-            ("typical", ordered[len(ordered) // 2]),
+        picks: list[tuple[str, str, str, dict[str, Any]]] = [
+            (
+                "recent_likely_warm",
+                "Recent / likely warm",
+                "Most recently modified file discovered; more likely to have warm metadata or cached provider data.",
+                ordered[0],
+            ),
+            (
+                "older_likely_cold",
+                "Older / likely cold",
+                "Oldest modified file discovered; more likely to exercise a cold or less recently used path.",
+                ordered[-1],
+            ),
+            (
+                "large_high_bitrate",
+                "Largest / high-bandwidth candidate",
+                "Largest file discovered; used as a practical high-bandwidth and sustained-throughput candidate.",
+                max(items, key=lambda item: item["size_bytes"]),
+            ),
+            (
+                "typical",
+                "Typical / median-age candidate",
+                "File near the middle of the discovered modification-age range; used as a representative everyday sample.",
+                ordered[len(ordered) // 2],
+            ),
         ]
-        selected = []
-        seen = set()
-        for category, item in picks:
-            if item["path"] in seen:
-                continue
-            seen.add(item["path"])
-            selected.append({**item, "category": category})
         for item in items:
             item["age_bucket"] = (
                 "recent" if item["mtime"] >= time.time() - 7 * 86400 else "older"
             )
             item.pop("mtime", None)
+        selected = []
+        selection_order: dict[str, int] = {}
+        seen = set()
+        for selection_key, selection_label, selection_reason, item in picks:
+            if item["path"] in seen:
+                continue
+            seen.add(item["path"])
+            selection_order[item["path"]] = len(selection_order)
+            selected.append(
+                {
+                    **item,
+                    "category": selection_key,
+                    "selection_key": selection_key,
+                    "selection_label": selection_label,
+                    "selection_reason": selection_reason,
+                }
+            )
+        visible_items = sorted(
+            enumerate(items),
+            key=lambda pair: (
+                selection_order.get(pair[1]["path"], len(selection_order)),
+                0 if pair[1]["path"] in selection_order else 1,
+                pair[0],
+            ),
+        )
         return {
             "process_name": process_name,
             "mount_path": str(root),
@@ -502,9 +540,9 @@ class RcloneOptimizerManager:
             "active_categories": category_results,
             "scanned": scanned,
             "truncated": scanned > max_files or time.monotonic() - started > 15,
-            "selection_note": "DUMB-derived Arr categories select representative NzbDAV content. Each entry is resolved to a safe mount-relative read path and opened on every isolated rclone shadow mount. Recent/older are cache-likelihood heuristics; NzbDAV telemetry determines what actually happened during each read.",
+            "selection_note": "The files at the top are representative automatic suggestions, not required choices. Keep them, replace them, or mix in your own files (up to eight total). Each entry is resolved to a safe mount-relative read path and opened on every isolated rclone shadow mount. Recent/older are cache-likelihood heuristics; NzbDAV telemetry determines what actually happened during each read.",
             "automatic_selection": selected,
-            "files": items[:500],
+            "files": [item for _index, item in visible_items[:500]],
         }
 
     def create_job(
@@ -672,13 +710,20 @@ class RcloneOptimizerManager:
             trace_before = self._nzbdav_json("/api/get-stream-traces?limit=1")
             trace_was_enabled = bool((trace_before or {}).get("enabled"))
             if not trace_was_enabled:
-                trace_enabled_by_job = (
-                    self._nzbdav_json(
-                        "/api/set-stream-tracing?enabled=true&minutes=30&capacity=20000",
-                        method="POST",
-                    )
-                    is not None
+                trace_enable = self._nzbdav_json(
+                    "/api/set-stream-tracing?enabled=true&minutes=30&capacity=20000",
+                    method="POST",
                 )
+                trace_enabled_by_job = bool(
+                    isinstance(trace_enable, dict)
+                    and trace_enable.get("status") is True
+                    and trace_enable.get("enabled") is True
+                )
+                if not trace_enabled_by_job:
+                    job["warnings"].append(
+                        "NzbDAV stream tracing could not be enabled. Performance measurements will continue, but provider trace matching will be marked unavailable."
+                    )
+                    self._update(job, warnings=job["warnings"])
             profiles = _candidate_profiles(job["depth"], job["limits"])
             deadline = (
                 time.monotonic() + int(job["limits"]["max_duration_minutes"]) * 60
@@ -1005,6 +1050,7 @@ class RcloneOptimizerManager:
                     )
         after = self._nzbdav_json(overview_path)
         traces = self._nzbdav_json("/api/get-stream-traces?limit=100")
+        trace_capture = self._trace_capture_summary(traces)
         trace_summaries = self._collect_trace_summaries(
             traces,
             [item["path"] for item in job["selected_content"]],
@@ -1067,6 +1113,7 @@ class RcloneOptimizerManager:
             },
             "trace_count": len(trace_summaries),
             "stream_traces": trace_summaries,
+            "trace_capture": trace_capture,
             "provider_bytes_delta": provider_bytes_delta,
             "provider_guard_stop": provider_guard_stop,
             "resource_limit_stop": resource_limit_stop,
@@ -1447,6 +1494,26 @@ class RcloneOptimizerManager:
         return matches[:20]
 
     @staticmethod
+    def _trace_capture_summary(traces: Any) -> dict[str, Any]:
+        if not isinstance(traces, dict):
+            return {
+                "available": False,
+                "enabled": False,
+                "retained": False,
+                "session_count": 0,
+                "overflowed": False,
+            }
+        enabled = traces.get("enabled") is True
+        retained = traces.get("retained") is True
+        return {
+            "available": enabled or retained,
+            "enabled": enabled,
+            "retained": retained,
+            "session_count": int(traces.get("sessionCount") or 0),
+            "overflowed": traces.get("overflowed") is True,
+        }
+
+    @staticmethod
     def _provider_guard(before: Any, after: Any, traces: Any) -> bool:
         encoded = json.dumps(traces, default=str).lower()
         danger_words = (
@@ -1508,11 +1575,15 @@ class RcloneOptimizerManager:
         if not api_key:
             return None
         port = int(config.get("backend_port") or 8080)
-        request = safe_request(
-            f"http://127.0.0.1:{port}{path}",
-            headers={"Accept": "application/json", "x-api-key": str(api_key)},
-            method=method,
-        )
+        headers = {"Accept": "application/json", "x-api-key": str(api_key)}
+        request_options: dict[str, Any] = {
+            "headers": headers,
+            "method": method,
+        }
+        if method.upper() == "POST":
+            headers["Content-Type"] = "application/x-www-form-urlencoded"
+            request_options["data"] = b""
+        request = safe_request(f"http://127.0.0.1:{port}{path}", **request_options)
         try:
             with safe_urlopen(request, timeout=5) as response:
                 raw = response.read(2 * 1024 * 1024)
