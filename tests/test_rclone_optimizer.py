@@ -285,6 +285,45 @@ class RcloneOptimizerTests(unittest.TestCase):
         )
         self.assertEqual("Current tuning (bounded cache)", quick[0]["label"])
 
+    def test_candidate_setting_comparison_classifies_effective_values(self):
+        command = [
+            "rclone",
+            "mount",
+            "nzbdav:",
+            "/mnt/debrid/nzbdav",
+            "--vfs-cache-mode=writes",
+            "--vfs-cache-max-age=24h",
+            "--dir-cache-time=20s",
+            "--buffer-size=1G",
+            "--transfers=4",
+            "--links",
+        ]
+        comparison = rclone_optimizer._candidate_setting_comparison(
+            command,
+            {
+                "--vfs-cache-mode": "full",
+                "--vfs-cache-max-size": "5G",
+                "--vfs-cache-max-age": "180m",
+                "--dir-cache-time": "1s",
+                "--buffer-size": "16M",
+                "--vfs-read-chunk-size": "16M",
+                "--vfs-read-chunk-size-limit": "512M",
+                "--vfs-read-ahead": "32M",
+            },
+        )
+        by_flag = {item["flag"]: item for item in comparison}
+
+        self.assertEqual("actually_varied", by_flag["--buffer-size"]["role"])
+        self.assertEqual("1G", by_flag["--buffer-size"]["current_value"])
+        self.assertEqual("16M", by_flag["--buffer-size"]["tested_value"])
+        self.assertTrue(by_flag["--buffer-size"]["varied_across_candidates"])
+        self.assertFalse(by_flag["--buffer-size"]["independently_evaluated"])
+        self.assertEqual("fixed_constraint", by_flag["--vfs-cache-max-size"]["role"])
+        self.assertEqual("bundled_assumption", by_flag["--dir-cache-time"]["role"])
+        self.assertEqual("preserved", by_flag["--transfers"]["role"])
+        self.assertEqual("4", by_flag["--transfers"]["tested_value"])
+        self.assertNotIn("--links", by_flag)
+
     def test_shadow_command_is_read_only_isolated_and_loopback_only(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
@@ -316,6 +355,58 @@ class RcloneOptimizerTests(unittest.TestCase):
         self.assertIn("--read-only", command)
         self.assertIn("--bwlimit=10M", command)
         self.assertNotIn("--buffer-size=1024M", command)
+
+    def test_unmount_reports_verified_success_and_failure(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            mount_path = Path(temp_dir) / "mount"
+            mount_path.mkdir()
+            successful_result = unittest.mock.Mock(returncode=0)
+            with (
+                patch.object(
+                    rclone_optimizer.os.path, "ismount", side_effect=[True, False]
+                ),
+                patch.object(
+                    rclone_optimizer.shutil, "which", return_value="/bin/fusermount3"
+                ),
+                patch.object(
+                    rclone_optimizer.subprocess, "run", return_value=successful_result
+                ),
+            ):
+                self.assertTrue(
+                    rclone_optimizer.RcloneOptimizerManager._unmount(mount_path)
+                )
+
+            failed_result = unittest.mock.Mock(returncode=1)
+            with (
+                patch.object(rclone_optimizer.os.path, "ismount", return_value=True),
+                patch.object(
+                    rclone_optimizer.shutil, "which", return_value="/bin/tool"
+                ),
+                patch.object(
+                    rclone_optimizer.subprocess, "run", return_value=failed_result
+                ),
+            ):
+                self.assertFalse(
+                    rclone_optimizer.RcloneOptimizerManager._unmount(mount_path)
+                )
+
+    def test_runtime_cleanup_preserves_directory_when_unmount_is_not_verified(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            runtime = root / "runtime"
+            (runtime / "candidate" / "mount").mkdir(parents=True)
+            config = _ConfigManager(root / "cache")
+            with patch.object(rclone_optimizer, "CONFIG_MANAGER", config):
+                manager = rclone_optimizer.RcloneOptimizerManager(
+                    process_handler=object(),
+                    logger=unittest.mock.Mock(),
+                    base_dir=str(root / "optimizer"),
+                )
+            with patch.object(manager, "_unmount", return_value=False):
+                verified = manager._cleanup_job_runtime(runtime)
+
+            self.assertFalse(verified)
+            self.assertTrue(runtime.exists())
 
     def test_public_job_never_exposes_commands(self):
         public = rclone_optimizer.RcloneOptimizerManager._public(

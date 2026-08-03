@@ -81,7 +81,40 @@ MANAGED_FLAGS = {
     "--vfs-read-chunk-size-limit",
     "--transfers",
 }
+VARIED_STREAMING_FLAGS = {
+    "--buffer-size",
+    "--vfs-read-ahead",
+    "--vfs-read-chunk-size",
+    "--vfs-read-chunk-size-limit",
+}
+FIXED_CONSTRAINT_FLAGS = {"--vfs-cache-max-size"}
+BUNDLED_ASSUMPTION_FLAGS = {
+    "--dir-cache-time",
+    "--vfs-cache-max-age",
+    "--vfs-cache-mode",
+}
+SETTING_DISPLAY_ORDER = (
+    "--vfs-cache-mode",
+    "--vfs-cache-max-size",
+    "--vfs-cache-max-age",
+    "--dir-cache-time",
+    "--buffer-size",
+    "--vfs-read-chunk-size",
+    "--vfs-read-chunk-size-limit",
+    "--vfs-read-ahead",
+    "--transfers",
+)
 PRIVATE_JOB_KEYS = {"previous_command", "recommended_command"}
+
+
+def _setting_role(flag: str) -> str:
+    if flag in VARIED_STREAMING_FLAGS:
+        return "actually_varied"
+    if flag in FIXED_CONSTRAINT_FLAGS:
+        return "fixed_constraint"
+    if flag in BUNDLED_ASSUMPTION_FLAGS:
+        return "bundled_assumption"
+    return "preserved"
 
 
 def _utcnow() -> str:
@@ -215,6 +248,36 @@ def _candidate_profiles(depth: str, limits: dict[str, Any]) -> list[dict[str, An
     return candidates
 
 
+def _candidate_setting_comparison(
+    command: list[str], settings: dict[str, str]
+) -> list[dict[str, Any]]:
+    current_flags = _parse_flag_map(command)[1]
+    effective_flags = _parse_flag_map(merge_managed_flags(command, settings))[1]
+    comparison = []
+    for flag in SETTING_DISPLAY_ORDER:
+        if (
+            flag == "--transfers"
+            and flag not in current_flags
+            and flag not in effective_flags
+        ):
+            continue
+        role = _setting_role(flag)
+        current_value = current_flags.get(flag)
+        tested_value = effective_flags.get(flag)
+        comparison.append(
+            {
+                "flag": flag,
+                "current_value": current_value,
+                "tested_value": tested_value,
+                "changed_from_current": current_value != tested_value,
+                "role": role,
+                "varied_across_candidates": role == "actually_varied",
+                "independently_evaluated": False,
+            }
+        )
+    return comparison
+
+
 class RcloneOptimizerError(RuntimeError):
     pass
 
@@ -295,13 +358,50 @@ class RcloneOptimizerManager:
             if shadow_root.is_dir() and not shadow_root.is_symlink():
                 shutil.rmtree(shadow_root, ignore_errors=True)
 
-    def _cleanup_job_runtime(self, runtime: Path) -> None:
+    def _cleanup_job_runtime(self, runtime: Path) -> bool:
         if not runtime.is_dir() or runtime.is_symlink():
-            return
+            return True
+        cleanup_verified = True
         for candidate in runtime.iterdir():
             if candidate.is_dir() and not candidate.is_symlink():
-                self._unmount(candidate / "mount")
+                mount_path = candidate / "mount"
+                if not self._unmount(mount_path):
+                    cleanup_verified = False
+                    self.logger.error(
+                        "Could not verify optimizer shadow mount cleanup at %s; leaving the runtime directory in place for a later retry.",
+                        mount_path,
+                    )
+        if not cleanup_verified:
+            return False
         shutil.rmtree(runtime, ignore_errors=True)
+        return not runtime.exists()
+
+    def _cleanup_job_artifacts(self, job: dict[str, Any], runtime: Path) -> dict:
+        runtime_verified = self._cleanup_job_runtime(runtime)
+        cache_verified = False
+        try:
+            _instance_name, cleanup_instance = self._resolve_instance(
+                job["process_name"]
+            )
+            cache_job_root = (
+                Path(str(cleanup_instance.get("cache_dir") or "/cache"))
+                / ".dumb-rclone-optimizer"
+                / job["job_id"]
+            )
+            if (
+                runtime_verified
+                and cache_job_root.is_dir()
+                and not cache_job_root.is_symlink()
+            ):
+                shutil.rmtree(cache_job_root, ignore_errors=True)
+            cache_verified = not cache_job_root.exists()
+        except RcloneOptimizerError:
+            cache_verified = False
+        return {
+            "shadow_mounts_verified": runtime_verified,
+            "runtime_removed": runtime_verified and not runtime.exists(),
+            "cache_removed": cache_verified,
+        }
 
     def _write_job(self, job: dict[str, Any]) -> None:
         if self.storage_error:
@@ -569,6 +669,20 @@ class RcloneOptimizerManager:
             "finished_at": None,
             "depth": depth,
             "limits": limits,
+            "setting_model": {
+                "actually_varied": sorted(VARIED_STREAMING_FLAGS),
+                "fixed_constraints": [
+                    "--vfs-cache-max-size",
+                    "bandwidth_limit_mbps",
+                    "max_memory_mib",
+                    "min_free_disk_gib",
+                    "max_duration_minutes",
+                    "concurrent_streams",
+                ],
+                "bundled_assumptions": sorted(BUNDLED_ASSUMPTION_FLAGS),
+                "preserved": "Apart from the isolated mount/cache/RC/read-only/log plumbing required for safe testing, all other existing user flags are carried into every shadow command unchanged and are not evaluated by this optimizer.",
+                "confidence_note": "The recommendation identifies the best-performing predefined bundle. It does not prove that every value in that bundle is individually optimal.",
+            },
             "selected_content": validated_paths,
             "results": [],
             "recommendation": None,
@@ -776,6 +890,11 @@ class RcloneOptimizerManager:
                     "/api/set-stream-tracing?enabled=false", method="POST"
                 )
                 trace_enabled_by_job = False
+            cleanup = self._cleanup_job_artifacts(job, runtime)
+            if not all(cleanup.values()):
+                raise RcloneOptimizerError(
+                    "The benchmark finished, but isolated shadow mount/cache cleanup could not be verified. The job was not marked complete and cleanup will be retried during finalization and the next DUMB startup."
+                )
             self._update(
                 job,
                 status="completed",
@@ -787,6 +906,7 @@ class RcloneOptimizerManager:
                     "before": self._summarize_nzbdav(nzbdav_before),
                     "after": self._summarize_nzbdav(nzbdav_after),
                 },
+                cleanup=cleanup,
                 live={},
             )
             notify_event(
@@ -837,20 +957,22 @@ class RcloneOptimizerManager:
             process = self._processes.pop(job_id, None)
             if process:
                 self._terminate_process(process)
-            self._cleanup_job_runtime(runtime)
-            try:
-                _instance_name, cleanup_instance = self._resolve_instance(
-                    job["process_name"]
-                )
-                cache_job_root = (
-                    Path(str(cleanup_instance.get("cache_dir") or "/cache"))
-                    / ".dumb-rclone-optimizer"
-                    / job_id
-                )
-                if cache_job_root.is_dir() and not cache_job_root.is_symlink():
-                    shutil.rmtree(cache_job_root, ignore_errors=True)
-            except RcloneOptimizerError:
-                pass
+            cleanup = self._cleanup_job_artifacts(job, runtime)
+            if job.get("cleanup") != cleanup:
+                changes: dict[str, Any] = {"cleanup": cleanup}
+                if job.get("status") == "completed" and not all(cleanup.values()):
+                    changes.update(
+                        status="failed",
+                        stage="Cleanup failed",
+                        error="The benchmark completed, but isolated optimizer cleanup could not be verified.",
+                    )
+                try:
+                    self._update(job, **changes)
+                except (OSError, RcloneOptimizerError):
+                    self.logger.error(
+                        "Could not persist final optimizer cleanup status for job %s",
+                        job_id,
+                    )
             self._cancel.pop(job_id, None)
             self._threads.pop(job_id, None)
 
@@ -917,6 +1039,9 @@ class RcloneOptimizerManager:
         cancel: threading.Event,
     ) -> dict[str, Any]:
         candidate_root = runtime / profile["id"]
+        setting_comparison = _candidate_setting_comparison(
+            instance.get("command") or [], profile["settings"]
+        )
         mount_path = candidate_root / "mount"
         cache_root = Path(str(instance.get("cache_dir") or "/cache"))
         optimizer_cache_root = cache_root / ".dumb-rclone-optimizer"
@@ -1071,7 +1196,10 @@ class RcloneOptimizerManager:
         )
         self._terminate_process(process)
         self._processes.pop(job["job_id"], None)
-        self._unmount(mount_path)
+        if not self._unmount(mount_path):
+            raise RcloneOptimizerError(
+                f"Could not verify cleanup of the isolated shadow mount for {profile['label']}. The job was stopped and will retry cleanup during finalization and the next DUMB startup."
+            )
         values = [sample for sample in samples if sample.get("scored")]
         local_bytes_read = sum(int(sample.get("bytes_read") or 0) for sample in samples)
         provider_bytes_delta = max(
@@ -1094,6 +1222,8 @@ class RcloneOptimizerManager:
             "id": profile["id"],
             "label": profile["label"],
             "settings": profile["settings"],
+            "setting_comparison": setting_comparison,
+            "shadow_mount_cleanup_verified": True,
             "duration_seconds": round(time.monotonic() - candidate_started, 3),
             "samples": samples,
             "summary": {
@@ -1267,8 +1397,10 @@ class RcloneOptimizerManager:
             "candidate_id": winner["id"],
             "label": winner["label"],
             "settings": settings,
+            "setting_comparison": winner.get("setting_comparison") or [],
             "summary": winner["summary"],
-            "reason": "Best bounded score across startup time, first byte, seek latency, sustained throughput, resource use, and excluded/error samples.",
+            "reason": "Best-performing predefined bundle by the bounded score across startup time, first byte, seek latency, sustained throughput, resource use, and excluded/error samples.",
+            "confidence_note": "This result compares complete profiles. It does not prove that every individual value in the winning bundle is optimal.",
             "requires_review": True,
             "applied": False,
         }
@@ -1677,9 +1809,9 @@ class RcloneOptimizerManager:
                 pass
 
     @staticmethod
-    def _unmount(path: Path) -> None:
+    def _unmount(path: Path) -> bool:
         if not path.exists() or not os.path.ismount(path):
-            return
+            return True
         for command in (
             ["fusermount3", "-uz", str(path)],
             ["fusermount", "-uz", str(path)],
@@ -1697,8 +1829,15 @@ class RcloneOptimizerManager:
                 )
             except (OSError, subprocess.TimeoutExpired):
                 continue
-            if result.returncode == 0 or not os.path.ismount(path):
-                return
+            if result.returncode == 0:
+                deadline = time.monotonic() + 3
+                while time.monotonic() < deadline:
+                    if not os.path.ismount(path):
+                        return True
+                    time.sleep(0.1)
+            elif not os.path.ismount(path):
+                return True
+        return not os.path.ismount(path)
 
     def shutdown(self) -> None:
         self._shutdown.set()
