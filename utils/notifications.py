@@ -33,6 +33,8 @@ SUPPORTED_EVENT_TYPES = (
     "update.failed",
     "symlink.job.succeeded",
     "symlink.job.failed",
+    "rclone.optimizer.completed",
+    "rclone.optimizer.failed",
     "resource.cpu.high",
     "resource.memory.high",
     "resource.disk.high",

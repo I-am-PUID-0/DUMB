@@ -42,6 +42,12 @@ def initialize_dependencies(
         logger=logger,
     )
     _shared_instances["notification_manager"].start()
+    from utils.rclone_optimizer import RcloneOptimizerManager
+
+    _shared_instances["rclone_optimizer_manager"] = RcloneOptimizerManager(
+        process_handler=process_handler,
+        logger=logger,
+    )
 
 
 def get_process_handler() -> ProcessHandler:
@@ -82,6 +88,10 @@ def get_metrics_history_manager():
 
 def get_notification_manager():
     return _shared_instances["notification_manager"]
+
+
+def get_rclone_optimizer_manager():
+    return _shared_instances["rclone_optimizer_manager"]
 
 
 def resolve_path(path_str: str) -> Path:

@@ -15,6 +15,7 @@ from utils.dependencies import (
     get_metrics_collector,
     get_metrics_history_manager,
     get_notification_manager,
+    get_rclone_optimizer_manager,
 )
 from api.routers.process import process_router
 from api.routers.config import config_router
@@ -29,6 +30,7 @@ from api.routers.seerr_sync import seerr_sync_router
 from api.routers.ai import ai_router
 from api.routers.notifications import notifications_router
 from api.routers.authelia import authelia_router
+from api.routers.rclone_optimizer import rclone_optimizer_router
 from utils.config_loader import CONFIG_MANAGER
 from utils.project_metadata import get_project_version
 import threading
@@ -39,6 +41,8 @@ _DEFAULT_ALLOWED_ORIGINS = ["http://localhost", "http://localhost:8000"]
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     yield
+    rclone_optimizer_manager = get_rclone_optimizer_manager()
+    rclone_optimizer_manager.shutdown()
     notification_manager = get_notification_manager()
     logger = get_logger()
     logger.info("Shutting down notification utility...")
@@ -96,9 +100,17 @@ def create_app() -> FastAPI:
     app.dependency_overrides[get_metrics_collector] = get_metrics_collector
     app.dependency_overrides[get_metrics_history_manager] = get_metrics_history_manager
     app.dependency_overrides[get_notification_manager] = get_notification_manager
+    app.dependency_overrides[get_rclone_optimizer_manager] = (
+        get_rclone_optimizer_manager
+    )
 
     app.include_router(auth_router, prefix="/auth", tags=["Authentication"])
     app.include_router(process_router, prefix="/process", tags=["Process Management"])
+    app.include_router(
+        rclone_optimizer_router,
+        prefix="/process",
+        tags=["Rclone Optimizer"],
+    )
     app.include_router(config_router, prefix="/config", tags=["Configuration"])
     app.include_router(health_router, prefix="/health", tags=["Health"])
     app.include_router(logs_router, prefix="/logs", tags=["Logs"])
