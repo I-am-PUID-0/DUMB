@@ -34,7 +34,6 @@ GEMINI_MODEL_LIFECYCLE = _catalog(
             "2026-05-25",
             "gemini-3.1-flash-lite",
         ),
-        ("gemini-2.5-pro", "2026-10-16", "gemini-3.1-pro-preview"),
         (
             "gemini-2.5-pro-preview-03-25",
             "2025-12-02",
@@ -50,13 +49,11 @@ GEMINI_MODEL_LIFECYCLE = _catalog(
             "2025-12-02",
             "gemini-3.1-pro-preview",
         ),
-        ("gemini-2.5-flash", "2026-10-16", "gemini-3.6-flash"),
         (
             "gemini-2.5-flash-image",
             "2026-10-02",
             "gemini-3.1-flash-image-preview",
         ),
-        ("gemini-2.5-flash-lite", "2026-10-16", "gemini-3.1-flash-lite"),
         (
             "gemini-2.5-flash-lite-preview-09-2025",
             "2026-03-31",

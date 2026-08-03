@@ -102,10 +102,13 @@ def parse_lifecycle_rows(provider: str, html: str) -> list[dict[str, str]]:
     provider = str(provider or "").strip().lower()
     if provider == "openai":
         start = html.find('<h2 id="upcoming-deprecations"')
-        end = html.find('<h2 id="past-deprecations"')
-        if start < 0 or end <= start:
+        past = html.find('<h2 id="past-deprecations"')
+        if start < 0 or past <= start:
             raise ValueError("OpenAI deprecations page section markers were not found")
-        html = html[start:end]
+        # Retired entries move from Upcoming to Past on the official page. DUMB
+        # retains those entries so provider calls can reject retired models with
+        # useful replacement guidance, so both sections must remain observable.
+        html = html[start:]
 
     parser = TableParser()
     parser.feed(html)
@@ -176,7 +179,9 @@ def compare_catalog(
     provider: str,
     catalog: dict[str, dict[str, str]],
     observed: list[dict[str, str]],
+    as_of: str | None = None,
 ) -> list[str]:
+    comparison_date = as_of or datetime.now().date().isoformat()
     observed_by_model: dict[str, list[dict[str, str]]] = {}
     for entry in observed:
         observed_by_model.setdefault(entry["model"], []).append(entry)
@@ -185,6 +190,11 @@ def compare_catalog(
     for model, entries in sorted(observed_by_model.items()):
         expected = catalog.get(model)
         if expected is None:
+            # Historical provider tables can contain models that predate DUMB's
+            # maintained catalog. Keep alerting on newly announced/upcoming
+            # lifecycle entries without requiring every old retired model.
+            if all(entry["shutdown_date"] < comparison_date for entry in entries):
+                continue
             errors.append(
                 f"{provider}: official source added lifecycle model {model}; "
                 "update utils/ai_model_catalog.py"

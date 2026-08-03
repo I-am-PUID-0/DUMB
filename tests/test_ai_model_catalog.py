@@ -8,7 +8,7 @@ from utils.ai_model_catalog import model_compatibility, model_lifecycle
 
 
 class AiModelCatalogTests(unittest.TestCase):
-    def test_openai_parser_reads_only_upcoming_text_model_rows(self):
+    def test_openai_parser_reads_upcoming_and_past_text_model_rows(self):
         html = """
         <h2 id="upcoming-deprecations">Upcoming</h2>
         <table>
@@ -30,7 +30,12 @@ class AiModelCatalogTests(unittest.TestCase):
                     "model": "gpt-old",
                     "shutdown_date": "2026-08-10",
                     "replacement": "gpt-new",
-                }
+                },
+                {
+                    "model": "gpt-ancient",
+                    "shutdown_date": "2020-01-01",
+                    "replacement": "gpt-new",
+                },
             ],
         )
 
@@ -53,6 +58,11 @@ class AiModelCatalogTests(unittest.TestCase):
                 }
             ],
         )
+
+    def test_google_models_without_shutdown_dates_have_no_lifecycle_warning(self):
+        self.assertIsNone(model_lifecycle("google_gemini", "gemini-2.5-pro"))
+        self.assertIsNone(model_lifecycle("google_gemini", "gemini-2.5-flash"))
+        self.assertIsNone(model_lifecycle("google_gemini", "gemini-2.5-flash-lite"))
 
     def test_catalog_comparison_reports_new_or_changed_models(self):
         observed = [
@@ -80,6 +90,32 @@ class AiModelCatalogTests(unittest.TestCase):
 
         self.assertTrue(any("official source added" in error for error in errors))
         self.assertTrue(any("shutdown is 2026-08-10" in error for error in errors))
+
+    def test_catalog_comparison_ignores_untracked_historical_models(self):
+        errors = compare_catalog(
+            "openai",
+            {
+                "gpt-retained": {
+                    "shutdown_date": "2026-07-23",
+                    "replacement": "gpt-new",
+                }
+            },
+            [
+                {
+                    "model": "gpt-retained",
+                    "shutdown_date": "2026-07-23",
+                    "replacement": "gpt-new",
+                },
+                {
+                    "model": "gpt-untracked-history",
+                    "shutdown_date": "2020-01-01",
+                    "replacement": "gpt-new",
+                },
+            ],
+            as_of="2026-08-03",
+        )
+
+        self.assertEqual(errors, [])
 
     def test_provider_metadata_distinguishes_retirement_from_compatibility(self):
         lifecycle = model_lifecycle("openai", "gpt-5-codex", "2026-07-24")

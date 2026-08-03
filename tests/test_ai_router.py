@@ -113,14 +113,16 @@ class AiRouterTests(unittest.TestCase):
         retired = ai._gemini_model_lifecycle(
             "models/gemini-2.0-flash-lite", as_of="2026-07-24"
         )
-        deprecated = ai._gemini_model_lifecycle("gemini-2.5-flash", as_of="2026-07-24")
+        deprecated = ai._gemini_model_lifecycle(
+            "gemini-3.1-flash-lite", as_of="2026-07-24"
+        )
 
         self.assertEqual(retired["status"], "retired")
         self.assertEqual(retired["shutdown_date"], "2026-06-01")
         self.assertEqual(retired["replacement"], "gemini-3.1-flash-lite")
         self.assertEqual(deprecated["status"], "deprecated")
-        self.assertEqual(deprecated["shutdown_date"], "2026-10-16")
-        self.assertEqual(deprecated["replacement"], "gemini-3.6-flash")
+        self.assertEqual(deprecated["shutdown_date"], "2027-05-07")
+        self.assertEqual(deprecated["replacement"], "gemini-3.5-flash-lite")
         self.assertIsNone(
             ai._gemini_model_lifecycle("gemini-3.5-flash-lite", as_of="2026-07-24")
         )
