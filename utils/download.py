@@ -1,6 +1,7 @@
 from utils.global_logger import logger
 from utils.config_loader import CONFIG_MANAGER
 import requests, time, os, zipfile, io, shutil, platform, fnmatch, re, tarfile
+from urllib.parse import quote
 
 
 class Downloader:
@@ -143,12 +144,24 @@ class Downloader:
             else:
                 architecture = None
 
-            release_info, error = self.fetch_github_release_info(
-                repo_owner, repo_name, release_version, headers=None
-            )
-            if error:
-                logger.error(error)
-                return False, error
+            # NzbDAV is built from source, so its configured version may be a Git
+            # tag such as "dev" without a corresponding GitHub Release object.
+            if key == "nzbdav":
+                encoded_version = quote(str(release_version), safe="")
+                release_info = {
+                    "tag_name": release_version,
+                    "zipball_url": (
+                        f"https://api.github.com/repos/{repo_owner}/{repo_name}"
+                        f"/zipball/{encoded_version}"
+                    ),
+                }
+            else:
+                release_info, error = self.fetch_github_release_info(
+                    repo_owner, repo_name, release_version, headers=None
+                )
+                if error:
+                    logger.error(error)
+                    return False, error
 
             # Bazarr's release asset is a flat bazarr.zip, not a GitHub source
             # archive wrapped in an owner-repository directory.

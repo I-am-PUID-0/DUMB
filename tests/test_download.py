@@ -194,6 +194,59 @@ class DownloaderHelperTests(unittest.TestCase):
         self.assertTrue(success, error)
         self.assertIsNone(extract.call_args.args[2])
 
+    def test_nzbdav_tag_only_version_uses_source_zipball(self):
+        with (
+            patch.object(
+                self.downloader,
+                "fetch_github_release_info",
+            ) as fetch_release,
+            patch.object(
+                self.downloader,
+                "download_and_extract",
+                return_value=(True, None),
+            ) as extract,
+        ):
+            success, error = self.downloader.download_release_version(
+                process_name="NzbDAV",
+                key="nzbdav",
+                repo_owner="nzbdav",
+                repo_name="nzbdav",
+                release_version="dev",
+                target_dir="/nzbdav",
+            )
+
+        self.assertTrue(success, error)
+        fetch_release.assert_not_called()
+        self.assertEqual(
+            extract.call_args.args[:3],
+            (
+                "https://api.github.com/repos/nzbdav/nzbdav/zipball/dev",
+                "/nzbdav",
+                "nzbdav-nzbdav*",
+            ),
+        )
+
+    def test_nzbdav_source_zipball_encodes_tag_ref(self):
+        with patch.object(
+            self.downloader,
+            "download_and_extract",
+            return_value=(True, None),
+        ) as extract:
+            success, error = self.downloader.download_release_version(
+                process_name="NzbDAV",
+                key="nzbdav",
+                repo_owner="nzbdav",
+                repo_name="nzbdav",
+                release_version="preview/test",
+                target_dir="/nzbdav",
+            )
+
+        self.assertTrue(success, error)
+        self.assertEqual(
+            extract.call_args.args[0],
+            "https://api.github.com/repos/nzbdav/nzbdav/zipball/preview%2Ftest",
+        )
+
     def test_handle_rate_limits_uses_retry_after_header(self):
         with patch.object(download.time, "sleep") as sleep:
             handled = self.downloader.handle_rate_limits(
