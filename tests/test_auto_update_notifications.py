@@ -10,6 +10,7 @@ class UpdateNotificationTests(unittest.TestCase):
     def _updater(self):
         updater = object.__new__(Update)
         updater.logger = Mock()
+        updater.downloader = Mock()
         updater.scheduler = Mock()
         updater.updating = threading.Lock()
         updater._safe_record_update_status = Mock()
@@ -52,6 +53,38 @@ class UpdateNotificationTests(unittest.TestCase):
         self.assertEqual(
             "commit",
             updater._get_update_block_reason({"commit_sha": "a" * 40}),
+        )
+
+    def test_only_digit_free_nzbdav_release_tags_are_moving_channels(self):
+        for release in ("dev", "lts", "edge", "release-candidate"):
+            with self.subTest(release=release):
+                self.assertTrue(
+                    Update._is_nzbdav_named_release_channel(
+                        "nzbdav",
+                        {
+                            "release_version_enabled": True,
+                            "release_version": release,
+                        },
+                    )
+                )
+
+        for release in ("v0.9.5", "2026.08.03", "dev2", "latest"):
+            with self.subTest(release=release):
+                self.assertFalse(
+                    Update._is_nzbdav_named_release_channel(
+                        "nzbdav",
+                        {
+                            "release_version_enabled": True,
+                            "release_version": release,
+                        },
+                    )
+                )
+
+        self.assertFalse(
+            Update._is_nzbdav_named_release_channel(
+                "decypharr",
+                {"release_version_enabled": True, "release_version": "dev"},
+            )
         )
 
     def test_commit_status_reports_whether_configured_target_is_installed(self):
@@ -103,6 +136,8 @@ class UpdateNotificationTests(unittest.TestCase):
 
     def test_fixed_release_status_uses_the_configured_release_target(self):
         updater = self._updater()
+        release_sha = "a" * 40
+        updater.downloader.get_ref_commit_sha.return_value = (release_sha, None)
         config = {
             "release_version_enabled": True,
             "release_version": "v0.7.9",
@@ -124,7 +159,10 @@ class UpdateNotificationTests(unittest.TestCase):
                 "04:00",
                 None,
             )
-            versions.return_value.version_check.return_value = ("0.7.9", None)
+            versions.return_value.version_check.return_value = (
+                f"v0.7.9-{release_sha[:8]}",
+                None,
+            )
             installed = updater._manual_check_generic_repo(
                 "NzbDAV",
                 config,
@@ -139,12 +177,87 @@ class UpdateNotificationTests(unittest.TestCase):
             )
 
         self.assertEqual("blocked", pending["status"])
-        self.assertEqual("v0.7.9", pending["available_version"])
+        self.assertEqual(f"v0.7.9-{release_sha[:8]}", pending["available_version"])
         self.assertEqual("release", pending["configured_target_kind"])
         self.assertFalse(pending["configured_target_installed"])
         self.assertEqual("no_update", installed["status"])
         self.assertTrue(installed["configured_target_installed"])
         versions.return_value.compare_versions.assert_not_called()
+
+    def test_moving_nzbdav_release_tag_reports_changed_commit(self):
+        updater = self._updater()
+        new_sha = "b" * 40
+        updater.downloader.get_ref_commit_sha.return_value = (new_sha, None)
+        config = {
+            "release_version_enabled": True,
+            "release_version": "dev",
+            "repo_owner": "nzbdav",
+            "repo_name": "nzbdav",
+        }
+
+        with patch("utils.auto_update.Versions") as versions:
+            versions.return_value.version_check.return_value = (
+                "dev-aaaaaaaa",
+                None,
+            )
+            payload = updater._manual_check_generic_repo(
+                "NzbDAV",
+                config,
+                "nzbdav",
+                None,
+                None,
+                1,
+                False,
+                24,
+                "04:00",
+                None,
+            )
+
+        self.assertEqual("update_available", payload["status"])
+        self.assertIsNone(payload["reason"])
+        self.assertFalse(payload["configured_target_installed"])
+        self.assertEqual("dev-bbbbbbbb", payload["available_version"])
+
+    def test_direct_update_installs_changed_nzbdav_release_tag_commit(self):
+        updater = self._updater()
+        updater.process_handler = Mock(
+            process_names=[],
+            setup_tracker=set(),
+            setup_tracker_lock=threading.Lock(),
+        )
+        updater.start_process = Mock(return_value=("started", None))
+        release_sha = "c" * 40
+        updater.downloader.get_ref_commit_sha.return_value = (release_sha, None)
+        config = {
+            "release_version_enabled": True,
+            "release_version": "dev",
+            "repo_owner": "nzbdav",
+            "repo_name": "nzbdav",
+        }
+
+        with (
+            patch("utils.auto_update.Versions") as versions,
+            patch(
+                "utils.auto_update.setup_release_version", return_value=(True, None)
+            ) as install_release,
+            patch(
+                "utils.auto_update.setup_project", return_value=(True, None)
+            ) as finish_setup,
+        ):
+            versions.return_value.version_check.return_value = (
+                "dev-bbbbbbbb",
+                None,
+            )
+            success, message = updater.update_check("NzbDAV", config, "nzbdav", None)
+
+        self.assertTrue(success, message)
+        self.assertIn("dev-cccccccc", message)
+        self.assertEqual("dev", config["release_version"])
+        install_release.assert_called_once_with(
+            updater.process_handler, config, "NzbDAV", "nzbdav"
+        )
+        finish_setup.assert_called_once_with(updater.process_handler, "NzbDAV")
+        updater.start_process.assert_called_once_with("NzbDAV", config, "nzbdav", None)
 
     def test_commit_pin_disables_initial_update_even_for_prerelease_selector(self):
         updater = self._updater()
@@ -182,6 +295,119 @@ class UpdateNotificationTests(unittest.TestCase):
         updater.scheduler.cancel_job.assert_called_once_with(existing_job)
         self.assertNotIn("NzbDAV", Update._jobs)
         self.assertNotIn("NzbDAV", Update._next_check_at)
+
+    def test_digit_free_nzbdav_release_tag_allows_auto_update_schedule(self):
+        updater = self._updater()
+        updater.process_handler = Mock(
+            preinstall_complete=False,
+            preinstalled_processes=set(),
+        )
+        updater.reschedule_symlink_backup = Mock()
+        updater.initial_update_check = Mock(return_value=(True, None))
+        config_manager = Mock()
+        config_manager.find_key_for_process.return_value = ("nzbdav", None)
+        config_manager.get_instance.return_value = {
+            "process_name": "NzbDAV",
+            "auto_update": True,
+            "release_version_enabled": True,
+            "release_version": "dev",
+            "commit_sha": "",
+            "branch_enabled": False,
+        }
+
+        with (
+            patch("utils.auto_update.CONFIG_MANAGER", config_manager),
+            patch("utils.auto_update.threading.Thread") as update_thread,
+        ):
+            process, error = updater.auto_update("NzbDAV", enable_update=True)
+
+        self.assertTrue(process)
+        self.assertIsNone(error)
+        update_thread.assert_called_once_with(
+            target=updater.update_schedule,
+            args=("NzbDAV", config_manager.get_instance.return_value, "nzbdav", None),
+        )
+        update_thread.return_value.start.assert_called_once_with()
+        updater.initial_update_check.assert_called_once()
+
+    def test_numeric_nzbdav_release_tag_keeps_auto_updates_disabled(self):
+        updater = self._updater()
+        updater.process_handler = Mock(
+            preinstall_complete=False,
+            preinstalled_processes=set(),
+        )
+        updater.reschedule_symlink_backup = Mock()
+        updater.start_process = Mock(return_value=("started", None))
+        config_manager = Mock()
+        config_manager.find_key_for_process.return_value = ("nzbdav", None)
+        config_manager.get_instance.return_value = {
+            "process_name": "NzbDAV",
+            "auto_update": True,
+            "release_version_enabled": True,
+            "release_version": "v0.9.5",
+            "commit_sha": "",
+            "branch_enabled": False,
+        }
+
+        with (
+            patch("utils.auto_update.CONFIG_MANAGER", config_manager),
+            patch("utils.auto_update.setup_project", return_value=(True, None)),
+            patch("utils.auto_update.threading.Thread") as update_thread,
+        ):
+            process, error = updater.auto_update("NzbDAV", enable_update=True)
+
+        self.assertEqual("started", process)
+        self.assertIsNone(error)
+        update_thread.assert_not_called()
+
+    def test_reschedule_allows_digit_free_nzbdav_release_tag(self):
+        updater = self._updater()
+        updater.update_schedule = Mock()
+        config = {
+            "auto_update": True,
+            "release_version_enabled": True,
+            "release_version": "dev",
+        }
+        config_manager = Mock()
+        config_manager.find_key_for_process.return_value = ("nzbdav", None)
+        config_manager.get_instance.return_value = config
+
+        with patch("utils.auto_update.CONFIG_MANAGER", config_manager):
+            success, message = updater.reschedule_auto_update("NzbDAV")
+
+        self.assertTrue(success)
+        self.assertEqual("Auto-update rescheduled", message)
+        updater.update_schedule.assert_called_once_with(
+            "NzbDAV", config, "nzbdav", None
+        )
+
+    def test_reschedule_blocks_numeric_nzbdav_release_tag(self):
+        updater = self._updater()
+        existing_job = object()
+        Update._jobs = {"NzbDAV": existing_job}
+        Update._next_check_at = {"NzbDAV": 123}
+        updater.update_schedule = Mock()
+        updater.auto_update_interval = Mock(return_value=24)
+        updater.auto_update_start_time = Mock(return_value="04:00")
+        config = {
+            "auto_update": True,
+            "release_version_enabled": True,
+            "release_version": "v0.9.5",
+        }
+        config_manager = Mock()
+        config_manager.find_key_for_process.return_value = ("nzbdav", None)
+        config_manager.get_instance.return_value = config
+
+        with patch("utils.auto_update.CONFIG_MANAGER", config_manager):
+            success, message = updater.reschedule_auto_update("NzbDAV")
+
+        self.assertTrue(success)
+        self.assertEqual("Auto-update disabled by release v0.9.5", message)
+        updater.scheduler.cancel_job.assert_called_once_with(existing_job)
+        updater.update_schedule.assert_not_called()
+        status = updater._safe_record_update_status.call_args.args[1]
+        self.assertEqual("blocked", status["status"])
+        self.assertEqual("release", status["reason"])
 
     def test_reschedule_cancels_existing_job_for_commit_pin(self):
         updater = self._updater()
@@ -479,6 +705,35 @@ class UpdateNotificationTests(unittest.TestCase):
         )
 
         versions.return_value.version_check.return_value = ("commit-bbbbbbbbbbbb", None)
+        self.assertTrue(
+            updater._should_run_install_phase_for_preinstalled(
+                "NzbDAV", "nzbdav", None, config
+            )
+        )
+
+    @patch("utils.auto_update.Versions")
+    def test_preinstalled_nzbdav_release_tag_compares_commit_marker(self, versions):
+        updater = self._updater()
+        release_sha = "c" * 40
+        updater.downloader.get_ref_commit_sha.return_value = (release_sha, None)
+        config = {
+            "release_version_enabled": True,
+            "release_version": "dev",
+            "repo_owner": "nzbdav",
+            "repo_name": "nzbdav",
+        }
+        versions.return_value.version_check.return_value = (
+            f"dev-{release_sha[:8]}",
+            None,
+        )
+
+        self.assertFalse(
+            updater._should_run_install_phase_for_preinstalled(
+                "NzbDAV", "nzbdav", None, config
+            )
+        )
+
+        versions.return_value.version_check.return_value = ("dev-aaaaaaaa", None)
         self.assertTrue(
             updater._should_run_install_phase_for_preinstalled(
                 "NzbDAV", "nzbdav", None, config

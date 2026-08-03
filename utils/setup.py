@@ -265,19 +265,7 @@ def _prepare_decypharr_source_tree(target_dir: str) -> tuple[bool, str | None]:
 def _fetch_github_branch_head_sha(
     repo_owner: str, repo_name: str, branch: str
 ) -> tuple[str | None, str | None]:
-    try:
-        branch_ref = urllib.parse.quote(str(branch or "").strip(), safe="")
-        api_url = f"https://api.github.com/repos/{repo_owner}/{repo_name}/commits/{branch_ref}"
-        response = downloader.fetch_with_retries(api_url, downloader.get_headers())
-        if response and response.status_code == 200:
-            data = response.json() if hasattr(response, "json") else {}
-            sha = (data or {}).get("sha")
-            if sha:
-                return sha, None
-        status = response.status_code if response is not None else "no_response"
-        return None, f"Unable to resolve branch head sha (status: {status})"
-    except Exception as e:
-        return None, f"Error resolving branch head sha: {e}"
+    return downloader.get_ref_commit_sha(repo_owner, repo_name, branch)
 
 
 def _normalize_commit_sha(value) -> tuple[str | None, str | None]:
@@ -376,6 +364,26 @@ def setup_release_version(process_handler, config, process_name, key):
             return False, f"Failed to download release: {error}"
         return additional_setup(process_handler, process_name, config, key)
 
+    nzbdav_release_marker = None
+    download_release_version = config["release_version"]
+    if key == "nzbdav":
+        requested_release = str(config.get("release_version") or "").strip()
+        requested_lower = requested_release.lower()
+        nzbdav_release_marker = requested_release
+        if (
+            requested_lower not in {"latest", "prerelease"}
+            and "nightly" not in requested_lower
+        ):
+            release_sha, release_sha_error = downloader.get_ref_commit_sha(
+                config.get("repo_owner"),
+                config.get("repo_name"),
+                requested_release,
+            )
+            if not release_sha:
+                return False, release_sha_error
+            nzbdav_release_marker = f"{requested_release}-{release_sha[:8]}"
+            download_release_version = release_sha
+
     if config.get("clear_on_update"):
         exclude_dirs = config.get("exclude_dirs", [])
         success, error = clear_directory(target_dir, exclude_dirs)
@@ -398,7 +406,7 @@ def setup_release_version(process_handler, config, process_name, key):
         key=key,
         repo_owner=config["repo_owner"],
         repo_name=config["repo_name"],
-        release_version=config["release_version"],
+        release_version=download_release_version,
         target_dir=target_dir,
         zip_folder_name=None,
         exclude_dirs=exclude_dirs,
@@ -425,13 +433,6 @@ def setup_release_version(process_handler, config, process_name, key):
         )
 
     elif key == "decypharr":
-        versions.version_write(
-            process_name,
-            key,
-            version_path=os.path.join(config["config_dir"], "version.txt"),
-            version=config["release_version"],
-        )
-    elif key == "nzbdav":
         versions.version_write(
             process_name,
             key,
@@ -477,6 +478,14 @@ def setup_release_version(process_handler, config, process_name, key):
     success, error = additional_setup(process_handler, process_name, config, key)
     if not success:
         return False, error
+
+    if key == "nzbdav":
+        versions.version_write(
+            process_name,
+            key,
+            version_path=os.path.join(config["config_dir"], "version.txt"),
+            version=nzbdav_release_marker,
+        )
 
     return True, None
 
@@ -529,20 +538,7 @@ def setup_branch_version(process_handler, config, process_name, key):
             logger.debug("Failed writing branch state at %s: %s", state_path, e)
 
     def _fetch_branch_head_sha(repo_owner: str, repo_name: str, branch: str):
-        try:
-            headers = downloader.get_headers()
-            branch_ref = urllib.parse.quote(str(branch or "").strip(), safe="")
-            api_url = f"https://api.github.com/repos/{repo_owner}/{repo_name}/commits/{branch_ref}"
-            response = downloader.fetch_with_retries(api_url, headers)
-            if response and response.status_code == 200:
-                data = response.json() if hasattr(response, "json") else {}
-                sha = (data or {}).get("sha")
-                if sha:
-                    return sha, None
-            status = response.status_code if response is not None else "no_response"
-            return None, f"Unable to resolve branch head sha (status: {status})"
-        except Exception as e:
-            return None, f"Error resolving branch head sha: {e}"
+        return downloader.get_ref_commit_sha(repo_owner, repo_name, branch)
 
     def _has_branch_runtime_artifacts(target_dir: str, service_key: str) -> bool:
         if service_key == "riven_backend":

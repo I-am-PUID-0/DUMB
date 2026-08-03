@@ -166,6 +166,88 @@ class NzbDAVSetupTests(unittest.TestCase):
         self.assertEqual("build failed", error)
         version_write.assert_not_called()
 
+    def test_release_tag_marker_records_resolved_commit_after_setup(self):
+        release_sha = "d" * 40
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = {
+                "process_name": "NzbDAV",
+                "config_dir": tmpdir,
+                "repo_owner": "nzbdav",
+                "repo_name": "nzbdav",
+                "release_version": "dev",
+                "clear_on_update": False,
+            }
+            with (
+                patch.object(
+                    setup.downloader,
+                    "get_ref_commit_sha",
+                    return_value=(release_sha, None),
+                ),
+                patch.object(
+                    setup, "_prepare_nzbdav_source_tree", return_value=(True, None)
+                ),
+                patch.object(
+                    setup.downloader,
+                    "download_release_version",
+                    return_value=(True, None),
+                ) as download_release,
+                patch.object(setup, "additional_setup", return_value=(True, None)),
+                patch.object(setup.versions, "version_write") as version_write,
+            ):
+                success, error = setup.setup_release_version(
+                    Mock(), config, "NzbDAV", "nzbdav"
+                )
+
+        self.assertTrue(success, error)
+        self.assertEqual(
+            release_sha,
+            download_release.call_args.kwargs["release_version"],
+        )
+        version_write.assert_called_once_with(
+            "NzbDAV",
+            "nzbdav",
+            version_path=os.path.join(tmpdir, "version.txt"),
+            version=f"dev-{release_sha[:8]}",
+        )
+
+    def test_release_tag_marker_is_not_written_when_setup_fails(self):
+        release_sha = "e" * 40
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = {
+                "process_name": "NzbDAV",
+                "config_dir": tmpdir,
+                "repo_owner": "nzbdav",
+                "repo_name": "nzbdav",
+                "release_version": "dev",
+                "clear_on_update": False,
+            }
+            with (
+                patch.object(
+                    setup.downloader,
+                    "get_ref_commit_sha",
+                    return_value=(release_sha, None),
+                ),
+                patch.object(
+                    setup, "_prepare_nzbdav_source_tree", return_value=(True, None)
+                ),
+                patch.object(
+                    setup.downloader,
+                    "download_release_version",
+                    return_value=(True, None),
+                ),
+                patch.object(
+                    setup, "additional_setup", return_value=(False, "build failed")
+                ),
+                patch.object(setup.versions, "version_write") as version_write,
+            ):
+                success, error = setup.setup_release_version(
+                    Mock(), config, "NzbDAV", "nzbdav"
+                )
+
+        self.assertFalse(success)
+        self.assertEqual("build failed", error)
+        version_write.assert_not_called()
+
     def _write_start_script(self, root: Path) -> Path:
         frontend_dir = root / "frontend"
         frontend_dir.mkdir()

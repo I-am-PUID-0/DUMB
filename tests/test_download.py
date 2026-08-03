@@ -33,10 +33,14 @@ class _ConfigManager:
 
 
 class FakeResponse:
-    def __init__(self, status_code, headers=None, content=b""):
+    def __init__(self, status_code, headers=None, content=b"", json_data=None):
         self.status_code = status_code
         self.headers = headers or {}
         self.content = content
+        self.json_data = json_data or {}
+
+    def json(self):
+        return self.json_data
 
 
 def _install_runtime_stubs():
@@ -111,6 +115,33 @@ class DownloaderHelperTests(unittest.TestCase):
                     self.assertIn("40-character hexadecimal", error)
 
         fetch.assert_not_called()
+
+    def test_get_ref_commit_sha_resolves_encoded_tag_to_commit(self):
+        commit_sha = "a" * 40
+        response = FakeResponse(200, json_data={"sha": commit_sha.upper()})
+
+        with patch.object(
+            self.downloader, "fetch_with_retries", return_value=response
+        ) as fetch:
+            resolved, error = self.downloader.get_ref_commit_sha(
+                "owner", "repo", "release/dev"
+            )
+
+        self.assertIsNone(error)
+        self.assertEqual(commit_sha, resolved)
+        fetch.assert_called_once_with(
+            "https://api.github.com/repos/owner/repo/commits/release%2Fdev",
+            self.downloader.get_headers(),
+        )
+
+    def test_get_ref_commit_sha_rejects_invalid_response_sha(self):
+        response = FakeResponse(200, json_data={"sha": "short"})
+
+        with patch.object(self.downloader, "fetch_with_retries", return_value=response):
+            resolved, error = self.downloader.get_ref_commit_sha("owner", "repo", "dev")
+
+        self.assertIsNone(resolved)
+        self.assertIn("Unable to resolve GitHub ref commit SHA", error)
 
     def test_find_asset_download_url_prefers_matching_non_musl_asset(self):
         release_info = {

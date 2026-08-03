@@ -20,7 +20,7 @@ from utils.mediastorm_installer import (
 from utils.wait_for_url import wait_for_urls
 from datetime import datetime
 from glob import glob
-import threading, time, os, schedule, requests, subprocess
+import threading, time, os, schedule, subprocess
 
 
 class Update:
@@ -46,21 +46,18 @@ class Update:
             self.scheduler = schedule.default_scheduler
 
     def _fetch_branch_head_sha(self, repo_owner: str, repo_name: str, branch: str):
-        try:
-            branch_ref = requests.utils.quote(str(branch or "").strip(), safe="")
-            api_url = f"https://api.github.com/repos/{repo_owner}/{repo_name}/commits/{branch_ref}"
-            response = self.downloader.fetch_with_retries(
-                api_url, self.downloader.get_headers()
-            )
-            if response and response.status_code == 200:
-                data = response.json() if hasattr(response, "json") else {}
-                sha = (data or {}).get("sha")
-                if sha:
-                    return sha, None
-            status = response.status_code if response is not None else "no_response"
-            return None, f"Unable to resolve branch head sha (status: {status})"
-        except Exception as e:
-            return None, f"Error resolving branch head sha: {e}"
+        return self.downloader.get_ref_commit_sha(repo_owner, repo_name, branch)
+
+    def _resolve_nzbdav_release_marker(self, config):
+        release = str(config.get("release_version") or "").strip()
+        if not release:
+            return None, "NzbDAV release tag is required."
+        sha, error = self.downloader.get_ref_commit_sha(
+            config.get("repo_owner"), config.get("repo_name"), release
+        )
+        if not sha:
+            return None, error or "Failed to resolve NzbDAV release tag commit SHA."
+        return f"{release}-{sha[:8]}", None
 
     def supports_manual_update(self, key, config):
         if key in {
@@ -80,7 +77,16 @@ class Update:
             return True
         return False
 
-    def _get_update_block_reason(self, config):
+    @staticmethod
+    def _is_nzbdav_named_release_channel(key, config):
+        if key != "nzbdav" or not config.get("release_version_enabled"):
+            return False
+        release = str(config.get("release_version") or "").strip().lower()
+        if not release or release in {"latest", "nightly", "prerelease"}:
+            return False
+        return not any(character.isdigit() for character in release)
+
+    def _get_update_block_reason(self, config, key=None):
         if config.get("pinned_version"):
             return "pinned_version"
         if str(config.get("commit_sha") or "").strip():
@@ -88,6 +94,8 @@ class Update:
         if config.get("branch_enabled"):
             return "branch"
         if config.get("release_version_enabled"):
+            if self._is_nzbdav_named_release_channel(key, config):
+                return None
             if not self._release_is_nightly_or_prerelease(config):
                 return "release"
         return None
@@ -305,7 +313,7 @@ class Update:
             return payload
 
     def _manual_update_check_internal(self, process_name, config, key, instance_name):
-        block_reason = self._get_update_block_reason(config)
+        block_reason = self._get_update_block_reason(config, key)
         checked_at = int(time.time())
         auto_update_enabled = bool(config.get("auto_update"))
         interval_hours = self.auto_update_interval(process_name, config)
@@ -488,11 +496,13 @@ class Update:
             }
 
         release_value = str(config.get("release_version") or "").strip()
+        named_release_channel = self._is_nzbdav_named_release_channel(key, config)
         if (
-            block_reason == "release"
+            (block_reason == "release" or named_release_channel)
             and release_value
             and release_value.lower() != "latest"
         ):
+            release_is_blocked = block_reason == "release"
             current_version, current_error = versions.version_check(
                 process_name, instance_name, key
             )
@@ -502,31 +512,62 @@ class Update:
                     "reason": "version_check_failed",
                     "message": current_error,
                     "checked_at": checked_at,
-                    "auto_update_enabled": False,
+                    "auto_update_enabled": (
+                        False if release_is_blocked else auto_update_enabled
+                    ),
                     "auto_update_interval": interval_hours,
                     "auto_update_start_time": start_time,
-                    "next_check_at": None,
+                    "next_check_at": None if release_is_blocked else next_check_at,
                 }
-            configured_target_installed = self._configured_versions_match(
-                current_version, release_value
-            )
+            available_version = release_value
+            if key == "nzbdav":
+                available_version, ref_error = self._resolve_nzbdav_release_marker(
+                    config
+                )
+                if not available_version:
+                    return {
+                        "status": "error",
+                        "reason": "version_check_failed",
+                        "message": ref_error,
+                        "current_version": current_version,
+                        "checked_at": checked_at,
+                        "auto_update_enabled": auto_update_enabled,
+                        "auto_update_interval": interval_hours,
+                        "auto_update_start_time": start_time,
+                        "next_check_at": next_check_at,
+                    }
+                configured_target_installed = current_version == available_version
+            else:
+                configured_target_installed = self._configured_versions_match(
+                    current_version, release_value
+                )
             return {
-                "status": ("no_update" if configured_target_installed else "blocked"),
-                "reason": "release",
+                "status": (
+                    "no_update"
+                    if configured_target_installed
+                    else "blocked" if release_is_blocked else "update_available"
+                ),
+                "reason": "release" if release_is_blocked else None,
                 "message": (
                     "Configured release is installed"
                     if configured_target_installed
-                    else "Configured release is ready to install"
+                    else (
+                        "Configured release is ready to install"
+                        if release_is_blocked
+                        else "Release channel update is ready to install"
+                    )
                 ),
                 "current_version": current_version,
-                "available_version": release_value,
+                "available_version": available_version,
                 "configured_target_kind": "release",
                 "configured_target_installed": configured_target_installed,
                 "checked_at": checked_at,
-                "auto_update_enabled": False,
+                "auto_update_enabled": (
+                    False if release_is_blocked else auto_update_enabled
+                ),
                 "auto_update_interval": interval_hours,
                 "auto_update_start_time": start_time,
-                "next_check_at": None,
+                "next_check_at": None if release_is_blocked else next_check_at,
             }
 
         branch_enabled = bool(config.get("branch_enabled")) and key in {
@@ -980,7 +1021,7 @@ class Update:
                 self._safe_record_update_status(process_name, payload)
                 return payload
 
-            block_reason = self._get_update_block_reason(config)
+            block_reason = self._get_update_block_reason(config, key)
             if apply_configured_target and not block_reason:
                 payload = {
                     "status": "error",
@@ -1223,19 +1264,24 @@ class Update:
         config = CONFIG_MANAGER.get_instance(instance_name, key)
         if not config:
             return False, "Configuration not found"
-        commit_sha = str(config.get("commit_sha") or "").strip().lower()
-        if not config.get("auto_update") or commit_sha:
+        block_reason = self._get_update_block_reason(config, key)
+        if not config.get("auto_update") or block_reason:
             self._cancel_auto_update_job(process_name)
-            blocked_by_commit = bool(commit_sha)
+            blocked_by_source = bool(block_reason)
+            target_label = (
+                self._configured_target_label(config, block_reason)
+                if block_reason
+                else None
+            )
             self._safe_record_update_status(
                 process_name,
                 {
-                    "status": "blocked" if blocked_by_commit else "disabled",
-                    "reason": "commit" if blocked_by_commit else None,
+                    "status": "blocked" if blocked_by_source else "disabled",
+                    "reason": block_reason,
                     "message": (
-                        f"{process_name} is pinned to commit {commit_sha[:12]}. "
-                        "Automatic updates are disabled until the pin is changed or cleared."
-                        if blocked_by_commit
+                        f"{process_name} is pinned to {target_label}. "
+                        "Automatic updates are disabled until the source selection is changed."
+                        if blocked_by_source
                         else "Auto-update disabled"
                     ),
                     "auto_update_enabled": False,
@@ -1248,8 +1294,10 @@ class Update:
                     "next_check_at": None,
                 },
             )
-            if blocked_by_commit:
-                return True, "Auto-update disabled by commit pin"
+            if blocked_by_source:
+                if block_reason == "commit":
+                    return True, "Auto-update disabled by commit pin"
+                return True, f"Auto-update disabled by {target_label}"
             return True, "Auto-update disabled"
 
         self.update_schedule(process_name, config, key, instance_name)
@@ -1578,6 +1626,16 @@ class Update:
                 or "nightly" in requested_lower
             ):
                 return False
+            if key == "nzbdav":
+                expected, ref_error = self._resolve_nzbdav_release_marker(config)
+                if expected:
+                    return current_version != expected
+                if ref_error:
+                    self.logger.debug(
+                        "NzbDAV release tag SHA lookup failed for preinstall check: %s",
+                        ref_error,
+                    )
+                return True
             return current_version != requested_release
 
         pinned_version = (config.get("pinned_version") or "").strip()
@@ -1595,17 +1653,18 @@ class Update:
         latest_config = CONFIG_MANAGER.get_instance(instance_name, key)
         if not latest_config:
             return
-        commit_sha = str(latest_config.get("commit_sha") or "").strip().lower()
-        if commit_sha:
+        block_reason = self._get_update_block_reason(latest_config, key)
+        if block_reason:
             self._cancel_auto_update_job(process_name)
+            target_label = self._configured_target_label(latest_config, block_reason)
             self._safe_record_update_status(
                 process_name,
                 {
                     "status": "blocked",
-                    "reason": "commit",
+                    "reason": block_reason,
                     "message": (
-                        f"{process_name} is pinned to commit {commit_sha[:12]}. "
-                        "Automatic updates are disabled until the pin is changed or cleared."
+                        f"{process_name} is pinned to {target_label}. "
+                        "Automatic updates are disabled until the source selection is changed."
                     ),
                     "auto_update_enabled": False,
                     "next_check_at": None,
@@ -1671,7 +1730,9 @@ class Update:
             or config.get("release_version_enabled")
             or config.get("branch_enabled")
         ):
-            if not self._release_is_nightly_or_prerelease(config):
+            if not self._release_is_nightly_or_prerelease(
+                config
+            ) and not self._is_nzbdav_named_release_channel(key, config):
                 enable_update = False
                 self.logger.info(
                     "Automatic updates disabled for %s due to pinned, release, or branch configuration.",
@@ -1994,6 +2055,58 @@ class Update:
             nightly = False
             prerelease = False
             self.logger.info(f"Checking for stable updates for {process_name}.")
+
+        if (
+            key == "nzbdav"
+            and config.get("release_version_enabled")
+            and not nightly
+            and not prerelease
+            and release_value != "latest"
+        ):
+            target_version, ref_error = self._resolve_nzbdav_release_marker(config)
+            if not target_version:
+                return False, ref_error
+            versions = Versions()
+            current_version, version_error = versions.version_check(
+                process_name, instance_name, key
+            )
+            if not current_version:
+                return False, version_error or "Failed to read current version."
+            if current_version == target_version:
+                return False, f"No updates available for {process_name}."
+
+            self.logger.info(
+                "Updating %s release tag %s from %s to %s.",
+                process_name,
+                config.get("release_version"),
+                current_version,
+                target_version,
+            )
+            if process_name in self.process_handler.process_names:
+                self.stop_process(process_name)
+            with self.process_handler.setup_tracker_lock:
+                if process_name in self.process_handler.setup_tracker:
+                    self.process_handler.setup_tracker.remove(process_name)
+            success, error = setup_release_version(
+                self.process_handler, config, process_name, key
+            )
+            if not success:
+                return (
+                    False,
+                    f"Failed to update {process_name} to {target_version}: {error}",
+                )
+            success, error = setup_project(self.process_handler, process_name)
+            if not success:
+                return (
+                    False,
+                    f"Failed to complete setup for {process_name}: {error}",
+                )
+            process, error = self.start_process(
+                process_name, config, key, instance_name
+            )
+            if not process:
+                return False, f"Failed to start {process_name}: {error}"
+            return True, f"Updated {process_name} to {target_version}."
 
         versions = Versions()
         try:

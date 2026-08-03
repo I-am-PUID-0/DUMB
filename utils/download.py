@@ -57,6 +57,27 @@ class Downloader:
         self.logger.error(f"Failed to fetch {url} after {attempt + 1} attempts.")
         return None
 
+    def get_ref_commit_sha(self, repo_owner, repo_name, ref):
+        """Resolve a GitHub branch or tag ref to its underlying commit SHA."""
+        try:
+            encoded_ref = quote(str(ref or "").strip(), safe="")
+            if not encoded_ref:
+                return None, "GitHub ref is required."
+            api_url = (
+                f"https://api.github.com/repos/{repo_owner}/{repo_name}"
+                f"/commits/{encoded_ref}"
+            )
+            response = self.fetch_with_retries(api_url, self.get_headers())
+            if response and response.status_code == 200:
+                data = response.json() if hasattr(response, "json") else {}
+                sha = str((data or {}).get("sha") or "").strip().lower()
+                if re.fullmatch(r"[0-9a-f]{40}", sha):
+                    return sha, None
+            status = response.status_code if response is not None else "no_response"
+            return None, f"Unable to resolve GitHub ref commit SHA (status: {status})"
+        except Exception as e:
+            return None, f"Error resolving GitHub ref commit SHA: {e}"
+
     def download_release_version(
         self,
         process_name,
