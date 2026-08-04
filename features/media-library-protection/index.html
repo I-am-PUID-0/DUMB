@@ -1116,6 +1116,34 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Media-server setup">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#plex" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Plex
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#jellyfin-and-emby" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Jellyfin and Emby
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -5112,6 +5140,34 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Media-server setup">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#plex" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Plex
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#jellyfin-and-emby" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Jellyfin and Emby
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -5215,14 +5271,14 @@
   
 
 
-<h1 id="media-library-protection">Media Library Protection<a class="headerlink" href="#media-library-protection" title="Permanent link">&para;</a></h1>
+<h1 id="media-library-protection">Media Library Protection<a class="headerlink" href="#media-library-protection" title="Permanent link">#</a></h1>
 <p>Media Library Protection reduces the chance that Plex, Jellyfin, or Emby interprets a temporary storage outage as deleted media. It is <strong>enabled by default</strong> and can be disabled globally or per media server.</p>
 <p>The feature covers DUMB-managed storage dependencies such as rclone, NzbDAV, Decypharr, Zurg, AltMount, and CLI Debrid. DUMB maps each operation to affected media servers through configured mount paths; when it cannot safely narrow the relationship, it protects every enabled media server.</p>
 <div class="admonition important">
 <p class="admonition-title">Protection is not a backup</p>
 <p>This feature reduces outage risk but cannot reverse an application database change that already occurred. Keep media-server database/config backups, and avoid exposing the media server directly to mount paths that can disappear without warning.</p>
 </div>
-<h2 id="planned-stop-restart-or-update">Planned stop, restart, or update<a class="headerlink" href="#planned-stop-restart-or-update" title="Permanent link">&para;</a></h2>
+<h2 id="planned-stop-restart-or-update">Planned stop, restart, or update<a class="headerlink" href="#planned-stop-restart-or-update" title="Permanent link">#</a></h2>
 <p>Before DUMB changes a storage dependency it:</p>
 <ol>
 <li>checks active playback and library-scan activity;</li>
@@ -5260,12 +5316,12 @@
 </tr>
 </tbody>
 </table>
-<h2 id="unexpected-crash-or-outage">Unexpected crash or outage<a class="headerlink" href="#unexpected-crash-or-outage" title="Permanent link">&para;</a></h2>
+<h2 id="unexpected-crash-or-outage">Unexpected crash or outage<a class="headerlink" href="#unexpected-crash-or-outage" title="Permanent link">#</a></h2>
 <p>When a managed storage dependency exits unexpectedly, DUMB guards downstream scans as quickly as possible. Active streams are preserved. If <strong>Stop after users become idle during an outage</strong> is enabled, DUMB stops that media server only after its sessions naturally finish.</p>
 <p>After the dependency restarts and remains healthy, the recovery journal restores scan settings and restarts only media servers that DUMB stopped. The journal is stored at <code>/config/media-protection/state.json</code> with mode <code>0600</code>, so a DUMB restart does not discard an active recovery state.</p>
-<h2 id="media-server-setup">Media-server setup<a class="headerlink" href="#media-server-setup" title="Permanent link">&para;</a></h2>
+<h2 id="media-server-setup">Media-server setup<a class="headerlink" href="#media-server-setup" title="Permanent link">#</a></h2>
 <p>Open the Plex, Jellyfin, or Emby service page and select <strong>Library Protection</strong>.</p>
-<h3 id="plex">Plex<a class="headerlink" href="#plex" title="Permanent link">&para;</a></h3>
+<h3 id="plex">Plex<a class="headerlink" href="#plex" title="Permanent link">#</a></h3>
 <p>DUMB uses the Plex token it already manages for Plex integration. No second key is required.</p>
 <p>The panel also exposes live Plex library preferences:</p>
 <table>
@@ -5305,11 +5361,11 @@
 </tbody>
 </table>
 <p>These controls write directly to Plex. The outage guard snapshots the current values and restores them after recovery; it does not permanently replace the choices saved in the panel.</p>
-<h3 id="jellyfin-and-emby">Jellyfin and Emby<a class="headerlink" href="#jellyfin-and-emby" title="Permanent link">&para;</a></h3>
+<h3 id="jellyfin-and-emby">Jellyfin and Emby<a class="headerlink" href="#jellyfin-and-emby" title="Permanent link">#</a></h3>
 <p>DUMB installs and starts Jellyfin/Emby, but it does not create an administrator account or application API key during first-run setup. Create a dedicated API key in the media server's own dashboard, then paste it into <strong>Library Protection</strong>.</p>
 <p>The key is needed to inspect current sessions, identify and stop a running library scan, temporarily remove scheduled scan triggers, and disable/restore real-time monitoring for each virtual library.</p>
 <p>The key is stored in <code>dumb.media_protection.services</code>, redacted from DUMB config/API responses and logs, and never sent to the browser after saving. Without a key, DUMB reports <strong>Setup required</strong>, treats activity as unknown, and defers safe unattended maintenance. An operator can still choose an explicit manual override.</p>
-<h2 id="configuration">Configuration<a class="headerlink" href="#configuration" title="Permanent link">&para;</a></h2>
+<h2 id="configuration">Configuration<a class="headerlink" href="#configuration" title="Permanent link">#</a></h2>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;dumb&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">    </span><span class="nt">&quot;media_protection&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
@@ -5331,7 +5387,7 @@
 <span class="p">}</span>
 </code></pre></div>
 <p><code>protected_mounts</code> is optional. Leave it empty to use DUMB's dependency and <code>wait_for_mounts</code> mapping. Use explicit roots when one media server consumes only a subset of several independent mounts.</p>
-<h2 id="recovery-and-troubleshooting">Recovery and troubleshooting<a class="headerlink" href="#recovery-and-troubleshooting" title="Permanent link">&para;</a></h2>
+<h2 id="recovery-and-troubleshooting">Recovery and troubleshooting<a class="headerlink" href="#recovery-and-troubleshooting" title="Permanent link">#</a></h2>
 <ul>
 <li><strong>Operation keeps deferring:</strong> activity is busy or unknown. End the stream, configure the Jellyfin/Emby key, or use an explicit manual override.</li>
 <li><strong>Protection remains active:</strong> verify the storage process, application health probe, mount state, and directory access. Recovery begins only after all checks remain healthy for the stabilization period.</li>

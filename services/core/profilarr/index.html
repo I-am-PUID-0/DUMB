@@ -6,7 +6,7 @@
   
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="description" content="Configure Profilarr in DUMB to synchronize Sonarr and Radarr quality profiles, custom formats, regex patterns, and media-management settings.">
+  <meta name="description" content="Run Profilarr v1 or v2 in DUMB and connect it to managed Sonarr and Radarr instances.">
   
     <meta name="author" content="DUMB Team">
   
@@ -110,7 +110,7 @@
     <meta property="og:locale" content="en_US">
     <meta property="og:site_name" content="DUMB — Distributed Unlimited Media Bridge">
     <meta property="og:title" content="Profilarr">
-    <meta property="og:description" content="Configure Profilarr in DUMB to synchronize Sonarr and Radarr quality profiles, custom formats, regex patterns, and media-management settings.">
+    <meta property="og:description" content="Run Profilarr v1 or v2 in DUMB and connect it to managed Sonarr and Radarr instances.">
     <meta property="og:url" content="https://dumbarr.com/services/core/profilarr/">
     <meta property="og:image" content="https://dumbarr.com/assets/images/DUMB.png">
     <meta property="og:image:secure_url" content="https://dumbarr.com/assets/images/DUMB.png">
@@ -120,7 +120,7 @@
     <meta property="og:image:alt" content="Distributed Unlimited Media Bridge ecosystem and architecture overview">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="Profilarr">
-    <meta name="twitter:description" content="Configure Profilarr in DUMB to synchronize Sonarr and Radarr quality profiles, custom formats, regex patterns, and media-management settings.">
+    <meta name="twitter:description" content="Run Profilarr v1 or v2 in DUMB and connect it to managed Sonarr and Radarr instances.">
     <meta name="twitter:image" content="https://dumbarr.com/assets/images/DUMB.png">
     <meta name="twitter:image:alt" content="Distributed Unlimited Media Bridge ecosystem and architecture overview">
     
@@ -2624,6 +2624,51 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Configuration in dumb_config.json">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#profilarr-instance-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Profilarr instance configuration
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Profilarr instance configuration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#profilarr-instance-keys" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Profilarr instance keys
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#choosing-v1-or-v2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Choosing v1 or v2
+      
+    </span>
+  </a>
+  
 </li>
       
         <li class="md-nav__item">
@@ -2638,10 +2683,38 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#autolinking-behavior" class="md-nav__link">
+  <a href="#auto-linking-behavior" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Auto‑linking behavior
+        Auto-linking behavior
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Auto-linking behavior">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#core_service-filtering" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        core_service filtering
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v1-default-repository-seeding" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v1 default repository seeding
       
     </span>
   </a>
@@ -2649,10 +2722,38 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#default-repository-seeding" class="md-nav__link">
+  <a href="#v1-initial-sync-behavior" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Default repository seeding
+        v1 initial sync behavior
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="v1 initial sync behavior">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#forcing-the-initial-sync-again" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Forcing the initial sync again
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#profilarr-v2-notes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Profilarr v2 notes
       
     </span>
   </a>
@@ -2660,21 +2761,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#initial-sync-behavior" class="md-nav__link">
+  <a href="#v1-tagging-rules-for-repo-items" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Initial sync behavior
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#tagging-rules-for-repo-items" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Tagging rules for repo items
+        v1 tagging rules for repo items
       
     </span>
   </a>
@@ -2689,6 +2779,23 @@
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="Troubleshooting">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#missing-api-keys" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Missing API keys
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -5187,6 +5294,51 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Configuration in dumb_config.json">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#profilarr-instance-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Profilarr instance configuration
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Profilarr instance configuration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#profilarr-instance-keys" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Profilarr instance keys
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#choosing-v1-or-v2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Choosing v1 or v2
+      
+    </span>
+  </a>
+  
 </li>
       
         <li class="md-nav__item">
@@ -5201,10 +5353,38 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#autolinking-behavior" class="md-nav__link">
+  <a href="#auto-linking-behavior" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Auto‑linking behavior
+        Auto-linking behavior
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Auto-linking behavior">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#core_service-filtering" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        core_service filtering
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v1-default-repository-seeding" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v1 default repository seeding
       
     </span>
   </a>
@@ -5212,10 +5392,38 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#default-repository-seeding" class="md-nav__link">
+  <a href="#v1-initial-sync-behavior" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Default repository seeding
+        v1 initial sync behavior
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="v1 initial sync behavior">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#forcing-the-initial-sync-again" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Forcing the initial sync again
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#profilarr-v2-notes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Profilarr v2 notes
       
     </span>
   </a>
@@ -5223,21 +5431,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#initial-sync-behavior" class="md-nav__link">
+  <a href="#v1-tagging-rules-for-repo-items" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Initial sync behavior
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#tagging-rules-for-repo-items" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Tagging rules for repo items
+        v1 tagging rules for repo items
       
     </span>
   </a>
@@ -5252,6 +5449,23 @@
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="Troubleshooting">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#missing-api-keys" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Missing API keys
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -5363,19 +5577,20 @@
   
 
 
-<h1 id="profilarr">Profilarr<a class="headerlink" href="#profilarr" title="Permanent link">&para;</a></h1>
-<p>Profilarr is a profile and custom format manager for <strong>Sonarr</strong> and <strong>Radarr</strong>. In DUMB it can be auto‑linked to your Arr instances so quality profiles, custom formats, regex patterns, and media management settings stay aligned across stacks.</p>
+<h1 id="profilarr">Profilarr<a class="headerlink" href="#profilarr" title="Permanent link">#</a></h1>
+<p>Profilarr is a profile and custom format manager for <strong>Sonarr</strong> and <strong>Radarr</strong>. DUMB supports both the legacy v1 application and the redesigned v2 application, and can auto-link either generation to matching Arr instances.</p>
 <hr />
-<h2 id="overview">Overview<a class="headerlink" href="#overview" title="Permanent link">&para;</a></h2>
+<h2 id="overview">Overview<a class="headerlink" href="#overview" title="Permanent link">#</a></h2>
 <p>Profilarr provides:</p>
 <ul>
 <li><strong>Repository‑backed profiles</strong> - version‑control your profiles and formats</li>
 <li><strong>Cross‑stack consistency</strong> - keep Sonarr/Radarr aligned across debrid and usenet stacks</li>
 <li><strong>Media management sync</strong> - naming rules, quality definitions, and misc settings</li>
-<li><strong>Initial sync automation</strong> - DUMB can seed and apply settings on first link</li>
+<li><strong>Version-aware installation</strong> - run a v1 release, a v2 release, a branch, or an exact commit</li>
+<li><strong>Safe v2 ownership</strong> - DUMB changes only v2 Arr connections tagged <code>dumb:auto</code></li>
 </ul>
 <hr />
-<h2 id="default-port">Default port<a class="headerlink" href="#default-port" title="Permanent link">&para;</a></h2>
+<h2 id="default-port">Default port<a class="headerlink" href="#default-port" title="Permanent link">#</a></h2>
 <table>
 <thead>
 <tr>
@@ -5391,8 +5606,8 @@
 </tbody>
 </table>
 <hr />
-<h2 id="configuration-in-dumb_configjson">Configuration in <code>dumb_config.json</code><a class="headerlink" href="#configuration-in-dumb_configjson" title="Permanent link">&para;</a></h2>
-<h3 id="profilarr-instance-configuration">Profilarr instance configuration<a class="headerlink" href="#profilarr-instance-configuration" title="Permanent link">&para;</a></h3>
+<h2 id="configuration-in-dumb_configjson">Configuration in <code>dumb_config.json</code><a class="headerlink" href="#configuration-in-dumb_configjson" title="Permanent link">#</a></h2>
+<h3 id="profilarr-instance-configuration">Profilarr instance configuration<a class="headerlink" href="#profilarr-instance-configuration" title="Permanent link">#</a></h3>
 <div class="highlight"><pre><span></span><code><span class="nt">&quot;profilarr&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;instances&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">    </span><span class="nt">&quot;Default&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
@@ -5401,8 +5616,8 @@
 <span class="w">      </span><span class="nt">&quot;process_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Profilarr&quot;</span><span class="p">,</span>
 <span class="w">      </span><span class="nt">&quot;repo_owner&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Dictionarry-Hub&quot;</span><span class="p">,</span>
 <span class="w">      </span><span class="nt">&quot;repo_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;profilarr&quot;</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;release_version_enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;release_version&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;v1.1.4&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;release_version_enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;release_version&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;latest&quot;</span><span class="p">,</span>
 <span class="w">      </span><span class="nt">&quot;commit_sha&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&quot;</span><span class="p">,</span>
 <span class="w">      </span><span class="nt">&quot;branch_enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
 <span class="w">      </span><span class="nt">&quot;branch&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;main&quot;</span><span class="p">,</span>
@@ -5413,52 +5628,65 @@
 <span class="w">      </span><span class="nt">&quot;auto_update_interval&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">24</span><span class="p">,</span>
 <span class="w">      </span><span class="nt">&quot;auto_update_start_time&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;04:00&quot;</span><span class="p">,</span>
 <span class="w">      </span><span class="nt">&quot;clear_on_update&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;exclude_dirs&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
-<span class="w">        </span><span class="s2">&quot;/profilarr/default/config&quot;</span>
-<span class="w">      </span><span class="p">],</span>
-<span class="w">      </span><span class="nt">&quot;platforms&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
-<span class="w">        </span><span class="s2">&quot;python&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="s2">&quot;pnpm&quot;</span>
-<span class="w">      </span><span class="p">],</span>
-<span class="w">      </span><span class="nt">&quot;command&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
-<span class="w">        </span><span class="s2">&quot;/profilarr/default/backend/venv/bin/gunicorn&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="s2">&quot;--chdir&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="s2">&quot;/profilarr/default/backend&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="s2">&quot;--bind&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="s2">&quot;0.0.0.0:{port}&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="s2">&quot;--timeout&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="s2">&quot;600&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="s2">&quot;app.main:create_app()&quot;</span>
-<span class="w">      </span><span class="p">],</span>
+<span class="w">      </span><span class="nt">&quot;exclude_dirs&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;/profilarr/default/config&quot;</span><span class="p">],</span>
 <span class="w">      </span><span class="nt">&quot;config_dir&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/profilarr/default&quot;</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;log_file&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/profilarr/default/config/log/profilarr.log&quot;</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;env&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<span class="w">        </span><span class="nt">&quot;PROFILARR_CONFIG_DIR&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/profilarr/default/config&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;FLASK_ENV&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;production&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;PYTHONPATH&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/profilarr/default/backend&quot;</span>
-<span class="w">      </span><span class="p">}</span>
+<span class="w">      </span><span class="nt">&quot;log_file&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/profilarr/default/config/log/profilarr.log&quot;</span>
 <span class="w">    </span><span class="p">}</span>
 <span class="w">  </span><span class="p">}</span>
 <span class="p">}</span>
 </code></pre></div>
-<h4 id="profilarr-instance-keys">Profilarr instance keys<a class="headerlink" href="#profilarr-instance-keys" title="Permanent link">&para;</a></h4>
+<h4 id="profilarr-instance-keys">Profilarr instance keys<a class="headerlink" href="#profilarr-instance-keys" title="Permanent link">#</a></h4>
 <ul>
 <li><strong><code>enabled</code></strong>: Whether to start this Profilarr instance.</li>
 <li><strong><code>core_service</code></strong>: Filters which Arr instances are auto‑linked (see below).</li>
 <li><strong><code>repo_owner</code> / <code>repo_name</code></strong>: GitHub repository for Profilarr itself.</li>
-<li><strong><code>release_version_enabled</code> / <code>release_version</code></strong>: Use GitHub releases when enabled.</li>
+<li><strong><code>release_version_enabled</code> / <code>release_version</code></strong>: Profilarr is unpinned by default and follows the latest stable release. Enable release pinning and enter an explicit tag such as <code>v1.1.4</code>, <code>v1.1.5</code>, or <code>v2.0.9</code> to stay on that release.</li>
 <li><strong><code>commit_sha</code></strong>: Build this Profilarr instance from an exact full 40-character GitHub SHA. It overrides release/branch selection and disables automatic updates for that instance until cleared.</li>
 <li><strong><code>branch_enabled</code> / <code>branch</code></strong>: Use a specific branch if enabled.</li>
 <li><strong><code>port</code></strong>: Port the Profilarr UI is exposed on.</li>
 <li><strong><code>auto_update</code> / <code>auto_update_interval</code> / <code>auto_update_start_time</code></strong>: Automatic update settings.</li>
 <li><strong><code>config_dir</code> / <code>log_file</code></strong>: Profilarr installation/config root and log path.</li>
 </ul>
-<div class="admonition note">
-<p class="admonition-title">Pinned compatibility default</p>
-<p>DUMB currently enables the tested <code>v1.1.4</code> release selector by default. Do not replace it with an arbitrary current upstream release unless you intend to compatibility-test DUMB's install, launch, and auto-link behavior against that version.</p>
+<p><code>command</code>, build platforms, and generation-specific environment variables are runtime-managed. DUMB detects the downloaded source layout and writes the correct v1 Gunicorn or v2 standalone command automatically.</p>
+<h2 id="choosing-v1-or-v2">Choosing v1 or v2<a class="headerlink" href="#choosing-v1-or-v2" title="Permanent link">#</a></h2>
+<p>New configurations default to <code>release_version_enabled: false</code> with <code>release_version: latest</code>, so they follow the current stable Profilarr release without being pinned. Existing DUMB configurations pinned to <code>v1.1.4</code> remain pinned and continue using the v1 Python/React build.</p>
+<table>
+<thead>
+<tr>
+<th>Selector</th>
+<th>DUMB behavior</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Default unpinned selection (<code>release_version_enabled: false</code>)</td>
+<td>Follows the latest stable release, currently a v2 Deno/SvelteKit build.</td>
+</tr>
+<tr>
+<td>An explicit <code>v2.x</code> tag</td>
+<td>Pins and runs the selected v2 Deno/SvelteKit application.</td>
+</tr>
+<tr>
+<td>A <code>v1.x</code> tag</td>
+<td>Builds and runs the legacy Python/React application.</td>
+</tr>
+<tr>
+<td><code>branch_enabled: true</code></td>
+<td>Downloads the selected branch and detects its layout.</td>
+</tr>
+<tr>
+<td><code>commit_sha</code></td>
+<td>Downloads the exact commit and detects its layout; automatic updates are disabled.</td>
+</tr>
+</tbody>
+</table>
+<p>After choosing an explicit release, branch, or commit, use <strong>Install configured release/branch/commit</strong> or restart the service. For the default unpinned configuration, use the normal update action or restart the service so DUMB resolves and installs the current stable release.</p>
+<div class="admonition warning">
+<p class="admonition-title">v2 is a fresh application state</p>
+<p>Profilarr v2 does not provide an in-place migration from v1 app data. DUMB preserves the shared config root during upgrades, but keeps the primary databases separate: v1 uses <code>config/profilarr.db</code>, while v2 uses <code>config/data/profilarr.db</code>. Configure v2 through its first-run setup instead of expecting v1 users, repositories, or profile selections to be imported.</p>
 </div>
 <hr />
-<h2 id="arr-instance-options">Arr instance options<a class="headerlink" href="#arr-instance-options" title="Permanent link">&para;</a></h2>
+<h2 id="arr-instance-options">Arr instance options<a class="headerlink" href="#arr-instance-options" title="Permanent link">#</a></h2>
 <p>Profilarr auto‑linking is controlled per Arr instance:</p>
 <div class="highlight"><pre><span></span><code><span class="nt">&quot;sonarr&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;instances&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
@@ -5474,29 +5702,30 @@
 <li><strong><code>use_profilarr</code></strong>: Opt this Arr instance into Profilarr auto‑linking.</li>
 </ul>
 <hr />
-<h2 id="autolinking-behavior">Auto‑linking behavior<a class="headerlink" href="#autolinking-behavior" title="Permanent link">&para;</a></h2>
+<h2 id="auto-linking-behavior">Auto-linking behavior<a class="headerlink" href="#auto-linking-behavior" title="Permanent link">#</a></h2>
 <p>DUMB automatically links Profilarr to Sonarr/Radarr instances that:</p>
 <ul>
 <li>are enabled</li>
 <li>have <code>use_profilarr: true</code></li>
 <li>match the Profilarr instance <code>core_service</code> filter</li>
 </ul>
-<h3 id="core_service-filtering"><code>core_service</code> filtering<a class="headerlink" href="#core_service-filtering" title="Permanent link">&para;</a></h3>
+<p>On v1, DUMB retains its original repository seeding and one-time initial-sync behavior. On v2, DUMB creates and updates only Arr connection rows tagged <code>dumb:auto</code>. It deliberately leaves v2 databases, profiles, quality profiles, custom formats, and sync choices under Profilarr's control. A user-created v2 Arr connection with the same name is left unchanged.</p>
+<h3 id="core_service-filtering"><code>core_service</code> filtering<a class="headerlink" href="#core_service-filtering" title="Permanent link">#</a></h3>
 <ul>
 <li><strong>Blank (<code>""</code>)</strong>: Manual mode. DUMB does <strong>not</strong> auto‑link any Arr instances.</li>
 <li><strong>Single core service</strong> (e.g., <code>decypharr</code>): Links only Arrs in that stack.</li>
 <li><strong>Combined</strong> (e.g., <code>decypharr, nzbdav, altmount</code>): Links Arrs across matching Debrid and Usenet stacks.</li>
 </ul>
 <hr />
-<h2 id="default-repository-seeding">Default repository seeding<a class="headerlink" href="#default-repository-seeding" title="Permanent link">&para;</a></h2>
-<p>If no repository is connected inside Profilarr, DUMB seeds a default repo on first run:</p>
+<h2 id="v1-default-repository-seeding">v1 default repository seeding<a class="headerlink" href="#v1-default-repository-seeding" title="Permanent link">#</a></h2>
+<p>This section applies only to Profilarr v1. If no repository is connected, DUMB seeds a default repo on first run:</p>
 <ul>
 <li><code>https://github.com/johman10/profilarr-trash-guides</code></li>
 </ul>
 <p>This provides ready‑to‑sync profiles, custom formats, regex patterns, and media management defaults.</p>
 <hr />
-<h2 id="initial-sync-behavior">Initial sync behavior<a class="headerlink" href="#initial-sync-behavior" title="Permanent link">&para;</a></h2>
-<p>When DUMB creates a new Profilarr app entry, it triggers a one‑time initial sync:</p>
+<h2 id="v1-initial-sync-behavior">v1 initial sync behavior<a class="headerlink" href="#v1-initial-sync-behavior" title="Permanent link">#</a></h2>
+<p>This section applies only to Profilarr v1. When DUMB creates a new Profilarr app entry, it triggers a one-time initial sync:</p>
 <ul>
 <li><strong>Profiles</strong></li>
 <li><strong>Custom formats</strong></li>
@@ -5510,24 +5739,32 @@
 <p class="admonition-title">Regex patterns</p>
 <p>Regex patterns are not Arr settings. They are used by Profilarr to compile profiles and formats, so they won’t appear in Arr UI.</p>
 </div>
-<h3 id="forcing-the-initial-sync-again">Forcing the initial sync again<a class="headerlink" href="#forcing-the-initial-sync-again" title="Permanent link">&para;</a></h3>
+<h3 id="forcing-the-initial-sync-again">Forcing the initial sync again<a class="headerlink" href="#forcing-the-initial-sync-again" title="Permanent link">#</a></h3>
 <p>Delete the Arr entry in Profilarr and restart Profilarr from the DUMB frontend. DUMB will recreate the entry and run the initial sync again.</p>
+<h2 id="profilarr-v2-notes">Profilarr v2 notes<a class="headerlink" href="#profilarr-v2-notes" title="Permanent link">#</a></h2>
+<ul>
+<li>Complete Profilarr's account setup when you first open v2.</li>
+<li>Profilarr v2 initializes its own application database and default Dictionarry v2 database.</li>
+<li>DUMB retries Arr auto-linking after Profilarr starts so the v2 migrations can finish first.</li>
+<li>The optional upstream parser service used for custom-format and quality-profile expression testing is not managed by DUMB. Core v2 profile management and Arr synchronization do not require it.</li>
+<li>v2 supports Linux AMD64 and ARM64 builds in DUMB.</li>
+</ul>
 <hr />
-<h2 id="tagging-rules-for-repo-items">Tagging rules for repo items<a class="headerlink" href="#tagging-rules-for-repo-items" title="Permanent link">&para;</a></h2>
+<h2 id="v1-tagging-rules-for-repo-items">v1 tagging rules for repo items<a class="headerlink" href="#v1-tagging-rules-for-repo-items" title="Permanent link">#</a></h2>
 <p>DUMB uses filename tags to avoid cross‑syncing:</p>
 <ul>
 <li><strong>Profiles / custom formats</strong> require <code>sonarr</code> or <code>radarr</code> in the filename.</li>
 <li><strong>Regex patterns / media management</strong> apply to both if no app‑specific tag is found.</li>
 </ul>
 <hr />
-<h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h2>
-<h3 id="missing-api-keys">Missing API keys<a class="headerlink" href="#missing-api-keys" title="Permanent link">&para;</a></h3>
+<h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">#</a></h2>
+<h3 id="missing-api-keys">Missing API keys<a class="headerlink" href="#missing-api-keys" title="Permanent link">#</a></h3>
 <p>If auto‑link runs before Arrs finish writing <code>config.xml</code>, you may see:</p>
 <div class="highlight"><pre><span></span><code>Profilarr auto-link: missing API key for sonarr ...
 </code></pre></div>
 <p>DUMB retries automatically after Arr start, but you can also restart Profilarr once the Arrs are fully up.</p>
 <hr />
-<h2 id="resources">Resources<a class="headerlink" href="#resources" title="Permanent link">&para;</a></h2>
+<h2 id="resources">Resources<a class="headerlink" href="#resources" title="Permanent link">#</a></h2>
 <ul>
 <li><a href="https://github.com/Dictionarry-Hub/profilarr">Profilarr Repository</a></li>
 <li><a href="https://dictionarry.dev/">Profilarr Docs</a></li>
