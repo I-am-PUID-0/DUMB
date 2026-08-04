@@ -7122,14 +7122,18 @@ matching configured-target installation action only when it is needed.</p>
 <span class="p">}</span>
 </code></pre></div>
 <h3 id="post-processauto-updatereschedule"><code>POST /process/auto-update/reschedule</code><a class="headerlink" href="#post-processauto-updatereschedule" title="Permanent link">#</a></h3>
-<p>Recomputes the next automatic-update run after changing a service's interval or start time.</p>
+<p>Recomputes the next automatic-update run after changing a service's enabled
+state, interval, start time, or <code>auto_update_mode</code>. The supported modes are
+<code>install</code> (the backward-compatible default) and <code>check_only</code> (record the result
+without installing or restarting the service).</p>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;process_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;AltMount&quot;</span>
 <span class="p">}</span>
 </code></pre></div>
 <p>Clients should gate manual update actions on the <code>manual_update_check</code>
 capability, configured-target installation on <code>configured_source_install</code>, and
-the start-time control on <code>auto_update_start_time</code>. The dashboard multi-service
+the start-time control on <code>auto_update_start_time</code>, and the scheduled-action
+selector on <code>auto_update_mode</code>. The dashboard multi-service
 workflow is gated on <code>dashboard_bulk_updates</code>; it orchestrates the existing
 per-service check/install endpoints sequentially and never sends bulk source
 overrides.</p>
@@ -7614,6 +7618,7 @@ provider-safety behavior.</p>
 <span class="w">  </span><span class="nt">&quot;commit_sha_pinning&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;seerr_sync&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;auto_update_start_time&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;auto_update_mode&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;symlink_repair&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;symlink_repair_async&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;symlink_manifest_backup&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
@@ -7683,6 +7688,10 @@ provider-safety behavior.</p>
 <tr>
 <td><code>auto_update_start_time</code></td>
 <td>Whether anchored auto-update start time is supported</td>
+</tr>
+<tr>
+<td><code>auto_update_mode</code></td>
+<td>Whether schedules can report available updates without installing them</td>
 </tr>
 <tr>
 <td><code>startup_lifecycle</code></td>

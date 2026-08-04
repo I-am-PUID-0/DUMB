@@ -5914,8 +5914,12 @@ summary before choosing an installation path.</p>
 </thead>
 <tbody>
 <tr>
-<td><strong>Enabled</strong></td>
-<td>Check for updates automatically</td>
+<td><strong>Scheduled update checks</strong></td>
+<td>Enable the per-service schedule</td>
+</tr>
+<tr>
+<td><strong>When available</strong></td>
+<td><strong>Show on dashboard</strong> records the update without installing; <strong>Install automatically</strong> retains the existing update/restart behavior</td>
 </tr>
 <tr>
 <td><strong>Start time</strong></td>
@@ -5931,6 +5935,8 @@ summary before choosing an installation path.</p>
 <ul>
 <li>Saving auto-update settings reschedules the updater immediately (no service restart required).</li>
 <li><strong>Next check</strong> is shown in the panel once auto-update is enabled and scheduled.</li>
+<li>Check-only results feed the dashboard Updates count, per-service shortcut, and bulk Updates panel.</li>
+<li>Older backends without the <code>auto_update_mode</code> capability retain automatic installation and do not show the action selector.</li>
 </ul>
 <hr />
 <h2 id="seerr-sync-panel">Seerr Sync panel<a class="headerlink" href="#seerr-sync-panel" title="Permanent link">#</a></h2>

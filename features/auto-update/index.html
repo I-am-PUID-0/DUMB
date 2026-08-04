@@ -6,7 +6,7 @@
   
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="description" content="Configure scheduled DUMB service updates, release and branch selection, immutable commit pins, update windows, and safe override actions.">
+  <meta name="description" content="Configure scheduled DUMB service update checks, dashboard-only notifications, automatic installation, source pins, and update windows.">
   
     <meta name="author" content="DUMB Team">
   
@@ -110,7 +110,7 @@
     <meta property="og:locale" content="en_US">
     <meta property="og:site_name" content="DUMB — Distributed Unlimited Media Bridge">
     <meta property="og:title" content="Auto-update">
-    <meta property="og:description" content="Configure scheduled DUMB service updates, release and branch selection, immutable commit pins, update windows, and safe override actions.">
+    <meta property="og:description" content="Configure scheduled DUMB service update checks, dashboard-only notifications, automatic installation, source pins, and update windows.">
     <meta property="og:url" content="https://dumbarr.com/features/auto-update/">
     <meta property="og:image" content="https://dumbarr.com/assets/images/DUMB.png">
     <meta property="og:image:secure_url" content="https://dumbarr.com/assets/images/DUMB.png">
@@ -120,7 +120,7 @@
     <meta property="og:image:alt" content="Distributed Unlimited Media Bridge ecosystem and architecture overview">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="Auto-update">
-    <meta name="twitter:description" content="Configure scheduled DUMB service updates, release and branch selection, immutable commit pins, update windows, and safe override actions.">
+    <meta name="twitter:description" content="Configure scheduled DUMB service update checks, dashboard-only notifications, automatic installation, source pins, and update windows.">
     <meta name="twitter:image" content="https://dumbarr.com/assets/images/DUMB.png">
     <meta name="twitter:image:alt" content="Distributed Unlimited Media Bridge ecosystem and architecture overview">
     
@@ -1122,6 +1122,17 @@
     <span class="md-ellipsis">
       
         Configuration options
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#check-only-and-review-on-the-dashboard" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Check only and review on the dashboard
       
     </span>
   </a>
@@ -5482,6 +5493,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#check-only-and-review-on-the-dashboard" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Check only and review on the dashboard
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -5921,7 +5943,9 @@ flowchart TD
     C[Check for updates]
     D([Start service])
     E{Update available?}
-    F[Download update]
+    F{Scheduled action?}
+    L[Show pending update on dashboard]
+    M[Download update]
     G[Stop service]
     H[Apply update]
     I([Start service])
@@ -5934,7 +5958,10 @@ flowchart TD
     C ==&gt; E
     E -- No --&gt; D
     E -- Yes --&gt; F
-    F ==&gt; G
+    F -- Check only --&gt; L
+    L ==&gt; J
+    F -- Install automatically --&gt; M
+    M ==&gt; G
     G ==&gt; H
     H ==&gt; I
     I ==&gt; J
@@ -5944,9 +5971,9 @@ flowchart TD
 <ol>
 <li><strong>Initial check</strong> - When a service starts, DUMB checks for available updates</li>
 <li><strong>Version comparison</strong> - Current version is compared with the latest available</li>
-<li><strong>Download</strong> - If an update is available, the new version is downloaded</li>
-<li><strong>Apply</strong> - The service is stopped, updated, and restarted</li>
-<li><strong>Notify</strong> - The frontend can show a review notice for available or recently applied DUMB backend/frontend updates</li>
+<li><strong>Act</strong> - In <code>check_only</code> mode, DUMB leaves the service untouched and records the pending update; in <code>install</code> mode, it downloads and applies the update</li>
+<li><strong>Dashboard</strong> - Pending check-only results appear in the dashboard <strong>Updates</strong> badge, service card, and Updates panel</li>
+<li><strong>Notify</strong> - Configured DUMB notifications can emit the <code>update.available</code> event, while project update notices cover DUMB backend/frontend updates</li>
 <li><strong>Schedule</strong> - Future update checks are scheduled based on the configured interval</li>
 </ol>
 <p>When an update affects storage used by Plex, Jellyfin, or Emby, <a href="../media-library-protection/">Media Library Protection</a> runs before the service is stopped. Scheduled updates are deferred while playback is active or activity cannot be verified. Manual installs show explicit protect, keep-running, stop-now, and defer choices in dmbdb.</p>
@@ -5961,6 +5988,7 @@ flowchart TD
 <span class="w">  </span><span class="nt">&quot;service_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">    </span><span class="nt">&quot;enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;auto_update&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;auto_update_mode&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;check_only&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;auto_update_start_time&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;04:00&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;auto_update_interval&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">24</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;release_version_enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
@@ -5989,7 +6017,13 @@ flowchart TD
 <td><code>auto_update</code></td>
 <td>boolean</td>
 <td><code>false</code></td>
-<td>Enable automatic updates for this service</td>
+<td>Enable scheduled update checks for this service</td>
+</tr>
+<tr>
+<td><code>auto_update_mode</code></td>
+<td>string</td>
+<td><code>"install"</code></td>
+<td><code>check_only</code> reports pending updates; <code>install</code> applies them automatically</td>
 </tr>
 <tr>
 <td><code>auto_update_start_time</code></td>
@@ -6071,6 +6105,17 @@ without clearing it. <strong>Override + latest</strong> is a separate escape hat
 temporarily bypasses any saved release, branch, commit, or pinned-version
 selection and installs the latest stable release. DUMB restores the saved
 configuration after that one installation.</p>
+<h3 id="check-only-and-review-on-the-dashboard">Check only and review on the dashboard<a class="headerlink" href="#check-only-and-review-on-the-dashboard" title="Permanent link">#</a></h3>
+<p>Set <code>auto_update</code> to <code>true</code> and <code>auto_update_mode</code> to <code>check_only</code> when you want
+DUMB to check on schedule without stopping, restarting, or changing the
+service. When a newer ordinary release is found, the dashboard <strong>Updates</strong>
+button shows a count, the service card exposes its update shortcut, and the
+Updates panel includes the current and available versions. You can then install
+one update or select several for sequential installation.</p>
+<p>The dashboard refreshes the cached results while it remains open. A later
+scheduled or manual check clears the pending state when the service is current.
+Existing configurations that do not contain <code>auto_update_mode</code> retain the
+legacy <code>install</code> behavior.</p>
 <hr />
 <h2 id="update-strategies">Update strategies<a class="headerlink" href="#update-strategies" title="Permanent link">#</a></h2>
 <h3 id="latest-release-default">Latest release (default)<a class="headerlink" href="#latest-release-default" title="Permanent link">#</a></h3>
@@ -6078,6 +6123,7 @@ configuration after that one installation.</p>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;frontend&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">    </span><span class="nt">&quot;auto_update&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;auto_update_mode&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;install&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;auto_update_start_time&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;04:00&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;auto_update_interval&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">24</span>
 <span class="w">  </span><span class="p">}</span>

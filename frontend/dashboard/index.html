@@ -5656,6 +5656,11 @@ branch, commit, and pinned-version choices are never overridden by this shortcut
 <h2 id="check-and-update-multiple-services">Check and update multiple services<a class="headerlink" href="#check-and-update-multiple-services" title="Permanent link">#</a></h2>
 <p>Use <strong>Updates</strong> in the dashboard header to review every enabled service that
 supports DUMB-managed updates.</p>
+<p>The button shows a pending count when cached checks report available updates.
+This includes checks run manually and services configured with scheduled
+<strong>Show on dashboard</strong> (<code>auto_update_mode: check_only</code>). The dashboard refreshes
+the inventory periodically while open, so a completed background check can
+light the badge without reloading the page.</p>
 <ol>
 <li>Select <strong>Check all</strong> to check the services sequentially.</li>
 <li>Review current and available versions plus any updater message.</li>
@@ -5669,7 +5674,8 @@ the current dashboard, then reopen it to view progress.</p>
 marked <strong>Review source</strong> has a saved release, branch, commit, or version choice;
 open that service page to decide whether to install its configured target or use
 the explicit <strong>Override + latest</strong> action. The bulk workflow never overrides it.</p>
-<p>DUMB Frontend and DUMB API updates are ordered last so the loaded dashboard can
+<p>Checking never restarts a service. Installing does. DUMB Frontend and DUMB API
+updates are ordered last so the loaded dashboard can
 report as much progress as possible. Updating either control-plane service can
 briefly interrupt the final response or inventory refresh. After a bulk update,
 verify service health and logs before continuing normal operation.</p>
