@@ -422,6 +422,22 @@ class DatabaseHealthCollectorTests(unittest.TestCase):
                 ],
             )
 
+    def test_profilarr_v2_uses_app_base_path_database(self):
+        collector = DatabaseHealthCollector()
+        candidate = collector._candidate(
+            "profilarr",
+            {
+                "config_dir": "/profilarr/default",
+                "env": {"APP_BASE_PATH": "/profilarr/default/config"},
+            },
+            None,
+        )
+
+        self.assertEqual(
+            collector._sqlite_paths(candidate),
+            [("main", "/profilarr/default/config/data/profilarr.db")],
+        )
+
     def test_altmount_detects_postgres_dsn_from_application_config(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             config_path = Path(temp_dir) / "config.yaml"

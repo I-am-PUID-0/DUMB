@@ -14,6 +14,56 @@ from utils.versions import PROFILARR_LEGACY_RELEASE_VERSION
 logger = logging.getLogger(__name__)
 
 DEFAULT_PROFILARR_REPO = "https://github.com/johman10/profilarr-trash-guides"
+PROFILARR_V2_LAYOUT_FILES = ("deno.json", "package.json", "vite.config.ts")
+
+
+def profilarr_v2_runtime_environment(
+    config_root: str,
+    port: str | int,
+    sqlite_library: str | None = None,
+) -> dict[str, str]:
+    """Return a writable, persistent runtime environment for Profilarr v2."""
+    environment = {
+        "APP_BASE_PATH": config_root,
+        "PORT": str(port),
+        "HOST": "0.0.0.0",
+        "HOME": config_root,
+        "XDG_CACHE_HOME": os.path.join(config_root, ".cache"),
+        "DENO_DIR": os.path.join(config_root, ".deno"),
+        "DENO_NO_UPDATE_CHECK": "1",
+    }
+    if sqlite_library:
+        environment["DENO_SQLITE_PATH"] = sqlite_library
+    return environment
+
+
+def detect_profilarr_layout(config_dir: str) -> str | None:
+    """Return the installed Profilarr generation from its source/runtime layout."""
+    if os.path.isfile(os.path.join(config_dir, "backend", "app", "main.py")):
+        return "v1"
+    if os.path.isfile(os.path.join(config_dir, "runtime", "profilarr")):
+        return "v2"
+    if all(
+        os.path.isfile(os.path.join(config_dir, filename))
+        for filename in PROFILARR_V2_LAYOUT_FILES
+    ) and os.path.isdir(os.path.join(config_dir, "src")):
+        return "v2"
+    return None
+
+
+def profilarr_runtime_ready(config_dir: str) -> bool:
+    layout = detect_profilarr_layout(config_dir)
+    if layout == "v1":
+        return os.path.isfile(
+            os.path.join(config_dir, "backend", "venv", "bin", "gunicorn")
+        ) and os.path.isdir(os.path.join(config_dir, "frontend", "dist"))
+    if layout == "v2":
+        runtime_dir = os.path.join(config_dir, "runtime")
+        return os.path.isfile(os.path.join(runtime_dir, "profilarr")) and all(
+            os.path.exists(os.path.join(runtime_dir, name))
+            for name in ("server.js", "static")
+        )
+    return False
 
 
 def validate_profilarr_legacy_layout(
@@ -29,6 +79,21 @@ def validate_profilarr_legacy_layout(
             "backend/frontend layout supported by this integration. Pin "
             f"Profilarr to {PROFILARR_LEGACY_RELEASE_VERSION} or disable "
             "Profilarr until v2 runtime support is added."
+        ),
+    )
+
+
+def validate_profilarr_layout(
+    instance_name: str, config_dir: str
+) -> tuple[str | None, str | None]:
+    layout = detect_profilarr_layout(config_dir)
+    if layout:
+        return layout, None
+    return (
+        None,
+        (
+            f"Profilarr instance {instance_name} does not contain a supported "
+            "v1 backend/frontend layout or v2 Deno/SvelteKit layout."
         ),
     )
 
@@ -309,6 +374,14 @@ def sync_profilarr_arr_configs(profilarr_instance: dict) -> tuple[bool, str | No
     config_root = os.path.join(
         profilarr_instance.get("config_dir", "/profilarr/default"), "config"
     )
+    layout = detect_profilarr_layout(
+        profilarr_instance.get("config_dir", "/profilarr/default")
+    )
+    if layout == "v2":
+        return _sync_profilarr_v2_arr_configs(config_root, core_services)
+    if layout != "v1":
+        return False, "Profilarr installation layout could not be detected"
+
     backend_dir = os.path.join(
         profilarr_instance.get("config_dir", "/profilarr/default"), "backend"
     )
@@ -442,6 +515,123 @@ def sync_profilarr_arr_configs(profilarr_instance: dict) -> tuple[bool, str | No
 
     _run_initial_sync(backend_dir, config_root, inserted_ids)
     logger.info("Profilarr auto-link updated %s arr configs.", len(entries))
+    return True, None
+
+
+def _json_tags(value) -> list[str]:
+    if not value:
+        return []
+    try:
+        parsed = json.loads(value)
+    except (TypeError, ValueError):
+        return []
+    return [str(tag) for tag in parsed] if isinstance(parsed, list) else []
+
+
+def _sync_profilarr_v2_arr_configs(
+    config_root: str, core_services: list[str]
+) -> tuple[bool, str | None]:
+    """Reconcile DUMB-managed Arr connections in Profilarr v2's application DB.
+
+    Profilarr v2 owns database/profile selection and sync policy. DUMB only manages
+    the Arr connection rows marked with ``dumb:auto``; it does not choose profiles
+    or trigger an initial sync on the operator's behalf.
+    """
+    db_path = os.path.join(config_root, "data", "profilarr.db")
+    if not os.path.isfile(db_path):
+        return False, "Profilarr v2 database is not initialized yet"
+
+    entries = _build_arr_entries(core_services)
+
+    try:
+        with sqlite3.connect(db_path, timeout=5) as conn:
+            conn.row_factory = sqlite3.Row
+            conn.execute("PRAGMA foreign_keys = ON")
+            columns = {
+                row["name"]
+                for row in conn.execute("PRAGMA table_info(arr_instances)").fetchall()
+            }
+            required = {"id", "name", "type", "url", "api_key", "tags", "enabled"}
+            if not required.issubset(columns):
+                return False, "Profilarr v2 database migrations are not ready yet"
+
+            existing = conn.execute(
+                "SELECT id, name, tags FROM arr_instances"
+            ).fetchall()
+            existing_by_name = {row["name"]: row for row in existing}
+            managed = {
+                row["name"]
+                for row in existing
+                if "dumb:auto" in _json_tags(row["tags"])
+            }
+            desired_names = {entry["name"] for entry in entries}
+
+            for entry in entries:
+                row = existing_by_name.get(entry["name"])
+                tags = list(entry["tags"])
+                if row:
+                    if entry["name"] not in managed:
+                        logger.warning(
+                            "Profilarr v2 auto-link left user-managed Arr instance "
+                            "unchanged because its name matches a DUMB service."
+                        )
+                        continue
+                    preserved_tags = [
+                        tag
+                        for tag in _json_tags(row["tags"])
+                        if tag not in {"dumb:auto", "Sonarr", "Radarr"}
+                        and not tag.startswith("core_service:")
+                    ]
+                    tags.extend(tag for tag in preserved_tags if tag not in tags)
+                    logger.debug("Profilarr v2 auto-link updating Arr instance.")
+                    conn.execute(
+                        """
+                        UPDATE arr_instances
+                        SET type = ?, url = ?, api_key = ?, tags = ?, enabled = 1,
+                            updated_at = CURRENT_TIMESTAMP
+                        WHERE id = ?
+                        """,
+                        (
+                            entry["type"],
+                            entry["arr_server"],
+                            entry["api_key"],
+                            json.dumps(tags),
+                            row["id"],
+                        ),
+                    )
+                else:
+                    logger.info("Profilarr v2 auto-link creating Arr instance.")
+                    conn.execute(
+                        """
+                        INSERT INTO arr_instances
+                            (name, type, url, api_key, tags, enabled)
+                        VALUES (?, ?, ?, ?, ?, 1)
+                        """,
+                        (
+                            entry["name"],
+                            entry["type"],
+                            entry["arr_server"],
+                            entry["api_key"],
+                            json.dumps(tags),
+                        ),
+                    )
+
+            stale = managed - desired_names
+            if stale:
+                logger.info(
+                    "Profilarr v2 auto-link removing %s stale Arr instances", len(stale)
+                )
+                conn.execute(
+                    "DELETE FROM arr_instances WHERE name IN ({})".format(
+                        ",".join("?" for _ in stale)
+                    ),
+                    tuple(stale),
+                )
+            conn.commit()
+    except sqlite3.Error as exc:
+        return False, f"Profilarr v2 database update failed: {exc}"
+
+    logger.info("Profilarr v2 auto-link reconciled %s Arr instances.", len(entries))
     return True, None
 
 

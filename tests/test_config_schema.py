@@ -52,6 +52,12 @@ class DumbConfigSchemaTests(unittest.TestCase):
             ],
         )
 
+    def test_profilarr_defaults_to_unpinned_latest_release(self):
+        profilarr = self.config["profilarr"]["instances"]["Default"]
+
+        self.assertFalse(profilarr["release_version_enabled"])
+        self.assertEqual("latest", profilarr["release_version"])
+
     def test_schema_rejects_non_positive_managed_user_ids(self):
         validator = Draft7Validator(self.schema)
 

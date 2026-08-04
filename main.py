@@ -420,7 +420,7 @@ def _run_profilarr_sync_retries(start_key: str) -> None:
         ok, err = patch_profilarr_config()
         if not ok and err:
             logger.warning("Profilarr config sync failed: %s", err)
-        if start_key in {"sonarr", "radarr"}:
+        if start_key in {"profilarr", "sonarr", "radarr"}:
             for attempt in range(2):
                 time.sleep(10)
                 ok, err = patch_profilarr_config()

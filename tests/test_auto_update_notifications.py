@@ -55,6 +55,29 @@ class UpdateNotificationTests(unittest.TestCase):
             updater._get_update_block_reason({"commit_sha": "a" * 40}),
         )
 
+    def test_latest_release_is_a_moving_update_target(self):
+        updater = self._updater()
+
+        self.assertIsNone(
+            updater._get_update_block_reason(
+                {
+                    "release_version_enabled": True,
+                    "release_version": "latest",
+                },
+                "profilarr",
+            )
+        )
+        self.assertEqual(
+            "release",
+            updater._get_update_block_reason(
+                {
+                    "release_version_enabled": True,
+                    "release_version": "v1.1.4",
+                },
+                "profilarr",
+            ),
+        )
+
     def test_only_digit_free_nzbdav_release_tags_are_moving_channels(self):
         for release in ("dev", "lts", "edge", "release-candidate"):
             with self.subTest(release=release):

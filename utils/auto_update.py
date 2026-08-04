@@ -96,6 +96,8 @@ class Update:
         if config.get("release_version_enabled"):
             if self._is_nzbdav_named_release_channel(key, config):
                 return None
+            if str(config.get("release_version") or "").strip().lower() == "latest":
+                return None
             if not self._release_is_nightly_or_prerelease(config):
                 return "release"
         return None
@@ -643,8 +645,8 @@ class Update:
 
         nightly = False
         prerelease = False
+        release_value = (config.get("release_version") or "").lower()
         if config.get("release_version_enabled"):
-            release_value = (config.get("release_version") or "").lower()
             if "nightly" in release_value:
                 nightly = True
             elif "prerelease" in release_value:
@@ -1616,10 +1618,14 @@ class Update:
         if commit_sha:
             return current_version != f"commit-{commit_sha[:12]}"
 
-        if config.get("branch_enabled") and key in {"decypharr", "nzbdav"}:
+        if config.get("branch_enabled") and key in {
+            "decypharr",
+            "nzbdav",
+            "profilarr",
+        }:
             branch_name = (config.get("branch") or "main").strip() or "main"
-            # Decypharr branch builds persist as "<branch>-<short_sha>" in version.txt.
-            if key == "decypharr":
+            # Source builds persist as "<branch>-<short_sha>" in version.txt.
+            if key in {"decypharr", "profilarr"}:
                 head_sha, head_err = self._fetch_branch_head_sha(
                     config.get("repo_owner"), config.get("repo_name"), branch_name
                 )
@@ -1630,7 +1636,8 @@ class Update:
                     return True
                 if head_err:
                     self.logger.debug(
-                        "Decypharr branch SHA lookup failed for preinstall check: %s",
+                        "%s branch SHA lookup failed for preinstall check: %s",
+                        process_name,
                         head_err,
                     )
                 if current_version.startswith(f"{branch_name}-"):
@@ -1779,7 +1786,10 @@ class Update:
             )
         elif (
             config.get("pinned_version")
-            or config.get("release_version_enabled")
+            or (
+                config.get("release_version_enabled")
+                and str(config.get("release_version") or "").strip().lower() != "latest"
+            )
             or config.get("branch_enabled")
         ):
             if not self._release_is_nightly_or_prerelease(
@@ -2104,14 +2114,15 @@ class Update:
                 if process_name in self.process_handler.setup_tracker:
                     self.process_handler.setup_tracker.remove(process_name)
 
-            success, error = setup_branch_version(
-                self.process_handler, config, process_name, key
-            )
-            if not success:
-                return (
-                    False,
-                    f"Failed to update {process_name} to {target_version}: {error}",
+            if key != "profilarr":
+                success, error = setup_branch_version(
+                    self.process_handler, config, process_name, key
                 )
+                if not success:
+                    return (
+                        False,
+                        f"Failed to update {process_name} to {target_version}: {error}",
+                    )
             success, error = setup_project(self.process_handler, process_name)
             if not success:
                 return (
@@ -2120,8 +2131,8 @@ class Update:
                 )
             return self.start_process(process_name, config, key, instance_name)
 
+        release_value = (config.get("release_version") or "").lower()
         if config.get("release_version_enabled"):
-            release_value = (config.get("release_version") or "").lower()
             if "nightly" in release_value:
                 nightly = True
                 prerelease = False
@@ -2217,19 +2228,24 @@ class Update:
                 if process_name in self.process_handler.setup_tracker:
                     self.process_handler.setup_tracker.remove(process_name)
             release_version = f"{update_info.get('latest_version')}"
-            if not prerelease and not nightly:
+            if (
+                not prerelease
+                and not nightly
+                and not (key == "profilarr" and release_value == "latest")
+            ):
                 config["release_version"] = release_version
                 self.logger.info(
                     f"Updating {process_name} config to {release_version}."
                 )
-            success, error = setup_release_version(
-                self.process_handler, config, process_name, key
-            )
-            if not success:
-                return (
-                    False,
-                    f"Failed to update {process_name} to {release_version}: {error}",
+            if key != "profilarr":
+                success, error = setup_release_version(
+                    self.process_handler, config, process_name, key
                 )
+                if not success:
+                    return (
+                        False,
+                        f"Failed to update {process_name} to {release_version}: {error}",
+                    )
             success, error = setup_project(self.process_handler, process_name)
             if not success:
                 return (

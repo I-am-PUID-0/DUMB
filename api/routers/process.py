@@ -2062,7 +2062,7 @@ async def start_service(
                         ok, err = patch_profilarr_config()
                         if not ok and err:
                             logger.warning("Profilarr config sync failed: %s", err)
-                        if key in ["sonarr", "radarr"]:
+                        if key in ["profilarr", "sonarr", "radarr"]:
                             for attempt in range(2):
                                 time.sleep(10)
                                 ok, err = patch_profilarr_config()
@@ -2248,7 +2248,7 @@ async def restart_service(
                         ok, err = patch_profilarr_config()
                         if not ok and err:
                             logger.warning("Profilarr config sync failed: %s", err)
-                        if key in ["sonarr", "radarr"]:
+                        if key in ["profilarr", "sonarr", "radarr"]:
                             for attempt in range(2):
                                 time.sleep(10)
                                 ok, err = patch_profilarr_config()

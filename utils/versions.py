@@ -128,15 +128,18 @@ class Versions:
         if release_version.lower() != "latest":
             return release_version, release_version
 
-        repo_owner = str(instance.get("repo_owner") or "").lower()
-        repo_name = str(instance.get("repo_name") or "").lower()
-        if repo_owner == "dictionarry-hub" and repo_name == "profilarr":
-            self.logger.warning(
-                "Profilarr v2 uses a new Deno/SvelteKit runtime. Using %s, the latest "
-                "release compatible with DUMB's legacy Profilarr automation.",
-                PROFILARR_LEGACY_RELEASE_VERSION,
-            )
-            return PROFILARR_LEGACY_RELEASE_VERSION, PROFILARR_LEGACY_RELEASE_VERSION
+        repo_owner = str(instance.get("repo_owner") or "Dictionarry-Hub").strip()
+        repo_name = str(instance.get("repo_name") or "profilarr").strip()
+        latest_version, error = self.downloader.get_latest_release(
+            repo_owner, repo_name, nightly=False, prerelease=False
+        )
+        if latest_version:
+            return latest_version, latest_version
+        self.logger.warning(
+            "Unable to resolve the latest Profilarr release: %s. The downloader "
+            "will retry the latest selector during installation.",
+            error or "unknown error",
+        )
 
         return release_version, release_version
 
@@ -639,9 +642,13 @@ class Versions:
     ):
         try:
             config = self._get_service_config_for_compare(key, instance_name)
-            if key in ("decypharr", "nzbdav", "neutarr", "maintainerr") and bool(
-                config.get("branch_enabled")
-            ):
+            if key in (
+                "decypharr",
+                "nzbdav",
+                "neutarr",
+                "maintainerr",
+                "profilarr",
+            ) and bool(config.get("branch_enabled")):
                 branch_name = (config.get("branch") or "main").strip() or "main"
                 latest_branch_version, error = self._get_branch_head_marker(
                     repo_owner, repo_name, branch_name

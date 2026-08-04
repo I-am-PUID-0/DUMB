@@ -417,10 +417,18 @@ class DatabaseHealthCollector:
             return [("main", os.path.join(config_dir, "data", "tautulli.db"))]
         if key == "profilarr":
             env = service.get("env") or {}
-            data_dir = str(
+            app_base_path = env.get("APP_BASE_PATH")
+            if app_base_path:
+                return [
+                    (
+                        "main",
+                        os.path.join(str(app_base_path), "data", "profilarr.db"),
+                    )
+                ]
+            legacy_data_dir = str(
                 env.get("PROFILARR_CONFIG_DIR") or os.path.join(config_dir, "config")
             )
-            return [("main", os.path.join(data_dir, "profilarr.db"))]
+            return [("main", os.path.join(legacy_data_dir, "profilarr.db"))]
         if key == "pulsarr":
             env = service.get("env") or {}
             return [

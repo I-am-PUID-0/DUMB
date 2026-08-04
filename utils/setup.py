@@ -33,7 +33,7 @@ from utils.mediastorm_installer import (
 )
 import defusedxml.ElementTree as ET
 import yaml
-import os, shutil, random, subprocess, re, glob, secrets, shlex, time, urllib.parse, base64, threading, sys, hashlib, json, requests, copy
+import os, shutil, random, subprocess, re, glob, secrets, shlex, time, urllib.parse, base64, threading, sys, hashlib, json, requests, copy, platform, tempfile, zipfile
 
 user_id = CONFIG_MANAGER.get("puid")
 group_id = CONFIG_MANAGER.get("pgid")
@@ -585,9 +585,9 @@ def setup_branch_version(process_handler, config, process_name, key):
         if service_key == "pulsarr":
             return os.path.isfile(os.path.join(target_dir, "dist", "server.js"))
         if service_key == "profilarr":
-            return os.path.isfile(
-                os.path.join(target_dir, "backend", "venv", "bin", "gunicorn")
-            ) and os.path.isdir(os.path.join(target_dir, "frontend", "dist"))
+            from utils.profilarr_settings import profilarr_runtime_ready
+
+            return profilarr_runtime_ready(target_dir)
         if service_key == "seerr":
             return os.path.isfile(os.path.join(target_dir, "dist", "index.js"))
         if service_key == "zilean":
@@ -992,7 +992,12 @@ def _setup_project(
                 requested_lower in {"latest", "prerelease"}
                 or "nightly" in requested_lower
             )
-            if not bootstrap_installed and commit_sha:
+            source_managed_by_service_setup = key == "profilarr"
+            if (
+                not bootstrap_installed
+                and not source_managed_by_service_setup
+                and commit_sha
+            ):
                 success, error = setup_branch_version(
                     process_handler, config, process_name, key
                 )
@@ -1000,6 +1005,7 @@ def _setup_project(
                     return False, error
             elif (
                 not bootstrap_installed
+                and not source_managed_by_service_setup
                 and config.get("release_version_enabled")
                 and (not config.get("auto_update") or allow_release_with_auto_update)
             ):
@@ -1075,7 +1081,11 @@ def _setup_project(
                                 f"No update needed for {process_name}: current version matches requested version {requested_version}"
                             )
 
-            elif not bootstrap_installed and config.get("branch_enabled"):
+            elif (
+                not bootstrap_installed
+                and not source_managed_by_service_setup
+                and config.get("branch_enabled")
+            ):
                 success, error = setup_branch_version(
                     process_handler, config, process_name, key
                 )
@@ -6465,10 +6475,250 @@ def _patch_profilarr_requirements(backend_dir: str) -> None:
         return
 
 
+def _profilarr_deno_version(config_dir: str) -> str:
+    dockerfile = os.path.join(config_dir, "Dockerfile")
+    try:
+        with open(dockerfile, "r", encoding="utf-8") as handle:
+            content = handle.read()
+    except OSError as exc:
+        raise RuntimeError(f"Unable to read Profilarr v2 Dockerfile: {exc}") from exc
+    match = re.search(
+        r"^FROM\s+denoland/deno:(\d+\.\d+\.\d+)\s+AS\s+builder\s*$",
+        content,
+        re.M,
+    )
+    if not match:
+        raise RuntimeError(
+            "Profilarr v2 does not declare a supported Deno builder version."
+        )
+    return match.group(1)
+
+
+def _ensure_profilarr_deno(config_dir: str) -> tuple[str | None, str | None]:
+    try:
+        deno_version = _profilarr_deno_version(config_dir)
+    except RuntimeError as exc:
+        return None, str(exc)
+
+    machine = platform.machine().lower()
+    if machine in {"x86_64", "amd64"}:
+        deno_arch = "x86_64-unknown-linux-gnu"
+    elif machine in {"aarch64", "arm64"}:
+        deno_arch = "aarch64-unknown-linux-gnu"
+    else:
+        return None, f"Profilarr v2 is not supported on architecture {machine}."
+
+    runtime_dir = os.path.join("/config/.deno", deno_version, deno_arch)
+    deno_bin = os.path.join(runtime_dir, "deno")
+    if os.path.isfile(deno_bin):
+        try:
+            result = subprocess.run(
+                [deno_bin, "--version"], capture_output=True, text=True, timeout=10
+            )
+            if result.returncode == 0 and result.stdout.startswith(
+                f"deno {deno_version}"
+            ):
+                return deno_bin, None
+        except (OSError, subprocess.SubprocessError):
+            pass
+
+    download_url = (
+        "https://github.com/denoland/deno/releases/download/"
+        f"v{deno_version}/deno-{deno_arch}.zip"
+    )
+    logger.info("Downloading Deno %s for Profilarr v2.", deno_version)
+    try:
+        response = requests.get(download_url, timeout=120)
+        response.raise_for_status()
+        with tempfile.TemporaryDirectory(prefix="profilarr-deno-") as temp_dir:
+            archive_path = os.path.join(temp_dir, "deno.zip")
+            with open(archive_path, "wb") as handle:
+                handle.write(response.content)
+            with zipfile.ZipFile(archive_path) as archive:
+                member = archive.getinfo("deno")
+                extracted = archive.extract(member, temp_dir)
+            os.makedirs(runtime_dir, exist_ok=True)
+            staged_bin = f"{deno_bin}.tmp"
+            shutil.copy2(extracted, staged_bin)
+            os.chmod(staged_bin, 0o755)
+            os.replace(staged_bin, deno_bin)
+    except (OSError, requests.RequestException, zipfile.BadZipFile, KeyError) as exc:
+        return None, f"Failed to install Deno {deno_version}: {exc}"
+
+    return deno_bin, None
+
+
+def _run_profilarr_build_step(
+    process_handler, name: str, config_dir: str, command: list[str], env: dict
+) -> tuple[bool, str | None]:
+    success, error = process_handler.start_process(name, config_dir, command, env=env)
+    if not success:
+        return False, error or f"{name} failed to start"
+    process_handler.wait(name)
+    if process_handler.returncode != 0:
+        detail = process_handler.stderr or process_handler.stdout or "unknown error"
+        return False, f"{name} failed: {detail}"
+    return True, None
+
+
+def _write_profilarr_v2_build_info(
+    config_dir: str, version_marker: str, commit_sha: str | None, channel: str
+) -> tuple[bool, str | None]:
+    build_path = os.path.join(config_dir, "src", "lib", "shared", "build.ts")
+    version = str(version_marker or "dev").removeprefix("v")
+    commit = commit_sha[:7] if commit_sha else None
+    built_at = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+    content = (
+        "// Generated by DUMB during the Profilarr v2 build.\n"
+        "export type Channel = 'stable' | 'develop' | 'dev';\n\n"
+        "export interface BuildInfo {\n"
+        "\treadonly version: string;\n"
+        "\treadonly channel: Channel;\n"
+        "\treadonly commit: string | null;\n"
+        "\treadonly builtAt: string | null;\n"
+        "}\n\n"
+        "export const build: BuildInfo = {\n"
+        f"\tversion: {json.dumps(version)},\n"
+        f"\tchannel: {json.dumps(channel)},\n"
+        f"\tcommit: {json.dumps(commit)},\n"
+        f"\tbuiltAt: {json.dumps(built_at)}\n"
+        "};\n"
+    )
+    try:
+        with open(build_path, "w", encoding="utf-8") as handle:
+            handle.write(content)
+    except OSError as exc:
+        return False, f"Failed to stamp Profilarr v2 build metadata: {exc}"
+    return True, None
+
+
+def _build_profilarr_v2(
+    process_handler,
+    config_dir: str,
+    version_marker: str,
+    commit_sha: str | None,
+    channel: str,
+) -> tuple[bool, str | None]:
+    deno_bin, error = _ensure_profilarr_deno(config_dir)
+    if not deno_bin:
+        return False, error
+
+    success, error = _write_profilarr_v2_build_info(
+        config_dir, version_marker, commit_sha, channel
+    )
+    if not success:
+        return False, error
+
+    machine = platform.machine().lower()
+    deno_target = (
+        "aarch64-unknown-linux-gnu"
+        if machine in {"aarch64", "arm64"}
+        else "x86_64-unknown-linux-gnu"
+    )
+    build_dir = os.path.join(config_dir, "dist", "build")
+    runtime_dir = os.path.join(config_dir, "runtime")
+    deno_cache = "/config/.deno/cache"
+    os.makedirs(deno_cache, exist_ok=True)
+    env = os.environ.copy()
+    env.update(
+        {
+            "APP_BASE_PATH": build_dir,
+            "DENO_DIR": deno_cache,
+            "DENO_NO_UPDATE_CHECK": "1",
+            "HOME": config_dir,
+            "VITE_PLATFORM": (
+                "docker-arm64" if deno_target.startswith("aarch64") else "docker-amd64"
+            ),
+            "VITE_CHANNEL": channel,
+        }
+    )
+
+    success, error = _run_profilarr_build_step(
+        process_handler,
+        "profilarr_deno_install",
+        config_dir,
+        [deno_bin, "install", "--node-modules-dir"],
+        env,
+    )
+    if not success:
+        return False, error
+    success, error = _run_profilarr_build_step(
+        process_handler,
+        "profilarr_v2_build",
+        config_dir,
+        [deno_bin, "run", "-A", "npm:vite", "build"],
+        env,
+    )
+    if not success:
+        return False, error
+
+    compiled_bin = os.path.join(build_dir, "profilarr")
+    success, error = _run_profilarr_build_step(
+        process_handler,
+        "profilarr_v2_compile",
+        config_dir,
+        [
+            deno_bin,
+            "compile",
+            "--no-check",
+            "--allow-net",
+            "--allow-read",
+            "--allow-write",
+            "--allow-env",
+            "--allow-ffi",
+            "--allow-run",
+            "--allow-sys",
+            "--target",
+            deno_target,
+            "--output",
+            compiled_bin,
+            os.path.join(build_dir, "mod.ts"),
+        ],
+        env,
+    )
+    if not success:
+        return False, error
+
+    try:
+        if os.path.isdir(runtime_dir):
+            shutil.rmtree(runtime_dir)
+        os.makedirs(runtime_dir, exist_ok=True)
+        shutil.copy2(compiled_bin, os.path.join(runtime_dir, "profilarr"))
+        shutil.copy2(
+            os.path.join(build_dir, "server.js"),
+            os.path.join(runtime_dir, "server.js"),
+        )
+        shutil.copytree(
+            os.path.join(build_dir, "static"), os.path.join(runtime_dir, "static")
+        )
+        os.chmod(os.path.join(runtime_dir, "profilarr"), 0o755)
+    except OSError as exc:
+        return False, f"Failed to stage Profilarr v2 runtime: {exc}"
+    return True, None
+
+
+def _profilarr_sqlite_library_path() -> str | None:
+    machine = platform.machine().lower()
+    arch = None
+    if machine in {"x86_64", "amd64"}:
+        arch = "x86_64"
+    elif machine in {"aarch64", "arm64"}:
+        arch = "aarch64"
+    if not arch:
+        return None
+    candidate = f"/usr/lib/{arch}-linux-gnu/libsqlite3.so.0"
+    return candidate if os.path.exists(candidate) else None
+
+
 def setup_profilarr(
     process_handler, install_only: bool = False, configure_only: bool = False
 ):
-    from utils.profilarr_settings import validate_profilarr_legacy_layout
+    from utils.profilarr_settings import (
+        detect_profilarr_layout,
+        profilarr_v2_runtime_environment,
+        profilarr_runtime_ready,
+        validate_profilarr_layout,
+    )
 
     config = CONFIG_MANAGER.get("profilarr", {})
     if not config:
@@ -6491,7 +6741,7 @@ def setup_profilarr(
             instance.get("config_dir") or f"/profilarr/{instance_name.lower()}"
         )
         instance["config_dir"] = instance_config_dir
-        path_changed = False
+        config_changed = False
 
         def _rewrite_profilarr_path(value):
             if isinstance(value, str) and value.startswith("/profilarr/default"):
@@ -6503,69 +6753,17 @@ def setup_profilarr(
             rewritten = [_rewrite_profilarr_path(path) for path in exclude_dirs]
             if rewritten != exclude_dirs:
                 instance["exclude_dirs"] = rewritten
-                path_changed = True
+                config_changed = True
 
         log_file = instance.get("log_file")
         new_log_file = _rewrite_profilarr_path(log_file)
         if new_log_file != log_file:
             instance["log_file"] = new_log_file
-            path_changed = True
+            config_changed = True
 
-        command = instance.get("command", [])
-        port_value = str(instance.get("port", 6868))
         backend_dir = os.path.join(instance_config_dir, "backend")
         frontend_dir = os.path.join(instance_config_dir, "frontend")
-        if isinstance(command, list):
-            updated_command = []
-            for arg in command:
-                if isinstance(arg, str):
-                    arg = _rewrite_profilarr_path(arg).replace("{port}", port_value)
-                    if arg == "backend.app.main:create_app()":
-                        arg = "app.main:create_app()"
-                updated_command.append(arg)
-            if updated_command != command:
-                instance["command"] = updated_command
-                path_changed = True
-            command = instance.get("command", updated_command)
-            if "--chdir" not in command:
-                command.insert(1, backend_dir)
-                command.insert(1, "--chdir")
-                instance["command"] = command
-                path_changed = True
-        elif isinstance(command, str):
-            updated_command = _rewrite_profilarr_path(command).replace(
-                "{port}", port_value
-            )
-            if updated_command != command:
-                instance["command"] = updated_command
-                path_changed = True
-            if "backend.app.main:create_app()" in updated_command:
-                instance["command"] = instance["command"].replace(
-                    "backend.app.main:create_app()", "app.main:create_app()"
-                )
-                updated_command = instance["command"]
-                path_changed = True
-            if "--chdir" not in updated_command:
-                instance["command"] = f"{instance['command']} --chdir {backend_dir}"
-                path_changed = True
-
-        instance_env = instance.get("env", {}) or {}
-        env_changed = False
         config_root = os.path.join(instance_config_dir, "config")
-
-        if instance_env.get("PROFILARR_CONFIG_DIR") != config_root:
-            instance_env["PROFILARR_CONFIG_DIR"] = config_root
-            env_changed = True
-        if instance_env.get("PYTHONPATH") != backend_dir:
-            instance_env["PYTHONPATH"] = backend_dir
-            env_changed = True
-        if instance_env.get("FLASK_ENV") is None:
-            instance_env["FLASK_ENV"] = "production"
-            env_changed = True
-        instance["env"] = instance_env
-
-        if not install_only and (env_changed or path_changed):
-            CONFIG_MANAGER.save_config(instance.get("process_name"))
 
         os.makedirs(instance_config_dir, exist_ok=True)
         os.makedirs(config_root, exist_ok=True)
@@ -6581,25 +6779,74 @@ def setup_profilarr(
             log_dir, CONFIG_MANAGER.get("puid"), CONFIG_MANAGER.get("pgid")
         )
 
-        repo_marker = os.path.join(instance_config_dir, "backend", "app", "main.py")
-        needs_download = not os.path.isfile(repo_marker)
+        installed_layout = detect_profilarr_layout(instance_config_dir)
+        installed_marker = versions.read_version_marker(instance_config_dir)
+        desired_marker = installed_marker
+        source_commit = None
+        source_kind = "release"
+        download_details = None
+
+        if not configure_only:
+            commit_sha, commit_error = _normalize_commit_sha(instance.get("commit_sha"))
+            if commit_error:
+                return False, commit_error
+            if commit_sha:
+                source_kind = "commit"
+                source_commit = commit_sha
+                desired_marker = f"commit-{commit_sha[:12]}"
+                source_url, zip_folder_name = downloader.get_commit(
+                    instance.get("repo_owner"), instance.get("repo_name"), commit_sha
+                )
+                if not source_url:
+                    return False, zip_folder_name
+                download_details = ("archive", source_url, zip_folder_name)
+            elif instance.get("branch_enabled"):
+                source_kind = "branch"
+                branch = str(instance.get("branch") or "main").strip() or "main"
+                source_url, zip_folder_name = downloader.get_branch(
+                    instance.get("repo_owner"), instance.get("repo_name"), branch
+                )
+                if not source_url:
+                    return False, zip_folder_name
+                source_commit, sha_error = downloader.get_ref_commit_sha(
+                    instance.get("repo_owner"), instance.get("repo_name"), branch
+                )
+                if not source_commit and sha_error:
+                    logger.warning(
+                        "Unable to resolve Profilarr branch head for %s: %s",
+                        branch,
+                        sha_error,
+                    )
+                desired_marker = (
+                    f"{branch}-{source_commit[:8]}"
+                    if source_commit
+                    else f"branch:{branch}"
+                )
+                download_details = ("archive", source_url, zip_folder_name)
+            else:
+                release_version, desired_marker = (
+                    versions.resolve_profilarr_release_version(instance)
+                )
+                if release_version.lower() == "latest":
+                    return False, "Failed to resolve the latest Profilarr release."
+                source_commit, _ = downloader.get_ref_commit_sha(
+                    instance.get("repo_owner"),
+                    instance.get("repo_name"),
+                    release_version,
+                )
+                download_details = ("release", release_version, None)
+
+        needs_download = installed_layout is None or (
+            not configure_only and installed_marker != desired_marker
+        )
         if needs_download and configure_only:
             return False, f"Profilarr instance {instance_name} not installed."
-        if install_only and not needs_download:
-            gunicorn_bin = os.path.join(backend_dir, "venv", "bin", "gunicorn")
-            dist_dir = os.path.join(frontend_dir, "dist")
-            if os.path.isfile(gunicorn_bin) and os.path.isdir(dist_dir):
-                logger.info(
-                    "Profilarr instance %s already installed. Skipping install phase.",
-                    instance_name,
-                )
-                continue
 
         if needs_download:
             logger.warning(
-                "Profilarr instance %s not found at %s. Downloading...",
+                "Installing Profilarr instance %s into %s.",
                 instance_name,
-                repo_marker,
+                instance_config_dir,
             )
             exclude_dirs = None
             if instance.get("clear_on_update"):
@@ -6608,51 +6855,35 @@ def setup_profilarr(
                 if not success:
                     return False, f"Failed to clear directory: {error}"
 
-            if instance.get("branch_enabled"):
-                branch = instance.get("branch", "main")
-                branch_url, zip_folder_name = downloader.get_branch(
-                    instance.get("repo_owner"),
-                    instance.get("repo_name"),
-                    branch,
-                )
-                if not branch_url:
-                    return False, f"Failed to fetch branch {branch}"
+            download_kind, source_ref, zip_folder_name = download_details
+            if download_kind == "archive":
                 success, error = downloader.download_and_extract(
-                    branch_url,
+                    source_ref,
                     instance_config_dir,
                     zip_folder_name=zip_folder_name,
                     exclude_dirs=exclude_dirs,
                 )
                 if not success:
-                    return False, f"Failed to download Profilarr branch: {error}"
-                versions.version_write(
-                    instance.get("process_name"),
-                    key="profilarr",
-                    version_path=os.path.join(instance_config_dir, "version.txt"),
-                    version=f"branch:{branch}",
-                )
+                    return False, f"Failed to download Profilarr source: {error}"
             else:
-                release_version, version_to_write = (
-                    versions.resolve_profilarr_release_version(instance)
-                )
                 success, error = downloader.download_release_version(
                     process_name=instance.get("process_name"),
                     key="profilarr",
                     repo_owner=instance.get("repo_owner"),
                     repo_name=instance.get("repo_name"),
-                    release_version=release_version,
+                    release_version=source_ref,
                     target_dir=instance_config_dir,
-                    zip_folder_name=f"{instance.get('repo_owner')}-{instance.get('repo_name')}",
                     exclude_dirs=exclude_dirs,
                 )
                 if not success:
                     return False, f"Failed to download Profilarr release: {error}"
-                versions.version_write(
-                    instance.get("process_name"),
-                    key="profilarr",
-                    version_path=os.path.join(instance_config_dir, "version.txt"),
-                    version=version_to_write,
-                )
+
+            versions.version_write(
+                instance.get("process_name"),
+                key="profilarr",
+                version_path=os.path.join(instance_config_dir, "version.txt"),
+                version=desired_marker,
+            )
 
             _chown_recursive_if_needed(
                 instance_config_dir,
@@ -6660,81 +6891,162 @@ def setup_profilarr(
                 CONFIG_MANAGER.get("pgid"),
             )
 
-        success, error = validate_profilarr_legacy_layout(instance_name, backend_dir)
-        if not success:
+        layout, error = validate_profilarr_layout(instance_name, instance_config_dir)
+        if not layout:
             return False, error
 
-        config_py = os.path.join(backend_dir, "app", "config", "config.py")
-        _ensure_profilarr_config_override(config_py)
-        _patch_profilarr_requirements(backend_dir)
-
-        # Ensure gunicorn path points to the backend venv
-        command = instance.get("command")
-        expected_gunicorn = os.path.join(backend_dir, "venv", "bin", "gunicorn")
-        if isinstance(command, list):
-            if (
-                command
-                and isinstance(command[0], str)
-                and command[0] != expected_gunicorn
+        port_value = str(instance.get("port", 6868))
+        instance_env = dict(instance.get("env") or {})
+        if layout == "v1":
+            config_py = os.path.join(backend_dir, "app", "config", "config.py")
+            _ensure_profilarr_config_override(config_py)
+            _patch_profilarr_requirements(backend_dir)
+            expected_command = [
+                os.path.join(backend_dir, "venv", "bin", "gunicorn"),
+                "--chdir",
+                backend_dir,
+                "--bind",
+                f"0.0.0.0:{port_value}",
+                "--timeout",
+                "600",
+                "app.main:create_app()",
+            ]
+            if instance.get("command") != expected_command:
+                instance["command"] = expected_command
+                config_changed = True
+            for env_key in (
+                "APP_BASE_PATH",
+                "PORT",
+                "HOST",
+                "DENO_SQLITE_PATH",
+                "HOME",
+                "XDG_CACHE_HOME",
+                "DENO_DIR",
+                "DENO_NO_UPDATE_CHECK",
             ):
-                if command[0].endswith("/venv/bin/gunicorn"):
-                    command[0] = expected_gunicorn
-                    instance["command"] = command
-                    CONFIG_MANAGER.save_config(instance.get("process_name"))
-        elif isinstance(command, str):
-            if "/venv/bin/gunicorn" in command and expected_gunicorn not in command:
-                instance["command"] = command.replace(
-                    command.split()[0], expected_gunicorn, 1
-                )
-                CONFIG_MANAGER.save_config(instance.get("process_name"))
+                if env_key in instance_env:
+                    instance_env.pop(env_key)
+                    config_changed = True
+            legacy_env = {
+                "PROFILARR_CONFIG_DIR": config_root,
+                "PYTHONPATH": backend_dir,
+                "FLASK_ENV": "production",
+            }
+            for env_key, value in legacy_env.items():
+                if instance_env.get(env_key) != value:
+                    instance_env[env_key] = value
+                    config_changed = True
 
-        if instance.get("platforms") and not configure_only:
-            success, error = setup_environment(
-                process_handler,
-                "profilarr",
-                instance.get("platforms"),
-                instance_config_dir,
-                platform_dirs={"python": backend_dir, "pnpm": frontend_dir},
-            )
-            if not success:
-                return (
-                    False,
-                    f"Failed to set up environment for Profilarr instance {instance_name}: {error}",
+            if not configure_only and (
+                needs_download or not profilarr_runtime_ready(instance_config_dir)
+            ):
+                success, error = setup_environment(
+                    process_handler,
+                    "profilarr",
+                    instance.get("platforms") or ["python", "pnpm"],
+                    instance_config_dir,
+                    platform_dirs={"python": backend_dir, "pnpm": frontend_dir},
                 )
-            success, error = _sync_profilarr_static(frontend_dir, backend_dir)
-            if not success:
-                return False, error
-            _chown_recursive_if_needed(
-                backend_dir, CONFIG_MANAGER.get("puid"), CONFIG_MANAGER.get("pgid")
-            )
-            static_dir = os.path.join(backend_dir, "app", "static")
-            if os.path.isdir(static_dir):
+                if not success:
+                    return (
+                        False,
+                        f"Failed to set up Profilarr v1 instance {instance_name}: {error}",
+                    )
+                success, error = _sync_profilarr_static(frontend_dir, backend_dir)
+                if not success:
+                    return False, error
                 _chown_recursive_if_needed(
-                    static_dir,
+                    backend_dir, CONFIG_MANAGER.get("puid"), CONFIG_MANAGER.get("pgid")
+                )
+        else:
+            runtime_bin = os.path.join(instance_config_dir, "runtime", "profilarr")
+            expected_command = [runtime_bin]
+            if instance.get("command") != expected_command:
+                instance["command"] = expected_command
+                config_changed = True
+            for env_key in ("PROFILARR_CONFIG_DIR", "PYTHONPATH", "FLASK_ENV"):
+                if env_key in instance_env:
+                    instance_env.pop(env_key)
+                    config_changed = True
+            sqlite_library = _profilarr_sqlite_library_path()
+            v2_env = profilarr_v2_runtime_environment(
+                config_root, port_value, sqlite_library
+            )
+            for env_key in (
+                "APP_BASE_PATH",
+                "PORT",
+                "HOST",
+                "DENO_SQLITE_PATH",
+                "HOME",
+                "XDG_CACHE_HOME",
+                "DENO_DIR",
+                "DENO_NO_UPDATE_CHECK",
+            ):
+                if env_key not in v2_env and env_key in instance_env:
+                    instance_env.pop(env_key)
+                    config_changed = True
+            for env_key, value in v2_env.items():
+                if instance_env.get(env_key) != value:
+                    instance_env[env_key] = value
+                    config_changed = True
+            for directory in (
+                "data",
+                "logs",
+                "backups",
+                "databases",
+                ".cache",
+                ".deno",
+            ):
+                directory_path = os.path.join(config_root, directory)
+                os.makedirs(directory_path, exist_ok=True)
+                _chown_recursive_if_needed(
+                    directory_path,
                     CONFIG_MANAGER.get("puid"),
                     CONFIG_MANAGER.get("pgid"),
                 )
 
-        if not install_only:
-            try:
-                from utils.profilarr_settings import sync_profilarr_arr_configs
-
-                success, error = sync_profilarr_arr_configs(instance)
-                if not success and error:
-                    logger.warning(
-                        "Profilarr auto-link failed for %s: %s",
-                        instance_name,
-                        error,
-                    )
-            except Exception as exc:
-                logger.warning(
-                    "Profilarr auto-link raised an exception for %s: %s",
-                    instance_name,
-                    exc,
+            if not configure_only and (
+                needs_download or not profilarr_runtime_ready(instance_config_dir)
+            ):
+                channel = "stable" if source_kind == "release" else "develop"
+                success, error = _build_profilarr_v2(
+                    process_handler,
+                    instance_config_dir,
+                    desired_marker or installed_marker or "dev",
+                    source_commit,
+                    channel,
                 )
+                if not success:
+                    return False, f"Failed to build Profilarr v2: {error}"
+                _chown_recursive_if_needed(
+                    os.path.join(instance_config_dir, "runtime"),
+                    CONFIG_MANAGER.get("puid"),
+                    CONFIG_MANAGER.get("pgid"),
+                )
+
+        instance["env"] = instance_env
+        if config_changed:
+            CONFIG_MANAGER.save_config(instance.get("process_name"))
 
         if install_only:
             continue
+
+        try:
+            from utils.profilarr_settings import sync_profilarr_arr_configs
+
+            success, error = sync_profilarr_arr_configs(instance)
+            if not success and error:
+                logger.warning(
+                    "Profilarr auto-link failed for %s: %s",
+                    instance_name,
+                    error,
+                )
+        except Exception as exc:
+            logger.warning(
+                "Profilarr auto-link raised an exception for %s: %s",
+                instance_name,
+                exc,
+            )
 
     logger.info("Profilarr setup complete.")
     return True, None
