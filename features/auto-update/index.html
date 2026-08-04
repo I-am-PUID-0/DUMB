@@ -1327,6 +1327,17 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#dashboard-update-center" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Dashboard update center
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#check-current-versions" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -5608,6 +5619,17 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#dashboard-update-center" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Dashboard update center
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#check-current-versions" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -6238,6 +6260,19 @@ while GitHub-based services rely on release or branch downloads.</p>
 </div>
 <hr />
 <h2 id="monitoring-updates">Monitoring updates<a class="headerlink" href="#monitoring-updates" title="Permanent link">#</a></h2>
+<h3 id="dashboard-update-center">Dashboard update center<a class="headerlink" href="#dashboard-update-center" title="Permanent link">#</a></h3>
+<p>The dashboard <strong>Updates</strong> button provides an on-demand alternative to enabling
+automatic updates. It checks all enabled update-capable services sequentially,
+shows the services with available versions, and lets you install some or all of
+those ordinary updates. Each service card also gains an Update shortcut while an
+ordinary update is recorded as available.</p>
+<p>Bulk installation is deliberately conservative: saved release, branch, commit,
+and pinned-version selections appear as <strong>Review source</strong> and cannot be selected.
+Use the individual service page when you need <strong>Install configured target</strong> or
+<strong>Override + latest</strong>. Selected services install one at a time and restart as
+needed; the frontend and API are placed last to reduce control-plane interruption.</p>
+<p>See <a href="../../frontend/dashboard/#check-and-update-multiple-services">Dashboard</a> for
+the complete workflow.</p>
 <h3 id="check-current-versions">Check current versions<a class="headerlink" href="#check-current-versions" title="Permanent link">#</a></h3>
 <p>View installed versions in the frontend:</p>
 <ol>

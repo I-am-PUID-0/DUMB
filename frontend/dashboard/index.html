@@ -1525,6 +1525,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#check-and-update-multiple-services" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Check and update multiple services
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#service-detail-navigation" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -5251,6 +5262,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#check-and-update-multiple-services" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Check and update multiple services
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#service-detail-navigation" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -5460,7 +5482,7 @@
 <li>Service name and status</li>
 <li>Health indicator</li>
 <li>Auto-restart badge</li>
-<li>Quick action buttons</li>
+<li>Quick action and available-update buttons</li>
 </ul>
 <p><img alt="Service dashboard" class="shadow" src="../../assets/images/frontend/service_dashboard.png" /></p>
 <hr />
@@ -5553,12 +5575,40 @@ only restart-relevant unhealthy states, not degraded or starting services.</p>
 <td>Restart</td>
 <td>Restart a running service</td>
 </tr>
+<tr>
+<td><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M5 20h14v-2H5m14-9h-4V3H9v6H5l7 7z"/></svg></span></td>
+<td>Update</td>
+<td>Install the version already reported as available</td>
+</tr>
 </tbody>
 </table>
+<p>The per-service Update button appears only after DUMB has recorded an ordinary
+available update. It restarts that service as part of the install. Saved release,
+branch, commit, and pinned-version choices are never overridden by this shortcut.</p>
 <div class="admonition tip">
 <p class="admonition-title">Tooltips</p>
 <p>Hover over action buttons to see what each will do.</p>
 </div>
+<h2 id="check-and-update-multiple-services">Check and update multiple services<a class="headerlink" href="#check-and-update-multiple-services" title="Permanent link">#</a></h2>
+<p>Use <strong>Updates</strong> in the dashboard header to review every enabled service that
+supports DUMB-managed updates.</p>
+<ol>
+<li>Select <strong>Check all</strong> to check the services sequentially.</li>
+<li>Review current and available versions plus any updater message.</li>
+<li>Select some updates, or use <strong>Select available</strong>.</li>
+<li>Select <strong>Install selected</strong> and confirm the restart warning.</li>
+</ol>
+<p>Checks and installs run one service at a time. The panel shows the active service
+and retains a result on each row. You can close the panel while work continues on
+the current dashboard, then reopen it to view progress.</p>
+<p>Only rows in the normal <strong>Update available</strong> state can be bulk-selected. A row
+marked <strong>Review source</strong> has a saved release, branch, commit, or version choice;
+open that service page to decide whether to install its configured target or use
+the explicit <strong>Override + latest</strong> action. The bulk workflow never overrides it.</p>
+<p>DUMB Frontend and DUMB API updates are ordered last so the loaded dashboard can
+report as much progress as possible. Updating either control-plane service can
+briefly interrupt the final response or inventory refresh. After a bulk update,
+verify service health and logs before continuing normal operation.</p>
 <hr />
 <h2 id="service-detail-navigation">Service detail navigation<a class="headerlink" href="#service-detail-navigation" title="Permanent link">#</a></h2>
 <p>Click anywhere on a service card (except the action buttons) to open its service page. For a full breakdown

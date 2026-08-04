@@ -5630,19 +5630,32 @@ content base and per-category discovery counts, safety limits, live job progress
 candidate results, warm/cold startup comparison, and explicit apply/rollback
 controls. Safely resolved mount-relative NzbDAV read paths are opened on isolated
 rclone shadow mounts; the production mount is used only for metadata discovery.
-The report labels values as actually varied, fixed constraints, bundled
-assumptions, or preserved; shows current-to-tested effective values for every
+The report labels values as actually varied, fixed constraints, NzbDAV
+recommendations, bundled assumptions, or preserved; shows current-to-tested effective values for every
 candidate; and warns that the winner is a profile-bundle result rather than
 proof that each flag is independently optimal. Unrelated preserved command
 values remain hidden because they can contain credentials. Completed jobs also
 show verified shadow-mount, runtime-directory, and candidate-cache cleanup.
+The NzbDAV recommendation role applies a one-week minimum to
+<code>--dir-cache-time</code> and <code>--vfs-cache-max-age</code> while retaining any longer existing
+value. It explains that the former relies on NzbDAV RC invalidation and the latter
+is warm-data retention guidance; neither is presented as score-selected. If RC
+is disabled, mismatched, or unreachable, the job notices include a repair/fallback
+warning.
+Each NzbDAV provider-evidence panel always shows the candidate-matched
+<strong>Providers</strong>, <strong>Retries</strong>, <strong>Bytes</strong>, <strong>Provider wait</strong>, and <strong>Connection wait</strong>
+aggregate fields. When no retained trace matched—or trace capture was
+unavailable—the fields explicitly show that no value is available instead of
+being omitted. Individual matched sessions remain available below the aggregate.
 Representative automatic files are pinned to the top with selection-reason
 labels, but operators can keep, replace, or mix those files. Safety-limit values
 are clearly labeled as generic starting placeholders and expose native tooltips;
 they must be adjusted for the deployment's hardware, bandwidth, workload, and
 provider. Jobs continue when the tab or page closes. A global
 frontend poll posts a toast when an observed job completes or fails, while the
-rclone page's banner remains the primary active-job indicator. See
+rclone page's banner remains the primary active-job indicator. Apply and rollback
+both stop rclone, verify that the old production FUSE mount is detached, restart
+the process, and require the replacement mount to be accessible and stable. See
 <a href="../../features/rclone-optimizer/">Rclone Streaming Optimizer</a>.</p>
 <hr />
 <h2 id="mediastorm-first-login-credential">mediastorm first-login credential<a class="headerlink" href="#mediastorm-first-login-credential" title="Permanent link">#</a></h2>

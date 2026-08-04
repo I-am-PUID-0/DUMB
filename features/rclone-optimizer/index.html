@@ -5323,11 +5323,14 @@ trace</strong>. If NzbDAV tracing cannot be enabled, rclone performance measurem
 still complete, but provider-level event correlation is explicitly marked
 unavailable instead of being presented as a path-matching result.</p>
 <h3 id="reading-nzbdav-provider-evidence">Reading NzbDAV provider evidence<a class="headerlink" href="#reading-nzbdav-provider-evidence" title="Permanent link">#</a></h3>
-<p>The four summary values in each expanded provider-evidence panel come from the
+<p>The first four values in each expanded provider-evidence panel come from the
 NzbDAV overview window captured after that candidate. They are not isolated to
-the candidate and can include unrelated NzbDAV traffic. Candidate-specific
-evidence appears in the matched retained stream traces below them. This is one
-reason the media server and NzbDAV should be idle during testing.</p>
+the candidate and can include unrelated NzbDAV traffic. The next five fields are
+an aggregate of all retained stream traces matched to that candidate's selected
+paths and test window. Those candidate-matched fields remain visible when no
+trace is available and show <strong>not available</strong> instead of disappearing. Individual
+matched trace rows appear below the aggregate. This distinction is one reason
+the media server and NzbDAV should be idle during testing.</p>
 <table>
 <thead>
 <tr>
@@ -5354,23 +5357,23 @@ reason the media server and NzbDAV should be idle during testing.</p>
 </tr>
 <tr>
 <td>Providers</td>
-<td>Provider nicknames recorded in a candidate-matched retained stream session</td>
+<td>Unique provider nicknames recorded across all candidate-matched retained stream traces</td>
 </tr>
 <tr>
 <td>Retries</td>
-<td>Sum of retry counts in the matched session's retained events</td>
+<td>Sum of retry counts across all candidate-matched retained stream traces</td>
 </tr>
 <tr>
 <td>Bytes</td>
-<td>Bytes served recorded by retained events in that matched trace</td>
+<td>Sum of bytes served recorded across all candidate-matched retained stream traces</td>
 </tr>
 <tr>
 <td>Provider wait</td>
-<td>Cumulative retained-event time spent waiting on provider work</td>
+<td>Cumulative retained-event time spent waiting on provider work across all matched traces</td>
 </tr>
 <tr>
 <td>Connection wait</td>
-<td>Cumulative retained-event time spent acquiring a provider connection</td>
+<td>Cumulative retained-event time spent acquiring a provider connection across all matched traces</td>
 </tr>
 </tbody>
 </table>
@@ -5427,7 +5430,7 @@ the suggested starting set after manual changes.</p>
 </tr>
 </tbody>
 </table>
-<p>The report deliberately separates the settings into four roles:</p>
+<p>The report deliberately separates the settings into five roles:</p>
 <table>
 <thead>
 <tr>
@@ -5448,9 +5451,14 @@ the suggested starting set after manual changes.</p>
 <td>Deployment-specific safety/resource boundaries held constant across every candidate; these are not tuned</td>
 </tr>
 <tr>
+<td>NzbDAV recommendations</td>
+<td><code>--dir-cache-time</code>, <code>--vfs-cache-max-age</code></td>
+<td>Operational guidance shared by every candidate: DUMB recommends at least <code>1w</code> and preserves longer existing values; these are not selected by the benchmark score</td>
+</tr>
+<tr>
 <td>Bundled assumptions</td>
-<td><code>--vfs-cache-mode</code>, <code>--vfs-cache-max-age</code>, <code>--dir-cache-time</code></td>
-<td>Profile assumptions changed together rather than independently; a winning profile does not prove any one of these values is optimal</td>
+<td><code>--vfs-cache-mode</code></td>
+<td>Profile assumptions changed together rather than independently; a winning profile does not prove this value is optimal</td>
 </tr>
 <tr>
 <td>Preserved</td>
@@ -5474,19 +5482,32 @@ The shadow process necessarily substitutes its temporary mount path and cache
 directory, binds a loopback RC endpoint without production RC credentials,
 forces read-only behavior and a test log level, and optionally adds the fixed
 bandwidth ceiling. Those isolation controls are not candidate tuning dimensions.</p>
-<p>In particular, <code>--dir-cache-time</code> governs directory metadata refresh and should
-not determine media-byte throughput once a file is open.
-<code>--vfs-cache-max-age</code> primarily governs retention of inactive cached data between
-reads. <code>--vfs-cache-mode</code> establishes VFS behavior and can matter, but is tested
-only as a bundled prerequisite. The UI explains the expected streaming relevance
-of each displayed flag; these statements describe expected scope, not a guarantee
+<p>In particular, DUMB recommends <code>--dir-cache-time=1w</code> because NzbDAV uses rclone
+RC <code>vfs/forget</code> notifications to invalidate affected directory metadata when
+content changes. This avoids a constant stream of WebDAV metadata refreshes. It
+also recommends <code>--vfs-cache-max-age=1w</code> so recently streamed file data can stay
+warm longer and reduce repeated provider reads; <code>--vfs-cache-max-size</code> remains
+the primary disk-usage constraint. Existing values longer than one week are
+preserved. These two timeouts are architecture guidance shared by every candidate,
+not values inferred from the short benchmark.</p>
+<p>Before testing, DUMB checks that NzbDAV RC notifications are enabled, point to
+the associated loopback rclone RC endpoint, use matching credentials, and can
+reach that endpoint. A failed check does not hide the one-week recommendation,
+but the report warns that directory changes may remain stale until the operator
+repairs RC or chooses a shorter fallback <code>--dir-cache-time</code>.</p>
+<p><code>--vfs-cache-mode</code> establishes VFS behavior and can matter, but is tested only
+as a bundled prerequisite. The UI explains the expected streaming relevance of
+each displayed flag; these statements describe expected scope, not a guarantee
 that arbitrary custom combinations can never influence playback.</p>
 <h2 id="safety-limits">Safety limits<a class="headerlink" href="#safety-limits" title="Permanent link">#</a></h2>
-<p>The values initially shown in the optimizer are <strong>generic starting placeholders,
-not recommendations</strong>. DUMB does not derive them from the deployment's CPU, RAM,
-cache disk, ISP bandwidth, NzbDAV activity, or provider policy. Review and change
-every value for the current hardware and provider before starting a job. The UI
-provides a native tooltip on each control explaining its purpose.</p>
+<p>The safety-limit values initially shown in the optimizer are <strong>generic starting
+placeholders, not recommendations</strong>. DUMB does not derive them from the
+deployment's CPU, RAM, cache disk, ISP bandwidth, NzbDAV activity, or provider
+policy. Review and change every safety limit for the current hardware and
+provider before starting a job. The separate one-week NzbDAV cache-timeout
+guidance described above is an architecture recommendation, not a safety-limit
+placeholder or benchmark result. The UI provides a native tooltip on each
+control explaining its purpose.</p>
 <p>Configure the limits before starting a job:</p>
 <table>
 <thead>
@@ -5564,9 +5585,15 @@ retries cleanup during finalization and the next DUMB startup.</p>
 <li>Review every candidate's complete settings/roles, warm/cold samples, exclusions, resources, cleanup status, and NzbDAV evidence.</li>
 <li>Select <strong>Apply recommendation</strong>.</li>
 <li>DUMB merges only the recommended optimizer flags into the saved rclone command.</li>
-<li>DUMB restarts that rclone process and verifies its production mount.</li>
+<li>DUMB stops rclone, detaches and verifies removal of the previous production
+   FUSE mount, restarts the process, then requires the new mount to remain
+   accessible and stable before reporting success.</li>
 </ol>
-<p>The pre-apply command is stored privately in the job record. Select <strong>Roll back</strong> to restore it, restart rclone, and verify the mount again. If apply fails, DUMB attempts that rollback automatically.</p>
+<p>The pre-apply command is stored privately in the job record. Select <strong>Roll back</strong>
+to restore it through the same stop, verified-unmount, restart, and mount-readiness
+sequence. If apply fails, DUMB attempts that rollback automatically. If the old
+mount cannot be detached, DUMB refuses to start another rclone against the stale
+mountpoint and reports the failure for operator attention.</p>
 <h2 id="provider-risk-guidance">Provider-risk guidance<a class="headerlink" href="#provider-risk-guidance" title="Permanent link">#</a></h2>
 <ul>
 <li>Start with <strong>Quick</strong>, one stream, and a small data budget.</li>

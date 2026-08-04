@@ -5968,8 +5968,8 @@ the live WebDAV/provider path and produce a deployment-specific report. Open the
 read-only shadow mount/cache, measures first byte and startup-buffer time, and
 never applies its recommendation automatically. The report shows the complete
 optimizer-relevant effective settings for every candidate, distinguishing
-actually varied streaming values from fixed constraints, bundled assumptions,
-and preserved flags; it also verifies that shadow mounts and test artifacts are
+actually varied streaming values from fixed constraints, NzbDAV recommendations,
+bundled assumptions, and preserved flags; it also verifies that shadow mounts and test artifacts are
 removed before a job completes. Content discovery scans the
 NzbDAV <code>content/&lt;category&gt;</code> paths DUMB derives from enabled Arr instances, but
 measured reads use safely resolved mount-relative paths on isolated shadow mounts
@@ -5977,8 +5977,28 @@ instead of the production mount. Stop the media server and wait until NzbDAV has
 no imports, library ingestion, or unrelated active reads before starting a test;
 concurrent activity skews results and increases provider load. See the
 <a href="../../../features/rclone-optimizer/">Rclone Streaming Optimizer</a> guide for content
-selection, provider-risk limits, reports, apply, and rollback behavior.</p>
+selection, provider-risk limits, reports, apply, and rollback behavior. The
+provider-evidence report always exposes its aggregate Providers, Retries, Bytes,
+Provider wait, and Connection wait fields, including an explicit unavailable
+state when NzbDAV did not retain a candidate-matched trace. Applying or rolling
+back settings verifies removal of the previous production FUSE mount before
+rclone is restarted and requires the replacement mount to remain accessible.
+For NzbDAV, fresh DUMB-generated commands default both <code>--dir-cache-time</code> and
+<code>--vfs-cache-max-age</code> to <code>1w</code>. The optimizer recommends at least that value and
+preserves longer existing values. The long directory cache relies on NzbDAV's
+RC notifications to invalidate changed paths; the report warns when that RC
+connection is disabled, mismatched, or unreachable. The long VFS cache age keeps
+recently streamed data warm, while <code>--vfs-cache-max-size</code> continues to bound disk
+use. These are NzbDAV operational recommendations, not benchmark-scored values.</p>
 <p>To improve streaming performance and reduce excessive bandwidth usage when using rclone with media servers (e.g., Plex, Jellyfin, Emby), consider tuning the mount behavior using additional flags.</p>
+<div class="admonition note">
+<p class="admonition-title">The examples below are generic</p>
+<p>The <code>10s</code> directory-cache and <code>6h</code> VFS-cache-age values below are generic
+examples for older or non-NzbDAV mounts. Do not copy those shorter values
+over DUMB's NzbDAV defaults. For an NzbDAV-backed mount, use the optimizer's
+<code>1w</code> minimum guidance (or retain a longer existing value) and keep NzbDAV's
+rclone RC notification connection healthy.</p>
+</div>
 <div class="admonition warning">
 <p class="admonition-title">VFS cache will use hard drive space, so ensure you set an appropriate max size for your system</p>
 </div>
