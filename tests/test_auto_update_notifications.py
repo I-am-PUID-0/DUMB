@@ -486,6 +486,91 @@ class UpdateNotificationTests(unittest.TestCase):
         self.assertNotIn("NzbDAV", Update._jobs)
         self.assertNotIn("NzbDAV", Update._next_check_at)
 
+    def test_scheduled_check_only_reports_update_without_installing(self):
+        updater = self._updater()
+        pending = {
+            "status": "update_available",
+            "current_version": "1.0.0",
+            "available_version": "1.1.0",
+        }
+        updater._manual_update_check_internal = Mock(return_value=pending)
+        updater._scheduled_update_check_unprotected = Mock()
+
+        result = updater.scheduled_update_check(
+            "Radarr",
+            {"auto_update": True, "auto_update_mode": "check_only"},
+            "radarr",
+            None,
+        )
+
+        self.assertEqual(pending, result)
+        updater._safe_record_update_status.assert_called_once_with("Radarr", pending)
+        updater._scheduled_update_check_unprotected.assert_not_called()
+
+    def test_due_check_only_schedule_preserves_pending_dashboard_status(self):
+        updater = self._updater()
+        updater.auto_update_interval = Mock(return_value=24)
+        updater.auto_update_start_time = Mock(return_value="04:00")
+        updater._calculate_next_check_at = Mock(return_value=200)
+        updater.scheduled_update_check = Mock(
+            return_value={
+                "status": "update_available",
+                "current_version": "1.0.0",
+                "available_version": "1.1.0",
+                "checked_at": 100,
+            }
+        )
+        config = {
+            "auto_update": True,
+            "auto_update_mode": "check_only",
+            "auto_update_interval": 24,
+            "auto_update_start_time": "04:00",
+        }
+        config_manager = Mock()
+        config_manager.get_instance.return_value = config
+        Update._next_check_at = {"Radarr": 100}
+
+        with (
+            patch("utils.auto_update.CONFIG_MANAGER", config_manager),
+            patch("utils.auto_update.time.time", return_value=100),
+        ):
+            updater._run_scheduled_update_if_due("Radarr", config, "radarr", None)
+
+        status = updater._safe_record_update_status.call_args.args[1]
+        self.assertEqual("update_available", status["status"])
+        self.assertEqual("1.1.0", status["available_version"])
+        self.assertEqual("check_only", status["auto_update_mode"])
+        self.assertEqual(200, status["next_check_at"])
+
+    def test_initial_check_only_does_not_call_installing_update_check(self):
+        updater = self._updater()
+        updater.process_handler = Mock()
+        updater._manual_update_check_internal = Mock(
+            return_value={"status": "update_available"}
+        )
+        updater.update_check = Mock()
+        updater.start_process = Mock(return_value=("started", None))
+        config = {"auto_update_mode": "check_only"}
+
+        with patch("utils.auto_update.configure_project", return_value=(True, None)):
+            process, error = updater.initial_update_check(
+                "Radarr", config, "radarr", None
+            )
+
+        self.assertEqual("started", process)
+        self.assertIsNone(error)
+        updater.update_check.assert_not_called()
+        updater.start_process.assert_called_once_with("Radarr", config, "radarr", None)
+
+    def test_auto_update_mode_defaults_to_install_for_existing_configs(self):
+        self.assertEqual("install", Update.auto_update_mode({}))
+        self.assertEqual(
+            "install", Update.auto_update_mode({"auto_update_mode": "bad"})
+        )
+        self.assertEqual(
+            "check_only", Update.auto_update_mode({"auto_update_mode": "check_only"})
+        )
+
     def test_direct_update_check_never_resolves_latest_for_commit_pin(self):
         updater = self._updater()
         updater.process_handler = Mock()

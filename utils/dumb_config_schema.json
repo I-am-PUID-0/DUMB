@@ -582,6 +582,13 @@
             "auto_update": {
               "type": "boolean"
             },
+            "auto_update_mode": {
+              "type": "string",
+              "enum": [
+                "install",
+                "check_only"
+              ]
+            },
             "auto_update_interval": {
               "type": "number"
             },
@@ -1151,6 +1158,13 @@
         "auto_update": {
           "type": "boolean"
         },
+        "auto_update_mode": {
+          "type": "string",
+          "enum": [
+            "install",
+            "check_only"
+          ]
+        },
         "auto_update_interval": {
           "type": "number"
         },
@@ -1342,6 +1356,13 @@
         "auto_update": {
           "type": "boolean"
         },
+        "auto_update_mode": {
+          "type": "string",
+          "enum": [
+            "install",
+            "check_only"
+          ]
+        },
         "auto_update_interval": {
           "type": "number"
         },
@@ -1494,6 +1515,13 @@
         "auto_update": {
           "type": "boolean"
         },
+        "auto_update_mode": {
+          "type": "string",
+          "enum": [
+            "install",
+            "check_only"
+          ]
+        },
         "auto_update_interval": {
           "type": "number"
         },
@@ -1630,6 +1658,13 @@
         "auto_update": {
           "type": "boolean"
         },
+        "auto_update_mode": {
+          "type": "string",
+          "enum": [
+            "install",
+            "check_only"
+          ]
+        },
         "auto_update_interval": {
           "type": "number"
         },
@@ -1687,6 +1722,13 @@
         },
         "auto_update": {
           "type": "boolean"
+        },
+        "auto_update_mode": {
+          "type": "string",
+          "enum": [
+            "install",
+            "check_only"
+          ]
         },
         "auto_update_interval": {
           "type": "number"
@@ -1793,6 +1835,13 @@
                 },
                 "auto_update": {
                   "type": "boolean"
+                },
+                "auto_update_mode": {
+                  "type": "string",
+                  "enum": [
+                    "install",
+                    "check_only"
+                  ]
                 },
                 "auto_update_interval": {
                   "type": "number"
@@ -1908,6 +1957,13 @@
         "auto_update": {
           "type": "boolean"
         },
+        "auto_update_mode": {
+          "type": "string",
+          "enum": [
+            "install",
+            "check_only"
+          ]
+        },
         "auto_update_interval": {
           "type": "number"
         },
@@ -1990,6 +2046,13 @@
         },
         "auto_update": {
           "type": "boolean"
+        },
+        "auto_update_mode": {
+          "type": "string",
+          "enum": [
+            "install",
+            "check_only"
+          ]
         },
         "auto_update_interval": {
           "type": "number"
@@ -2173,6 +2236,13 @@
         "auto_update": {
           "type": "boolean"
         },
+        "auto_update_mode": {
+          "type": "string",
+          "enum": [
+            "install",
+            "check_only"
+          ]
+        },
         "auto_update_interval": {
           "type": "number"
         },
@@ -2273,6 +2343,13 @@
         },
         "auto_update": {
           "type": "boolean"
+        },
+        "auto_update_mode": {
+          "type": "string",
+          "enum": [
+            "install",
+            "check_only"
+          ]
         },
         "auto_update_interval": {
           "type": "number"
@@ -2393,6 +2470,13 @@
                 },
                 "auto_update": {
                   "type": "boolean"
+                },
+                "auto_update_mode": {
+                  "type": "string",
+                  "enum": [
+                    "install",
+                    "check_only"
+                  ]
                 },
                 "auto_update_interval": {
                   "type": "number"
@@ -2626,6 +2710,13 @@
                 "auto_update": {
                   "type": "boolean"
                 },
+                "auto_update_mode": {
+                  "type": "string",
+                  "enum": [
+                    "install",
+                    "check_only"
+                  ]
+                },
                 "auto_update_interval": {
                   "type": "number"
                 },
@@ -2765,6 +2856,13 @@
                 },
                 "auto_update": {
                   "type": "boolean"
+                },
+                "auto_update_mode": {
+                  "type": "string",
+                  "enum": [
+                    "install",
+                    "check_only"
+                  ]
                 },
                 "auto_update_interval": {
                   "type": "number"
@@ -3020,6 +3118,13 @@
                 "auto_update": {
                   "type": "boolean"
                 },
+                "auto_update_mode": {
+                  "type": "string",
+                  "enum": [
+                    "install",
+                    "check_only"
+                  ]
+                },
                 "auto_update_interval": {
                   "type": "number"
                 },
@@ -3155,6 +3260,13 @@
                 },
                 "auto_update": {
                   "type": "boolean"
+                },
+                "auto_update_mode": {
+                  "type": "string",
+                  "enum": [
+                    "install",
+                    "check_only"
+                  ]
                 },
                 "auto_update_interval": {
                   "type": "number"
@@ -3384,6 +3496,13 @@
         "auto_update": {
           "type": "boolean"
         },
+        "auto_update_mode": {
+          "type": "string",
+          "enum": [
+            "install",
+            "check_only"
+          ]
+        },
         "auto_update_interval": {
           "type": "number"
         },
@@ -3550,6 +3669,13 @@
         "auto_update": {
           "type": "boolean"
         },
+        "auto_update_mode": {
+          "type": "string",
+          "enum": [
+            "install",
+            "check_only"
+          ]
+        },
         "auto_update_interval": {
           "type": "number"
         },
@@ -3689,6 +3815,13 @@
                 },
                 "auto_update": {
                   "type": "boolean"
+                },
+                "auto_update_mode": {
+                  "type": "string",
+                  "enum": [
+                    "install",
+                    "check_only"
+                  ]
                 },
                 "auto_update_interval": {
                   "type": "number"
@@ -3830,6 +3963,13 @@
                 "auto_update": {
                   "type": "boolean"
                 },
+                "auto_update_mode": {
+                  "type": "string",
+                  "enum": [
+                    "install",
+                    "check_only"
+                  ]
+                },
                 "auto_update_interval": {
                   "type": "number"
                 },
@@ -3946,6 +4086,13 @@
         },
         "auto_update": {
           "type": "boolean"
+        },
+        "auto_update_mode": {
+          "type": "string",
+          "enum": [
+            "install",
+            "check_only"
+          ]
         },
         "auto_update_interval": {
           "type": "number"
@@ -4119,6 +4266,13 @@
                 "auto_update": {
                   "type": "boolean"
                 },
+                "auto_update_mode": {
+                  "type": "string",
+                  "enum": [
+                    "install",
+                    "check_only"
+                  ]
+                },
                 "auto_update_interval": {
                   "type": "number"
                 },
@@ -4241,6 +4395,13 @@
         "auto_update": {
           "type": "boolean"
         },
+        "auto_update_mode": {
+          "type": "string",
+          "enum": [
+            "install",
+            "check_only"
+          ]
+        },
         "auto_update_interval": {
           "type": "number"
         },
@@ -4346,6 +4507,13 @@
         "auto_update": {
           "type": "boolean"
         },
+        "auto_update_mode": {
+          "type": "string",
+          "enum": [
+            "install",
+            "check_only"
+          ]
+        },
         "auto_update_interval": {
           "type": "number"
         },
@@ -4443,6 +4611,13 @@
         },
         "auto_update": {
           "type": "boolean"
+        },
+        "auto_update_mode": {
+          "type": "string",
+          "enum": [
+            "install",
+            "check_only"
+          ]
         },
         "auto_update_interval": {
           "type": "number"
@@ -4548,6 +4723,13 @@
         },
         "auto_update": {
           "type": "boolean"
+        },
+        "auto_update_mode": {
+          "type": "string",
+          "enum": [
+            "install",
+            "check_only"
+          ]
         },
         "auto_update_interval": {
           "type": "number"
@@ -4657,6 +4839,13 @@
         },
         "auto_update": {
           "type": "boolean"
+        },
+        "auto_update_mode": {
+          "type": "string",
+          "enum": [
+            "install",
+            "check_only"
+          ]
         },
         "auto_update_interval": {
           "type": "integer"
@@ -4774,6 +4963,13 @@
         },
         "auto_update": {
           "type": "boolean"
+        },
+        "auto_update_mode": {
+          "type": "string",
+          "enum": [
+            "install",
+            "check_only"
+          ]
         },
         "auto_update_interval": {
           "type": "integer"
@@ -4932,6 +5128,13 @@
         },
         "auto_update": {
           "type": "boolean"
+        },
+        "auto_update_mode": {
+          "type": "string",
+          "enum": [
+            "install",
+            "check_only"
+          ]
         },
         "auto_update_interval": {
           "type": "integer"

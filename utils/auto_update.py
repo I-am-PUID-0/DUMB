@@ -1265,6 +1265,7 @@ class Update:
             {
                 "status": "scheduled",
                 "auto_update_enabled": True,
+                "auto_update_mode": self.auto_update_mode(config),
                 "auto_update_interval": self.auto_update_interval(process_name, config),
                 "auto_update_start_time": start_time,
                 "next_check_at": next_check_at,
@@ -1339,6 +1340,7 @@ class Update:
                         else "Auto-update disabled"
                     ),
                     "auto_update_enabled": False,
+                    "auto_update_mode": self.auto_update_mode(config),
                     "auto_update_interval": self.auto_update_interval(
                         process_name, config
                     ),
@@ -1566,6 +1568,14 @@ class Update:
 
         return interval
 
+    @staticmethod
+    def auto_update_mode(config):
+        """Return the scheduled update action, preserving install as the legacy default."""
+        mode = str((config or {}).get("auto_update_mode") or "install").strip()
+        if mode == "check_only":
+            return mode
+        return "install"
+
     def auto_update_start_time(self, process_name, config):
         default_start_time = "04:00"
         try:
@@ -1745,21 +1755,27 @@ class Update:
             process_name, latest_config, now_ts + 1
         )
         Update._next_check_at[process_name] = next_due_at
-        self.scheduled_update_check(process_name, latest_config, key, instance_name)
-        self._safe_record_update_status(
-            process_name,
-            {
-                "status": "scheduled",
-                "auto_update_enabled": True,
-                "auto_update_interval": self.auto_update_interval(
-                    process_name, latest_config
-                ),
-                "auto_update_start_time": self.auto_update_start_time(
-                    process_name, latest_config
-                ),
-                "next_check_at": next_due_at,
-            },
+        update_status = self.scheduled_update_check(
+            process_name, latest_config, key, instance_name
         )
+        schedule_status = {
+            "status": "scheduled",
+            "auto_update_enabled": True,
+            "auto_update_mode": self.auto_update_mode(latest_config),
+            "auto_update_interval": self.auto_update_interval(
+                process_name, latest_config
+            ),
+            "auto_update_start_time": self.auto_update_start_time(
+                process_name, latest_config
+            ),
+            "next_check_at": next_due_at,
+        }
+        if self.auto_update_mode(latest_config) == "check_only" and isinstance(
+            update_status, dict
+        ):
+            schedule_status = {**update_status, **schedule_status}
+            schedule_status["status"] = update_status.get("status", "scheduled")
+        self._safe_record_update_status(process_name, schedule_status)
 
     def auto_update(
         self, process_name, enable_update, force_update_check: bool = False
@@ -1929,6 +1945,21 @@ class Update:
     def initial_update_check(self, process_name, config, key, instance_name):
         with self.updating:
             self.logger.info(f"Performing initial update check for {process_name}")
+            if self.auto_update_mode(config) == "check_only":
+                update_status = self._manual_update_check_internal(
+                    process_name, config, key, instance_name
+                )
+                self._safe_record_update_status(process_name, update_status)
+                if update_status.get("status") == "error":
+                    return None, update_status.get("message") or (
+                        f"Update check failed for {process_name}."
+                    )
+
+                success, error = configure_project(self.process_handler, process_name)
+                if not success:
+                    return None, f"Failed to configure {process_name}: {error}"
+                return self.start_process(process_name, config, key, instance_name)
+
             success, error = self.update_check(process_name, config, key, instance_name)
             if not success:
                 if "No updates available" in error:
@@ -1949,13 +1980,19 @@ class Update:
                 process_name, config, key, instance_name
             )
             self._safe_record_update_status(process_name, update_status)
-            if update_status.get("status") != "update_available":
-                return
+            if (
+                update_status.get("status") != "update_available"
+                or self.auto_update_mode(config) == "check_only"
+            ):
+                return update_status
         except Exception as error:
             self.logger.warning(
                 "Scheduled update preflight failed for %s: %s", process_name, error
             )
-            return
+            return {
+                "status": "error",
+                "message": f"Scheduled update check failed for {process_name}.",
+            }
         manager = getattr(self, "media_protection_manager", None)
         protection = None
         if manager is not None:
@@ -1968,7 +2005,7 @@ class Update:
                     "media_protection": protection["preflight"],
                 }
                 self._safe_record_update_status(process_name, payload)
-                return
+                return payload
         success = False
         try:
             self._scheduled_update_check_unprotected(
@@ -1978,6 +2015,7 @@ class Update:
         finally:
             if manager is not None and protection is not None:
                 manager.complete_planned(protection.get("token"), success=success)
+        return update_status
 
     def _scheduled_update_check_unprotected(
         self, process_name, config, key, instance_name

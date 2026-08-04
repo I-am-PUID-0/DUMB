@@ -58,6 +58,24 @@ class DumbConfigSchemaTests(unittest.TestCase):
         self.assertFalse(profilarr["release_version_enabled"])
         self.assertEqual("latest", profilarr["release_version"])
 
+    def test_scheduled_updates_default_to_install_mode(self):
+        self.assertEqual("install", self.config["dumb"]["frontend"]["auto_update_mode"])
+        self.assertEqual("install", self.config["nzbdav"]["auto_update_mode"])
+        self.assertEqual(
+            "install",
+            self.config["profilarr"]["instances"]["Default"]["auto_update_mode"],
+        )
+
+    def test_schema_rejects_unknown_auto_update_mode(self):
+        invalid_config = json.loads(json.dumps(self.config))
+        invalid_config["nzbdav"]["auto_update_mode"] = "notify"
+
+        errors = list(Draft7Validator(self.schema).iter_errors(invalid_config))
+
+        self.assertTrue(
+            any(list(error.path) == ["nzbdav", "auto_update_mode"] for error in errors)
+        )
+
     def test_schema_rejects_non_positive_managed_user_ids(self):
         validator = Draft7Validator(self.schema)
 
