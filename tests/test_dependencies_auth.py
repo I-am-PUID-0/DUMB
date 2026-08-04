@@ -3,7 +3,7 @@ import importlib
 import sys
 import types
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 _MISSING = object()
 
@@ -264,8 +264,8 @@ class DependencyWiringTests(unittest.TestCase):
         dependencies._shared_instances.clear()
 
     def test_initialize_dependencies_stores_shared_instances_and_builds_helpers(self):
-        process_handler = object()
-        updater = object()
+        process_handler = types.SimpleNamespace()
+        updater = types.SimpleNamespace()
         websocket_manager = object()
         metrics_manager = object()
         status_manager = object()
@@ -282,6 +282,17 @@ class DependencyWiringTests(unittest.TestCase):
             patch(
                 "utils.notifications.NotificationManager"
             ) as notification_manager_cls,
+            patch.dict(
+                sys.modules,
+                {
+                    "utils.rclone_optimizer": types.SimpleNamespace(
+                        RcloneOptimizerManager=Mock()
+                    ),
+                    "utils.media_protection": types.SimpleNamespace(
+                        MediaProtectionManager=Mock()
+                    ),
+                },
+            ),
         ):
             api_state_cls.return_value = types.SimpleNamespace(
                 process_handler=process_handler,
@@ -317,6 +328,7 @@ class DependencyWiringTests(unittest.TestCase):
             logger=logger,
         )
         notification_manager_cls.return_value.start.assert_called_once_with()
+        self.assertIsNotNone(dependencies.get_media_protection_manager())
 
         self.assertIs(dependencies.get_process_handler(), process_handler)
         self.assertIs(dependencies.get_updater(), updater)

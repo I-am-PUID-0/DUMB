@@ -35,6 +35,10 @@ SUPPORTED_EVENT_TYPES = (
     "symlink.job.failed",
     "rclone.optimizer.completed",
     "rclone.optimizer.failed",
+    "media.protection.activated",
+    "media.protection.outage",
+    "media.protection.recovered",
+    "media.protection.recovery_failed",
     "resource.cpu.high",
     "resource.memory.high",
     "resource.disk.high",
@@ -58,6 +62,8 @@ STARTUP_SUPPRESSED_EVENT_TYPES = {
     "resource.inode.high",
     "database.pressure",
     "database.collection.failed",
+    "media.protection.outage",
+    "media.protection.recovery_failed",
     "recovery",
 }
 

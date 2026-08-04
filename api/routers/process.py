@@ -9,6 +9,7 @@ from utils.dependencies import (
     get_api_state,
     get_updater,
     get_optional_current_user,
+    get_media_protection_manager,
 )
 from utils.config_loader import CONFIG_MANAGER, find_service_config
 from utils.ai_diagnostics import record_diagnostic_event
@@ -49,6 +50,7 @@ import json, copy, time, glob, re, os, threading, fnmatch
 
 class ServiceRequest(BaseModel):
     process_name: str
+    protection_override: Optional[str] = None
 
 
 class UpdateCheckRequest(BaseModel):
@@ -60,6 +62,7 @@ class UpdateInstallRequest(BaseModel):
     process_name: str
     allow_override: Optional[bool] = False
     target: Optional[str] = None
+    protection_override: Optional[str] = None
 
 
 class RescheduleAutoUpdateRequest(BaseModel):
@@ -2095,6 +2098,7 @@ async def stop_service(
     logger=Depends(get_logger),
     current_user: str = Depends(get_optional_current_user),
     api_state=Depends(get_api_state),
+    media_protection=Depends(get_media_protection_manager),
 ):
     def stop():
         process_name = request.process_name
@@ -2109,6 +2113,15 @@ async def stop_service(
         try:
             api_state.shutdown_in_progress.add(process_name)
             logger.debug(f"Shutdown in progress: {api_state.shutdown_in_progress}")
+            protection = media_protection.begin_planned(
+                process_name, "stop", request.protection_override
+            )
+            if protection["status"] == "deferred":
+                return {
+                    "status": "protection_required",
+                    "process_name": process_name,
+                    "media_protection": protection["preflight"],
+                }
             process_handler.stop_process(process_name)
             logger.info(f"{process_name} stopped successfully.")
             record_diagnostic_event(
@@ -2121,6 +2134,7 @@ async def stop_service(
             return {
                 "status": "Service stopped successfully",
                 "process_name": process_name,
+                "media_protection": protection,
             }
         except Exception as e:
             logger.error(f"Failed to stop {process_name}: {e}")
@@ -2141,10 +2155,20 @@ async def restart_service(
     logger=Depends(get_logger),
     api_state=Depends(get_api_state),
     current_user: str = Depends(get_optional_current_user),
+    media_protection=Depends(get_media_protection_manager),
 ):
     def restart():
         process_name = request.process_name
         logger.info(f"Received request to restart {process_name}")
+        protection = media_protection.begin_planned(
+            process_name, "restart", request.protection_override
+        )
+        if protection["status"] == "deferred":
+            return {
+                "status": "protection_required",
+                "process_name": process_name,
+                "media_protection": protection["preflight"],
+            }
 
         try:
             process_handler.stop_process(process_name)
@@ -2256,11 +2280,17 @@ async def restart_service(
             return {
                 "status": "Service restarted successfully",
                 "process_name": process_name,
+                "media_protection": protection,
             }
         except Exception as e:
             logger.error(f"Failed to restart {process_name}: {e}")
             raise HTTPException(
                 status_code=500, detail=f"Failed to restart {process_name}: {str(e)}"
+            )
+        finally:
+            media_protection.complete_planned(
+                protection.get("token"),
+                success=api_state.get_status(process_name) == "running",
             )
 
     return await run_in_threadpool(restart)
@@ -2499,6 +2529,7 @@ async def update_install(
         request.process_name,
         bool(request.allow_override),
         request.target,
+        request.protection_override,
     )
     record_diagnostic_event(
         "update_install",
@@ -5194,6 +5225,9 @@ async def get_capabilities(current_user: str = Depends(get_optional_current_user
         "optional_service_options": True,
         "manual_update_check": True,
         "dashboard_bulk_updates": True,
+        "media_library_protection": True,
+        "media_library_protection_service_keys": ["plex", "jellyfin", "emby"],
+        "plex_library_settings": True,
         "configured_source_install": True,
         "commit_sha_pinning": True,
         "commit_sha_service_keys": sorted(COMMIT_PIN_SERVICE_KEYS),

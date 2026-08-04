@@ -754,6 +754,67 @@ class ConfigRouterHelperTests(unittest.TestCase):
         )
         self.assertEqual(manager.saved_process_names, [])
 
+    def test_global_config_redacts_media_protection_api_keys(self):
+        source = {
+            "dumb": {
+                "media_protection": {
+                    "services": [
+                        {
+                            "process_name": "Jellyfin Media Server",
+                            "api_key": "jellyfin-secret",
+                        }
+                    ]
+                }
+            }
+        }
+
+        safe = config_router._redact_notification_secrets(source)
+
+        entry = safe["dumb"]["media_protection"]["services"][0]
+        self.assertEqual(entry["api_key"], "")
+        self.assertTrue(entry["api_key_configured"])
+        self.assertEqual(
+            source["dumb"]["media_protection"]["services"][0]["api_key"],
+            "jellyfin-secret",
+        )
+
+    def test_redacted_media_key_is_preserved_on_global_round_trip(self):
+        current = {
+            "dumb": {
+                "media_protection": {
+                    "services": [
+                        {
+                            "process_name": "Jellyfin Media Server",
+                            "api_key": "jellyfin-secret",
+                        }
+                    ]
+                }
+            }
+        }
+        updates = {
+            "dumb": {
+                "media_protection": {
+                    "services": [
+                        {
+                            "process_name": "Jellyfin Media Server",
+                            "api_key": "",
+                            "api_key_configured": True,
+                            "enabled": False,
+                        }
+                    ]
+                }
+            }
+        }
+
+        safe = config_router._preserve_redacted_media_protection_secrets(
+            updates, current
+        )
+
+        entry = safe["dumb"]["media_protection"]["services"][0]
+        self.assertEqual(entry["api_key"], "jellyfin-secret")
+        self.assertNotIn("api_key_configured", entry)
+        self.assertFalse(entry["enabled"])
+
 
 if __name__ == "__main__":
     unittest.main()

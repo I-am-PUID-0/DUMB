@@ -151,6 +151,16 @@ def _redact_notification_secrets(config: Dict[str, Any]) -> Dict[str, Any]:
             continue
         destination["url"] = ""
         destination["headers"] = {}
+    services = (
+        safe.get("dumb", {}).get("media_protection", {}).get("services", [])
+        if isinstance(safe, dict)
+        else []
+    )
+    for service in services:
+        if not isinstance(service, dict):
+            continue
+        service["api_key_configured"] = bool(str(service.get("api_key") or "").strip())
+        service["api_key"] = ""
     return safe
 
 
@@ -188,6 +198,39 @@ def _preserve_redacted_notification_secrets(
             destination["url"] = current.get("url", "")
         if not destination.get("headers"):
             destination["headers"] = copy.deepcopy(current.get("headers", {}))
+    return safe_updates
+
+
+def _preserve_redacted_media_protection_secrets(
+    updates: Dict[str, Any], current_config: Dict[str, Any]
+) -> Dict[str, Any]:
+    """Preserve media API keys omitted by a redacted full-config edit."""
+    safe_updates = copy.deepcopy(updates)
+    media_protection = (safe_updates.get("dumb", {}) or {}).get("media_protection")
+    if not isinstance(media_protection, dict):
+        return safe_updates
+    services = media_protection.get("services")
+    if not isinstance(services, list):
+        return safe_updates
+    current_services = (
+        (current_config.get("dumb", {}) or {})
+        .get("media_protection", {})
+        .get("services", [])
+    )
+    current_by_name = {
+        str(service.get("process_name") or "").strip().lower(): service
+        for service in current_services
+        if isinstance(service, dict) and service.get("process_name")
+    }
+    for service in services:
+        if not isinstance(service, dict):
+            continue
+        service.pop("api_key_configured", None)
+        current = current_by_name.get(
+            str(service.get("process_name") or "").strip().lower()
+        )
+        if isinstance(current, dict) and not str(service.get("api_key") or "").strip():
+            service["api_key"] = current.get("api_key", "")
     return safe_updates
 
 
@@ -708,6 +751,9 @@ async def update_config(
     before_global_config = copy.deepcopy(CONFIG_MANAGER.config)
     updates = _preserve_redacted_notification_secrets(
         request.updates, CONFIG_MANAGER.config
+    )
+    updates = _preserve_redacted_media_protection_secrets(
+        updates, CONFIG_MANAGER.config
     )
     if not updates:
         raise HTTPException(

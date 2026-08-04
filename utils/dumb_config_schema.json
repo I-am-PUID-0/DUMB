@@ -131,6 +131,68 @@
           ],
           "additionalProperties": false
         },
+        "media_protection": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "recovery_stabilization_seconds": {
+              "type": "number",
+              "minimum": 5,
+              "maximum": 600
+            },
+            "recovery_timeout_seconds": {
+              "type": "number",
+              "minimum": 30,
+              "maximum": 3600
+            },
+            "monitor_interval_seconds": {
+              "type": "number",
+              "minimum": 2,
+              "maximum": 60
+            },
+            "services": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "process_name": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "enabled": {
+                    "type": "boolean"
+                  },
+                  "api_key": {
+                    "type": "string"
+                  },
+                  "stop_when_idle_on_outage": {
+                    "type": "boolean"
+                  },
+                  "protected_mounts": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "required": [
+                  "process_name"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "enabled",
+            "recovery_stabilization_seconds",
+            "recovery_timeout_seconds",
+            "monitor_interval_seconds",
+            "services"
+          ],
+          "additionalProperties": false
+        },
         "auto_restart": {
           "type": "object",
           "properties": {

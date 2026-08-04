@@ -57,6 +57,7 @@ class ProcessHandler:
         self.startup_complete_event = threading.Event()
         self.startup_state_path = "/healthcheck/startup_state.json"
         self.service_health_monitor = ServiceHealthMonitor(logger=logger)
+        self.media_protection_manager = None
         self._write_startup_state()
 
     @staticmethod
@@ -806,6 +807,10 @@ class ProcessHandler:
                         service_name=process_name,
                         metadata={"exit_code": exit_code},
                     )
+                    if self.media_protection_manager is not None:
+                        self.media_protection_manager.handle_unexpected_exit(
+                            process_name, reason
+                        )
                     self._maybe_schedule_restart(process_name, reason)
             except ChildProcessError:
                 break

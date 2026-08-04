@@ -989,7 +989,59 @@ class Update:
             "next_check_at": next_check_at,
         }
 
-    def manual_update_install(self, process_name, allow_override=False, target=None):
+    def manual_update_install(
+        self,
+        process_name,
+        allow_override=False,
+        target=None,
+        protection_override=None,
+    ):
+        key, instance_name = CONFIG_MANAGER.find_key_for_process(process_name)
+        config = CONFIG_MANAGER.get_instance(instance_name, key) if key else None
+        requested_target = str(target or "").strip().lower()
+        block_reason = self._get_update_block_reason(config, key) if config else None
+        request_is_actionable = bool(
+            config
+            and self.supports_manual_update(key, config)
+            and not (
+                block_reason and not allow_override and requested_target != "configured"
+            )
+            and not (requested_target == "configured" and not block_reason)
+        )
+        if not request_is_actionable:
+            return self._manual_update_install_unprotected(
+                process_name, allow_override, target
+            )
+        protection = None
+        manager = getattr(self, "media_protection_manager", None)
+        if manager is not None:
+            protection = manager.begin_planned(
+                process_name, "update", protection_override
+            )
+            if protection["status"] == "deferred":
+                payload = {
+                    "status": "protection_required",
+                    "message": "Update deferred by media library protection.",
+                    "media_protection": protection["preflight"],
+                }
+                self._safe_record_update_status(process_name, payload)
+                return payload
+        success = False
+        try:
+            payload = self._manual_update_install_unprotected(
+                process_name, allow_override, target
+            )
+            success = payload.get("status") in {"updated", "no_update"}
+            if protection is not None:
+                payload["media_protection"] = protection
+            return payload
+        finally:
+            if manager is not None and protection is not None:
+                manager.complete_planned(protection.get("token"), success=success)
+
+    def _manual_update_install_unprotected(
+        self, process_name, allow_override=False, target=None
+    ):
         key, instance_name = CONFIG_MANAGER.find_key_for_process(process_name)
         requested_target = str(target or "").strip().lower()
         apply_configured_target = requested_target == "configured"
@@ -1882,15 +1934,46 @@ class Update:
             return True, error
 
     def scheduled_update_check(self, process_name, config, key, instance_name):
+        try:
+            update_status = self._manual_update_check_internal(
+                process_name, config, key, instance_name
+            )
+            self._safe_record_update_status(process_name, update_status)
+            if update_status.get("status") != "update_available":
+                return
+        except Exception as error:
+            self.logger.warning(
+                "Scheduled update preflight failed for %s: %s", process_name, error
+            )
+            return
+        manager = getattr(self, "media_protection_manager", None)
+        protection = None
+        if manager is not None:
+            protection = manager.begin_planned(process_name, "scheduled_update", "safe")
+            if protection["status"] == "deferred":
+                payload = {
+                    "status": "deferred",
+                    "reason": "media_protection",
+                    "message": "Scheduled update deferred by media library protection.",
+                    "media_protection": protection["preflight"],
+                }
+                self._safe_record_update_status(process_name, payload)
+                return
+        success = False
+        try:
+            self._scheduled_update_check_unprotected(
+                process_name, config, key, instance_name
+            )
+            success = True
+        finally:
+            if manager is not None and protection is not None:
+                manager.complete_planned(protection.get("token"), success=success)
+
+    def _scheduled_update_check_unprotected(
+        self, process_name, config, key, instance_name
+    ):
         with self.updating:
             self.logger.info(f"Performing scheduled update check for {process_name}")
-            try:
-                payload = self._manual_update_check_internal(
-                    process_name, config, key, instance_name
-                )
-                self._safe_record_update_status(process_name, payload)
-            except Exception:
-                pass
             success, error = self.update_check(process_name, config, key, instance_name)
             if not success:
                 if "No updates available" in error:

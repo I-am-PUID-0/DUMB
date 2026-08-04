@@ -48,6 +48,17 @@ def initialize_dependencies(
         process_handler=process_handler,
         logger=logger,
     )
+    from utils.media_protection import MediaProtectionManager
+
+    _shared_instances["media_protection_manager"] = MediaProtectionManager(
+        process_handler=process_handler,
+        logger=logger,
+    )
+    process_handler.media_protection_manager = _shared_instances[
+        "media_protection_manager"
+    ]
+    updater.media_protection_manager = _shared_instances["media_protection_manager"]
+    _shared_instances["media_protection_manager"].start()
 
 
 def get_process_handler() -> ProcessHandler:
@@ -92,6 +103,10 @@ def get_notification_manager():
 
 def get_rclone_optimizer_manager():
     return _shared_instances["rclone_optimizer_manager"]
+
+
+def get_media_protection_manager():
+    return _shared_instances["media_protection_manager"]
 
 
 def resolve_path(path_str: str) -> Path:
