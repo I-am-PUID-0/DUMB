@@ -771,6 +771,8 @@
       
         
       
+        
+      
     
     
     
@@ -996,6 +998,36 @@
     
   
     Auto-update
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../features/media-library-protection/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-shield-check" viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    Media Library Protection
   
 
     
@@ -3621,6 +3653,8 @@
       
         
       
+        
+      
     
     
     
@@ -3846,6 +3880,36 @@
     
   
     Metrics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/media-library-protection/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-shield-check" viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    Media Library Protection
   
 
     
@@ -5173,8 +5237,8 @@
   
 
 
-<h1 id="decypharr-faq">Decypharr FAQ<a class="headerlink" href="#decypharr-faq" title="Permanent link">#</a></h1>
-<h2 id="which-mount-mode-should-i-choose">Which mount mode should I choose?<a class="headerlink" href="#which-mount-mode-should-i-choose" title="Permanent link">#</a></h2>
+<h1 id="decypharr-faq">Decypharr FAQ<a class="headerlink" href="#decypharr-faq" title="Permanent link">&para;</a></h1>
+<h2 id="which-mount-mode-should-i-choose">Which mount mode should I choose?<a class="headerlink" href="#which-mount-mode-should-i-choose" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
@@ -5207,15 +5271,15 @@
 </tbody>
 </table>
 <p>DFS and native Usenet are current stable features; a beta branch toggle is not required to use them.</p>
-<h2 id="why-does-external-rclone-start-after-decypharr">Why does external rclone start after Decypharr?<a class="headerlink" href="#why-does-external-rclone-start-after-decypharr" title="Permanent link">#</a></h2>
+<h2 id="why-does-external-rclone-start-after-decypharr">Why does external rclone start after Decypharr?<a class="headerlink" href="#why-does-external-rclone-start-after-decypharr" title="Permanent link">&para;</a></h2>
 <p>The rclone instance consumes Decypharr's WebDAV endpoint, so starting rclone first creates a dependency cycle. DUMB starts Decypharr, waits for its WebDAV readiness, then starts the <code>decypharr_enabled</code> rclone instance.</p>
-<h2 id="where-do-provider-api-keys-belong">Where do provider API keys belong?<a class="headerlink" href="#where-do-provider-api-keys-belong" title="Permanent link">#</a></h2>
+<h2 id="where-do-provider-api-keys-belong">Where do provider API keys belong?<a class="headerlink" href="#where-do-provider-api-keys-belong" title="Permanent link">&para;</a></h2>
 <p>DUMB persists onboarding keys under <code>decypharr.api_keys</code> for every mount mode. Setup reconciles those keys into Decypharr and uses them when an external-rclone instance must be created. Avoid putting secrets into screenshots or support logs.</p>
-<h2 id="how-is-usenet-connected-to-an-arr-app">How is Usenet connected to an Arr app?<a class="headerlink" href="#how-is-usenet-connected-to-an-arr-app" title="Permanent link">#</a></h2>
+<h2 id="how-is-usenet-connected-to-an-arr-app">How is Usenet connected to an Arr app?<a class="headerlink" href="#how-is-usenet-connected-to-an-arr-app" title="Permanent link">&para;</a></h2>
 <p>When Decypharr has Usenet providers configured, DUMB adds a Sabnzbd-compatible download client named <code>decypharr-usenet</code> to linked Arr instances. Debrid downloads use Decypharr's qBittorrent-compatible client.</p>
-<h2 id="why-is-dumb-waiting-for-the-wrong-old-provider-mount">Why is DUMB waiting for the wrong old provider mount?<a class="headerlink" href="#why-is-dumb-waiting-for-the-wrong-old-provider-mount" title="Permanent link">#</a></h2>
+<h2 id="why-is-dumb-waiting-for-the-wrong-old-provider-mount">Why is DUMB waiting for the wrong old provider mount?<a class="headerlink" href="#why-is-dumb-waiting-for-the-wrong-old-provider-mount" title="Permanent link">&para;</a></h2>
 <p>Legacy configs may contain per-provider folders while current configs use one top-level <code>mount.mount_path</code>. Restart after saving the desired <code>mount_type</code> in DUMB so setup can reconcile <code>config.json</code>. If existing links still target the old layout, preview the Decypharr migration playbook in <strong>Symlinks</strong> before applying it.</p>
-<h2 id="related-pages">Related pages<a class="headerlink" href="#related-pages" title="Permanent link">#</a></h2>
+<h2 id="related-pages">Related pages<a class="headerlink" href="#related-pages" title="Permanent link">&para;</a></h2>
 <ul>
 <li><a href="../../services/core/decypharr/">Decypharr service guide</a></li>
 <li><a href="../../features/symlinks/">Symlink Operations</a></li>

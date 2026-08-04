@@ -31,6 +31,9 @@
         <loc>https://dumbarr.com/features/auto-update/</loc>
       </url>
       <url>
+        <loc>https://dumbarr.com/features/media-library-protection/</loc>
+      </url>
+      <url>
         <loc>https://dumbarr.com/features/arr-postgres-migration/</loc>
       </url>
       <url>
@@ -257,6 +260,9 @@
       </url>
       <url>
         <loc>https://dumbarr.com/api/metrics/</loc>
+      </url>
+      <url>
+        <loc>https://dumbarr.com/api/media-library-protection/</loc>
       </url>
       <url>
         <loc>https://dumbarr.com/api/notifications/</loc>

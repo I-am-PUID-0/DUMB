@@ -6,18 +6,18 @@
   
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="description" content="Configure DUMB service health monitoring, restart thresholds, retry backoff, recovery tracking, and automatic failure notifications.">
+  <meta name="description" content="API endpoints for media dependency preflight, protection policy, recovery status, and Plex library preferences.">
   
     <meta name="author" content="DUMB Team">
   
   
-    <link rel="canonical" href="https://dumbarr.com/features/auto-restart/">
+    <link rel="canonical" href="https://dumbarr.com/api/media-library-protection/">
   
   
-    <link rel="prev" href="../authentication/">
+    <link rel="prev" href="../metrics/">
   
   
-    <link rel="next" href="../startup-lifecycle/">
+    <link rel="next" href="../notifications/">
   
   
     
@@ -30,7 +30,7 @@
   
     
       
-        <title>Auto-restart - Distributed Unlimited Media Bridge</title>
+        <title>Media Library Protection API - Distributed Unlimited Media Bridge</title>
       
     
   
@@ -109,9 +109,9 @@
     <meta property="og:type" content="website">
     <meta property="og:locale" content="en_US">
     <meta property="og:site_name" content="DUMB — Distributed Unlimited Media Bridge">
-    <meta property="og:title" content="Auto-restart">
-    <meta property="og:description" content="Configure DUMB service health monitoring, restart thresholds, retry backoff, recovery tracking, and automatic failure notifications.">
-    <meta property="og:url" content="https://dumbarr.com/features/auto-restart/">
+    <meta property="og:title" content="Media Library Protection API">
+    <meta property="og:description" content="API endpoints for media dependency preflight, protection policy, recovery status, and Plex library preferences.">
+    <meta property="og:url" content="https://dumbarr.com/api/media-library-protection/">
     <meta property="og:image" content="https://dumbarr.com/assets/images/DUMB.png">
     <meta property="og:image:secure_url" content="https://dumbarr.com/assets/images/DUMB.png">
     <meta property="og:image:type" content="image/png">
@@ -119,8 +119,8 @@
     <meta property="og:image:height" content="1024">
     <meta property="og:image:alt" content="Distributed Unlimited Media Bridge ecosystem and architecture overview">
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Auto-restart">
-    <meta name="twitter:description" content="Configure DUMB service health monitoring, restart thresholds, retry backoff, recovery tracking, and automatic failure notifications.">
+    <meta name="twitter:title" content="Media Library Protection API">
+    <meta name="twitter:description" content="API endpoints for media dependency preflight, protection policy, recovery status, and Plex library preferences.">
     <meta name="twitter:image" content="https://dumbarr.com/assets/images/DUMB.png">
     <meta name="twitter:image:alt" content="Distributed Unlimited Media Bridge ecosystem and architecture overview">
     
@@ -140,16 +140,16 @@
           {
             "@type": "ListItem",
             "position": 2,
-            "name": "Features",
-            "item": "https://dumbarr.com/features/"
+            "name": "API",
+            "item": "https://dumbarr.com/api/"
           }
           
           ,
           {
             "@type": "ListItem",
             "position": 3,
-            "name": "Auto-restart",
-            "item": "https://dumbarr.com/features/auto-restart/"
+            "name": "Media Library Protection API",
+            "item": "https://dumbarr.com/api/media-library-protection/"
           }
         ]
       }
@@ -176,7 +176,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#auto-restart" class="md-skip">
+        <a href="#media-library-protection-api" class="md-skip">
           Skip to content
         </a>
       
@@ -220,7 +220,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Auto-restart
+              Media Library Protection API
             
           </span>
         </div>
@@ -347,13 +347,11 @@
   
   
   
-    
-  
   
     
     
-      <li class="md-tabs__item md-tabs__item--active">
-        <a href="../" class="md-tabs__link">
+      <li class="md-tabs__item">
+        <a href="../../features/" class="md-tabs__link">
           
   
   Features
@@ -444,11 +442,13 @@
   
   
   
+    
+  
   
     
     
-      <li class="md-tabs__item">
-        <a href="../../api/" class="md-tabs__link">
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../" class="md-tabs__link">
           
   
   API
@@ -732,8 +732,6 @@
       
   
   
-    
-  
   
   
     
@@ -779,23 +777,22 @@
     
     
       
-        
-        
-      
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../" class="md-nav__link ">
+            <a href="../../features/" class="md-nav__link ">
               
   
   
@@ -815,13 +812,13 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_3" id="__nav_3_label" tabindex="">
+              <label class="md-nav__link " for="__nav_3" id="__nav_3_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_3">
             <span class="md-nav__icon md-icon"></span>
             
@@ -841,7 +838,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../configuration/" class="md-nav__link">
+      <a href="../../features/configuration/" class="md-nav__link">
         
   
   
@@ -871,7 +868,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../usage/" class="md-nav__link">
+      <a href="../../features/usage/" class="md-nav__link">
         
   
   
@@ -901,7 +898,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../authentication/" class="md-nav__link">
+      <a href="../../features/authentication/" class="md-nav__link">
         
   
   
@@ -928,39 +925,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-refresh-cw" viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>
-  
-  <span class="md-ellipsis">
-    
-  
-    Auto-restart
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../../features/auto-restart/" class="md-nav__link">
         
   
   
@@ -978,159 +946,6 @@
   
 
       </a>
-      
-        
-
-
-<nav class="md-nav md-nav--secondary" aria-label="On this page">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      On this page
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#overview" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Overview
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#how-it-works" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        How it works
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#health-states-and-application-probes" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Health states and application probes
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#configuration" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Configuration
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#backoff-schedule" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Backoff schedule
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#restart-limits" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Restart limits
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#health-checks" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Health checks
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#monitoring-restart-status" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Monitoring restart status
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#disabling-auto-restart" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Disabling auto-restart
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#best-practices" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Best practices
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#troubleshooting" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Troubleshooting
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#related-pages" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Related pages
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -1143,7 +958,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../startup-lifecycle/" class="md-nav__link">
+      <a href="../../features/startup-lifecycle/" class="md-nav__link">
         
   
   
@@ -1173,7 +988,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../auto-update/" class="md-nav__link">
+      <a href="../../features/auto-update/" class="md-nav__link">
         
   
   
@@ -1203,7 +1018,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../media-library-protection/" class="md-nav__link">
+      <a href="../../features/media-library-protection/" class="md-nav__link">
         
   
   
@@ -1233,7 +1048,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../arr-postgres-migration/" class="md-nav__link">
+      <a href="../../features/arr-postgres-migration/" class="md-nav__link">
         
   
   
@@ -1263,7 +1078,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../symlinks/" class="md-nav__link">
+      <a href="../../features/symlinks/" class="md-nav__link">
         
   
   
@@ -1293,7 +1108,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../seerr-sync/" class="md-nav__link">
+      <a href="../../features/seerr-sync/" class="md-nav__link">
         
   
   
@@ -1323,7 +1138,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../ffprobe-monitor/" class="md-nav__link">
+      <a href="../../features/ffprobe-monitor/" class="md-nav__link">
         
   
   
@@ -1353,7 +1168,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../metrics/" class="md-nav__link">
+      <a href="../../features/metrics/" class="md-nav__link">
         
   
   
@@ -1383,7 +1198,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../rclone-optimizer/" class="md-nav__link">
+      <a href="../../features/rclone-optimizer/" class="md-nav__link">
         
   
   
@@ -1413,7 +1228,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../notifications/" class="md-nav__link">
+      <a href="../../features/notifications/" class="md-nav__link">
         
   
   
@@ -1443,7 +1258,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../ai-assistant/" class="md-nav__link">
+      <a href="../../features/ai-assistant/" class="md-nav__link">
         
   
   
@@ -1473,7 +1288,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../embedded-ui/" class="md-nav__link">
+      <a href="../../features/embedded-ui/" class="md-nav__link">
         
   
   
@@ -3807,6 +3622,8 @@
       
   
   
+    
+  
   
   
     
@@ -3844,22 +3661,23 @@
     
     
       
+        
+        
+      
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
       
         
         
-          
-        
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_8" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" checked>
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../api/" class="md-nav__link ">
+            <a href="../" class="md-nav__link ">
               
   
   
@@ -3879,13 +3697,13 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_8" id="__nav_8_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_8" id="__nav_8_label" tabindex="">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_8">
             <span class="md-nav__icon md-icon"></span>
             
@@ -3905,7 +3723,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/auth/" class="md-nav__link">
+      <a href="../auth/" class="md-nav__link">
         
   
   
@@ -3935,7 +3753,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/health/" class="md-nav__link">
+      <a href="../health/" class="md-nav__link">
         
   
   
@@ -3965,7 +3783,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/process/" class="md-nav__link">
+      <a href="../process/" class="md-nav__link">
         
   
   
@@ -3995,7 +3813,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/config/" class="md-nav__link">
+      <a href="../config/" class="md-nav__link">
         
   
   
@@ -4025,7 +3843,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/logs/" class="md-nav__link">
+      <a href="../logs/" class="md-nav__link">
         
   
   
@@ -4055,7 +3873,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/metrics/" class="md-nav__link">
+      <a href="../metrics/" class="md-nav__link">
         
   
   
@@ -4082,10 +3900,19 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../../api/media-library-protection/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -4103,6 +3930,7 @@
   
 
       </a>
+      
     </li>
   
 
@@ -4115,7 +3943,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/notifications/" class="md-nav__link">
+      <a href="../notifications/" class="md-nav__link">
         
   
   
@@ -4145,7 +3973,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/ai/" class="md-nav__link">
+      <a href="../ai/" class="md-nav__link">
         
   
   
@@ -4175,7 +4003,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/seerr-sync/" class="md-nav__link">
+      <a href="../seerr-sync/" class="md-nav__link">
         
   
   
@@ -4205,7 +4033,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/websocket/" class="md-nav__link">
+      <a href="../websocket/" class="md-nav__link">
         
   
   
@@ -4235,7 +4063,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/websocket_logs/" class="md-nav__link">
+      <a href="../websocket_logs/" class="md-nav__link">
         
   
   
@@ -5152,146 +4980,6 @@
     
   
   
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      On this page
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#overview" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Overview
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#how-it-works" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        How it works
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#health-states-and-application-probes" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Health states and application probes
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#configuration" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Configuration
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#backoff-schedule" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Backoff schedule
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#restart-limits" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Restart limits
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#health-checks" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Health checks
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#monitoring-restart-status" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Monitoring restart status
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#disabling-auto-restart" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Disabling auto-restart
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#best-practices" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Best practices
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#troubleshooting" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Troubleshooting
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#related-pages" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Related pages
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
 </nav>
                   </div>
                 </div>
@@ -5336,7 +5024,7 @@
         <a href="../" class="md-path__link">
           
   <span class="md-ellipsis">
-    Features
+    API
   </span>
 
         </a>
@@ -5353,7 +5041,7 @@
                 
                   
   
-    <a href="https://github.com/I-am-PUID-0/DUMB_docs/edit/master/docs/features/auto-restart.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+    <a href="https://github.com/I-am-PUID-0/DUMB_docs/edit/master/docs/api/media-library-protection.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
       
       <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-file-pen" viewBox="0 0 24 24"><path d="M12.659 22H18a2 2 0 0 0 2-2V8a2.4 2.4 0 0 0-.706-1.706l-3.588-3.588A2.4 2.4 0 0 0 14 2H6a2 2 0 0 0-2 2v9.34"/><path d="M14 2v5a1 1 0 0 0 1 1h5M10.378 12.622a1 1 0 0 1 3 3.003L8.36 20.637a2 2 0 0 1-.854.506l-2.867.837a.5.5 0 0 1-.62-.62l.836-2.869a2 2 0 0 1 .506-.853z"/></svg>
     </a>
@@ -5362,397 +5050,63 @@
     
       
     
-    <a href="https://github.com/I-am-PUID-0/DUMB_docs/raw/master/docs/features/auto-restart.md" title="View source of this page" class="md-content__button md-icon">
+    <a href="https://github.com/I-am-PUID-0/DUMB_docs/raw/master/docs/api/media-library-protection.md" title="View source of this page" class="md-content__button md-icon">
       
       <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-file-code-2" viewBox="0 0 24 24"><path d="M4 12.15V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.706.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2h-3.35"/><path d="M14 2v5a1 1 0 0 0 1 1h5M5 16l-3 3 3 3M9 22l3-3-3-3"/></svg>
     </a>
   
 
 
-<h1 id="auto-restart">Auto-restart<a class="headerlink" href="#auto-restart" title="Permanent link">&para;</a></h1>
-<p>DUMB includes an automatic restart system that monitors service health and restarts failed services to maintain system stability without manual intervention.</p>
-<hr />
-<h2 id="overview">Overview<a class="headerlink" href="#overview" title="Permanent link">&para;</a></h2>
-<p>The auto-restart system provides:</p>
-<ul>
-<li><strong>Health monitoring</strong> - Periodic health checks for each service</li>
-<li><strong>Automatic recovery</strong> - Restart services that become unhealthy</li>
-<li><strong>Exponential backoff</strong> - Increasing delays between restart attempts</li>
-<li><strong>Restart limits</strong> - Prevent infinite restart loops</li>
-<li><strong>Grace periods</strong> - Allow services time to initialize</li>
-<li><strong>Startup lifecycle gating</strong> - Do not restart services while the stack is still assembling</li>
-<li><strong>Verified recovery</strong> - Count success only after the restarted service is healthy</li>
-</ul>
-<p><img alt="Auto-restart status" class="shadow" src="../../assets/images/features/auto_restart.png" />
-<img alt="Auto-restart indicators" class="shadow" src="../../assets/images/features/auto_restart_indicators.png" /></p>
-<hr />
-<h2 id="how-it-works">How it works<a class="headerlink" href="#how-it-works" title="Permanent link">&para;</a></h2>
-<pre class="mermaid"><code>%%{ init: { "flowchart": { "curve": "basis" } } }%%
-flowchart TD
-    A([Service running])
-    B{Health check}
-    C{Threshold exceeded?}
-    D{Restart limit reached?}
-    E[Restart service]
-    F([Stop retrying])
-    G[Wait grace period]
-
-    A ==&gt; B
-    B -- Healthy --&gt; A
-    B -- Unhealthy --&gt; C
-    C -- No --&gt; B
-    C -- Yes --&gt; D
-    D -- Not reached --&gt; E
-    D -- Reached --&gt; F
-    E ==&gt; G
-    G ==&gt; B</code></pre>
-<ol>
-<li><strong>Startup gate</strong> - Monitoring waits until DUMB startup is <code>ready</code> or <code>degraded</code></li>
-<li><strong>Grace period</strong> - Each service receives its configured post-start grace</li>
-<li><strong>Health check</strong> - DUMB verifies the process, configured ports, and—where a
-   safe local endpoint exists—the application itself</li>
-<li><strong>Unhealthy detection</strong> - Multiple consecutive failures trigger action</li>
-<li><strong>Restart attempt</strong> - Service is stopped and restarted</li>
-<li><strong>Recovery verification</strong> - Success is recorded only after health checks pass</li>
-<li><strong>Repeat</strong> - Continue monitoring after restart</li>
-</ol>
-<hr />
-<h2 id="health-states-and-application-probes">Health states and application probes<a class="headerlink" href="#health-states-and-application-probes" title="Permanent link">&para;</a></h2>
-<p>DUMB reports four application health states:</p>
+<h1 id="media-library-protection-api">Media Library Protection API<a class="headerlink" href="#media-library-protection-api" title="Permanent link">&para;</a></h1>
+<p>All endpoints use the normal DUMB authentication policy and are capability-gated by <code>media_library_protection</code>. Plex preference controls additionally require <code>plex_library_settings</code>.</p>
 <table>
 <thead>
 <tr>
-<th>State</th>
-<th>Meaning</th>
-<th>Auto-restart behavior</th>
+<th>Method</th>
+<th>Endpoint</th>
+<th>Purpose</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><strong>Healthy</strong></td>
-<td>Process, ports, and application probe passed</td>
-<td>Reset the consecutive-failure counter</td>
+<td><code>GET</code></td>
+<td><code>/api/process/media-protection/status</code></td>
+<td>Active/recent incidents and global recovery timing. Optional <code>process_name</code>.</td>
 </tr>
 <tr>
-<td><strong>Degraded</strong></td>
-<td>The application is reachable but reports a warning, or an optional probe is unsupported/protected</td>
-<td>Keep the service running and show the reason</td>
+<td><code>POST</code></td>
+<td><code>/api/process/media-protection/preflight</code></td>
+<td>Resolve affected media servers and current activity before <code>stop</code>, <code>restart</code>, <code>update</code>, or <code>scheduled_update</code>.</td>
 </tr>
 <tr>
-<td><strong>Starting</strong></td>
-<td>The application explicitly reports initialization or migration work</td>
-<td>Keep waiting; do not count it as an Auto-restart failure</td>
+<td><code>GET</code></td>
+<td><code>/api/process/media-protection/policy?process_name=...</code></td>
+<td>Read a redacted per-server policy.</td>
 </tr>
 <tr>
-<td><strong>Unhealthy</strong></td>
-<td>The process/port failed or the application endpoint reports a real failure</td>
-<td>Count toward <code>unhealthy_threshold</code></td>
+<td><code>PUT</code></td>
+<td><code>/api/process/media-protection/policy</code></td>
+<td>Save per-server enablement, dedicated API key, idle-stop behavior, or protected mounts.</td>
+</tr>
+<tr>
+<td><code>PUT</code></td>
+<td><code>/api/process/media-protection/settings</code></td>
+<td>Save global enablement and recovery timing.</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/api/process/media-protection/plex-library-settings</code></td>
+<td>Read the supported live Plex library preferences.</td>
+</tr>
+<tr>
+<td><code>PUT</code></td>
+<td><code>/api/process/media-protection/plex-library-settings</code></td>
+<td>Update only the allowlisted Plex library preferences.</td>
 </tr>
 </tbody>
 </table>
-<p>Application probes are bounded, read-only, loopback requests cached briefly by
-the backend. Current probes include:</p>
-<ul>
-<li>NzbDAV backend <code>/health</code></li>
-<li>Servarr <code>/ping</code> for Sonarr, Radarr, Lidarr, Prowlarr, and Whisparr</li>
-<li>Jellyfin <code>/health</code>, Emby application ping, and Plex <code>/identity</code></li>
-<li>Seerr status and Traefik Proxy Admin health</li>
-<li>PostgreSQL <code>pg_isready</code> and pgAdmin ping</li>
-<li>rclone's local RC version endpoint when RC is enabled</li>
-</ul>
-<p>Services without a known safe application endpoint retain process and port
-checks. DUMB deliberately does not use content health, missing articles,
-indexer/provider warnings, or other external-integration checks as restart
-signals. Those conditions may require operator action, but restarting a healthy
-application usually does not fix them and can create a restart loop.</p>
-<p>For NzbDAV specifically, the maintained fork can keep its backend port open
-during a blocking database migration while <code>/health</code> returns
-<code>503 {"status":"migrating"}</code>. DUMB reports this as <strong>Starting</strong>, so stack
-readiness waits for the real backend without repeatedly restarting a legitimate
-migration.</p>
-<hr />
-<h2 id="configuration">Configuration<a class="headerlink" href="#configuration" title="Permanent link">&para;</a></h2>
-<p>Auto-restart is configured globally in <code>dumb.auto_restart</code>:</p>
-<div class="highlight"><pre><span></span><code><span class="nt">&quot;dumb&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<span class="w">  </span><span class="nt">&quot;auto_restart&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<span class="w">    </span><span class="nt">&quot;enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;restart_on_unhealthy&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;healthcheck_interval&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">30</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;unhealthy_threshold&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">3</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;max_restarts&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">3</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;window_seconds&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">300</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;backoff_seconds&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="mi">5</span><span class="p">,</span><span class="w"> </span><span class="mi">15</span><span class="p">,</span><span class="w"> </span><span class="mi">45</span><span class="p">,</span><span class="w"> </span><span class="mi">120</span><span class="p">],</span>
-<span class="w">    </span><span class="nt">&quot;grace_period_seconds&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">30</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;services&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[]</span>
-<span class="w">  </span><span class="p">}</span>
-<span class="p">}</span>
-</code></pre></div>
-<h3 id="configuration-options">Configuration options<a class="headerlink" href="#configuration-options" title="Permanent link">&para;</a></h3>
-<table>
-<thead>
-<tr>
-<th>Option</th>
-<th>Default</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>enabled</code></td>
-<td><code>false</code></td>
-<td>Enable auto-restart globally</td>
-</tr>
-<tr>
-<td><code>restart_on_unhealthy</code></td>
-<td><code>true</code></td>
-<td>Restart when health checks fail</td>
-</tr>
-<tr>
-<td><code>healthcheck_interval</code></td>
-<td><code>30</code></td>
-<td>Seconds between health checks</td>
-</tr>
-<tr>
-<td><code>unhealthy_threshold</code></td>
-<td><code>3</code></td>
-<td>Consecutive failures before restart</td>
-</tr>
-<tr>
-<td><code>max_restarts</code></td>
-<td><code>3</code></td>
-<td>Maximum restarts within the window</td>
-</tr>
-<tr>
-<td><code>window_seconds</code></td>
-<td><code>300</code></td>
-<td>Time window in seconds</td>
-</tr>
-<tr>
-<td><code>backoff_seconds</code></td>
-<td><code>[5, 15, 45, 120]</code></td>
-<td>Backoff delays between restarts</td>
-</tr>
-<tr>
-<td><code>grace_period_seconds</code></td>
-<td><code>30</code></td>
-<td>Seconds to wait after stack readiness or a later service launch before health checks</td>
-</tr>
-<tr>
-<td><code>services</code></td>
-<td><code>[]</code></td>
-<td>Limit auto-restart to these process names</td>
-</tr>
-</tbody>
-</table>
-<hr />
-<h2 id="backoff-schedule">Backoff schedule<a class="headerlink" href="#backoff-schedule" title="Permanent link">&para;</a></h2>
-<p>To prevent rapid restart loops, DUMB selects delays from the configured
-<code>backoff_seconds</code> list:</p>
-<table>
-<thead>
-<tr>
-<th>Attempt</th>
-<th>Delay</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>1</td>
-<td>5 seconds</td>
-</tr>
-<tr>
-<td>2</td>
-<td>15 seconds</td>
-</tr>
-<tr>
-<td>3</td>
-<td>45 seconds</td>
-</tr>
-<tr>
-<td>4+</td>
-<td>120 seconds</td>
-</tr>
-</tbody>
-</table>
-<p>This is an explicit list, not a calculated multiplier. You can replace it with
-any ordered list of non-negative delays. Attempts beyond the list use its last
-value.</p>
-<hr />
-<h2 id="restart-limits">Restart limits<a class="headerlink" href="#restart-limits" title="Permanent link">&para;</a></h2>
-<p>Services have a maximum number of restart attempts within a time window:</p>
-<ul>
-<li><strong>Default</strong>: 3 restart attempts in a rolling 300-second window</li>
-<li>After reaching the limit, additional automatic attempts are suppressed while
-  those attempts remain inside the window</li>
-<li>Old attempts age out of the rolling window automatically</li>
-<li>A manual start re-enables monitoring after an intentional stop, but does not
-  erase the recorded rolling-window attempts</li>
-</ul>
-<div class="admonition warning">
-<p class="admonition-title">Restart limit reached</p>
-<p>If a service keeps failing, investigate the root cause rather than increasing limits. Check logs for error messages.</p>
-</div>
-<hr />
-<h2 id="health-checks">Health checks<a class="headerlink" href="#health-checks" title="Permanent link">&para;</a></h2>
-<p>For each explicitly selected service, DUMB verifies:</p>
-<ul>
-<li>the tracked PID still exists and is not a zombie; and</li>
-<li>each configured <code>port</code>, <code>frontend_port</code>, <code>backend_port</code>, or <code>webdav_port</code>
-  (including corresponding values in <code>env</code>) accepts a TCP connection.</li>
-</ul>
-<p>There is no standalone <code>health_check</code> object in the current config. Add a
-service to <code>dumb.auto_restart.services</code>; its entry may inherit all global values
-or override selected policy fields:</p>
-<div class="highlight"><pre><span></span><code><span class="nt">&quot;services&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
-<span class="w">  </span><span class="p">{</span>
-<span class="w">    </span><span class="nt">&quot;process_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Riven Backend&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;unhealthy_threshold&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">4</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;grace_period_seconds&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">60</span>
-<span class="w">  </span><span class="p">}</span>
-<span class="p">]</span>
-</code></pre></div>
-<p>An empty <code>services</code> list monitors no services even when the global <code>enabled</code>
-flag is true. Use exact process names from <code>GET /process/processes</code> or select
-services in the frontend panel.</p>
-<p>Slow applications can use a longer service override without delaying checks
-for the rest of the stack. A 300-second override is a reasonable starting point
-for a Seerr instance that performs migrations or a first-run frontend build.
-The stack-wide readiness deadline is configured separately under
-<code>dumb.startup</code>; see <a href="../startup-lifecycle/">Startup lifecycle</a>.</p>
-<hr />
-<h2 id="monitoring-restart-status">Monitoring restart status<a class="headerlink" href="#monitoring-restart-status" title="Permanent link">&para;</a></h2>
-<h3 id="dashboard-indicators">Dashboard indicators<a class="headerlink" href="#dashboard-indicators" title="Permanent link">&para;</a></h3>
-<p>The dashboard shows auto-restart status for each service:</p>
-<ul>
-<li><strong>Restart count</strong> - Number of restarts in current window</li>
-<li><strong>Last restart</strong> - Timestamp of most recent restart</li>
-<li><strong>Health status</strong> - Current healthy/unhealthy state</li>
-</ul>
-<h3 id="api-endpoints">API endpoints<a class="headerlink" href="#api-endpoints" title="Permanent link">&para;</a></h3>
-<p>Query restart status via the API:</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Get service status including restart info</span>
-curl<span class="w"> </span><span class="s1">&#39;http://localhost:3005/api/process/service-status?process_name=Riven%20Backend&amp;include_health=true&#39;</span>
-</code></pre></div>
-<p>Response includes:</p>
-<div class="highlight"><pre><span></span><code><span class="p">{</span>
-<span class="w">  </span><span class="nt">&quot;process_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Riven Backend&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;running&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;healthy&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;health_status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;healthy&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;health_reason&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;health_details&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<span class="w">    </span><span class="nt">&quot;probe&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;process_and_ports&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;ports&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="mi">8080</span><span class="p">]</span>
-<span class="w">  </span><span class="p">},</span>
-<span class="w">  </span><span class="nt">&quot;restart&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<span class="w">    </span><span class="nt">&quot;restart_attempts&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">2</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;restart_successes&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">2</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;restart_failures&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;recent_restart_attempts&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">2</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;pending&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;next_restart_time&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;disabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;last_restart_time&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">1736937000.0</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;last_failure_reason&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;last_exit_time&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">1736936995.0</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;last_exit_reason&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Port 127.0.0.1:8080 not responding&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;unhealthy_count&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;unhealthy_threshold&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">3</span>
-<span class="w">  </span><span class="p">}</span>
-<span class="p">}</span>
-</code></pre></div>
-<h3 id="websocket-updates">WebSocket updates<a class="headerlink" href="#websocket-updates" title="Permanent link">&para;</a></h3>
-<p>Real-time restart events via <code>/ws/status</code>:</p>
-<div class="highlight"><pre><span></span><code><span class="p">{</span>
-<span class="w">  </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;status&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;processes&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
-<span class="w">    </span><span class="p">{</span>
-<span class="w">      </span><span class="nt">&quot;process_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Riven Backend&quot;</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;running&quot;</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;healthy&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;restart&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<span class="w">        </span><span class="nt">&quot;restart_attempts&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">2</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;restart_successes&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">2</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;restart_failures&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;recent_restart_attempts&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">2</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;pending&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;next_restart_time&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;disabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;last_restart_time&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">1736937000.0</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;last_failure_reason&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;last_exit_time&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">1736936995.0</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;last_exit_reason&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Port 127.0.0.1:8080 not responding&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;unhealthy_count&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;unhealthy_threshold&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">3</span>
-<span class="w">      </span><span class="p">}</span>
-<span class="w">    </span><span class="p">}</span>
-<span class="w">  </span><span class="p">]</span>
-<span class="p">}</span>
-</code></pre></div>
-<hr />
-<h2 id="disabling-auto-restart">Disabling auto-restart<a class="headerlink" href="#disabling-auto-restart" title="Permanent link">&para;</a></h2>
-<h3 id="per-service">Per-service<a class="headerlink" href="#per-service" title="Permanent link">&para;</a></h3>
-<p>Remove a service from the monitored list, or retain an explicit disabled entry:</p>
-<div class="highlight"><pre><span></span><code><span class="nt">&quot;services&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
-<span class="w">  </span><span class="p">{</span>
-<span class="w">    </span><span class="nt">&quot;process_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Riven Backend&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span>
-<span class="w">  </span><span class="p">}</span>
-<span class="p">]</span>
-</code></pre></div>
-<h3 id="globally">Globally<a class="headerlink" href="#globally" title="Permanent link">&para;</a></h3>
-<p>To disable auto-restart for all services, set <code>dumb.auto_restart.enabled</code> to
-<code>false</code>, or use the frontend panel. Per-service entries may remain stored for a
-later re-enable.</p>
-<hr />
-<h2 id="best-practices">Best practices<a class="headerlink" href="#best-practices" title="Permanent link">&para;</a></h2>
-<h3 id="appropriate-thresholds">Appropriate thresholds<a class="headerlink" href="#appropriate-thresholds" title="Permanent link">&para;</a></h3>
-<ul>
-<li><strong>Critical services</strong> (Plex, rclone): Lower threshold (2-3)</li>
-<li><strong>Background services</strong> (Zilean, NeutArr): Higher threshold (3-5)</li>
-</ul>
-<h3 id="grace-periods">Grace periods<a class="headerlink" href="#grace-periods" title="Permanent link">&para;</a></h3>
-<ul>
-<li><strong>Fast-starting services</strong>: 10-15 seconds</li>
-<li><strong>Database-dependent services</strong>: 30-60 seconds</li>
-<li><strong>Services with startup tasks</strong>: 60-120 seconds</li>
-</ul>
-<h3 id="monitoring">Monitoring<a class="headerlink" href="#monitoring" title="Permanent link">&para;</a></h3>
-<ul>
-<li>Review restart counts regularly</li>
-<li>Investigate services with frequent restarts</li>
-<li>Check logs after restart events</li>
-</ul>
-<hr />
-<h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h2>
-<h3 id="service-keeps-restarting">Service keeps restarting<a class="headerlink" href="#service-keeps-restarting" title="Permanent link">&para;</a></h3>
-<ol>
-<li>Check service logs for errors</li>
-<li>Verify configuration is valid</li>
-<li>Ensure dependencies are running</li>
-<li>Check for port conflicts</li>
-</ol>
-<h3 id="auto-restart-not-working">Auto-restart not working<a class="headerlink" href="#auto-restart-not-working" title="Permanent link">&para;</a></h3>
-<ol>
-<li>Verify <code>auto_restart.enabled</code> is <code>true</code></li>
-<li>Confirm the exact process name is present and enabled in <code>auto_restart.services</code></li>
-<li>Check whether the restart limit was reached</li>
-<li>Confirm the configured service port is accurate and reachable on container loopback</li>
-</ol>
-<h3 id="restart-delay-too-long">Restart delay too long<a class="headerlink" href="#restart-delay-too-long" title="Permanent link">&para;</a></h3>
-<ul>
-<li>Shorten the values in <code>backoff_seconds</code></li>
-<li>Review <code>max_restarts</code> and <code>window_seconds</code> before changing limits</li>
-<li>Fix the underlying health failure instead of using a zero-delay retry loop</li>
-</ul>
-<hr />
-<h2 id="related-pages">Related pages<a class="headerlink" href="#related-pages" title="Permanent link">&para;</a></h2>
-<ul>
-<li><a href="../../frontend/dashboard/">Dashboard</a> - View restart status</li>
-<li><a href="../../api/process/">Process Management API</a> - API controls</li>
-<li><a href="../../api/websocket/">WebSocket API</a> - Real-time updates</li>
-</ul>
+<p>Lifecycle payloads for <code>/stop-service</code>, <code>/restart-service</code>, and <code>/update-install</code> accept <code>protection_override</code> with <code>safe</code>, <code>keep_running</code>, or <code>stop_now</code>. Omitting it uses <code>safe</code>. A blocked safe operation returns <code>status: protection_required</code> with the latest preflight rather than changing service state.</p>
+<p>Dedicated Jellyfin/Emby keys are write-only. Policy responses contain an empty <code>api_key</code> and <code>api_key_configured</code>; a blank update preserves the stored key unless <code>clear_api_key: true</code> is supplied.</p>
 
 
 
@@ -5793,7 +5147,7 @@ later re-enable.</p>
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../authentication/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Authentication">
+          <a href="../metrics/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Metrics">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-arrow-left" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7M19 12H5"/></svg>
@@ -5803,20 +5157,20 @@ later re-enable.</p>
                 Previous
               </span>
               <div class="md-ellipsis">
-                Authentication
+                Metrics
               </div>
             </div>
           </a>
         
         
           
-          <a href="../startup-lifecycle/" class="md-footer__link md-footer__link--next" aria-label="Next: Startup lifecycle">
+          <a href="../notifications/" class="md-footer__link md-footer__link--next" aria-label="Next: Notifications">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Startup lifecycle
+                Notifications
               </div>
             </div>
             <div class="md-footer__button md-icon">

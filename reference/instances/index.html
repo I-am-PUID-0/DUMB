@@ -771,6 +771,8 @@
       
         
       
+        
+      
     
     
     
@@ -996,6 +998,36 @@
     
   
     Auto-update
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../features/media-library-protection/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-shield-check" viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    Media Library Protection
   
 
     
@@ -3621,6 +3653,8 @@
       
         
       
+        
+      
     
     
     
@@ -3846,6 +3880,36 @@
     
   
     Metrics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/media-library-protection/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-shield-check" viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    Media Library Protection
   
 
     
@@ -5129,10 +5193,10 @@
   
 
 
-<h1 id="multi-instance-configuration">Multi-instance configuration<a class="headerlink" href="#multi-instance-configuration" title="Permanent link">#</a></h1>
+<h1 id="multi-instance-configuration">Multi-instance configuration<a class="headerlink" href="#multi-instance-configuration" title="Permanent link">&para;</a></h1>
 <p>Several DUMB services support multiple instances (for example Sonarr, Radarr, Lidarr, Whisparr, and rclone). This guide shows how to configure instances safely.</p>
 <hr />
-<h2 id="instance-pattern">Instance pattern<a class="headerlink" href="#instance-pattern" title="Permanent link">#</a></h2>
+<h2 id="instance-pattern">Instance pattern<a class="headerlink" href="#instance-pattern" title="Permanent link">&para;</a></h2>
 <p>Services that support instances use an <code>instances</code> map keyed by a friendly name:</p>
 <div class="highlight"><pre><span></span><code><span class="nt">&quot;sonarr&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;instances&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
@@ -5156,7 +5220,7 @@
 <span class="p">}</span>
 </code></pre></div>
 <hr />
-<h2 id="best-practices">Best practices<a class="headerlink" href="#best-practices" title="Permanent link">#</a></h2>
+<h2 id="best-practices">Best practices<a class="headerlink" href="#best-practices" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Assign unique ports per instance to avoid collisions.</li>
 <li>Use distinct <code>config_dir</code> and <code>log_file</code> paths.</li>
@@ -5164,7 +5228,7 @@
 <li>Set <code>core_service</code> when integrating with Decypharr, NzbDAV, or AltMount (single value, list, or comma-separated).</li>
 </ul>
 <hr />
-<h2 id="rclone-instances">rclone instances<a class="headerlink" href="#rclone-instances" title="Permanent link">#</a></h2>
+<h2 id="rclone-instances">rclone instances<a class="headerlink" href="#rclone-instances" title="Permanent link">&para;</a></h2>
 <p>rclone also uses an <code>instances</code> map for different mount targets:</p>
 <div class="highlight"><pre><span></span><code><span class="nt">&quot;rclone&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;instances&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
@@ -5180,7 +5244,7 @@
 <span class="p">}</span>
 </code></pre></div>
 <hr />
-<h2 id="related-pages">Related pages<a class="headerlink" href="#related-pages" title="Permanent link">#</a></h2>
+<h2 id="related-pages">Related pages<a class="headerlink" href="#related-pages" title="Permanent link">&para;</a></h2>
 <ul>
 <li><a href="../../services/">Services overview</a></li>
 <li><a href="../../features/configuration/">Configuration guide</a></li>

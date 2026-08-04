@@ -771,6 +771,8 @@
       
         
       
+        
+      
     
     
     
@@ -996,6 +998,36 @@
     
   
     Auto-update
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../features/media-library-protection/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-shield-check" viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    Media Library Protection
   
 
     
@@ -3751,6 +3783,8 @@
       
         
       
+        
+      
     
     
     
@@ -3976,6 +4010,36 @@
     
   
     Metrics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/media-library-protection/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-shield-check" viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    Media Library Protection
   
 
     
@@ -5195,10 +5259,10 @@
   
 
 
-<h1 id="backend-architecture">Backend architecture<a class="headerlink" href="#backend-architecture" title="Permanent link">#</a></h1>
+<h1 id="backend-architecture">Backend architecture<a class="headerlink" href="#backend-architecture" title="Permanent link">&para;</a></h1>
 <p>The DUMB backend is a FastAPI service that manages configuration, setup hooks, process lifecycle, dependency ordering, route generation, and real-time updates. It is the control plane for all managed services.</p>
 <hr />
-<h2 id="core-components">Core components<a class="headerlink" href="#core-components" title="Permanent link">#</a></h2>
+<h2 id="core-components">Core components<a class="headerlink" href="#core-components" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
@@ -5262,7 +5326,7 @@
 </tbody>
 </table>
 <hr />
-<h2 id="control-plane-flow">Control plane flow<a class="headerlink" href="#control-plane-flow" title="Permanent link">#</a></h2>
+<h2 id="control-plane-flow">Control plane flow<a class="headerlink" href="#control-plane-flow" title="Permanent link">&para;</a></h2>
 <pre class="mermaid"><code>%%{ init: { "flowchart": { "curve": "basis" } } }%%
 flowchart TD
     UI([Frontend actions])
@@ -5281,7 +5345,7 @@ flowchart TD
     LOG ==&gt; WS
     WS ==&gt; UI</code></pre>
 <hr />
-<h2 id="request-flow">Request flow<a class="headerlink" href="#request-flow" title="Permanent link">#</a></h2>
+<h2 id="request-flow">Request flow<a class="headerlink" href="#request-flow" title="Permanent link">&para;</a></h2>
 <pre class="mermaid"><code>sequenceDiagram
     participant UI as Frontend
     participant API as DUMB API
@@ -5293,7 +5357,7 @@ flowchart TD
     PH--&gt;&gt;API: Status + logs
     API--&gt;&gt;UI: WebSocket updates</code></pre>
 <hr />
-<h2 id="configuration-pipeline">Configuration pipeline<a class="headerlink" href="#configuration-pipeline" title="Permanent link">#</a></h2>
+<h2 id="configuration-pipeline">Configuration pipeline<a class="headerlink" href="#configuration-pipeline" title="Permanent link">&para;</a></h2>
 <ol>
 <li>The API validates configuration updates.</li>
 <li>Service setup hooks patch service-specific configs (for example Decypharr, NzbDAV, AltMount, Profilarr, Traefik Proxy Admin, or Pulsarr).</li>
@@ -5305,7 +5369,7 @@ flowchart TD
 <p>The backend is the source of truth for <code>dumb_config.json</code>. Manual edits are allowed, but should be followed by a reload or restart so the process handler picks up changes.</p>
 </div>
 <hr />
-<h2 id="service-orchestration">Service orchestration<a class="headerlink" href="#service-orchestration" title="Permanent link">#</a></h2>
+<h2 id="service-orchestration">Service orchestration<a class="headerlink" href="#service-orchestration" title="Permanent link">&para;</a></h2>
 <p>Service lifecycle is centralized in the process handler, which:</p>
 <ul>
 <li>Tracks enabled services and instances</li>
@@ -5327,7 +5391,7 @@ flowchart TD
 <li>Enforces shutdown ordering</li>
 </ul>
 <hr />
-<h2 id="websocket-channels">WebSocket channels<a class="headerlink" href="#websocket-channels" title="Permanent link">#</a></h2>
+<h2 id="websocket-channels">WebSocket channels<a class="headerlink" href="#websocket-channels" title="Permanent link">&para;</a></h2>
 <p>The backend exposes WebSocket endpoints for:</p>
 <ul>
 <li>Service status updates</li>
@@ -5336,7 +5400,7 @@ flowchart TD
 </ul>
 <p>These streams power the frontend’s real-time dashboard.</p>
 <hr />
-<h2 id="related-pages">Related pages<a class="headerlink" href="#related-pages" title="Permanent link">#</a></h2>
+<h2 id="related-pages">Related pages<a class="headerlink" href="#related-pages" title="Permanent link">&para;</a></h2>
 <ul>
 <li><a href="../../api/">API reference</a></li>
 <li><a href="../../api/process/">Process management</a></li>
