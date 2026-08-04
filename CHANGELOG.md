@@ -1,5 +1,34 @@
 # Changelog
 
+## [2.14.0](https://github.com/I-am-PUID-0/DUMB/compare/2.13.0...2.14.0) (2026-08-04)
+
+
+### ✨ Features
+
+* **media-protection:** safeguard libraries during storage outages ([dabc05d](https://github.com/I-am-PUID-0/DUMB/commit/dabc05d50e40d6714b19ca4e87d0aab0cc746906))
+* **profilarr:** support v1 and v2 runtimes ([bd2b633](https://github.com/I-am-PUID-0/DUMB/commit/bd2b6335e3d913cf8b415576f58303edf626e6aa))
+* **rclone:** add NzbDAV streaming optimizer ([d94f718](https://github.com/I-am-PUID-0/DUMB/commit/d94f7181e16584f3eba7082f78da69aa666a53ef))
+* **rclone:** expose optimizer setting roles and verify cleanup ([994af0a](https://github.com/I-am-PUID-0/DUMB/commit/994af0a89643dc626bf7301f4aa29ac29ec652d5))
+* **rclone:** harden optimizer recommendations and production mount restarts ([af2ab9c](https://github.com/I-am-PUID-0/DUMB/commit/af2ab9c84c3be76e12c0664b3c8e99125fd76324))
+* **updates:** add scheduled check-only update mode ([0ed20bb](https://github.com/I-am-PUID-0/DUMB/commit/0ed20bb7e762f09344aa259b9ad27a4f9a0fca3c))
+* **updates:** expose dashboard update inventory metadata ([b819929](https://github.com/I-am-PUID-0/DUMB/commit/b81992937d450017e418e43baa6cedd929db37bb))
+
+
+### 🐛 Bug Fixes
+
+* **ci:** harden AI lifecycle checks and bump Ruff ([1499894](https://github.com/I-am-PUID-0/DUMB/commit/14998940f6b935337faeaad1ddd3b5ba3ac20c83))
+* **deps:** upgrade cryptography to 50.0.0 ([ee28c2d](https://github.com/I-am-PUID-0/DUMB/commit/ee28c2dcddb37164164d9dce94252af50629f60b))
+* **deps:** upgrade cryptography to 50.0.0 ([994af0a](https://github.com/I-am-PUID-0/DUMB/commit/994af0a89643dc626bf7301f4aa29ac29ec652d5))
+* **nzbdav:** support Git tags without GitHub releases ([39a5745](https://github.com/I-am-PUID-0/DUMB/commit/39a5745b0ecf41f83753b868bee594dc9436d40b))
+* **nzbdav:** track moving release tags automatically ([a0d112e](https://github.com/I-am-PUID-0/DUMB/commit/a0d112edae0d000dfa1c16337517bb1965156298))
+* **rclone:** discover optimizer media from active NzbDAV categories ([c3aba29](https://github.com/I-am-PUID-0/DUMB/commit/c3aba29f622422697db6f02c3b0d969ee2ffe11e))
+* **rclone:** harden tracing and content selection ([8cd4506](https://github.com/I-am-PUID-0/DUMB/commit/8cd450697bda5b43e56ce8f8ce51920ea7b4ada0))
+
+
+### 🤡 Other Changes
+
+* **deps:** update dependencies ([1441473](https://github.com/I-am-PUID-0/DUMB/commit/1441473e46b20f2bafb12d25a2baba4f1792ce9b))
+
 ## [2.13.0](https://github.com/I-am-PUID-0/DUMB/compare/2.12.2...2.13.0) (2026-08-01)
 
 
