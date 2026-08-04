@@ -7,6 +7,7 @@ This makes candidate results comparable without evicting or warming the live cac
 
 from __future__ import annotations
 
+import base64
 import copy
 import json
 import os
@@ -51,6 +52,7 @@ TERMINAL_STATUSES = {
 }
 JOB_ID_RE = re.compile(r"^[0-9a-f]{32}$")
 CATEGORY_RE = re.compile(r"^[a-z0-9][a-z0-9_-]*$")
+DURATION_RE = re.compile(r"(?:\d+(?:\.\d+)?(?:ns|us|µs|ms|s|m|h|d|w))+", re.I)
 MEDIA_EXTENSIONS = {
     ".3g2",
     ".3gp",
@@ -89,9 +91,11 @@ VARIED_STREAMING_FLAGS = {
 }
 FIXED_CONSTRAINT_FLAGS = {"--vfs-cache-max-size"}
 BUNDLED_ASSUMPTION_FLAGS = {
+    "--vfs-cache-mode",
+}
+NZBDAV_RECOMMENDED_FLAGS = {
     "--dir-cache-time",
     "--vfs-cache-max-age",
-    "--vfs-cache-mode",
 }
 SETTING_DISPLAY_ORDER = (
     "--vfs-cache-mode",
@@ -112,6 +116,8 @@ def _setting_role(flag: str) -> str:
         return "actually_varied"
     if flag in FIXED_CONSTRAINT_FLAGS:
         return "fixed_constraint"
+    if flag in NZBDAV_RECOMMENDED_FLAGS:
+        return "nzbdav_recommended"
     if flag in BUNDLED_ASSUMPTION_FLAGS:
         return "bundled_assumption"
     return "preserved"
@@ -128,6 +134,42 @@ def _bytes_label(value: int | float) -> str:
             return f"{value:.1f} {suffix}"
         value /= 1024
     return f"{value:.1f} TiB"
+
+
+def _duration_seconds(value: Any) -> float | None:
+    text = str(value or "").strip().lower()
+    if text == "0":
+        return 0.0
+    if not text or not DURATION_RE.fullmatch(text):
+        return None
+    units = {
+        "ns": 1e-9,
+        "us": 1e-6,
+        "µs": 1e-6,
+        "ms": 1e-3,
+        "s": 1,
+        "m": 60,
+        "h": 3600,
+        "d": 86400,
+        "w": 604800,
+    }
+    total = 0.0
+    for amount, unit in re.findall(r"(\d+(?:\.\d+)?)(ns|us|µs|ms|s|m|h|d|w)", text):
+        total += float(amount) * units[unit]
+    return total
+
+
+def _nzbdav_timeout_recommendations(command: list[str]) -> dict[str, str]:
+    current = _parse_flag_map(command)[1]
+    minimum_seconds = 7 * 86400
+    recommendations = {}
+    for flag in NZBDAV_RECOMMENDED_FLAGS:
+        value = current.get(flag)
+        seconds = _duration_seconds(value)
+        recommendations[flag] = (
+            str(value) if seconds is not None and seconds >= minimum_seconds else "1w"
+        )
+    return recommendations
 
 
 def _parse_flag_map(command: list[str]) -> tuple[list[str], dict[str, str | None]]:
@@ -168,19 +210,26 @@ def merge_managed_flags(command: list[str], settings: dict[str, str]) -> list[st
     return _build_command(prefix, flags)
 
 
-def _candidate_profiles(depth: str, limits: dict[str, Any]) -> list[dict[str, Any]]:
+def _candidate_profiles(
+    depth: str,
+    limits: dict[str, Any],
+    current_command: list[str] | None = None,
+) -> list[dict[str, Any]]:
     max_cache = max(1, int(limits["max_vfs_cache_gib"]))
+    recommended_timeouts = _nzbdav_timeout_recommendations(current_command or [])
     common = {
         "--vfs-cache-mode": "full",
         "--vfs-cache-max-size": f"{max_cache}G",
-        "--vfs-cache-max-age": "180m",
-        "--dir-cache-time": "1s",
+        **recommended_timeouts,
     }
     candidates = [
         {
             "id": "baseline",
-            "label": "Current tuning (bounded cache)",
-            "settings": {"--vfs-cache-max-size": f"{max_cache}G"},
+            "label": "Current streaming knobs (bounded + NzbDAV guidance)",
+            "settings": {
+                "--vfs-cache-max-size": f"{max_cache}G",
+                **recommended_timeouts,
+            },
         },
         {
             "id": "balanced",
@@ -680,6 +729,7 @@ class RcloneOptimizerManager:
                     "concurrent_streams",
                 ],
                 "bundled_assumptions": sorted(BUNDLED_ASSUMPTION_FLAGS),
+                "nzbdav_recommended": sorted(NZBDAV_RECOMMENDED_FLAGS),
                 "preserved": "Apart from the isolated mount/cache/RC/read-only/log plumbing required for safe testing, all other existing user flags are carried into every shadow command unchanged and are not evaluated by this optimizer.",
                 "confidence_note": "The recommendation identifies the best-performing predefined bundle. It does not prove that every value in that bundle is individually optimal.",
             },
@@ -838,7 +888,18 @@ class RcloneOptimizerManager:
                         "NzbDAV stream tracing could not be enabled. Performance measurements will continue, but provider trace matching will be marked unavailable."
                     )
                     self._update(job, warnings=job["warnings"])
-            profiles = _candidate_profiles(job["depth"], job["limits"])
+            rc_healthy, rc_detail = self._nzbdav_rc_health(instance)
+            if not rc_healthy:
+                job["warnings"].append(
+                    "NzbDAV rclone RC notifications are not healthy: "
+                    f"{rc_detail}. The one-week directory-cache recommendation assumes "
+                    "NzbDAV can invalidate changed paths; repair RC or choose a shorter "
+                    "--dir-cache-time fallback."
+                )
+                self._update(job, warnings=job["warnings"])
+            profiles = _candidate_profiles(
+                job["depth"], job["limits"], instance.get("command") or []
+            )
             deadline = (
                 time.monotonic() + int(job["limits"]["max_duration_minutes"]) * 60
             )
@@ -1399,8 +1460,8 @@ class RcloneOptimizerManager:
             "settings": settings,
             "setting_comparison": winner.get("setting_comparison") or [],
             "summary": winner["summary"],
-            "reason": "Best-performing predefined bundle by the bounded score across startup time, first byte, seek latency, sustained throughput, resource use, and excluded/error samples.",
-            "confidence_note": "This result compares complete profiles. It does not prove that every individual value in the winning bundle is optimal.",
+            "reason": "Best-performing predefined streaming bundle by the bounded score across startup time, first byte, seek latency, sustained throughput, resource use, and excluded/error samples. NzbDAV's one-week directory and VFS cache recommendations are architecture guidance shared by every candidate, not score-selected values.",
+            "confidence_note": "This result compares complete profiles. It does not prove that every individual value in the winning bundle is optimal; the one-week NzbDAV cache timeouts are recommended operational policy rather than benchmark findings.",
             "requires_review": True,
             "applied": False,
         }
@@ -1417,9 +1478,13 @@ class RcloneOptimizerManager:
         try:
             _name, instance = self._resolve_instance(job["process_name"])
             previous = copy.deepcopy(instance.get("command") or [])
+            recommendation_settings = copy.deepcopy(
+                (job.get("recommendation") or {}).get("settings") or {}
+            )
+            recommendation_settings.update(_nzbdav_timeout_recommendations(previous))
             recommended = merge_managed_flags(
                 previous,
-                (job.get("recommendation") or {}).get("settings") or {},
+                recommendation_settings,
             )
             if not recommended:
                 raise RcloneOptimizerError(
@@ -1428,12 +1493,12 @@ class RcloneOptimizerManager:
             job["previous_command"] = previous
             instance["command"] = recommended
             CONFIG_MANAGER.save_config(job["process_name"])
-            self.process_handler.stop_process(job["process_name"])
-            success, error = self.process_handler.start_process(job["process_name"])
-            if not success:
-                raise RcloneOptimizerError(error or "rclone failed to restart")
-            self._wait_for_production_mount(instance)
+            self._restart_production_mount(job["process_name"], instance)
             recommendation = copy.deepcopy(job["recommendation"])
+            recommendation["settings"] = recommendation_settings
+            recommendation["setting_comparison"] = _candidate_setting_comparison(
+                previous, recommendation_settings
+            )
             recommendation["applied"] = True
             recommendation["applied_at"] = _utcnow()
             self._update(
@@ -1501,24 +1566,76 @@ class RcloneOptimizerManager:
         _name, instance = self._resolve_instance(job["process_name"])
         instance["command"] = copy.deepcopy(previous)
         CONFIG_MANAGER.save_config(job["process_name"])
-        self.process_handler.stop_process(job["process_name"])
-        success, error = self.process_handler.start_process(job["process_name"])
-        if not success:
+        self._restart_production_mount(job["process_name"], instance)
+
+    def _restart_production_mount(
+        self, process_name: str, instance: dict[str, Any]
+    ) -> None:
+        """Restart rclone only after its previous FUSE mount is detached."""
+        self.process_handler.stop_process(process_name)
+        mount_path = self._mount_path(instance)
+        if not self._unmount(mount_path):
             raise RcloneOptimizerError(
-                f"Previous settings were saved but rclone did not restart: {error}"
+                "rclone stopped, but DUMB could not detach its production mount at "
+                f"{mount_path}. The saved command was not restarted because the stale "
+                "FUSE mount would prevent a safe remount."
             )
+        success, error = self.process_handler.start_process(process_name)
+        if not success:
+            raise RcloneOptimizerError(error or "rclone failed to restart")
         self._wait_for_production_mount(instance)
+
+    @staticmethod
+    def _mount_is_accessible(path: Path) -> bool:
+        try:
+            if not RcloneOptimizerManager._mount_is_registered(path):
+                return False
+            path.stat()
+        except OSError:
+            return False
+        return True
+
+    @staticmethod
+    def _mount_is_registered(path: Path) -> bool:
+        target = os.path.normpath(os.path.abspath(os.fspath(path)))
+        try:
+            with open("/proc/self/mountinfo", encoding="utf-8") as mountinfo:
+                for line in mountinfo:
+                    fields = line.split()
+                    if len(fields) < 5:
+                        continue
+                    mount_path = fields[4]
+                    for escaped, value in (
+                        ("\\040", " "),
+                        ("\\011", "\t"),
+                        ("\\012", "\n"),
+                        ("\\134", "\\"),
+                    ):
+                        mount_path = mount_path.replace(escaped, value)
+                    if os.path.normpath(mount_path) == target:
+                        return True
+            return False
+        except OSError:
+            try:
+                return os.path.ismount(path)
+            except OSError:
+                return True
 
     @staticmethod
     def _wait_for_production_mount(instance: dict[str, Any]) -> None:
         path = RcloneOptimizerManager._mount_path(instance)
         deadline = time.monotonic() + 30
+        stable_since = None
         while time.monotonic() < deadline:
-            if os.path.ismount(path):
-                return
-            time.sleep(0.5)
+            if RcloneOptimizerManager._mount_is_accessible(path):
+                stable_since = stable_since or time.monotonic()
+                if time.monotonic() - stable_since >= 2:
+                    return
+            else:
+                stable_since = None
+            time.sleep(0.25)
         raise RcloneOptimizerError(
-            "rclone restarted but its production mount did not become ready."
+            "rclone restarted but its production mount did not become accessible and remain stable."
         )
 
     @staticmethod
@@ -1723,12 +1840,74 @@ class RcloneOptimizerManager:
         except (urllib.error.URLError, TimeoutError, OSError, ValueError):
             return None
 
+    def _nzbdav_rc_health(self, instance: dict[str, Any]) -> tuple[bool, str]:
+        try:
+            enabled = (
+                str(self._nzbdav_config_value("rclone.rc-enabled") or "").lower()
+                == "true"
+            )
+            configured_host = str(
+                self._nzbdav_config_value("rclone.host") or ""
+            ).strip()
+            configured_user = str(self._nzbdav_config_value("rclone.user") or "")
+            configured_pass = str(self._nzbdav_config_value("rclone.pass") or "")
+        except (ImportError, OSError, ValueError, TypeError):
+            return False, "DUMB could not read NzbDAV's saved RC configuration"
+        if not enabled:
+            return False, "RC notifications are disabled in NzbDAV"
+        if not configured_host:
+            return False, "NzbDAV has no configured rclone RC host"
+
+        flags = _parse_flag_map(instance.get("command") or [])[1]
+        if "--rc" not in flags:
+            return False, "the production rclone command does not enable RC"
+        rc_address = str(flags.get("--rc-addr") or "127.0.0.1:5572").strip()
+        if rc_address.startswith(":"):
+            rc_address = f"127.0.0.1{rc_address}"
+        try:
+            rc_url = urllib.parse.urlparse(f"http://{rc_address}")
+            rc_port = int(rc_url.port or 5572)
+        except (TypeError, ValueError):
+            return False, "the production rclone RC address is invalid"
+        if rc_url.hostname not in {"127.0.0.1", "localhost", "::1"}:
+            return False, "the production rclone RC listener is not loopback-only"
+
+        try:
+            configured_url = urllib.parse.urlparse(configured_host)
+            configured_port = int(configured_url.port or 80)
+        except (TypeError, ValueError):
+            return False, "NzbDAV's configured rclone RC host is invalid"
+        if (
+            configured_url.scheme != "http"
+            or configured_url.hostname not in {"127.0.0.1", "localhost", "::1"}
+            or configured_port != rc_port
+        ):
+            return False, "NzbDAV's RC host does not match this rclone instance"
+
+        rc_user = str(flags.get("--rc-user") or "")
+        rc_pass = str(flags.get("--rc-pass") or "")
+        if configured_user != rc_user or configured_pass != rc_pass:
+            return False, "NzbDAV's RC credentials do not match this rclone instance"
+        if self._rclone_json(rc_port, "/core/version", rc_user, rc_pass) is None:
+            return False, "the configured production rclone RC endpoint is unreachable"
+        return True, "NzbDAV RC notifications are enabled and reachable"
+
     @staticmethod
-    def _rclone_json(port: int, path: str) -> Any:
+    def _nzbdav_config_value(key: str) -> Any:
+        from utils import nzbdav_db
+
+        return nzbdav_db.get_config_value(key)
+
+    @staticmethod
+    def _rclone_json(port: int, path: str, user: str = "", password: str = "") -> Any:
+        headers = {"Content-Type": "application/x-www-form-urlencoded"}
+        if user or password:
+            token = base64.b64encode(f"{user}:{password}".encode()).decode("ascii")
+            headers["Authorization"] = f"Basic {token}"
         request = safe_request(
             f"http://127.0.0.1:{port}{path}",
             data=b"",
-            headers={"Content-Type": "application/x-www-form-urlencoded"},
+            headers=headers,
             method="POST",
         )
         try:
@@ -1810,7 +1989,7 @@ class RcloneOptimizerManager:
 
     @staticmethod
     def _unmount(path: Path) -> bool:
-        if not path.exists() or not os.path.ismount(path):
+        if not RcloneOptimizerManager._mount_is_registered(path):
             return True
         for command in (
             ["fusermount3", "-uz", str(path)],
@@ -1832,12 +2011,12 @@ class RcloneOptimizerManager:
             if result.returncode == 0:
                 deadline = time.monotonic() + 3
                 while time.monotonic() < deadline:
-                    if not os.path.ismount(path):
+                    if not RcloneOptimizerManager._mount_is_registered(path):
                         return True
                     time.sleep(0.1)
-            elif not os.path.ismount(path):
+            elif not RcloneOptimizerManager._mount_is_registered(path):
                 return True
-        return not os.path.ismount(path)
+        return not RcloneOptimizerManager._mount_is_registered(path)
 
     def shutdown(self) -> None:
         self._shutdown.set()

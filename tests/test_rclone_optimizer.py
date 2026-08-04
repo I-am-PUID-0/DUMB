@@ -283,7 +283,138 @@ class RcloneOptimizerTests(unittest.TestCase):
                 for candidate in thorough
             )
         )
-        self.assertEqual("Current tuning (bounded cache)", quick[0]["label"])
+        self.assertTrue(
+            all(
+                candidate["settings"].get("--dir-cache-time") == "1w"
+                and candidate["settings"].get("--vfs-cache-max-age") == "1w"
+                for candidate in thorough
+            )
+        )
+        self.assertEqual(
+            "Current streaming knobs (bounded + NzbDAV guidance)",
+            quick[0]["label"],
+        )
+
+    def test_nzbdav_timeout_recommendations_raise_short_values_only(self):
+        short = rclone_optimizer._nzbdav_timeout_recommendations(
+            [
+                "rclone",
+                "mount",
+                "nzbdav:",
+                "/mnt/debrid/nzbdav",
+                "--dir-cache-time=1s",
+                "--vfs-cache-max-age=180m",
+            ]
+        )
+        long = rclone_optimizer._nzbdav_timeout_recommendations(
+            [
+                "rclone",
+                "mount",
+                "nzbdav:",
+                "/mnt/debrid/nzbdav",
+                "--dir-cache-time=2w",
+                "--vfs-cache-max-age=336h",
+            ]
+        )
+
+        self.assertEqual({"--dir-cache-time": "1w", "--vfs-cache-max-age": "1w"}, short)
+        self.assertEqual(
+            {"--dir-cache-time": "2w", "--vfs-cache-max-age": "336h"}, long
+        )
+
+    def test_nzbdav_rc_health_requires_enabled_matching_reachable_rc(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            config = _ConfigManager(root / "cache")
+            config.instance["command"].extend(
+                ["--rc", "--rc-addr", "127.0.0.1:5572", "--rc-no-auth"]
+            )
+            values = {
+                "rclone.rc-enabled": "true",
+                "rclone.host": "http://127.0.0.1:5572",
+                "rclone.user": "",
+                "rclone.pass": "",
+            }
+            with patch.object(rclone_optimizer, "CONFIG_MANAGER", config):
+                manager = rclone_optimizer.RcloneOptimizerManager(
+                    process_handler=object(),
+                    logger=unittest.mock.Mock(),
+                    base_dir=str(root / "optimizer"),
+                )
+
+            with (
+                patch.object(
+                    manager,
+                    "_nzbdav_config_value",
+                    side_effect=lambda key: values.get(key),
+                ),
+                patch.object(manager, "_rclone_json", return_value={"version": "1"}),
+            ):
+                healthy, detail = manager._nzbdav_rc_health(config.instance)
+
+        self.assertTrue(healthy, detail)
+
+    def test_nzbdav_rc_health_reports_disabled_notifications(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            config = _ConfigManager(root / "cache")
+            with patch.object(rclone_optimizer, "CONFIG_MANAGER", config):
+                manager = rclone_optimizer.RcloneOptimizerManager(
+                    process_handler=object(),
+                    logger=unittest.mock.Mock(),
+                    base_dir=str(root / "optimizer"),
+                )
+
+            with patch.object(
+                manager,
+                "_nzbdav_config_value",
+                side_effect=lambda key: {
+                    "rclone.rc-enabled": "false",
+                    "rclone.host": "http://127.0.0.1:5572",
+                }.get(key),
+            ):
+                healthy, detail = manager._nzbdav_rc_health(config.instance)
+
+        self.assertFalse(healthy)
+        self.assertIn("disabled", detail)
+
+    def test_apply_upgrades_legacy_short_timeouts_without_reducing_longer_value(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            config = _ConfigManager(root / "cache")
+            config.instance["command"].extend(
+                ["--dir-cache-time=2w", "--vfs-cache-max-age=180m"]
+            )
+            with patch.object(rclone_optimizer, "CONFIG_MANAGER", config):
+                manager = rclone_optimizer.RcloneOptimizerManager(
+                    process_handler=object(),
+                    logger=unittest.mock.Mock(),
+                    base_dir=str(root / "optimizer"),
+                )
+                job_id = "d" * 32
+                manager._jobs[job_id] = {
+                    "job_id": job_id,
+                    "process_name": "rclone w/ NzbDAV",
+                    "status": "completed",
+                    "recommendation": {
+                        "label": "Legacy",
+                        "settings": {
+                            "--dir-cache-time": "1s",
+                            "--vfs-cache-max-age": "180m",
+                        },
+                    },
+                }
+                with patch.object(manager, "_restart_production_mount"):
+                    applied = manager.apply(job_id)
+
+        self.assertIn("--dir-cache-time=2w", config.instance["command"])
+        self.assertIn("--vfs-cache-max-age=1w", config.instance["command"])
+        self.assertEqual(
+            "2w", applied["recommendation"]["settings"]["--dir-cache-time"]
+        )
+        self.assertEqual(
+            "1w", applied["recommendation"]["settings"]["--vfs-cache-max-age"]
+        )
 
     def test_candidate_setting_comparison_classifies_effective_values(self):
         command = [
@@ -303,8 +434,8 @@ class RcloneOptimizerTests(unittest.TestCase):
             {
                 "--vfs-cache-mode": "full",
                 "--vfs-cache-max-size": "5G",
-                "--vfs-cache-max-age": "180m",
-                "--dir-cache-time": "1s",
+                "--vfs-cache-max-age": "1w",
+                "--dir-cache-time": "1w",
                 "--buffer-size": "16M",
                 "--vfs-read-chunk-size": "16M",
                 "--vfs-read-chunk-size-limit": "512M",
@@ -319,7 +450,8 @@ class RcloneOptimizerTests(unittest.TestCase):
         self.assertTrue(by_flag["--buffer-size"]["varied_across_candidates"])
         self.assertFalse(by_flag["--buffer-size"]["independently_evaluated"])
         self.assertEqual("fixed_constraint", by_flag["--vfs-cache-max-size"]["role"])
-        self.assertEqual("bundled_assumption", by_flag["--dir-cache-time"]["role"])
+        self.assertEqual("nzbdav_recommended", by_flag["--dir-cache-time"]["role"])
+        self.assertEqual("nzbdav_recommended", by_flag["--vfs-cache-max-age"]["role"])
         self.assertEqual("preserved", by_flag["--transfers"]["role"])
         self.assertEqual("4", by_flag["--transfers"]["tested_value"])
         self.assertNotIn("--links", by_flag)
@@ -363,7 +495,9 @@ class RcloneOptimizerTests(unittest.TestCase):
             successful_result = unittest.mock.Mock(returncode=0)
             with (
                 patch.object(
-                    rclone_optimizer.os.path, "ismount", side_effect=[True, False]
+                    rclone_optimizer.RcloneOptimizerManager,
+                    "_mount_is_registered",
+                    side_effect=[True, False],
                 ),
                 patch.object(
                     rclone_optimizer.shutil, "which", return_value="/bin/fusermount3"
@@ -378,7 +512,11 @@ class RcloneOptimizerTests(unittest.TestCase):
 
             failed_result = unittest.mock.Mock(returncode=1)
             with (
-                patch.object(rclone_optimizer.os.path, "ismount", return_value=True),
+                patch.object(
+                    rclone_optimizer.RcloneOptimizerManager,
+                    "_mount_is_registered",
+                    return_value=True,
+                ),
                 patch.object(
                     rclone_optimizer.shutil, "which", return_value="/bin/tool"
                 ),
@@ -389,6 +527,93 @@ class RcloneOptimizerTests(unittest.TestCase):
                 self.assertFalse(
                     rclone_optimizer.RcloneOptimizerManager._unmount(mount_path)
                 )
+
+    def test_restart_detaches_production_mount_before_starting_rclone(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            config = _ConfigManager(root / "cache")
+            config.instance["mount_dir"] = str(root / "mounts")
+            process_handler = unittest.mock.Mock()
+            process_handler.start_process.return_value = (True, None)
+            with patch.object(rclone_optimizer, "CONFIG_MANAGER", config):
+                manager = rclone_optimizer.RcloneOptimizerManager(
+                    process_handler=process_handler,
+                    logger=unittest.mock.Mock(),
+                    base_dir=str(root / "optimizer"),
+                )
+
+            events = []
+            process_handler.stop_process.side_effect = lambda _name: events.append(
+                "stop"
+            )
+            process_handler.start_process.side_effect = lambda _name: (
+                events.append("start") or (True, None)
+            )
+            with (
+                patch.object(
+                    manager,
+                    "_unmount",
+                    side_effect=lambda _path: events.append("unmount") or True,
+                ),
+                patch.object(
+                    manager,
+                    "_wait_for_production_mount",
+                    side_effect=lambda _instance: events.append("wait"),
+                ),
+            ):
+                manager._restart_production_mount("rclone w/ NzbDAV", config.instance)
+
+            self.assertEqual(["stop", "unmount", "start", "wait"], events)
+
+    def test_restart_refuses_to_start_when_mount_cannot_be_detached(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            config = _ConfigManager(root / "cache")
+            process_handler = unittest.mock.Mock()
+            with patch.object(rclone_optimizer, "CONFIG_MANAGER", config):
+                manager = rclone_optimizer.RcloneOptimizerManager(
+                    process_handler=process_handler,
+                    logger=unittest.mock.Mock(),
+                    base_dir=str(root / "optimizer"),
+                )
+
+            with patch.object(manager, "_unmount", return_value=False):
+                with self.assertRaisesRegex(
+                    rclone_optimizer.RcloneOptimizerError,
+                    "could not detach its production mount",
+                ):
+                    manager._restart_production_mount(
+                        "rclone w/ NzbDAV", config.instance
+                    )
+
+            process_handler.stop_process.assert_called_once_with("rclone w/ NzbDAV")
+            process_handler.start_process.assert_not_called()
+
+    def test_mount_accessibility_rejects_stale_fuse_mount(self):
+        mount_path = Path("/mnt/debrid/nzbdav")
+        with (
+            patch.object(
+                rclone_optimizer.RcloneOptimizerManager,
+                "_mount_is_registered",
+                return_value=True,
+            ),
+            patch.object(Path, "stat", side_effect=OSError("not connected")),
+        ):
+            self.assertFalse(
+                rclone_optimizer.RcloneOptimizerManager._mount_is_accessible(mount_path)
+            )
+
+    def test_mount_registration_detects_stale_fuse_without_stat(self):
+        mountinfo = (
+            "42 31 0:75 / /mnt/debrid/nzbdav rw,nosuid,nodev - "
+            "fuse.rclone nzbdav: rw,user_id=1000,group_id=1000\n"
+        )
+        with patch("builtins.open", unittest.mock.mock_open(read_data=mountinfo)):
+            self.assertTrue(
+                rclone_optimizer.RcloneOptimizerManager._mount_is_registered(
+                    Path("/mnt/debrid/nzbdav")
+                )
+            )
 
     def test_runtime_cleanup_preserves_directory_when_unmount_is_not_verified(self):
         with tempfile.TemporaryDirectory() as temp_dir:

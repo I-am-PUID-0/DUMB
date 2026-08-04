@@ -8561,9 +8561,9 @@ def rclone_setup():
                         {
                             "--vfs-cache-mode": "full",
                             "--buffer-size": "1024M",
-                            "--dir-cache-time": "1s",
+                            "--dir-cache-time": "1w",
                             "--vfs-cache-max-size": "5G",
-                            "--vfs-cache-max-age": "180m",
+                            "--vfs-cache-max-age": "1w",
                             "--links": None,
                             "--use-cookies": None,
                         }

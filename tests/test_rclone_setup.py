@@ -29,6 +29,47 @@ class _ConfigManager:
 
 
 class RcloneSetupTests(unittest.TestCase):
+    def test_fresh_nzbdav_mount_uses_week_long_cache_time_defaults(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            instance = {
+                "enabled": True,
+                "process_name": "rclone w/ NzbDAV",
+                "log_level": "INFO",
+                "key_type": "nzbdav",
+                "zurg_enabled": False,
+                "decypharr_enabled": False,
+                "mount_dir": str(root / "mounts"),
+                "mount_name": "nzbdav",
+                "cache_dir": str(root / "cache"),
+                "config_dir": str(root / "config"),
+                "config_file": str(root / "config" / "rclone.config"),
+                "zurg_config_file": "",
+                "command": [],
+            }
+            manager = _ConfigManager({"instances": {"NzbDAV": instance}})
+
+            with (
+                patch.object(setup, "CONFIG_MANAGER", manager),
+                patch.object(setup, "fuse_config", return_value=(True, None)),
+                patch("utils.dependencies.get_api_state", return_value=_ApiState()),
+                patch.object(nzbdav_db, "get_config_value", return_value=None),
+                patch.object(riven_settings, "parse_config_keys"),
+                patch.object(
+                    nzbdav_settings,
+                    "sync_nzbdav_rclone_rc",
+                    return_value=(True, None),
+                ),
+                patch.object(setup, "chown_recursive", return_value=(True, None)),
+                patch.object(setup.os, "chown"),
+                patch.object(setup, "_is_rclone_rc_port_available", return_value=True),
+            ):
+                success, error = setup.rclone_setup()
+
+        self.assertTrue(success, error)
+        self.assertIn("--dir-cache-time=1w", instance["command"])
+        self.assertIn("--vfs-cache-max-age=1w", instance["command"])
+
     def test_saved_dir_cache_time_is_preserved(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
@@ -77,6 +118,7 @@ class RcloneSetupTests(unittest.TestCase):
         self.assertEqual(config_mode, 0o600)
         self.assertIn("--dir-cache-time=20s", instance["command"])
         self.assertNotIn("--dir-cache-time=10s", instance["command"])
+        self.assertIn("--vfs-cache-max-age=1w", instance["command"])
         self.assertIn("--rc", instance["command"])
         self.assertIn("--rc-no-auth", instance["command"])
         self.assertIn("--rc-addr", instance["command"])
