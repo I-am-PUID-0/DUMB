@@ -867,10 +867,26 @@ def fetch_process(
 
 @process_router.get("/processes")
 def fetch_processes(
-    logger=Depends(get_logger), current_user: str = Depends(get_optional_current_user)
+    logger=Depends(get_logger),
+    api_state=Depends(get_api_state),
+    updater=Depends(get_updater),
+    current_user: str = Depends(get_optional_current_user),
 ):
     try:
-        return _safe_api_response({"processes": _collect_process_entries()})
+        processes = _collect_process_entries()
+        for process in processes:
+            process_name = str(process.get("process_name") or "").strip()
+            config_key = process.get("config_key")
+            config = process.get("config")
+            process["supports_manual_update"] = bool(
+                updater and updater.supports_manual_update(config_key, config)
+            )
+            process["update_status"] = (
+                api_state.get_update_status(process_name)
+                if api_state and process_name
+                else None
+            )
+        return _safe_api_response({"processes": processes})
     except HTTPException:
         raise
 
@@ -5177,6 +5193,7 @@ async def get_capabilities(current_user: str = Depends(get_optional_current_user
         "optional_only_onboarding": True,
         "optional_service_options": True,
         "manual_update_check": True,
+        "dashboard_bulk_updates": True,
         "configured_source_install": True,
         "commit_sha_pinning": True,
         "commit_sha_service_keys": sorted(COMMIT_PIN_SERVICE_KEYS),

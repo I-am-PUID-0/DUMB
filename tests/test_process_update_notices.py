@@ -24,6 +24,7 @@ def _install_process_router_stubs():
     fastapi.HTTPException = HTTPException
     fastapi.Depends = lambda *args, **kwargs: None
     fastapi.Query = lambda default=None, *args, **kwargs: default
+    fastapi.WebSocket = type("WebSocket", (), {})
     sys.modules["fastapi"] = fastapi
 
     fastapi_concurrency = types.ModuleType("fastapi.concurrency")
@@ -61,6 +62,8 @@ def _install_process_router_stubs():
     sys.modules["utils.config_loader"] = config_loader
 
     setup = types.ModuleType("utils.setup")
+    setup.COMMIT_PIN_SERVICE_KEYS = set()
+    setup.ensure_managed_postgres_database = lambda *args, **kwargs: None
     setup.setup_project = lambda *args, **kwargs: None
     sys.modules["utils.setup"] = setup
 
@@ -99,8 +102,61 @@ class FakeAPIState:
     def get_update_notices(self):
         return self.notices
 
+    def get_update_status(self, process_name):
+        return next(
+            (
+                status
+                for status in self.statuses
+                if status.get("process_name") == process_name
+            ),
+            None,
+        )
+
+
+class FakeUpdater:
+    def supports_manual_update(self, config_key, config):
+        return config_key == "radarr" and bool(config.get("repo_name"))
+
 
 class ProcessUpdateNoticeHelperTests(unittest.TestCase):
+    def test_process_list_includes_dashboard_update_metadata(self):
+        api_state = FakeAPIState()
+        api_state.statuses = [
+            {
+                "process_name": "Radarr",
+                "status": "update_available",
+                "available_version": "1.1.0",
+            }
+        ]
+        process_entries = [
+            {
+                "process_name": "Radarr",
+                "config_key": "radarr",
+                "config": {"enabled": True, "repo_name": "Radarr"},
+            },
+            {
+                "process_name": "PostgreSQL",
+                "config_key": "postgres",
+                "config": {"enabled": True},
+            },
+        ]
+
+        with patch.object(
+            process_router, "_collect_process_entries", return_value=process_entries
+        ):
+            result = process_router.fetch_processes(
+                logger=None,
+                api_state=api_state,
+                updater=FakeUpdater(),
+                current_user=None,
+            )
+
+        radarr, postgres = result["processes"]
+        self.assertTrue(radarr["supports_manual_update"])
+        self.assertEqual("update_available", radarr["update_status"]["status"])
+        self.assertFalse(postgres["supports_manual_update"])
+        self.assertIsNone(postgres["update_status"])
+
     def test_update_notes_target_prefers_compare_for_branch_markers(self):
         url, label = process_router._update_notes_target(
             "https://github.com/example/service", "beta-abc1234", "beta-def5678"
