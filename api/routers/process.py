@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Depends, Query
 from fastapi.concurrency import run_in_threadpool
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 from starlette.responses import JSONResponse
 from typing import Optional, List, Dict, Any, Union
 from utils.dependencies import (
@@ -45,6 +45,7 @@ from utils.arr_postgres_migration import (
 )
 from utils.port_probe import is_port_available as _is_port_available
 from utils.versions import Versions
+from utils.install_cache import INSTALL_CACHE
 import json, copy, time, glob, re, os, threading, fnmatch
 
 
@@ -67,6 +68,21 @@ class UpdateInstallRequest(BaseModel):
 
 class RescheduleAutoUpdateRequest(BaseModel):
     process_name: str
+
+
+class InstallCachePruneRequest(BaseModel):
+    max_size_gib: Optional[float] = None
+    model_config = ConfigDict(extra="forbid")
+
+
+class InstallArtifactClearRequest(BaseModel):
+    service_key: Optional[str] = None
+    model_config = ConfigDict(extra="forbid")
+
+
+class InstallCacheCleanupRequest(BaseModel):
+    scopes: List[str] = Field(min_length=1, max_length=5)
+    model_config = ConfigDict(extra="forbid")
 
 
 class RescheduleSymlinkBackupRequest(BaseModel):
@@ -821,6 +837,16 @@ ALIAS_TO_KEY = {v.lower(): k for k, v in CORE_SERVICE_NAMES.items()} | {
 }
 
 
+def _display_update_status(config_key: str | None, status):
+    if not isinstance(status, dict):
+        return status
+    displayed = dict(status)
+    for field in ("current_version", "available_version", "previous_version"):
+        if field in displayed:
+            displayed[field] = versions.display_version(config_key, displayed[field])
+    return displayed
+
+
 @process_router.get("/")
 def fetch_process(
     process_name: str = Query(...),
@@ -843,7 +869,13 @@ def fetch_process(
             instance_name=instance_name,
             key=config_key,
         )
-        update_status = api_state.get_update_status(process_name) if api_state else None
+        update_status = (
+            _display_update_status(
+                config_key, api_state.get_update_status(process_name)
+            )
+            if api_state
+            else None
+        )
         symlink_backup_status = (
             api_state.get_symlink_backup_status(process_name) if api_state else None
         )
@@ -856,7 +888,7 @@ def fetch_process(
             {
                 "process_name": process_name,
                 "config": config,
-                "version": version,
+                "version": versions.display_version(config_key, version),
                 "config_key": config_key,
                 "update_status": update_status,
                 "symlink_backup_status": symlink_backup_status,
@@ -886,7 +918,9 @@ def fetch_processes(
                 updater and updater.supports_manual_update(config_key, config)
             )
             process["update_status"] = (
-                api_state.get_update_status(process_name)
+                _display_update_status(
+                    config_key, api_state.get_update_status(process_name)
+                )
                 if api_state and process_name
                 else None
             )
@@ -2327,7 +2361,12 @@ def update_status(
 ):
     if not process_name:
         raise HTTPException(status_code=400, detail="process_name is required")
-    payload = api_state.get_update_status(process_name) if api_state else None
+    config_key, _ = CONFIG_MANAGER.find_key_for_process(process_name)
+    payload = (
+        _display_update_status(config_key, api_state.get_update_status(process_name))
+        if api_state
+        else None
+    )
     return {"process_name": process_name, "update_status": payload}
 
 
@@ -3799,7 +3838,7 @@ def _collect_process_entries() -> list[dict]:
                         "process_name": process_name,
                         "enabled": enabled,
                         "config": value,
-                        "version": version,
+                        "version": versions.display_version(config_key, version),
                         "key": key,
                         "config_key": config_key,
                         "repo_url": repo_url,
@@ -5219,6 +5258,115 @@ async def get_optional_services(
     return {"optional_services": results}
 
 
+@process_router.get("/install-cache/status")
+async def get_install_cache_status(
+    current_user: str = Depends(get_optional_current_user),
+):
+    return await run_in_threadpool(INSTALL_CACHE.status)
+
+
+async def _run_install_cache_maintenance(
+    callback,
+    *args,
+    process_handler,
+    updater,
+):
+    startup = process_handler.get_startup_status() if process_handler else {}
+    if startup.get("phase") not in {"ready", "degraded"}:
+        raise HTTPException(
+            status_code=409,
+            detail="Install-cache maintenance is unavailable until DUMB startup completes.",
+        )
+    update_lock = getattr(updater, "updating", None)
+
+    def guarded_maintenance():
+        acquired = update_lock is None or update_lock.acquire(blocking=False)
+        if not acquired:
+            raise HTTPException(
+                status_code=409,
+                detail="Install-cache maintenance is unavailable while a service update is active.",
+            )
+        try:
+            return callback(*args)
+        finally:
+            if update_lock is not None:
+                update_lock.release()
+
+    return await run_in_threadpool(guarded_maintenance)
+
+
+@process_router.post("/install-cache/verify")
+async def verify_install_cache(
+    process_handler=Depends(get_process_handler),
+    updater=Depends(get_updater),
+    current_user: str = Depends(get_optional_current_user),
+):
+    return await _run_install_cache_maintenance(
+        INSTALL_CACHE.verify,
+        process_handler=process_handler,
+        updater=updater,
+    )
+
+
+@process_router.post("/install-cache/prune")
+async def prune_install_cache(
+    request: InstallCachePruneRequest,
+    process_handler=Depends(get_process_handler),
+    updater=Depends(get_updater),
+    current_user: str = Depends(get_optional_current_user),
+):
+    max_size_bytes = None
+    if request.max_size_gib is not None:
+        if request.max_size_gib < 0 or request.max_size_gib > 1024:
+            raise HTTPException(
+                status_code=400,
+                detail="max_size_gib must be between 0 and 1024.",
+            )
+        max_size_bytes = int(request.max_size_gib * 1024 * 1024 * 1024)
+    return await _run_install_cache_maintenance(
+        INSTALL_CACHE.prune,
+        max_size_bytes,
+        process_handler=process_handler,
+        updater=updater,
+    )
+
+
+@process_router.post("/install-cache/artifacts/clear")
+async def clear_install_artifacts(
+    request: InstallArtifactClearRequest,
+    process_handler=Depends(get_process_handler),
+    updater=Depends(get_updater),
+    current_user: str = Depends(get_optional_current_user),
+):
+    try:
+        return await _run_install_cache_maintenance(
+            INSTALL_CACHE.clear_artifacts,
+            request.service_key,
+            process_handler=process_handler,
+            updater=updater,
+        )
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from None
+
+
+@process_router.post("/install-cache/cleanup")
+async def cleanup_install_cache(
+    request: InstallCacheCleanupRequest,
+    process_handler=Depends(get_process_handler),
+    updater=Depends(get_updater),
+    current_user: str = Depends(get_optional_current_user),
+):
+    try:
+        return await _run_install_cache_maintenance(
+            INSTALL_CACHE.cleanup,
+            request.scopes,
+            process_handler=process_handler,
+            updater=updater,
+        )
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from None
+
+
 @process_router.get("/capabilities")
 async def get_capabilities(current_user: str = Depends(get_optional_current_user)):
     return {
@@ -5226,6 +5374,11 @@ async def get_capabilities(current_user: str = Depends(get_optional_current_user
         "optional_service_options": True,
         "manual_update_check": True,
         "dashboard_bulk_updates": True,
+        "update_timing_metrics": True,
+        "transactional_service_installs": True,
+        "install_cache_management": True,
+        "install_cache_cleanup": True,
+        "install_cache_limit_settings": True,
         "media_library_protection": True,
         "media_library_protection_service_keys": ["plex", "jellyfin", "emby"],
         "plex_library_settings": True,

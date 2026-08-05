@@ -1,0 +1,321 @@
+{
+  "schema_version": 1,
+  "description": "Disposable previous-version-to-latest DUMB service update regressions. Qualified cases run by default; pending cases document the remaining coverage inventory.",
+  "cases": [
+    {
+      "id": "decypharr-release",
+      "key": "decypharr",
+      "previous": "v2.0",
+      "selector": "release",
+      "qualified": true,
+      "current_config_enabled": true
+    },
+    {
+      "id": "maintainerr-release",
+      "key": "maintainerr",
+      "previous": "v3.18.0",
+      "selector": "release",
+      "qualified": true,
+      "current_config_enabled": true
+    },
+    {
+      "id": "pulsarr-release",
+      "key": "pulsarr",
+      "previous": "v0.17.3",
+      "selector": "release",
+      "qualified": true,
+      "current_config_enabled": true
+    },
+    {
+      "id": "seerr-release-sqlite",
+      "key": "seerr",
+      "instance": "Default",
+      "previous": "v3.3.0",
+      "selector": "release",
+      "qualified": true,
+      "current_config_enabled": true
+    },
+    {
+      "id": "altmount-release",
+      "key": "altmount",
+      "previous": "v0.3.1",
+      "selector": "pinned",
+      "qualified": true,
+      "current_config_enabled": true
+    },
+    {
+      "id": "nzbdav-release",
+      "key": "nzbdav",
+      "previous": "v0.9.4",
+      "selector": "release",
+      "qualified": true,
+      "current_config_enabled": false,
+      "health_urls": [
+        "http://127.0.0.1:3000/healthz",
+        "http://127.0.0.1:8080/health"
+      ],
+      "startup_timeout": 1200,
+      "update_timeout": 2400
+    },
+    {
+      "id": "nzbdav-prebuilt-rc",
+      "key": "nzbdav",
+      "previous": "v0.10.0-rc.1",
+      "target_version": "prerelease",
+      "update_target": "channel",
+      "selector": "release",
+      "qualified": true,
+      "current_config_enabled": false,
+      "health_urls": [
+        "http://127.0.0.1:3000/healthz",
+        "http://127.0.0.1:8080/health"
+      ],
+      "startup_timeout": 1800,
+      "update_timeout": 2400,
+      "note": "Starts the prior fixed RC, then follows DUMB's prerelease selector through the verified architecture-specific archive and validates both frontend and backend health."
+    },
+    {
+      "id": "authelia-release",
+      "key": "authelia",
+      "previous": "v4.39.19",
+      "selector": "release",
+      "qualified": true,
+      "current_config_enabled": false,
+      "dependencies": [
+        "postgres"
+      ],
+      "note": "Uses a disposable local identity fixture and PostgreSQL dependency coverage."
+    },
+    {
+      "id": "bazarr-release",
+      "key": "bazarr",
+      "previous": "v1.5.6",
+      "selector": "release",
+      "qualified": true,
+      "current_config_enabled": true,
+      "note": "Covers the Bazarr launcher/child process-group shutdown path."
+    },
+    {
+      "id": "cli-debrid-release",
+      "key": "cli_debrid",
+      "previous": "v0.7.23",
+      "selector": "release",
+      "qualified": true,
+      "current_config_enabled": false,
+      "dependencies": [
+        "cli_battery"
+      ],
+      "note": "Covers the legacy standalone CLI Battery dependency while updating CLI Debrid to the current topology. Provider operations remain credential-gated."
+    },
+    {
+      "id": "neutarr-release",
+      "key": "neutarr",
+      "instance": "Default",
+      "previous": "1.11.0",
+      "selector": "release",
+      "qualified": true,
+      "current_config_enabled": false
+    },
+    {
+      "id": "phalanx-release",
+      "key": "phalanx_db",
+      "previous": "v0.63",
+      "selector": "release",
+      "qualified": true,
+      "current_config_enabled": false
+    },
+    {
+      "id": "profilarr-generation-upgrade",
+      "key": "profilarr",
+      "instance": "Default",
+      "previous": "v1.1.5",
+      "selector": "release",
+      "qualified": true,
+      "current_config_enabled": false,
+      "note": "Exercises the supported clean v1-to-v2 runtime generation transition."
+    },
+    {
+      "id": "riven-backend-release",
+      "key": "riven_backend",
+      "previous": "v0.23.5",
+      "selector": "release",
+      "qualified": true,
+      "current_config_enabled": false,
+      "dependencies": [
+        "postgres"
+      ],
+      "note": "Exercises PostgreSQL startup, the isolated Poetry tool environment, upstream PlexAPI pin repair, and writable runtime data ownership."
+    },
+    {
+      "id": "riven-frontend-release",
+      "key": "riven_frontend",
+      "previous": "v0.21.1",
+      "selector": "release",
+      "qualified": true,
+      "current_config_enabled": false,
+      "dependencies": [
+        "postgres",
+        "riven_backend"
+      ],
+      "note": "Exercises the complete PostgreSQL -> Riven Backend -> Riven Frontend dependency chain."
+    },
+    {
+      "id": "tautulli-release",
+      "key": "tautulli",
+      "previous": "v2.17.1",
+      "selector": "release",
+      "qualified": true,
+      "current_config_enabled": false
+    },
+    {
+      "id": "traefik-proxy-admin-release",
+      "key": "traefik_proxy_admin",
+      "previous": "v1.23.0",
+      "selector": "release",
+      "qualified": true,
+      "current_config_enabled": false,
+      "dependencies": [
+        "postgres"
+      ],
+      "note": "Covers PostgreSQL and exact-source artifact reuse."
+    },
+    {
+      "id": "zilean-release",
+      "key": "zilean",
+      "previous": "v3.4.0",
+      "selector": "release",
+      "qualified": true,
+      "current_config_enabled": true,
+      "dependencies": [
+        "postgres"
+      ],
+      "note": "Covers PostgreSQL plus the managed .NET 10 SDK build path."
+    },
+    {
+      "id": "lidarr-release-postgres",
+      "key": "lidarr",
+      "instance": "Default",
+      "previous": "v3.1.0.4875",
+      "selector": "release",
+      "qualified": true,
+      "current_config_enabled": true,
+      "dependencies": ["postgres"],
+      "config_overrides": {
+        "lidarr": {"instances": {"Default": {"postgres_enabled": true}}}
+      },
+      "note": "Deterministic official release update with disposable PostgreSQL main and log databases."
+    },
+    {
+      "id": "prowlarr-release-postgres",
+      "key": "prowlarr",
+      "instance": "Default",
+      "previous": "v2.5.2.5491",
+      "selector": "release",
+      "qualified": true,
+      "current_config_enabled": true,
+      "dependencies": ["postgres"],
+      "config_overrides": {
+        "prowlarr": {"instances": {"Default": {"postgres_enabled": true}}}
+      },
+      "note": "Deterministic official release update with disposable PostgreSQL main and log databases."
+    },
+    {
+      "id": "radarr-release-postgres",
+      "key": "radarr",
+      "instance": "Default",
+      "previous": "v6.3.0.10514",
+      "selector": "release",
+      "qualified": true,
+      "current_config_enabled": true,
+      "dependencies": ["postgres"],
+      "config_overrides": {
+        "radarr": {"instances": {"Default": {"postgres_enabled": true}}}
+      },
+      "note": "Deterministic official release update with disposable PostgreSQL main and log databases."
+    },
+    {
+      "id": "sonarr-release-postgres",
+      "key": "sonarr",
+      "instance": "Default",
+      "previous": "v4.0.18.2978",
+      "selector": "release",
+      "qualified": true,
+      "current_config_enabled": true,
+      "dependencies": ["postgres"],
+      "config_overrides": {
+        "sonarr": {"instances": {"Default": {"postgres_enabled": true}}}
+      },
+      "note": "Deterministic official release update with disposable PostgreSQL main and log databases."
+    },
+    {
+      "id": "whisparr-release-postgres",
+      "key": "whisparr",
+      "instance": "Default",
+      "previous": "v2.2.0-develop.121",
+      "selector": "release",
+      "qualified": true,
+      "current_config_enabled": false,
+      "dependencies": ["postgres"],
+      "config_overrides": {
+        "whisparr": {"instances": {"Default": {"postgres_enabled": true}}}
+      },
+      "note": "Deterministic official nightly release update with disposable PostgreSQL main and log databases."
+    },
+    {
+      "id": "emby-release",
+      "key": "emby",
+      "previous": "4.9.3.0",
+      "selector": "release",
+      "qualified": true,
+      "current_config_enabled": false,
+      "startup_timeout": 900,
+      "update_timeout": 1200,
+      "note": "Official architecture-specific stable Emby Debian package prior-to-latest health pass through the upstream launcher wrapper."
+    },
+    {
+      "id": "jellyfin-package",
+      "key": "jellyfin",
+      "previous": "10.11.10+ubu2604",
+      "selector": "pinned",
+      "qualified": true,
+      "current_config_enabled": false,
+      "startup_timeout": 900,
+      "update_timeout": 1200,
+      "note": "Official Ubuntu 26.04 repository package with exact metapackage/server/web pinning and a prior-to-latest health pass."
+    },
+    {
+      "id": "plex-package",
+      "key": "plex",
+      "previous": "1.42.2.10156-f737b826c",
+      "selector": "pinned",
+      "qualified": true,
+      "current_config_enabled": false,
+      "startup_timeout": 900,
+      "update_timeout": 1200,
+      "note": "Official architecture-specific Plex Debian package prior-to-latest health pass without requiring an account claim."
+    },
+    {
+      "id": "zurg-install-only",
+      "key": "zurg",
+      "instance": "RealDebrid",
+      "previous": "v0.9.3-hotfix.11",
+      "selector": "release",
+      "mode": "install-only",
+      "qualified": true,
+      "current_config_enabled": false,
+      "note": "Credential-free prior/latest binary download, executable, architecture, and digest validation. Provider-backed startup and health remain opt-in because they require a disposable Real-Debrid credential."
+    },
+    {
+      "id": "mediastorm-oci",
+      "key": "mediastorm",
+      "previous": "9df93acac690b95dc3f89fe037e057b8a895f6c1",
+      "selector": "release",
+      "qualified": true,
+      "current_config_enabled": true,
+      "dependencies": ["postgres"],
+      "startup_timeout": 1200,
+      "update_timeout": 2400,
+      "note": "Uses a retained immutable prior official OCI commit selector and verified layer cache for deterministic previous-to-latest coverage."
+    }
+  ]
+}

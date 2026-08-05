@@ -10,6 +10,65 @@ from utils import setup
 
 
 class NzbDAVSetupTests(unittest.TestCase):
+    def test_fresh_prerelease_install_handles_comparison_error_without_type_crash(self):
+        config = {
+            "process_name": "NzbDAV",
+            "config_dir": "/nzbdav",
+            "release_version_enabled": True,
+            "release_version": "prerelease",
+            "auto_update": False,
+            "branch_enabled": False,
+            "commit_sha": "",
+        }
+        config_manager = Mock()
+        config_manager.find_key_for_process.return_value = ("nzbdav", None)
+        config_manager.get_instance.return_value = config
+        process_handler = Mock()
+        process_handler.setup_tracker = set()
+        process_handler.setup_tracker_lock = threading.Lock()
+
+        with (
+            patch.object(setup, "CONFIG_MANAGER", config_manager),
+            patch.object(
+                setup.versions,
+                "compare_versions",
+                return_value=(False, "No prerelease versions found."),
+            ),
+            patch.object(
+                setup.versions,
+                "version_check",
+                return_value=(None, "version marker missing"),
+            ),
+            patch.object(
+                setup, "setup_release_version", return_value=(True, None)
+            ) as install_release,
+            patch.object(setup, "setup_nzbdav", return_value=(True, None)),
+        ):
+            success, error = setup._setup_project_inner(
+                process_handler,
+                "NzbDAV",
+                install_phase=True,
+                configure_phase=False,
+            )
+
+        self.assertTrue(success, error)
+        install_release.assert_called_once_with(
+            process_handler, config, "NzbDAV", "nzbdav"
+        )
+
+    def test_artifact_restore_staging_resolves_data_root_symlink(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            data_root = root / "data"
+            target = data_root / "nzbdav"
+            target.mkdir(parents=True)
+            link = root / "nzbdav"
+            link.symlink_to(target, target_is_directory=True)
+
+            staging_parent = setup._same_filesystem_staging_parent(str(link))
+
+        self.assertEqual(str(data_root), staging_parent)
+
     def test_source_discovery_prefers_known_layout_without_walking_runtime_data(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
@@ -62,6 +121,54 @@ class NzbDAVSetupTests(unittest.TestCase):
         self.assertIsNone(error)
         self.assertEqual(str(backend_project), found_backend)
         self.assertEqual(str(frontend_dir), found_frontend)
+
+    def test_frontend_runtime_requires_server_and_client_outputs(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            frontend = Path(tmpdir) / "frontend"
+            (frontend / "dist-node").mkdir(parents=True)
+            (frontend / "dist-node" / "server.js").write_text("", encoding="utf-8")
+
+            ready, error = setup._validate_nzbdav_frontend_runtime(str(frontend))
+            self.assertFalse(ready)
+            self.assertIn("build/server/index.js", error)
+
+            (frontend / "build" / "server").mkdir(parents=True)
+            (frontend / "build" / "server" / "index.js").write_text(
+                "", encoding="utf-8"
+            )
+            (frontend / "build" / "client").mkdir()
+            ready, error = setup._validate_nzbdav_frontend_runtime(str(frontend))
+
+        self.assertTrue(ready, error)
+
+    def test_artifact_activation_replaces_backend_and_frontend_together(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            restored = root / "restored"
+            live = root / "live"
+            for component in ("app", "frontend-build", "frontend-dist-node"):
+                (restored / component).mkdir(parents=True)
+                (restored / component / "marker").write_text("new", encoding="utf-8")
+                (live / component).mkdir(parents=True)
+                (live / component / "marker").write_text("old", encoding="utf-8")
+
+            activated, error = setup._activate_nzbdav_build_artifact(
+                [
+                    (restored / "app", live / "app"),
+                    (restored / "frontend-build", live / "frontend-build"),
+                    (
+                        restored / "frontend-dist-node",
+                        live / "frontend-dist-node",
+                    ),
+                ]
+            )
+
+            self.assertTrue(activated, error)
+            for component in ("app", "frontend-build", "frontend-dist-node"):
+                self.assertEqual(
+                    "new",
+                    (live / component / "marker").read_text(encoding="utf-8"),
+                )
 
     def test_commit_pin_requires_full_sha_and_normalizes_case(self):
         commit_sha = "A" * 40
@@ -184,6 +291,11 @@ class NzbDAVSetupTests(unittest.TestCase):
                     return_value=(release_sha, None),
                 ),
                 patch.object(
+                    setup,
+                    "_install_nzbdav_prebuilt_release",
+                    return_value=(None, "archive unavailable"),
+                ),
+                patch.object(
                     setup, "_prepare_nzbdav_source_tree", return_value=(True, None)
                 ),
                 patch.object(
@@ -228,6 +340,11 @@ class NzbDAVSetupTests(unittest.TestCase):
                     return_value=(release_sha, None),
                 ),
                 patch.object(
+                    setup,
+                    "_install_nzbdav_prebuilt_release",
+                    return_value=(None, "archive unavailable"),
+                ),
+                patch.object(
                     setup, "_prepare_nzbdav_source_tree", return_value=(True, None)
                 ),
                 patch.object(
@@ -247,6 +364,196 @@ class NzbDAVSetupTests(unittest.TestCase):
         self.assertFalse(success)
         self.assertEqual("build failed", error)
         version_write.assert_not_called()
+
+    def test_prebuilt_release_is_verified_activated_and_manifested(self):
+        release_sha = "a" * 40
+        published_digest = "b" * 64
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            config = {
+                "process_name": "NzbDAV",
+                "config_dir": str(root),
+                "repo_owner": "nzbdav",
+                "repo_name": "nzbdav",
+            }
+
+            def populate_candidate(_url, target_dir, **kwargs):
+                candidate = Path(target_dir)
+                backend = candidate / "backend"
+                frontend = candidate / "frontend"
+                backend.mkdir(parents=True)
+                for name in (
+                    "NzbWebDAV.dll",
+                    "NzbWebDAV.deps.json",
+                    "librapidyenc.so",
+                    "libe_sqlite3.so",
+                ):
+                    (backend / name).write_text(name, encoding="utf-8")
+                (backend / "NzbWebDAV.runtimeconfig.json").write_text(
+                    '{"runtimeOptions":{"frameworks":['
+                    '{"name":"Microsoft.AspNetCore.App","version":"10.0.0"}]}}',
+                    encoding="utf-8",
+                )
+                (frontend / "dist-node").mkdir(parents=True)
+                (frontend / "dist-node" / "server.js").write_text(
+                    "server", encoding="utf-8"
+                )
+                (frontend / "build" / "server").mkdir(parents=True)
+                (frontend / "build" / "server" / "index.js").write_text(
+                    "build", encoding="utf-8"
+                )
+                (frontend / "build" / "client").mkdir()
+                (frontend / "package.json").write_text("{}", encoding="utf-8")
+                (frontend / "node_modules" / "express").mkdir(parents=True)
+                (frontend / "node_modules" / "express" / "package.json").write_text(
+                    "{}", encoding="utf-8"
+                )
+                (candidate / "version.txt").write_text("0.10.0-rc.2", encoding="utf-8")
+                self.assertEqual(
+                    f"sha256:{published_digest}", kwargs["expected_sha256"]
+                )
+                return True, None
+
+            release_info = {
+                "assets": [
+                    {
+                        "name": "nzbdav-v0.10.0-rc.2-linux-arm64.tar.gz",
+                        "digest": f"sha256:{published_digest}",
+                        "browser_download_url": "https://example.test/nzbdav.tar.gz",
+                    }
+                ]
+            }
+            with (
+                patch.object(setup.platform, "machine", return_value="aarch64"),
+                patch.object(
+                    setup.downloader,
+                    "fetch_github_release_info",
+                    return_value=(release_info, None),
+                ),
+                patch.object(
+                    setup.downloader,
+                    "get_ref_commit_sha",
+                    return_value=(release_sha, None),
+                ),
+                patch.object(
+                    setup.downloader,
+                    "download_and_extract",
+                    side_effect=populate_candidate,
+                ),
+                patch.object(setup, "chown_recursive", return_value=(True, None)),
+                patch.object(setup, "chown_single", return_value=(True, None)),
+            ):
+                result, error = setup._install_nzbdav_prebuilt_release(
+                    config, "NzbDAV", "v0.10.0-rc.2", str(root)
+                )
+                runtime_ready, runtime_error = setup._nzbdav_prebuilt_runtime_ready(
+                    str(root)
+                )
+
+            self.assertIsNone(error)
+            self.assertEqual(
+                f"v0.10.0-rc.2-{release_sha[:8]}", result["version_marker"]
+            )
+            self.assertTrue((root / "app" / "NzbWebDAV.dll").is_file())
+            self.assertTrue((root / "frontend" / "dist-node" / "server.js").is_file())
+            self.assertTrue((root / setup._NZBDAV_PREBUILT_MARKER).is_file())
+            self.assertTrue(runtime_ready, runtime_error)
+
+    def test_prebuilt_unavailable_falls_back_to_source_release(self):
+        release_sha = "c" * 40
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = {
+                "process_name": "NzbDAV",
+                "config_dir": tmpdir,
+                "repo_owner": "nzbdav",
+                "repo_name": "nzbdav",
+                "release_version": "v0.9.5",
+                "clear_on_update": False,
+            }
+            with (
+                patch.object(
+                    setup.downloader,
+                    "get_ref_commit_sha",
+                    return_value=(release_sha, None),
+                ),
+                patch.object(
+                    setup,
+                    "_install_nzbdav_prebuilt_release",
+                    return_value=(None, "archive unavailable"),
+                ) as prebuilt,
+                patch.object(
+                    setup, "_prepare_nzbdav_source_tree", return_value=(True, None)
+                ),
+                patch.object(
+                    setup.downloader,
+                    "download_release_version",
+                    return_value=(True, None),
+                ) as source_download,
+                patch.object(setup, "additional_setup", return_value=(True, None)),
+                patch.object(setup.versions, "version_write"),
+            ):
+                success, error = setup.setup_release_version(
+                    Mock(), config, "NzbDAV", "nzbdav"
+                )
+
+        self.assertTrue(success, error)
+        prebuilt.assert_called_once()
+        source_download.assert_called_once()
+
+    def test_prerelease_source_fallback_uses_resolved_immutable_commit(self):
+        release_sha = "d" * 40
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = {
+                "process_name": "NzbDAV",
+                "config_dir": tmpdir,
+                "repo_owner": "nzbdav",
+                "repo_name": "nzbdav",
+                "release_version": "prerelease",
+                "clear_on_update": False,
+            }
+            with (
+                patch.object(
+                    setup.downloader,
+                    "get_latest_release",
+                    return_value=("v0.10.0-rc.3", None),
+                ),
+                patch.object(
+                    setup.downloader,
+                    "get_ref_commit_sha",
+                    return_value=(release_sha, None),
+                ),
+                patch.object(
+                    setup,
+                    "_install_nzbdav_prebuilt_release",
+                    return_value=(None, "archive unavailable"),
+                ) as prebuilt,
+                patch.object(
+                    setup, "_prepare_nzbdav_source_tree", return_value=(True, None)
+                ),
+                patch.object(
+                    setup.downloader,
+                    "download_release_version",
+                    return_value=(True, None),
+                ) as source_download,
+                patch.object(setup, "additional_setup", return_value=(True, None)),
+                patch.object(setup.versions, "version_write") as version_write,
+            ):
+                success, error = setup.setup_release_version(
+                    Mock(), config, "NzbDAV", "nzbdav"
+                )
+
+        self.assertTrue(success, error)
+        self.assertEqual("v0.10.0-rc.3", prebuilt.call_args.args[2])
+        self.assertEqual(
+            release_sha,
+            source_download.call_args.kwargs["release_version"],
+        )
+        version_write.assert_called_once_with(
+            "NzbDAV",
+            "nzbdav",
+            version_path=os.path.join(tmpdir, "version.txt"),
+            version=f"v0.10.0-rc.3-{release_sha[:8]}",
+        )
 
     def _write_start_script(self, root: Path) -> Path:
         frontend_dir = root / "frontend"

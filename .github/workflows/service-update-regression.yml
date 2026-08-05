@@ -1,0 +1,42 @@
+name: Service Update Regression
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  qualified-matrix:
+    name: Qualified matrix (${{ matrix.arch }})
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [X64, ARM64]
+    runs-on: [self-hosted, Linux, "${{ matrix.arch }}"]
+    timeout-minutes: 360
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.repository }}-${{ matrix.arch }}
+      cancel-in-progress: false
+    env:
+      DUMB_REGRESSION_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Build clean regression base
+        run: make regression-image
+
+      - name: Run qualified service-update matrix
+        run: >-
+          make regression-service-updates
+          REGRESSION_JOBS=2
+          REGRESSION_ARGS="--report-dir .regression-reports/ci-${{ matrix.arch }}"
+
+      - name: Upload regression report
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: service-update-regression-${{ matrix.arch }}
+          path: .regression-reports/ci-${{ matrix.arch }}/
+          if-no-files-found: warn
+          retention-days: 14

@@ -2,7 +2,7 @@ import io
 import signal
 import tempfile
 import unittest
-from unittest.mock import Mock, patch
+from unittest.mock import Mock, call, patch
 
 from utils.processes import ProcessHandler
 
@@ -14,6 +14,7 @@ class ProcessNotificationTests(unittest.TestCase):
         handler = object.__new__(ProcessHandler)
         handler.init_attributes(Mock())
         process = Mock()
+        process.pid = pid
         process.returncode = -15
         handler.processes[pid] = {
             "name": process_name,
@@ -71,8 +72,11 @@ class ProcessNotificationTests(unittest.TestCase):
             patch("utils.processes.os.getpgrp", return_value=4321),
             patch("utils.processes.os.killpg") as killpg,
         ):
-            ProcessHandler._signal_process_group(process, signal.SIGTERM)
+            process_group = ProcessHandler._signal_process_group(
+                process, signal.SIGTERM
+            )
 
+        self.assertEqual(1234, process_group)
         killpg.assert_called_once_with(1234, signal.SIGTERM)
         process.terminate.assert_not_called()
 
@@ -80,9 +84,43 @@ class ProcessNotificationTests(unittest.TestCase):
         process = Mock(pid=1234)
 
         with patch("utils.processes.os.getpgid", side_effect=PermissionError):
-            ProcessHandler._signal_process_group(process, signal.SIGTERM)
+            process_group = ProcessHandler._signal_process_group(
+                process, signal.SIGTERM
+            )
 
+        self.assertIsNone(process_group)
         process.terminate.assert_called_once_with()
+
+    def test_stop_forces_remaining_group_after_launcher_exits(self):
+        handler = self._handler_with_process()
+        process = handler.process_names["Example"]
+        process.poll.return_value = 0
+        handler._get_shutdown_policy = Mock(
+            return_value={"max_attempts": 1, "wait_timeout": 0}
+        )
+        handler._signal_process_group = Mock(side_effect=[1234, 1234])
+        handler._process_group_alive = Mock(side_effect=[True, True, False, False])
+        handler._update_running_processes_file = Mock()
+
+        handler.stop_process("Example")
+
+        handler._signal_process_group.assert_has_calls(
+            [
+                call(process, signal.SIGTERM),
+                call(process, signal.SIGKILL, process_group=1234),
+            ]
+        )
+        self.assertNotIn("Example", handler.process_names)
+
+    def test_bazarr_shutdown_uses_one_grace_window(self):
+        handler = self._handler_with_process()
+        with patch(
+            "utils.processes.CONFIG_MANAGER.find_key_for_process",
+            return_value=("bazarr", None),
+        ):
+            policy = handler._get_shutdown_policy("Bazarr")
+
+        self.assertEqual({"max_attempts": 1, "wait_timeout": 10}, policy)
 
     @patch("utils.processes.notify_event")
     def test_immediate_helper_failure_preserves_stderr_before_logging(
@@ -118,6 +156,77 @@ class ProcessNotificationTests(unittest.TestCase):
         )
         subprocess_logger.assert_not_called()
         notify_event.assert_called_once()
+
+    @patch("utils.processes.notify_event")
+    def test_managed_service_clean_immediate_exit_is_start_failure(self, notify_event):
+        handler = object.__new__(ProcessHandler)
+        handler.init_attributes(Mock())
+        handler.setup_tracker.add("Example")
+        process = Mock(
+            pid=1234,
+            returncode=0,
+            stdout=io.StringIO("recovered panic: database permission denied\n"),
+            stderr=io.StringIO(""),
+        )
+        process.poll.return_value = 0
+        config = {
+            "config_dir": "/tmp",
+            "command": ["example"],
+            "env": {},
+        }
+
+        def config_get(key, default=None):
+            if key in {"puid", "pgid"}:
+                return 1000
+            return default if default is not None else {}
+
+        with (
+            patch(
+                "utils.processes.CONFIG_MANAGER.find_key_for_process",
+                return_value=("example", None),
+            ),
+            patch(
+                "utils.processes.CONFIG_MANAGER.get_instance",
+                return_value=config,
+            ),
+            patch("utils.processes.CONFIG_MANAGER.get", side_effect=config_get),
+            patch("utils.processes.subprocess.Popen", return_value=process),
+            patch("utils.processes.SubprocessLogger") as subprocess_logger,
+        ):
+            success, error = handler.start_process("Example", "/tmp", ["example"])
+
+        self.assertFalse(success)
+        self.assertEqual("Example failed to stay running.", error)
+        self.assertEqual("recovered panic: database permission denied", handler.stdout)
+        self.assertTrue(
+            any(
+                "database permission denied" in str(call)
+                for call in handler.logger.error.call_args_list
+            )
+        )
+        self.assertNotIn("Example", handler.process_names)
+        subprocess_logger.assert_not_called()
+        notify_event.assert_called_once()
+
+    def test_clean_immediate_helper_exit_remains_successful(self):
+        handler = object.__new__(ProcessHandler)
+        handler.init_attributes(Mock())
+        process = Mock(
+            returncode=0,
+            stdout=io.StringIO(""),
+            stderr=io.StringIO(""),
+        )
+        process.poll.return_value = 0
+
+        success, error = handler._check_immediate_exit_and_log(
+            process,
+            "build_helper",
+            timeout_seconds=0.1,
+            interval_seconds=0.01,
+        )
+
+        self.assertTrue(success)
+        self.assertIsNone(error)
 
     def test_startup_readiness_reports_pending_then_ready(self):
         handler = object.__new__(ProcessHandler)

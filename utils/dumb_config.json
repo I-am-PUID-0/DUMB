@@ -13,6 +13,7 @@
     "plex_token": "",
     "plex_address": "",
     "github_token": "",
+    "github_rate_limit_max_wait_seconds": 300,
     "github_username": "",
     "onboarding_completed": false,
     "ui": {
@@ -39,6 +40,18 @@
       "readiness_timeout_seconds": 300,
       "readiness_poll_interval_seconds": 5,
       "stabilization_seconds": 15
+    },
+    "install_cache": {
+      "enabled": true,
+      "path": "/config/.cache/dumb",
+      "max_size_gib": 25,
+      "artifact_retention_count": 2,
+      "clean_retry": true,
+      "max_download_size_mb": 4096,
+      "max_archive_entries": 250000,
+      "max_unpacked_size_gib": 50,
+      "activation_health_timeout_seconds": 120,
+      "activation_stabilization_seconds": 15
     },
     "media_protection": {
       "enabled": true,

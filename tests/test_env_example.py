@@ -109,6 +109,56 @@ class ConfigLoaderEnvParsingTests(unittest.TestCase):
 
 
 class ConfigLoaderMigrationTests(unittest.TestCase):
+    def test_legacy_nzbdav_default_repository_is_migrated(self):
+        config_manager = _load_config_manager_class()
+        with tempfile.TemporaryDirectory() as temp_dir:
+            config = json.loads((ROOT / "utils" / "dumb_config.json").read_text())
+            config["nzbdav"]["repo_owner"] = "nzbdav-dev"
+            config_path = Path(temp_dir) / "dumb_config.json"
+            config_path.write_text(json.dumps(config), encoding="utf-8")
+
+            manager = config_manager(
+                file_path=str(config_path),
+                schema_path=str(ROOT / "utils" / "dumb_config_schema.json"),
+            )
+
+            persisted = json.loads(config_path.read_text(encoding="utf-8"))
+            self.assertEqual("nzbdav", manager.get("nzbdav")["repo_owner"])
+            self.assertEqual("nzbdav", persisted["nzbdav"]["repo_owner"])
+            self.assertTrue(Path(f"{config_path}.bak").is_file())
+
+    def test_custom_nzbdav_repository_is_preserved(self):
+        config_manager = _load_config_manager_class()
+        with tempfile.TemporaryDirectory() as temp_dir:
+            config = json.loads((ROOT / "utils" / "dumb_config.json").read_text())
+            config["nzbdav"]["repo_owner"] = "example-maintainer"
+            config_path = Path(temp_dir) / "dumb_config.json"
+            config_path.write_text(json.dumps(config), encoding="utf-8")
+
+            manager = config_manager(
+                file_path=str(config_path),
+                schema_path=str(ROOT / "utils" / "dumb_config_schema.json"),
+            )
+
+            self.assertEqual("example-maintainer", manager.get("nzbdav")["repo_owner"])
+
+    def test_obsolete_nzbdav_prebuilt_preference_is_pruned(self):
+        config_manager = _load_config_manager_class()
+        with tempfile.TemporaryDirectory() as temp_dir:
+            config = json.loads((ROOT / "utils" / "dumb_config.json").read_text())
+            config["nzbdav"]["prefer_prebuilt_release"] = False
+            config_path = Path(temp_dir) / "dumb_config.json"
+            config_path.write_text(json.dumps(config), encoding="utf-8")
+
+            manager = config_manager(
+                file_path=str(config_path),
+                schema_path=str(ROOT / "utils" / "dumb_config_schema.json"),
+            )
+
+            persisted = json.loads(config_path.read_text(encoding="utf-8"))
+            self.assertNotIn("prefer_prebuilt_release", manager.get("nzbdav"))
+            self.assertNotIn("prefer_prebuilt_release", persisted["nzbdav"])
+
     def test_bazarr_legacy_config_path_is_persisted(self):
         config_manager = _load_config_manager_class()
         with tempfile.TemporaryDirectory() as temp_dir:

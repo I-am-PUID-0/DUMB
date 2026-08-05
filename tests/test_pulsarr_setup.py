@@ -53,6 +53,7 @@ class PulsarrSetupTests(unittest.TestCase):
                 patch.object(setup.CONFIG_MANAGER, "get", return_value=config),
                 patch.object(setup.CONFIG_MANAGER, "save_config"),
                 patch.object(setup, "_chown_recursive_if_needed"),
+                patch.object(setup, "chown_recursive") as chown_recursive,
                 patch.dict(os.environ, {"BUN_INSTALL": "/test/bun"}),
             ):
                 success, error = setup.setup_pulsarr(
@@ -76,6 +77,8 @@ class PulsarrSetupTests(unittest.TestCase):
             self.assertEqual(
                 str(root / "data" / "db" / "pulsarr.db"), kwargs["env"]["dbPath"]
             )
+            chown_recursive.assert_called_once()
+            self.assertEqual(str(root / "data"), chown_recursive.call_args.args[0])
 
     def test_configure_surfaces_migration_failure(self):
         with tempfile.TemporaryDirectory() as temp_dir:

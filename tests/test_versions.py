@@ -47,6 +47,9 @@ class FakeDownloader:
         FakeDownloader.latest_calls += 1
         return "v2.5.1", None
 
+    def get_ref_commit_sha(self, repo_owner, repo_name, ref):
+        return "abcdef1234567890abcdef1234567890abcdef12", None
+
 
 def _install_runtime_stubs():
     global_logger = types.ModuleType("utils.global_logger")
@@ -97,6 +100,36 @@ class VersionsHelperTests(unittest.TestCase):
         )
         self.assertEqual(Versions._normalize_arr_version("nightly"), "nightly")
 
+    def test_nzbdav_stable_release_hides_internal_commit_suffix(self):
+        self.assertEqual(
+            Versions.display_version("nzbdav", "v0.10.0-0dec23ac"),
+            "v0.10.0",
+        )
+        self.assertEqual(
+            Versions.display_version("nzbdav", "2026.08.05-0dec23ac"),
+            "2026.08.05",
+        )
+
+    def test_nzbdav_rolling_versions_keep_commit_suffix(self):
+        self.assertEqual(
+            Versions.display_version("nzbdav", "v0.10.0-rc.3-cf468605"),
+            "v0.10.0-rc.3-cf468605",
+        )
+        self.assertEqual(
+            Versions.display_version("nzbdav", "dev-cf468605"),
+            "dev-cf468605",
+        )
+        self.assertEqual(
+            Versions.display_version("nzbdav", "main-cf468605"),
+            "main-cf468605",
+        )
+
+    def test_non_nzbdav_versions_are_unchanged(self):
+        self.assertEqual(
+            Versions.display_version("decypharr", "v2.4-0dec23ac"),
+            "v2.4-0dec23ac",
+        )
+
     def test_is_latest_release_gt_uses_cache_after_first_lookup(self):
         versions = Versions()
 
@@ -134,6 +167,142 @@ class VersionsHelperTests(unittest.TestCase):
 
         self.assertIsNone(marker)
         self.assertEqual(error, "Unable to resolve branch head sha (status: 404)")
+
+    def test_nzbdav_prerelease_marker_matches_same_tag_commit(self):
+        versions = Versions()
+        versions.downloader.get_latest_release = lambda *args, **kwargs: (
+            "v0.10.0-rc.3",
+            None,
+        )
+        versions.downloader.get_ref_commit_sha = lambda *args, **kwargs: (
+            "cf468605" + ("a" * 32),
+            None,
+        )
+        versions.version_check = lambda *args, **kwargs: (
+            "v0.10.0-rc.3-cf468605",
+            None,
+        )
+
+        update_needed, info = versions.compare_versions(
+            "NzbDAV",
+            "nzbdav",
+            "nzbdav",
+            None,
+            "nzbdav",
+            prerelease=True,
+        )
+
+        self.assertFalse(update_needed)
+        self.assertEqual(info["message"], "No updates available")
+        self.assertEqual(info["current_version"], "v0.10.0-rc.3-cf468605")
+        self.assertEqual(info["latest_version"], "v0.10.0-rc.3")
+
+    def test_nzbdav_stable_marker_compares_by_commit_but_displays_release(self):
+        versions = Versions()
+        versions.downloader.get_latest_release = lambda *args, **kwargs: (
+            "v0.10.0",
+            None,
+        )
+        versions.downloader.get_ref_commit_sha = lambda *args, **kwargs: (
+            "0dec23ac" + ("a" * 32),
+            None,
+        )
+        versions.version_check = lambda *args, **kwargs: (
+            "v0.10.0-0dec23ac",
+            None,
+        )
+
+        update_needed, info = versions.compare_versions(
+            "NzbDAV",
+            "nzbdav",
+            "nzbdav",
+            None,
+            "nzbdav",
+        )
+
+        self.assertFalse(update_needed)
+        self.assertEqual(info["current_version"], "v0.10.0")
+        self.assertEqual(info["latest_version"], "v0.10.0")
+
+    def test_nzbdav_prerelease_marker_detects_moved_tag(self):
+        versions = Versions()
+        versions.downloader.get_latest_release = lambda *args, **kwargs: (
+            "v0.10.0-rc.3",
+            None,
+        )
+        versions.downloader.get_ref_commit_sha = lambda *args, **kwargs: (
+            "cf468605" + ("a" * 32),
+            None,
+        )
+        versions.version_check = lambda *args, **kwargs: (
+            "v0.10.0-rc.3-deadbeef",
+            None,
+        )
+
+        update_needed, info = versions.compare_versions(
+            "NzbDAV",
+            "nzbdav",
+            "nzbdav",
+            None,
+            "nzbdav",
+            prerelease=True,
+        )
+
+        self.assertTrue(update_needed)
+        self.assertEqual(info["latest_version"], "v0.10.0-rc.3")
+
+    def test_nzbdav_plain_tag_marker_reinstalls_once_for_commit_tracking(self):
+        versions = Versions()
+        versions.downloader.get_latest_release = lambda *args, **kwargs: (
+            "v0.10.0-rc.3",
+            None,
+        )
+        versions.downloader.get_ref_commit_sha = lambda *args, **kwargs: (
+            "cf468605" + ("a" * 32),
+            None,
+        )
+        versions.version_check = lambda *args, **kwargs: (
+            "v0.10.0-rc.3",
+            None,
+        )
+
+        update_needed, _ = versions.compare_versions(
+            "NzbDAV",
+            "nzbdav",
+            "nzbdav",
+            None,
+            "nzbdav",
+            prerelease=True,
+        )
+
+        self.assertTrue(update_needed)
+
+    def test_nzbdav_release_comparison_fails_closed_without_commit_resolution(self):
+        versions = Versions()
+        versions.downloader.get_latest_release = lambda *args, **kwargs: (
+            "v0.10.0-rc.3",
+            None,
+        )
+        versions.downloader.get_ref_commit_sha = lambda *args, **kwargs: (
+            None,
+            "GitHub commit lookup unavailable.",
+        )
+        versions.version_check = lambda *args, **kwargs: (
+            "v0.10.0-rc.3-cf468605",
+            None,
+        )
+
+        update_needed, error = versions.compare_versions(
+            "NzbDAV",
+            "nzbdav",
+            "nzbdav",
+            None,
+            "nzbdav",
+            prerelease=True,
+        )
+
+        self.assertFalse(update_needed)
+        self.assertEqual(error, "GitHub commit lookup unavailable.")
 
     def test_altmount_version_check_reads_version_marker(self):
         with tempfile.TemporaryDirectory() as tmpdir:

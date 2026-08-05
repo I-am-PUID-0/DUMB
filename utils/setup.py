@@ -6,9 +6,12 @@ from utils.versions import Versions
 from utils.plex import PlexInstaller
 from utils.traefik_setup import setup_traefik
 from utils.user_management import chown_recursive, chown_single
+from utils.resource_limits import pnpm_concurrency
 from utils.apt_lock import run_locked
 from utils.port_probe import is_port_available as _is_port_available
 from utils.private_files import atomic_write_private_text
+from utils.install_cache import INSTALL_CACHE, shared_cache_path
+from utils.transactional_install import DeferredClearTransaction
 from utils.arr_postgres import apply_arr_postgres_config
 from utils.authelia_settings import (
     AutheliaSetupError,
@@ -31,18 +34,22 @@ from utils.mediastorm_installer import (
     mediastorm_runtime_ready,
     mediastorm_runtime_matches_selection,
 )
+from pathlib import Path
 import defusedxml.ElementTree as ET
 import yaml
-import os, shutil, random, subprocess, re, glob, secrets, shlex, time, urllib.parse, base64, threading, sys, hashlib, json, requests, copy, platform, tempfile, zipfile
+import os, shutil, random, subprocess, re, glob, secrets, shlex, time, urllib.parse, base64, threading, sys, hashlib, json, requests, copy, platform, tempfile, zipfile, contextvars, stat
 
 user_id = CONFIG_MANAGER.get("puid")
 group_id = CONFIG_MANAGER.get("pgid")
 downloader = Downloader()
 versions = Versions()
 _INSTALL_LOCKS = {}
+_INSTALL_CLEAR_SCOPE = contextvars.ContextVar("dumb_install_clear_scope", default=None)
 _MEDIASTORM_RUNTIME_LINK_DIR = "/"
 _MEDIASTORM_PYTHON_LINK = "/.venv"
 _MEDIASTORM_LOG_DIR = "/log"
+_NZBDAV_PREBUILT_MARKER = ".dumb_nzbdav_prebuilt.json"
+_NZBDAV_PREBUILT_FORMAT = 1
 COMMIT_PIN_SERVICE_KEYS = frozenset(
     {
         "dumb_frontend",
@@ -101,14 +108,21 @@ def _resolve_arr_install_dir(
     return instance_dir, True
 
 
-def _chown_recursive_if_needed(path: str, user_id: int, group_id: int) -> None:
+def _chown_recursive_if_needed(
+    path: str, user_id: int, group_id: int, *, force: bool = False
+) -> None:
     try:
         stat_info = os.stat(path)
     except Exception as e:
         logger.debug("Failed stat for %s: %s", path, e)
         stat_info = None
     chown_single(path, user_id, group_id)
-    if stat_info and stat_info.st_uid == user_id and stat_info.st_gid == group_id:
+    if (
+        not force
+        and stat_info
+        and stat_info.st_uid == user_id
+        and stat_info.st_gid == group_id
+    ):
         logger.debug(
             "Skipping recursive chown for %s; owner matches %s:%s",
             path,
@@ -119,6 +133,128 @@ def _chown_recursive_if_needed(path: str, user_id: int, group_id: int) -> None:
     ok, err = chown_recursive(path, user_id, group_id)
     if err:
         logger.debug("Recursive chown failed for %s: %s", path, err)
+
+
+def _prepare_shared_build_cache(path: str) -> str:
+    """Keep build caches writable only by the DUMB controller.
+
+    Dependency installation processes deliberately run without the managed
+    service-user preexec hook. Giving that service user write access to a
+    cache later consumed by a privileged installer both disables pip's cache
+    safety check and permits a compromised runtime to poison future builds.
+    Existing cache trees are repaired once when their top-level ownership does
+    not match the controller; correctly owned trees avoid a recursive walk.
+    """
+
+    os.makedirs(path, exist_ok=True)
+    controller_uid = os.geteuid()
+    controller_gid = os.getegid()
+    _chown_recursive_if_needed(path, controller_uid, controller_gid)
+    try:
+        os.chmod(path, 0o755)
+    except OSError as error:
+        logger.debug("Failed to set shared build cache mode for %s: %s", path, error)
+    return path
+
+
+def _update_npmrc_settings(path: str, settings: dict[str, object]) -> None:
+    """Update DUMB-managed pnpm settings without discarding upstream options."""
+    managed_keys = set(settings)
+    retained = []
+    descriptor = -1
+    try:
+        descriptor = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
+        if not stat.S_ISREG(os.fstat(descriptor).st_mode):
+            raise OSError("npmrc path is not a regular file")
+        with os.fdopen(descriptor, encoding="utf-8") as handle:
+            descriptor = -1
+            for line in handle.read().splitlines():
+                key, separator, _value = line.partition("=")
+                if separator and key.strip() in managed_keys:
+                    continue
+                retained.append(line)
+    except OSError:
+        pass
+    finally:
+        if descriptor >= 0:
+            os.close(descriptor)
+
+    retained.extend(f"{key}={value}" for key, value in settings.items())
+    atomic_write_private_text(path, "\n".join(retained) + "\n")
+
+
+def _normalize_decypharr_runtime_ownership(
+    config_dir: str, user_id: int, group_id: int
+) -> tuple[bool, str | None]:
+    """Repair Decypharr state that must be writable by the managed user.
+
+    Release extraction runs as the DUMB controller and can leave nested state
+    owned by root even when the data directory itself already has the expected
+    owner. Decypharr v2.4 reports those write failures as a recovered panic and
+    exits with status 0, so setup must verify the writable tree explicitly.
+    """
+
+    if not config_dir or not os.path.isdir(config_dir):
+        return False, f"Decypharr config directory is missing: {config_dir}"
+
+    mutable_directories = ("cache", "db", "logs", "rclone")
+    managed_files = (
+        "auth.json",
+        "config.json",
+        "config_old.json",
+        "decypharr",
+        "version.txt",
+    )
+
+    for filename in managed_files:
+        path = os.path.join(config_dir, filename)
+        if os.path.exists(path) and not os.path.islink(path):
+            chown_single(path, user_id, group_id)
+
+    for dirname in mutable_directories:
+        path = os.path.join(config_dir, dirname)
+        if not os.path.isdir(path) or os.path.islink(path):
+            continue
+
+        force = False
+        try:
+            candidates = [path]
+            with os.scandir(path) as entries:
+                candidates.extend(
+                    entry.path for entry in entries if not entry.is_symlink()
+                )
+            force = any(
+                (stat_info := os.stat(candidate)).st_uid != user_id
+                or stat_info.st_gid != group_id
+                for candidate in candidates
+            )
+        except OSError as exc:
+            return False, f"Could not inspect Decypharr state at {path}: {exc}"
+
+        _chown_recursive_if_needed(path, user_id, group_id, force=force)
+
+    required_paths = [
+        os.path.join(config_dir, name)
+        for name in (*mutable_directories, *managed_files)
+    ]
+    mismatched = []
+    for path in required_paths:
+        if not os.path.exists(path) or os.path.islink(path):
+            continue
+        try:
+            stat_info = os.stat(path)
+        except OSError as exc:
+            return False, f"Could not verify Decypharr state at {path}: {exc}"
+        if stat_info.st_uid != user_id or stat_info.st_gid != group_id:
+            mismatched.append(path)
+
+    if mismatched:
+        return (
+            False,
+            "Decypharr runtime ownership repair did not converge for: "
+            + ", ".join(mismatched),
+        )
+    return True, None
 
 
 def _update_zilean_connection_string(
@@ -174,6 +310,22 @@ def _update_zilean_connection_string(
     return rebuilt
 
 
+def _prepare_zilean_runtime_data(config: dict) -> tuple[bool, str | None]:
+    config_dir = config.get("config_dir") or "/zilean"
+    config_file = config.get("config_file") or os.path.join(
+        config_dir, "app", "data", "settings.json"
+    )
+    data_dir = os.path.dirname(config_file)
+    try:
+        os.makedirs(data_dir, exist_ok=True)
+    except OSError as error:
+        return False, f"Failed to create Zilean runtime data directory: {error}"
+    success, error = chown_recursive(data_dir, user_id, group_id)
+    if not success:
+        return False, error
+    return True, None
+
+
 def _sanitize_credential(value: str) -> str:
     if not isinstance(value, str):
         return value
@@ -211,7 +363,7 @@ def _update_postgres_url(
 
 def _prepare_nzbdav_source_tree(target_dir: str) -> tuple[bool, str | None]:
     # Prevent stale source files from mixed branch/release extracts.
-    cleanup_targets = ["backend", "frontend", "app"]
+    cleanup_targets = ["backend", "frontend", "app", _NZBDAV_PREBUILT_MARKER]
     try:
         for entry in cleanup_targets:
             path = os.path.join(target_dir, entry)
@@ -293,6 +445,294 @@ def _source_build_enabled(config: dict) -> bool:
     )
 
 
+def _nzbdav_prebuilt_architecture() -> str | None:
+    machine = platform.machine().strip().lower()
+    if machine in {"x86_64", "amd64"}:
+        return "x64"
+    if machine in {"aarch64", "arm64"}:
+        return "arm64"
+    return None
+
+
+def _nzbdav_prebuilt_critical_paths(
+    backend_relative: str = "app", frontend_relative: str = "frontend"
+) -> tuple[str, ...]:
+    return (
+        f"{backend_relative}/NzbWebDAV.dll",
+        f"{backend_relative}/NzbWebDAV.deps.json",
+        f"{backend_relative}/NzbWebDAV.runtimeconfig.json",
+        f"{backend_relative}/librapidyenc.so",
+        f"{backend_relative}/libe_sqlite3.so",
+        f"{frontend_relative}/package.json",
+        f"{frontend_relative}/dist-node/server.js",
+        f"{frontend_relative}/build/server/index.js",
+        f"{frontend_relative}/node_modules/express/package.json",
+    )
+
+
+def _nzbdav_prebuilt_file_manifest(root: str, relative_paths) -> list[dict]:
+    entries = []
+    for relative in relative_paths:
+        candidate = Path(root, relative)
+        if not candidate.is_file() or candidate.is_symlink():
+            raise OSError(f"NzbDAV prebuilt runtime file is missing: {relative}")
+        entries.append(
+            {
+                "path": str(relative),
+                "size": candidate.stat().st_size,
+                "sha256": hashlib.sha256(candidate.read_bytes()).hexdigest(),
+            }
+        )
+    return entries
+
+
+def _validate_nzbdav_runtimeconfig(runtimeconfig_path: str) -> tuple[bool, str | None]:
+    try:
+        with open(runtimeconfig_path, encoding="utf-8") as handle:
+            runtimeconfig = json.load(handle)
+    except (OSError, ValueError, json.JSONDecodeError) as error:
+        return False, f"NzbDAV prebuilt runtimeconfig is invalid: {error}"
+    options = runtimeconfig.get("runtimeOptions") or {}
+    frameworks = options.get("frameworks") or []
+    if not any(
+        str(item.get("name") or "") == "Microsoft.AspNetCore.App"
+        and str(item.get("version") or "").startswith("10.")
+        for item in frameworks
+        if isinstance(item, dict)
+    ):
+        return False, "NzbDAV prebuilt archive does not target ASP.NET Core 10."
+    return True, None
+
+
+def _validate_nzbdav_prebuilt_candidate(candidate_dir: str) -> tuple[bool, str | None]:
+    backend_dir = os.path.join(candidate_dir, "backend")
+    frontend_dir = os.path.join(candidate_dir, "frontend")
+    try:
+        _nzbdav_prebuilt_file_manifest(
+            candidate_dir,
+            _nzbdav_prebuilt_critical_paths("backend", "frontend"),
+        )
+    except OSError as error:
+        return False, str(error)
+    frontend_ready, frontend_error = _validate_nzbdav_frontend_runtime(frontend_dir)
+    if not frontend_ready:
+        return False, frontend_error
+    runtime_ready, runtime_error = _validate_nzbdav_runtimeconfig(
+        os.path.join(backend_dir, "NzbWebDAV.runtimeconfig.json")
+    )
+    if not runtime_ready:
+        return False, runtime_error
+    version_path = os.path.join(candidate_dir, "version.txt")
+    try:
+        if not Path(version_path).read_text(encoding="utf-8").strip():
+            return False, "NzbDAV prebuilt archive has an empty version marker."
+    except OSError as error:
+        return False, f"NzbDAV prebuilt archive version is unavailable: {error}"
+    return True, None
+
+
+def _write_nzbdav_prebuilt_marker(config_dir: str, metadata: dict) -> None:
+    marker_path = os.path.join(config_dir, _NZBDAV_PREBUILT_MARKER)
+    payload = {
+        "format": _NZBDAV_PREBUILT_FORMAT,
+        **metadata,
+        "critical_files": _nzbdav_prebuilt_file_manifest(
+            config_dir, _nzbdav_prebuilt_critical_paths()
+        ),
+    }
+    temporary = f"{marker_path}.{secrets.token_hex(4)}.tmp"
+    with open(temporary, "w", encoding="utf-8") as handle:
+        json.dump(payload, handle, sort_keys=True, separators=(",", ":"))
+        handle.flush()
+        os.fsync(handle.fileno())
+    os.replace(temporary, marker_path)
+    chown_single(marker_path, user_id, group_id)
+
+
+def _nzbdav_prebuilt_runtime_ready(
+    config_dir: str, backend_output_dir: str | None = None
+) -> tuple[bool, str | None]:
+    marker_path = os.path.join(config_dir, _NZBDAV_PREBUILT_MARKER)
+    try:
+        with open(marker_path, encoding="utf-8") as handle:
+            marker = json.load(handle)
+        if marker.get("format") != _NZBDAV_PREBUILT_FORMAT:
+            raise ValueError("unsupported marker format")
+        entries = marker.get("critical_files")
+        if not isinstance(entries, list) or not entries:
+            raise ValueError("critical-file manifest is missing")
+        for entry in entries:
+            relative = Path(str((entry or {}).get("path") or ""))
+            if relative.is_absolute() or ".." in relative.parts:
+                raise ValueError("critical-file path is unsafe")
+            candidate = Path(config_dir, relative)
+            if not candidate.is_file() or candidate.is_symlink():
+                raise ValueError(f"critical file is missing: {relative}")
+            if candidate.stat().st_size != int(entry.get("size", -1)):
+                raise ValueError(f"critical file size changed: {relative}")
+            if hashlib.sha256(candidate.read_bytes()).hexdigest() != entry.get(
+                "sha256"
+            ):
+                raise ValueError(f"critical file digest changed: {relative}")
+        configured_output = backend_output_dir or os.path.join(config_dir, "app")
+        runtime_ready, runtime_error = _validate_nzbdav_runtimeconfig(
+            os.path.join(configured_output, "NzbWebDAV.runtimeconfig.json")
+        )
+        if not runtime_ready:
+            raise ValueError(runtime_error)
+        frontend_ready, frontend_error = _validate_nzbdav_frontend_runtime(
+            os.path.join(config_dir, "frontend")
+        )
+        if not frontend_ready:
+            raise ValueError(frontend_error)
+        return True, None
+    except (OSError, TypeError, ValueError, json.JSONDecodeError) as error:
+        return False, f"NzbDAV prebuilt runtime is not reusable: {error}"
+
+
+def _resolve_nzbdav_release_selector(
+    config: dict, requested_release: str | None
+) -> tuple[str | None, str | None]:
+    release_tag = str(requested_release or "latest").strip() or "latest"
+    release_lower = release_tag.lower()
+    if release_lower not in {"latest", "prerelease"}:
+        return release_tag, None
+
+    resolved_tag, error = downloader.get_latest_release(
+        config.get("repo_owner"),
+        config.get("repo_name"),
+        prerelease=release_lower == "prerelease",
+    )
+    if resolved_tag:
+        return resolved_tag, None
+    channel = "prerelease" if release_lower == "prerelease" else "stable release"
+    return None, error or f"latest NzbDAV {channel} could not be resolved"
+
+
+def _install_nzbdav_prebuilt_release(
+    config: dict,
+    process_name: str,
+    requested_release: str,
+    target_dir: str,
+) -> tuple[dict | None, str | None]:
+    architecture = _nzbdav_prebuilt_architecture()
+    if not architecture:
+        return None, f"no NzbDAV prebuilt archive is supported for {platform.machine()}"
+
+    release_tag, error = _resolve_nzbdav_release_selector(config, requested_release)
+    if not release_tag:
+        return None, error
+
+    release_info, release_error = downloader.fetch_github_release_info(
+        config.get("repo_owner"), config.get("repo_name"), release_tag
+    )
+    if not release_info:
+        return None, release_error or f"release {release_tag} has no GitHub release"
+    expected_suffix = f"-linux-{architecture}.tar.gz"
+    matching_assets = [
+        asset
+        for asset in release_info.get("assets", [])
+        if str(asset.get("name") or "").lower().startswith("nzbdav-")
+        and str(asset.get("name") or "").lower().endswith(expected_suffix)
+    ]
+    if len(matching_assets) != 1:
+        return None, (
+            f"release {release_tag} does not provide exactly one NzbDAV "
+            f"linux-{architecture} archive"
+        )
+    asset = matching_assets[0]
+    published_digest = str(asset.get("digest") or "").strip().lower()
+    if not re.fullmatch(r"sha256:[0-9a-f]{64}", published_digest):
+        return (
+            None,
+            f"release asset {asset.get('name')} has no published SHA-256 digest",
+        )
+    asset_url = str(asset.get("browser_download_url") or "").strip()
+    if not asset_url:
+        return None, f"release asset {asset.get('name')} has no download URL"
+    release_sha, sha_error = downloader.get_ref_commit_sha(
+        config.get("repo_owner"), config.get("repo_name"), release_tag
+    )
+    if not release_sha:
+        return (
+            None,
+            sha_error or f"release tag {release_tag} commit could not be resolved",
+        )
+
+    staging_parent = _same_filesystem_staging_parent(target_dir)
+    os.makedirs(staging_parent, exist_ok=True)
+    candidate_dir = tempfile.mkdtemp(
+        prefix=".nzbdav-prebuilt-candidate-", dir=staging_parent
+    )
+    try:
+        success, error = downloader.download_and_extract(
+            asset_url,
+            candidate_dir,
+            zip_folder_name=f"nzbdav-*-linux-{architecture}",
+            expected_sha256=published_digest,
+        )
+        if not success:
+            return None, error
+        candidate_ready, candidate_error = _validate_nzbdav_prebuilt_candidate(
+            candidate_dir
+        )
+        if not candidate_ready:
+            INSTALL_CACHE.invalidate_download(asset_url, "invalid-nzbdav-prebuilt")
+            return None, candidate_error
+
+        backend_output_dir = config.get("backend_output_dir") or os.path.join(
+            target_dir, "app"
+        )
+        frontend_dir = os.path.join(target_dir, "frontend")
+        candidate_app_dir = os.path.join(candidate_dir, "app")
+        os.replace(os.path.join(candidate_dir, "backend"), candidate_app_dir)
+        marker = f"{release_tag}-{release_sha[:8]}"
+        marker_metadata = {
+            "release_tag": release_tag,
+            "source_commit": release_sha,
+            "asset_name": asset.get("name"),
+            "asset_sha256": published_digest.removeprefix("sha256:"),
+            "version_marker": marker,
+            "installed_at": int(time.time()),
+        }
+        _write_nzbdav_prebuilt_marker(candidate_dir, marker_metadata)
+        for candidate_path in (
+            candidate_app_dir,
+            os.path.join(candidate_dir, "frontend"),
+        ):
+            owned, ownership_error = chown_recursive(candidate_path, user_id, group_id)
+            if not owned:
+                return None, f"prebuilt ownership validation failed: {ownership_error}"
+        activated, activation_error = _activate_nzbdav_build_artifact(
+            [
+                (candidate_app_dir, backend_output_dir),
+                (os.path.join(candidate_dir, "frontend"), frontend_dir),
+                (
+                    os.path.join(candidate_dir, _NZBDAV_PREBUILT_MARKER),
+                    os.path.join(target_dir, _NZBDAV_PREBUILT_MARKER),
+                ),
+            ]
+        )
+        if not activated:
+            return None, f"prebuilt activation failed safely: {activation_error}"
+        logger.info(
+            "Installed verified NzbDAV prebuilt archive %s (%s).",
+            asset.get("name"),
+            published_digest,
+        )
+        return {
+            "release_tag": release_tag,
+            "source_commit": release_sha,
+            "asset_name": asset.get("name"),
+            "asset_sha256": published_digest.removeprefix("sha256:"),
+            "version_marker": marker,
+        }, None
+    except (OSError, TypeError, ValueError) as error:
+        return None, str(error)
+    finally:
+        shutil.rmtree(candidate_dir, ignore_errors=True)
+
+
 def setup_release_version(process_handler, config, process_name, key):
     logger.info(f"Using release version {config['release_version']} for {process_name}")
 
@@ -368,21 +808,40 @@ def setup_release_version(process_handler, config, process_name, key):
     download_release_version = config["release_version"]
     if key == "nzbdav":
         requested_release = str(config.get("release_version") or "").strip()
-        requested_lower = requested_release.lower()
-        nzbdav_release_marker = requested_release
-        if (
-            requested_lower not in {"latest", "prerelease"}
-            and "nightly" not in requested_lower
-        ):
-            release_sha, release_sha_error = downloader.get_ref_commit_sha(
-                config.get("repo_owner"),
-                config.get("repo_name"),
-                requested_release,
+        resolved_release, resolve_error = _resolve_nzbdav_release_selector(
+            config, requested_release
+        )
+        if not resolved_release:
+            return False, resolve_error
+        release_sha, release_sha_error = downloader.get_ref_commit_sha(
+            config.get("repo_owner"),
+            config.get("repo_name"),
+            resolved_release,
+        )
+        if not release_sha:
+            return False, release_sha_error
+        nzbdav_release_marker = f"{resolved_release}-{release_sha[:8]}"
+        download_release_version = release_sha
+
+        prebuilt, prebuilt_error = _install_nzbdav_prebuilt_release(
+            config,
+            process_name,
+            resolved_release,
+            target_dir,
+        )
+        if prebuilt:
+            versions.version_write(
+                process_name,
+                key,
+                version_path=os.path.join(target_dir, "version.txt"),
+                version=prebuilt["version_marker"],
             )
-            if not release_sha:
-                return False, release_sha_error
-            nzbdav_release_marker = f"{requested_release}-{release_sha[:8]}"
-            download_release_version = release_sha
+            return True, None
+        logger.warning(
+            "Verified NzbDAV prebuilt archive was unavailable or invalid (%s); "
+            "falling back to the existing source-build path.",
+            prebuilt_error or "unknown archive error",
+        )
 
     if config.get("clear_on_update"):
         exclude_dirs = config.get("exclude_dirs", [])
@@ -857,8 +1316,6 @@ def _maybe_patch_riven_plexapi_dependency(
         return True, None
 
     release_version = version_match.group(1).strip().lower()
-    if release_version != "0.23.6":
-        return True, None
 
     start_idx = None
     end_idx = None
@@ -879,6 +1336,13 @@ def _maybe_patch_riven_plexapi_dependency(
         logger.info("Riven plexapi dependency not found in %s", pyproject_path)
         return True, None
 
+    dependency_text = "".join(lines[start_idx : end_idx + 1])
+    if not (
+        "simonc56/python-plexapi.git" in dependency_text
+        and "bef199e4e1ce27569091a3ebc35e49c2777e2a9c" in dependency_text
+    ):
+        return True, None
+
     replacement_line = f'{indent}plexapi = "4.17.0"\n'
     if lines[start_idx : end_idx + 1] == [replacement_line]:
         return True, None
@@ -888,12 +1352,14 @@ def _maybe_patch_riven_plexapi_dependency(
         file.writelines(lines)
 
     logger.info("Pinned Riven plexapi to 4.17.0 for release %s", release_version)
-    process_handler.start_process(
+    success, error = process_handler.start_process(
         "poetry_update_plexapi",
         config_dir,
         [poetry_executable, "update", "plexapi"],
         env=env,
     )
+    if not success:
+        return False, error or "Failed to start the Riven plexapi lock refresh."
     process_handler.wait("poetry_update_plexapi")
     if process_handler.returncode != 0:
         return False, f"Error updating plexapi dependency: {process_handler.stderr}"
@@ -916,13 +1382,79 @@ def configure_project(process_handler, process_name):
 def setup_project(process_handler, process_name, preinstall: bool = False):
     if preinstall:
         return install_project(process_handler, process_name)
-    success, error = install_project(process_handler, process_name)
-    if not success:
-        return False, error
-    return configure_project(process_handler, process_name)
+    install_cache = (CONFIG_MANAGER.get("dumb") or {}).get("install_cache") or {}
+    if not install_cache.get("enabled", True):
+        success, error = install_project(process_handler, process_name)
+        if not success:
+            return False, error
+        return configure_project(process_handler, process_name)
+    transactions = []
+    token = _INSTALL_CLEAR_SCOPE.set(transactions)
+    try:
+        success, error = _setup_project_inner(
+            process_handler, process_name, True, False
+        )
+        if success:
+            success, error = _setup_project_inner(
+                process_handler, process_name, False, True
+            )
+        result = (success, error)
+    except Exception as error:
+        result = (False, f"Error during setup of {process_name}: {error}")
+    finally:
+        _INSTALL_CLEAR_SCOPE.reset(token)
+    return _finish_deferred_clears(result, transactions)
+
+
+def _finish_deferred_clears(result, transactions):
+    """Commit or restore every destructive clear captured by one setup run."""
+    if result[0]:
+        for transaction in transactions:
+            transaction.commit()
+        return result
+    restored = all(transaction.rollback() for transaction in reversed(transactions))
+    if transactions:
+        if restored:
+            return False, f"{result[1]} Cleared runtime files restored."
+        return False, f"{result[1]} Automatic runtime restore also failed."
+    return result
 
 
 def _setup_project(
+    process_handler,
+    process_name,
+    install_phase: bool,
+    configure_phase: bool,
+):
+    """Commit directory clears only after the install phase succeeds."""
+    if not install_phase:
+        return _setup_project_inner(
+            process_handler, process_name, install_phase, configure_phase
+        )
+    install_cache = (CONFIG_MANAGER.get("dumb") or {}).get("install_cache") or {}
+    if not install_cache.get("enabled", True):
+        return _setup_project_inner(
+            process_handler, process_name, install_phase, configure_phase
+        )
+    if _INSTALL_CLEAR_SCOPE.get() is not None:
+        return _setup_project_inner(
+            process_handler, process_name, install_phase, configure_phase
+        )
+    transactions = []
+    token = _INSTALL_CLEAR_SCOPE.set(transactions)
+    try:
+        try:
+            result = _setup_project_inner(
+                process_handler, process_name, install_phase, configure_phase
+            )
+        except Exception as error:
+            result = (False, f"Error during setup of {process_name}: {error}")
+    finally:
+        _INSTALL_CLEAR_SCOPE.reset(token)
+    return _finish_deferred_clears(result, transactions)
+
+
+def _setup_project_inner(
     process_handler,
     process_name,
     install_phase: bool,
@@ -992,7 +1524,16 @@ def _setup_project(
                 requested_lower in {"latest", "prerelease"}
                 or "nightly" in requested_lower
             )
-            source_managed_by_service_setup = key == "profilarr"
+            source_managed_by_service_setup = key in {
+                "emby",
+                "profilarr",
+                "sonarr",
+                "radarr",
+                "lidarr",
+                "prowlarr",
+                "readarr",
+                "whisparr",
+            }
             if (
                 not bootstrap_installed
                 and not source_managed_by_service_setup
@@ -1030,7 +1571,37 @@ def _setup_project(
                             prerelease=prerelease,
                         )
 
-                        if update_needed:
+                        if not isinstance(update_info, dict):
+                            comparison_error = str(
+                                update_info or "unknown version comparison error"
+                            )
+                            current_version, _ = versions.version_check(
+                                process_name, instance_name, key
+                            )
+                            if current_version:
+                                logger.warning(
+                                    "Could not check the configured %s channel for %s "
+                                    "(%s). Keeping the installed runtime %s.",
+                                    requested_version,
+                                    process_name,
+                                    comparison_error,
+                                    current_version,
+                                )
+                            else:
+                                logger.warning(
+                                    "Could not compare the configured %s channel for %s "
+                                    "(%s). No installed runtime was found; attempting "
+                                    "the configured install directly.",
+                                    requested_version,
+                                    process_name,
+                                    comparison_error,
+                                )
+                                success, error = setup_release_version(
+                                    process_handler, config, process_name, key
+                                )
+                                if not success:
+                                    return False, error
+                        elif update_needed:
                             logger.info(
                                 f"Update needed for {process_name}: {update_info['latest_version']}, but using the requested version: {requested_version}"
                             )
@@ -1267,6 +1838,15 @@ def _setup_project(
             if not success:
                 return False, f"Failed to configure FUSE for Riven Backend: {error}"
 
+            riven_data_dir = os.path.join(config["config_dir"], "data")
+            os.makedirs(riven_data_dir, exist_ok=True)
+            _chown_recursive_if_needed(
+                riven_data_dir,
+                user_id,
+                group_id,
+                force=True,
+            )
+
             port = str(config.get("port", 8080))
             command = config.get("command", [])
             if not isinstance(command, list):
@@ -1300,6 +1880,9 @@ def _setup_project(
                 return False, error
 
         if configure_phase and key == "zilean":
+            success, error = _prepare_zilean_runtime_data(config)
+            if not success:
+                return False, error
             config_app_wwwroot_dir = os.path.join(
                 config["config_dir"], "app", "wwwroot"
             )
@@ -1773,7 +2356,7 @@ def _build_arr_from_source(process_handler, key, source_dir, binary_path):
             _chown_recursive_if_needed(dotnet_home, user_id, group_id)
 
         env["DOTNET_CLI_HOME"] = dotnet_home
-        env["NUGET_PACKAGES"] = nuget_packages
+        env.setdefault("NUGET_PACKAGES", nuget_packages)
         env["HOME"] = dotnet_home  # Some dotnet tools check HOME
         env["DOTNET_NOLOGO"] = "1"
         env["DOTNET_SKIP_FIRST_TIME_EXPERIENCE"] = "1"
@@ -1922,19 +2505,32 @@ def _find_arr_binary(install_dir: str, key: str) -> str | None:
     app_name = key.capitalize()
     candidates = [
         os.path.join(install_dir, app_name, app_name),
-        os.path.join(install_dir, app_name, f"{app_name}.dll"),
         os.path.join(install_dir, key, key),
         os.path.join(install_dir, key, app_name),
+        os.path.join(install_dir, app_name),
+        os.path.join(install_dir, key),
+        os.path.join(install_dir, app_name, f"{app_name}.dll"),
         os.path.join(install_dir, key, f"{key}.dll"),
         os.path.join(install_dir, key, f"{app_name}.dll"),
+        os.path.join(install_dir, f"{app_name}.dll"),
+        os.path.join(install_dir, f"{key}.dll"),
     ]
     for path in candidates:
         if os.path.isfile(path):
             return path
 
+    # Some official Arr archives are flattened into the instance directory.
+    # Always prefer the native apphost over its adjacent managed DLL regardless
+    # of archive member ordering; executing the DLL directly fails with ENOEXEC.
+    native_names = {app_name, key}
     for root, _, files in os.walk(install_dir):
         for name in files:
-            if name in {app_name, key, f"{app_name}.dll", f"{key}.dll"}:
+            if name in native_names:
+                return os.path.join(root, name)
+    managed_names = {f"{app_name}.dll", f"{key}.dll"}
+    for root, _, files in os.walk(install_dir):
+        for name in files:
+            if name in managed_names:
                 return os.path.join(root, name)
     return None
 
@@ -2950,6 +3546,12 @@ def setup_decypharr(install_only: bool = False, configure_only: bool = False):
                     "Patched Decypharr config during setup to match current mount settings."
                 )
 
+        ownership_ok, ownership_error = _normalize_decypharr_runtime_ownership(
+            decypharr_config_dir, user_id, group_id
+        )
+        if not ownership_ok:
+            return False, ownership_error
+
         return True, None
     except Exception as e:
         return False, f"Error during Decypharr setup: {e}"
@@ -2983,14 +3585,24 @@ def setup_nzbdav(
         os.makedirs(config_path, exist_ok=True)
         _chown_recursive_if_needed(config_path, user_id, group_id)
 
+        prebuilt_ready, prebuilt_runtime_error = _nzbdav_prebuilt_runtime_ready(
+            nzbdav_config_dir, backend_output_dir
+        )
         backend_project_path, _ = _find_nzbdav_backend_project(
             nzbdav_config_dir, config
         )
-        if not backend_project_path or not os.path.exists(backend_project_path):
+        if not prebuilt_ready and (
+            not backend_project_path or not os.path.exists(backend_project_path)
+        ):
             if configure_only:
-                return False, "NzbDAV project not installed."
+                return False, (
+                    prebuilt_runtime_error
+                    or "NzbDAV source project and prebuilt runtime are not installed."
+                )
             logger.warning(
-                f"NzbDAV project not found at {nzbdav_config_dir}. Downloading..."
+                "NzbDAV source project and reusable prebuilt runtime were not found "
+                "at %s. Downloading...",
+                nzbdav_config_dir,
             )
             if not _source_build_enabled(config):
                 release = (
@@ -2998,71 +3610,106 @@ def setup_nzbdav(
                     if config.get("release_version_enabled")
                     else "latest"
                 )
-                version_to_write = release
-                if release == "latest":
-                    latest, error = downloader.get_latest_release(
+                resolved_release, resolve_error = _resolve_nzbdav_release_selector(
+                    config, release
+                )
+                if not resolved_release:
+                    return False, resolve_error
+                prebuilt, prebuilt_error = _install_nzbdav_prebuilt_release(
+                    config,
+                    config.get("process_name") or "NzbDAV",
+                    resolved_release,
+                    nzbdav_config_dir,
+                )
+                if prebuilt:
+                    versions.version_write(
+                        process_name=config.get("process_name"),
+                        key="nzbdav",
+                        version_path=os.path.join(nzbdav_config_dir, "version.txt"),
+                        version=prebuilt["version_marker"],
+                    )
+                    prebuilt_ready = True
+                else:
+                    logger.warning(
+                        "Verified NzbDAV prebuilt archive was unavailable or "
+                        "invalid (%s); falling back to the existing source-build path.",
+                        prebuilt_error or "unknown archive error",
+                    )
+                    source_sha, source_sha_error = downloader.get_ref_commit_sha(
+                        config.get("repo_owner"),
+                        config.get("repo_name"),
+                        resolved_release,
+                    )
+                    if not source_sha:
+                        return False, source_sha_error
+                    version_to_write = f"{resolved_release}-{source_sha[:8]}"
+
+                    if config.get("clear_on_update"):
+                        exclude_dirs = config.get("exclude_dirs", [])
+                        success, error = clear_directory(
+                            nzbdav_config_dir, exclude_dirs
+                        )
+                        if not success:
+                            return False, f"Failed to clear directory: {error}"
+                    success, error = _prepare_nzbdav_source_tree(nzbdav_config_dir)
+                    if not success:
+                        return False, error
+                    success, error = downloader.download_release_version(
+                        process_name=config.get("process_name"),
+                        key="nzbdav",
                         repo_owner=config.get("repo_owner"),
                         repo_name=config.get("repo_name"),
+                        release_version=source_sha,
+                        target_dir=nzbdav_config_dir,
                     )
-                    if not latest:
-                        return False, f"Failed to get latest release: {error}"
-                    version_to_write = latest
-
-                if config.get("clear_on_update"):
-                    exclude_dirs = config.get("exclude_dirs", [])
-                    success, error = clear_directory(nzbdav_config_dir, exclude_dirs)
                     if not success:
-                        return False, f"Failed to clear directory: {error}"
+                        return False, f"Failed to download NzbDAV: {error}"
+                    versions.version_write(
+                        process_name=config.get("process_name"),
+                        key="nzbdav",
+                        version_path=os.path.join(nzbdav_config_dir, "version.txt"),
+                        version=version_to_write,
+                    )
 
-                success, error = downloader.download_release_version(
-                    process_name=config.get("process_name"),
-                    key="nzbdav",
-                    repo_owner=config.get("repo_owner"),
-                    repo_name=config.get("repo_name"),
-                    release_version=release,
-                    target_dir=nzbdav_config_dir,
+            if not prebuilt_ready:
+                backend_project_path, error = _find_nzbdav_backend_project(
+                    nzbdav_config_dir, config
                 )
-                if not success:
-                    return False, f"Failed to download NzbDAV: {error}"
+                if not backend_project_path or not os.path.exists(backend_project_path):
+                    return (
+                        False,
+                        error or "NzbDAV backend project not found after download.",
+                    )
 
-                versions.version_write(
-                    process_name=config.get("process_name"),
-                    key="nzbdav",
-                    version_path=os.path.join(nzbdav_config_dir, "version.txt"),
-                    version=version_to_write,
-                )
-
-            backend_project_path, error = _find_nzbdav_backend_project(
-                nzbdav_config_dir, config
+        build_needed = False
+        if not prebuilt_ready:
+            needs_patch = _nzbdav_resource_patch_needed(backend_project_path)
+            uses_internal_nzb_models = _nzbdav_uses_internal_nzb_models(
+                backend_project_path
             )
-            if not backend_project_path or not os.path.exists(backend_project_path):
-                return (
-                    False,
-                    error or "NzbDAV backend project not found after download.",
-                )
-
-        needs_patch = _nzbdav_resource_patch_needed(backend_project_path)
-        uses_internal_nzb_models = _nzbdav_uses_internal_nzb_models(
-            backend_project_path
-        )
-        needs_namespace_patch = (
-            uses_internal_nzb_models
-            and _nzbdav_namespace_patch_needed(backend_project_path)
-        )
-        needs_main_api_patch = (
-            uses_internal_nzb_models
-            and _nzbdav_main_api_patch_needed(backend_project_path)
-        )
-        build_needed = needs_patch or needs_namespace_patch or needs_main_api_patch
-        backend_command, _ = _nzbdav_build_command(
-            backend_output_dir, dotnet_dir=os.path.dirname(backend_project_path)
-        )
-        if not backend_command or not os.path.isdir(backend_output_dir):
-            build_needed = True
-        else:
-            frontend_dir = _find_nzbdav_frontend_dir(nzbdav_config_dir, config)
-            if frontend_dir and not os.path.isdir(backend_wwwroot):
+            needs_namespace_patch = (
+                uses_internal_nzb_models
+                and _nzbdav_namespace_patch_needed(backend_project_path)
+            )
+            needs_main_api_patch = (
+                uses_internal_nzb_models
+                and _nzbdav_main_api_patch_needed(backend_project_path)
+            )
+            build_needed = needs_patch or needs_namespace_patch or needs_main_api_patch
+            backend_command, _ = _nzbdav_build_command(
+                backend_output_dir,
+                dotnet_dir=(
+                    os.path.dirname(backend_project_path)
+                    if backend_project_path
+                    else nzbdav_config_dir
+                ),
+            )
+            if not backend_command or not os.path.isdir(backend_output_dir):
                 build_needed = True
+            else:
+                frontend_dir = _find_nzbdav_frontend_dir(nzbdav_config_dir, config)
+                if frontend_dir and not os.path.isdir(backend_wwwroot):
+                    build_needed = True
 
         if build_needed and not configure_only:
             success, error = setup_nzbdav_build(process_handler, config)
@@ -3073,7 +3720,12 @@ def setup_nzbdav(
 
         if not install_only:
             backend_command, error = _nzbdav_build_command(
-                backend_output_dir, dotnet_dir=os.path.dirname(backend_project_path)
+                backend_output_dir,
+                dotnet_dir=(
+                    os.path.dirname(backend_project_path)
+                    if backend_project_path
+                    else nzbdav_config_dir
+                ),
             )
             if not backend_command:
                 return False, error
@@ -3104,6 +3756,74 @@ def setup_nzbdav(
         return True, None
     except Exception as e:
         return False, f"Error during NzbDAV setup: {e}"
+
+
+def _same_filesystem_staging_parent(target_dir: str) -> str:
+    """Return a staging parent on the filesystem backing ``target_dir``."""
+
+    resolved_target = os.path.realpath(target_dir)
+    return os.path.dirname(resolved_target.rstrip(os.sep)) or os.sep
+
+
+def _validate_nzbdav_frontend_runtime(frontend_dir):
+    if not frontend_dir:
+        return False, "NzbDAV frontend directory was not found."
+    required_files = (
+        os.path.join(frontend_dir, "dist-node", "server.js"),
+        os.path.join(frontend_dir, "build", "server", "index.js"),
+    )
+    for required_file in required_files:
+        if not os.path.isfile(required_file):
+            return False, f"NzbDAV frontend build output missing: {required_file}"
+    client_dir = os.path.join(frontend_dir, "build", "client")
+    if not os.path.isdir(client_dir):
+        return False, f"NzbDAV frontend client build missing: {client_dir}"
+    return True, None
+
+
+def _activate_nzbdav_build_artifact(activation_paths):
+    """Activate a verified NzbDAV backend/frontend artifact as one rollback unit."""
+
+    paths = [(str(restored), str(live)) for restored, live in activation_paths]
+    for restored, _live in paths:
+        if not os.path.lexists(restored):
+            return False, f"Restored artifact path is missing: {restored}"
+
+    suffix = secrets.token_hex(4)
+    records = []
+
+    def remove_path(path):
+        if os.path.islink(path) or os.path.isfile(path):
+            os.unlink(path)
+        elif os.path.isdir(path):
+            shutil.rmtree(path)
+
+    try:
+        for restored, live in paths:
+            backup = f"{live}.dumb-artifact-previous-{suffix}"
+            remove_path(backup)
+            os.makedirs(os.path.dirname(live), exist_ok=True)
+            existed = os.path.lexists(live)
+            if existed:
+                os.replace(live, backup)
+            records.append((live, backup, existed))
+            os.replace(restored, live)
+    except OSError as error:
+        for live, backup, existed in reversed(records):
+            try:
+                remove_path(live)
+                if existed and os.path.lexists(backup):
+                    os.replace(backup, live)
+            except OSError:
+                pass
+        return False, str(error)
+
+    for _live, backup, _existed in records:
+        try:
+            remove_path(backup)
+        except OSError:
+            pass
+    return True, None
 
 
 def setup_nzbdav_build(process_handler, config):
@@ -3142,6 +3862,110 @@ def setup_nzbdav_build(process_handler, config):
         )
         if not api_patched and api_patch_error:
             logger.warning("NzbDAV main API patch skipped: %s", api_patch_error)
+
+    version_marker = os.path.join(nzbdav_config_dir, "version.txt")
+    try:
+        source_identity = Path(version_marker).read_text(encoding="utf-8").strip()
+    except OSError:
+        source_identity = "unknown-source"
+    artifact_inputs = [backend_project_dir, __file__]
+    if frontend_dir:
+        artifact_inputs.append(frontend_dir)
+    artifact_key = INSTALL_CACHE.build_key(
+        "nzbdav",
+        source_identity,
+        inputs=artifact_inputs,
+        toolchain={
+            "dotnet_target": _required_dotnet_sdk_major(
+                [backend_project_path], backend_project_path
+            ),
+            "artifact_format": 2,
+        },
+    )
+    artifact_restore_dir = tempfile.mkdtemp(
+        prefix=".nzbdav-artifact-restore-",
+        dir=_same_filesystem_staging_parent(nzbdav_config_dir),
+    )
+    artifact_hit, artifact_error = INSTALL_CACHE.restore_artifact(
+        "nzbdav", artifact_key, artifact_restore_dir
+    )
+    if artifact_hit:
+        output_relative = os.path.relpath(backend_output_dir, nzbdav_config_dir)
+        restored_output = os.path.join(artifact_restore_dir, output_relative)
+        restored_command, _ = _nzbdav_build_command(
+            restored_output, dotnet_dir=os.path.dirname(backend_project_path)
+        )
+        restored_wwwroot = os.path.join(
+            restored_output, os.path.relpath(backend_wwwroot, backend_output_dir)
+        )
+        restored_frontend_dir = (
+            os.path.join(
+                artifact_restore_dir,
+                os.path.relpath(frontend_dir, nzbdav_config_dir),
+            )
+            if frontend_dir
+            else None
+        )
+        restored_frontend, frontend_artifact_error = (
+            _validate_nzbdav_frontend_runtime(restored_frontend_dir)
+            if restored_frontend_dir
+            else (True, None)
+        )
+        restored_frontend = restored_frontend and (
+            not frontend_dir or os.path.isdir(restored_wwwroot)
+        )
+        if restored_command and restored_frontend:
+            dependencies_ready = True
+            dependency_error = None
+            if frontend_dir:
+                dependencies_ready, dependency_error = setup_pnpm_environment(
+                    process_handler, frontend_dir, skip_build=True
+                )
+            if dependencies_ready:
+                activation_paths = [(restored_output, backend_output_dir)]
+                if frontend_dir:
+                    activation_paths.extend(
+                        (
+                            (
+                                os.path.join(restored_frontend_dir, runtime_name),
+                                os.path.join(frontend_dir, runtime_name),
+                            )
+                            for runtime_name in ("build", "dist-node")
+                        )
+                    )
+                activated, activation_error = _activate_nzbdav_build_artifact(
+                    activation_paths
+                )
+                if activated:
+                    shutil.rmtree(artifact_restore_dir, ignore_errors=True)
+                    chown_recursive(backend_output_dir, user_id, group_id)
+                    chown_recursive(
+                        os.path.join(frontend_dir, "build"), user_id, group_id
+                    )
+                    chown_recursive(
+                        os.path.join(frontend_dir, "dist-node"), user_id, group_id
+                    )
+                    logger.info(
+                        "Restored verified NzbDAV backend and frontend build outputs from cache."
+                    )
+                    return True, None
+                logger.warning(
+                    "NzbDAV build artifact activation failed safely: %s",
+                    activation_error,
+                )
+            else:
+                logger.warning(
+                    "NzbDAV cached frontend dependencies could not be restored: %s",
+                    dependency_error,
+                )
+        else:
+            logger.warning(
+                "Ignoring incomplete NzbDAV build artifact after restore%s.",
+                f": {frontend_artifact_error}" if frontend_artifact_error else "",
+            )
+    elif artifact_error not in {None, "artifact not found"}:
+        logger.warning("NzbDAV build artifact was not reusable: %s", artifact_error)
+    shutil.rmtree(artifact_restore_dir, ignore_errors=True)
 
     platforms = ["dotnet"]
     if frontend_dir:
@@ -3206,6 +4030,10 @@ def setup_nzbdav_build(process_handler, config):
         if not success:
             return False, error
 
+        frontend_ready, frontend_error = _validate_nzbdav_frontend_runtime(frontend_dir)
+        if not frontend_ready:
+            return False, frontend_error
+
     if frontend_dir:
         frontend_build_dir = _find_nzbdav_frontend_build_dir(frontend_dir, config)
         if frontend_build_dir:
@@ -3215,6 +4043,39 @@ def setup_nzbdav_build(process_handler, config):
             logger.info("Copied NzbDAV frontend build into backend wwwroot.")
         else:
             logger.warning("Frontend build output not found. Skipping wwwroot copy.")
+
+    try:
+        artifact_staging = tempfile.mkdtemp(
+            prefix=".nzbdav-artifact-", dir=os.path.dirname(nzbdav_config_dir)
+        )
+        shutil.copytree(
+            backend_output_dir,
+            os.path.join(
+                artifact_staging,
+                os.path.relpath(backend_output_dir, nzbdav_config_dir),
+            ),
+            symlinks=True,
+        )
+        if frontend_dir:
+            staged_frontend = os.path.join(
+                artifact_staging,
+                os.path.relpath(frontend_dir, nzbdav_config_dir),
+            )
+            os.makedirs(staged_frontend, exist_ok=True)
+            for runtime_name in ("build", "dist-node"):
+                shutil.copytree(
+                    os.path.join(frontend_dir, runtime_name),
+                    os.path.join(staged_frontend, runtime_name),
+                    symlinks=True,
+                )
+        INSTALL_CACHE.store_artifact("nzbdav", artifact_key, artifact_staging)
+    except (OSError, ValueError) as artifact_error:
+        logger.warning(
+            "NzbDAV build artifact cache write failed safely: %s", artifact_error
+        )
+    finally:
+        if "artifact_staging" in locals():
+            shutil.rmtree(artifact_staging, ignore_errors=True)
 
     return True, None
 
@@ -3852,11 +4713,18 @@ def build_decypharr_dev(process_handler, config):
             "decypharr",
             ".",
         ]
+        go_env = os.environ.copy()
+        go_env["GOMODCACHE"] = _prepare_shared_build_cache(
+            shared_cache_path("go", platform.machine(), "modules")
+        )
+        go_env["GOCACHE"] = _prepare_shared_build_cache(
+            shared_cache_path("go", platform.machine(), "build")
+        )
         go_build_error = ""
         go_build_success = False
         for attempt in range(3):
             started, start_error = process_handler.start_process(
-                "go_build", config_dir, command
+                "go_build", config_dir, command, env=go_env
             )
             if not started:
                 go_build_error = (
@@ -5052,14 +5920,21 @@ def setup_traefik_proxy_admin(
             runtime_dir, CONFIG_MANAGER.get("puid"), CONFIG_MANAGER.get("pgid")
         )
     npmrc_path = os.path.join(config_dir, ".npmrc")
-    if not os.path.exists(npmrc_path):
-        with open(npmrc_path, "w") as npmrc:
-            npmrc.write(
-                f"store-dir={pnpm_store}\n"
-                "package-import-method=copy\n"
-                "child-concurrency=1\n"
-                "network-concurrency=1\n"
-            )
+    pnpm_children, pnpm_network = pnpm_concurrency()
+    logger.info(
+        "Using pnpm concurrency child=%s network=%s for Traefik Proxy Admin.",
+        pnpm_children,
+        pnpm_network,
+    )
+    _update_npmrc_settings(
+        npmrc_path,
+        {
+            "store-dir": pnpm_store,
+            "package-import-method": "copy",
+            "child-concurrency": pnpm_children,
+            "network-concurrency": pnpm_network,
+        },
+    )
     if not env.get("ADMIN_AUTH_SECRET"):
         env["ADMIN_AUTH_SECRET"] = secrets.token_urlsafe(48)
         changed = True
@@ -5504,6 +6379,10 @@ def setup_altmount(
         altmount_database,
         enabled=service_postgres_enabled(config),
     )
+    # AltMount's config contains generated credentials and intentionally stays
+    # mode 0600. On first creation the atomic writer has no prior service owner
+    # to retain, so explicitly hand the private file to the managed account.
+    chown_single(config_file, CONFIG_MANAGER.get("puid"), CONFIG_MANAGER.get("pgid"))
     _chown_recursive_if_needed(
         config_dir, CONFIG_MANAGER.get("puid"), CONFIG_MANAGER.get("pgid")
     )
@@ -5813,10 +6692,13 @@ def _build_maintainerr(process_handler, config_dir: str) -> tuple[bool, str | No
     with open(ui_env_path, "w", encoding="utf-8") as handle:
         handle.write("\n".join(env_lines) + "\n")
 
-    yarn_cache_root = os.getenv("DUMB_YARN_CACHE_ROOT", "/config/.yarn-cache")
-    yarn_cache_dir = os.path.join(yarn_cache_root, "maintainerr")
-    os.makedirs(yarn_cache_dir, exist_ok=True)
-    _chown_recursive_if_needed(yarn_cache_dir, user_id, group_id)
+    yarn_cache_root = os.getenv("DUMB_YARN_CACHE_ROOT")
+    yarn_cache_dir = (
+        os.path.join(yarn_cache_root, "maintainerr")
+        if yarn_cache_root
+        else shared_cache_path("yarn", platform.machine(), "maintainerr")
+    )
+    _prepare_shared_build_cache(yarn_cache_dir)
     ownership_ok, ownership_error = chown_recursive(config_dir, user_id, group_id)
     if not ownership_ok:
         return False, ownership_error
@@ -6395,9 +7277,11 @@ def setup_pulsarr(
             process_handler.stderr or process_handler.stdout or "unknown error"
         )
         return False, f"Pulsarr database migration failed: {migration_error}"
-    _chown_recursive_if_needed(
-        data_dir, CONFIG_MANAGER.get("puid"), CONFIG_MANAGER.get("pgid")
-    )
+    # The migration helper runs under the controller account and can create or
+    # replace SQLite/log files beneath an already-correctly-owned data root.
+    # A top-level ownership shortcut is therefore insufficient here: normalize
+    # the migration-owned descendants before Pulsarr is started as PUID/PGID.
+    chown_recursive(data_dir, CONFIG_MANAGER.get("puid"), CONFIG_MANAGER.get("pgid"))
 
     logger.info("Pulsarr setup complete.")
     return True, None
@@ -6617,8 +7501,8 @@ def _build_profilarr_v2(
     )
     build_dir = os.path.join(config_dir, "dist", "build")
     runtime_dir = os.path.join(config_dir, "runtime")
-    deno_cache = "/config/.deno/cache"
-    os.makedirs(deno_cache, exist_ok=True)
+    deno_cache = shared_cache_path("deno", platform.machine(), "cache")
+    _prepare_shared_build_cache(deno_cache)
     env = os.environ.copy()
     env.update(
         {
@@ -7825,28 +8709,33 @@ def setup_jellyfin(install_only: bool = False, configure_only: bool = False):
         dir_path = os.path.join(config["config_dir"], sub_dir)
         if not os.path.exists(dir_path):
             os.makedirs(dir_path, exist_ok=True)
-            chown_recursive(
-                dir_path, CONFIG_MANAGER.get("puid"), CONFIG_MANAGER.get("pgid")
-            )
-        logger.info("Setting up Jellyfin Media Server environment...")
-        config["command"] = [
-            "/usr/lib/jellyfin/bin/jellyfin",
-            "--datadir",
-            os.path.join(config["config_dir"], "data"),
-            "--configdir",
-            os.path.join(config["config_dir"], "config"),
-            "--cachedir",
-            os.path.join(config["config_dir"], "cache"),
-            "--logdir",
-            os.path.join(config["config_dir"], "log"),
-        ]
-        try:
-            from utils.jellyfin_settings import patch_jellyfin_config
+        chown_recursive(
+            dir_path, CONFIG_MANAGER.get("puid"), CONFIG_MANAGER.get("pgid")
+        )
+    logger.info("Setting up Jellyfin Media Server environment...")
+    config["command"] = [
+        "/usr/lib/jellyfin/bin/jellyfin",
+        "--datadir",
+        os.path.join(config["config_dir"], "data"),
+        "--configdir",
+        os.path.join(config["config_dir"], "config"),
+        "--cachedir",
+        os.path.join(config["config_dir"], "cache"),
+        "--logdir",
+        os.path.join(config["config_dir"], "log"),
+    ]
+    try:
+        from utils.jellyfin_settings import patch_jellyfin_config
 
-            patch_jellyfin_config(config.get("port"))
-        except Exception as e:
-            logger.warning(f"Failed to patch Jellyfin system.xml port: {e}")
-        return True, None
+        patch_jellyfin_config(config.get("port"))
+        chown_recursive(
+            os.path.join(config["config_dir"], "config"),
+            CONFIG_MANAGER.get("puid"),
+            CONFIG_MANAGER.get("pgid"),
+        )
+    except Exception as e:
+        logger.warning(f"Failed to patch Jellyfin system.xml port: {e}")
+    return True, None
 
 
 def setup_emby(install_only: bool = False, configure_only: bool = False):
@@ -7866,6 +8755,7 @@ def setup_emby(install_only: bool = False, configure_only: bool = False):
         chown_single(emby_config_dir, user_id, group_id)
 
         candidate_bins = [
+            "/opt/emby-server/bin/emby-server",
             "/opt/emby-server/system/EmbyServer",
             "/opt/emby-server/system/EmbyServer.dll",
             "/usr/lib/emby-server/bin/EmbyServer",
@@ -8027,6 +8917,10 @@ def setup_emby(install_only: bool = False, configure_only: bool = False):
         ]
         logger.debug(f"Emby command set to: {config['command']}")
         config["env"] = config.get("env") or {}
+        # The official package wrapper reads EMBY_DATA before processing the
+        # appended command-line override and otherwise defaults to
+        # /var/lib/emby, which is not writable by DUMB's managed service user.
+        config["env"]["EMBY_DATA"] = emby_config_dir
         try:
             from utils.emby_settings import patch_emby_config
 
@@ -8058,7 +8952,15 @@ def zurg_setup(install_only: bool = False, configure_only: bool = False):
                     logger.debug(
                         f"Creating Zurg instance {key_type} directory: {instance_config_dir}"
                     )
-                    os.makedirs(instance_config_dir, exist_ok=True)
+                    # Image layouts keep /zurg/<provider> as a symlink into
+                    # persistent /data. On a fresh install that symlink is
+                    # intentionally dangling until its data target is created.
+                    directory_to_create = (
+                        os.path.realpath(instance_config_dir)
+                        if os.path.islink(instance_config_dir)
+                        else instance_config_dir
+                    )
+                    os.makedirs(directory_to_create, exist_ok=True)
                     chown_recursive(
                         instance_config_dir,
                         CONFIG_MANAGER.get("puid"),
@@ -8229,7 +9131,7 @@ def zurg_setup(install_only: bool = False, configure_only: bool = False):
 
         for key_type, instance in config.get("instances", {}).items():
             if instance.get("enabled"):
-                if not instance.get("api_key"):
+                if not install_only and not instance.get("api_key"):
                     logger.error(f"API key not found for Zurg instance {key_type}")
                     raise ValueError(f"API key not found for Zurg instance {key_type}")
                 logger.info(f"Setting up enabled instance: {key_type}")
@@ -9074,6 +9976,21 @@ def clear_directory(directory_path, exclude_dirs=None, retries=3, delay=2):
     directory_path = os.path.abspath(directory_path)
     logger.debug(f"Excluding directories: {exclude_dirs}")
 
+    install_scope = _INSTALL_CLEAR_SCOPE.get()
+    if install_scope is not None:
+        transaction = DeferredClearTransaction(directory_path, sorted(exclude_dirs))
+        try:
+            transaction.capture()
+            install_scope.append(transaction)
+            logger.debug(
+                "Deferred destructive clear for %s until install verification.",
+                directory_path,
+            )
+            return True, None
+        except OSError as error:
+            transaction.rollback()
+            return False, f"Failed to stage directory clear {directory_path}: {error}"
+
     def should_exclude(path):
         path = os.path.abspath(path)
         return any(
@@ -9314,7 +10231,7 @@ def setup_python_environment(process_handler, key, config_dir):
 
         def _resolve_python_venv_command():
             if key not in ("riven_backend", "neutarr"):
-                return ["python", "-m", "venv", "venv"], None
+                return ["python", "-m", "venv", "--clear", "venv"], None
 
             if key == "neutarr":
                 preferred_python = "python3.12"
@@ -9368,7 +10285,13 @@ def setup_python_environment(process_handler, key, config_dir):
                                 "venv",
                             ], None
 
-                    return [preferred_python, "-m", "venv", "venv"], None
+                    return [
+                        preferred_python,
+                        "-m",
+                        "venv",
+                        "--clear",
+                        "venv",
+                    ], None
 
                 logger.info(
                     "NeutArr requires Python ~=3.12.0; attempting to install python3.12."
@@ -9410,7 +10333,7 @@ def setup_python_environment(process_handler, key, config_dir):
                 return [preferred_python, "-m", "venv", "--clear", "venv"], None
 
             if not _is_riven_branch_mode():
-                return ["python", "-m", "venv", "venv"], None
+                return ["python", "-m", "venv", "--clear", "venv"], None
 
             preferred_python = "python3.13"
             if shutil.which(preferred_python):
@@ -9436,7 +10359,7 @@ def setup_python_environment(process_handler, key, config_dir):
                         )
                         return [preferred_python, "-m", "venv", "--clear", "venv"], None
 
-                return [preferred_python, "-m", "venv", "venv"], None
+                return [preferred_python, "-m", "venv", "--clear", "venv"], None
 
             logger.info(
                 "Riven Backend branch install requires Python ~=3.13.0; attempting to install python3.13."
@@ -9495,14 +10418,15 @@ def setup_python_environment(process_handler, key, config_dir):
         logger.info(f"Setting up Python environment in {config_dir}")
 
         venv_path = os.path.join(config_dir, "venv")
-        cache_root = os.path.join(config_dir, ".cache")
+        python_cache_segment = (
+            f"py{sys.version_info.major}.{sys.version_info.minor}-{platform.machine()}"
+        )
+        cache_root = shared_cache_path("python", python_cache_segment)
         pip_cache = os.path.join(cache_root, "pip")
         poetry_cache = os.path.join(cache_root, "pypoetry")
         os.makedirs(pip_cache, exist_ok=True)
         os.makedirs(poetry_cache, exist_ok=True)
-        chown_single(cache_root, user_id, group_id)
-        chown_single(pip_cache, user_id, group_id)
-        chown_single(poetry_cache, user_id, group_id)
+        _prepare_shared_build_cache(cache_root)
 
         success, error = _ensure_riven_branch_system_dependencies()
         if not success:
@@ -9573,6 +10497,29 @@ def setup_python_environment(process_handler, key, config_dir):
 
         if poetry_install is True:
             logger.debug(f"Installing Poetry for {key}")
+            # Poetry must not run from the application venv that it is about to
+            # synchronize. ``poetry install --sync`` legitimately removes tools
+            # that are not declared by the application, which previously removed
+            # Poetry itself mid-command for Riven. Keep a controller-owned,
+            # service-scoped tool environment in the verified dependency cache.
+            poetry_tool_dir = shared_cache_path(
+                "python",
+                python_cache_segment,
+                "poetry-tool",
+                key,
+            )
+            _prepare_shared_build_cache(poetry_tool_dir)
+            poetry_tool_python = os.path.join(poetry_tool_dir, "bin", "python")
+            poetry_executable = os.path.join(poetry_tool_dir, "bin", "poetry")
+            if not os.path.isfile(poetry_tool_python):
+                success, error = _run_setup_process(
+                    "poetry_env_setup",
+                    [sys.executable, "-m", "venv", "--clear", poetry_tool_dir],
+                    env=base_env,
+                )
+                if not success:
+                    return False, f"Error creating Poetry tool environment: {error}"
+
             env = base_env.copy()
             env["PATH"] = f"{venv_path}/bin:" + env["PATH"]
             env["POETRY_VIRTUALENVS_CREATE"] = "false"
@@ -9585,9 +10532,9 @@ def setup_python_environment(process_handler, key, config_dir):
 
             success, error = _run_setup_process(
                 "install_poetry",
-                [python_executable, "-m", "pip", "install", "poetry"],
+                [poetry_tool_python, "-m", "pip", "install", "poetry"],
                 suppress_logging=False,
-                env=env,
+                env=base_env,
             )
             if not success:
                 return False, f"Error installing Poetry: {error}"
@@ -9600,7 +10547,14 @@ def setup_python_environment(process_handler, key, config_dir):
 
             success, error = _run_setup_process(
                 "poetry_install",
-                [poetry_executable, "install", "--no-root", "--without", "dev"],
+                [
+                    poetry_executable,
+                    "install",
+                    "--no-root",
+                    "--without",
+                    "dev",
+                    "--sync",
+                ],
                 suppress_logging=False,
                 env=env,
             )
@@ -9618,6 +10572,14 @@ def setup_python_environment(process_handler, key, config_dir):
                 return False, f"Error installing dependencies with Poetry: {error}"
 
             logger.info(f"Poetry environment setup complete at {venv_path}")
+
+        success, error = _run_setup_process(
+            "python_dependency_check",
+            [python_executable, "-m", "pip", "check"],
+            env=base_env,
+        )
+        if not success:
+            return False, f"Python dependency verification failed: {error}"
 
         logger.info(f"Python environment setup complete")
         return True, None
@@ -9838,11 +10800,9 @@ def setup_dotnet_environment(
                     os.path.join(config_dir, "src/Zilean.ApiService"),
                     os.path.join(config_dir, "src/Zilean.Scraper"),
                 ]
-        nuget_packages = os.path.join(config_dir, ".nuget", "packages")
-        os.makedirs(nuget_packages, exist_ok=True)
-        chown_single(os.path.join(config_dir, ".nuget"), user_id, group_id)
-        chown_single(nuget_packages, user_id, group_id)
-        env.setdefault("NUGET_PACKAGES", nuget_packages)
+        nuget_packages = shared_cache_path("nuget", platform.machine(), "packages")
+        _prepare_shared_build_cache(nuget_packages)
+        env["NUGET_PACKAGES"] = nuget_packages
         restore_target = restore_project_path or config_dir
         required_major = (
             10
@@ -9881,15 +10841,27 @@ def setup_dotnet_environment(
         )
 
         def _restore_with(selected_dotnet_cmd):
+            restore_command = [
+                selected_dotnet_cmd,
+                "restore",
+                restore_target,
+                "/nodeReuse:false",
+            ]
+            lock_candidates = []
+            if os.path.isdir(restore_target):
+                lock_candidates.append(
+                    os.path.join(restore_target, "packages.lock.json")
+                )
+            else:
+                lock_candidates.append(
+                    os.path.join(os.path.dirname(restore_target), "packages.lock.json")
+                )
+            if any(os.path.isfile(path) for path in lock_candidates):
+                restore_command.append("--locked-mode")
             success, start_error = process_handler.start_process(
                 "dotnet_env_restore",
                 config_dir,
-                [
-                    selected_dotnet_cmd,
-                    "restore",
-                    restore_target,
-                    "/nodeReuse:false",
-                ],
+                restore_command,
                 env=env,
             )
             if not success:
@@ -9910,7 +10882,33 @@ def setup_dotnet_environment(
                 return False, details, process_handler.returncode
             return True, None, process_handler.returncode
 
+        isolated_nuget = None
         restore_success, restore_error, restore_returncode = _restore_with(dotnet_cmd)
+        restore_text = str(restore_error or "").lower()
+        nuget_cache_error = any(
+            marker in restore_text
+            for marker in (
+                "hash mismatch",
+                "integrity",
+                "central directory corrupt",
+                "invalid package",
+                "unexpected end of file",
+            )
+        )
+        cache_settings = (CONFIG_MANAGER.get("dumb") or {}).get("install_cache") or {}
+        if (
+            not restore_success
+            and nuget_cache_error
+            and cache_settings.get("clean_retry", True)
+        ):
+            isolated_nuget = tempfile.mkdtemp(prefix="dumb-nuget-clean-")
+            env["NUGET_PACKAGES"] = isolated_nuget
+            logger.warning(
+                "NuGet reported possible shared-cache corruption; retrying once with an isolated clean package directory."
+            )
+            restore_success, restore_error, restore_returncode = _restore_with(
+                dotnet_cmd
+            )
         if (
             not restore_success
             and required_major is not None
@@ -10001,6 +10999,8 @@ def setup_dotnet_environment(
                         f"{runtime_config} targets {target_framework}, expected net10.0",
                     )
 
+        if isolated_nuget:
+            shutil.rmtree(isolated_nuget, ignore_errors=True)
         logger.info(f".NET environment setup complete")
         return True, None
 
@@ -10072,31 +11072,12 @@ def setup_bun_environment(process_handler, config_dir):
         chown_recursive(config_dir, user_id, group_id)
         bun_install = os.getenv("BUN_INSTALL", "/config/.bun")
         bun_bin = os.path.join(bun_install, "bin", "bun")
-        config_realpath = os.path.realpath(config_dir)
-        config_label = os.path.basename(os.path.normpath(config_realpath)) or "app"
-        config_label = re.sub(r"[^A-Za-z0-9_.-]+", "_", config_label).strip("._-")
-        config_label = config_label or "app"
-        config_hash = hashlib.sha256(
-            config_realpath.encode("utf-8", errors="ignore")
-        ).hexdigest()[:12]
-        bun_cache_root = os.getenv("DUMB_BUN_CACHE_ROOT", "/config/.bun-cache")
-        try:
-            os.makedirs(bun_cache_root, exist_ok=True)
-        except OSError as e:
-            logger.warning(
-                "Unable to create persistent Bun cache root %s: %s; using /tmp fallback.",
-                bun_cache_root,
-                e,
-            )
-            bun_cache_root = "/tmp/dumb-bun-cache"
-            os.makedirs(bun_cache_root, exist_ok=True)
-        bun_runtime_cache = os.path.join(
-            bun_cache_root, f"{config_label}-{config_hash}"
+        bun_runtime_cache = os.getenv(
+            "DUMB_BUN_CACHE_ROOT", shared_cache_path("bun", platform.machine())
         )
         os.makedirs(bun_install, exist_ok=True)
-        os.makedirs(bun_runtime_cache, exist_ok=True)
+        _prepare_shared_build_cache(bun_runtime_cache)
         chown_recursive(bun_install, user_id, group_id)
-        chown_recursive(bun_runtime_cache, user_id, group_id)
 
         env = os.environ.copy()
         env["BUN_INSTALL"] = bun_install
@@ -10121,9 +11102,14 @@ def setup_bun_environment(process_handler, config_dir):
                 return False, f"Error installing Bun: {process_handler.stderr}"
             chown_recursive(bun_install, user_id, group_id)
 
-        chown_recursive(bun_runtime_cache, user_id, group_id)
+        _prepare_shared_build_cache(bun_runtime_cache)
+        bun_install_command = [bun_bin, "install"]
+        if os.path.isfile(os.path.join(config_dir, "bun.lock")) or os.path.isfile(
+            os.path.join(config_dir, "bun.lockb")
+        ):
+            bun_install_command.append("--frozen-lockfile")
         process_handler.start_process(
-            "bun_install", config_dir, [bun_bin, "install"], env=env
+            "bun_install", config_dir, bun_install_command, env=env
         )
         process_handler.wait("bun_install")
         if process_handler.returncode != 0:
@@ -10153,53 +11139,68 @@ def setup_bun_environment(process_handler, config_dir):
                 return False, f"Error during bun migrate: {process_handler.stderr}"
 
         chown_recursive(config_dir, user_id, group_id)
-        chown_recursive(bun_runtime_cache, user_id, group_id)
+        _prepare_shared_build_cache(bun_runtime_cache)
         logger.info("Bun environment setup complete")
         return True, None
     except Exception as e:
         return False, f"Error during Bun setup: {e}"
 
 
-def setup_pnpm_environment(process_handler, config_dir):
+def setup_pnpm_environment(process_handler, config_dir, *, skip_build=False):
     try:
         _chown_recursive_if_needed(config_dir, user_id, group_id)
-        config_realpath = os.path.realpath(config_dir)
-        config_label = os.path.basename(os.path.normpath(config_realpath)) or "app"
-        config_label = re.sub(r"[^A-Za-z0-9_.-]+", "_", config_label).strip("._-")
-        config_label = config_label or "app"
-        config_hash = hashlib.sha256(
-            config_realpath.encode("utf-8", errors="ignore")
-        ).hexdigest()[:12]
-        pnpm_store_root = os.getenv("DUMB_PNPM_STORE_ROOT", "/config/.pnpm-store")
-        try:
-            os.makedirs(pnpm_store_root, exist_ok=True)
-        except OSError as e:
-            logger.warning(
-                "Unable to create persistent pnpm store root %s: %s; using /tmp fallback.",
-                pnpm_store_root,
-                e,
-            )
-            pnpm_store_root = "/tmp/dumb-pnpm"
-            os.makedirs(pnpm_store_root, exist_ok=True)
-        pnpm_runtime_dir = os.path.join(
-            pnpm_store_root, f"{config_label}-{config_hash}"
+
+        def _parse_required_pnpm_major():
+            package_json_path = os.path.join(config_dir, "package.json")
+            if not os.path.isfile(package_json_path):
+                return None
+            try:
+                with open(package_json_path, "r") as f:
+                    package_data = json.load(f)
+                package_manager = str(package_data.get("packageManager") or "")
+                package_match = re.search(r"pnpm@(\d+)", package_manager)
+                if package_match:
+                    return package_match.group(1)
+                pnpm_req = (package_data.get("engines", {}) or {}).get("pnpm")
+                match = re.search(r"(\d+)", str(pnpm_req or ""))
+                return match.group(1) if match else None
+            except Exception as e:
+                logger.debug("Failed to parse pnpm engine requirement: %s", e)
+                return None
+
+        required_major = _parse_required_pnpm_major()
+        pnpm_runtime_dir = os.getenv(
+            "DUMB_PNPM_STORE_ROOT",
+            shared_cache_path("pnpm", f"v{required_major or 'default'}"),
         )
         pnpm_store_dir = os.path.join(pnpm_runtime_dir, "store")
         npm_cache_dir = os.path.join(pnpm_runtime_dir, "npm-cache")
         os.makedirs(pnpm_store_dir, exist_ok=True)
         os.makedirs(npm_cache_dir, exist_ok=True)
-        _chown_recursive_if_needed(pnpm_runtime_dir, user_id, group_id)
+        _prepare_shared_build_cache(pnpm_runtime_dir)
 
-        with open(os.path.join(config_dir, ".npmrc"), "w") as file:
-            file.write(
-                f"store-dir={pnpm_store_dir}\n"
-                "child-concurrency=1\n"
-                "network-concurrency=1\n"
-                "fetch-retries=10\n"
-                "fetch-retry-factor=3\n"
-                "fetch-retry-mintimeout=15000\n"
-                "package-import-method=copy\n"
-            )
+        pnpm_children, pnpm_network = pnpm_concurrency()
+        logger.info(
+            "Using pnpm concurrency child=%s network=%s for %s.",
+            pnpm_children,
+            pnpm_network,
+            config_dir,
+        )
+
+        npmrc_path = os.path.join(config_dir, ".npmrc")
+        _update_npmrc_settings(
+            npmrc_path,
+            {
+                "store-dir": pnpm_store_dir,
+                "child-concurrency": pnpm_children,
+                "network-concurrency": pnpm_network,
+                "fetch-retries": 10,
+                "fetch-retry-factor": 3,
+                "fetch-retry-mintimeout": 15000,
+                "package-import-method": "copy",
+                "verify-store-integrity": "true",
+            },
+        )
 
         logger.info(
             "Setting up pnpm environment in %s using store %s",
@@ -10208,31 +11209,12 @@ def setup_pnpm_environment(process_handler, config_dir):
         )
         env = os.environ.copy()
         env["HOME"] = config_dir
-        env["npm_config_userconfig"] = os.path.join(config_dir, ".npmrc")
+        env["npm_config_userconfig"] = npmrc_path
         env["npm_config_cache"] = npm_cache_dir
         env.setdefault("XDG_CACHE_HOME", os.path.join(pnpm_runtime_dir, "xdg-cache"))
-        env.setdefault("PNPM_NETWORK_CONCURRENCY", "1")
-        env.setdefault("PNPM_CHILD_CONCURRENCY", "1")
+        env["PNPM_NETWORK_CONCURRENCY"] = str(pnpm_network)
+        env["PNPM_CHILD_CONCURRENCY"] = str(pnpm_children)
         env.setdefault("PNPM_FETCH_RETRIES", "10")
-
-        def _parse_required_pnpm_major():
-            package_json_path = os.path.join(config_dir, "package.json")
-            if not os.path.isfile(package_json_path):
-                return None
-            try:
-                import json
-
-                with open(package_json_path, "r") as f:
-                    package_data = json.load(f)
-                engines = package_data.get("engines", {}) or {}
-                pnpm_req = engines.get("pnpm")
-                if not pnpm_req:
-                    return None
-                match = re.search(r"(\d+)", str(pnpm_req))
-                return match.group(1) if match else None
-            except Exception as e:
-                logger.debug("Failed to parse pnpm engine requirement: %s", e)
-                return None
 
         def _pnpm_major_from_version(version):
             if not version:
@@ -10242,7 +11224,7 @@ def setup_pnpm_environment(process_handler, config_dir):
 
         def _ensure_pnpm_version(required_major):
             if not required_major:
-                return
+                return True, None
             current_version = None
             try:
                 result = subprocess.run(
@@ -10255,7 +11237,7 @@ def setup_pnpm_environment(process_handler, config_dir):
 
             current_major = _pnpm_major_from_version(current_version)
             if current_major == required_major:
-                return
+                return True, None
 
             logger.warning(
                 "pnpm version mismatch (required %s.x, found %s). Attempting to switch.",
@@ -10264,20 +11246,27 @@ def setup_pnpm_environment(process_handler, config_dir):
             )
 
             if shutil.which("corepack"):
-                process_handler.start_process(
+                success, error = process_handler.start_process(
                     "corepack_prepare",
                     config_dir,
                     ["corepack", "prepare", f"pnpm@{required_major}", "--activate"],
                     env=env,
                 )
+                if not success:
+                    return False, error or "corepack prepare failed to start"
                 process_handler.wait("corepack_prepare")
+                if process_handler.returncode != 0:
+                    details = process_handler.stderr or process_handler.stdout
+                    return False, details or "corepack prepare failed"
             else:
                 logger.warning(
                     "corepack not available; pnpm version may remain incompatible."
                 )
+            return True, None
 
-        required_major = _parse_required_pnpm_major()
-        _ensure_pnpm_version(required_major)
+        success, error = _ensure_pnpm_version(required_major)
+        if not success:
+            return False, f"Unable to activate the required pnpm version: {error}"
         use_corepack_pnpm = required_major is not None
 
         def cleanup_pnpm_tmp():
@@ -10296,20 +11285,32 @@ def setup_pnpm_environment(process_handler, config_dir):
                 except OSError as e:
                     logger.debug("Failed to remove pnpm tmp path %s: %s", path, e)
 
+        lockfile_exists = os.path.isfile(os.path.join(config_dir, "pnpm-lock.yaml"))
+        allow_lockfile_fallback = False
+        isolated_store = None
         for attempt in range(5):
-            pnpm_cmd = ["pnpm", "install", "--force", "--no-frozen-lockfile"]
+            frozen_argument = (
+                "--no-frozen-lockfile"
+                if allow_lockfile_fallback
+                else "--frozen-lockfile"
+            )
+            pnpm_cmd = ["pnpm", "install", frozen_argument, "--prefer-offline"]
             if use_corepack_pnpm:
                 pnpm_cmd = [
                     "corepack",
                     "pnpm",
                     "install",
-                    "--force",
-                    "--no-frozen-lockfile",
+                    frozen_argument,
+                    "--prefer-offline",
                 ]
+            if not lockfile_exists:
+                pnpm_cmd = [item for item in pnpm_cmd if item != "--frozen-lockfile"]
+                pnpm_cmd.append("--no-frozen-lockfile")
+            if isolated_store:
+                pnpm_cmd.extend(["--store-dir", isolated_store])
             env = env or {}
             env.setdefault("PNPM_YES", "1")
             env.setdefault("CI", "1")
-            env.setdefault("npm_config_frozen_lockfile", "false")
             process_handler.start_process("pnpm_install", config_dir, pnpm_cmd, env=env)
             process_handler.wait("pnpm_install")
             if process_handler.returncode == 0:
@@ -10317,6 +11318,39 @@ def setup_pnpm_environment(process_handler, config_dir):
             combined_output = (process_handler.stdout or "") + (
                 process_handler.stderr or ""
             )
+            normalized_output = combined_output.lower()
+            lockfile_errors = (
+                "frozen-lockfile" in normalized_output
+                or "outdated lockfile" in normalized_output
+                or "broken lockfile" in normalized_output
+                or 'cannot install with "frozen-lockfile"' in normalized_output
+            )
+            if lockfile_exists and not allow_lockfile_fallback and lockfile_errors:
+                logger.warning(
+                    "pnpm lockfile is incompatible with DUMB's required source patches; retrying once with lockfile updates enabled."
+                )
+                allow_lockfile_fallback = True
+                continue
+            cache_errors = (
+                "integrity" in normalized_output
+                or "checksum" in normalized_output
+                or "unexpected end" in normalized_output
+                or "corrupt" in normalized_output
+                or ("enoent" in normalized_output and "store" in normalized_output)
+            )
+            cache_settings = (CONFIG_MANAGER.get("dumb") or {}).get(
+                "install_cache"
+            ) or {}
+            if (
+                cache_errors
+                and not isolated_store
+                and cache_settings.get("clean_retry", True)
+            ):
+                isolated_store = tempfile.mkdtemp(prefix="dumb-pnpm-clean-")
+                logger.warning(
+                    "pnpm reported possible shared-cache corruption; retrying once with an isolated clean store."
+                )
+                continue
             if "eagain" not in combined_output.lower():
                 return False, f"Error during pnpm install: {process_handler.stderr}"
             logger.warning(
@@ -10331,8 +11365,6 @@ def setup_pnpm_environment(process_handler, config_dir):
         build_script = None
         scripts = {}
         if os.path.isfile(package_json_path):
-            import json
-
             with open(package_json_path, "r") as f:
                 package_data = json.load(f)
                 scripts = package_data.get("scripts", {}) or {}
@@ -10428,6 +11460,10 @@ def setup_pnpm_environment(process_handler, config_dir):
                 logger.debug("Failed reading frontend build fingerprint: %s", e)
                 build_skip_reason = "fingerprint_read_error"
 
+        if skip_build and build_script:
+            should_skip_build = True
+            build_skip_reason = "verified_artifact_restore"
+
         if build_script:
             logger.info(
                 "Frontend build decision: skip=%s reason=%s",
@@ -10498,6 +11534,8 @@ def setup_pnpm_environment(process_handler, config_dir):
         else:
             logger.info(f"No build script found. Skipping pnpm build step.")
 
+        if isolated_store:
+            shutil.rmtree(isolated_store, ignore_errors=True)
         logger.info(f"pnpm environment setup complete")
         return True, None
 

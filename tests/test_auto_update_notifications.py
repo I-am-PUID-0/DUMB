@@ -15,7 +15,243 @@ class UpdateNotificationTests(unittest.TestCase):
         updater.updating = threading.Lock()
         updater._safe_record_update_status = Mock()
         updater.supports_manual_update = Mock(return_value=True)
+        updater._rollback_snapshots = {}
+        updater._active_install_operation = None
         return updater
+
+    def test_unhealthy_replacement_triggers_runtime_recovery(self):
+        updater = self._updater()
+        updater._rollback_snapshots["Example"] = Mock()
+        updater._wait_for_update_health = Mock(
+            return_value=(False, "application probe failed")
+        )
+        updater._recover_pending_snapshot = Mock(return_value=True)
+
+        process, error = updater._finalize_runtime_snapshot("Example", Mock())
+
+        self.assertFalse(process)
+        self.assertIn("previous runtime restored", error)
+        updater._recover_pending_snapshot.assert_called_once_with("Example")
+
+    def test_runtime_recovery_restores_configures_and_restarts_previous_version(self):
+        updater = self._updater()
+        snapshot = Mock()
+        snapshot.rollback.return_value = True
+        updater._rollback_snapshots["Example"] = snapshot
+        updater.process_handler = Mock()
+        updater.process_handler.transactional_update_snapshots = {"Example"}
+        updater.process_handler.setup_tracker = {"Example"}
+        updater.process_handler.setup_tracker_lock = threading.Lock()
+        updater.start_process = Mock(return_value=(Mock(), None))
+        updater._wait_for_update_health = Mock(return_value=(True, None))
+        config = {"process_name": "Example"}
+        config_manager = Mock()
+        config_manager.find_key_for_process.return_value = ("example", None)
+        config_manager.get_instance.return_value = config
+
+        with (
+            patch("utils.auto_update.CONFIG_MANAGER", config_manager),
+            patch("utils.auto_update.configure_project", return_value=(True, None)),
+        ):
+            restored = updater._recover_pending_snapshot("Example")
+
+        self.assertTrue(restored)
+        updater.process_handler.stop_process.assert_called_once_with("Example")
+        snapshot.rollback.assert_called_once_with()
+        snapshot.commit.assert_called_once_with()
+        updater.start_process.assert_called_once_with(
+            "Example", config, "example", None
+        )
+        updater._wait_for_update_health.assert_called_once_with("Example")
+
+    def test_runtime_recovery_reports_failure_when_previous_version_will_not_start(
+        self,
+    ):
+        updater = self._updater()
+        snapshot = Mock()
+        snapshot.rollback.return_value = True
+        updater._rollback_snapshots["Example"] = snapshot
+        updater.process_handler = Mock()
+        updater.process_handler.transactional_update_snapshots = {"Example"}
+        updater.process_handler.setup_tracker = {"Example"}
+        updater.process_handler.setup_tracker_lock = threading.Lock()
+        updater.start_process = Mock(return_value=(False, "immediate exit"))
+        config = {"process_name": "Example"}
+        config_manager = Mock()
+        config_manager.find_key_for_process.return_value = ("example", None)
+        config_manager.get_instance.return_value = config
+
+        with (
+            patch("utils.auto_update.CONFIG_MANAGER", config_manager),
+            patch("utils.auto_update.configure_project", return_value=(True, None)),
+        ):
+            restored = updater._recover_pending_snapshot("Example")
+
+        self.assertFalse(restored)
+        snapshot.rollback.assert_called_once_with()
+        updater.start_process.assert_called_once_with(
+            "Example", config, "example", None
+        )
+
+    def test_start_process_preserves_immediate_exit_error_without_snapshot(self):
+        updater = self._updater()
+        updater.process_handler = Mock()
+        updater.process_handler.start_process.return_value = (
+            False,
+            "Example failed to stay running.",
+        )
+        config = {
+            "command": ["/example/bin"],
+            "config_dir": "/example",
+            "env": {},
+        }
+        config_manager = Mock()
+        config_manager.find_key_for_process.return_value = ("example", None)
+        config_manager.get_instance.return_value = config
+
+        with patch("utils.auto_update.CONFIG_MANAGER", config_manager):
+            process, error = updater.start_process("Example", config, "example", None)
+
+        self.assertFalse(process)
+        self.assertEqual("Example failed to stay running.", error)
+
+    def test_runtime_recovery_requires_resolvable_service_configuration(self):
+        updater = self._updater()
+        snapshot = Mock()
+        snapshot.rollback.return_value = True
+        updater._rollback_snapshots["Example"] = snapshot
+        updater.process_handler = Mock()
+        updater.process_handler.transactional_update_snapshots = {"Example"}
+        config_manager = Mock()
+        config_manager.find_key_for_process.return_value = (None, None)
+
+        with patch("utils.auto_update.CONFIG_MANAGER", config_manager):
+            restored = updater._recover_pending_snapshot("Example")
+
+        self.assertFalse(restored)
+        snapshot.rollback.assert_called_once_with()
+        snapshot.commit.assert_called_once_with()
+
+    def test_failed_rollback_health_is_not_reported_as_restored(self):
+        updater = self._updater()
+        updater._rollback_snapshots["Example"] = Mock()
+        updater._wait_for_update_health = Mock(
+            return_value=(False, "replacement probe failed")
+        )
+        updater._recover_pending_snapshot = Mock(return_value=False)
+
+        process, error = updater._finalize_runtime_snapshot("Example", Mock())
+
+        self.assertFalse(process)
+        self.assertIn("previous runtime did not return to stable health", error)
+        updater._recover_pending_snapshot.assert_called_once_with("Example")
+
+    def test_update_health_allows_starting_probe_to_become_ready(self):
+        updater = self._updater()
+        updater._mark_update_service_ready = Mock()
+        updater._mark_update_downtime_started = Mock()
+        updater.process_handler = Mock()
+        updater.process_handler.get_service_readiness.side_effect = [
+            {
+                "state": "starting",
+                "health_status": "unhealthy",
+                "reason": "Port 127.0.0.1:1234 not responding",
+            },
+            {
+                "state": "ready",
+                "health_status": "healthy",
+                "reason": None,
+            },
+        ]
+        config_manager = Mock()
+        config_manager.get.return_value = {
+            "install_cache": {
+                "activation_health_timeout_seconds": 5,
+                "activation_stabilization_seconds": 0,
+            }
+        }
+
+        with (
+            patch("utils.auto_update.CONFIG_MANAGER", config_manager),
+            patch("utils.auto_update.time.sleep"),
+        ):
+            healthy, error = updater._wait_for_update_health("Example")
+
+        self.assertTrue(healthy)
+        self.assertIsNone(error)
+        self.assertEqual(
+            updater.process_handler.get_service_readiness.call_count,
+            2,
+        )
+        updater._mark_update_service_ready.assert_called_once_with("Example")
+
+    def test_update_timing_separates_install_time_from_observed_downtime(self):
+        updater = self._updater()
+        updater._write_update_status = Mock()
+        updater._safe_record_update_status = Update._safe_record_update_status.__get__(
+            updater, Update
+        )
+        payload = {"status": "updated", "message": "Updated Example."}
+
+        with patch(
+            "utils.auto_update.time.monotonic",
+            side_effect=[100.0, 110.0, 114.0, 120.0, 123.0, 130.0],
+        ):
+            self.assertTrue(updater._begin_update_timing("Example"))
+            updater._mark_update_downtime_started("Example")
+            updater._mark_update_service_ready("Example")
+            updater._mark_update_downtime_started("Example")
+            updater._mark_update_service_ready("Example")
+            updater._safe_record_update_status("Example", payload)
+            metrics = updater._finish_update_timing("Example", payload)
+
+        self.assertEqual(metrics["install_duration_seconds"], 30.0)
+        self.assertEqual(metrics["downtime_seconds"], 7.0)
+        self.assertEqual(metrics["downtime_status"], "completed")
+        updater._write_update_status.assert_called_once_with("Example", payload)
+
+    def test_update_timing_reports_unrecovered_downtime_as_ongoing(self):
+        updater = self._updater()
+        updater._write_update_status = Mock()
+        payload = {"status": "error", "message": "Update failed."}
+
+        with patch(
+            "utils.auto_update.time.monotonic",
+            side_effect=[10.0, 12.0, 20.0],
+        ):
+            updater._begin_update_timing("Example")
+            updater._mark_update_downtime_started("Example")
+            metrics = updater._finish_update_timing("Example", payload)
+
+        self.assertEqual(metrics["install_duration_seconds"], 10.0)
+        self.assertEqual(metrics["downtime_seconds"], 8.0)
+        self.assertEqual(metrics["downtime_status"], "ongoing")
+        updater._write_update_status.assert_called_once_with("Example", payload)
+
+    def test_update_health_still_fails_immediately_when_process_exits(self):
+        updater = self._updater()
+        updater.process_handler = Mock()
+        updater.process_handler.get_service_readiness.return_value = {
+            "state": "failed",
+            "reason": "Process exited during startup.",
+        }
+        config_manager = Mock()
+        config_manager.get.return_value = {
+            "install_cache": {
+                "activation_health_timeout_seconds": 5,
+                "activation_stabilization_seconds": 0,
+            }
+        }
+
+        with (
+            patch("utils.auto_update.CONFIG_MANAGER", config_manager),
+            patch("utils.auto_update.time.sleep"),
+        ):
+            healthy, error = updater._wait_for_update_health("Example")
+
+        self.assertFalse(healthy)
+        self.assertEqual(error, "Process exited during startup.")
+        updater.process_handler.get_service_readiness.assert_called_once_with("Example")
 
     def test_manual_update_check_records_missing_configuration(self):
         updater = self._updater()
@@ -200,10 +436,11 @@ class UpdateNotificationTests(unittest.TestCase):
             )
 
         self.assertEqual("blocked", pending["status"])
-        self.assertEqual(f"v0.7.9-{release_sha[:8]}", pending["available_version"])
+        self.assertEqual("v0.7.9", pending["available_version"])
         self.assertEqual("release", pending["configured_target_kind"])
         self.assertFalse(pending["configured_target_installed"])
         self.assertEqual("no_update", installed["status"])
+        self.assertEqual("v0.7.9", installed["current_version"])
         self.assertTrue(installed["configured_target_installed"])
         versions.return_value.compare_versions.assert_not_called()
 

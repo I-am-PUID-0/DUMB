@@ -1,11 +1,15 @@
 import hashlib
 import json
+import os
 import platform
 import re
+import shutil
 from pathlib import Path
 from urllib.parse import urlencode
 
 import requests
+
+from utils.install_cache import INSTALL_CACHE, install_cache_enabled
 
 OCI_INDEX_MEDIA_TYPES = {
     "application/vnd.oci.image.index.v1+json",
@@ -261,6 +265,25 @@ class OCIRegistryClient:
         digest = _validate_digest(descriptor.get("digest"))
         expected_size = int(descriptor.get("size", 0) or 0)
         target = Path(target_path)
+        cached = (
+            INSTALL_CACHE.lookup_content(digest) if install_cache_enabled() else None
+        )
+        if cached is not None:
+            try:
+                target.parent.mkdir(parents=True, exist_ok=True)
+                temporary = target.with_name(f".{target.name}.cache-part")
+                temporary.unlink(missing_ok=True)
+                # Keep the immutable cache inode separate from disposable
+                # extraction staging so a consumer cannot mutate the cache.
+                shutil.copy2(cached, temporary)
+                if expected_size and temporary.stat().st_size != expected_size:
+                    temporary.unlink(missing_ok=True)
+                    INSTALL_CACHE.quarantine_path(cached, "oci-size-mismatch")
+                else:
+                    os.replace(temporary, target)
+                    return target
+            except OSError:
+                target.unlink(missing_ok=True)
         hasher = hashlib.sha256()
         bytes_written = 0
         response = self._get(
@@ -288,4 +311,10 @@ class OCIRegistryClient:
         if expected_size and bytes_written != expected_size:
             target.unlink(missing_ok=True)
             raise OCIImageError("OCI image layer size verification failed.")
+        if install_cache_enabled():
+            try:
+                INSTALL_CACHE.store_content_file(target, digest)
+            except OSError:
+                # Cache availability must never make a verified install fail.
+                pass
         return target

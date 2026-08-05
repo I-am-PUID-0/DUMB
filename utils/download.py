@@ -1,6 +1,9 @@
 from utils.global_logger import logger
 from utils.config_loader import CONFIG_MANAGER
-import requests, time, os, zipfile, io, shutil, platform, fnmatch, re, tarfile
+from utils.install_cache import INSTALL_CACHE
+import requests, time, os, zipfile, io, shutil, platform, re, tarfile, tempfile, stat, hashlib
+import fnmatch
+from pathlib import Path
 from urllib.parse import quote
 
 
@@ -20,33 +23,50 @@ class Downloader:
 
     def handle_rate_limits(self, response):
         if response.status_code in [403, 429]:
+            wait_source = "default retry"
             if "Retry-After" in response.headers:
-                retry_after = int(response.headers["Retry-After"])
-                self.logger.warning(
-                    f"Rate limit exceeded. Retrying after {retry_after} seconds."
-                )
-                time.sleep(retry_after)
+                retry_after = max(0, int(response.headers["Retry-After"]))
+                wait_source = "Retry-After"
             elif "X-RateLimit-Reset" in response.headers:
                 reset_time = int(response.headers["X-RateLimit-Reset"])
                 current_time = time.time()
-                sleep_time = max(0, reset_time - current_time)
-                self.logger.warning(
-                    f"Rate limit exceeded. Retrying after {sleep_time} seconds."
-                )
-                time.sleep(sleep_time)
+                retry_after = max(0, reset_time - current_time)
+                wait_source = "X-RateLimit-Reset"
             else:
-                self.logger.warning("Rate limit exceeded. Retrying after 60 seconds.")
-                time.sleep(60)
+                retry_after = 60
+
+            dumb_config = CONFIG_MANAGER.get("dumb") or {}
+            max_wait = max(
+                0,
+                int(dumb_config.get("github_rate_limit_max_wait_seconds", 300)),
+            )
+            if retry_after > max_wait:
+                self.logger.error(
+                    "GitHub rate limit requires waiting %.1f seconds (%s), which "
+                    "exceeds the configured %s-second maximum. Failing this fetch; "
+                    "configure a GitHub token or retry after the quota resets.",
+                    retry_after,
+                    wait_source,
+                    max_wait,
+                )
+                return False
+            self.logger.warning(
+                "Rate limit exceeded. Retrying after %.1f seconds.", retry_after
+            )
+            time.sleep(retry_after)
             return True
         return False
 
-    def fetch_with_retries(self, url, headers, max_retries=5):
+    def fetch_with_retries(self, url, headers, max_retries=5, accepted_statuses=(200,)):
         for attempt in range(max_retries):
             try:
-                response = requests.get(url, headers=headers, timeout=10)
-                if response.status_code == 200:
+                response = requests.get(url, headers=headers, timeout=(15, 300))
+                if response.status_code in accepted_statuses:
                     return response
-                if not self.handle_rate_limits(response):
+                if response.status_code in [403, 429]:
+                    if not self.handle_rate_limits(response):
+                        break
+                else:
                     logger.info(f"Response status code: {response.status_code}")
                 self.logger.info(
                     f"Retry attempt {attempt + 1} after rate limit handling."
@@ -202,6 +222,22 @@ class Downloader:
                     bazarr_asset.get("browser_download_url") if bazarr_asset else None
                 )
                 asset_id = bazarr_asset.get("id") if bazarr_asset else None
+            elif key == "emby":
+                expected_name = (
+                    f"emby-server-deb_{release_version}_{architecture}.deb".lower()
+                )
+                emby_asset = next(
+                    (
+                        asset
+                        for asset in release_info.get("assets", [])
+                        if asset.get("name", "").lower() == expected_name
+                    ),
+                    None,
+                )
+                download_url = (
+                    emby_asset.get("browser_download_url") if emby_asset else None
+                )
+                asset_id = emby_asset.get("id") if emby_asset else None
             else:
                 download_url, asset_id = self.find_asset_download_url(
                     release_info, architecture
@@ -252,20 +288,31 @@ class Downloader:
             releases = response.json()
             if nightly:
                 nightly_releases = [
-                    release for release in releases if "nightly" in release["tag_name"]
+                    release
+                    for release in releases
+                    if isinstance(release, dict)
+                    and "nightly" in str(release.get("tag_name") or "").lower()
                 ]
                 if nightly_releases:
-                    latest_nightly = max(nightly_releases, key=lambda x: x["tag_name"])
+                    latest_nightly = max(
+                        nightly_releases, key=self._github_release_recency_key
+                    )
                     return latest_nightly["tag_name"], None
                 return None, "No nightly releases found."
 
             elif prerelease:
+                if not isinstance(releases, list):
+                    return None, "GitHub returned an invalid release list."
                 prerelease_releases = [
-                    release for release in releases if release["prerelease"]
+                    release
+                    for release in releases
+                    if isinstance(release, dict)
+                    and not release.get("draft")
+                    and bool(release.get("prerelease"))
                 ]
                 if prerelease_releases:
                     latest_prerelease = max(
-                        prerelease_releases, key=lambda x: x["tag_name"]
+                        prerelease_releases, key=self._github_release_recency_key
                     )
                     return latest_prerelease["tag_name"], None
                 return None, "No prerelease versions found."
@@ -278,6 +325,14 @@ class Downloader:
 
         else:
             return None, f"Error: Unable to access the {repo_name} repository API."
+
+    @staticmethod
+    def _github_release_recency_key(release):
+        return (
+            str(release.get("published_at") or release.get("created_at") or ""),
+            int(release.get("id") or 0),
+            str(release.get("tag_name") or ""),
+        )
 
     def get_branch(self, repo_owner, repo_name, branch, headers=None):
         headers = self.get_headers()
@@ -465,28 +520,278 @@ class Downloader:
             return None
         return destination
 
+    @staticmethod
+    def _archive_limits():
+        install_cache = (CONFIG_MANAGER.get("dumb") or {}).get("install_cache") or {}
+        return {
+            "download_bytes": int(
+                float(install_cache.get("max_download_size_mb", 4096)) * 1024 * 1024
+            ),
+            "entries": int(install_cache.get("max_archive_entries", 250000)),
+            "unpacked_bytes": int(
+                float(install_cache.get("max_unpacked_size_gib", 50))
+                * 1024
+                * 1024
+                * 1024
+            ),
+        }
+
+    @staticmethod
+    def _strict_relative_path(member_name, zip_folder_name=None, single=False):
+        normalized = str(member_name or "").replace("\\", "/")
+        if normalized.startswith("/"):
+            raise ValueError(f"Unsafe archive member path: {member_name}")
+        while normalized.startswith("./"):
+            normalized = normalized[2:]
+        if not normalized:
+            return None
+        if zip_folder_name:
+            archive_root_pattern = str(zip_folder_name).replace("\\", "/").rstrip("/")
+            member_root, separator, remainder = normalized.partition("/")
+            if fnmatch.fnmatchcase(member_root, archive_root_pattern):
+                normalized = remainder if separator else member_root
+            elif not single:
+                return None
+        relative = os.path.normpath(normalized)
+        if (
+            not relative
+            or relative in {".", ".."}
+            or os.path.isabs(relative)
+            or relative.startswith(f"..{os.sep}")
+            or "\x00" in relative
+        ):
+            raise ValueError(f"Unsafe archive member path: {member_name}")
+        return relative
+
+    @staticmethod
+    def _normalized_archive_excludes(target_dir, exclude_dirs=None):
+        target = Path(target_dir).resolve()
+        normalized = set()
+        for value in exclude_dirs or []:
+            candidate = Path(str(value))
+            if candidate.is_absolute():
+                try:
+                    candidate = candidate.resolve().relative_to(target)
+                except ValueError:
+                    # An absolute exclusion outside this install root cannot
+                    # match an archive-relative member safely.
+                    continue
+            text = str(candidate).replace("\\", "/").strip("/")
+            if text and text not in {".", ".."} and ".." not in Path(text).parts:
+                normalized.add(text)
+        return normalized
+
+    def _merge_staging_transactionally(self, staging_dir, target_dir):
+        staged_file_count = sum(
+            len(filenames) for _, _, filenames in os.walk(staging_dir)
+        )
+        if staged_file_count == 0:
+            return False, "Archive extraction produced no eligible files."
+
+        # Service roots such as /decypharr are symlinks into /data. Resolve the
+        # live target before choosing the backup directory so every os.replace
+        # remains on the installation filesystem without replacing the symlink.
+        target = os.path.realpath(os.path.abspath(target_dir))
+        parent = os.path.dirname(target)
+        os.makedirs(target, exist_ok=True)
+        backup = tempfile.mkdtemp(
+            prefix=f".{os.path.basename(target)}.dumb-overlay-backup-", dir=parent
+        )
+        applied = []
+        created_dirs = []
+        try:
+            for current_root, directories, filenames in os.walk(staging_dir):
+                directories.sort()
+                filenames.sort()
+                relative_root = os.path.relpath(current_root, staging_dir)
+                destination_root = (
+                    target
+                    if relative_root == "."
+                    else os.path.join(target, relative_root)
+                )
+                if not os.path.isdir(destination_root):
+                    if os.path.lexists(destination_root):
+                        previous_directory_entry = os.path.join(backup, relative_root)
+                        os.makedirs(
+                            os.path.dirname(previous_directory_entry), exist_ok=True
+                        )
+                        os.replace(destination_root, previous_directory_entry)
+                        applied.append((destination_root, previous_directory_entry))
+                    os.makedirs(destination_root, exist_ok=True)
+                    created_dirs.append(destination_root)
+                for filename in filenames:
+                    source = os.path.join(current_root, filename)
+                    relative = os.path.relpath(source, staging_dir)
+                    destination = self._safe_extract_path(target, relative)
+                    if not destination:
+                        raise ValueError(f"Unsafe staged path: {relative}")
+                    os.makedirs(os.path.dirname(destination), exist_ok=True)
+                    previous = None
+                    if os.path.lexists(destination):
+                        previous = os.path.join(backup, relative)
+                        os.makedirs(os.path.dirname(previous), exist_ok=True)
+                        os.replace(destination, previous)
+                    os.replace(source, destination)
+                    applied.append((destination, previous))
+            shutil.rmtree(backup)
+            return True, None
+        except Exception as error:
+            for destination, previous in reversed(applied):
+                try:
+                    if os.path.lexists(destination):
+                        if os.path.isdir(destination) and not os.path.islink(
+                            destination
+                        ):
+                            shutil.rmtree(destination)
+                        else:
+                            os.unlink(destination)
+                    if previous and os.path.lexists(previous):
+                        os.makedirs(os.path.dirname(destination), exist_ok=True)
+                        os.replace(previous, destination)
+                except OSError:
+                    pass
+            for directory in reversed(created_dirs):
+                try:
+                    os.rmdir(directory)
+                except OSError:
+                    pass
+            shutil.rmtree(backup, ignore_errors=True)
+            return False, f"Failed applying extracted files: {error}"
+
     def _extract_tarfile(
         self, tar_bytes_io, target_dir, zip_folder_name=None, exclude_dirs=None
     ):
+        limits = self._archive_limits()
         try:
             with tarfile.open(fileobj=tar_bytes_io, mode="r:*") as tar:
                 members = tar.getmembers()
+                if len(members) > limits["entries"]:
+                    raise ValueError("Archive contains too many entries.")
+                total_size = sum(member.size for member in members if member.isfile())
+                if total_size > limits["unpacked_bytes"]:
+                    raise ValueError("Archive expands beyond the configured limit.")
 
+                eligible_members = []
+                regular_paths = set()
                 for member in members:
                     self.logger.debug(
                         f"Found tar member: {member.name} ({member.size} bytes)"
                     )
-                    if not member.isfile():
-                        continue
-
-                    member_name = member.name
-
-                    if exclude_dirs and any(
-                        exclude in member_name for exclude in exclude_dirs
+                    if member.isdev():
+                        raise ValueError(
+                            f"Archive contains unsupported link/device entry: {member.name}"
+                        )
+                    if (
+                        not member.isfile()
+                        and not member.issym()
+                        and not member.islnk()
                     ):
                         continue
 
-                    file_obj = tar.extractfile(member)
+                    member_name = self._strict_relative_path(
+                        member.name,
+                        zip_folder_name,
+                        single=len(members) == 1,
+                    )
+                    if member_name is None:
+                        continue
+
+                    normalized_excludes = self._normalized_archive_excludes(
+                        target_dir, exclude_dirs
+                    )
+                    if any(
+                        member_name == excluded
+                        or member_name.startswith(f"{excluded}/")
+                        for excluded in normalized_excludes
+                    ):
+                        continue
+
+                    eligible_members.append((member, member_name))
+                    if member.isfile():
+                        regular_paths.add(member_name)
+
+                regular_members = {
+                    member_name: member
+                    for member, member_name in eligible_members
+                    if member.isfile()
+                }
+                expanded_hardlink_bytes = 0
+                safe_hardlink_paths = set()
+                for member, member_name in eligible_members:
+                    if not member.islnk():
+                        continue
+                    linked_name = self._strict_relative_path(
+                        member.linkname,
+                        zip_folder_name,
+                    )
+                    if linked_name is None:
+                        linked_name = os.path.normpath(
+                            os.path.join(os.path.dirname(member_name), member.linkname)
+                        )
+                    linked_member = regular_members.get(linked_name)
+                    if linked_member is None:
+                        raise ValueError(
+                            "Archive hard link does not target an internal regular "
+                            f"file: {member.name}"
+                        )
+                    expanded_hardlink_bytes += linked_member.size
+                    safe_hardlink_paths.add(member_name)
+                if total_size + expanded_hardlink_bytes > limits["unpacked_bytes"]:
+                    raise ValueError("Archive expands beyond the configured limit.")
+                safe_file_paths = regular_paths | safe_hardlink_paths
+
+                for member, member_name in eligible_members:
+                    fpath = self._safe_extract_path(target_dir, member_name)
+                    if not fpath:
+                        raise ValueError(f"Unsafe archive member: {member_name}")
+
+                    os.makedirs(os.path.dirname(fpath), exist_ok=True)
+                    if member.issym():
+                        link_target = str(member.linkname or "")
+                        if (
+                            not link_target
+                            or len(link_target.encode("utf-8")) > 4096
+                            or "\x00" in link_target
+                            or "\\" in link_target
+                            or os.path.isabs(link_target)
+                        ):
+                            raise ValueError(
+                                f"Archive contains unsafe symlink: {member.name}"
+                            )
+                        resolved_link = os.path.normpath(
+                            os.path.join(os.path.dirname(member_name), link_target)
+                        )
+                        if (
+                            resolved_link in {".", ".."}
+                            or resolved_link.startswith(f"..{os.sep}")
+                            or resolved_link not in safe_file_paths
+                            or any(
+                                path.startswith(f"{member_name}/")
+                                for path in safe_file_paths
+                            )
+                        ):
+                            raise ValueError(
+                                "Archive symlink does not target an internal regular "
+                                f"file: {member.name}"
+                            )
+                        os.symlink(link_target, fpath)
+                        continue
+
+                    linked_member = None
+                    if member.islnk():
+                        linked_name = self._strict_relative_path(
+                            member.linkname,
+                            zip_folder_name,
+                        )
+                        if linked_name is None:
+                            linked_name = os.path.normpath(
+                                os.path.join(
+                                    os.path.dirname(member_name), member.linkname
+                                )
+                            )
+                        linked_member = regular_members[linked_name]
+
+                    file_obj = tar.extractfile(linked_member or member)
                     if not file_obj:
                         continue
 
@@ -499,7 +804,9 @@ class Downloader:
                             self.logger.error(
                                 f"Could not open nested tar: {member_name}"
                             )
-                            continue
+                            raise ValueError(
+                                f"Could not open nested tar: {member_name}"
+                            )
                         nested_tar_data = file_obj.read()
                         self.logger.debug(
                             f"Nested TAR {member_name} size: {len(nested_tar_data)} bytes"
@@ -512,50 +819,110 @@ class Downloader:
                         )
                         continue
 
-                    fpath = self._safe_extract_path(target_dir, member_name)
-                    if not fpath:
-                        continue
-
-                    try:
-                        os.makedirs(os.path.dirname(fpath), exist_ok=True)
-                        with open(fpath, "wb") as dst:
-                            shutil.copyfileobj(file_obj, dst)
-                    except Exception as e:
-                        self.logger.error(f"Error while extracting {member_name}: {e}")
+                    with open(fpath, "wb") as dst:
+                        shutil.copyfileobj(file_obj, dst)
+                    os.chmod(fpath, (linked_member or member).mode & 0o777)
 
         except tarfile.TarError as e:
             self.logger.error(f"Failed to extract TAR file: {e}")
             raise
 
     def download_and_extract(
-        self, url, target_dir, zip_folder_name=None, headers=None, exclude_dirs=None
+        self,
+        url,
+        target_dir,
+        zip_folder_name=None,
+        headers=None,
+        exclude_dirs=None,
+        expected_sha256=None,
     ):
+        staging_dir = None
         try:
             self.logger.debug(f"Downloading from {url}")
-            headers = headers or self.get_headers()
-            response = self.fetch_with_retries(url, headers)
+            headers = dict(headers or self.get_headers())
+            cached_content, cached_metadata = INSTALL_CACHE.lookup_download(url)
+            if cached_metadata.get("etag"):
+                headers["If-None-Match"] = cached_metadata["etag"]
+            if cached_metadata.get("last_modified"):
+                headers["If-Modified-Since"] = cached_metadata["last_modified"]
+            response = self.fetch_with_retries(
+                url, headers, accepted_statuses=(200, 304)
+            )
+            limits = self._archive_limits()
 
-            if not response or response.status_code != 200:
+            cached_fallback = response is None and cached_content is not None
+            if response is None and not cached_fallback:
+                return False, "Failed to download."
+            if response is not None and response.status_code not in (200, 304):
                 return False, "Failed to download."
 
-            content = response.content
+            if cached_fallback:
+                self.logger.warning(
+                    "Download revalidation failed; using the last digest-verified cache entry for %s.",
+                    url,
+                )
+                content = cached_content
+            elif response.status_code == 304:
+                if cached_content is None:
+                    return (
+                        False,
+                        "Download cache revalidation returned no cached object.",
+                    )
+                content = cached_content
+            else:
+                content_length = response.headers.get("Content-Length")
+                if content_length:
+                    try:
+                        if int(content_length) > limits["download_bytes"]:
+                            return False, "Download exceeds the configured size limit."
+                    except (TypeError, ValueError):
+                        pass
+                content = response.content
             size = len(content)
+            if size > limits["download_bytes"]:
+                return False, "Download exceeds the configured size limit."
+            expected_digest = str(expected_sha256 or "").strip().lower()
+            if expected_digest.startswith("sha256:"):
+                expected_digest = expected_digest.removeprefix("sha256:")
+            if expected_digest:
+                if not re.fullmatch(r"[0-9a-f]{64}", expected_digest):
+                    return False, "Expected SHA-256 digest is invalid."
+                actual_digest = hashlib.sha256(content).hexdigest()
+                if actual_digest != expected_digest:
+                    INSTALL_CACHE.invalidate_download(url, "digest-mismatch")
+                    return (
+                        False,
+                        "Downloaded archive failed its published SHA-256 verification.",
+                    )
             self.logger.debug(
                 f"{zip_folder_name} download successful. Content size: {size} bytes"
             )
 
-            cd = response.headers.get("Content-Disposition", "")
+            response_headers = response.headers if response is not None else {}
+            cd = response_headers.get("Content-Disposition", "")
             m = re.search(r'filename="?([^"]+)"?', cd)
             if m:
                 filename = m.group(1)
             else:
-                filename = (
+                filename = cached_metadata.get("filename") or (
                     url.split("?")[0].rstrip("/").split("/")[-1] or "download.bin"
                 )
 
             lower_name = filename.lower()
             ext = lower_name.rsplit(".", 1)[-1] if "." in lower_name else ""
-            ctype = (response.headers.get("Content-Type") or "").lower()
+            ctype = (response_headers.get("Content-Type") or "").lower()
+            if not ctype:
+                ctype = str(cached_metadata.get("content_type") or "").lower()
+
+            if response is not None and response.status_code == 200:
+                INSTALL_CACHE.store_download(
+                    url,
+                    content,
+                    etag=response_headers.get("ETag"),
+                    last_modified=response_headers.get("Last-Modified"),
+                    filename=filename,
+                    content_type=ctype,
+                )
 
             def looks_like_zip():
                 if ext in {"zip"}:
@@ -582,82 +949,153 @@ class Downloader:
                 )
 
             archive_data = io.BytesIO(content)
+            normalized_excludes = self._normalized_archive_excludes(
+                target_dir, exclude_dirs
+            )
+            resolved_target = os.path.realpath(os.path.abspath(target_dir))
+            target_parent = os.path.dirname(resolved_target)
+            os.makedirs(target_parent, exist_ok=True)
+            staging_dir = tempfile.mkdtemp(
+                prefix=f".{os.path.basename(resolved_target)}.dumb-extract-",
+                dir=target_parent,
+            )
 
             if looks_like_zip():
                 try:
-                    z = zipfile.ZipFile(io.BytesIO(content))
-                    self.logger.debug(
-                        f"Extracting {zip_folder_name or filename} to {target_dir}"
-                    )
-                    for file_info in z.infolist():
-                        if file_info.is_dir():
-                            continue
-                        if zip_folder_name:
-                            if fnmatch.fnmatch(
-                                file_info.filename, zip_folder_name + "*"
-                            ):
-                                parts = file_info.filename.split("/", 1)
-                                inner_path = parts[1] if len(parts) > 1 else parts[0]
-                                fpath = self._safe_extract_path(target_dir, inner_path)
-                            elif len(z.infolist()) == 1:
-                                fpath = self._safe_extract_path(
-                                    target_dir, file_info.filename
-                                )
-                            else:
-                                continue
-                        else:
-                            fpath = self._safe_extract_path(
-                                target_dir, file_info.filename
-                            )
-                        if not fpath:
-                            continue
-                        if exclude_dirs and any(
-                            excl in file_info.filename for excl in exclude_dirs
+                    with zipfile.ZipFile(io.BytesIO(content)) as z:
+                        entries = z.infolist()
+                        if len(entries) > limits["entries"]:
+                            raise ValueError("Archive contains too many entries.")
+                        if (
+                            sum(entry.file_size for entry in entries)
+                            > limits["unpacked_bytes"]
                         ):
-                            continue
-                        try:
+                            raise ValueError(
+                                "Archive expands beyond the configured limit."
+                            )
+                        self.logger.debug(
+                            f"Extracting {zip_folder_name or filename} to staging"
+                        )
+                        eligible_entries = []
+                        regular_paths = set()
+                        for file_info in entries:
+                            unix_mode = (file_info.external_attr >> 16) & 0xFFFF
+                            if file_info.is_dir():
+                                continue
+                            relative = self._strict_relative_path(
+                                file_info.filename,
+                                zip_folder_name,
+                                single=len(entries) == 1,
+                            )
+                            if relative is None:
+                                continue
+                            if any(
+                                relative == excluded
+                                or relative.startswith(f"{excluded}/")
+                                for excluded in normalized_excludes
+                            ):
+                                continue
+                            is_symlink = stat.S_ISLNK(unix_mode)
+                            eligible_entries.append((file_info, relative, is_symlink))
+                            if not is_symlink:
+                                regular_paths.add(relative)
+
+                        for file_info, relative, is_symlink in eligible_entries:
+                            fpath = self._safe_extract_path(staging_dir, relative)
+                            if not fpath:
+                                raise ValueError(
+                                    f"Unsafe archive member: {file_info.filename}"
+                                )
                             os.makedirs(os.path.dirname(fpath), exist_ok=True)
+                            if is_symlink:
+                                raw_target = z.read(file_info)
+                                if len(raw_target) > 4096:
+                                    raise ValueError(
+                                        f"Archive symlink target is too long: {file_info.filename}"
+                                    )
+                                link_target = raw_target.decode(
+                                    "utf-8", errors="strict"
+                                )
+                                if (
+                                    not link_target
+                                    or "\x00" in link_target
+                                    or "\\" in link_target
+                                    or os.path.isabs(link_target)
+                                ):
+                                    raise ValueError(
+                                        f"Archive contains unsafe symlink: {file_info.filename}"
+                                    )
+                                resolved_link = os.path.normpath(
+                                    os.path.join(os.path.dirname(relative), link_target)
+                                )
+                                if (
+                                    resolved_link in {".", ".."}
+                                    or resolved_link.startswith(f"..{os.sep}")
+                                    or resolved_link not in regular_paths
+                                ):
+                                    raise ValueError(
+                                        "Archive symlink does not target an internal "
+                                        f"regular file: {file_info.filename}"
+                                    )
+                                os.symlink(link_target, fpath)
+                                continue
                             with (
                                 open(fpath, "wb") as dst,
                                 z.open(file_info, "r") as src,
                             ):
                                 shutil.copyfileobj(src, dst)
-                        except Exception as e:
-                            self.logger.error(
-                                f"Error while extracting {file_info.filename}: {e}"
-                            )
-
+                    success, error = self._merge_staging_transactionally(
+                        staging_dir, target_dir
+                    )
+                    if not success:
+                        return False, error
                     self.logger.debug(f"Successfully extracted ZIP to {target_dir}")
                     return True, None
-                except zipfile.BadZipFile:
-                    archive_data.seek(0)
+                except (zipfile.BadZipFile, ValueError, OSError) as error:
+                    INSTALL_CACHE.invalidate_download(url, "invalid-zip")
+                    return False, f"Invalid ZIP archive: {error}"
 
             if looks_like_tar():
                 try:
                     self.logger.debug("Attempting TAR extraction...")
                     self._extract_tarfile(
-                        archive_data, target_dir, zip_folder_name, exclude_dirs
+                        archive_data,
+                        staging_dir,
+                        zip_folder_name,
+                        normalized_excludes,
                     )
+                    success, error = self._merge_staging_transactionally(
+                        staging_dir, target_dir
+                    )
+                    if not success:
+                        return False, error
                     self.logger.debug(f"Successfully extracted TAR to {target_dir}")
                     return True, None
-                except tarfile.ReadError:
-                    archive_data.seek(0)
-                except Exception as e:
-                    self.logger.warning(f"Skipping TAR extraction due to error: {e}")
-                    archive_data.seek(0)
+                except (tarfile.TarError, ValueError, OSError) as error:
+                    INSTALL_CACHE.invalidate_download(url, "invalid-tar")
+                    return False, f"Invalid TAR archive: {error}"
 
             os.makedirs(target_dir, exist_ok=True)
             out_path = self._safe_extract_path(target_dir, filename)
             if not out_path:
                 return False, "Unsafe output path."
-            with open(out_path, "wb") as f:
+            temporary_out = os.path.join(
+                target_dir, f".{os.path.basename(out_path)}.{os.getpid()}.part"
+            )
+            with open(temporary_out, "wb") as f:
                 f.write(content)
+                f.flush()
+                os.fsync(f.fileno())
+            os.replace(temporary_out, out_path)
             self.logger.debug(f"Saved non-archive asset to {out_path}")
             return True, None
 
         except Exception as e:
             self.logger.error(f"Error in download and extraction: {e}")
             return False, str(e)
+        finally:
+            if staging_dir:
+                shutil.rmtree(staging_dir, ignore_errors=True)
 
     def set_permissions(self, file_path, mode):
         try:

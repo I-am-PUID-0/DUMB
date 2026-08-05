@@ -30,6 +30,30 @@ user_management = importlib.import_module("utils.user_management")
 
 
 class UserManagementSecurityTests(unittest.TestCase):
+    def test_dynamic_workers_use_all_available_cpus_on_local_filesystem(self):
+        with (
+            patch.object(user_management, "_available_cpu_count", return_value=128),
+            patch.object(user_management, "_filesystem_type", return_value="ext4"),
+        ):
+            self.assertEqual(user_management.get_dynamic_workers("/config"), 128)
+
+    def test_dynamic_workers_cap_network_filesystems(self):
+        for filesystem_type in ("nfs4", "cifs", "fuse.rclone"):
+            with self.subTest(filesystem_type=filesystem_type):
+                with (
+                    patch.object(
+                        user_management, "_available_cpu_count", return_value=128
+                    ),
+                    patch.object(
+                        user_management,
+                        "_filesystem_type",
+                        return_value=filesystem_type,
+                    ),
+                ):
+                    self.assertEqual(
+                        user_management.get_dynamic_workers("/mnt/media"), 16
+                    )
+
     def test_validate_managed_user_ids_accepts_positive_ids(self):
         user_management.validate_managed_user_ids(1000, 1000)
 

@@ -1,6 +1,6 @@
 from utils.global_logger import logger
 from utils.logger import format_time
-from utils.versions import Versions
+from utils.versions import Versions, display_version
 from utils.download import Downloader
 from utils.setup import (
     setup_project,
@@ -18,9 +18,12 @@ from utils.mediastorm_installer import (
     mediastorm_runtime_matches_selection,
 )
 from utils.wait_for_url import wait_for_urls
+from utils.install_cache import INSTALL_CACHE
+from utils.transactional_install import RuntimeRollbackSnapshot
+from utils.transactional_install import DirectoryReleaseTransaction
 from datetime import datetime
 from glob import glob
-import threading, time, os, schedule, subprocess
+import threading, time, os, schedule, subprocess, shutil
 
 
 class Update:
@@ -38,6 +41,10 @@ class Update:
         self.logger = process_handler.logger
         self.updating = threading.Lock()
         self.downloader = Downloader()
+        self._rollback_snapshots = {}
+        self._active_install_operation = None
+        self._update_timing_lock = threading.Lock()
+        self._update_timings = {}
 
         if not Update._scheduler_initialized:
             self.scheduler = schedule.Scheduler()
@@ -128,7 +135,105 @@ class Update:
             return f"version {version}"
         return str(block_reason or "target").replace("_", " ")
 
-    def _safe_record_update_status(self, process_name, payload):
+    def _immutable_artifact_identity(self, config, hint):
+        """Resolve cache identity to a commit when the source can move."""
+        commit_sha = str(config.get("commit_sha") or "").strip().lower()
+        if len(commit_sha) == 40:
+            return f"commit:{commit_sha}"
+        if config.get("branch_enabled"):
+            reference = str(config.get("branch") or "main").strip() or "main"
+        elif config.get("release_version_enabled"):
+            reference = (
+                str(config.get("release_version") or "latest").strip() or "latest"
+            )
+        else:
+            reference = str(hint or "latest").strip() or "latest"
+        owner = str(config.get("repo_owner") or "").strip()
+        repository = str(config.get("repo_name") or "").strip()
+        if owner and repository:
+            sha, _ = self.downloader.get_ref_commit_sha(owner, repository, reference)
+            if sha:
+                return f"git:{owner}/{repository}:{reference}:{sha.lower()}"
+        # A moving ref must never share a build artifact when its immutable
+        # revision could not be established.
+        return f"unresolved:{reference}:{time.time_ns()}"
+
+    def _ensure_update_timing_state(self):
+        # A few focused unit tests construct Update without calling __init__.
+        # Keep the timing helpers safe for those instances as well as normal
+        # runtime construction.
+        if not hasattr(self, "_update_timing_lock"):
+            self._update_timing_lock = threading.Lock()
+        if not hasattr(self, "_update_timings"):
+            self._update_timings = {}
+
+    def _begin_update_timing(self, process_name):
+        self._ensure_update_timing_state()
+        with self._update_timing_lock:
+            if process_name in self._update_timings:
+                return False
+            self._update_timings[process_name] = {
+                "started_at": time.monotonic(),
+                "downtime_started_at": None,
+                "downtime_seconds": 0.0,
+                "downtime_observed": False,
+                "pending_payload": None,
+            }
+        return True
+
+    def _mark_update_downtime_started(self, process_name):
+        self._ensure_update_timing_state()
+        with self._update_timing_lock:
+            timing = self._update_timings.get(process_name)
+            if timing is None or timing["downtime_started_at"] is not None:
+                return
+            timing["downtime_started_at"] = time.monotonic()
+            timing["downtime_observed"] = True
+
+    def _mark_update_service_ready(self, process_name):
+        self._ensure_update_timing_state()
+        with self._update_timing_lock:
+            timing = self._update_timings.get(process_name)
+            if timing is None or timing["downtime_started_at"] is None:
+                return
+            timing["downtime_seconds"] += max(
+                0.0, time.monotonic() - timing["downtime_started_at"]
+            )
+            timing["downtime_started_at"] = None
+
+    @staticmethod
+    def _update_timing_metrics(timing, now):
+        downtime_seconds = float(timing.get("downtime_seconds") or 0.0)
+        downtime_started_at = timing.get("downtime_started_at")
+        if downtime_started_at is not None:
+            downtime_seconds += max(0.0, now - downtime_started_at)
+        if not timing.get("downtime_observed"):
+            downtime_status = "not_observed"
+        elif downtime_started_at is not None:
+            downtime_status = "ongoing"
+        else:
+            downtime_status = "completed"
+        return {
+            "install_duration_seconds": round(max(0.0, now - timing["started_at"]), 3),
+            "downtime_seconds": round(downtime_seconds, 3),
+            "downtime_status": downtime_status,
+            "timing_completed_at": datetime.now().astimezone().isoformat(),
+        }
+
+    def _finish_update_timing(self, process_name, payload=None):
+        self._ensure_update_timing_state()
+        with self._update_timing_lock:
+            timing = self._update_timings.pop(process_name, None)
+        if timing is None:
+            return {}
+        metrics = self._update_timing_metrics(timing, time.monotonic())
+        final_payload = payload or timing.get("pending_payload")
+        if isinstance(final_payload, dict):
+            final_payload.update(metrics)
+            self._write_update_status(process_name, final_payload)
+        return metrics
+
+    def _write_update_status(self, process_name, payload):
         try:
             from utils.dependencies import get_api_state
 
@@ -137,6 +242,15 @@ class Update:
                 api_state.set_update_status(process_name, payload)
         except Exception:
             return
+
+    def _safe_record_update_status(self, process_name, payload):
+        self._ensure_update_timing_state()
+        with self._update_timing_lock:
+            timing = self._update_timings.get(process_name)
+            if timing is not None:
+                timing["pending_payload"] = payload
+                return
+        self._write_update_status(process_name, payload)
 
     def _safe_record_symlink_backup_status(self, process_name, payload):
         try:
@@ -539,10 +653,14 @@ class Update:
                         "next_check_at": next_check_at,
                     }
                 configured_target_installed = current_version == available_version
+                display_current_version = display_version(key, current_version)
+                display_available_version = display_version(key, available_version)
             else:
                 configured_target_installed = self._configured_versions_match(
                     current_version, release_value
                 )
+                display_current_version = current_version
+                display_available_version = available_version
             return {
                 "status": (
                     "no_update"
@@ -559,8 +677,8 @@ class Update:
                         else "Release channel update is ready to install"
                     )
                 ),
-                "current_version": current_version,
-                "available_version": available_version,
+                "current_version": display_current_version,
+                "available_version": display_available_version,
                 "configured_target_kind": "release",
                 "configured_target_installed": configured_target_installed,
                 "checked_at": checked_at,
@@ -1029,15 +1147,31 @@ class Update:
                 self._safe_record_update_status(process_name, payload)
                 return payload
         success = False
+        operation_id = INSTALL_CACHE.begin_operation(process_name)
+        self._active_install_operation = operation_id
+        timing_started = self._begin_update_timing(process_name)
+        payload = None
         try:
+            INSTALL_CACHE.update_operation(operation_id, stage="preflight")
             payload = self._manual_update_install_unprotected(
                 process_name, allow_override, target
             )
             success = payload.get("status") in {"updated", "no_update"}
+            INSTALL_CACHE.update_operation(
+                operation_id,
+                stage="complete" if success else "failed",
+                status="completed" if success else "failed",
+                message=str(payload.get("message") or "")[:1000],
+            )
             if protection is not None:
                 payload["media_protection"] = protection
             return payload
         finally:
+            if not success:
+                self._recover_pending_snapshot(process_name)
+            if timing_started:
+                self._finish_update_timing(process_name, payload)
+            self._active_install_operation = None
             if manager is not None and protection is not None:
                 manager.complete_planned(protection.get("token"), success=success)
 
@@ -1190,6 +1324,21 @@ class Update:
         instance_name,
         block_reason,
     ):
+        if key == "traefik_proxy_admin":
+            source_identity = self._configured_target_label(config, block_reason)
+
+            def install_candidate():
+                return setup_project(self.process_handler, process_name)
+
+            return self._transactional_tpa_update(
+                process_name,
+                config,
+                key,
+                instance_name,
+                source_identity,
+                install_candidate,
+            )
+
         if process_name in self.process_handler.process_names:
             self.stop_process(process_name)
         with self.process_handler.setup_tracker_lock:
@@ -1209,6 +1358,179 @@ class Update:
 
         target_label = self._configured_target_label(config, block_reason)
         return True, f"Installed configured {target_label} for {process_name}."
+
+    def _transactional_tpa_update(
+        self,
+        process_name,
+        config,
+        key,
+        instance_name,
+        source_identity,
+        installer,
+    ):
+        """Build TPA off-line, then atomically activate and health-check it."""
+        original_dir = os.path.realpath(
+            config.get("config_dir") or "/traefik-proxy-admin"
+        )
+        transaction = DirectoryReleaseTransaction(original_dir, process_name)
+        operation_id = self._active_install_operation
+        original_excludes = list(config.get("exclude_dirs") or [])
+        original_env = dict(config.get("env") or {})
+        candidate_dir = transaction.prepare()
+        artifact_identity = self._immutable_artifact_identity(config, source_identity)
+        toolchain = {}
+        for name, command in (
+            ("node", ["node", "--version"]),
+            ("pnpm", ["pnpm", "--version"]),
+        ):
+            try:
+                result = subprocess.run(
+                    command, capture_output=True, text=True, timeout=10
+                )
+                toolchain[name] = (result.stdout or "unknown").strip()
+            except (OSError, subprocess.SubprocessError):
+                toolchain[name] = "unknown"
+        build_key = INSTALL_CACHE.build_key(
+            key,
+            artifact_identity,
+            inputs=[__file__, os.path.join(os.path.dirname(__file__), "setup.py")],
+            toolchain=toolchain,
+        )
+        artifact_hit = False
+        try:
+            if operation_id:
+                INSTALL_CACHE.update_operation(operation_id, stage="artifact_restore")
+            artifact_hit, _ = INSTALL_CACHE.restore_artifact(
+                key, build_key, candidate_dir
+            )
+            if artifact_hit and not (
+                os.path.isfile(os.path.join(candidate_dir, "package.json"))
+                and os.path.isfile(os.path.join(candidate_dir, ".next", "BUILD_ID"))
+                and os.path.isfile(
+                    os.path.join(candidate_dir, ".next", "standalone", "server.js")
+                )
+            ):
+                artifact_hit = False
+                shutil.rmtree(candidate_dir)
+                os.makedirs(candidate_dir)
+
+            if not artifact_hit:
+                if operation_id:
+                    INSTALL_CACHE.update_operation(
+                        operation_id, stage="building", cache_misses=1
+                    )
+                transaction.mark_building()
+                config["config_dir"] = candidate_dir
+                config["exclude_dirs"] = [
+                    str(value).replace(original_dir, candidate_dir, 1)
+                    for value in original_excludes
+                ]
+                success, error = installer()
+                if not success:
+                    transaction.abandon(str(error))
+                    return (
+                        False,
+                        f"Candidate build failed; existing runtime retained: {error}",
+                    )
+                required = (
+                    os.path.join(candidate_dir, "package.json"),
+                    os.path.join(candidate_dir, ".next", "BUILD_ID"),
+                )
+                if not all(
+                    os.path.isfile(path) and os.path.getsize(path) > 0
+                    for path in required
+                ):
+                    transaction.abandon("candidate verification failed")
+                    return (
+                        False,
+                        "Candidate verification failed; existing runtime retained.",
+                    )
+                if os.path.isfile(
+                    os.path.join(candidate_dir, ".next", "standalone", "server.js")
+                ):
+                    try:
+                        INSTALL_CACHE.store_artifact(
+                            key,
+                            build_key,
+                            candidate_dir,
+                            excluded=("node_modules", "cache", ".git"),
+                        )
+                    except (OSError, ValueError) as error:
+                        self.logger.warning(
+                            "TPA artifact cache write failed safely: %s", error
+                        )
+            elif operation_id:
+                INSTALL_CACHE.update_operation(
+                    operation_id, stage="artifact_restored", cache_hits=1
+                )
+        finally:
+            config["config_dir"] = original_dir
+            config["exclude_dirs"] = original_excludes
+            restored_env = dict(config.get("env") or original_env)
+            config["env"] = {
+                env_key: (
+                    env_value.replace(candidate_dir, original_dir)
+                    if isinstance(env_value, str)
+                    else env_value
+                )
+                for env_key, env_value in restored_env.items()
+            }
+            CONFIG_MANAGER.save_config(process_name)
+
+        try:
+            if operation_id:
+                INSTALL_CACHE.update_operation(operation_id, stage="activating")
+            if process_name in self.process_handler.process_names:
+                self._mark_update_downtime_started(process_name)
+                self.process_handler.stop_process(process_name)
+            transaction.activate()
+            with self.process_handler.setup_tracker_lock:
+                self.process_handler.setup_tracker.discard(process_name)
+            configured, error = configure_project(self.process_handler, process_name)
+            if not configured:
+                raise RuntimeError(f"candidate configuration failed: {error}")
+            process, error = self.start_process(
+                process_name, config, key, instance_name
+            )
+            if not process:
+                raise RuntimeError(error or "candidate process failed to start")
+            healthy, health_error = self._wait_for_update_health(process_name)
+            if not healthy:
+                raise RuntimeError(
+                    f"candidate failed health stabilization: {health_error}"
+                )
+            transaction.commit()
+            return (
+                True,
+                f"Updated {process_name} transactionally ({artifact_identity}).",
+            )
+        except Exception as error:
+            self._mark_update_downtime_started(process_name)
+            self.process_handler.stop_process(process_name)
+            rolled_back = transaction.rollback()
+            if operation_id:
+                INSTALL_CACHE.update_operation(
+                    operation_id,
+                    stage="rolled_back" if rolled_back else "rollback_failed",
+                    rollback_performed=1,
+                )
+            if rolled_back:
+                with self.process_handler.setup_tracker_lock:
+                    self.process_handler.setup_tracker.discard(process_name)
+                configure_project(self.process_handler, process_name)
+                self.start_process(process_name, config, key, instance_name)
+            return (
+                False,
+                f"Candidate activation failed ({error}); "
+                + (
+                    "previous runtime restored."
+                    if rolled_back
+                    else "automatic rollback also failed."
+                ),
+            )
+        finally:
+            if not transaction.activated:
+                transaction.abandon()
 
     def _cancel_auto_update_job(self, process_name):
         existing_job = Update._jobs.get(process_name)
@@ -2008,27 +2330,67 @@ class Update:
                 return payload
         success = False
         try:
-            self._scheduled_update_check_unprotected(
+            install_status = self._scheduled_update_check_unprotected(
                 process_name, config, key, instance_name
             )
             success = True
         finally:
             if manager is not None and protection is not None:
                 manager.complete_planned(protection.get("token"), success=success)
-        return update_status
+        return install_status or update_status
 
     def _scheduled_update_check_unprotected(
         self, process_name, config, key, instance_name
     ):
+        operation_id = INSTALL_CACHE.begin_operation(process_name)
+        self._active_install_operation = operation_id
+        success = False
+        payload = None
         with self.updating:
-            self.logger.info(f"Performing scheduled update check for {process_name}")
-            success, error = self.update_check(process_name, config, key, instance_name)
-            if not success:
-                if "No updates available" in error:
-                    self.logger.info(error)
-                    # self.start_process(process_name, config, key, instance_name)
+            timing_started = self._begin_update_timing(process_name)
+            try:
+                self.logger.info(
+                    f"Performing scheduled update check for {process_name}"
+                )
+                INSTALL_CACHE.update_operation(operation_id, stage="checking")
+                success, error = self.update_check(
+                    process_name, config, key, instance_name
+                )
+                if not success:
+                    if "No updates available" in error:
+                        self.logger.info(error)
+                        payload = {"status": "no_update", "message": error}
+                        INSTALL_CACHE.update_operation(
+                            operation_id,
+                            stage="complete",
+                            status="completed",
+                            message=error,
+                        )
+                    else:
+                        payload = {"status": "error", "message": str(error)}
+                        INSTALL_CACHE.update_operation(
+                            operation_id,
+                            stage="failed",
+                            status="failed",
+                            message=str(error)[:1000],
+                        )
+                        raise RuntimeError(error)
                 else:
-                    raise RuntimeError(error)
+                    payload = {"status": "updated", "message": str(error)}
+                    INSTALL_CACHE.update_operation(
+                        operation_id,
+                        stage="complete",
+                        status="completed",
+                        message=str(error)[:1000],
+                    )
+                self._safe_record_update_status(process_name, payload)
+                return payload
+            finally:
+                if not success:
+                    self._recover_pending_snapshot(process_name)
+                if timing_started:
+                    self._finish_update_timing(process_name, payload)
+                self._active_install_operation = None
 
     def update_check(self, process_name, config, key, instance_name):
         commit_sha = str(config.get("commit_sha") or "").strip().lower()
@@ -2146,6 +2508,15 @@ class Update:
                 current_version,
                 target_version,
             )
+            if key == "traefik_proxy_admin":
+                return self._transactional_tpa_update(
+                    process_name,
+                    config,
+                    key,
+                    instance_name,
+                    target_version,
+                    lambda: setup_project(self.process_handler, process_name),
+                )
             if process_name in self.process_handler.process_names:
                 self.stop_process(process_name)
             with self.process_handler.setup_tracker_lock:
@@ -2254,17 +2625,18 @@ class Update:
                 prerelease=prerelease,
             )
 
+            if not isinstance(update_info, dict):
+                return (
+                    False,
+                    f"Failed to check updates for {process_name}: "
+                    f"{update_info or 'unknown version comparison error'}",
+                )
             if not update_needed:
                 return False, f"{update_info.get('message')} for {process_name}."
 
             self.logger.info(
                 f"Updating {process_name} from {update_info.get('current_version')} to {update_info.get('latest_version')}."
             )
-            if process_name in self.process_handler.process_names:
-                self.stop_process(process_name)
-            with self.process_handler.setup_tracker_lock:
-                if process_name in self.process_handler.setup_tracker:
-                    self.process_handler.setup_tracker.remove(process_name)
             release_version = f"{update_info.get('latest_version')}"
             if (
                 not prerelease
@@ -2275,6 +2647,20 @@ class Update:
                 self.logger.info(
                     f"Updating {process_name} config to {release_version}."
                 )
+            if key == "traefik_proxy_admin":
+                return self._transactional_tpa_update(
+                    process_name,
+                    config,
+                    key,
+                    instance_name,
+                    release_version,
+                    lambda: setup_project(self.process_handler, process_name),
+                )
+            if process_name in self.process_handler.process_names:
+                self.stop_process(process_name)
+            with self.process_handler.setup_tracker_lock:
+                if process_name in self.process_handler.setup_tracker:
+                    self.process_handler.setup_tracker.remove(process_name)
             if key != "profilarr":
                 success, error = setup_release_version(
                     self.process_handler, config, process_name, key
@@ -2290,7 +2676,11 @@ class Update:
                     False,
                     f"Failed to update {process_name} to {release_version}: {error}",
                 )
-            self.start_process(process_name, config, key, instance_name)
+            process, start_error = self.start_process(
+                process_name, config, key, instance_name
+            )
+            if not process:
+                return False, f"Failed to start {process_name}: {start_error}"
             return True, f"Updated {process_name} to {release_version}."
 
         except Exception as e:
@@ -2346,7 +2736,11 @@ class Update:
                 f"Failed to update {process_name} to {target_version}: {error}",
             )
 
-        self.start_process(process_name, config, key, instance_name)
+        process, start_error = self.start_process(
+            process_name, config, key, instance_name
+        )
+        if not process:
+            return False, f"Failed to start {process_name}: {start_error}"
         return True, f"Updated {process_name} to {target_version}."
 
     def update_check_jellyfin_latest(self, process_name, config, key, instance_name):
@@ -2394,7 +2788,11 @@ class Update:
                 f"Failed to update {process_name} to {latest_version}: {error}",
             )
 
-        self.start_process(process_name, config, key, instance_name)
+        process, start_error = self.start_process(
+            process_name, config, key, instance_name
+        )
+        if not process:
+            return False, f"Failed to start {process_name}: {start_error}"
         return True, f"Updated {process_name} to {latest_version}."
 
     def update_check_emby_latest(self, process_name, config, key, instance_name):
@@ -2435,7 +2833,11 @@ class Update:
             config["release_version_enabled"] = original_release_enabled
             config["release_version"] = original_release_version
 
-        self.start_process(process_name, config, key, instance_name)
+        process, start_error = self.start_process(
+            process_name, config, key, instance_name
+        )
+        if not process:
+            return False, f"Failed to start {process_name}: {start_error}"
         return True, f"Updated {process_name} to {latest_version}."
 
     def update_check_arr_latest(self, process_name, config, key, instance_name):
@@ -2488,7 +2890,11 @@ class Update:
                 f"Failed to update {process_name} to {latest_version}: {error}",
             )
 
-        self.start_process(process_name, config, key, instance_name)
+        process, start_error = self.start_process(
+            process_name, config, key, instance_name
+        )
+        if not process:
+            return False, f"Failed to start {process_name}: {start_error}"
         return True, f"Updated {process_name} to {latest_version}."
 
     def get_jellyfin_latest_version(self):
@@ -2550,7 +2956,11 @@ class Update:
                     f"Failed to install {process_name} ({install_label}): {error}",
                 )
 
-            self.start_process(process_name, config, key, instance_name)
+            process, start_error = self.start_process(
+                process_name, config, key, instance_name
+            )
+            if not process:
+                return False, f"Failed to start {process_name}: {start_error}"
             return True, f"Installed {process_name} ({install_label})."
 
         update_needed, update_info = installer.check_for_update(
@@ -2592,10 +3002,282 @@ class Update:
                 f"Failed to update {process_name} to {update_info.get('latest_version')}: {error}",
             )
 
-        self.start_process(process_name, config, key, instance_name)
+        process, start_error = self.start_process(
+            process_name, config, key, instance_name
+        )
+        if not process:
+            return False, f"Failed to start {process_name}: {start_error}"
         return True, f"Updated {process_name} to {update_info.get('latest_version')}."
 
+    @staticmethod
+    def _rollback_persistent_paths(key, config, target_dir):
+        values = list(config.get("exclude_dirs") or [])
+        defaults = {
+            "nzbdav": [
+                "blobs",
+                "data",
+                "data-protection",
+                "backups",
+                "logs",
+                ".dotnet-sdk",
+            ],
+            "maintainerr": ["data"],
+            "tautulli": ["data"],
+            "seerr": ["config"],
+            "pulsarr": ["data"],
+            "profilarr": ["config"],
+            "riven_backend": ["data"],
+            "zilean": ["data"],
+            "traefik_proxy_admin": [".next/cache"],
+        }
+        values.extend(defaults.get(key, []))
+        normalized = []
+        for value in values:
+            text = str(value or "").strip()
+            if not text:
+                continue
+            if os.path.isabs(text):
+                try:
+                    relative = os.path.relpath(text, target_dir)
+                except ValueError:
+                    continue
+                if relative == ".." or relative.startswith(f"..{os.sep}"):
+                    continue
+                normalized.append(relative)
+            else:
+                normalized.append(text)
+        return normalized
+
+    def _snapshot_target(self, key, config):
+        if key in {
+            "plex",
+            "jellyfin",
+            "emby",
+            "postgres",
+            "pgadmin",
+            "mediastorm",
+            "cloudflared",
+            "authelia",
+            "rclone",
+            "traefik",
+        }:
+            return None
+        target_dir = config.get("install_dir") or config.get("config_dir")
+        if not target_dir or not os.path.isdir(target_dir):
+            return None
+        return os.path.realpath(target_dir)
+
+    def _capture_rollback_snapshot(self, process_name):
+        if process_name in self._rollback_snapshots:
+            return
+        key, instance_name = CONFIG_MANAGER.find_key_for_process(process_name)
+        config = CONFIG_MANAGER.get_instance(instance_name, key) if key else None
+        install_cache = (CONFIG_MANAGER.get("dumb") or {}).get("install_cache") or {}
+        if not config or not install_cache.get("enabled", True):
+            return
+        target_dir = self._snapshot_target(key, config)
+        if not target_dir:
+            return
+        snapshot = RuntimeRollbackSnapshot(
+            target_dir,
+            process_name,
+            self._rollback_persistent_paths(key, config, target_dir),
+        )
+        try:
+            if snapshot.capture():
+                self._rollback_snapshots[process_name] = snapshot
+                active = getattr(
+                    self.process_handler, "transactional_update_snapshots", set()
+                )
+                active.add(process_name)
+                self.process_handler.transactional_update_snapshots = active
+                if self._active_install_operation:
+                    INSTALL_CACHE.update_operation(
+                        self._active_install_operation, stage="snapshot"
+                    )
+                self.logger.info(
+                    "Captured rollback-safe runtime snapshot for %s.", process_name
+                )
+        except OSError as error:
+            self.logger.warning(
+                "Unable to capture runtime snapshot for %s; refusing destructive update: %s",
+                process_name,
+                error,
+            )
+            raise RuntimeError(
+                f"Unable to protect the existing {process_name} runtime: {error}"
+            ) from error
+
+    def _recover_pending_snapshot(self, process_name):
+        snapshot = self._rollback_snapshots.pop(process_name, None)
+        if snapshot is None:
+            return False
+        active = getattr(self.process_handler, "transactional_update_snapshots", set())
+        active.discard(process_name)
+        self.logger.warning("Restoring previous runtime for %s.", process_name)
+        self._mark_update_downtime_started(process_name)
+        self.process_handler.stop_process(process_name)
+        restored = snapshot.rollback()
+        if not restored:
+            if self._active_install_operation:
+                INSTALL_CACHE.update_operation(
+                    self._active_install_operation,
+                    stage="rollback_failed",
+                    rollback_performed=1,
+                )
+            return False
+        snapshot.commit()
+        key, instance_name = CONFIG_MANAGER.find_key_for_process(process_name)
+        config = CONFIG_MANAGER.get_instance(instance_name, key) if key else None
+        if not config:
+            self.logger.error(
+                "Previous runtime restored for %s but its configuration could not be resolved.",
+                process_name,
+            )
+            if self._active_install_operation:
+                INSTALL_CACHE.update_operation(
+                    self._active_install_operation,
+                    stage="rollback_failed",
+                    rollback_performed=1,
+                )
+            return False
+        with self.process_handler.setup_tracker_lock:
+            self.process_handler.setup_tracker.discard(process_name)
+        configured, error = configure_project(self.process_handler, process_name)
+        if not configured:
+            self.logger.error(
+                "Previous runtime restored for %s but configuration failed: %s",
+                process_name,
+                error,
+            )
+            if self._active_install_operation:
+                INSTALL_CACHE.update_operation(
+                    self._active_install_operation,
+                    stage="rollback_failed",
+                    rollback_performed=1,
+                )
+            return False
+        process, start_error = self.start_process(
+            process_name, config, key, instance_name
+        )
+        if not process:
+            self.logger.error(
+                "Previous runtime restored for %s but failed to start: %s",
+                process_name,
+                start_error,
+            )
+            if self._active_install_operation:
+                INSTALL_CACHE.update_operation(
+                    self._active_install_operation,
+                    stage="rollback_failed",
+                    rollback_performed=1,
+                )
+            return False
+        healthy, health_error = self._wait_for_update_health(process_name)
+        if not healthy:
+            self.logger.error(
+                "Previous runtime restored for %s but failed health stabilization: %s",
+                process_name,
+                health_error,
+            )
+            if self._active_install_operation:
+                INSTALL_CACHE.update_operation(
+                    self._active_install_operation,
+                    stage="rollback_failed",
+                    rollback_performed=1,
+                )
+            return False
+        if self._active_install_operation:
+            INSTALL_CACHE.update_operation(
+                self._active_install_operation,
+                stage="rolled_back",
+                rollback_performed=1,
+            )
+        return True
+
+    def _wait_for_update_health(self, process_name):
+        settings = (CONFIG_MANAGER.get("dumb") or {}).get("install_cache") or {}
+        timeout = max(5, int(settings.get("activation_health_timeout_seconds", 120)))
+        stabilization = max(
+            0, int(settings.get("activation_stabilization_seconds", 15))
+        )
+        deadline = time.monotonic() + timeout
+        ready_since = None
+        last_reason = "Service did not become ready."
+        while time.monotonic() < deadline:
+            readiness = self.process_handler.get_service_readiness(process_name)
+            state = readiness.get("state")
+            last_reason = readiness.get("reason") or last_reason
+            # Application probes are expected to be unhealthy briefly while a
+            # newly launched process binds its port and initializes its data.
+            # get_service_readiness() deliberately represents that condition
+            # as "starting". Only a terminal process failure should bypass the
+            # configured readiness timeout; otherwise transactional activation
+            # would roll back every service that needs more than one probe to
+            # become ready.
+            if state == "failed":
+                return False, last_reason
+            if state == "ready":
+                # Downtime ends when the application first answers its
+                # readiness probe. The remaining stable-health window is still
+                # included in total install time, but is not service outage.
+                self._mark_update_service_ready(process_name)
+                if ready_since is None:
+                    ready_since = time.monotonic()
+                if time.monotonic() - ready_since >= stabilization:
+                    return True, None
+            else:
+                # If a replacement briefly became ready and then regressed
+                # during stabilization, begin a new observed outage interval.
+                self._mark_update_downtime_started(process_name)
+                ready_since = None
+            time.sleep(2)
+        return False, last_reason
+
+    def _finalize_runtime_snapshot(self, process_name, process):
+        snapshot = self._rollback_snapshots.get(process_name)
+        if snapshot is None:
+            return process, None
+        if not process:
+            recovered = self._recover_pending_snapshot(process_name)
+            if not recovered:
+                return (
+                    False,
+                    "Replacement process failed to start; rollback was attempted, "
+                    "but the previous runtime did not return to stable health.",
+                )
+            return (
+                False,
+                "Replacement process failed to start; previous runtime restored.",
+            )
+        if self._active_install_operation:
+            INSTALL_CACHE.update_operation(
+                self._active_install_operation, stage="health_check"
+            )
+        healthy, error = self._wait_for_update_health(process_name)
+        if not healthy:
+            recovered = self._recover_pending_snapshot(process_name)
+            if not recovered:
+                return (
+                    False,
+                    f"Replacement failed health stabilization ({error}); rollback "
+                    "was attempted, but the previous runtime did not return to "
+                    "stable health.",
+                )
+            return (
+                False,
+                f"Replacement failed health stabilization ({error}); previous runtime restored.",
+            )
+        snapshot = self._rollback_snapshots.pop(process_name, None)
+        if snapshot:
+            snapshot.commit()
+        active = getattr(self.process_handler, "transactional_update_snapshots", set())
+        active.discard(process_name)
+        return process, None
+
     def stop_process(self, process_name):
+        self._capture_rollback_snapshot(process_name)
+        self._mark_update_downtime_started(process_name)
         self.process_handler.stop_process(process_name)
 
     def start_process(self, process_name, config, key, instance_name):
@@ -2688,6 +3370,11 @@ class Update:
             suppress_logging=suppress_logging,
             env=env,
         )
+        if not process:
+            finalized, snapshot_error = self._finalize_runtime_snapshot(
+                process_name, process
+            )
+            return finalized, snapshot_error or error
         if self.process_handler.shutting_down:
             return process, "Shutdown requested"
         if key == "riven_backend":
@@ -2758,7 +3445,7 @@ class Update:
             else:
                 prowlarr_enabled = bool(prowlarr_cfg.get("enabled"))
             if not prowlarr_enabled:
-                return process, None
+                return self._finalize_runtime_snapshot(process_name, process)
 
             from utils.prowlarr_settings import patch_prowlarr_apps
 
@@ -2786,4 +3473,7 @@ class Update:
                     env=env,
                 )
 
-        return process, error
+        finalized, finalize_error = self._finalize_runtime_snapshot(
+            process_name, process
+        )
+        return finalized, finalize_error or error

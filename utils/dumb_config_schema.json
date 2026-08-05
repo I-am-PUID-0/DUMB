@@ -45,6 +45,11 @@
         "github_token": {
           "type": "string"
         },
+        "github_rate_limit_max_wait_seconds": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 3600
+        },
         "github_username": {
           "type": "string"
         },
@@ -128,6 +133,69 @@
             "readiness_timeout_seconds",
             "readiness_poll_interval_seconds",
             "stabilization_seconds"
+          ],
+          "additionalProperties": false
+        },
+        "install_cache": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "path": {
+              "type": "string",
+              "pattern": "^/"
+            },
+            "max_size_gib": {
+              "type": "number",
+              "minimum": 1,
+              "maximum": 1024
+            },
+            "artifact_retention_count": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 10
+            },
+            "clean_retry": {
+              "type": "boolean"
+            },
+            "max_download_size_mb": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 32768
+            },
+            "max_archive_entries": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1000000
+            },
+            "max_unpacked_size_gib": {
+              "type": "number",
+              "minimum": 1,
+              "maximum": 2048
+            },
+            "activation_health_timeout_seconds": {
+              "type": "integer",
+              "minimum": 5,
+              "maximum": 1800
+            },
+            "activation_stabilization_seconds": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 300
+            }
+          },
+          "required": [
+            "enabled",
+            "path",
+            "max_size_gib",
+            "artifact_retention_count",
+            "clean_retry",
+            "max_download_size_mb",
+            "max_archive_entries",
+            "max_unpacked_size_gib",
+            "activation_health_timeout_seconds",
+            "activation_stabilization_seconds"
           ],
           "additionalProperties": false
         },
@@ -1048,9 +1116,11 @@
         "plex_token",
         "plex_address",
         "github_token",
+        "github_rate_limit_max_wait_seconds",
         "github_username",
         "onboarding_completed",
         "startup",
+        "install_cache",
         "auto_restart",
         "ffprobe_monitor",
         "api_service",

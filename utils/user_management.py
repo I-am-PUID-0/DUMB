@@ -1,10 +1,36 @@
 from utils.config_loader import CONFIG_MANAGER as config
 from utils.global_logger import logger
+from utils.resource_limits import available_cpu_count
 from concurrent.futures import ThreadPoolExecutor
-import multiprocessing, os, time, grp, pwd, subprocess, shutil, secrets
+import os
+import time
+import grp
+import pwd
+import subprocess
+import shutil
+import secrets
 
 user_id = config.get("puid")
 group_id = config.get("pgid")
+
+NETWORK_FILESYSTEM_TYPES = {
+    "9p",
+    "ceph",
+    "cifs",
+    "davfs",
+    "davfs2",
+    "glusterfs",
+    "lustre",
+    "nfs",
+    "nfs4",
+    "smb3",
+    "sshfs",
+}
+NETWORK_FILESYSTEM_WORKER_LIMIT = 16
+
+
+def _available_cpu_count():
+    return available_cpu_count()
 
 
 def validate_managed_user_ids(puid, pgid):
@@ -52,15 +78,67 @@ def chown_single(path, user_id, group_id):
         logger.error(f"Error changing ownership of '{path}': {e}")
 
 
-def get_dynamic_workers():
-    return min(max(1, multiprocessing.cpu_count()), 16)
+def _decode_mountinfo_path(value):
+    return (
+        value.replace("\\040", " ")
+        .replace("\\011", "\t")
+        .replace("\\012", "\n")
+        .replace("\\134", "\\")
+    )
+
+
+def _filesystem_type(path):
+    resolved = os.path.realpath(path)
+    best_match = None
+    best_type = None
+    try:
+        with open("/proc/self/mountinfo", encoding="utf-8") as mountinfo:
+            for line in mountinfo:
+                left, separator, right = line.rstrip("\n").partition(" - ")
+                if not separator:
+                    continue
+                left_fields = left.split()
+                right_fields = right.split()
+                if len(left_fields) < 5 or not right_fields:
+                    continue
+                mount_point = os.path.realpath(_decode_mountinfo_path(left_fields[4]))
+                try:
+                    inside_mount = (
+                        os.path.commonpath([resolved, mount_point]) == mount_point
+                    )
+                except ValueError:
+                    continue
+                if inside_mount and (
+                    best_match is None or len(mount_point) > len(best_match)
+                ):
+                    best_match = mount_point
+                    best_type = right_fields[0].lower()
+    except OSError:
+        return None
+    return best_type
+
+
+def get_dynamic_workers(directory=None):
+    available = _available_cpu_count()
+    if directory is None:
+        return available
+    filesystem_type = _filesystem_type(directory)
+    if filesystem_type is None or filesystem_type in NETWORK_FILESYSTEM_TYPES:
+        return min(available, NETWORK_FILESYSTEM_WORKER_LIMIT)
+    if filesystem_type.startswith("fuse."):
+        return min(available, NETWORK_FILESYSTEM_WORKER_LIMIT)
+    return available
 
 
 def chown_recursive(directory, user_id, group_id):
     try:
-        max_workers = get_dynamic_workers()
+        max_workers = get_dynamic_workers(directory)
         start_time = time.time()
-        logger.debug(f"Using {max_workers} workers for chown operation")
+        logger.debug(
+            "Using %s workers for chown operation on %s",
+            max_workers,
+            _filesystem_type(directory) or "unknown filesystem",
+        )
         submitted = 0
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             for root, dirs, files in os.walk(directory):

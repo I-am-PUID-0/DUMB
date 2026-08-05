@@ -579,7 +579,7 @@ class AiRouterTests(unittest.TestCase):
             )
 
         retired, current = result["models"]
-        self.assertEqual(retired["lifecycle"]["status"], "deprecated")
+        self.assertEqual(retired["lifecycle"]["status"], "retired")
         self.assertEqual(retired["lifecycle"]["replacement"], "claude-opus-4-8")
         self.assertEqual(current["compatibility"]["api_surface"], "messages")
         get_json.assert_called_once_with(

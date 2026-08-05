@@ -1,7 +1,8 @@
 from utils.global_logger import logger
 from utils.config_loader import CONFIG_MANAGER
-import defusedxml.ElementTree as ET
+import defusedxml.ElementTree as DefusedET
 import os
+import xml.etree.ElementTree as ET
 
 JELLYFIN_PORT_TAGS = (
     "HttpServerPortNumber",
@@ -13,7 +14,7 @@ JELLYFIN_PORT_TAGS = (
 
 
 def _patch_xml_port(config_path: str, desired_port: int, prefer_network_tags: bool):
-    tree = ET.parse(config_path)
+    tree = DefusedET.parse(config_path)
     root = tree.getroot()
     desired_text = str(desired_port)
     updated = False
@@ -103,11 +104,14 @@ def patch_jellyfin_config(desired_port: int | None = None):
                     else:
                         elem.text = value
                 ET.ElementTree(root).write(path, encoding="utf-8", xml_declaration=True)
+                any_updated = True
+                updated_paths.append(path)
             prefer_network_tags = os.path.basename(path).lower() == "network.xml"
             updated = _patch_xml_port(path, desired_port, prefer_network_tags)
             if updated:
                 any_updated = True
-                updated_paths.append(path)
+                if path not in updated_paths:
+                    updated_paths.append(path)
 
         if any_updated:
             logger.info(
@@ -118,7 +122,7 @@ def patch_jellyfin_config(desired_port: int | None = None):
         else:
             logger.debug("Jellyfin port already matches desired value.")
         return any_updated, None
-    except ET.ParseError as exc:
+    except DefusedET.ParseError as exc:
         logger.error(f"Error parsing Jellyfin config XML: {exc}")
         return False, str(exc)
     except Exception as exc:

@@ -167,6 +167,7 @@ class ConfigManager:
             existing_config = self._load_config()
             bazarr_config_migrated = False
             mediastorm_process_name_migrated = False
+            nzbdav_repository_migrated = False
 
             # Bazarr treats --config as its data root and stores the YAML file
             # in a nested config directory. Correct DUMB's former default so
@@ -188,6 +189,20 @@ class ConfigManager:
             ):
                 mediastorm_cfg["process_name"] = "mediastorm"
                 mediastorm_process_name_migrated = True
+
+            # The original nzbdav-dev/nzbdav repository was DUMB's historical
+            # default. Its exact old default should follow the maintained fork,
+            # while every intentional custom owner/repository remains untouched.
+            nzbdav_cfg = existing_config.get("nzbdav")
+            if (
+                isinstance(nzbdav_cfg, dict)
+                and str(nzbdav_cfg.get("repo_owner") or "").strip().casefold()
+                == "nzbdav-dev"
+                and str(nzbdav_cfg.get("repo_name") or "").strip().casefold()
+                == "nzbdav"
+            ):
+                nzbdav_cfg["repo_owner"] = "nzbdav"
+                nzbdav_repository_migrated = True
 
             # Migrate legacy Decypharr embedded toggle to mount_type before merge/prune
             dec_cfg = existing_config.get("decypharr")
@@ -236,6 +251,7 @@ class ConfigManager:
                 pruned_config != existing_config
                 or bazarr_config_migrated
                 or mediastorm_process_name_migrated
+                or nzbdav_repository_migrated
             ):
                 backup_path = self.file_path + ".bak"
                 shutil.copyfile(self.file_path, backup_path)

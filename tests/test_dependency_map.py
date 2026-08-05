@@ -107,6 +107,13 @@ class ConditionalDependencyMapTests(unittest.TestCase):
 
         self.assertEqual(deps["mediastorm"], {"postgres"})
 
+    def test_cli_debrid_waits_for_enabled_standalone_battery(self):
+        enabled = self._build({"cli_battery": {"enabled": True}})
+        disabled = self._build({"cli_battery": {"enabled": False}})
+
+        self.assertIn("cli_battery", enabled["cli_debrid"])
+        self.assertNotIn("cli_battery", disabled.get("cli_debrid", set()))
+
     def test_dual_backend_services_depend_on_postgres_only_after_opt_in(self):
         deps = self._build(
             {

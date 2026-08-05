@@ -4,6 +4,8 @@ import shlex
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
+from utils.resource_limits import preinstall_worker_count
+
 
 def frontend_entrypoint_exists(frontend_config: dict) -> bool:
     config_dir = frontend_config.get("config_dir")
@@ -100,13 +102,17 @@ def start_control_plane_before_preinstall(
 def run_parallel_preinstall(
     targets: list[tuple[str, str]],
     install_target: Callable[[str, str], None],
-    max_workers: int = 4,
+    max_workers: int | None = None,
 ) -> dict[str, str]:
     if not targets:
         return {}
 
     failures = {}
-    worker_count = min(max_workers, max(1, len(targets)))
+    worker_count = (
+        preinstall_worker_count(len(targets))
+        if max_workers is None
+        else min(max(1, int(max_workers)), len(targets))
+    )
     with ThreadPoolExecutor(max_workers=worker_count) as executor:
         futures = {
             executor.submit(install_target, key, name): name for key, name in targets
@@ -123,7 +129,7 @@ def run_parallel_preinstall(
 def run_grouped_preinstall(
     targets: list[tuple[str, str]],
     install_target: Callable[[str, str], None],
-    max_workers: int = 4,
+    max_workers: int | None = None,
 ) -> dict[str, str]:
     """Install instances of one service sequentially while parallelizing services."""
     if not targets:
@@ -144,7 +150,11 @@ def run_grouped_preinstall(
                 group_failures[name] = str(error)
         return group_failures
 
-    worker_count = min(max_workers, max(1, len(grouped)))
+    worker_count = (
+        preinstall_worker_count(len(grouped))
+        if max_workers is None
+        else min(max(1, int(max_workers)), len(grouped))
+    )
     with ThreadPoolExecutor(max_workers=worker_count) as executor:
         futures = {
             executor.submit(install_group, key, names): key

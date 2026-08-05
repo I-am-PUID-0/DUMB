@@ -1,5 +1,6 @@
 import json
 import sys
+import threading
 import types
 import unittest
 from unittest.mock import patch
@@ -44,6 +45,7 @@ def _install_process_router_stubs():
 
     pydantic.BaseModel = BaseModel
     pydantic.ConfigDict = lambda **kwargs: dict(kwargs)
+    pydantic.Field = lambda default=None, **kwargs: default
     sys.modules["pydantic"] = pydantic
 
     dependencies = types.ModuleType("utils.dependencies")
@@ -53,6 +55,7 @@ def _install_process_router_stubs():
         "get_api_state",
         "get_updater",
         "get_optional_current_user",
+        "get_media_protection_manager",
     ):
         setattr(dependencies, name, lambda *args, **kwargs: None)
     sys.modules["utils.dependencies"] = dependencies
@@ -78,8 +81,20 @@ def _install_process_router_stubs():
     sys.modules["utils.dependency_map"] = dependency_map
 
     versions = types.ModuleType("utils.versions")
-    versions.Versions = lambda *args, **kwargs: types.SimpleNamespace()
+    versions.Versions = lambda *args, **kwargs: types.SimpleNamespace(
+        display_version=lambda _key, version: version,
+    )
     sys.modules["utils.versions"] = versions
+
+    install_cache = types.ModuleType("utils.install_cache")
+    install_cache.INSTALL_CACHE = types.SimpleNamespace(
+        status=lambda: {},
+        verify=lambda: {},
+        prune=lambda *args: {},
+        clear_artifacts=lambda *args: {},
+        cleanup=lambda *args: {},
+    )
+    sys.modules["utils.install_cache"] = install_cache
 
     psutil = types.ModuleType("psutil")
     psutil.pid_exists = lambda pid: False
@@ -148,6 +163,48 @@ class ProcessResponseSanitizerTests(unittest.TestCase):
 
 
 class MediaStormCredentialResponseTests(unittest.IsolatedAsyncioTestCase):
+    async def test_install_cache_maintenance_is_serialized_with_updates(self):
+        process_handler = types.SimpleNamespace(
+            get_startup_status=lambda: {"phase": "ready"}
+        )
+        update_lock = threading.Lock()
+        updater = types.SimpleNamespace(updating=update_lock)
+
+        result = await process_router._run_install_cache_maintenance(
+            lambda: "complete",
+            process_handler=process_handler,
+            updater=updater,
+        )
+
+        self.assertEqual(result, "complete")
+        self.assertFalse(update_lock.locked())
+
+        update_lock.acquire()
+        try:
+            with self.assertRaises(process_router.HTTPException) as raised:
+                await process_router._run_install_cache_maintenance(
+                    lambda: "unsafe",
+                    process_handler=process_handler,
+                    updater=updater,
+                )
+            self.assertEqual(raised.exception.status_code, 409)
+        finally:
+            update_lock.release()
+
+    async def test_install_cache_maintenance_waits_for_startup(self):
+        process_handler = types.SimpleNamespace(
+            get_startup_status=lambda: {"phase": "preinstalling"}
+        )
+
+        with self.assertRaises(process_router.HTTPException) as raised:
+            await process_router._run_install_cache_maintenance(
+                lambda: "unsafe",
+                process_handler=process_handler,
+                updater=types.SimpleNamespace(updating=threading.Lock()),
+            )
+
+        self.assertEqual(raised.exception.status_code, 409)
+
     async def test_credential_response_is_no_store_and_capability_gated(self):
         with (
             patch.object(
@@ -177,6 +234,10 @@ class MediaStormCredentialResponseTests(unittest.IsolatedAsyncioTestCase):
 
         capabilities = await process_router.get_capabilities(None)
         self.assertTrue(capabilities["mediastorm_initial_admin_password"])
+        self.assertTrue(capabilities["transactional_service_installs"])
+        self.assertTrue(capabilities["install_cache_management"])
+        self.assertTrue(capabilities["install_cache_cleanup"])
+        self.assertTrue(capabilities["install_cache_limit_settings"])
 
     async def test_missing_credential_does_not_return_a_password(self):
         with (

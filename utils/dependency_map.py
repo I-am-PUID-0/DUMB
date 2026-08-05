@@ -70,6 +70,14 @@ def build_conditional_dependency_map(
         "cloudflared": {"traefik"},
     }
 
+    # Stable CLI Debrid releases through v0.7.28 use the standalone CLI
+    # Battery process and both may initialize shared state at startup. When an
+    # operator enables both services, serialize Battery before CLI Debrid to
+    # avoid concurrent first-run migrations. Newer prerelease topologies can
+    # leave the standalone service disabled as documented.
+    if _service_has_enabled_instance(config_getter("cli_battery")):
+        deps.setdefault("cli_debrid", set()).add("cli_battery")
+
     if _service_has_enabled_instance(config_getter("traefik_proxy_admin")):
         deps.setdefault("traefik", set()).add("traefik_proxy_admin")
 

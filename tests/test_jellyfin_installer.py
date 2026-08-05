@@ -46,6 +46,42 @@ class JellyfinInstallerTests(unittest.TestCase):
         self.assertIn("URIs: https://repo.jellyfin.org/ubuntu", written_source)
         self.assertIn("Suites: resolute", written_source)
 
+    def test_pinned_install_pins_server_and_web_payloads_together(self):
+        installer = JellyfinInstaller()
+        source_file = mock_open()
+        version = "10.11.10+ubu2604"
+
+        with (
+            patch("utils.jellyfin.run_locked") as run_locked,
+            patch("utils.jellyfin.apt_lock", return_value=contextlib.nullcontext()),
+            patch.object(installer, "download_and_install_jellyfin_gpg_key"),
+            patch(
+                "utils.jellyfin.subprocess.check_output",
+                side_effect=["ubuntu\n", "resolute\n", "arm64\n"],
+            ),
+            patch("utils.jellyfin.os.makedirs"),
+            patch("utils.jellyfin.os.path.exists", return_value=True),
+            patch("builtins.open", source_file),
+        ):
+            success, error = installer.install_jellyfin_server(version=version)
+
+        self.assertTrue(success, error)
+        self.assertIn(
+            call(
+                [
+                    "apt",
+                    "install",
+                    "-y",
+                    "--allow-downgrades",
+                    f"jellyfin={version}",
+                    f"jellyfin-server={version}",
+                    f"jellyfin-web={version}",
+                ],
+                check=True,
+            ),
+            run_locked.call_args_list,
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -175,9 +175,16 @@ RUN curl -L https://github.com/nicocapalbo/dmbdb/archive/refs/tags/${DUMB_FRONTE
     unzip dumb-frontend.zip && mkdir -p /dumb/frontend && mv dmbdb*/* /dumb/frontend && rm dumb-frontend.zip
 WORKDIR /dumb/frontend
 RUN --mount=type=cache,target=/root/.local/share/pnpm/store,sharing=locked \
+    cpu_count="$(nproc)" && \
+    child_concurrency="$(( (cpu_count + 3) / 4 ))" && \
+    network_concurrency="$(( (cpu_count + 1) / 2 ))" && \
+    if [ "${child_concurrency}" -gt 8 ]; then child_concurrency=8; fi && \
+    if [ "${network_concurrency}" -lt 2 ]; then network_concurrency=2; fi && \
+    if [ "${network_concurrency}" -gt 16 ]; then network_concurrency=16; fi && \
     printf '%s\n' \
       'store-dir=/root/.local/share/pnpm/store' \
-      'child-concurrency=1' \
+      "child-concurrency=${child_concurrency}" \
+      "network-concurrency=${network_concurrency}" \
       'fetch-retries=10' \
       'fetch-retry-factor=3' \
       'fetch-retry-mintimeout=15000' > /dumb/frontend/.npmrc && \

@@ -4,6 +4,7 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from utils.oci_image import OCIImageError, OCIRegistryClient, normalize_oci_architecture
 
@@ -105,12 +106,13 @@ class OCIImageTests(unittest.TestCase):
         )
         with tempfile.TemporaryDirectory() as temp_dir:
             target = Path(temp_dir) / "blob"
-            with self.assertRaises(OCIImageError):
-                client.download_blob(
-                    "example/mediastorm",
-                    {"digest": "sha256:" + "a" * 64, "size": len(content)},
-                    target,
-                )
+            with patch("utils.oci_image.install_cache_enabled", return_value=False):
+                with self.assertRaises(OCIImageError):
+                    client.download_blob(
+                        "example/mediastorm",
+                        {"digest": "sha256:" + "a" * 64, "size": len(content)},
+                        target,
+                    )
             self.assertFalse(target.exists())
 
 

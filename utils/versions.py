@@ -6,6 +6,20 @@ import os, subprocess, json, re, requests, shlex, urllib.parse, ast
 PROFILARR_LEGACY_RELEASE_VERSION = "v1.1.4"
 
 
+def display_version(key: str | None, version: str | None) -> str | None:
+    """Hide internal source identity only for ordinary NzbDAV releases."""
+    if key != "nzbdav" or not version:
+        return version
+    value = str(version).strip()
+    match = re.fullmatch(
+        r"(?P<release>v?\d+(?:\.\d+){1,3})-(?P<commit>[0-9a-fA-F]{8})",
+        value,
+    )
+    if match:
+        return match.group("release")
+    return version
+
+
 def _parse_python_literal_assignments(file_path):
     with open(file_path, "r") as handle:
         tree = ast.parse(handle.read(), filename=str(file_path))
@@ -60,6 +74,20 @@ class Versions:
             return None, f"Unable to resolve branch head sha (status: {status})"
         except Exception as e:
             return None, f"Error resolving branch head sha: {e}"
+
+    def _get_release_commit_marker(
+        self, repo_owner: str, repo_name: str, release_tag: str
+    ) -> tuple[str | None, str | None]:
+        sha, error = self.downloader.get_ref_commit_sha(
+            repo_owner, repo_name, release_tag
+        )
+        if not sha:
+            return None, error or "Unable to resolve release tag commit SHA."
+        return f"{release_tag}-{sha[:8]}", None
+
+    @staticmethod
+    def display_version(key: str | None, version: str | None) -> str | None:
+        return display_version(key, version)
 
     @staticmethod
     def _normalize_arr_version(version: str | None) -> str | None:
@@ -722,23 +750,35 @@ class Versions:
             else:
                 normalized_current = current_version
                 normalized_latest = latest_release_version
-            if nightly:
+            if key == "nzbdav":
+                # NzbDAV release installs persist tag-shortSHA so DUMB can
+                # detect a moved rolling/prerelease tag. Compare against the
+                # same immutable marker instead of repeatedly comparing the
+                # marker with GitHub's plain tag name.
+                normalized_latest, marker_error = self._get_release_commit_marker(
+                    repo_owner, repo_name, latest_release_version
+                )
+                if not normalized_latest:
+                    raise Exception(marker_error)
+            if nightly and key != "nzbdav":
                 current_date = ".".join(str(normalized_current).split(".")[0:3])
                 latest_date = ".".join(str(normalized_latest).split(".")[0:3])
                 if current_date == latest_date:
                     return False, {
                         "message": "No updates available (same nightly date)",
                         "current_version": current_version,
+                        "latest_version": latest_release_version,
                     }
             if normalized_current == normalized_latest:
                 return False, {
                     "message": "No updates available",
-                    "current_version": current_version,
+                    "current_version": self.display_version(key, current_version),
+                    "latest_version": latest_release_version,
                 }
             else:
                 return True, {
                     "message": "Update available",
-                    "current_version": current_version,
+                    "current_version": self.display_version(key, current_version),
                     "latest_version": latest_release_version,
                 }
         except Exception as e:

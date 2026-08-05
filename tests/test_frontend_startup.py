@@ -4,6 +4,7 @@ import threading
 import time
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from utils.startup import (
     frontend_start_readiness,
@@ -11,6 +12,7 @@ from utils.startup import (
     run_parallel_preinstall,
     start_control_plane_before_preinstall,
 )
+from utils import startup
 
 
 class FrontendStartupTests(unittest.TestCase):
@@ -151,6 +153,16 @@ class FrontendStartupTests(unittest.TestCase):
 
         self.assertEqual(failures, {})
         self.assertEqual(overlap, [])
+
+    def test_grouped_preinstall_uses_dynamic_resource_limit(self):
+        targets = [(f"service-{index}", f"Service {index}") for index in range(10)]
+        with patch.object(
+            startup, "preinstall_worker_count", return_value=6
+        ) as worker_count:
+            failures = run_grouped_preinstall(targets, lambda _key, _name: None)
+
+        self.assertEqual(failures, {})
+        worker_count.assert_called_once_with(10)
 
 
 if __name__ == "__main__":

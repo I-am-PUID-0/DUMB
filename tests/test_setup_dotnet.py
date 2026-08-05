@@ -9,6 +9,27 @@ from utils import setup
 
 
 class SetupDotnetTests(unittest.TestCase):
+    def test_zilean_runtime_data_is_created_and_owned_for_managed_user(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            data_dir = Path(temp_dir, "app", "data")
+            with (
+                patch.object(setup, "user_id", 1000),
+                patch.object(setup, "group_id", 1001),
+                patch.object(
+                    setup, "chown_recursive", return_value=(True, None)
+                ) as chown,
+            ):
+                success, error = setup._prepare_zilean_runtime_data(
+                    {
+                        "config_dir": temp_dir,
+                        "config_file": str(data_dir / "settings.json"),
+                    }
+                )
+
+            self.assertTrue(success, error)
+            self.assertTrue(data_dir.is_dir())
+            chown.assert_called_once_with(str(data_dir), 1000, 1001)
+
     @staticmethod
     def _write_zilean_source(temp_dir):
         Path(temp_dir, "Directory.Build.props").write_text(

@@ -70,6 +70,7 @@ class AltMountSetupTests(unittest.TestCase):
                 patch.object(setup_module, "service_postgres_database_name"),
                 patch.object(setup_module, "apply_service_postgres_config"),
                 patch.object(setup_module, "_chown_recursive_if_needed"),
+                patch.object(setup_module, "chown_single") as chown_single,
                 patch.object(
                     setup_module, "chown_recursive", return_value=(True, None)
                 ) as recursive_chown,
@@ -77,6 +78,7 @@ class AltMountSetupTests(unittest.TestCase):
                 success, error = setup_module.setup_altmount(object())
 
             self.assertTrue(success, error)
+            chown_single.assert_called_once_with(str(root / "config.yaml"), 1000, 1000)
             recursive_chown.assert_called_once_with(str(rclone_dir), 1000, 1000)
 
     def test_write_default_config_creates_expected_paths_and_preserves_existing_file(

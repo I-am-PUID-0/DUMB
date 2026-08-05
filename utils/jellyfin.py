@@ -76,7 +76,21 @@ class JellyfinInstaller:
 
             # Step 5: Install jellyfin metapackage
             if version:
-                run_locked(["apt", "install", "-y", f"jellyfin={version}"], check=True)
+                # The metapackage allows newer server/web dependencies. Pin all
+                # three together so a retained-version regression (and a real
+                # operator pin) does not silently run a newer server payload.
+                run_locked(
+                    [
+                        "apt",
+                        "install",
+                        "-y",
+                        "--allow-downgrades",
+                        f"jellyfin={version}",
+                        f"jellyfin-server={version}",
+                        f"jellyfin-web={version}",
+                    ],
+                    check=True,
+                )
             else:
                 run_locked(["apt", "install", "-y", "jellyfin"], check=True)
 

@@ -43,6 +43,7 @@ def _install_process_router_stubs():
 
     pydantic.BaseModel = BaseModel
     pydantic.ConfigDict = lambda **kwargs: dict(kwargs)
+    pydantic.Field = lambda default=None, **kwargs: default
     sys.modules["pydantic"] = pydantic
 
     dependencies = types.ModuleType("utils.dependencies")
@@ -52,6 +53,7 @@ def _install_process_router_stubs():
         "get_api_state",
         "get_updater",
         "get_optional_current_user",
+        "get_media_protection_manager",
     ):
         setattr(dependencies, name, lambda *args, **kwargs: None)
     sys.modules["utils.dependencies"] = dependencies
@@ -77,7 +79,9 @@ def _install_process_router_stubs():
     sys.modules["utils.dependency_map"] = dependency_map
 
     versions = types.ModuleType("utils.versions")
-    versions.Versions = lambda *args, **kwargs: types.SimpleNamespace()
+    versions.Versions = lambda *args, **kwargs: types.SimpleNamespace(
+        display_version=lambda _key, version: version,
+    )
     sys.modules["utils.versions"] = versions
 
     psutil = types.ModuleType("psutil")

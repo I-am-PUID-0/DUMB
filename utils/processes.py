@@ -544,6 +544,7 @@ class ProcessHandler:
                 "poetry_update_plexapi",
                 "install_poetry",
                 "poetry_env_setup",
+                "corepack_prepare",
                 "PostgreSQL_init",
                 "pnpm_install",
                 "pnpm_build",
@@ -651,7 +652,11 @@ class ProcessHandler:
                 env=process_env,
             )
 
-            success, error = self._check_immediate_exit_and_log(process, process_name)
+            success, error = self._check_immediate_exit_and_log(
+                process,
+                process_name,
+                require_running=bool(key),
+            )
             if not success:
                 notify_event(
                     "service.start.failed",
@@ -728,6 +733,7 @@ class ProcessHandler:
         process_name,
         timeout_seconds: float = 2.0,
         interval_seconds: float = 0.2,
+        require_running: bool = False,
     ):
         deadline = time.time() + timeout_seconds
         while time.time() < deadline:
@@ -752,7 +758,18 @@ class ProcessHandler:
                 self.stdout = stdout_output
                 self.stderr = stderr_output
 
+                if process.returncode != 0 or require_running:
+                    if stdout_output:
+                        self.logger.error(f"{process_name} stdout:\n{stdout_output}")
+                    if stderr_output:
+                        self.logger.error(f"{process_name} stderr:\n{stderr_output}")
+
                 if process.returncode == 0:
+                    if require_running:
+                        self.logger.error(
+                            f"{process_name} exited shortly after start with return code 0"
+                        )
+                        return False, f"{process_name} failed to stay running."
                     self.logger.info(
                         f"{process_name} completed shortly after start with return code 0"
                     )
@@ -760,10 +777,6 @@ class ProcessHandler:
                 self.logger.error(
                     f"{process_name} exited shortly after start with return code {process.returncode}"
                 )
-                if stdout_output:
-                    self.logger.error(f"{process_name} stdout:\n{stdout_output}")
-                if stderr_output:
-                    self.logger.error(f"{process_name} stderr:\n{stderr_output}")
                 return False, f"{process_name} failed to stay running."
             time.sleep(interval_seconds)
 
@@ -856,7 +869,19 @@ class ProcessHandler:
             self._update_running_processes_file()
 
     @staticmethod
-    def _signal_process_group(process, sig):
+    def _process_group_alive(process_group):
+        if process_group is None:
+            return False
+        try:
+            os.killpg(process_group, 0)
+            return True
+        except ProcessLookupError:
+            return False
+        except PermissionError:
+            return True
+
+    @staticmethod
+    def _signal_process_group(process, sig, process_group=None):
         """Signal the isolated session created for a managed subprocess.
 
         Some service launchers, notably Bazarr, supervise a child application
@@ -866,13 +891,14 @@ class ProcessHandler:
         so its PID is also the process-group ID.
         """
         try:
-            process_group = os.getpgid(process.pid)
+            if process_group is None:
+                process_group = os.getpgid(process.pid)
             if process_group == os.getpgrp():
                 raise RuntimeError("refusing to signal DUMB's process group")
             os.killpg(process_group, sig)
-            return
+            return process_group
         except ProcessLookupError:
-            return
+            return process_group
         except (OSError, RuntimeError):
             # Preserve the prior single-process behavior if a platform or
             # unusual subprocess implementation does not expose the group.
@@ -880,6 +906,7 @@ class ProcessHandler:
                 process.kill()
             else:
                 process.terminate()
+            return None
 
     def stop_process(self, process_name, disable_restart=True):
         intentional_pid = None
@@ -911,34 +938,76 @@ class ProcessHandler:
                 self.logger.debug(f"Process {process_name} found: {process}")
                 if disable_restart:
                     self._set_restart_disabled(internal_name, True)
-                self._signal_process_group(process, signal.SIGTERM)
+                process_group = self._signal_process_group(process, signal.SIGTERM)
                 attempt = 0
+                terminated = False
                 while attempt < max_attempts:
                     self.logger.debug(
                         f"Waiting for {process_description} to terminate (attempt {attempt + 1})..."
                     )
-                    try:
-                        process.wait(timeout=wait_timeout)
-                        if process.poll() is not None:
+                    deadline = time.monotonic() + wait_timeout
+                    while time.monotonic() < deadline:
+                        if process.poll() is None:
+                            try:
+                                process.wait(
+                                    timeout=min(
+                                        1.0, max(0.1, deadline - time.monotonic())
+                                    )
+                                )
+                            except subprocess.TimeoutExpired:
+                                pass
+                        if process.poll() is not None and not self._process_group_alive(
+                            process_group
+                        ):
                             self.logger.info(
                                 f"{process_description} process terminated gracefully."
                             )
+                            terminated = True
                             break
-                    except subprocess.TimeoutExpired:
+                        time.sleep(0.25)
+                    if terminated:
+                        break
+                    if process.poll() is not None and self._process_group_alive(
+                        process_group
+                    ):
+                        self.logger.warning(
+                            "%s launcher exited, but its process group remained active after %s seconds on attempt %s.",
+                            process_description,
+                            wait_timeout,
+                            attempt + 1,
+                        )
+                    else:
                         self.logger.warning(
                             f"{process_description} process did not terminate within {wait_timeout} seconds on attempt {attempt + 1}."
                         )
                     attempt += 1
-                    time.sleep(5)
-                if process.poll() is None:
+                    if attempt < max_attempts:
+                        time.sleep(5)
+                group_alive = self._process_group_alive(process_group)
+                if process.poll() is None or group_alive:
                     self.logger.warning(
                         f"{process_description} process did not terminate, forcing shutdown."
                     )
-                    self._signal_process_group(process, signal.SIGKILL)
-                    process.wait()
-                    self.logger.info(
-                        f"{process_description} process forcefully terminated."
+                    self._signal_process_group(
+                        process, signal.SIGKILL, process_group=process_group
                     )
+                    if process.poll() is None:
+                        process.wait()
+                    group_deadline = time.monotonic() + 5
+                    while self._process_group_alive(process_group):
+                        if time.monotonic() >= group_deadline:
+                            break
+                        time.sleep(0.1)
+                    if self._process_group_alive(process_group):
+                        self.logger.error(
+                            "%s process group %s remained active after SIGKILL.",
+                            process_description,
+                            process_group,
+                        )
+                    else:
+                        self.logger.info(
+                            f"{process_description} process forcefully terminated."
+                        )
                 if self.subprocess_loggers.get(internal_name):
                     self.subprocess_loggers[internal_name].stop_logging_stdout()
                     self.subprocess_loggers[internal_name].stop_monitoring_stderr()
@@ -1030,6 +1099,11 @@ class ProcessHandler:
             policy.update(max_attempts=6, wait_timeout=15)
         elif key in ("rclone", "decypharr", "nzbdav", "altmount", "zurg"):
             policy.update(max_attempts=4, wait_timeout=12)
+        elif key in ("bazarr",):
+            # Bazarr's supervisor exits promptly while the child commonly
+            # remains in the group. One grace window is sufficient before the
+            # verified process-group SIGKILL path handles that child.
+            policy.update(max_attempts=1, wait_timeout=10)
         elif key in ("cli_debrid",):
             policy.update(max_attempts=2, wait_timeout=10)
         return policy
