@@ -781,6 +781,8 @@
       
         
       
+        
+      
     
     
     
@@ -1006,6 +1008,36 @@
     
   
     Auto-update
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../features/install-cache/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-package-check" viewBox="0 0 24 24"><path d="m16 16 2 2 4-4"/><path d="M21 10V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l2-1.14M7.5 4.27l9 5.15"/><path d="M3.29 7 12 12l8.71-5M12 22V12"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    Install Cache & Safe Updates
   
 
     
@@ -3251,6 +3283,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Guided setup">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#enroll-the-first-authenticator" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Enroll the first authenticator
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -5231,6 +5280,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Guided setup">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#enroll-the-first-authenticator" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Enroll the first authenticator
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -5429,14 +5495,14 @@
   
 
 
-<h1 id="authelia">Authelia<a class="headerlink" href="#authelia" title="Permanent link">&para;</a></h1>
+<h1 id="authelia">Authelia<a class="headerlink" href="#authelia" title="Permanent link">#</a></h1>
 <p><a href="https://www.authelia.com/">Authelia</a> is an identity and access-management
 portal. DUMB can install and manage one Authelia instance, use it as an OpenID
 Connect (OIDC) provider for DUMB and Traefik Proxy Admin (TPA), and publish a
 reusable Traefik ForwardAuth middleware for selected application routes.</p>
 <p>Authelia is optional. You can instead connect DUMB authentication to an
 external Authelia deployment or another standards-compatible OIDC provider.</p>
-<h2 id="what-dumb-manages">What DUMB manages<a class="headerlink" href="#what-dumb-manages" title="Permanent link">&para;</a></h2>
+<h2 id="what-dumb-manages">What DUMB manages<a class="headerlink" href="#what-dumb-manages" title="Permanent link">#</a></h2>
 <table>
 <thead>
 <tr>
@@ -5485,7 +5551,7 @@ external Authelia deployment or another standards-compatible OIDC provider.</p>
 signing material. PostgreSQL alone is not a complete backup. Losing the
 encryption key can make encrypted database values unrecoverable.</p>
 </div>
-<h2 id="requirements">Requirements<a class="headerlink" href="#requirements" title="Permanent link">&para;</a></h2>
+<h2 id="requirements">Requirements<a class="headerlink" href="#requirements" title="Permanent link">#</a></h2>
 <ul>
 <li>A dedicated browser-reachable HTTPS hostname, such as
   <code>https://auth.example.com</code>.</li>
@@ -5504,7 +5570,7 @@ the managed notification file. Use SMTP when users need to receive enrollment
 and recovery messages without access to DUMB's local management interface.</p>
 <p>Authelia's session cookie configuration requires a normal HTTPS hostname. Do
 not use <code>localhost</code>, a bare IP address, or a public suffix as the cookie domain.</p>
-<h2 id="plan-the-addresses">Plan the addresses<a class="headerlink" href="#plan-the-addresses" title="Permanent link">&para;</a></h2>
+<h2 id="plan-the-addresses">Plan the addresses<a class="headerlink" href="#plan-the-addresses" title="Permanent link">#</a></h2>
 <p>The wizard asks only for browser-facing addresses. DUMB supplies internal
 loopback addresses, callback paths, client IDs, and generated client secrets.</p>
 <table>
@@ -5550,7 +5616,7 @@ loopback addresses, callback paths, client IDs, and generated client secrets.</p
 </table>
 <p>Do not enter a DUMB embedded path such as <code>/ui/authelia</code>, an internal service
 port, or <code>localhost</code> in a public URL field.</p>
-<h2 id="guided-setup">Guided setup<a class="headerlink" href="#guided-setup" title="Permanent link">&para;</a></h2>
+<h2 id="guided-setup">Guided setup<a class="headerlink" href="#guided-setup" title="Permanent link">#</a></h2>
 <p>The frontend shows Authelia in onboarding and mounts the managed service-page
 wizard only when the connected backend advertises the
 <code>authelia_integration</code> capability. On an older backend, Authelia is omitted
@@ -5594,7 +5660,7 @@ onboarding is expected and does not mean installation failed.</p>
 <li><strong>Step 4: ForwardAuth</strong> creates a reusable middleware for selected apps
      that do not have their own OIDC login.</li>
 </ol>
-<h3 id="enroll-the-first-authenticator">Enroll the first authenticator<a class="headerlink" href="#enroll-the-first-authenticator" title="Permanent link">&para;</a></h3>
+<h3 id="enroll-the-first-authenticator">Enroll the first authenticator<a class="headerlink" href="#enroll-the-first-authenticator" title="Permanent link">#</a></h3>
 <p>When Step 1 uses the recommended <strong>Two factor</strong> policy, the expanded walkthrough
 includes <strong>First login — enroll your authenticator</strong>. Complete Step 2 before
 starting this flow so Authelia can return to DUMB after authentication.</p>
@@ -5637,7 +5703,7 @@ summary with an <strong>Open Authelia setup</strong> button. After Step 1 succee
 automatically collapses to <strong>Authelia bootstrap complete</strong>; select
 <strong>Open setup &amp; integrations</strong> to return to Steps 2–4 or revise the managed
 setup.</p>
-<h2 id="open-the-authelia-portal">Open the Authelia portal<a class="headerlink" href="#open-the-authelia-portal" title="Permanent link">&para;</a></h2>
+<h2 id="open-the-authelia-portal">Open the Authelia portal<a class="headerlink" href="#open-the-authelia-portal" title="Permanent link">#</a></h2>
 <p>After bootstrap starts Authelia, the Authelia service page offers <strong>Open
 Authelia Portal</strong> in its integration summary and <strong>Embedded UI</strong> tab. The button
 opens the configured public HTTPS address, such as
@@ -5652,7 +5718,7 @@ OIDC discovery, authorization redirects, and normal user sign-in all use the
 dedicated public HTTPS URL. The Authelia route must remain reachable and must
 not have ForwardAuth, TPA Service SSO, or another login middleware attached to
 it.</p>
-<h2 id="publish-the-authelia-portal">Publish the Authelia portal<a class="headerlink" href="#publish-the-authelia-portal" title="Permanent link">&para;</a></h2>
+<h2 id="publish-the-authelia-portal">Publish the Authelia portal<a class="headerlink" href="#publish-the-authelia-portal" title="Permanent link">#</a></h2>
 <p>Authelia must have its own HTTPS route before browser login works. If an
 existing TPA domain is selected during bootstrap, DUMB can create or reuse the
 route automatically:</p>
@@ -5747,7 +5813,7 @@ module URLs.</p>
 <p>If Cloudflare Tunnel terminates public TLS, route traffic to DUMB Traefik as
 described in the <a href="../cloudflared/">Cloudflared guide</a>. The browser-facing
 Authelia URL must still use HTTPS.</p>
-<h2 id="dumb-sign-in-modes">DUMB sign-in modes<a class="headerlink" href="#dumb-sign-in-modes" title="Permanent link">&para;</a></h2>
+<h2 id="dumb-sign-in-modes">DUMB sign-in modes<a class="headerlink" href="#dumb-sign-in-modes" title="Permanent link">#</a></h2>
 <table>
 <thead>
 <tr>
@@ -5784,7 +5850,7 @@ placed in callback query strings.</p>
 <p>OIDC identities have the same DUMB privileges as local users. DUMB does not
 currently have viewer/editor/admin role separation. An optional allowed-groups
 list can deny sign-in unless the provider returns at least one matching group.</p>
-<h2 id="dumb-managed-external-or-other-oidc-providers">DUMB-managed, external, or other OIDC providers<a class="headerlink" href="#dumb-managed-external-or-other-oidc-providers" title="Permanent link">&para;</a></h2>
+<h2 id="dumb-managed-external-or-other-oidc-providers">DUMB-managed, external, or other OIDC providers<a class="headerlink" href="#dumb-managed-external-or-other-oidc-providers" title="Permanent link">#</a></h2>
 <p>Open <strong>DUMB Settings → Authentication → Sign-in provider</strong> and select:</p>
 <ul>
 <li><strong>DUMB-managed Authelia</strong> when this service has completed bootstrap. DUMB
@@ -5812,7 +5878,7 @@ server-side code exchange. DUMB does not rewrite endpoints supplied for
 external Authelia or generic OIDC providers. HTTPS endpoints must present
 certificates trusted by the DUMB or TPA process that connects to them; an
 endpoint allowlist is not a TLS-verification bypass.</p>
-<h2 id="oidc-versus-forwardauth">OIDC versus ForwardAuth<a class="headerlink" href="#oidc-versus-forwardauth" title="Permanent link">&para;</a></h2>
+<h2 id="oidc-versus-forwardauth">OIDC versus ForwardAuth<a class="headerlink" href="#oidc-versus-forwardauth" title="Permanent link">#</a></h2>
 <ul>
 <li>Use <strong>OIDC</strong> for DUMB or TPA sign-in. The application creates its own session
   and can apply provider group mappings.</li>
@@ -5827,7 +5893,7 @@ endpoint allowlist is not a TLS-verification bypass.</p>
 <div class="highlight"><pre><span></span><code>dumb-authelia-forward-auth@file
 </code></pre></div>
 <p>Attach it only to the TPA services you intend to protect.</p>
-<h2 id="files-and-ports">Files and ports<a class="headerlink" href="#files-and-ports" title="Permanent link">&para;</a></h2>
+<h2 id="files-and-ports">Files and ports<a class="headerlink" href="#files-and-ports" title="Permanent link">#</a></h2>
 <table>
 <thead>
 <tr>
@@ -5874,7 +5940,7 @@ endpoint allowlist is not a TLS-verification bypass.</p>
 </tr>
 </tbody>
 </table>
-<h2 id="integration-api">Integration API<a class="headerlink" href="#integration-api" title="Permanent link">&para;</a></h2>
+<h2 id="integration-api">Integration API<a class="headerlink" href="#integration-api" title="Permanent link">#</a></h2>
 <p>Backend-native routes use <code>/integrations/authelia</code>; through the normal DUMB
 Frontend proxy use <code>/api/integrations/authelia</code>.</p>
 <table>
@@ -5922,7 +5988,7 @@ Frontend proxy use <code>/api/integrations/authelia</code>.</p>
 <p>These routes use DUMB's normal authentication policy. Responses do not return
 generated client secrets, user passwords, database credentials, or Authelia
 secret material.</p>
-<h2 id="recovery">Recovery<a class="headerlink" href="#recovery" title="Permanent link">&para;</a></h2>
+<h2 id="recovery">Recovery<a class="headerlink" href="#recovery" title="Permanent link">#</a></h2>
 <p>If OIDC is misconfigured:</p>
 <ol>
 <li>Use <strong>Use local account</strong> on DUMB or TPA when hybrid/local fallback is
@@ -5941,7 +6007,7 @@ manually copying the generated client secret.</p>
 container host and restore <code>"mode": "hybrid"</code> or <code>"mode": "local"</code>, then
 restart DUMB. Protect that file: it contains DUMB's JWT and OIDC client
 secrets.</p>
-<h2 id="related-resources">Related resources<a class="headerlink" href="#related-resources" title="Permanent link">&para;</a></h2>
+<h2 id="related-resources">Related resources<a class="headerlink" href="#related-resources" title="Permanent link">#</a></h2>
 <ul>
 <li><a href="../../../features/authentication/">DUMB authentication</a></li>
 <li><a href="../../../api/auth/">Authentication API</a></li>

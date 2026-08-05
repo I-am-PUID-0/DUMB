@@ -6,18 +6,18 @@
   
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="description" content="Learn about DUMB Services Overview in DUMB, the Distributed Unlimited Media Bridge platform for Debrid, Usenet, Arr apps, and media server automation.">
+  <meta name="description" content="Understand DUMB&#x27;s verified dependency and build caches, transactional service updates, automatic rollback, cache maintenance, and clean rebuild recovery.">
   
     <meta name="author" content="DUMB Team">
   
   
-    <link rel="canonical" href="https://dumbarr.com/services/dumb/">
+    <link rel="canonical" href="https://dumbarr.com/features/install-cache/">
   
   
-    <link rel="prev" href="../">
+    <link rel="prev" href="../auto-update/">
   
   
-    <link rel="next" href="api/">
+    <link rel="next" href="../media-library-protection/">
   
   
     
@@ -30,7 +30,7 @@
   
     
       
-        <title>DUMB Services Overview - Distributed Unlimited Media Bridge</title>
+        <title>Install Cache and Safe Updates - Distributed Unlimited Media Bridge</title>
       
     
   
@@ -109,9 +109,9 @@
     <meta property="og:type" content="website">
     <meta property="og:locale" content="en_US">
     <meta property="og:site_name" content="DUMB — Distributed Unlimited Media Bridge">
-    <meta property="og:title" content="DUMB Services Overview">
-    <meta property="og:description" content="Learn about DUMB Services Overview in DUMB, the Distributed Unlimited Media Bridge platform for Debrid, Usenet, Arr apps, and media server automation.">
-    <meta property="og:url" content="https://dumbarr.com/services/dumb/">
+    <meta property="og:title" content="Install Cache and Safe Updates">
+    <meta property="og:description" content="Understand DUMB&#x27;s verified dependency and build caches, transactional service updates, automatic rollback, cache maintenance, and clean rebuild recovery.">
+    <meta property="og:url" content="https://dumbarr.com/features/install-cache/">
     <meta property="og:image" content="https://dumbarr.com/assets/images/DUMB.png">
     <meta property="og:image:secure_url" content="https://dumbarr.com/assets/images/DUMB.png">
     <meta property="og:image:type" content="image/png">
@@ -119,8 +119,8 @@
     <meta property="og:image:height" content="1024">
     <meta property="og:image:alt" content="Distributed Unlimited Media Bridge ecosystem and architecture overview">
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="DUMB Services Overview">
-    <meta name="twitter:description" content="Learn about DUMB Services Overview in DUMB, the Distributed Unlimited Media Bridge platform for Debrid, Usenet, Arr apps, and media server automation.">
+    <meta name="twitter:title" content="Install Cache and Safe Updates">
+    <meta name="twitter:description" content="Understand DUMB&#x27;s verified dependency and build caches, transactional service updates, automatic rollback, cache maintenance, and clean rebuild recovery.">
     <meta name="twitter:image" content="https://dumbarr.com/assets/images/DUMB.png">
     <meta name="twitter:image:alt" content="Distributed Unlimited Media Bridge ecosystem and architecture overview">
     
@@ -140,24 +140,16 @@
           {
             "@type": "ListItem",
             "position": 2,
-            "name": "Services",
-            "item": "https://dumbarr.com/services/"
+            "name": "Features",
+            "item": "https://dumbarr.com/features/"
           }
           
           ,
           {
             "@type": "ListItem",
             "position": 3,
-            "name": "DUMB",
-            "item": "https://dumbarr.com/services/dumb/"
-          }
-          
-          ,
-          {
-            "@type": "ListItem",
-            "position": 4,
-            "name": "DUMB Services Overview",
-            "item": "https://dumbarr.com/services/dumb/"
+            "name": "Install Cache and Safe Updates",
+            "item": "https://dumbarr.com/features/install-cache/"
           }
         ]
       }
@@ -184,7 +176,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#dumb-services" class="md-skip">
+        <a href="#install-cache-and-safe-updates" class="md-skip">
           Skip to content
         </a>
       
@@ -228,7 +220,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              DUMB Services Overview
+              Install Cache and Safe Updates
             
           </span>
         </div>
@@ -355,11 +347,13 @@
   
   
   
+    
+  
   
     
     
-      <li class="md-tabs__item">
-        <a href="../../features/" class="md-tabs__link">
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../" class="md-tabs__link">
           
   
   Features
@@ -412,13 +406,11 @@
   
   
   
-    
-  
   
     
     
-      <li class="md-tabs__item md-tabs__item--active">
-        <a href="../" class="md-tabs__link">
+      <li class="md-tabs__item">
+        <a href="../../services/" class="md-tabs__link">
           
   
   Services
@@ -740,6 +732,8 @@
       
   
   
+    
+  
   
   
     
@@ -787,22 +781,23 @@
     
     
       
+        
+        
+      
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
       
         
         
-          
-        
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../features/" class="md-nav__link ">
+            <a href="../" class="md-nav__link ">
               
   
   
@@ -822,13 +817,13 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_3" id="__nav_3_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_3" id="__nav_3_label" tabindex="">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_3">
             <span class="md-nav__icon md-icon"></span>
             
@@ -848,7 +843,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/configuration/" class="md-nav__link">
+      <a href="../configuration/" class="md-nav__link">
         
   
   
@@ -878,7 +873,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/usage/" class="md-nav__link">
+      <a href="../usage/" class="md-nav__link">
         
   
   
@@ -908,7 +903,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/authentication/" class="md-nav__link">
+      <a href="../authentication/" class="md-nav__link">
         
   
   
@@ -938,7 +933,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/auto-restart/" class="md-nav__link">
+      <a href="../auto-restart/" class="md-nav__link">
         
   
   
@@ -968,7 +963,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/startup-lifecycle/" class="md-nav__link">
+      <a href="../startup-lifecycle/" class="md-nav__link">
         
   
   
@@ -998,7 +993,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/auto-update/" class="md-nav__link">
+      <a href="../auto-update/" class="md-nav__link">
         
   
   
@@ -1025,10 +1020,39 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../../features/install-cache/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-package-check" viewBox="0 0 24 24"><path d="m16 16 2 2 4-4"/><path d="M21 10V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l2-1.14M7.5 4.27l9 5.15"/><path d="M3.29 7 12 12l8.71-5M12 22V12"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    Install Cache & Safe Updates
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -1046,6 +1070,82 @@
   
 
       </a>
+      
+        
+
+
+<nav class="md-nav md-nav--secondary" aria-label="On this page">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      On this page
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#safety-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Safety model
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Configuration
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#package-manager-behavior" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Package-manager behavior
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#dashboard-maintenance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Dashboard maintenance
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#recovery-guidance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Recovery guidance
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -1058,7 +1158,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/media-library-protection/" class="md-nav__link">
+      <a href="../media-library-protection/" class="md-nav__link">
         
   
   
@@ -1088,7 +1188,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/arr-postgres-migration/" class="md-nav__link">
+      <a href="../arr-postgres-migration/" class="md-nav__link">
         
   
   
@@ -1118,7 +1218,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/symlinks/" class="md-nav__link">
+      <a href="../symlinks/" class="md-nav__link">
         
   
   
@@ -1148,7 +1248,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/seerr-sync/" class="md-nav__link">
+      <a href="../seerr-sync/" class="md-nav__link">
         
   
   
@@ -1178,7 +1278,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/ffprobe-monitor/" class="md-nav__link">
+      <a href="../ffprobe-monitor/" class="md-nav__link">
         
   
   
@@ -1208,7 +1308,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/metrics/" class="md-nav__link">
+      <a href="../metrics/" class="md-nav__link">
         
   
   
@@ -1238,7 +1338,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/rclone-optimizer/" class="md-nav__link">
+      <a href="../rclone-optimizer/" class="md-nav__link">
         
   
   
@@ -1268,7 +1368,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/notifications/" class="md-nav__link">
+      <a href="../notifications/" class="md-nav__link">
         
   
   
@@ -1298,7 +1398,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/ai-assistant/" class="md-nav__link">
+      <a href="../ai-assistant/" class="md-nav__link">
         
   
   
@@ -1328,7 +1428,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/embedded-ui/" class="md-nav__link">
+      <a href="../embedded-ui/" class="md-nav__link">
         
   
   
@@ -1774,8 +1874,6 @@
       
   
   
-    
-  
   
   
     
@@ -1797,23 +1895,22 @@
     
     
       
-        
-        
-      
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" checked>
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6" >
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../" class="md-nav__link ">
+            <a href="../../services/" class="md-nav__link ">
               
   
   
@@ -1833,13 +1930,13 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_6" id="__nav_6_label" tabindex="">
+              <label class="md-nav__link " for="__nav_6" id="__nav_6_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_6">
             <span class="md-nav__icon md-icon"></span>
             
@@ -1856,8 +1953,6 @@
                 
   
   
-    
-  
   
   
     
@@ -1877,21 +1972,20 @@
       
       
         
-          
-          
-        
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_2" checked>
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6_2" >
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="./" class="md-nav__link md-nav__link--active">
+            <a href="../../services/dumb/" class="md-nav__link ">
               
   
   
@@ -1911,13 +2005,13 @@
             </a>
             
               
-              <label class="md-nav__link md-nav__link--active" for="__nav_6_2" id="__nav_6_2_label" tabindex="">
+              <label class="md-nav__link " for="__nav_6_2" id="__nav_6_2_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_2_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_2_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_6_2">
             <span class="md-nav__icon md-icon"></span>
             
@@ -1937,7 +2031,7 @@
   
   
     <li class="md-nav__item">
-      <a href="api/" class="md-nav__link">
+      <a href="../../services/dumb/api/" class="md-nav__link">
         
   
   
@@ -1967,7 +2061,7 @@
   
   
     <li class="md-nav__item">
-      <a href="dumb-frontend/" class="md-nav__link">
+      <a href="../../services/dumb/dumb-frontend/" class="md-nav__link">
         
   
   
@@ -2049,13 +2143,10 @@
       
       
         
-          
-          
-        
       
     
     
-    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
@@ -2065,7 +2156,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../core/" class="md-nav__link ">
+            <a href="../../services/core/" class="md-nav__link ">
               
   
   
@@ -2085,7 +2176,7 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_6_3" id="__nav_6_3_label" tabindex="">
+              <label class="md-nav__link " for="__nav_6_3" id="__nav_6_3_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
@@ -2111,7 +2202,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../core/cli-debrid/" class="md-nav__link">
+      <a href="../../services/core/cli-debrid/" class="md-nav__link">
         
   
   
@@ -2141,7 +2232,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../core/decypharr/" class="md-nav__link">
+      <a href="../../services/core/decypharr/" class="md-nav__link">
         
   
   
@@ -2171,7 +2262,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../core/nzbdav/" class="md-nav__link">
+      <a href="../../services/core/nzbdav/" class="md-nav__link">
         
   
   
@@ -2201,7 +2292,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../core/altmount/" class="md-nav__link">
+      <a href="../../services/core/altmount/" class="md-nav__link">
         
   
   
@@ -2231,7 +2322,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../core/plex-media-server/" class="md-nav__link">
+      <a href="../../services/core/plex-media-server/" class="md-nav__link">
         
   
   
@@ -2261,7 +2352,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../core/jellyfin/" class="md-nav__link">
+      <a href="../../services/core/jellyfin/" class="md-nav__link">
         
   
   
@@ -2291,7 +2382,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../core/emby/" class="md-nav__link">
+      <a href="../../services/core/emby/" class="md-nav__link">
         
   
   
@@ -2321,7 +2412,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../core/seerr/" class="md-nav__link">
+      <a href="../../services/core/seerr/" class="md-nav__link">
         
   
   
@@ -2351,7 +2442,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../core/riven-backend/" class="md-nav__link">
+      <a href="../../services/core/riven-backend/" class="md-nav__link">
         
   
   
@@ -2381,7 +2472,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../core/sonarr/" class="md-nav__link">
+      <a href="../../services/core/sonarr/" class="md-nav__link">
         
   
   
@@ -2411,7 +2502,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../core/radarr/" class="md-nav__link">
+      <a href="../../services/core/radarr/" class="md-nav__link">
         
   
   
@@ -2441,7 +2532,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../core/lidarr/" class="md-nav__link">
+      <a href="../../services/core/lidarr/" class="md-nav__link">
         
   
   
@@ -2471,7 +2562,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../core/prowlarr/" class="md-nav__link">
+      <a href="../../services/core/prowlarr/" class="md-nav__link">
         
   
   
@@ -2501,7 +2592,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../core/whisparr/" class="md-nav__link">
+      <a href="../../services/core/whisparr/" class="md-nav__link">
         
   
   
@@ -2531,7 +2622,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../core/neutarr/" class="md-nav__link">
+      <a href="../../services/core/neutarr/" class="md-nav__link">
         
   
   
@@ -2561,7 +2652,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../core/profilarr/" class="md-nav__link">
+      <a href="../../services/core/profilarr/" class="md-nav__link">
         
   
   
@@ -2621,13 +2712,10 @@
       
       
         
-          
-          
-        
       
     
     
-    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
@@ -2637,7 +2725,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../dependent/" class="md-nav__link ">
+            <a href="../../services/dependent/" class="md-nav__link ">
               
   
   
@@ -2657,7 +2745,7 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_6_4" id="__nav_6_4_label" tabindex="">
+              <label class="md-nav__link " for="__nav_6_4" id="__nav_6_4_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
@@ -2683,7 +2771,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../dependent/cli-battery/" class="md-nav__link">
+      <a href="../../services/dependent/cli-battery/" class="md-nav__link">
         
   
   
@@ -2713,7 +2801,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../dependent/phalanx-db/" class="md-nav__link">
+      <a href="../../services/dependent/phalanx-db/" class="md-nav__link">
         
   
   
@@ -2743,7 +2831,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../dependent/postgres/" class="md-nav__link">
+      <a href="../../services/dependent/postgres/" class="md-nav__link">
         
   
   
@@ -2773,7 +2861,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../dependent/rclone/" class="md-nav__link">
+      <a href="../../services/dependent/rclone/" class="md-nav__link">
         
   
   
@@ -2803,7 +2891,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../dependent/zurg/" class="md-nav__link">
+      <a href="../../services/dependent/zurg/" class="md-nav__link">
         
   
   
@@ -2875,13 +2963,10 @@
       
       
         
-          
-          
-        
       
     
     
-    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
@@ -2891,7 +2976,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../optional/" class="md-nav__link ">
+            <a href="../../services/optional/" class="md-nav__link ">
               
   
   
@@ -2911,7 +2996,7 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_6_5" id="__nav_6_5_label" tabindex="">
+              <label class="md-nav__link " for="__nav_6_5" id="__nav_6_5_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
@@ -2937,7 +3022,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../optional/pgadmin/" class="md-nav__link">
+      <a href="../../services/optional/pgadmin/" class="md-nav__link">
         
   
   
@@ -2967,7 +3052,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../optional/riven-frontend/" class="md-nav__link">
+      <a href="../../services/optional/riven-frontend/" class="md-nav__link">
         
   
   
@@ -2997,7 +3082,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../optional/tautulli/" class="md-nav__link">
+      <a href="../../services/optional/tautulli/" class="md-nav__link">
         
   
   
@@ -3027,7 +3112,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../optional/bazarr/" class="md-nav__link">
+      <a href="../../services/optional/bazarr/" class="md-nav__link">
         
   
   
@@ -3057,7 +3142,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../optional/pulsarr/" class="md-nav__link">
+      <a href="../../services/optional/pulsarr/" class="md-nav__link">
         
   
   
@@ -3087,7 +3172,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../optional/maintainerr/" class="md-nav__link">
+      <a href="../../services/optional/maintainerr/" class="md-nav__link">
         
   
   
@@ -3117,7 +3202,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../optional/mediastorm/" class="md-nav__link">
+      <a href="../../services/optional/mediastorm/" class="md-nav__link">
         
   
   
@@ -3147,7 +3232,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../optional/traefik-proxy-admin/" class="md-nav__link">
+      <a href="../../services/optional/traefik-proxy-admin/" class="md-nav__link">
         
   
   
@@ -3177,7 +3262,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../optional/authelia/" class="md-nav__link">
+      <a href="../../services/optional/authelia/" class="md-nav__link">
         
   
   
@@ -3207,7 +3292,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../optional/cloudflared/" class="md-nav__link">
+      <a href="../../services/optional/cloudflared/" class="md-nav__link">
         
   
   
@@ -3237,7 +3322,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../optional/zilean/" class="md-nav__link">
+      <a href="../../services/optional/zilean/" class="md-nav__link">
         
   
   
@@ -5029,10 +5114,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#what-are-dumb-services" class="md-nav__link">
+  <a href="#safety-model" class="md-nav__link">
     <span class="md-ellipsis">
       
-        What Are DUMB Services?
+        Safety model
       
     </span>
   </a>
@@ -5040,10 +5125,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#dumb-service-index" class="md-nav__link">
+  <a href="#configuration" class="md-nav__link">
     <span class="md-ellipsis">
       
-        DUMB Service Index
+        Configuration
       
     </span>
   </a>
@@ -5051,10 +5136,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#how-they-work" class="md-nav__link">
+  <a href="#package-manager-behavior" class="md-nav__link">
     <span class="md-ellipsis">
       
-        How They Work
+        Package-manager behavior
       
     </span>
   </a>
@@ -5062,10 +5147,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#tips" class="md-nav__link">
+  <a href="#dashboard-maintenance" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Tips
+        Dashboard maintenance
       
     </span>
   </a>
@@ -5073,10 +5158,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#related-pages" class="md-nav__link">
+  <a href="#recovery-guidance" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Related Pages
+        Recovery guidance
       
     </span>
   </a>
@@ -5129,25 +5214,7 @@
         <a href="../" class="md-path__link">
           
   <span class="md-ellipsis">
-    Services
-  </span>
-
-        </a>
-      </li>
-    
-  
-
-      
-        
-  
-  
-    
-    
-      <li class="md-path__item">
-        <a href="./" class="md-path__link">
-          
-  <span class="md-ellipsis">
-    DUMB
+    Features
   </span>
 
         </a>
@@ -5164,7 +5231,7 @@
                 
                   
   
-    <a href="https://github.com/I-am-PUID-0/DUMB_docs/edit/master/docs/services/dumb/index.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+    <a href="https://github.com/I-am-PUID-0/DUMB_docs/edit/master/docs/features/install-cache.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
       
       <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-file-pen" viewBox="0 0 24 24"><path d="M12.659 22H18a2 2 0 0 0 2-2V8a2.4 2.4 0 0 0-.706-1.706l-3.588-3.588A2.4 2.4 0 0 0 14 2H6a2 2 0 0 0-2 2v9.34"/><path d="M14 2v5a1 1 0 0 0 1 1h5M10.378 12.622a1 1 0 0 1 3 3.003L8.36 20.637a2 2 0 0 1-.854.506l-2.867.837a.5.5 0 0 1-.62-.62l.836-2.869a2 2 0 0 1 .506-.853z"/></svg>
     </a>
@@ -5173,74 +5240,163 @@
     
       
     
-    <a href="https://github.com/I-am-PUID-0/DUMB_docs/raw/master/docs/services/dumb/index.md" title="View source of this page" class="md-content__button md-icon">
+    <a href="https://github.com/I-am-PUID-0/DUMB_docs/raw/master/docs/features/install-cache.md" title="View source of this page" class="md-content__button md-icon">
       
       <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-file-code-2" viewBox="0 0 24 24"><path d="M4 12.15V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.706.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2h-3.35"/><path d="M14 2v5a1 1 0 0 0 1 1h5M5 16l-3 3 3 3M9 22l3-3-3-3"/></svg>
     </a>
   
 
 
-<h1 id="dumb-services">DUMB Services<a class="headerlink" href="#dumb-services" title="Permanent link">#</a></h1>
-<p>DUMB includes two internal services that form the backbone of the entire system:</p>
+<h1 id="install-cache-and-safe-updates">Install cache and safe updates<a class="headerlink" href="#install-cache-and-safe-updates" title="Permanent link">#</a></h1>
+<p>DUMB keeps reproducible downloads, package-manager data, and selected compiled
+service artifacts under <code>/config/.cache/dumb</code>. The cache accelerates container
+startup, updates, and exact-source reinstalls without treating a cached file as
+trusted merely because it already exists.</p>
+<p>Service configuration, databases, media, symlinks, credentials, and active
+runtime directories are not cache entries.</p>
+<h2 id="safety-model">Safety model<a class="headerlink" href="#safety-model" title="Permanent link">#</a></h2>
+<p>An external project can always fail to download or build. DUMB's goal is to
+make that failure non-destructive:</p>
+<ol>
+<li>Resolve the requested release, branch head, or exact commit.</li>
+<li>Download into a content-addressed cache and verify its SHA-256 digest.
+   Conditional requests reuse unchanged content, and a failed revalidation may
+   use the last digest-verified object for that exact URL.</li>
+<li>Validate the complete archive before applying files. Unsafe paths, links,
+   malformed archives, extraction errors, and configured size limits fail the
+   installation.</li>
+<li>Build and verify the replacement runtime.</li>
+<li>Stop the old process only when the replacement is ready where the service
+   layout supports candidate activation.</li>
+<li>Start the replacement and require it to remain healthy for the configured
+   stabilization period.</li>
+<li>Restore the previous runtime automatically if activation or health
+   stabilization fails.</li>
+</ol>
+<p>Traefik Proxy Admin uses full same-filesystem candidate activation. Other
+source-built services retain a rollback snapshot of replaceable runtime files
+while their persistent paths stay in place. Services whose package manager or
+database owns the upgrade transaction keep their existing service-specific
+recovery behavior.</p>
+<div class="admonition warning">
+<p class="admonition-title">Application database migrations</p>
+<p>A runtime rollback cannot safely undo every application-owned database
+migration. DUMB never replaces persistent data with a cached copy. If an
+upstream migration is not backward compatible, leave the restored service
+stopped and follow that application's documented database recovery path.</p>
+</div>
+<h2 id="configuration">Configuration<a class="headerlink" href="#configuration" title="Permanent link">#</a></h2>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;dumb&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;install_cache&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">&quot;enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;path&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/config/.cache/dumb&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;max_size_gib&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">25</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;artifact_retention_count&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">2</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;clean_retry&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;max_download_size_mb&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">4096</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;max_archive_entries&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">250000</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;max_unpacked_size_gib&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">50</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;activation_health_timeout_seconds&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">120</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;activation_stabilization_seconds&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">15</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>Keep the cache on persistent local storage when possible. It may reside on a
+different filesystem from service runtimes, but transactional candidate
+directories are always created beside their target so activation uses an
+atomic same-filesystem rename. DUMB refuses broad system/data roots such as
+<code>/</code>, <code>/config</code>, <code>/data</code>, and <code>/mnt</code> as the cache root and falls back to the
+default cache directory.</p>
+<p>The cache is owned by the DUMB controller rather than managed service users.
+If the cache root or one of its managed namespaces is recursively <code>chown</code>ed,
+DUMB validates the tree and restores controller ownership before the next
+cache operation. The repair removes group/other write permission while
+preserving executable bits required by cached runtimes. It does not follow
+symlinks or cross a nested mount inside the cache tree.</p>
+<p>If the configured cache is a symlink, has an unsupported file type, contains
+an unexpected nested mount during ownership repair, or cannot be repaired due
+to filesystem permissions, DUMB leaves active runtimes untouched and uses a
+new controller-only cache under <code>/tmp</code> for the current process. The dashboard
+shows this fallback and its reason. Correct the configured path or ownership
+and restart DUMB to resume the persistent cache; the temporary fallback is not
+reused after restart.</p>
+<h2 id="package-manager-behavior">Package-manager behavior<a class="headerlink" href="#package-manager-behavior" title="Permanent link">#</a></h2>
 <ul>
-<li>The <strong>DUMB API</strong> provides centralized coordination, configuration management, and control over all other services.</li>
-<li>The <strong>DUMB Frontend</strong> offers a web-based interface for monitoring, onboarding, logging, and runtime service interaction.</li>
+<li>pnpm uses a shared content-addressed store grouped by pnpm major, verifies
+  store integrity, and attempts a frozen lockfile install first. A lockfile
+  compatibility retry is allowed only after pnpm specifically reports a
+  lockfile mismatch; it remains inside the rollback-protected install phase.</li>
+<li>Python services receive a clean virtual environment. pip and Poetry share
+  download caches by Python ABI and architecture, and DUMB runs <code>pip check</code>
+  before accepting the environment.</li>
+<li>NuGet packages are shared by architecture. Projects with
+  <code>packages.lock.json</code> restore in locked mode; publish remains <code>--no-restore</code>.</li>
+<li>Go module and build caches are persistent and architecture-scoped.</li>
+<li>Bun, Yarn, and Deno retain persistent shared caches and use immutable/frozen
+  lock behavior when their project supplies a lockfile.</li>
+<li>mediastorm OCI data remains digest-addressed and verified.</li>
 </ul>
-<p>These services are always required and are started automatically when the container launches.</p>
-<hr />
-<h2 id="what-are-dumb-services">What Are DUMB Services?<a class="headerlink" href="#what-are-dumb-services" title="Permanent link">#</a></h2>
-<p>DUMB services are:</p>
+<h2 id="dashboard-maintenance">Dashboard maintenance<a class="headerlink" href="#dashboard-maintenance" title="Permanent link">#</a></h2>
+<p>Newer backends advertise <code>install_cache_management</code>. The dashboard <strong>Updates</strong>
+panel then shows three distinct totals:</p>
 <ul>
-<li><strong>Core to the platform infrastructure</strong></li>
-<li><strong>Always-on</strong> - though not recommended, they can be disabled if needed or desired </li>
-<li>Required for orchestration, onboarding, and log visibility</li>
+<li><strong>Managed cache</strong> is the current <code>/config/.cache/dumb</code> tree and is the value
+  governed by <code>max_size_gib</code>.</li>
+<li><strong>Legacy release caches</strong> are exact DUMB-owned package-manager locations
+  discovered from older releases.</li>
+<li><strong>Combined install cache</strong> is the complete managed plus legacy disk usage.</li>
 </ul>
-<hr />
-<h2 id="dumb-service-index">DUMB Service Index<a class="headerlink" href="#dumb-service-index" title="Permanent link">#</a></h2>
-<table>
-<thead>
-<tr>
-<th>Service</th>
-<th>Description</th>
-<th>Role</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><a href="../dumb/api/">DUMB API</a></td>
-<td>FastAPI backend for service control, config updates, log streaming, health</td>
-<td>Orchestration &amp; Coordination</td>
-</tr>
-<tr>
-<td><a href="../dumb/dumb-frontend/">DUMB Frontend</a></td>
-<td>Web interface for onboarding, log viewing, and service control</td>
-<td>UI &amp; User Interaction</td>
-</tr>
-</tbody>
-</table>
-<hr />
-<h2 id="how-they-work">How They Work<a class="headerlink" href="#how-they-work" title="Permanent link">#</a></h2>
+<p>The panel also shows current namespace sizes and actions to:</p>
 <ul>
-<li><strong><a href="../dumb/api/">DUMB API</a></strong> is the internal backend that exposes HTTP endpoints for service management, logs, onboarding, and health monitoring. It must be responsive for any service to be monitored or configured.</li>
-<li><strong><a href="../dumb/dumb-frontend/">DUMB Frontend</a></strong> connects to the DUMB API and renders a modern web interface to help users manage their instance through onboarding steps, status dashboards, log viewers, and config editors.</li>
+<li>save a managed-cache limit from 1 through 1024 GiB when the backend advertises
+  <code>install_cache_limit_settings</code>;</li>
+<li>verify downloaded objects and quarantine corrupt entries;</li>
+<li>prune least-recently-used entries down to the configured limit; and</li>
+<li>clear compiled artifacts so the next reinstall performs a clean build.</li>
 </ul>
-<p>These services talk to each other over localhost and coordinate all other configured components.</p>
-<hr />
-<h2 id="tips">Tips<a class="headerlink" href="#tips" title="Permanent link">#</a></h2>
-<ul>
-<li>Both services are auto-launched and should not be disabled.</li>
-<li>If the UI does not load, check the logs for <code>dumb_frontend</code> and <code>dumb_api</code>.</li>
-<li>Configuration updates and onboarding rely on the DUMB API — make sure it is reachable and healthy.</li>
-</ul>
-<hr />
-<h2 id="related-pages">Related Pages<a class="headerlink" href="#related-pages" title="Permanent link">#</a></h2>
-<ul>
-<li><a href="../../api/">API</a></li>
-<li><a href="../core/">Core Services</a></li>
-<li><a href="../dependent/">Dependent Services</a></li>
-<li><a href="../optional/">Optional Services</a></li>
-<li><a href="../#how-the-services-work-together">How Services Work Together</a></li>
-</ul>
+<p>Backends that additionally advertise <code>install_cache_cleanup</code> expose a
+user-directed cleanup selector. It can remove only legacy caches, quarantine,
+compiled artifacts, verified downloads, dependency caches, or all rebuildable
+cache. Every scope requires confirmation. DUMB accepts named scopes rather
+than filesystem paths, re-discovers legacy entries immediately before
+deletion, and refuses symlinked, mounted, or moved paths. Maintenance returns
+HTTP 409 until startup completes and while DUMB's service-update lock is active.</p>
+<p>Saving the limit persists <code>dumb.install_cache.max_size_gib</code>. It does not delete
+anything immediately. Select <strong>Prune to limit</strong> when you want DUMB to reclaim
+least-recently-used rebuildable cache entries down to the new target. This split
+prevents an accidental number change from immediately removing a warm cache.</p>
+<p>Legacy discovery covers the old per-project pnpm/Bun buckets, Maintainerr Yarn
+cache, Profilarr Deno cache, and DUMB-created per-service pip, Poetry, and NuGet
+package caches. It does not classify generic application cache directories as
+install cache, and it preserves the current Traefik Proxy Admin runtime data
+that still intentionally lives below <code>/config/.pnpm-store</code>.</p>
+<p>The frontend hides the entire section for APIs without
+<code>install_cache_management</code> and independently hides scoped cleanup unless
+<code>install_cache_cleanup=true</code>. The editable limit is independently gated by
+<code>install_cache_limit_settings=true</code>, so a newer frontend does not submit the
+new nested config field to an older backend schema.</p>
+<p>Pruning and clearing artifacts never stop services or remove active runtimes.
+Cleaning downloads or dependency caches makes later installs slower until the
+cache warms again. DUMB serializes these actions against managed updates, but
+operators should still avoid cleanup while another install path is actively
+building.
+Do not manually delete transaction journals or <code>dumb-previous</code> directories
+while an update is active.</p>
+<h2 id="recovery-guidance">Recovery guidance<a class="headerlink" href="#recovery-guidance" title="Permanent link">#</a></h2>
+<p>If an update reports that the previous runtime was restored:</p>
+<ol>
+<li>Confirm that the service is running and inspect its service log.</li>
+<li>Open <strong>Updates → Install cache</strong> and run <strong>Verify downloads</strong>.</li>
+<li>Use <strong>Clear build artifacts</strong> if the failure points to missing or invalid
+   compiled output.</li>
+<li>Retry the update. DUMB will reuse valid dependency downloads but rebuild the
+   service runtime.</li>
+<li>If rollback itself failed, do not repeatedly update. Preserve the service
+   directory and logs, then restore the application's data from its normal
+   backup process.</li>
+</ol>
 
 
 
@@ -5281,7 +5437,7 @@
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../" class="md-footer__link md-footer__link--prev" aria-label="Previous: Overview">
+          <a href="../auto-update/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Auto-update">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-arrow-left" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7M19 12H5"/></svg>
@@ -5291,20 +5447,20 @@
                 Previous
               </span>
               <div class="md-ellipsis">
-                Overview
+                Auto-update
               </div>
             </div>
           </a>
         
         
           
-          <a href="api/" class="md-footer__link md-footer__link--next" aria-label="Next: DUMB API">
+          <a href="../media-library-protection/" class="md-footer__link md-footer__link--next" aria-label="Next: Media Library Protection">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                DUMB API
+                Media Library Protection
               </div>
             </div>
             <div class="md-footer__button md-icon">
