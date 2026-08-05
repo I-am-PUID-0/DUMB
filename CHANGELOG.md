@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.15.0](https://github.com/I-am-PUID-0/DUMB/compare/2.14.0...2.15.0) (2026-08-05)
+
+
+### ✨ Features
+
+* **updates:** add transactional installs and verified caching ([5b6414d](https://github.com/I-am-PUID-0/DUMB/commit/5b6414d8702b1836561c75696ed0ce7a8f64446c))
+
 ## [2.14.0](https://github.com/I-am-PUID-0/DUMB/compare/2.13.0...2.14.0) (2026-08-04)
 
 
