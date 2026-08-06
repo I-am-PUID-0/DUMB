@@ -1,5 +1,17 @@
 # Changelog
 
+## [2.16.0](https://github.com/I-am-PUID-0/DUMB/compare/2.15.1...2.16.0) (2026-08-06)
+
+
+### ✨ Features
+
+* **nzbdav:** advertise DUMB as the InfiniDysk service provider ([8d6ed8a](https://github.com/I-am-PUID-0/DUMB/commit/8d6ed8ad25cc2bb980e2f81e4f4f19ff043a62ed))
+
+
+### 🐛 Bug Fixes
+
+* **media-protection:** prevent recovery before planned operations finish ([c81916c](https://github.com/I-am-PUID-0/DUMB/commit/c81916cd42d3b0330dd08dbad2156daaa791eac2))
+
 ## [2.15.1](https://github.com/I-am-PUID-0/DUMB/compare/2.15.0...2.15.1) (2026-08-06)
 
 
