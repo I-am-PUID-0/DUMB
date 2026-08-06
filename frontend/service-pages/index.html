@@ -775,6 +775,8 @@
       
         
       
+        
+      
     
     
     
@@ -880,6 +882,36 @@
     
   
     Usage
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../features/service-reset/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-trash-2" viewBox="0 0 24 24"><path d="M10 11v6M14 11v6M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    Service Reset & Removal
   
 
     
@@ -5535,12 +5567,16 @@ config key and process name in monospace.</p>
 <li><strong>Docs</strong> opens DUMB's guide for the current service</li>
 <li><strong>Sponsor</strong> opens the service developer's support page when one is available</li>
 <li><strong>Library Protection</strong> opens the opt-out protection policy for Plex, Jellyfin, or Emby</li>
+<li><strong>Reset / Remove</strong> opens a capability-gated dry-run preview for resetting DUMB configuration or removing only the selected service/instance's scoped managed files</li>
 </ul>
 <p>When a manual stop, restart, or update affects a protected downstream media server, the frontend displays current stream/scan activity before it performs the operation. Users can defer, use the safe stop-and-recover path, keep the media server running with scans guarded, or explicitly stop it immediately. Dashboard bulk updates use safe mode and report protected busy/unknown services as deferred; use the individual service page to choose an override.</p>
 <div class="admonition note">
 <p class="admonition-title">API service controls</p>
 <p>The DUMB API service does not show Start/Stop/Restart controls in the UI.</p>
 </div>
+<h3 id="reset-remove">Reset / Remove<a class="headerlink" href="#reset-remove" title="Permanent link">&para;</a></h3>
+<p>When the backend advertises <code>service_reset</code>, eligible service pages show <strong>Reset / Remove</strong>. <strong>Reset DUMB configuration</strong> disables the selected target and restores its DUMB defaults without deleting application files. <strong>Remove service files</strong> also clears only the paths listed in the preview; custom instances are removed from <code>dumb_config</code>, while required default instances and single-instance services remain as disabled templates.</p>
+<p>The confirmation dialog identifies shared or custom paths that DUMB will retain, lists references from other configured services, and requires the exact process name. Media mounts, symlink libraries, caches, PostgreSQL databases, external stores, and other service configuration are never removed by this action. See <a href="../../features/service-reset/">Service Reset and Removal</a> before using the file-removal option.</p>
 <h3 id="rclone-optimizer-tab">Rclone Optimizer tab<a class="headerlink" href="#rclone-optimizer-tab" title="Permanent link">&para;</a></h3>
 <p>NzbDAV-backed rclone pages expose active Arr-category content selection, the
 content base and per-category discovery counts, safety limits, live job progress,

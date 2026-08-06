@@ -6,18 +6,18 @@
   
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="description" content="Learn about Metrics in DUMB, the Distributed Unlimited Media Bridge platform for Debrid, Usenet, Arr apps, and media server automation.">
+  <meta name="description" content="Safely reset one DUMB service or instance to defaults, or remove only its scoped DUMB-managed files after a reviewed preview.">
   
     <meta name="author" content="DUMB Team">
   
   
-    <link rel="canonical" href="https://dumbarr.com/frontend/metrics/">
+    <link rel="canonical" href="https://dumbarr.com/features/service-reset/">
   
   
-    <link rel="prev" href="../service-pages/">
+    <link rel="prev" href="../usage/">
   
   
-    <link rel="next" href="../../architecture/">
+    <link rel="next" href="../authentication/">
   
   
     
@@ -30,7 +30,7 @@
   
     
       
-        <title>Metrics - Distributed Unlimited Media Bridge</title>
+        <title>Service Reset and Removal - Distributed Unlimited Media Bridge</title>
       
     
   
@@ -109,9 +109,9 @@
     <meta property="og:type" content="website">
     <meta property="og:locale" content="en_US">
     <meta property="og:site_name" content="DUMB — Distributed Unlimited Media Bridge">
-    <meta property="og:title" content="Metrics">
-    <meta property="og:description" content="Learn about Metrics in DUMB, the Distributed Unlimited Media Bridge platform for Debrid, Usenet, Arr apps, and media server automation.">
-    <meta property="og:url" content="https://dumbarr.com/frontend/metrics/">
+    <meta property="og:title" content="Service Reset and Removal">
+    <meta property="og:description" content="Safely reset one DUMB service or instance to defaults, or remove only its scoped DUMB-managed files after a reviewed preview.">
+    <meta property="og:url" content="https://dumbarr.com/features/service-reset/">
     <meta property="og:image" content="https://dumbarr.com/assets/images/DUMB.png">
     <meta property="og:image:secure_url" content="https://dumbarr.com/assets/images/DUMB.png">
     <meta property="og:image:type" content="image/png">
@@ -119,8 +119,8 @@
     <meta property="og:image:height" content="1024">
     <meta property="og:image:alt" content="Distributed Unlimited Media Bridge ecosystem and architecture overview">
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Metrics">
-    <meta name="twitter:description" content="Learn about Metrics in DUMB, the Distributed Unlimited Media Bridge platform for Debrid, Usenet, Arr apps, and media server automation.">
+    <meta name="twitter:title" content="Service Reset and Removal">
+    <meta name="twitter:description" content="Safely reset one DUMB service or instance to defaults, or remove only its scoped DUMB-managed files after a reviewed preview.">
     <meta name="twitter:image" content="https://dumbarr.com/assets/images/DUMB.png">
     <meta name="twitter:image:alt" content="Distributed Unlimited Media Bridge ecosystem and architecture overview">
     
@@ -140,16 +140,16 @@
           {
             "@type": "ListItem",
             "position": 2,
-            "name": "Frontend",
-            "item": "https://dumbarr.com/frontend/"
+            "name": "Features",
+            "item": "https://dumbarr.com/features/"
           }
           
           ,
           {
             "@type": "ListItem",
             "position": 3,
-            "name": "Metrics",
-            "item": "https://dumbarr.com/frontend/metrics/"
+            "name": "Service Reset and Removal",
+            "item": "https://dumbarr.com/features/service-reset/"
           }
         ]
       }
@@ -176,7 +176,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#metrics" class="md-skip">
+        <a href="#service-reset-and-removal" class="md-skip">
           Skip to content
         </a>
       
@@ -220,7 +220,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Metrics
+              Service Reset and Removal
             
           </span>
         </div>
@@ -347,11 +347,13 @@
   
   
   
+    
+  
   
     
     
-      <li class="md-tabs__item">
-        <a href="../../features/" class="md-tabs__link">
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../" class="md-tabs__link">
           
   
   Features
@@ -366,13 +368,11 @@
   
   
   
-    
-  
   
     
     
-      <li class="md-tabs__item md-tabs__item--active">
-        <a href="../" class="md-tabs__link">
+      <li class="md-tabs__item">
+        <a href="../../frontend/" class="md-tabs__link">
           
   
   Frontend
@@ -732,6 +732,8 @@
       
   
   
+    
+  
   
   
     
@@ -781,22 +783,23 @@
     
     
       
+        
+        
+      
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
       
         
         
-          
-        
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../features/" class="md-nav__link ">
+            <a href="../" class="md-nav__link ">
               
   
   
@@ -816,13 +819,13 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_3" id="__nav_3_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_3" id="__nav_3_label" tabindex="">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_3">
             <span class="md-nav__icon md-icon"></span>
             
@@ -842,7 +845,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/configuration/" class="md-nav__link">
+      <a href="../configuration/" class="md-nav__link">
         
   
   
@@ -872,7 +875,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/usage/" class="md-nav__link">
+      <a href="../usage/" class="md-nav__link">
         
   
   
@@ -882,697 +885,6 @@
     
   
     Usage
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../features/service-reset/" class="md-nav__link">
-        
-  
-  
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-trash-2" viewBox="0 0 24 24"><path d="M10 11v6M14 11v6M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-  
-  <span class="md-ellipsis">
-    
-  
-    Service Reset & Removal
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../features/authentication/" class="md-nav__link">
-        
-  
-  
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-lock" viewBox="0 0 24 24"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-  
-  <span class="md-ellipsis">
-    
-  
-    Authentication
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../features/auto-restart/" class="md-nav__link">
-        
-  
-  
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-refresh-cw" viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>
-  
-  <span class="md-ellipsis">
-    
-  
-    Auto-restart
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../features/startup-lifecycle/" class="md-nav__link">
-        
-  
-  
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-activity" viewBox="0 0 24 24"><path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2"/></svg>
-  
-  <span class="md-ellipsis">
-    
-  
-    Startup lifecycle
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../features/auto-update/" class="md-nav__link">
-        
-  
-  
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-download" viewBox="0 0 24 24"><path d="M12 15V3M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/></svg>
-  
-  <span class="md-ellipsis">
-    
-  
-    Auto-update
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../features/install-cache/" class="md-nav__link">
-        
-  
-  
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-package-check" viewBox="0 0 24 24"><path d="m16 16 2 2 4-4"/><path d="M21 10V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l2-1.14M7.5 4.27l9 5.15"/><path d="M3.29 7 12 12l8.71-5M12 22V12"/></svg>
-  
-  <span class="md-ellipsis">
-    
-  
-    Install Cache & Safe Updates
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../features/media-library-protection/" class="md-nav__link">
-        
-  
-  
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-shield-check" viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg>
-  
-  <span class="md-ellipsis">
-    
-  
-    Media Library Protection
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../features/arr-postgres-migration/" class="md-nav__link">
-        
-  
-  
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-database-backup" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 12a9 3 0 0 0 5 2.69M21 9.3V5"/><path d="M3 5v14a9 3 0 0 0 6.47 2.88M12 12v4h4"/><path d="M13 20a5 5 0 0 0 9-3 4.5 4.5 0 0 0-4.5-4.5c-1.33 0-2.54.54-3.41 1.41L12 16"/></svg>
-  
-  <span class="md-ellipsis">
-    
-  
-    PostgreSQL Migration
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../features/symlinks/" class="md-nav__link">
-        
-  
-  
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-link" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
-  
-  <span class="md-ellipsis">
-    
-  
-    Symlink Operations
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../features/seerr-sync/" class="md-nav__link">
-        
-  
-  
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-refresh-ccw" viewBox="0 0 24 24"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 16h5v5"/></svg>
-  
-  <span class="md-ellipsis">
-    
-  
-    Seerr Sync
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../features/ffprobe-monitor/" class="md-nav__link">
-        
-  
-  
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-activity" viewBox="0 0 24 24"><path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2"/></svg>
-  
-  <span class="md-ellipsis">
-    
-  
-    FFprobe Monitor
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../features/metrics/" class="md-nav__link">
-        
-  
-  
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-gauge" viewBox="0 0 24 24"><path d="m12 14 4-4M3.34 19a10 10 0 1 1 17.32 0"/></svg>
-  
-  <span class="md-ellipsis">
-    
-  
-    Metrics
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../features/rclone-optimizer/" class="md-nav__link">
-        
-  
-  
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-gauge" viewBox="0 0 24 24"><path d="m12 14 4-4M3.34 19a10 10 0 1 1 17.32 0"/></svg>
-  
-  <span class="md-ellipsis">
-    
-  
-    Rclone Streaming Optimizer
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../features/notifications/" class="md-nav__link">
-        
-  
-  
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-bell-ring" viewBox="0 0 24 24"><path d="M10.268 21a2 2 0 0 0 3.464 0M22 8c0-2.3-.8-4.3-2-6M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326M4 2C2.8 3.7 2 5.7 2 8"/></svg>
-  
-  <span class="md-ellipsis">
-    
-  
-    Notifications
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../features/ai-assistant/" class="md-nav__link">
-        
-  
-  
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-brain" viewBox="0 0 24 24"><path d="M12 18V5M15 13a4.17 4.17 0 0 1-3-4 4.17 4.17 0 0 1-3 4M17.598 6.5A3 3 0 1 0 12 5a3 3 0 1 0-5.598 1.5"/><path d="M17.997 5.125a4 4 0 0 1 2.526 5.77"/><path d="M18 18a4 4 0 0 0 2-7.464"/><path d="M19.967 17.483A4 4 0 1 1 12 18a4 4 0 1 1-7.967-.517"/><path d="M6 18a4 4 0 0 1-2-7.464"/><path d="M6.003 5.125a4 4 0 0 0-2.526 5.77"/></svg>
-  
-  <span class="md-ellipsis">
-    
-  
-    AI Assistant
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../features/embedded-ui/" class="md-nav__link">
-        
-  
-  
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-layout-panel-left" viewBox="0 0 24 24"><rect width="7" height="18" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/></svg>
-  
-  <span class="md-ellipsis">
-    
-  
-    Embedded UIs
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-          </ul>
-        </nav>
-      
-    </li>
-  
-
-    
-      
-      
-  
-  
-    
-  
-  
-  
-    
-    
-      
-        
-          
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-    
-    
-    
-      
-        
-        
-      
-      
-        
-      
-    
-    
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
-      
-        
-        
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
-        
-          
-          <div class="md-nav__link md-nav__container">
-            <a href="../" class="md-nav__link ">
-              
-  
-  
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-layout-dashboard" viewBox="0 0 24 24"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>
-  
-  <span class="md-ellipsis">
-    
-  
-    Frontend
-  
-
-    
-  </span>
-  
-  
-
-            </a>
-            
-              
-              <label class="md-nav__link " for="__nav_4" id="__nav_4_label" tabindex="">
-                <span class="md-nav__icon md-icon"></span>
-              </label>
-            
-          </div>
-        
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
-          <label class="md-nav__title" for="__nav_4">
-            <span class="md-nav__icon md-icon"></span>
-            
-  
-    Frontend
-  
-
-          </label>
-          <ul class="md-nav__list" data-md-scrollfix>
-            
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../dashboard/" class="md-nav__link">
-        
-  
-  
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-home" viewBox="0 0 24 24"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-6a2 2 0 0 1 2.582 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
-  
-  <span class="md-ellipsis">
-    
-  
-    Dashboard
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../onboarding/" class="md-nav__link">
-        
-  
-  
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-wand-2" viewBox="0 0 24 24"><path d="m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.64a1.21 1.21 0 0 0 0 1.72l1.28 1.28a1.2 1.2 0 0 0 1.72 0L21.64 5.36a1.2 1.2 0 0 0 0-1.72M14 7l3 3M5 6v4M19 14v4M10 2v2M7 8H3M21 16h-4M11 3H9"/></svg>
-  
-  <span class="md-ellipsis">
-    
-  
-    Onboarding
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../settings/" class="md-nav__link">
-        
-  
-  
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-settings" viewBox="0 0 24 24"><path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915"/><circle cx="12" cy="12" r="3"/></svg>
-  
-  <span class="md-ellipsis">
-    
-  
-    Settings
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../service-pages/" class="md-nav__link">
-        
-  
-  
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-sliders" viewBox="0 0 24 24"><path d="M10 8h4M12 21v-9M12 8V3M17 16h4M19 12V3M19 21v-5M3 14h4M5 10V3M5 21v-7"/></svg>
-  
-  <span class="md-ellipsis">
-    
-  
-    Service Pages
   
 
     
@@ -1606,12 +918,12 @@
           
   
   
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-activity" viewBox="0 0 24 24"><path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2"/></svg>
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-trash-2" viewBox="0 0 24 24"><path d="M10 11v6M14 11v6M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
   
   <span class="md-ellipsis">
     
   
-    Metrics
+    Service Reset & Removal
   
 
     
@@ -1626,12 +938,12 @@
         
   
   
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-activity" viewBox="0 0 24 24"><path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2"/></svg>
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-trash-2" viewBox="0 0 24 24"><path d="M10 11v6M14 11v6M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
   
   <span class="md-ellipsis">
     
   
-    Metrics
+    Service Reset & Removal
   
 
     
@@ -1658,10 +970,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#overview" class="md-nav__link">
+  <a href="#choose-an-operation" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Overview
+        Choose an operation
       
     </span>
   </a>
@@ -1669,10 +981,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#resource-monitoring" class="md-nav__link">
+  <a href="#safety-boundary" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Resource monitoring
+        Safety boundary
       
     </span>
   </a>
@@ -1680,10 +992,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#historical-charts" class="md-nav__link">
+  <a href="#configuration-backup-and-recovery" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Historical charts
+        Configuration backup and recovery
       
     </span>
   </a>
@@ -1691,98 +1003,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#per-process-metrics" class="md-nav__link">
+  <a href="#api" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Per-process metrics
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#plex-cloud-status" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Plex cloud status
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#database-health" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Database health
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#system-information" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        System information
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#websocket-connection" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        WebSocket connection
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#configuration" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Configuration
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#alert-thresholds" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Alert thresholds
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#api-access" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        API access
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#troubleshooting" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Troubleshooting
+        API
       
     </span>
   </a>
@@ -1804,6 +1028,694 @@
   
 </nav>
       
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../authentication/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-lock" viewBox="0 0 24 24"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    Authentication
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../auto-restart/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-refresh-cw" viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    Auto-restart
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../startup-lifecycle/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-activity" viewBox="0 0 24 24"><path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    Startup lifecycle
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../auto-update/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-download" viewBox="0 0 24 24"><path d="M12 15V3M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    Auto-update
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../install-cache/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-package-check" viewBox="0 0 24 24"><path d="m16 16 2 2 4-4"/><path d="M21 10V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l2-1.14M7.5 4.27l9 5.15"/><path d="M3.29 7 12 12l8.71-5M12 22V12"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    Install Cache & Safe Updates
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../media-library-protection/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-shield-check" viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    Media Library Protection
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../arr-postgres-migration/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-database-backup" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 12a9 3 0 0 0 5 2.69M21 9.3V5"/><path d="M3 5v14a9 3 0 0 0 6.47 2.88M12 12v4h4"/><path d="M13 20a5 5 0 0 0 9-3 4.5 4.5 0 0 0-4.5-4.5c-1.33 0-2.54.54-3.41 1.41L12 16"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    PostgreSQL Migration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../symlinks/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-link" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    Symlink Operations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../seerr-sync/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-refresh-ccw" viewBox="0 0 24 24"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 16h5v5"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    Seerr Sync
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ffprobe-monitor/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-activity" viewBox="0 0 24 24"><path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    FFprobe Monitor
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../metrics/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-gauge" viewBox="0 0 24 24"><path d="m12 14 4-4M3.34 19a10 10 0 1 1 17.32 0"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    Metrics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../rclone-optimizer/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-gauge" viewBox="0 0 24 24"><path d="m12 14 4-4M3.34 19a10 10 0 1 1 17.32 0"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    Rclone Streaming Optimizer
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../notifications/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-bell-ring" viewBox="0 0 24 24"><path d="M10.268 21a2 2 0 0 0 3.464 0M22 8c0-2.3-.8-4.3-2-6M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326M4 2C2.8 3.7 2 5.7 2 8"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    Notifications
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ai-assistant/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-brain" viewBox="0 0 24 24"><path d="M12 18V5M15 13a4.17 4.17 0 0 1-3-4 4.17 4.17 0 0 1-3 4M17.598 6.5A3 3 0 1 0 12 5a3 3 0 1 0-5.598 1.5"/><path d="M17.997 5.125a4 4 0 0 1 2.526 5.77"/><path d="M18 18a4 4 0 0 0 2-7.464"/><path d="M19.967 17.483A4 4 0 1 1 12 18a4 4 0 1 1-7.967-.517"/><path d="M6 18a4 4 0 0 1-2-7.464"/><path d="M6.003 5.125a4 4 0 0 0-2.526 5.77"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    AI Assistant
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../embedded-ui/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-layout-panel-left" viewBox="0 0 24 24"><rect width="7" height="18" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    Embedded UIs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../frontend/" class="md-nav__link ">
+              
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-layout-dashboard" viewBox="0 0 24 24"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    Frontend
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4" id="__nav_4_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Frontend
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../frontend/dashboard/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-home" viewBox="0 0 24 24"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-6a2 2 0 0 1 2.582 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    Dashboard
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../frontend/onboarding/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-wand-2" viewBox="0 0 24 24"><path d="m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.64a1.21 1.21 0 0 0 0 1.72l1.28 1.28a1.2 1.2 0 0 0 1.72 0L21.64 5.36a1.2 1.2 0 0 0 0-1.72M14 7l3 3M5 6v4M19 14v4M10 2v2M7 8H3M21 16h-4M11 3H9"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    Onboarding
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../frontend/settings/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-settings" viewBox="0 0 24 24"><path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915"/><circle cx="12" cy="12" r="3"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    Settings
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../frontend/service-pages/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-sliders" viewBox="0 0 24 24"><path d="M10 8h4M12 21v-9M12 8V3M17 16h4M19 12V3M19 21v-5M3 14h4M5 10V3M5 21v-7"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    Service Pages
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../frontend/metrics/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-activity" viewBox="0 0 24 24"><path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    Metrics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
     </li>
   
 
@@ -5234,10 +5146,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#overview" class="md-nav__link">
+  <a href="#choose-an-operation" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Overview
+        Choose an operation
       
     </span>
   </a>
@@ -5245,10 +5157,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#resource-monitoring" class="md-nav__link">
+  <a href="#safety-boundary" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Resource monitoring
+        Safety boundary
       
     </span>
   </a>
@@ -5256,10 +5168,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#historical-charts" class="md-nav__link">
+  <a href="#configuration-backup-and-recovery" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Historical charts
+        Configuration backup and recovery
       
     </span>
   </a>
@@ -5267,98 +5179,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#per-process-metrics" class="md-nav__link">
+  <a href="#api" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Per-process metrics
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#plex-cloud-status" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Plex cloud status
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#database-health" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Database health
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#system-information" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        System information
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#websocket-connection" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        WebSocket connection
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#configuration" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Configuration
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#alert-thresholds" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Alert thresholds
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#api-access" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        API access
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#troubleshooting" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Troubleshooting
+        API
       
     </span>
   </a>
@@ -5422,7 +5246,7 @@
         <a href="../" class="md-path__link">
           
   <span class="md-ellipsis">
-    Frontend
+    Features
   </span>
 
         </a>
@@ -5439,7 +5263,7 @@
                 
                   
   
-    <a href="https://github.com/I-am-PUID-0/DUMB_docs/edit/master/docs/frontend/metrics.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+    <a href="https://github.com/I-am-PUID-0/DUMB_docs/edit/master/docs/features/service-reset.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
       
       <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-file-pen" viewBox="0 0 24 24"><path d="M12.659 22H18a2 2 0 0 0 2-2V8a2.4 2.4 0 0 0-.706-1.706l-3.588-3.588A2.4 2.4 0 0 0 14 2H6a2 2 0 0 0-2 2v9.34"/><path d="M14 2v5a1 1 0 0 0 1 1h5M10.378 12.622a1 1 0 0 1 3 3.003L8.36 20.637a2 2 0 0 1-.854.506l-2.867.837a.5.5 0 0 1-.62-.62l.836-2.869a2 2 0 0 1 .506-.853z"/></svg>
     </a>
@@ -5448,498 +5272,88 @@
     
       
     
-    <a href="https://github.com/I-am-PUID-0/DUMB_docs/raw/master/docs/frontend/metrics.md" title="View source of this page" class="md-content__button md-icon">
+    <a href="https://github.com/I-am-PUID-0/DUMB_docs/raw/master/docs/features/service-reset.md" title="View source of this page" class="md-content__button md-icon">
       
       <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-file-code-2" viewBox="0 0 24 24"><path d="M4 12.15V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.706.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2h-3.35"/><path d="M14 2v5a1 1 0 0 0 1 1h5M5 16l-3 3 3 3M9 22l3-3-3-3"/></svg>
     </a>
   
 
 
-<h1 id="metrics">Metrics<a class="headerlink" href="#metrics" title="Permanent link">&para;</a></h1>
-<p>The Metrics page provides real-time and historical system monitoring, displaying CPU, memory, disk, and network usage for the DUMB container.</p>
-<hr />
-<h2 id="overview">Overview<a class="headerlink" href="#overview" title="Permanent link">&para;</a></h2>
-<p>The metrics dashboard shows:</p>
+<h1 id="service-reset-and-removal">Service Reset and Removal<a class="headerlink" href="#service-reset-and-removal" title="Permanent link">&para;</a></h1>
+<p>DUMB can reset one previously configured service or instance without requiring a full stack reset. When the backend advertises <code>service_reset</code>, open the service page and select <strong>Reset / Remove</strong>.</p>
+<p>The workflow always:</p>
+<ol>
+<li>builds a read-only preview;</li>
+<li>shows the exact configuration action and every managed path eligible for cleanup;</li>
+<li>stops the selected process;</li>
+<li>cancels its automatic-update and scheduled symlink-backup jobs;</li>
+<li>writes a private backup of the complete DUMB configuration; and</li>
+<li>applies the selected reset or removal.</li>
+</ol>
+<p>You must type the exact process name before DUMB accepts either operation.</p>
+<h2 id="choose-an-operation">Choose an operation<a class="headerlink" href="#choose-an-operation" title="Permanent link">&para;</a></h2>
+<h3 id="reset-dumb-configuration">Reset DUMB configuration<a class="headerlink" href="#reset-dumb-configuration" title="Permanent link">&para;</a></h3>
+<p>This option keeps the service's application files and data. DUMB disables the selected service/instance and restores its DUMB configuration fields to the current defaults.</p>
 <ul>
-<li><strong>Real-time gauges</strong> - Current resource usage</li>
-<li><strong>Historical charts</strong> - Usage trends over time</li>
-<li><strong>Process details</strong> - Per-service resource consumption</li>
-<li><strong>Database health</strong> - Optional SQL and persistent-store pressure summaries</li>
-<li><strong>Plex cloud status</strong> - Optional cached status for Plex-operated services</li>
-<li><strong>System information</strong> - Container and host details</li>
+<li>A single-instance service returns to its disabled default block.</li>
+<li>A built-in/default instance returns to its disabled instance template.</li>
+<li>A custom instance keeps its identity, port, and instance-specific paths, but other DUMB settings and generated secrets return to template values.</li>
 </ul>
-<p><img alt="Metrics dashboard" src="../../assets/images/frontend/metrics.png" /></p>
-<hr />
-<h2 id="resource-monitoring">Resource monitoring<a class="headerlink" href="#resource-monitoring" title="Permanent link">&para;</a></h2>
-<h3 id="cpu-usage">CPU usage<a class="headerlink" href="#cpu-usage" title="Permanent link">&para;</a></h3>
-<table>
-<thead>
-<tr>
-<th>Metric</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><strong>Usage %</strong></td>
-<td>Current CPU utilization</td>
-</tr>
-<tr>
-<td><strong>Core Count</strong></td>
-<td>Available CPU cores</td>
-</tr>
-<tr>
-<td><strong>Load Average</strong></td>
-<td>1, 5, 15 minute averages</td>
-</tr>
-</tbody>
-</table>
-<p>The CPU gauge shows:</p>
+<p>Use this when DUMB configuration is wrong but the application's own database, settings, and runtime files should remain available.</p>
+<h3 id="remove-service-files">Remove service files<a class="headerlink" href="#remove-service-files" title="Permanent link">&para;</a></h3>
+<p>This option performs the configuration reset and also clears the previewed DUMB-owned config/runtime/data paths.</p>
 <ul>
-<li><span class="twemoji" style="color: #4caf50"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2A10 10 0 0 0 2 12a10 10 0 0 0 10 10 10 10 0 0 0 10-10A10 10 0 0 0 12 2"/></svg></span> Green: 0-60%</li>
-<li><span class="twemoji" style="color: #ff9800"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2A10 10 0 0 0 2 12a10 10 0 0 0 10 10 10 10 0 0 0 10-10A10 10 0 0 0 12 2"/></svg></span> Amber: 60-85%</li>
-<li><span class="twemoji" style="color: #f44336"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2A10 10 0 0 0 2 12a10 10 0 0 0 10 10 10 10 0 0 0 10-10A10 10 0 0 0 12 2"/></svg></span> Red: 85%+</li>
+<li>A custom instance is removed from the service's <code>instances</code> object. If it was the last instance, DUMB writes the disabled default template in the same operation instead of temporarily saving an empty <code>instances</code> object.</li>
+<li>A required default instance or single-instance service is reset to its disabled template. DUMB keeps that template because config loading would recreate it anyway.</li>
+<li>Only paths attributed exclusively to the selected process are eligible.</li>
 </ul>
-<h3 id="memory-usage">Memory usage<a class="headerlink" href="#memory-usage" title="Permanent link">&para;</a></h3>
-<table>
-<thead>
-<tr>
-<th>Metric</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><strong>Used</strong></td>
-<td>Currently allocated memory</td>
-</tr>
-<tr>
-<td><strong>Available</strong></td>
-<td>Free memory for allocation</td>
-</tr>
-<tr>
-<td><strong>Total</strong></td>
-<td>Total system RAM</td>
-</tr>
-<tr>
-<td><strong>Usage %</strong></td>
-<td>Percentage in use</td>
-</tr>
-</tbody>
-</table>
-<h3 id="swap-usage">Swap usage<a class="headerlink" href="#swap-usage" title="Permanent link">&para;</a></h3>
-<table>
-<thead>
-<tr>
-<th>Metric</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><strong>Used</strong></td>
-<td>Current swap utilization</td>
-</tr>
-<tr>
-<td><strong>Total</strong></td>
-<td>Total swap space</td>
-</tr>
-<tr>
-<td><strong>Usage %</strong></td>
-<td>Percentage in use</td>
-</tr>
-</tbody>
-</table>
-<div class="admonition tip">
-<p class="admonition-title">Swap monitoring</p>
-<p>High swap usage may indicate memory pressure. Consider increasing container memory limits.</p>
+<p>Removed application files are not backed up and cannot be restored by DUMB. Review the path list carefully.</p>
+<h2 id="safety-boundary">Safety boundary<a class="headerlink" href="#safety-boundary" title="Permanent link">&para;</a></h2>
+<p>DUMB intentionally retains:</p>
+<ul>
+<li><code>/mnt</code> content, mountpoints, media roots, and symlink libraries;</li>
+<li>shared install/dependency caches;</li>
+<li>PostgreSQL databases and other external data stores;</li>
+<li>directories shared by another configured DUMB service;</li>
+<li>custom paths outside the selected service's known DUMB-managed root; and</li>
+<li>configuration belonging to other services.</li>
+</ul>
+<p>For example, CLI Debrid and CLI Battery share parts of the CLI Debrid tree, while rclone instances share an rclone configuration file. The preview keeps those shared locations and explains why. PostgreSQL is a stack dependency, so resetting its DUMB block never deletes the shared database cluster.</p>
+<div class="admonition warning">
+<p class="admonition-title">Database-backed services</p>
+<p>Removing a service's files does not drop its PostgreSQL database. A later reinstall may reconnect to existing database state. Drop or archive a database separately only after confirming that no other service uses it.</p>
 </div>
-<h3 id="disk-usage">Disk usage<a class="headerlink" href="#disk-usage" title="Permanent link">&para;</a></h3>
-<table>
-<thead>
-<tr>
-<th>Metric</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><strong>Used</strong></td>
-<td>Space consumed</td>
-</tr>
-<tr>
-<td><strong>Free</strong></td>
-<td>Available space</td>
-</tr>
-<tr>
-<td><strong>Total</strong></td>
-<td>Total disk capacity</td>
-</tr>
-<tr>
-<td><strong>Usage %</strong></td>
-<td>Percentage in use</td>
-</tr>
-</tbody>
-</table>
-<p>Use <strong>Metrics → Settings → Monitored Filesystems</strong> to choose one or more paths that DUMB can see inside its container. The discovered list includes eligible container mounts; custom absolute container paths are also accepted. For example, if the storage you care about is bind-mounted at <code>/data</code>, select <code>/data</code> rather than <code>/</code>.</p>
-<p>Docker does not expose an unmounted host path to DUMB. The selector therefore uses container paths, not host paths. The first selected path is marked <strong>Primary</strong> and supplies the existing disk/inode history chart and compatibility API fields. Use the arrow controls to change the primary path. All selected filesystems appear in the live card and participate in disk/inode alerts; unavailable paths are shown explicitly.</p>
-<h3 id="inode-usage">Inode usage<a class="headerlink" href="#inode-usage" title="Permanent link">&para;</a></h3>
-<table>
-<thead>
-<tr>
-<th>Metric</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><strong>Used / free / total</strong></td>
-<td>Filesystem entries consumed and remaining</td>
-</tr>
-<tr>
-<td><strong>Usage %</strong></td>
-<td>Percentage of available inodes in use</td>
-</tr>
-</tbody>
-</table>
-<p>The <strong>Filesystems</strong> card shows disk and inode pressure for every selected path, plus a zoomable inode-history chart for the primary path alongside system/container I/O. Inodes represent filesystem entries for files and directories, so a filesystem can reach 100% inode usage and reject new files even when byte capacity remains. JSON history exports retain each filesystem entry; CSV exports add disk and inode percentage columns for every path present in the selected history range.</p>
-<h3 id="network-io">Network I/O<a class="headerlink" href="#network-io" title="Permanent link">&para;</a></h3>
-<table>
-<thead>
-<tr>
-<th>Metric</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><strong>Bytes Sent</strong></td>
-<td>Total outbound data</td>
-</tr>
-<tr>
-<td><strong>Bytes Received</strong></td>
-<td>Total inbound data</td>
-</tr>
-<tr>
-<td><strong>Packets Sent</strong></td>
-<td>Outbound packet count</td>
-</tr>
-<tr>
-<td><strong>Packets Received</strong></td>
-<td>Inbound packet count</td>
-</tr>
-</tbody>
-</table>
-<p>Use <strong>Metrics → Settings → Monitored Network Interfaces</strong> to select every visible interface or a specific set. The default <code>all</code> option preserves the previous aggregate, including loopback. Selecting a specific bridge interface such as <code>eth0</code> removes unrelated loopback traffic from the aggregate rate chart.</p>
-<p>The Network card shows the selected aggregate plus per-interface link state, speed, MTU, current send/receive rate, cumulative counters, and nonzero error/drop totals. JSON history retains the interface records, and CSV exports add send/receive rate columns for every interface present in the selected range.</p>
-<p>Only interfaces visible inside DUMB's network namespace are available. A normally bridge-networked container cannot inspect host interfaces; host interfaces become visible when DUMB runs with host networking.</p>
-<hr />
-<h2 id="historical-charts">Historical charts<a class="headerlink" href="#historical-charts" title="Permanent link">&para;</a></h2>
-<p>The metrics page displays time-series charts showing resource usage over time:</p>
-<ul>
-<li><strong>Time range</strong> - Configurable history window</li>
-<li><strong>Bucket size</strong> - Data aggregation interval</li>
-<li><strong>Auto-refresh</strong> - Continuous updates via WebSocket</li>
-</ul>
-<h3 id="chart-controls">Chart controls<a class="headerlink" href="#chart-controls" title="Permanent link">&para;</a></h3>
-<table>
-<thead>
-<tr>
-<th>Control</th>
-<th>Function</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Zoom</td>
-<td>Scroll to zoom in/out</td>
-</tr>
-<tr>
-<td>Pan</td>
-<td>Click and drag to move</td>
-</tr>
-<tr>
-<td>Reset</td>
-<td>Double-click to reset view</td>
-</tr>
-</tbody>
-</table>
-<hr />
-<h2 id="per-process-metrics">Per-process metrics<a class="headerlink" href="#per-process-metrics" title="Permanent link">&para;</a></h2>
-<p>View resource usage for individual services:</p>
-<table>
-<thead>
-<tr>
-<th>Column</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><strong>Process</strong></td>
-<td>Service name</td>
-</tr>
-<tr>
-<td><strong>PID</strong></td>
-<td>Process ID</td>
-</tr>
-<tr>
-<td><strong>CPU %</strong></td>
-<td>CPU utilization</td>
-</tr>
-<tr>
-<td><strong>Memory %</strong></td>
-<td>RAM utilization</td>
-</tr>
-<tr>
-<td><strong>Memory RSS</strong></td>
-<td>Resident set size</td>
-</tr>
-</tbody>
-</table>
-<p>Sort by any column to identify resource-intensive services.</p>
-<hr />
-<h2 id="plex-cloud-status">Plex cloud status<a class="headerlink" href="#plex-cloud-status" title="Permanent link">&para;</a></h2>
-<p>Enable <strong>Plex Cloud Status</strong> from <strong>Metrics → Settings</strong> or open the Plex service page and choose <strong>Plex Status</strong>. After it is enabled, the Metrics page shows Plex's overall public status, the latest collection time, affected components, active incidents, scheduled maintenance, and links to the official status entry.</p>
-<p>The existing Metrics alert banner adds a Plex cloud alert when the enabled feed reports a disruption. A temporary refresh failure shows the last successful sample as <strong>Stale</strong> instead of replacing it with a false operational state.</p>
-<p>This panel is deliberately separate from the local Plex service indicator:</p>
-<ul>
-<li><strong>Plex service status</strong> tells you whether the DUMB-managed Plex process is running and healthy.</li>
-<li><strong>Plex Cloud Status</strong> summarizes infrastructure operated by Plex.</li>
-</ul>
-<p>An operational cloud status does not prove that local playback, remote access, DNS, routing, or port forwarding is working. The metric is disabled by default and sends no Plex token or local library/service data.</p>
-<hr />
-<h2 id="database-health">Database health<a class="headerlink" href="#database-health" title="Permanent link">&para;</a></h2>
-<p>Only services explicitly opted into Database Health monitoring appear in the <strong>Database Health</strong> table on the Metrics page. Supported services with monitoring disabled remain available in <strong>Metrics → Settings</strong> and the service page's <strong>Database Health</strong> panel so they can be enabled, but they are omitted from the results table. When no services are monitored, the section shows a concise empty state with a <strong>Configure</strong> action instead of disabled service rows.</p>
-<p>The Database Health section appears near the bottom of the live Metrics content. When Plex Cloud Status is enabled, its card follows Database Health; <strong>System</strong> remains last. Select any column header to sort ascending or descending; size, WAL, signal, pressure, and probe columns sort by their underlying numeric values rather than the formatted text, and unavailable values remain last. The selected sort is retained in that browser. Click or keyboard-activate any service row to expand or collapse its full details. Expanded details match the service-page panel and include the recommendation, score reasons, database paths/names, provider metadata, filesystem capacity, inode pressure, read-only/network state, probe results, and observed log signals. Column headers, settings, status badges, and detail fields include tooltips, and the section links directly to the Database Health documentation.</p>
-<p>The table shows:</p>
-<ul>
-<li>detected SQL provider or custom store format and current pressure classification;</li>
-<li>combined database/store and SQLite WAL size;</li>
-<li>database-related log-signal count;</li>
-<li>bounded read-only probe latency when Enhanced mode is enabled;</li>
-<li>a service-specific recommendation.</li>
-<li>filesystem byte usage/free space, inode usage/free inodes, and read-only state in the expanded details.</li>
-</ul>
-<p>Use <strong>Standard / passive</strong> for the lowest overhead. Use <strong>Enhanced / read-only probes</strong> when you need SQLite page/WAL metadata or PostgreSQL statistics. Plex is always collected passively while running, even if Enhanced is selected. Decypharr append-log stores, Phalanx DB Hyperbee data, and the Zurg state directory are also passive-only; Enhanced does not open or query those formats.</p>
-<p>The supported set includes the Arrs, NzbDAV, Bazarr, Plex, CLI Debrid/Battery, Emby, Jellyfin, Profilarr, Tautulli, AltMount, Pulsarr, Seerr, PostgreSQL, pgAdmin, Riven Backend, Zilean, Traefik Proxy Admin, Decypharr, Phalanx DB, and Zurg. DUMB detects SQLite versus PostgreSQL for provider-neutral services and keeps multi-instance entries separate.</p>
-<p>Enable <strong>Ignore network storage score</strong> for an individual service when its NFS/SMB placement is intentional. The filesystem remains visible in the service details, but it no longer raises the pressure score or replaces recommendations derived from the remaining metrics.</p>
-<p>The override excludes only network placement. Low free space, high inode usage, read-only storage, WAL growth, log errors, probe latency, locks, deadlocks, and long-running transactions continue to affect the result.</p>
-<p>Pressure classifications are <code>healthy</code>, <code>observing</code>, <code>moderate</code>, <code>high</code>, <code>critical</code>, <code>unavailable</code>, or <code>disabled</code>. Collect through representative imports, scans, health checks, and playback before deciding whether PostgreSQL would help.</p>
-<p>Open <strong>How to read Database Health</strong> for an in-product explanation of observed signals, score bands, and limitations. Database Health is evidence rather than a benchmark: it cannot profile individual SQL queries, prove root cause, predict an exact provider speedup, guarantee every transient event was captured, repair databases, or replace backups and application-native diagnostics.</p>
-<hr />
-<h2 id="system-information">System information<a class="headerlink" href="#system-information" title="Permanent link">&para;</a></h2>
-<h3 id="container-details">Container details<a class="headerlink" href="#container-details" title="Permanent link">&para;</a></h3>
-<table>
-<thead>
-<tr>
-<th>Info</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><strong>Boot Time</strong></td>
-<td>When the container started</td>
-</tr>
-<tr>
-<td><strong>Uptime</strong></td>
-<td>Time since boot</td>
-</tr>
-<tr>
-<td><strong>Platform</strong></td>
-<td>Operating system</td>
-</tr>
-</tbody>
-</table>
-<h3 id="cgroup-awareness">cgroup awareness<a class="headerlink" href="#cgroup-awareness" title="Permanent link">&para;</a></h3>
-<p>DUMB automatically detects whether it's running in a cgroup-limited environment (Docker/Kubernetes) and reports metrics accordingly:</p>
-<ul>
-<li><strong>cgroup mode</strong> - Reports container limits, not host resources</li>
-<li><strong>Host mode</strong> - Reports full system resources</li>
-</ul>
-<hr />
-<h2 id="websocket-connection">WebSocket connection<a class="headerlink" href="#websocket-connection" title="Permanent link">&para;</a></h2>
-<p>Metrics are streamed in real-time via WebSocket:</p>
-<table>
-<thead>
-<tr>
-<th>Status</th>
-<th>Indicator</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><strong>Connected</strong></td>
-<td><span class="twemoji" style="color: #4caf50"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2A10 10 0 0 0 2 12a10 10 0 0 0 10 10 10 10 0 0 0 10-10A10 10 0 0 0 12 2"/></svg></span> Live updates active</td>
-</tr>
-<tr>
-<td><strong>Connecting</strong></td>
-<td><span class="twemoji" style="color: #ff9800"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2A10 10 0 0 0 2 12a10 10 0 0 0 10 10 10 10 0 0 0 10-10A10 10 0 0 0 12 2"/></svg></span> Establishing connection</td>
-</tr>
-<tr>
-<td><strong>Disconnected</strong></td>
-<td><span class="twemoji" style="color: #f44336"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2A10 10 0 0 0 2 12a10 10 0 0 0 10 10 10 10 0 0 0 10-10A10 10 0 0 0 12 2"/></svg></span> No live updates</td>
-</tr>
-</tbody>
-</table>
-<p>The frontend automatically reconnects if the connection drops.</p>
-<hr />
-<h2 id="configuration">Configuration<a class="headerlink" href="#configuration" title="Permanent link">&para;</a></h2>
-<h3 id="update-interval">Update interval<a class="headerlink" href="#update-interval" title="Permanent link">&para;</a></h3>
-<p>Configure how frequently metrics are updated:</p>
-<table>
-<thead>
-<tr>
-<th>Setting</th>
-<th>Default</th>
-<th>Range</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Interval</td>
-<td>2 seconds</td>
-<td>0.5-10 seconds</td>
-</tr>
-</tbody>
-</table>
-<p>Lower intervals provide more responsive updates but increase network traffic.</p>
-<h3 id="history-settings">History settings<a class="headerlink" href="#history-settings" title="Permanent link">&para;</a></h3>
-<table>
-<thead>
-<tr>
-<th>Setting</th>
-<th>Default</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><strong>Retention</strong></td>
-<td>7 days</td>
-<td>How long to keep history</td>
-</tr>
-<tr>
-<td><strong>Bucket Size</strong></td>
-<td>5 seconds</td>
-<td>Aggregation interval</td>
-</tr>
-<tr>
-<td><strong>History read backend</strong></td>
-<td>SQLite</td>
-<td>Serve history from local SQLite or optional DUMB-managed PostgreSQL</td>
-</tr>
-<tr>
-<td><strong>Max local SQLite size</strong></td>
-<td>100 MB</td>
-<td>Bounds the compressed local history/continuity payloads</td>
-</tr>
-<tr>
-<td><strong>SQLite continuity path</strong></td>
-<td><code>/config/metrics/metrics.sqlite</code></td>
-<td>Persistent local history database and PostgreSQL write-ahead continuity buffer</td>
-</tr>
-</tbody>
-</table>
-<h3 id="history-storage-status">History storage status<a class="headerlink" href="#history-storage-status" title="Permanent link">&para;</a></h3>
-<p>Open <strong>Metrics → Settings → History Storage</strong> to see:</p>
-<ul>
-<li>the configured and currently active provider;</li>
-<li>whether automatic SQLite fallback is active;</li>
-<li>local and PostgreSQL sample counts and allocated size;</li>
-<li>the local compressed-to-original JSON ratio;</li>
-<li>retained legacy JSONL files and import state;</li>
-<li>the latest safe PostgreSQL connection error.</li>
-</ul>
-<p>PostgreSQL is not merely a backup. When selected, synchronized, and healthy, it is the active history query and retention backend. SQLite is written first as a bounded write-ahead continuity buffer so live charts remain available when PostgreSQL is stopped or restarting. Retained local samples are replayed when PostgreSQL reconnects.</p>
-<p>On current backends, choosing PostgreSQL only changes the draft selection. The panel explicitly prompts the user to click <strong>Apply &amp; activate PostgreSQL</strong>; nothing is provisioned until that button is used. Apply enables PostgreSQL if necessary, creates the dedicated database, starts or reuses the managed process, synchronizes retained samples, and switches history reads without restarting DUMB. During the operation the panel displays activation progress. Afterward, a persistent <strong>PostgreSQL cutover complete</strong> notice confirms that PostgreSQL is serving history reads while SQLite remains the continuity buffer.</p>
-<p>If any step fails, the panel keeps SQLite active and returns to the pending state so <strong>Apply &amp; activate PostgreSQL</strong> can be used to retry. For backward compatibility, dmbdb shows <strong>Apply</strong> plus restart guidance instead when the connected backend does not advertise hot activation support.</p>
-<p>Use <strong>Import JSONL now</strong> to force a fresh scan for history created by older DUMB releases. The import is timestamp-idempotent, detects files added after an earlier completed migration, and does not delete the source files. <strong>Refresh / probe</strong> performs an operator-requested PostgreSQL connection test without waiting for the normal retry interval.</p>
-<p>See <a href="../../features/metrics/#metrics-history-storage">Metrics history storage</a> for configuration, sizing, migration, fallback, and rollback details.</p>
-<hr />
-<h2 id="alert-thresholds">Alert thresholds<a class="headerlink" href="#alert-thresholds" title="Permanent link">&para;</a></h2>
-<p>Configure when alerts appear on the dashboard:</p>
-<table>
-<thead>
-<tr>
-<th>Resource</th>
-<th>Default</th>
-<th>Setting Location</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>CPU</td>
-<td>85%</td>
-<td>Settings <span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"/></svg></span> Preferences</td>
-</tr>
-<tr>
-<td>Memory</td>
-<td>85%</td>
-<td>Settings <span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"/></svg></span> Preferences</td>
-</tr>
-<tr>
-<td>Disk</td>
-<td>90%</td>
-<td>Settings <span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"/></svg></span> Preferences</td>
-</tr>
-<tr>
-<td>Inodes</td>
-<td>90%</td>
-<td>Metrics header warning controls</td>
-</tr>
-<tr>
-<td>Database Health</td>
-<td>Off; selectable Moderate/High/Critical minimum</td>
-<td>Metrics header or Metrics Settings <span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"/></svg></span> Database Health Monitoring</td>
-</tr>
-</tbody>
-</table>
-<p>Alerts appear as banners when thresholds are exceeded and on the global Metrics indicator. <strong>DB health</strong> / <strong>Include Database Health in alerts</strong> is optional and browser-local; enabling it does not enable collection for any service or alter its pressure score.</p>
-<p>These browser alerts are separate from <a href="../../features/notifications/">backend notifications</a>. Backend notifications continue operating without an open browser and have their own persistent thresholds, cooldowns, recovery handling, and delivery history.</p>
-<hr />
-<h2 id="api-access">API access<a class="headerlink" href="#api-access" title="Permanent link">&para;</a></h2>
-<p>Metrics are also available via the REST API:</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Current metrics snapshot</span>
-curl<span class="w"> </span>http://localhost:3005/api/metrics
-
-<span class="c1"># Historical metrics newer than a Unix timestamp</span>
-curl<span class="w"> </span><span class="s2">&quot;http://localhost:3005/api/metrics/history?since=1784300000&amp;limit=5000&quot;</span>
-
-<span class="c1"># Storage, migration, and fallback status</span>
-curl<span class="w"> </span><span class="s2">&quot;http://localhost:3005/api/metrics/history/storage?probe_postgresql=true&quot;</span>
-
-<span class="c1"># Database health, optionally forcing a fresh collection</span>
-curl<span class="w"> </span><span class="s2">&quot;http://localhost:3005/api/metrics/database-health?process_name=NzbDAV&amp;refresh=true&quot;</span>
+<div class="admonition warning">
+<p class="admonition-title">Dependent services</p>
+<p>DUMB warns when another configured service references the target, but it does not rewrite that other service's <code>core_service</code>, <code>core_services</code>, URL, mount, or application integration settings. Review dependencies before starting the remaining stack.</p>
+</div>
+<h2 id="configuration-backup-and-recovery">Configuration backup and recovery<a class="headerlink" href="#configuration-backup-and-recovery" title="Permanent link">&para;</a></h2>
+<p>Before changing <code>dumb_config.json</code>, DUMB writes a mode-<code>0600</code> full-config backup under:</p>
+<div class="highlight"><pre><span></span><code>/config/service-reset-backups/
 </code></pre></div>
-<p>See the <a href="../../api/websocket/">WebSocket API</a> documentation for real-time streaming.</p>
-<hr />
-<h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h2>
-<h3 id="metrics-not-updating">Metrics not updating<a class="headerlink" href="#metrics-not-updating" title="Permanent link">&para;</a></h3>
-<ul>
-<li>Check WebSocket connection status</li>
-<li>Verify browser supports WebSocket</li>
-<li>Check for network/firewall issues</li>
-</ul>
-<h3 id="high-memory-usage">High memory usage<a class="headerlink" href="#high-memory-usage" title="Permanent link">&para;</a></h3>
-<ul>
-<li>Review per-process metrics to identify heavy services</li>
-<li>Consider disabling unused services</li>
-<li>Increase container memory limits</li>
-</ul>
-<h3 id="disk-filling-up">Disk filling up<a class="headerlink" href="#disk-filling-up" title="Permanent link">&para;</a></h3>
-<ul>
-<li>Check log file sizes</li>
-<li>Review metrics retention settings</li>
-<li>Clear old data if needed</li>
-</ul>
-<hr />
+<p>The API response includes the exact backup path. The backup can recover DUMB configuration, including a removed custom instance, but it does not contain deleted service files.</p>
+<p>If an operation reports failure, the selected process remains stopped. Check the DUMB log and the backup directory before retrying. Restore configuration only while DUMB is stopped, then restart the container so configuration is reloaded consistently.</p>
+<h2 id="api">API<a class="headerlink" href="#api" title="Permanent link">&para;</a></h2>
+<p>The frontend uses two capability-gated endpoints:</p>
+<div class="highlight"><pre><span></span><code><span class="err">GET /api/process/service-reset/preview?process_name=Sonarr%20Movies&amp;action=remove</span>
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><span class="err">POST /api/process/service-reset</span>
+<span class="err">Content-Type: application/json</span>
+
+<span class="err">{</span>
+<span class="err">  &quot;process_name&quot;: &quot;Sonarr Movies&quot;,</span>
+<span class="err">  &quot;action&quot;: &quot;remove&quot;,</span>
+<span class="err">  &quot;confirmation&quot;: &quot;Sonarr Movies&quot;</span>
+<span class="err">}</span>
+</code></pre></div>
+<p>Supported actions are <code>reset</code> and <code>remove</code>. Use the preview returned immediately before the POST; DUMB recalculates and validates the plan again when applying it.</p>
+<p>The DUMB API and DUMB Frontend control-plane services cannot be reset through this workflow.</p>
 <h2 id="related-pages">Related pages<a class="headerlink" href="#related-pages" title="Permanent link">&para;</a></h2>
 <ul>
-<li><a href="../dashboard/">Dashboard</a> - Service monitoring</li>
-<li><a href="../../api/websocket/">WebSocket API</a> - Real-time data streaming</li>
-<li><a href="../settings/">Settings</a> - Alert configuration</li>
+<li><a href="../../frontend/service-pages/">Service pages</a></li>
+<li><a href="../configuration/">Configuration</a></li>
+<li><a href="../../reference/instances/">Multi-instance setup</a></li>
+<li><a href="../../api/process/">Process Management API</a></li>
 </ul>
 
 
@@ -5981,7 +5395,7 @@ curl<span class="w"> </span><span class="s2">&quot;http://localhost:3005/api/met
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../service-pages/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Service Pages">
+          <a href="../usage/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Usage">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-arrow-left" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7M19 12H5"/></svg>
@@ -5991,20 +5405,20 @@ curl<span class="w"> </span><span class="s2">&quot;http://localhost:3005/api/met
                 Previous
               </span>
               <div class="md-ellipsis">
-                Service Pages
+                Usage
               </div>
             </div>
           </a>
         
         
           
-          <a href="../../architecture/" class="md-footer__link md-footer__link--next" aria-label="Next: Overview">
+          <a href="../authentication/" class="md-footer__link md-footer__link--next" aria-label="Next: Authentication">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Overview
+                Authentication
               </div>
             </div>
             <div class="md-footer__button md-icon">
