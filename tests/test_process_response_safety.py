@@ -238,6 +238,7 @@ class MediaStormCredentialResponseTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(capabilities["install_cache_management"])
         self.assertTrue(capabilities["install_cache_cleanup"])
         self.assertTrue(capabilities["install_cache_limit_settings"])
+        self.assertTrue(capabilities["service_reset"])
 
     async def test_missing_credential_does_not_return_a_password(self):
         with (

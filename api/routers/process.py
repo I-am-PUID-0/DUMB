@@ -12,7 +12,7 @@ from utils.dependencies import (
     get_media_protection_manager,
 )
 from utils.config_loader import CONFIG_MANAGER, find_service_config
-from utils.ai_diagnostics import record_diagnostic_event
+from utils.ai_diagnostics import record_config_change, record_diagnostic_event
 from utils.setup import (
     COMMIT_PIN_SERVICE_KEYS,
     ensure_managed_postgres_database,
@@ -46,6 +46,11 @@ from utils.arr_postgres_migration import (
 from utils.port_probe import is_port_available as _is_port_available
 from utils.versions import Versions
 from utils.install_cache import INSTALL_CACHE
+from utils.service_reset import (
+    ServiceResetError,
+    build_service_reset_preview,
+    execute_service_reset,
+)
 import json, copy, time, glob, re, os, threading, fnmatch
 
 
@@ -68,6 +73,13 @@ class UpdateInstallRequest(BaseModel):
 
 class RescheduleAutoUpdateRequest(BaseModel):
     process_name: str
+
+
+class ServiceResetRequest(BaseModel):
+    process_name: str
+    action: str = "reset"
+    confirmation: str
+    model_config = ConfigDict(extra="forbid")
 
 
 class InstallCachePruneRequest(BaseModel):
@@ -161,6 +173,7 @@ class UnifiedStartRequest(BaseModel):
 
 
 process_router = APIRouter()
+SERVICE_RESET_LOCK = threading.Lock()
 versions = Versions()
 SYMLINK_SNAPSHOT_ROOT = "/config/symlink-repair/snapshots"
 STACKTRACE_MARKERS = (
@@ -2336,6 +2349,109 @@ async def restart_service(
             )
 
     return await run_in_threadpool(restart)
+
+
+@process_router.get("/service-reset/preview")
+async def preview_service_reset(
+    process_name: str = Query(...),
+    action: str = Query("reset"),
+    current_user: str = Depends(get_optional_current_user),
+):
+    try:
+        return await run_in_threadpool(
+            build_service_reset_preview,
+            CONFIG_MANAGER,
+            process_name,
+            action,
+        )
+    except ServiceResetError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from None
+
+
+@process_router.post("/service-reset")
+async def reset_or_remove_service(
+    request: ServiceResetRequest,
+    process_handler=Depends(get_process_handler),
+    updater=Depends(get_updater),
+    logger=Depends(get_logger),
+    current_user: str = Depends(get_optional_current_user),
+):
+    before_config = None
+
+    def run_reset():
+        nonlocal before_config
+        with SERVICE_RESET_LOCK:
+            before_config = copy.deepcopy(CONFIG_MANAGER.config)
+            preview = build_service_reset_preview(
+                CONFIG_MANAGER, request.process_name, request.action
+            )
+            if request.confirmation != preview["confirmation"]:
+                raise ServiceResetError(
+                    "Confirmation must exactly match the process name."
+                )
+            if updater:
+                updater.cancel_service_schedules(request.process_name)
+            return execute_service_reset(
+                CONFIG_MANAGER,
+                process_handler,
+                request.process_name,
+                request.action,
+                request.confirmation,
+            )
+
+    try:
+        result = await run_in_threadpool(run_reset)
+    except ServiceResetError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from None
+    except Exception:
+        logger.error("Service reset/remove failed for %s.", request.process_name)
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                "Service reset/remove failed. The service was left stopped; "
+                "check DUMB logs and the private config backup directory."
+            ),
+        ) from None
+
+    record_config_change(
+        before_config or {},
+        CONFIG_MANAGER.config,
+        process_name=request.process_name,
+        actor=current_user,
+        source="service_reset",
+        logger=logger,
+    )
+    record_diagnostic_event(
+        "service_removed" if request.action == "remove" else "service_reset",
+        (
+            "Service files removed and DUMB configuration reset"
+            if request.action == "remove"
+            else "DUMB service configuration reset"
+        ),
+        process_name=request.process_name,
+        actor=current_user,
+        logger=logger,
+    )
+    try:
+        from utils.traefik_setup import (
+            ensure_ui_services_config,
+            get_traefik_config_dir,
+        )
+
+        ensure_ui_services_config(str(get_traefik_config_dir()))
+    except Exception as error:
+        logger.warning(
+            "Embedded UI routes were not refreshed after resetting %s: %s",
+            request.process_name,
+            error,
+        )
+    logger.info(
+        "Completed %s for service %s; removed %s managed paths.",
+        request.action,
+        request.process_name,
+        len(result.get("removed_paths") or []),
+    )
+    return _safe_api_response(result)
 
 
 @process_router.get("/service-status")
@@ -5387,6 +5503,7 @@ async def get_capabilities(current_user: str = Depends(get_optional_current_user
         "install_cache_cleanup": True,
         "install_cache_limit_settings": True,
         "media_library_protection": True,
+        "service_reset": True,
         "media_library_protection_service_keys": ["plex", "jellyfin", "emby"],
         "plex_library_settings": True,
         "configured_source_install": True,

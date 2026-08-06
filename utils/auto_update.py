@@ -1691,6 +1691,11 @@ class Update:
             Update._symlink_backup_jobs.pop(process_name, None)
         Update._symlink_backup_next_at.pop(process_name, None)
 
+    def cancel_service_schedules(self, process_name):
+        """Cancel background schedules before a service config is reset/removed."""
+        self._cancel_auto_update_job(process_name)
+        self._cancel_symlink_backup_job(process_name)
+
     def schedule_symlink_backup(self, process_name, config, key, instance_name):
         if not self.supports_symlink_backup(key):
             return
