@@ -546,6 +546,11 @@ class MediaProtectionManager:
             policy = protection_policy(media_name)
             if not policy.get("enabled"):
                 continue
+            # A media server that was already stopped has no active playback
+            # or scan behavior to guard, and DUMB must not create a protection
+            # incident that implies it changed or will recover that server.
+            if not self._is_running(media_name):
+                continue
             configured_mounts = {
                 os.path.normpath(path)
                 for path in (policy.get("protected_mounts") or [])
@@ -566,7 +571,7 @@ class MediaProtectionManager:
                 {
                     "key": media_key,
                     "process_name": media_name,
-                    "running": self._is_running(media_name),
+                    "running": True,
                     "protected_mounts": sorted(media_mounts),
                     "target_mounts": sorted(target_mounts),
                     "policy": public_policy(media_name),

@@ -190,18 +190,24 @@ class ConfigManager:
                 mediastorm_cfg["process_name"] = "mediastorm"
                 mediastorm_process_name_migrated = True
 
-            # The original nzbdav-dev/nzbdav repository was DUMB's historical
-            # default. Its exact old default should follow the maintained fork,
-            # while every intentional custom owner/repository remains untouched.
+            # Follow the NzbDAV project's maintained repository transitions.
+            # Only exact former DUMB defaults migrate automatically; every
+            # intentional custom owner/repository remains untouched.
             nzbdav_cfg = existing_config.get("nzbdav")
-            if (
-                isinstance(nzbdav_cfg, dict)
-                and str(nzbdav_cfg.get("repo_owner") or "").strip().casefold()
-                == "nzbdav-dev"
-                and str(nzbdav_cfg.get("repo_name") or "").strip().casefold()
-                == "nzbdav"
-            ):
-                nzbdav_cfg["repo_owner"] = "nzbdav"
+            nzbdav_repository = (
+                (
+                    str(nzbdav_cfg.get("repo_owner") or "").strip().casefold(),
+                    str(nzbdav_cfg.get("repo_name") or "").strip().casefold(),
+                )
+                if isinstance(nzbdav_cfg, dict)
+                else ("", "")
+            )
+            if isinstance(nzbdav_cfg, dict) and nzbdav_repository in {
+                ("nzbdav-dev", "nzbdav"),
+                ("nzbdav", "nzbdav"),
+            }:
+                nzbdav_cfg["repo_owner"] = "infinidysk"
+                nzbdav_cfg["repo_name"] = "infinidysk"
                 nzbdav_repository_migrated = True
 
             # Migrate legacy Decypharr embedded toggle to mount_type before merge/prune

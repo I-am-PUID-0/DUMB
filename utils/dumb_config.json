@@ -473,8 +473,8 @@
   "nzbdav": {
     "enabled": false,
     "process_name": "NzbDAV",
-    "repo_owner": "nzbdav",
-    "repo_name": "nzbdav",
+    "repo_owner": "infinidysk",
+    "repo_name": "infinidysk",
     "release_version_enabled": false,
     "release_version": "latest",
     "commit_sha": "",

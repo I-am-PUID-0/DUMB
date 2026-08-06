@@ -1700,7 +1700,15 @@ def _setup_project_inner(
                     with open(version_path, "r") as f:
                         version_value = f.read().strip()
                         if version_value:
-                            env["NZBDAV_VERSION"] = version_value
+                            # DUMB keeps the resolved release commit in its
+                            # internal marker so moved tags remain detectable.
+                            # InfiniDysk classifies non-semver labels as Dev,
+                            # so expose the ordinary release portion to the
+                            # application while retaining the full marker on
+                            # disk for DUMB's update comparisons.
+                            env["NZBDAV_VERSION"] = versions.display_version(
+                                "nzbdav", version_value
+                            )
                         else:
                             env.pop("NZBDAV_VERSION", None)
                 except OSError:

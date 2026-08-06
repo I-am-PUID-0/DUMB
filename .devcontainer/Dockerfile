@@ -28,7 +28,7 @@ RUN --mount=type=cache,target=/root/.cache/pip,sharing=shared \
       --directory /tmp/dumb-dev-dependencies \
       install --no-root --with dev --no-interaction && \
     /venv/bin/python -m pip install --upgrade --force-reinstall \
-      "cffi>=1.16,<3.0" "cryptography>=48.0.1,<49.0.0" && \
+      "cffi>=1.16,<3.0" "cryptography>=50.0.0,<51.0.0" && \
     rm -rf /tmp/dumb-dev-dependencies
 
 ENV PATH="/opt/poetry/bin:/venv/bin:${PATH}" \

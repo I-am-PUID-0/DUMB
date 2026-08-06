@@ -10,6 +10,41 @@ from utils import setup
 
 
 class NzbDAVSetupTests(unittest.TestCase):
+    def test_configure_exposes_release_version_without_internal_commit_suffix(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            version_path = Path(tmpdir) / "version.txt"
+            version_path.write_text("v0.10.0-0dec23ac\n", encoding="utf-8")
+            config = {
+                "enabled": True,
+                "process_name": "NzbDAV",
+                "config_dir": tmpdir,
+                "webdav_password": "configured-password",
+                "backend_port": 8080,
+                "frontend_port": 3000,
+                "log_level": "INFO",
+                "env": {},
+            }
+            config_manager = Mock()
+            config_manager.find_key_for_process.return_value = ("nzbdav", None)
+            config_manager.get_instance.return_value = config
+            process_handler = Mock()
+            process_handler.setup_tracker = set()
+            process_handler.setup_tracker_lock = threading.Lock()
+
+            with (
+                patch.object(setup, "CONFIG_MANAGER", config_manager),
+                patch.object(setup, "setup_nzbdav", return_value=(True, None)),
+            ):
+                success, error = setup._setup_project_inner(
+                    process_handler,
+                    "NzbDAV",
+                    install_phase=False,
+                    configure_phase=True,
+                )
+
+        self.assertTrue(success, error)
+        self.assertEqual("v0.10.0", config["env"]["NZBDAV_VERSION"])
+
     def test_fresh_prerelease_install_handles_comparison_error_without_type_crash(self):
         config = {
             "process_name": "NzbDAV",

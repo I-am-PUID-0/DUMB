@@ -144,6 +144,21 @@ class MediaProtectionTests(unittest.TestCase):
         self.assertTrue(policy["enabled"])
         self.assertFalse(policy["api_key_configured"])
 
+    def test_already_stopped_media_server_is_not_protected(self):
+        self.handler.stop_process("Plex Media Server")
+
+        preflight = self.manager.preflight("CLI Debrid", "restart")
+        result = self.manager.begin_planned("CLI Debrid", "restart", "safe")
+
+        self.assertFalse(preflight["protected"])
+        self.assertEqual([], preflight["media_servers"])
+        self.assertEqual("not_applicable", result["status"])
+        self.assertIsNone(result["token"])
+        self.assertIsNone(self.manager.begin_unplanned("CLI Debrid", "crashed"))
+        self.assertEqual({}, self.manager.incidents)
+        self.assertEqual(0, self.adapter.guarded)
+        self.notify_event.assert_not_called()
+
     def test_safe_planned_action_defers_for_active_stream(self):
         self.adapter.state = "busy"
         result = self.manager.begin_planned("CLI Debrid", "restart", "safe")
