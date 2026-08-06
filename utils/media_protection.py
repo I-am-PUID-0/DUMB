@@ -476,6 +476,16 @@ class MediaProtectionManager:
                 for incident in self.incidents.values():
                     if incident.get("status") in {"recovering", "recovery_failed"}:
                         incident["status"] = "waiting_for_recovery"
+                    if incident.get("awaiting_operation_completion"):
+                        # A persisted planned operation cannot still be running
+                        # after the DUMB controller has restarted. Release its
+                        # operation hold so normal dependency stabilization can
+                        # safely recover media servers after startup.
+                        incident["awaiting_operation_completion"] = False
+                        incident["operation_success"] = False
+                        incident["operation_interrupted_at"] = time.time()
+                        incident["operation_completed_at"] = time.time()
+                        incident["status"] = "waiting_for_recovery"
         except FileNotFoundError:
             return
         except Exception as error:
@@ -624,6 +634,10 @@ class MediaProtectionManager:
             "status": "active",
             "started_at": time.time(),
             "hold_until_recovery": action == "stop",
+            # Planned targets are often still healthy while DUMB prepares or
+            # executes the action. The recovery monitor must not mistake that
+            # pre-stop health for a completed operation.
+            "awaiting_operation_completion": True,
             "media_servers": [],
         }
         with self.lock:
@@ -753,14 +767,16 @@ class MediaProtectionManager:
             incident = self.incidents.get(token)
             if not incident:
                 return
-            if incident.get("hold_until_recovery") or not self._dependency_ready(
-                incident
-            ):
-                incident["operation_success"] = bool(success)
-                incident["status"] = "waiting_for_recovery"
-                self._save()
-                return
-        self._recover(token)
+            incident["operation_success"] = bool(success)
+            incident["operation_completed_at"] = time.time()
+            incident["awaiting_operation_completion"] = False
+            incident["status"] = "waiting_for_recovery"
+            self._save()
+
+    def _ready_for_recovery(self, incident: dict) -> bool:
+        if incident.get("awaiting_operation_completion"):
+            return False
+        return self._dependency_ready(incident)
 
     def _dependency_ready(self, incident: dict) -> bool:
         process_name = incident.get("target_process")
@@ -863,10 +879,17 @@ class MediaProtectionManager:
                     incident.get("next_recovery_attempt_at") or 0
                 ):
                     continue
+                if incident.get("awaiting_operation_completion"):
+                    stable_since.pop(token, None)
+                    continue
+                recovery_started_at = float(
+                    incident.get("operation_completed_at")
+                    or incident.get("started_at")
+                    or time.time()
+                )
                 timed_out = (
                     incident.get("action") != "stop"
-                    and time.time() - float(incident.get("started_at") or time.time())
-                    >= recovery_timeout
+                    and time.time() - recovery_started_at >= recovery_timeout
                     and not incident.get("recovery_timeout_notified")
                 )
                 if timed_out:
@@ -910,7 +933,7 @@ class MediaProtectionManager:
                                             current_state["stopped_by_dumb"] = True
                                     self._save()
 
-                if self._dependency_ready(incident):
+                if self._ready_for_recovery(incident):
                     stable_since[token] = stable_since.get(token) or time.monotonic()
                     if time.monotonic() - stable_since[token] >= stabilization:
                         self._recover(token)

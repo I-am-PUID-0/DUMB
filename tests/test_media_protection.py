@@ -174,15 +174,52 @@ class MediaProtectionTests(unittest.TestCase):
         self.assertEqual(self.adapter.guarded, 1)
         self.assertNotIn("Plex Media Server", self.handler.stopped)
 
-    def test_idle_server_is_stopped_and_recovered_after_planned_restart(self):
+    def test_planned_restart_waits_for_completion_and_stabilization(self):
         result = self.manager.begin_planned("CLI Debrid", "restart", "safe")
         self.assertIn("Plex Media Server", self.handler.stopped)
+        incident = self.manager.incidents[result["token"]]
+        self.assertTrue(incident["awaiting_operation_completion"])
+        self.assertTrue(self.manager._dependency_ready(incident))
+        self.assertFalse(self.manager._ready_for_recovery(incident))
 
         self.manager.complete_planned(result["token"], success=True)
+
+        incident = self.manager.incidents[result["token"]]
+        self.assertFalse(incident["awaiting_operation_completion"])
+        self.assertEqual(incident["status"], "waiting_for_recovery")
+        self.assertTrue(self.manager._ready_for_recovery(incident))
+        self.assertNotIn("Plex Media Server", self.handler.started)
+        self.assertEqual(self.adapter.restored, 0)
+
+        self.manager._recover(result["token"])
 
         self.assertIn("Plex Media Server", self.handler.started)
         self.assertEqual(self.adapter.restored, 1)
         self.assertEqual(self.manager.incidents[result["token"]]["status"], "recovered")
+
+    def test_planned_update_cannot_recover_while_target_is_still_running(self):
+        result = self.manager.begin_planned("CLI Debrid", "update", "safe")
+        incident = self.manager.incidents[result["token"]]
+
+        self.assertTrue(self.manager._dependency_ready(incident))
+        self.assertFalse(self.manager._ready_for_recovery(incident))
+        self.assertNotIn("Plex Media Server", self.handler.started)
+
+    def test_planned_stop_releases_operation_hold_only_after_stop_completes(self):
+        result = self.manager.begin_planned("CLI Debrid", "stop", "safe")
+        incident = self.manager.incidents[result["token"]]
+        self.assertFalse(self.manager._ready_for_recovery(incident))
+
+        self.handler.stop_process("CLI Debrid")
+        self.manager.complete_planned(result["token"], success=True)
+
+        incident = self.manager.incidents[result["token"]]
+        self.assertFalse(incident["awaiting_operation_completion"])
+        self.assertFalse(self.manager._ready_for_recovery(incident))
+        self.assertNotIn("Plex Media Server", self.handler.started)
+
+        self.handler.start_process("CLI Debrid")
+        self.assertTrue(self.manager._ready_for_recovery(incident))
 
     def test_unexpected_outage_preserves_active_stream(self):
         self.adapter.state = "busy"
@@ -200,6 +237,7 @@ class MediaProtectionTests(unittest.TestCase):
         )
 
         self.manager.complete_planned(result["token"], success=True)
+        self.manager._recover(result["token"])
         incident = self.manager.incidents[result["token"]]
         self.assertEqual(incident["status"], "recovery_failed")
         self.assertTrue(incident["recovery_failure_notified"])

@@ -2137,6 +2137,8 @@ async def stop_service(
 ):
     def stop():
         process_name = request.process_name
+        protection = None
+        success = False
         logger.info(f"Received request to stop {process_name}")
 
         if process_name in api_state.shutdown_in_progress:
@@ -2158,6 +2160,7 @@ async def stop_service(
                     "media_protection": protection["preflight"],
                 }
             process_handler.stop_process(process_name)
+            success = True
             logger.info(f"{process_name} stopped successfully.")
             record_diagnostic_event(
                 "service_stop",
@@ -2177,6 +2180,10 @@ async def stop_service(
                 status_code=500, detail=f"Failed to stop {process_name}: {str(e)}"
             )
         finally:
+            if protection is not None:
+                media_protection.complete_planned(
+                    protection.get("token"), success=success
+                )
             api_state.shutdown_in_progress.remove(process_name)
 
     return await run_in_threadpool(stop)
