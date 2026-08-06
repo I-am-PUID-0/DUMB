@@ -39,6 +39,46 @@ class SetupPnpmTests(unittest.TestCase):
             self.assertEqual(target.read_text(encoding="utf-8"), "do-not-change\n")
             self.assertEqual(npmrc.read_text(encoding="utf-8"), "child-concurrency=8\n")
 
+    def test_npmrc_update_can_disable_upstream_engine_strict(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            npmrc = Path(temp_dir, ".npmrc")
+            npmrc.write_text("engine-strict=true\n", encoding="utf-8")
+
+            setup._update_npmrc_settings(
+                str(npmrc),
+                {"engine-strict": "false"},
+            )
+
+            self.assertEqual(
+                npmrc.read_text(encoding="utf-8"),
+                "engine-strict=false\n",
+            )
+
+    def test_setup_environment_relaxes_node_engine_only_for_seerr(self):
+        process_handler = Mock()
+        cases = (("seerr", True), ("decypharr", False))
+        for service_key, expected_override in cases:
+            with self.subTest(service_key=service_key):
+                with patch.object(
+                    setup,
+                    "setup_pnpm_environment",
+                    return_value=(True, None),
+                ) as pnpm_setup:
+                    success, error = setup.setup_environment(
+                        process_handler,
+                        service_key,
+                        ["pnpm"],
+                        f"/tmp/{service_key}-test",
+                    )
+
+                self.assertTrue(success)
+                self.assertIsNone(error)
+                pnpm_setup.assert_called_once_with(
+                    process_handler,
+                    f"/tmp/{service_key}-test",
+                    allow_unsupported_node=expected_override,
+                )
+
     def test_shared_build_cache_is_owned_by_controller_not_service_user(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             cache_dir = str(Path(temp_dir, "dependencies", "python"))

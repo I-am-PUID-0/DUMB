@@ -9942,7 +9942,11 @@ def setup_environment(
                         return False, error
 
                 if platform == "pnpm":
-                    success, error = setup_pnpm_environment(process_handler, env_dir)
+                    success, error = setup_pnpm_environment(
+                        process_handler,
+                        env_dir,
+                        allow_unsupported_node=key == "seerr",
+                    )
                     if not success:
                         return False, error
 
@@ -11163,7 +11167,13 @@ def setup_bun_environment(process_handler, config_dir):
         return False, f"Error during Bun setup: {e}"
 
 
-def setup_pnpm_environment(process_handler, config_dir, *, skip_build=False):
+def setup_pnpm_environment(
+    process_handler,
+    config_dir,
+    *,
+    skip_build=False,
+    allow_unsupported_node=False,
+):
     try:
         _chown_recursive_if_needed(config_dir, user_id, group_id)
 
@@ -11205,19 +11215,23 @@ def setup_pnpm_environment(process_handler, config_dir, *, skip_build=False):
         )
 
         npmrc_path = os.path.join(config_dir, ".npmrc")
-        _update_npmrc_settings(
-            npmrc_path,
-            {
-                "store-dir": pnpm_store_dir,
-                "child-concurrency": pnpm_children,
-                "network-concurrency": pnpm_network,
-                "fetch-retries": 10,
-                "fetch-retry-factor": 3,
-                "fetch-retry-mintimeout": 15000,
-                "package-import-method": "copy",
-                "verify-store-integrity": "true",
-            },
-        )
+        npmrc_settings = {
+            "store-dir": pnpm_store_dir,
+            "child-concurrency": pnpm_children,
+            "network-concurrency": pnpm_network,
+            "fetch-retries": 10,
+            "fetch-retry-factor": 3,
+            "fetch-retry-mintimeout": 15000,
+            "package-import-method": "copy",
+            "verify-store-integrity": "true",
+        }
+        if allow_unsupported_node:
+            npmrc_settings["engine-strict"] = "false"
+            logger.warning(
+                "Disabling pnpm engine-strict for %s; DUMB uses its validated shared Node runtime.",
+                config_dir,
+            )
+        _update_npmrc_settings(npmrc_path, npmrc_settings)
 
         logger.info(
             "Setting up pnpm environment in %s using store %s",
