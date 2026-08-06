@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.15.1](https://github.com/I-am-PUID-0/DUMB/compare/2.15.0...2.15.1) (2026-08-06)
+
+
+### 🐛 Bug Fixes
+
+* **nzbdav:** migrate to InfiniDysk and tighten media protection ([18743cd](https://github.com/I-am-PUID-0/DUMB/commit/18743cd78966ffac156f2e4d75c42c883804fb58))
+
 ## [2.15.0](https://github.com/I-am-PUID-0/DUMB/compare/2.14.0...2.15.0) (2026-08-05)
 
 
