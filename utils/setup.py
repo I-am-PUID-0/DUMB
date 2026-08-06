@@ -50,6 +50,14 @@ _MEDIASTORM_PYTHON_LINK = "/.venv"
 _MEDIASTORM_LOG_DIR = "/log"
 _NZBDAV_PREBUILT_MARKER = ".dumb_nzbdav_prebuilt.json"
 _NZBDAV_PREBUILT_FORMAT = 1
+_NZBDAV_SERVICE_PROVIDER = json.dumps(
+    {
+        "name": "DUMB",
+        "url": "https://dumbarr.com",
+        "disabledFeatures": [],
+    },
+    separators=(",", ":"),
+)
 COMMIT_PIN_SERVICE_KEYS = frozenset(
     {
         "dumb_frontend",
@@ -1687,6 +1695,7 @@ def _setup_project_inner(
                 "NODE_ENV": "production",
                 "BACKEND_URL": f"http://127.0.0.1:{backend_port}",
                 "FRONTEND_BACKEND_API_KEY": secrets.token_hex(32),
+                "SERVICE_PROVIDER": _NZBDAV_SERVICE_PROVIDER,
             }
             env = default_env.copy()
             for env_key, value in (config.get("env") or {}).items():

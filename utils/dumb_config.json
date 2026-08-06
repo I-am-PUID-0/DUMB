@@ -507,7 +507,9 @@
     "config_dir": "/nzbdav",
     "log_file": "/log/nzbdav.log",
     "webdav_password": "",
-    "env": {}
+    "env": {
+      "SERVICE_PROVIDER": "{\"name\":\"DUMB\",\"url\":\"https://dumbarr.com\",\"disabledFeatures\":[]}"
+    }
   },
   "emby": {
     "enabled": false,

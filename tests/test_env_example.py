@@ -109,6 +109,35 @@ class ConfigLoaderEnvParsingTests(unittest.TestCase):
 
 
 class ConfigLoaderMigrationTests(unittest.TestCase):
+    def test_existing_nzbdav_config_gets_dumb_service_provider_default(self):
+        config_manager = _load_config_manager_class()
+        with tempfile.TemporaryDirectory() as temp_dir:
+            config = json.loads((ROOT / "utils" / "dumb_config.json").read_text())
+            config["nzbdav"]["env"].pop("SERVICE_PROVIDER")
+            config_path = Path(temp_dir) / "dumb_config.json"
+            config_path.write_text(json.dumps(config), encoding="utf-8")
+
+            manager = config_manager(
+                file_path=str(config_path),
+                schema_path=str(ROOT / "utils" / "dumb_config_schema.json"),
+            )
+
+            expected = {
+                "name": "DUMB",
+                "url": "https://dumbarr.com",
+                "disabledFeatures": [],
+            }
+            persisted = json.loads(config_path.read_text(encoding="utf-8"))
+            self.assertEqual(
+                expected,
+                json.loads(manager.get("nzbdav")["env"]["SERVICE_PROVIDER"]),
+            )
+            self.assertEqual(
+                expected,
+                json.loads(persisted["nzbdav"]["env"]["SERVICE_PROVIDER"]),
+            )
+            self.assertTrue(Path(f"{config_path}.bak").is_file())
+
     def test_legacy_nzbdav_default_repository_is_migrated(self):
         config_manager = _load_config_manager_class()
         with tempfile.TemporaryDirectory() as temp_dir:

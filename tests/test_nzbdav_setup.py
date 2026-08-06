@@ -1,3 +1,4 @@
+import json
 import os
 import subprocess
 import tempfile
@@ -44,6 +45,14 @@ class NzbDAVSetupTests(unittest.TestCase):
 
         self.assertTrue(success, error)
         self.assertEqual("v0.10.0", config["env"]["NZBDAV_VERSION"])
+        self.assertEqual(
+            {
+                "name": "DUMB",
+                "url": "https://dumbarr.com",
+                "disabledFeatures": [],
+            },
+            json.loads(config["env"]["SERVICE_PROVIDER"]),
+        )
 
     def test_fresh_prerelease_install_handles_comparison_error_without_type_crash(self):
         config = {
