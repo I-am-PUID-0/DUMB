@@ -1349,6 +1349,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Measurements">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#reading-nzbdav-provider-evidence" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reading NzbDAV provider evidence
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -5209,6 +5226,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Measurements">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#reading-nzbdav-provider-evidence" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reading NzbDAV provider evidence
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -5367,10 +5401,10 @@
   
 
 
-<h1 id="rclone-streaming-optimizer">Rclone Streaming Optimizer<a class="headerlink" href="#rclone-streaming-optimizer" title="Permanent link">&para;</a></h1>
+<h1 id="rclone-streaming-optimizer">Rclone Streaming Optimizer<a class="headerlink" href="#rclone-streaming-optimizer" title="Permanent link">#</a></h1>
 <p>The rclone streaming optimizer measures how an <strong>NzbDAV-backed DUMB-managed rclone instance</strong> behaves on the current deployment. It accounts for the combined effects of the provider, network, CPU, memory, cache storage, NzbDAV, and rclone instead of assuming one flag set is right for every server.</p>
 <p>The optimizer is currently limited to NzbDAV. It appears on the specific <strong>rclone service page</strong>, not as an NzbDAV configuration tool. When an associated test is active, the NzbDAV service page shows a link to that rclone job.</p>
-<h2 id="what-the-test-actually-reads">What the test actually reads<a class="headerlink" href="#what-the-test-actually-reads" title="Permanent link">&para;</a></h2>
+<h2 id="what-the-test-actually-reads">What the test actually reads<a class="headerlink" href="#what-the-test-actually-reads" title="Permanent link">#</a></h2>
 <p>Each candidate uses this path:</p>
 <div class="highlight"><pre><span></span><code>DUMB-managed Arr instance -&gt; active NzbDAV category
   -&gt; production rclone mount/content/&lt;category&gt; (metadata discovery only)
@@ -5400,7 +5434,7 @@ provider connections, bandwidth, CPU, memory, cache storage, and disks. This
 can distort startup and throughput measurements, produce an unsuitable
 recommendation, and add unnecessary load against the configured providers.</p>
 </div>
-<h2 id="measurements">Measurements<a class="headerlink" href="#measurements" title="Permanent link">&para;</a></h2>
+<h2 id="measurements">Measurements<a class="headerlink" href="#measurements" title="Permanent link">#</a></h2>
 <p>For every candidate and selected file, DUMB records:</p>
 <ul>
 <li>file-open time;</li>
@@ -5416,7 +5450,7 @@ recommendation, and add unnecessary load against the configured providers.</p>
 trace</strong>. If NzbDAV tracing cannot be enabled, rclone performance measurements can
 still complete, but provider-level event correlation is explicitly marked
 unavailable instead of being presented as a path-matching result.</p>
-<h3 id="reading-nzbdav-provider-evidence">Reading NzbDAV provider evidence<a class="headerlink" href="#reading-nzbdav-provider-evidence" title="Permanent link">&para;</a></h3>
+<h3 id="reading-nzbdav-provider-evidence">Reading NzbDAV provider evidence<a class="headerlink" href="#reading-nzbdav-provider-evidence" title="Permanent link">#</a></h3>
 <p>The first four values in each expanded provider-evidence panel come from the
 NzbDAV overview window captured after that candidate. They are not isolated to
 the candidate and can include unrelated NzbDAV traffic. The next five fields are
@@ -5471,7 +5505,7 @@ the media server and NzbDAV should be idle during testing.</p>
 </tr>
 </tbody>
 </table>
-<h2 id="content-selection">Content selection<a class="headerlink" href="#content-selection" title="Permanent link">&para;</a></h2>
+<h2 id="content-selection">Content selection<a class="headerlink" href="#content-selection" title="Permanent link">#</a></h2>
 <p>Open the NzbDAV-backed rclone service and select <strong>Rclone Optimizer</strong>. DUMB first
 reuses the same Arr-to-NzbDAV category derivation used during integration setup.
 Only enabled Radarr, Sonarr, Lidarr, and Whisparr instances whose <code>core_service</code>
@@ -5496,7 +5530,7 @@ choices up to the eight-file limit. <strong>Restore automatic selection</strong>
 the suggested starting set after manual changes.</p>
 <p>Age is only a <strong>cache-likelihood heuristic</strong>. It does not prove whether an article is cached by NzbDAV or a provider. The report keeps recent/likely-warm and older/likely-cold startup results separate, while NzbDAV's live metrics and stream traces explain what happened during the reads.</p>
 <p>You can replace the automatic selection with any listed media files. Select between one and eight files. The scan is intentionally bounded by file count and time so discovering content does not recursively enumerate an unlimited remote library. No <code>/mnt/debrid/...</code> mount path or category name is hard-coded into the optimizer.</p>
-<h2 id="candidate-matrix">Candidate matrix<a class="headerlink" href="#candidate-matrix" title="Permanent link">&para;</a></h2>
+<h2 id="candidate-matrix">Candidate matrix<a class="headerlink" href="#candidate-matrix" title="Permanent link">#</a></h2>
 <p>The optimizer does not try every possible rclone flag permutation. That would consume excessive time and provider traffic while producing noisy results. Instead, it tests known-shape profiles:</p>
 <table>
 <thead>
@@ -5593,7 +5627,7 @@ repairs RC or chooses a shorter fallback <code>--dir-cache-time</code>.</p>
 as a bundled prerequisite. The UI explains the expected streaming relevance of
 each displayed flag; these statements describe expected scope, not a guarantee
 that arbitrary custom combinations can never influence playback.</p>
-<h2 id="safety-limits">Safety limits<a class="headerlink" href="#safety-limits" title="Permanent link">&para;</a></h2>
+<h2 id="safety-limits">Safety limits<a class="headerlink" href="#safety-limits" title="Permanent link">#</a></h2>
 <p>The safety-limit values initially shown in the optimizer are <strong>generic starting
 placeholders, not recommendations</strong>. DUMB does not derive them from the
 deployment's CPU, RAM, cache disk, ISP bandwidth, NzbDAV activity, or provider
@@ -5663,7 +5697,7 @@ control explaining its purpose.</p>
 <p>The reader stops reserving bytes at the configured shared limit, and DUMB also subtracts NzbDAV's observed provider-byte delta after each profile. Rclone chunking/read-ahead and in-flight provider requests can fetch beyond the exact bytes consumed by the reader, so this is a conservative safety control rather than a provider-side quota.</p>
 </div>
 <p>Testing stops early when NzbDAV indicates a provider circuit is open or reports strong throttling/authentication/rate-limit signals. Errors, retries, and failover remain in the report. This reduces provider risk but cannot guarantee that a provider will permit benchmarking; review your provider's rules and keep concurrency/data limits conservative.</p>
-<h2 id="background-jobs-and-notifications">Background jobs and notifications<a class="headerlink" href="#background-jobs-and-notifications" title="Permanent link">&para;</a></h2>
+<h2 id="background-jobs-and-notifications">Background jobs and notifications<a class="headerlink" href="#background-jobs-and-notifications" title="Permanent link">#</a></h2>
 <p>The job continues in the DUMB backend when you close the panel or navigate away. The rclone service page keeps an active-job banner, and the frontend posts a completion or failure toast while it is open. If DUMB notifications are configured for the optimizer event types, the backend can also queue the completion/failure event.</p>
 <p>If DUMB restarts during a test, the job is marked <strong>interrupted</strong>, the temporary mount/cache is cleaned up, and the matrix is not resumed. Start a fresh test so candidate conditions remain comparable.</p>
 <p>Each candidate verifies that its isolated shadow mount is no longer mounted
@@ -5673,7 +5707,7 @@ cache directory are gone. The rclone page reports those three cleanup checks. If
 cleanup cannot be verified, the job fails instead of presenting a completed
 recommendation, leaves the runtime path available for a later safe retry, and
 retries cleanup during finalization and the next DUMB startup.</p>
-<h2 id="apply-and-rollback">Apply and rollback<a class="headerlink" href="#apply-and-rollback" title="Permanent link">&para;</a></h2>
+<h2 id="apply-and-rollback">Apply and rollback<a class="headerlink" href="#apply-and-rollback" title="Permanent link">#</a></h2>
 <p>Finishing a test creates a report and recommendation. It does <strong>not</strong> change rclone.</p>
 <ol>
 <li>Review every candidate's complete settings/roles, warm/cold samples, exclusions, resources, cleanup status, and NzbDAV evidence.</li>
@@ -5688,7 +5722,7 @@ to restore it through the same stop, verified-unmount, restart, and mount-readin
 sequence. If apply fails, DUMB attempts that rollback automatically. If the old
 mount cannot be detached, DUMB refuses to start another rclone against the stale
 mountpoint and reports the failure for operator attention.</p>
-<h2 id="provider-risk-guidance">Provider-risk guidance<a class="headerlink" href="#provider-risk-guidance" title="Permanent link">&para;</a></h2>
+<h2 id="provider-risk-guidance">Provider-risk guidance<a class="headerlink" href="#provider-risk-guidance" title="Permanent link">#</a></h2>
 <ul>
 <li>Start with <strong>Quick</strong>, one stream, and a small data budget.</li>
 <li>Do not run repeated tests back-to-back merely to chase small score changes.</li>
@@ -5697,7 +5731,7 @@ mountpoint and reports the failure for operator attention.</p>
 <li>Do not assume older content is uncached or recent content is cached.</li>
 <li>Keep the report as deployment-specific evidence; another user's result is not a universal rclone preset.</li>
 </ul>
-<h2 id="related-guides">Related guides<a class="headerlink" href="#related-guides" title="Permanent link">&para;</a></h2>
+<h2 id="related-guides">Related guides<a class="headerlink" href="#related-guides" title="Permanent link">#</a></h2>
 <ul>
 <li><a href="../../services/dependent/rclone/">rclone service</a></li>
 <li><a href="../../services/core/nzbdav/">NzbDAV</a></li>
