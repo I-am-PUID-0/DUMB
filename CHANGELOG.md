@@ -1,5 +1,22 @@
 # Changelog
 
+## [2.17.0](https://github.com/I-am-PUID-0/DUMB/compare/2.16.0...2.17.0) (2026-08-07)
+
+
+### ✨ Features
+
+* **process:** add guarded service reset and removal ([5fe894e](https://github.com/I-am-PUID-0/DUMB/commit/5fe894e65bb4973ec81b8aa559e37b45f6eb46ff))
+
+
+### 🐛 Bug Fixes
+
+* **seerr:** allow pnpm installs on DUMB's Node 24 runtime ([8256e1b](https://github.com/I-am-PUID-0/DUMB/commit/8256e1b94855a2298f5fd0996ec418a5052d6fc0))
+
+
+### 🛠️ Build System
+
+* **deps:** bump actions/upload-artifact from 4.6.2 to 7.0.1 ([185db57](https://github.com/I-am-PUID-0/DUMB/commit/185db57603a43105fa2c20555c46458ec93caf60)), closes [#301](https://github.com/I-am-PUID-0/DUMB/issues/301)
+
 ## [2.16.0](https://github.com/I-am-PUID-0/DUMB/compare/2.15.1...2.16.0) (2026-08-06)
 
 
