@@ -563,6 +563,10 @@ class ProcessHandler:
                 "dotnet_arr_restore",
                 "dotnet_arr_publish",
                 "go_build",
+                "maintainerr_yarn_install",
+                "maintainerr_yarn_build",
+                "maintainerr_yarn_focus",
+                "maintainerr_yarn_rebuild_canvas",
                 "Plex DBRepair",
                 "dbrepair",
             ]

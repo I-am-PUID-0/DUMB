@@ -158,6 +158,55 @@ class ProcessNotificationTests(unittest.TestCase):
         notify_event.assert_called_once()
 
     @patch("utils.processes.notify_event")
+    def test_maintainerr_yarn_helpers_retain_controller_identity(self, notify_event):
+        def config_get(key, default=None):
+            if key in {"puid", "pgid"}:
+                return 1000
+            if key == "rclone":
+                return {}
+            return default
+
+        for process_name in (
+            "maintainerr_yarn_install",
+            "maintainerr_yarn_build",
+            "maintainerr_yarn_focus",
+            "maintainerr_yarn_rebuild_canvas",
+        ):
+            with self.subTest(process_name=process_name):
+                handler = object.__new__(ProcessHandler)
+                handler.init_attributes(Mock())
+                handler._update_running_processes_file = Mock()
+                process = Mock(
+                    pid=1234,
+                    returncode=0,
+                    stdout=io.StringIO(""),
+                    stderr=io.StringIO(""),
+                )
+                process.poll.return_value = 0
+
+                with (
+                    patch(
+                        "utils.processes.CONFIG_MANAGER.find_key_for_process",
+                        return_value=(None, None),
+                    ),
+                    patch("utils.processes.CONFIG_MANAGER.get", side_effect=config_get),
+                    patch(
+                        "utils.processes.subprocess.Popen", return_value=process
+                    ) as popen,
+                    patch("utils.processes.SubprocessLogger"),
+                ):
+                    success, error = handler.start_process(
+                        process_name,
+                        "/tmp",
+                        ["node", "yarn.cjs", "install"],
+                    )
+
+                self.assertTrue(success, error)
+                self.assertIsNone(popen.call_args.kwargs["preexec_fn"])
+
+        notify_event.assert_not_called()
+
+    @patch("utils.processes.notify_event")
     def test_managed_service_clean_immediate_exit_is_start_failure(self, notify_event):
         handler = object.__new__(ProcessHandler)
         handler.init_attributes(Mock())
