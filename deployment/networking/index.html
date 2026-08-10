@@ -5235,7 +5235,7 @@
   
 
 
-<h1 id="docker-networking-and-ports">Docker Networking and Ports<a class="headerlink" href="#docker-networking-and-ports" title="Permanent link">#</a></h1>
+<h1 id="docker-networking-and-ports">Docker Networking and Ports<a class="headerlink" href="#docker-networking-and-ports" title="Permanent link">&para;</a></h1>
 <p>Docker controls how applications inside the DUMB container become reachable
 from the Docker host and other devices. Choose one of the following Compose
 configurations.</p>
@@ -5281,7 +5281,7 @@ configurations.</p>
 Complete the <a href="../wsl/#mirrored-mode-networking">WSL mirrored networking configuration</a>
 before using the Windows machine's IPv4 address to access DUMB.</p>
 </div>
-<h2 id="option-1-publish-selected-ports-recommended">Option 1: Publish Selected Ports (Recommended)<a class="headerlink" href="#option-1-publish-selected-ports-recommended" title="Permanent link">#</a></h2>
+<h2 id="option-1-publish-selected-ports-recommended">Option 1: Publish Selected Ports (Recommended)<a class="headerlink" href="#option-1-publish-selected-ports-recommended" title="Permanent link">&para;</a></h2>
 <p>The maintained DUMB Compose file uses Docker's normal bridge networking and
 publishes only the DUMB Frontend:</p>
 <div class="highlight"><pre><span></span><code><span class="nt">services</span><span class="p">:</span>
@@ -5327,7 +5327,7 @@ another device or application must connect to those services directly.</p>
 under <code>http://&lt;host&gt;:3005/api</code>, while the native backend listener binds to
 container loopback by default.</p>
 </div>
-<h2 id="option-2-use-host-networking">Option 2: Use Host Networking<a class="headerlink" href="#option-2-use-host-networking" title="Permanent link">#</a></h2>
+<h2 id="option-2-use-host-networking">Option 2: Use Host Networking<a class="headerlink" href="#option-2-use-host-networking" title="Permanent link">&para;</a></h2>
 <p>Host networking makes the DUMB container share the Docker host's network
 namespace. Services that listen on non-loopback addresses become reachable on
 the same port without adding a Compose mapping for each one.</p>
@@ -5359,7 +5359,7 @@ installed inside WSL. See Docker's
 <a href="https://docs.docker.com/engine/network/drivers/host/">host network driver</a>
 documentation for platform-specific support and limitations.</p>
 </div>
-<h2 id="apply-and-verify-the-change">Apply and Verify the Change<a class="headerlink" href="#apply-and-verify-the-change" title="Permanent link">#</a></h2>
+<h2 id="apply-and-verify-the-change">Apply and Verify the Change<a class="headerlink" href="#apply-and-verify-the-change" title="Permanent link">&para;</a></h2>
 <p>After changing <code>ports:</code> or <code>network_mode</code>, recreate DUMB:</p>
 <div class="highlight"><pre><span></span><code>sudo<span class="w"> </span>docker<span class="w"> </span>compose<span class="w"> </span>down
 sudo<span class="w"> </span>docker<span class="w"> </span>compose<span class="w"> </span>up<span class="w"> </span>-d
