@@ -48,6 +48,24 @@ class ServiceHealthMonitorTests(unittest.TestCase):
         request.assert_called_once()
 
     @patch("utils.service_health.requests.request")
+    def test_mediastorm_uses_application_health_endpoint(self, request):
+        request.return_value = FakeResponse(body="OK")
+
+        result = self.monitor.check(
+            "mediastorm",
+            "mediastorm",
+            {"port": 7777},
+            process_identity=123,
+        )
+
+        self.assertEqual(result["status"], "healthy")
+        self.assertTrue(result["healthy"])
+        self.assertEqual(result["details"]["endpoint"], "/health")
+        request.assert_called_once()
+        _, url = request.call_args.args
+        self.assertEqual(url, "http://127.0.0.1:7777/health")
+
+    @patch("utils.service_health.requests.request")
     def test_nzbdav_migration_response_is_starting_not_unhealthy(self, request):
         request.return_value = FakeResponse(
             status_code=503,

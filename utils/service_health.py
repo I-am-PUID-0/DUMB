@@ -98,6 +98,7 @@ HTTP_PROBES = {
         "/api/health",
     ),
     "authelia": HttpProbe("Authelia health", "/api/health"),
+    "mediastorm": HttpProbe("mediastorm health", "/health"),
 }
 
 

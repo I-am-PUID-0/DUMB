@@ -3379,6 +3379,19 @@ class Update:
     def _finalize_runtime_snapshot(self, process_name, process):
         snapshot = self._rollback_snapshots.get(process_name)
         if snapshot is None:
+            if not process:
+                return process, None
+            if self._active_install_operation:
+                INSTALL_CACHE.update_operation(
+                    self._active_install_operation, stage="health_check"
+                )
+            healthy, error = self._wait_for_update_health(process_name)
+            if not healthy:
+                return (
+                    False,
+                    f"Replacement failed health stabilization ({error}); "
+                    "no automatic runtime rollback is available for this service.",
+                )
             return process, None
         if not process:
             recovered = self._recover_pending_snapshot(process_name)

@@ -33,6 +33,29 @@ class UpdateNotificationTests(unittest.TestCase):
         self.assertIn("previous runtime restored", error)
         updater._recover_pending_snapshot.assert_called_once_with("Example")
 
+    def test_replacement_without_snapshot_still_requires_stable_health(self):
+        updater = self._updater()
+        updater._wait_for_update_health = Mock(return_value=(True, None))
+        process = Mock()
+
+        finalized, error = updater._finalize_runtime_snapshot("Example", process)
+
+        self.assertIs(process, finalized)
+        self.assertIsNone(error)
+        updater._wait_for_update_health.assert_called_once_with("Example")
+
+    def test_unhealthy_replacement_without_snapshot_reports_no_rollback(self):
+        updater = self._updater()
+        updater._wait_for_update_health = Mock(
+            return_value=(False, "application probe failed")
+        )
+
+        finalized, error = updater._finalize_runtime_snapshot("Example", Mock())
+
+        self.assertFalse(finalized)
+        self.assertIn("application probe failed", error)
+        self.assertIn("no automatic runtime rollback", error)
+
     def test_runtime_recovery_restores_configures_and_restarts_previous_version(self):
         updater = self._updater()
         snapshot = Mock()
