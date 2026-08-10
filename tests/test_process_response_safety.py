@@ -163,6 +163,42 @@ class ProcessResponseSanitizerTests(unittest.TestCase):
 
 
 class MediaStormCredentialResponseTests(unittest.IsolatedAsyncioTestCase):
+    def test_runtime_log_level_routes_use_the_shared_api_logger(self):
+        logger = object()
+        expected = {
+            "effective_level": "DEBUG",
+            "override_active": True,
+        }
+        request = types.SimpleNamespace(debug_enabled=True)
+
+        with (
+            patch.object(
+                process_router,
+                "get_runtime_log_level_state",
+                return_value=expected,
+            ) as get_state,
+            patch.object(
+                process_router,
+                "set_runtime_debug_logging",
+                return_value=expected,
+            ) as set_debug,
+        ):
+            self.assertEqual(
+                process_router.runtime_log_level(logger=logger, current_user=None),
+                expected,
+            )
+            self.assertEqual(
+                process_router.update_runtime_log_level(
+                    request,
+                    logger=logger,
+                    current_user=None,
+                ),
+                expected,
+            )
+
+        get_state.assert_called_once_with(logger)
+        set_debug.assert_called_once_with(True, logger)
+
     async def test_install_cache_maintenance_is_serialized_with_updates(self):
         process_handler = types.SimpleNamespace(
             get_startup_status=lambda: {"phase": "ready"}
@@ -239,6 +275,7 @@ class MediaStormCredentialResponseTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(capabilities["install_cache_cleanup"])
         self.assertTrue(capabilities["install_cache_limit_settings"])
         self.assertTrue(capabilities["service_reset"])
+        self.assertTrue(capabilities["runtime_api_log_level"])
 
     async def test_missing_credential_does_not_return_a_password(self):
         with (

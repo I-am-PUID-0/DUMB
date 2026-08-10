@@ -51,6 +51,10 @@ from utils.service_reset import (
     build_service_reset_preview,
     execute_service_reset,
 )
+from utils.runtime_logging import (
+    get_runtime_log_level_state,
+    set_runtime_debug_logging,
+)
 import json, copy, time, glob, re, os, threading, fnmatch
 
 
@@ -73,6 +77,11 @@ class UpdateInstallRequest(BaseModel):
 
 class RescheduleAutoUpdateRequest(BaseModel):
     process_name: str
+
+
+class RuntimeLogLevelRequest(BaseModel):
+    debug_enabled: bool
+    model_config = ConfigDict(extra="forbid")
 
 
 class ServiceResetRequest(BaseModel):
@@ -2474,6 +2483,23 @@ def startup_status(
     current_user: str = Depends(get_optional_current_user),
 ):
     return process_handler.get_startup_status()
+
+
+@process_router.get("/runtime-log-level")
+def runtime_log_level(
+    logger=Depends(get_logger),
+    current_user: str = Depends(get_optional_current_user),
+):
+    return get_runtime_log_level_state(logger)
+
+
+@process_router.post("/runtime-log-level")
+def update_runtime_log_level(
+    request: RuntimeLogLevelRequest,
+    logger=Depends(get_logger),
+    current_user: str = Depends(get_optional_current_user),
+):
+    return set_runtime_debug_logging(request.debug_enabled, logger)
 
 
 @process_router.get("/update-status")
@@ -5559,6 +5585,7 @@ async def get_capabilities(current_user: str = Depends(get_optional_current_user
         "project_update_status_persistence": True,
         "project_update_release_distance": True,
         "api_update_check_always_on": True,
+        "runtime_api_log_level": True,
     }
 
 
