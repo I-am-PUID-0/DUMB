@@ -5279,7 +5279,7 @@
   
 
 
-<h1 id="install-cache-and-safe-updates">Install cache and safe updates<a class="headerlink" href="#install-cache-and-safe-updates" title="Permanent link">&para;</a></h1>
+<h1 id="install-cache-and-safe-updates">Install cache and safe updates<a class="headerlink" href="#install-cache-and-safe-updates" title="Permanent link">#</a></h1>
 <p>DUMB keeps reproducible downloads, package-manager data, and selected compiled
 service artifacts under <code>/config/.cache/dumb</code>. The cache accelerates container
 startup, updates, and exact-source reinstalls without treating a cached file as
@@ -5292,7 +5292,7 @@ service config file, explicit config/data/database paths, conventional persisten
 data/database directories, root-level SQLite files and their active sidecars,
 and symlinked data directories. The guarded paths are also excluded from archive
 merges, while replaceable source and runtime output can still be refreshed.</p>
-<h2 id="safety-model">Safety model<a class="headerlink" href="#safety-model" title="Permanent link">&para;</a></h2>
+<h2 id="safety-model">Safety model<a class="headerlink" href="#safety-model" title="Permanent link">#</a></h2>
 <p>An external project can always fail to download or build. DUMB's goal is to
 make that failure non-destructive:</p>
 <ol>
@@ -5323,7 +5323,7 @@ migration. DUMB never replaces persistent data with a cached copy. If an
 upstream migration is not backward compatible, leave the restored service
 stopped and follow that application's documented database recovery path.</p>
 </div>
-<h2 id="configuration">Configuration<a class="headerlink" href="#configuration" title="Permanent link">&para;</a></h2>
+<h2 id="configuration">Configuration<a class="headerlink" href="#configuration" title="Permanent link">#</a></h2>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;dumb&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">    </span><span class="nt">&quot;install_cache&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
@@ -5360,7 +5360,7 @@ new controller-only cache under <code>/tmp</code> for the current process. The d
 shows this fallback and its reason. Correct the configured path or ownership
 and restart DUMB to resume the persistent cache; the temporary fallback is not
 reused after restart.</p>
-<h2 id="package-manager-behavior">Package-manager behavior<a class="headerlink" href="#package-manager-behavior" title="Permanent link">&para;</a></h2>
+<h2 id="package-manager-behavior">Package-manager behavior<a class="headerlink" href="#package-manager-behavior" title="Permanent link">#</a></h2>
 <ul>
 <li>pnpm uses a shared content-addressed store grouped by pnpm major, verifies
   store integrity, and attempts a frozen lockfile install first. A lockfile
@@ -5376,7 +5376,7 @@ reused after restart.</p>
   lock behavior when their project supplies a lockfile.</li>
 <li>mediastorm OCI data remains digest-addressed and verified.</li>
 </ul>
-<h2 id="dashboard-maintenance">Dashboard maintenance<a class="headerlink" href="#dashboard-maintenance" title="Permanent link">&para;</a></h2>
+<h2 id="dashboard-maintenance">Dashboard maintenance<a class="headerlink" href="#dashboard-maintenance" title="Permanent link">#</a></h2>
 <p>Newer backends advertise <code>install_cache_management</code>. The dashboard <strong>Updates</strong>
 panel then shows three distinct totals:</p>
 <ul>
@@ -5422,7 +5422,7 @@ operators should still avoid cleanup while another install path is actively
 building.
 Do not manually delete transaction journals or <code>dumb-previous</code> directories
 while an update is active.</p>
-<h2 id="recovery-guidance">Recovery guidance<a class="headerlink" href="#recovery-guidance" title="Permanent link">&para;</a></h2>
+<h2 id="recovery-guidance">Recovery guidance<a class="headerlink" href="#recovery-guidance" title="Permanent link">#</a></h2>
 <p>If an update reports that the previous runtime was restored:</p>
 <ol>
 <li>Confirm that the service is running and inspect its service log.</li>
