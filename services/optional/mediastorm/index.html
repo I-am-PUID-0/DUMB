@@ -3233,23 +3233,6 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Configuration in dumb_config.json">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#version-selection" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Version selection
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
 </li>
       
         <li class="md-nav__item">
@@ -5224,23 +5207,6 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Configuration in dumb_config.json">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#version-selection" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Version selection
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
 </li>
       
         <li class="md-nav__item">
@@ -5395,10 +5361,10 @@
   
 
 
-<h1 id="mediastorm">mediastorm<a class="headerlink" href="#mediastorm" title="Permanent link">#</a></h1>
+<h1 id="mediastorm">mediastorm<a class="headerlink" href="#mediastorm" title="Permanent link">&para;</a></h1>
 <p>mediastorm is a self-hosted streaming server and client ecosystem for Debrid, torrent, and Usenet sources. DUMB installs its server, browser client, subtitle helpers, Deno runtime, and Iroh companion from mediastorm's official OCI image, then runs it as an optional PostgreSQL-backed service.</p>
 <hr />
-<h2 id="what-dumb-manages">What DUMB manages<a class="headerlink" href="#what-dumb-manages" title="Permanent link">#</a></h2>
+<h2 id="what-dumb-manages">What DUMB manages<a class="headerlink" href="#what-dumb-manages" title="Permanent link">&para;</a></h2>
 <ul>
 <li>mediastorm listens on port <code>7777</code>.</li>
 <li>The embedded service UI opens the administrative interface at <code>/admin</code>.</li>
@@ -5406,7 +5372,7 @@
 <li>DUMB automatically enables its managed PostgreSQL service and creates the <code>mediastorm</code> database.</li>
 <li>Account, watch-history, and playback data live in PostgreSQL. Settings and application cache persist under <code>/mediastorm</code>, which maps to DUMB's persistent <code>/data/mediastorm</code> service directory.</li>
 <li>DUMB downloads the correct <code>linux/amd64</code> or <code>linux/arm64</code> mediastorm OCI runtime on first install and stores it under <code>/mediastorm/runtime</code>.</li>
-<li>OCI manifests and layers are SHA-256 verified, only mediastorm's allowlisted runtime paths are extracted, and release selections must match the image's internal version before DUMB activates them.</li>
+<li>OCI manifests and layers are SHA-256 verified, only mediastorm's allowlisted runtime paths are extracted, and the image must contain a valid internal version before DUMB activates it. Explicit dated release pins must also match that internal version exactly.</li>
 <li>mediastorm supports DUMB's manual and scheduled update checks. Branch installs are not supported because upstream's complete runtime is published as an OCI image rather than a reproducible GitHub source release.</li>
 <li>mediastorm can follow <code>latest</code> or be pinned to a published OCI release tag, commit-specific OCI tag, or immutable OCI digest.</li>
 </ul>
@@ -5429,7 +5395,7 @@
 </tbody>
 </table>
 <hr />
-<h2 id="configuration-in-dumb_configjson">Configuration in <code>dumb_config.json</code><a class="headerlink" href="#configuration-in-dumb_configjson" title="Permanent link">#</a></h2>
+<h2 id="configuration-in-dumb_configjson">Configuration in <code>dumb_config.json</code><a class="headerlink" href="#configuration-in-dumb_configjson" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="nt">&quot;mediastorm&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;process_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;mediastorm&quot;</span><span class="p">,</span>
@@ -5470,7 +5436,7 @@
 <span class="p">}</span>
 </code></pre></div>
 <p>DUMB fills <code>DATABASE_URL</code> from the managed PostgreSQL credentials during setup. Do not copy the generated credential-bearing value into documentation, screenshots, or support logs. The installer always uses the fixed official <code>godver3/mediastorm</code> repository and does not accept an arbitrary registry URL from service configuration.</p>
-<h3 id="version-selection">Version selection<a class="headerlink" href="#version-selection" title="Permanent link">#</a></h3>
+<h3 id="version-selection">Version selection<a class="headerlink" href="#version-selection" title="Permanent link">&para;</a></h3>
 <p>Leave <code>release_version_enabled</code> set to <code>false</code> to follow <code>godver3/mediastorm:latest</code>. To install and retain a specific build, set it to <code>true</code> and choose one of these <code>release_version</code> forms:</p>
 <table>
 <thead>
@@ -5503,10 +5469,10 @@
 </tr>
 </tbody>
 </table>
-<p>DUMB writes the selected value to <code>/mediastorm/runtime/install-selector.txt</code>, the resolved upstream tag to <code>oci-reference.txt</code>, and the verified manifest digest to <code>image-digest.txt</code>. On restart, it compares the selected value with the installed marker and reinstalls only when the selection changes.</p>
+<p>DUMB writes the selected value to <code>/mediastorm/runtime/install-selector.txt</code>, the resolved upstream tag to <code>oci-reference.txt</code>, and the verified manifest digest to <code>image-digest.txt</code>. Update checks resolve the selected OCI manifest and compare its digest with the installed digest. This detects a moved <code>latest</code> or pinned OCI tag even when its name and mediastorm's GitHub release metadata have not changed.</p>
 <p>Pinned releases, commits, and digests disable automatic updates through DUMB's standard pin behavior. Disable the pin to return to <code>latest</code>, or change <code>release_version</code> to perform an intentional upgrade or rollback. Branch names and arbitrary image tags are rejected.</p>
 <hr />
-<h2 id="initial-setup">Initial setup<a class="headerlink" href="#initial-setup" title="Permanent link">#</a></h2>
+<h2 id="initial-setup">Initial setup<a class="headerlink" href="#initial-setup" title="Permanent link">&para;</a></h2>
 <div class="admonition warning">
 <p class="admonition-title">First login credentials</p>
 <ul>
@@ -5541,7 +5507,7 @@ tested authenticated reverse-proxy route; never publish the raw port before comp
 first-login setup.</p>
 </div>
 <hr />
-<h2 id="backups-and-updates">Backups and updates<a class="headerlink" href="#backups-and-updates" title="Permanent link">#</a></h2>
+<h2 id="backups-and-updates">Backups and updates<a class="headerlink" href="#backups-and-updates" title="Permanent link">&para;</a></h2>
 <p>Back up both parts of mediastorm state:</p>
 <ul>
 <li>the DUMB-managed PostgreSQL <code>mediastorm</code> database; and</li>
@@ -5551,21 +5517,21 @@ first-login setup.</p>
 <code>initial_admin_password.txt</code> or <code>initial_admin_password</code>. Treat that backup as credential-bearing
 data, especially when an installation-specific password is configured. The live bootstrap file is
 removed by mediastorm after the admin password changes.</p>
-<p>When following <code>latest</code>, use <strong>Check for updates</strong> and <strong>Install update</strong> on the mediastorm service page for one-time updates, or enable <code>auto_update</code> for scheduled checks. DUMB compares <code>/mediastorm/runtime/version.txt</code> with the latest GitHub release, downloads the official OCI runtime into a staging directory, verifies it, and atomically replaces the old runtime only after validation succeeds. A pin blocks normal update installation until you change/disable the pin or explicitly approve the frontend's override action. Before a major upgrade or rollback, preserve a matching database and settings/cache backup because application migrations can make rollback depend on restoring both together.</p>
+<p>When following <code>latest</code>, use <strong>Check for updates</strong> and <strong>Install update</strong> on the mediastorm service page for one-time updates, or enable <code>auto_update</code> for scheduled checks. DUMB compares the installed manifest digest with <code>godver3/mediastorm:latest</code>, downloads the official OCI runtime into a staging directory, verifies its layers and internal version marker, and atomically replaces the old runtime only after validation succeeds. After restart, DUMB requires mediastorm's local <code>/health</code> endpoint to remain ready for the configured stabilization period before the update is recorded as successful and downtime is closed. GitHub release publication can lag behind the moving OCI image and does not block a valid <code>latest</code> update. A pin blocks normal update installation until you change/disable the pin or explicitly approve the frontend's override action. Before a major upgrade or rollback, preserve a matching database and settings/cache backup because application migrations can make rollback depend on restoring both together.</p>
 <p>Database Health Monitoring can observe the mediastorm PostgreSQL database in Standard or Enhanced read-only mode when monitoring is explicitly enabled for the service.</p>
 <hr />
-<h2 id="embedded-ui-and-direct-access">Embedded UI and direct access<a class="headerlink" href="#embedded-ui-and-direct-access" title="Permanent link">#</a></h2>
+<h2 id="embedded-ui-and-direct-access">Embedded UI and direct access<a class="headerlink" href="#embedded-ui-and-direct-access" title="Permanent link">&para;</a></h2>
 <p>mediastorm uses root-relative routes for <code>/admin</code>, <code>/watch</code>, accounts, sharing, and <code>/api/*</code>. The DUMB Frontend keeps those requests attached to the active mediastorm iframe so they do not collide with DUMB's own routes.</p>
 <p>For troubleshooting, direct access is <code>http://&lt;host&gt;:7777</code> when you publish that port. DUMB's embedded UI does not require the port to be published separately.</p>
 <hr />
-<h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">#</a></h2>
+<h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h2>
 <ul>
 <li><strong>Service waits or exits at startup:</strong> Check PostgreSQL status first, then inspect the mediastorm service log. DUMB creates the database and connection URL during setup.</li>
 <li><strong>First-login password is not shown:</strong> Current builds use <code>admin</code> / <code>admin</code>. If the password was already replaced, the bootstrap file and DUMB warning are expected to be gone. Otherwise confirm mediastorm completed its first start and verify that <code>/data/mediastorm/cache/initial_admin_password</code> (or the <code>.txt</code> compatibility filename) is readable by the DUMB container.</li>
 <li><strong><code>admin</code> / <code>admin</code> is rejected:</strong> On current builds, entering only the public default is intentionally incomplete. Fill the <strong>New admin password</strong> and <strong>Confirm new password</strong> fields on the same login form. API clients receive HTTP <code>428</code> with code <code>password_change_required</code> and must resubmit the login with <code>newPassword</code>.</li>
 <li><strong>Onboarding asks for another password change:</strong> Update mediastorm. Current onboarding recognizes that the password was already secured during first sign-in and leaves the second password change optional.</li>
 <li><strong>Install fails during an OCI layer download:</strong> Confirm the DUMB container can reach Docker Hub and has enough free space for the compressed image plus the staged runtime. Retrying the start repeats the verified install.</li>
-<li><strong>OCI version mismatch:</strong> Upstream's <code>latest</code> image does not yet match its latest GitHub release. DUMB preserves the existing runtime and refuses to activate the mismatched image; retry after upstream finishes publishing.</li>
+<li><strong>OCI version mismatch for a pin:</strong> The selected dated release expects an exact internal version, but the resolved OCI tag contains another build. DUMB preserves the existing runtime. Confirm that the pinned release/tag pair exists upstream, or return to the unpinned <code>latest</code> channel.</li>
 <li><strong>Pinned version cannot be resolved:</strong> Confirm the value is a published mediastorm release tag, full 40-character commit tag, or complete <code>sha256:</code> digest. Short commit hashes and branch names are intentionally rejected.</li>
 <li><strong>Discovery is empty or metadata is missing:</strong> Verify both TMDB and TVDB keys in <code>/admin</code>.</li>
 <li><strong>An embedded link opens the DUMB page instead:</strong> Refresh the mediastorm service page to renew iframe context, then retry. Report the exact mediastorm path that escaped the iframe.</li>
@@ -5573,7 +5539,7 @@ removed by mediastorm after the admin password changes.</p>
 <li><strong>Remote invitation fails:</strong> Check the mediastorm log for Iroh errors and confirm outbound networking is available from the DUMB container.</li>
 </ul>
 <hr />
-<h2 id="related-links">Related links<a class="headerlink" href="#related-links" title="Permanent link">#</a></h2>
+<h2 id="related-links">Related links<a class="headerlink" href="#related-links" title="Permanent link">&para;</a></h2>
 <ul>
 <li><a href="https://github.com/godver3/mediastorm">mediastorm repository</a></li>
 <li><a href="https://github.com/godver3/mediastorm/releases">mediastorm releases</a></li>
