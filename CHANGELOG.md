@@ -1,5 +1,22 @@
 # Changelog
 
+## [2.17.1](https://github.com/I-am-PUID-0/DUMB/compare/2.17.0...2.17.1) (2026-08-10)
+
+
+### 🐛 Bug Fixes
+
+* **ai:** sync OpenAI lifecycle replacement guidance ([594d579](https://github.com/I-am-PUID-0/DUMB/commit/594d57996c72748384b053ce1b6fbfcabb47bc50))
+* **maintainerr:** run Yarn build helpers as controller ([790fefd](https://github.com/I-am-PUID-0/DUMB/commit/790fefdbdfee9a27198c909fac035eaa55377a9c))
+* **mediastorm:** use OCI digest for update discovery ([1de6671](https://github.com/I-am-PUID-0/DUMB/commit/1de6671ffe86cfac008ba98b0dd410315cb3f1f2))
+* **nzbdav:** harden renamed prebuilt and source-build updates ([32af6cb](https://github.com/I-am-PUID-0/DUMB/commit/32af6cbbf34934501c7d6995b71972b382bd5f7f))
+* **profilarr:** support the v2.1 source and build layout ([3eb2761](https://github.com/I-am-PUID-0/DUMB/commit/3eb27618eff0226cc0c3ae863d9c6f6e788f972c))
+* **updates:** verify readiness for non-snapshot services ([d9bc554](https://github.com/I-am-PUID-0/DUMB/commit/d9bc5540431320ade09e391517c57641e69740b4))
+
+
+### 🤡 Other Changes
+
+* **deps:** update dependencies ([93ba681](https://github.com/I-am-PUID-0/DUMB/commit/93ba681a1cb45a6f02a8dae053371ac40b626094))
+
 ## [2.17.0](https://github.com/I-am-PUID-0/DUMB/compare/2.16.0...2.17.0) (2026-08-07)
 
 
