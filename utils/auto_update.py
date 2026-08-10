@@ -1309,6 +1309,15 @@ class Update:
                 self._safe_record_update_status(process_name, payload)
                 return payload
 
+            # This transient marker must bypass timing-result buffering so a
+            # frontend reconnect cannot observe the previous terminal result.
+            self._write_update_status(
+                process_name,
+                {
+                    "status": "installing",
+                    "message": f"Installing update for {process_name}.",
+                },
+            )
             original = {
                 "pinned_version": config.get("pinned_version"),
                 "commit_sha": config.get("commit_sha"),
@@ -1406,12 +1415,21 @@ class Update:
         instance_name,
         block_reason,
     ):
-        if key == "traefik_proxy_admin":
+        if key in {"dumb_frontend", "traefik_proxy_admin"}:
             source_identity = self._configured_target_label(config, block_reason)
 
             def install_candidate():
                 return setup_project(self.process_handler, process_name)
 
+            if key == "dumb_frontend":
+                return self._transactional_frontend_update(
+                    process_name,
+                    config,
+                    key,
+                    instance_name,
+                    source_identity,
+                    install_candidate,
+                )
             return self._transactional_tpa_update(
                 process_name,
                 config,
@@ -1440,6 +1458,139 @@ class Update:
 
         target_label = self._configured_target_label(config, block_reason)
         return True, f"Installed configured {target_label} for {process_name}."
+
+    def _transactional_frontend_update(
+        self,
+        process_name,
+        config,
+        key,
+        instance_name,
+        source_identity,
+        installer,
+    ):
+        """Build the replacement UI while the currently served UI stays online."""
+        original_dir = os.path.realpath(config.get("config_dir") or "/dumb/frontend")
+        transaction = DirectoryReleaseTransaction(original_dir, process_name)
+        operation_id = self._active_install_operation
+        original_excludes = list(config.get("exclude_dirs") or [])
+        original_env = dict(config.get("env") or {})
+        candidate_dir = transaction.prepare()
+
+        try:
+            if operation_id:
+                INSTALL_CACHE.update_operation(operation_id, stage="building")
+            transaction.mark_building()
+            config["config_dir"] = candidate_dir
+            config["exclude_dirs"] = [
+                str(value).replace(original_dir, candidate_dir, 1)
+                for value in original_excludes
+            ]
+            success, error = installer()
+            if not success:
+                transaction.abandon(str(error))
+                return (
+                    False,
+                    f"Candidate build failed; existing frontend retained: {error}",
+                )
+
+            required = (
+                os.path.join(candidate_dir, "package.json"),
+                os.path.join(candidate_dir, ".output", "server", "index.mjs"),
+            )
+            if not all(
+                os.path.isfile(path) and os.path.getsize(path) > 0 for path in required
+            ):
+                transaction.abandon("candidate verification failed")
+                return (
+                    False,
+                    "Candidate verification failed; existing frontend retained.",
+                )
+        finally:
+            config["config_dir"] = original_dir
+            config["exclude_dirs"] = original_excludes
+            restored_env = dict(config.get("env") or original_env)
+            config["env"] = {
+                env_key: (
+                    env_value.replace(candidate_dir, original_dir)
+                    if isinstance(env_value, str)
+                    else env_value
+                )
+                for env_key, env_value in restored_env.items()
+            }
+            CONFIG_MANAGER.save_config(process_name)
+
+        try:
+            if operation_id:
+                INSTALL_CACHE.update_operation(operation_id, stage="activating")
+            if process_name in self.process_handler.process_names:
+                self._mark_update_downtime_started(process_name)
+                self.process_handler.stop_process(process_name)
+            transaction.activate()
+            with self.process_handler.setup_tracker_lock:
+                self.process_handler.setup_tracker.discard(process_name)
+            configured, error = configure_project(self.process_handler, process_name)
+            if not configured:
+                raise RuntimeError(f"candidate configuration failed: {error}")
+            process, error = self.start_process(
+                process_name, config, key, instance_name
+            )
+            if not process:
+                raise RuntimeError(error or "candidate process failed to start")
+            healthy, health_error = self._wait_for_update_health(process_name)
+            if not healthy:
+                raise RuntimeError(
+                    f"candidate failed health stabilization: {health_error}"
+                )
+            transaction.commit()
+            return (
+                True,
+                f"Updated {process_name} transactionally ({source_identity}).",
+            )
+        except Exception as error:
+            self._mark_update_downtime_started(process_name)
+            self.process_handler.stop_process(process_name)
+            rolled_back = transaction.rollback()
+            if operation_id:
+                INSTALL_CACHE.update_operation(
+                    operation_id,
+                    stage="rolled_back" if rolled_back else "rollback_failed",
+                    rollback_performed=1,
+                )
+            rollback_healthy = False
+            if rolled_back:
+                with self.process_handler.setup_tracker_lock:
+                    self.process_handler.setup_tracker.discard(process_name)
+                configured, configure_error = configure_project(
+                    self.process_handler, process_name
+                )
+                if configured:
+                    restored_process, _ = self.start_process(
+                        process_name, config, key, instance_name
+                    )
+                    if restored_process:
+                        rollback_healthy, _ = self._wait_for_update_health(process_name)
+                else:
+                    self.logger.error(
+                        "Failed to configure restored frontend %s: %s",
+                        process_name,
+                        configure_error,
+                    )
+            return (
+                False,
+                f"Candidate activation failed ({error}); "
+                + (
+                    "previous frontend restored."
+                    if rollback_healthy
+                    else (
+                        "previous frontend files restored, but readiness was not confirmed."
+                        if rolled_back
+                        else "automatic rollback also failed."
+                    )
+                ),
+            )
+        finally:
+            if not transaction.activated:
+                transaction.abandon()
 
     def _transactional_tpa_update(
         self,
@@ -2599,7 +2750,18 @@ class Update:
                 current_version,
                 target_version,
             )
-            if key == "traefik_proxy_admin":
+            if key in {"dumb_frontend", "traefik_proxy_admin"}:
+                if key == "dumb_frontend":
+                    return self._transactional_frontend_update(
+                        process_name,
+                        config,
+                        key,
+                        instance_name,
+                        target_version,
+                        lambda: setup_branch_version(
+                            self.process_handler, config, process_name, key
+                        ),
+                    )
                 return self._transactional_tpa_update(
                     process_name,
                     config,
@@ -2738,7 +2900,18 @@ class Update:
                 self.logger.info(
                     f"Updating {process_name} config to {release_version}."
                 )
-            if key == "traefik_proxy_admin":
+            if key in {"dumb_frontend", "traefik_proxy_admin"}:
+                if key == "dumb_frontend":
+                    return self._transactional_frontend_update(
+                        process_name,
+                        config,
+                        key,
+                        instance_name,
+                        release_version,
+                        lambda: setup_release_version(
+                            self.process_handler, config, process_name, key
+                        ),
+                    )
                 return self._transactional_tpa_update(
                     process_name,
                     config,

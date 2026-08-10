@@ -1,9 +1,12 @@
 import threading
+import tempfile
 import unittest
+from pathlib import Path
 from unittest.mock import Mock, patch
 
 from api.api_state import APIState
 from utils.auto_update import Update
+from utils.config_loader import CONFIG_MANAGER
 
 
 class UpdateNotificationTests(unittest.TestCase):
@@ -13,11 +16,157 @@ class UpdateNotificationTests(unittest.TestCase):
         updater.downloader = Mock()
         updater.scheduler = Mock()
         updater.updating = threading.Lock()
+        updater._write_update_status = Mock()
         updater._safe_record_update_status = Mock()
         updater.supports_manual_update = Mock(return_value=True)
         updater._rollback_snapshots = {}
         updater._active_install_operation = None
         return updater
+
+    def _frontend_transaction_updater(self, target):
+        updater = self._updater()
+        process_handler = Mock()
+        process_handler.logger = Mock()
+        process_handler.process_names = {"DUMB Frontend"}
+        process_handler.setup_tracker = {"DUMB Frontend"}
+        process_handler.setup_tracker_lock = threading.Lock()
+
+        def stop_process(process_name):
+            process_handler.process_names.discard(process_name)
+
+        process_handler.stop_process.side_effect = stop_process
+        updater.process_handler = process_handler
+        updater._mark_update_downtime_started = Mock()
+        updater.start_process = Mock(return_value=(Mock(), None))
+        updater._wait_for_update_health = Mock(return_value=(True, None))
+        config = {
+            "config_dir": str(target),
+            "exclude_dirs": [],
+            "env": {},
+        }
+        return updater, process_handler, config
+
+    def test_frontend_candidate_build_keeps_current_ui_running_until_activation(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            target = root / "frontend"
+            target.mkdir()
+            (target / "old-runtime").write_text("old", encoding="utf-8")
+            updater, process_handler, config = self._frontend_transaction_updater(
+                target
+            )
+            build_observations = []
+
+            def installer():
+                build_observations.append(
+                    "DUMB Frontend" in process_handler.process_names
+                )
+                candidate = Path(config["config_dir"])
+                (candidate / "package.json").write_text("{}", encoding="utf-8")
+                entry = candidate / ".output" / "server" / "index.mjs"
+                entry.parent.mkdir(parents=True)
+                entry.write_text("export default {}", encoding="utf-8")
+                config["env"] = {"RUNTIME_ROOT": str(candidate)}
+                return True, None
+
+            with (
+                patch(
+                    "utils.transactional_install.install_cache_root",
+                    return_value=root / "cache",
+                ),
+                patch("utils.auto_update.configure_project", return_value=(True, None)),
+                patch.object(CONFIG_MANAGER, "save_config", create=True),
+            ):
+                success, message = updater._transactional_frontend_update(
+                    "DUMB Frontend",
+                    config,
+                    "dumb_frontend",
+                    None,
+                    "v1.80.0",
+                    installer,
+                )
+
+            self.assertTrue(success)
+            self.assertIn("transactionally", message)
+            self.assertEqual(build_observations, [True])
+            process_handler.stop_process.assert_called_once_with("DUMB Frontend")
+            self.assertFalse((target / "old-runtime").exists())
+            self.assertTrue((target / ".output" / "server" / "index.mjs").is_file())
+            self.assertEqual(config["config_dir"], str(target))
+            self.assertEqual(config["env"]["RUNTIME_ROOT"], str(target))
+
+    def test_frontend_candidate_build_failure_leaves_current_ui_running(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            target = root / "frontend"
+            target.mkdir()
+            (target / "old-runtime").write_text("old", encoding="utf-8")
+            updater, process_handler, config = self._frontend_transaction_updater(
+                target
+            )
+
+            with (
+                patch(
+                    "utils.transactional_install.install_cache_root",
+                    return_value=root / "cache",
+                ),
+                patch.object(CONFIG_MANAGER, "save_config", create=True),
+            ):
+                success, message = updater._transactional_frontend_update(
+                    "DUMB Frontend",
+                    config,
+                    "dumb_frontend",
+                    None,
+                    "v1.80.0",
+                    lambda: (False, "pnpm build failed"),
+                )
+
+            self.assertFalse(success)
+            self.assertIn("existing frontend retained", message)
+            self.assertTrue((target / "old-runtime").is_file())
+            self.assertIn("DUMB Frontend", process_handler.process_names)
+            process_handler.stop_process.assert_not_called()
+
+    def test_frontend_failed_activation_restores_previous_runtime(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            target = root / "frontend"
+            target.mkdir()
+            (target / "old-runtime").write_text("old", encoding="utf-8")
+            updater, _, config = self._frontend_transaction_updater(target)
+            updater._wait_for_update_health = Mock(
+                side_effect=[(False, "probe failed"), (True, None)]
+            )
+
+            def installer():
+                candidate = Path(config["config_dir"])
+                (candidate / "package.json").write_text("{}", encoding="utf-8")
+                entry = candidate / ".output" / "server" / "index.mjs"
+                entry.parent.mkdir(parents=True)
+                entry.write_text("export default {}", encoding="utf-8")
+                return True, None
+
+            with (
+                patch(
+                    "utils.transactional_install.install_cache_root",
+                    return_value=root / "cache",
+                ),
+                patch("utils.auto_update.configure_project", return_value=(True, None)),
+                patch.object(CONFIG_MANAGER, "save_config", create=True),
+            ):
+                success, message = updater._transactional_frontend_update(
+                    "DUMB Frontend",
+                    config,
+                    "dumb_frontend",
+                    None,
+                    "v1.80.0",
+                    installer,
+                )
+
+            self.assertFalse(success)
+            self.assertIn("previous frontend restored", message)
+            self.assertTrue((target / "old-runtime").is_file())
+            self.assertFalse((target / ".output").exists())
 
     def test_unhealthy_replacement_triggers_runtime_recovery(self):
         updater = self._updater()
@@ -305,6 +454,41 @@ class UpdateNotificationTests(unittest.TestCase):
 
         self.assertEqual(payload["status"], "unsupported")
         updater._safe_record_update_status.assert_called_once_with("Example", payload)
+
+    def test_manual_update_install_records_in_progress_before_running_update(self):
+        updater = self._updater()
+        config = {
+            "pinned_version": "",
+            "commit_sha": "",
+            "release_version_enabled": False,
+            "release_version": "latest",
+            "branch_enabled": False,
+            "branch": "main",
+        }
+        config_manager = Mock()
+        config_manager.find_key_for_process.return_value = ("example", None)
+        config_manager.get_instance.return_value = config
+
+        def update_check(*_args):
+            self.assertEqual(
+                updater._write_update_status.call_args_list[-1].args[1]["status"],
+                "installing",
+            )
+            return True, "Updated Example."
+
+        updater.update_check = Mock(side_effect=update_check)
+
+        with patch("utils.auto_update.CONFIG_MANAGER", config_manager):
+            payload = updater.manual_update_install("Example")
+
+        self.assertEqual(payload["status"], "updated")
+        self.assertEqual(
+            [
+                call.args[1]["status"]
+                for call in updater._write_update_status.call_args_list
+            ],
+            ["installing", "updated"],
+        )
 
     def test_commit_sha_blocks_moving_update_target(self):
         updater = self._updater()
