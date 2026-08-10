@@ -2591,7 +2591,10 @@ def _build_update_notice_entry(status: dict, process_entry: dict | None = None) 
         "current_version": status.get("current_version"),
         "previous_version": status.get("previous_version"),
         "available_version": available_version,
+        "releases_behind": status.get("releases_behind"),
         "checked_at": status.get("checked_at"),
+        "last_check_error": status.get("last_check_error"),
+        "last_check_failed_at": status.get("last_check_failed_at"),
         "applied_at": status.get("applied_at"),
         "release_url": release_url,
         "notes_label": display_notes_label,
@@ -5553,6 +5556,9 @@ async def get_capabilities(current_user: str = Depends(get_optional_current_user
         "ai_diagnostic_sessions": True,
         "ai_native_diagnostics": True,
         "ai_change_history": True,
+        "project_update_status_persistence": True,
+        "project_update_release_distance": True,
+        "api_update_check_always_on": True,
     }
 
 

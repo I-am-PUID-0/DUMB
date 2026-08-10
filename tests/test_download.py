@@ -165,6 +165,43 @@ class DownloaderHelperTests(unittest.TestCase):
         self.assertIsNone(error)
         self.assertEqual("v1.0.0-rc.10", version)
 
+    def test_count_releases_behind_uses_stable_release_history(self):
+        response = FakeResponse(
+            200,
+            json_data=[
+                {"tag_name": "v2.3.0", "draft": False, "prerelease": False},
+                {"tag_name": "v2.3.0-rc.1", "draft": False, "prerelease": True},
+                {"tag_name": "v2.2.0", "draft": False, "prerelease": False},
+                {"tag_name": "v2.1.0", "draft": False, "prerelease": False},
+                {"tag_name": "v2.0.0", "draft": False, "prerelease": False},
+            ],
+        )
+
+        with patch.object(self.downloader, "fetch_with_retries", return_value=response):
+            count, error = self.downloader.count_releases_behind(
+                "owner", "repo", "2.0.0", "v2.3.0"
+            )
+
+        self.assertIsNone(error)
+        self.assertEqual(3, count)
+
+    def test_count_releases_behind_returns_unknown_for_unlisted_build(self):
+        response = FakeResponse(
+            200,
+            json_data=[
+                {"tag_name": "v2.3.0", "draft": False, "prerelease": False},
+                {"tag_name": "v2.2.0", "draft": False, "prerelease": False},
+            ],
+        )
+
+        with patch.object(self.downloader, "fetch_with_retries", return_value=response):
+            count, error = self.downloader.count_releases_behind(
+                "owner", "repo", "dev-abcdef12", "v2.3.0"
+            )
+
+        self.assertIsNone(count)
+        self.assertIn("not found", error)
+
     def test_normalize_arch_maps_common_architectures(self):
         self.assertEqual(download.Downloader.normalize_arch("linux-x64"), "linux_x64")
         self.assertEqual(

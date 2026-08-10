@@ -750,6 +750,19 @@ class Versions:
             else:
                 normalized_current = current_version
                 normalized_latest = latest_release_version
+            if key == "dumb_api_service" and re.match(
+                r"^v?\d+(?:\.\d+){1,3}-dev\.\d+$",
+                str(current_version or "").strip(),
+            ):
+                dev_base = str(current_version).split("-dev.", 1)[0]
+                dev_base_tuple = self._parse_version_tuple(dev_base)
+                latest_tuple = self._parse_version_tuple(latest_release_version)
+                if dev_base_tuple and latest_tuple and dev_base_tuple > latest_tuple:
+                    return False, {
+                        "message": "Development build is ahead of the latest stable release",
+                        "current_version": current_version,
+                        "latest_version": latest_release_version,
+                    }
             if key == "nzbdav":
                 # NzbDAV release installs persist tag-shortSHA so DUMB can
                 # detect a moved rolling/prerelease tag. Compare against the
@@ -774,13 +787,38 @@ class Versions:
                     "message": "No updates available",
                     "current_version": self.display_version(key, current_version),
                     "latest_version": latest_release_version,
+                    **(
+                        {"releases_behind": 0}
+                        if key in {"dumb_api_service", "dumb_frontend"}
+                        else {}
+                    ),
                 }
             else:
-                return True, {
+                update_info = {
                     "message": "Update available",
                     "current_version": self.display_version(key, current_version),
                     "latest_version": latest_release_version,
                 }
+                if key in {"dumb_api_service", "dumb_frontend"}:
+                    releases_behind, distance_error = (
+                        self.downloader.count_releases_behind(
+                            repo_owner,
+                            repo_name,
+                            current_version,
+                            latest_release_version,
+                            prerelease=prerelease,
+                            nightly=nightly,
+                        )
+                    )
+                    if releases_behind is not None:
+                        update_info["releases_behind"] = releases_behind
+                    elif distance_error:
+                        self.logger.debug(
+                            "Could not determine release distance for %s: %s",
+                            process_name,
+                            distance_error,
+                        )
+                return True, update_info
         except Exception as e:
             self.logger.error(
                 f"Exception during version comparison {process_name}: {e}"

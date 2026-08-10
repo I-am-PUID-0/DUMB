@@ -800,6 +800,7 @@ def _start_control_plane_and_preinstall(
         start_fastapi_process()
         api_name = api_config.get("process_name", "DUMB API")
         process_handler.register_external_process(api_name, os.getpid())
+        updater.start_api_update_monitor(api_name)
 
     frontend_config = dumb_config.get("frontend", {})
     start_control_plane_before_preinstall(

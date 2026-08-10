@@ -29,7 +29,11 @@ class APIStateHelperTests(unittest.TestCase):
         state = APIState.__new__(APIState)
         state._update_cache = {}
         state._update_cache_lock = threading.Lock()
-        state._update_notices = {"applied": [], "info": []}
+        state._update_notices = {
+            "applied": [],
+            "info": [],
+            "project_statuses": {},
+        }
         state._update_notices_lock = threading.Lock()
         state._save_update_notices = lambda: None
         return state
@@ -152,6 +156,80 @@ class APIStateHelperTests(unittest.TestCase):
         self.assertEqual(notice["process_name"], "Radarr")
         self.assertEqual(notice["previous_version"], "1.0.0")
         self.assertEqual(notice["current_version"], "1.1.0")
+
+    def test_project_update_status_is_retained_by_backend(self):
+        state = self._state()
+
+        state.set_update_status(
+            "DUMB API",
+            {
+                "status": "update_available",
+                "current_version": "2.1.0",
+                "available_version": "2.4.0",
+                "releases_behind": 3,
+                "checked_at": 100,
+            },
+        )
+
+        retained = state._update_notices["project_statuses"]["dumbapi"]
+        self.assertEqual("update_available", retained["status"])
+        self.assertEqual(3, retained["releases_behind"])
+
+        restarted = self._state()
+        restarted._update_notices["project_statuses"] = {"dumbapi": retained}
+        restarted._restore_project_update_statuses()
+        self.assertEqual(
+            "2.4.0",
+            restarted.get_update_status("DUMB API")["available_version"],
+        )
+
+    def test_failed_project_recheck_keeps_known_available_notice(self):
+        state = self._state()
+        state.set_update_status(
+            "DUMB Frontend",
+            {
+                "status": "update_available",
+                "current_version": "1.70.0",
+                "available_version": "1.80.0",
+            },
+        )
+
+        with patch("api.api_state.notify_event"):
+            state.set_update_status(
+                "DUMB Frontend",
+                {"status": "error", "message": "GitHub unavailable"},
+            )
+
+        status = state.get_update_status("DUMB Frontend")
+        self.assertEqual("update_available", status["status"])
+        self.assertEqual("1.80.0", status["available_version"])
+        self.assertEqual("GitHub unavailable", status["last_check_error"])
+
+    def test_project_schedule_refresh_keeps_retained_terminal_result(self):
+        state = self._state()
+        state.set_update_status(
+            "DUMB Frontend",
+            {
+                "status": "update_available",
+                "current_version": "1.70.0",
+                "available_version": "1.80.0",
+                "checked_at": 100,
+            },
+        )
+
+        state.set_update_status(
+            "DUMB Frontend",
+            {
+                "status": "scheduled",
+                "next_check_at": 500,
+                "auto_update_enabled": True,
+            },
+        )
+
+        status = state.get_update_status("DUMB Frontend")
+        self.assertEqual("update_available", status["status"])
+        self.assertEqual("1.80.0", status["available_version"])
+        self.assertEqual(500, status["next_check_at"])
 
 
 if __name__ == "__main__":

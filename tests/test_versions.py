@@ -130,6 +130,45 @@ class VersionsHelperTests(unittest.TestCase):
             "v2.4-0dec23ac",
         )
 
+    def test_control_plane_comparison_includes_release_distance(self):
+        versions = Versions()
+        versions.downloader.get_latest_release = lambda *args, **kwargs: (
+            "v2.5.1",
+            None,
+        )
+        versions.downloader.count_releases_behind = lambda *args, **kwargs: (4, None)
+        versions.version_check = lambda *args, **kwargs: ("v2.1.0", None)
+
+        update_needed, info = versions.compare_versions(
+            "DUMB API",
+            "I-am-PUID-0",
+            "DUMB",
+            None,
+            "dumb_api_service",
+        )
+
+        self.assertTrue(update_needed)
+        self.assertEqual(4, info["releases_behind"])
+
+    def test_api_dev_build_is_not_downgraded_to_older_stable_release(self):
+        versions = Versions()
+        versions.downloader.get_latest_release = lambda *args, **kwargs: (
+            "v2.10.0",
+            None,
+        )
+        versions.version_check = lambda *args, **kwargs: ("2.11.0-dev.12", None)
+
+        update_needed, info = versions.compare_versions(
+            "DUMB API",
+            "I-am-PUID-0",
+            "DUMB",
+            None,
+            "dumb_api_service",
+        )
+
+        self.assertFalse(update_needed)
+        self.assertIn("ahead", info["message"])
+
     def test_is_latest_release_gt_uses_cache_after_first_lookup(self):
         versions = Versions()
 

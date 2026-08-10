@@ -327,6 +327,84 @@ class Downloader:
             return None, f"Error: Unable to access the {repo_name} repository API."
 
     @staticmethod
+    def _normalized_release_tag(value):
+        return str(value or "").strip().lower().removeprefix("v")
+
+    def count_releases_behind(
+        self,
+        repo_owner,
+        repo_name,
+        current_version,
+        latest_version,
+        *,
+        prerelease=False,
+        nightly=False,
+        max_pages=10,
+    ):
+        """Count published releases between an installed and available version.
+
+        GitHub's release order is used instead of attempting to infer a distance
+        from version-number components. ``None`` means the installed version was
+        not found in the bounded release history (for example, a branch/dev
+        build or a release older than the retained lookup window).
+        """
+        current_tag = self._normalized_release_tag(current_version)
+        latest_tag = self._normalized_release_tag(latest_version)
+        if not current_tag or not latest_tag:
+            return None, "Current and latest release versions are required."
+        if current_tag == latest_tag:
+            return 0, None
+
+        headers = self.get_headers()
+        releases_seen = 0
+        latest_seen = False
+        for page in range(1, max(1, int(max_pages)) + 1):
+            api_url = (
+                f"https://api.github.com/repos/{repo_owner}/{repo_name}/releases"
+                f"?per_page=100&page={page}"
+            )
+            response = self.fetch_with_retries(api_url, headers)
+            if not response or response.status_code != 200:
+                return None, "Unable to read GitHub release history."
+            payload = response.json()
+            if not isinstance(payload, list):
+                return None, "GitHub returned an invalid release history."
+
+            eligible = []
+            for release in payload:
+                if not isinstance(release, dict) or release.get("draft"):
+                    continue
+                tag_name = str(release.get("tag_name") or "").strip()
+                if not tag_name:
+                    continue
+                if nightly:
+                    if "nightly" not in tag_name.lower():
+                        continue
+                elif prerelease:
+                    if not release.get("prerelease"):
+                        continue
+                elif release.get("prerelease"):
+                    continue
+                eligible.append(tag_name)
+
+            for tag_name in eligible:
+                normalized = self._normalized_release_tag(tag_name)
+                if normalized == latest_tag:
+                    latest_seen = True
+                    releases_seen = 0
+                    continue
+                if not latest_seen:
+                    continue
+                releases_seen += 1
+                if normalized == current_tag:
+                    return releases_seen, None
+
+            if len(payload) < 100:
+                break
+
+        return None, "Installed version was not found in GitHub release history."
+
+    @staticmethod
     def _github_release_recency_key(release):
         return (
             str(release.get("published_at") or release.get("created_at") or ""),

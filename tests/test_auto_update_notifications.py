@@ -1108,6 +1108,49 @@ class UpdateNotificationTests(unittest.TestCase):
             "check_only", Update.auto_update_mode({"auto_update_mode": "check_only"})
         )
 
+    def test_api_update_check_is_always_check_only(self):
+        updater = self._updater()
+        updater._manual_update_check_internal = Mock(
+            return_value={
+                "status": "update_available",
+                "current_version": "2.1.0",
+                "available_version": "2.3.0",
+                "releases_behind": 2,
+            }
+        )
+        updater._calculate_next_run_at = Mock(return_value=500)
+        config_manager = Mock()
+        config_manager.get_instance.return_value = {
+            "process_name": "DUMB API",
+            "auto_update": True,
+        }
+
+        with (
+            patch("utils.auto_update.CONFIG_MANAGER", config_manager),
+            patch("utils.auto_update.time.time", return_value=100),
+        ):
+            payload = updater.check_api_update("DUMB API")
+
+        checked_config = updater._manual_update_check_internal.call_args.args[1]
+        self.assertFalse(checked_config["auto_update"])
+        self.assertEqual("check_only", checked_config["auto_update_mode"])
+        self.assertTrue(payload["update_check_required"])
+        self.assertFalse(payload["auto_update_enabled"])
+        self.assertEqual(2, payload["releases_behind"])
+        self.assertEqual(500, payload["next_check_at"])
+
+    def test_scheduled_api_check_failure_does_not_stop_scheduler_loop(self):
+        updater = self._updater()
+        updater.check_api_update = Mock(side_effect=RuntimeError("GitHub unavailable"))
+        updater._calculate_next_run_at = Mock(return_value=500)
+        Update._api_next_check_at = 100
+
+        with patch("utils.auto_update.time.time", return_value=100):
+            updater._run_api_update_check_if_due("DUMB API")
+
+        self.assertEqual(500, Update._api_next_check_at)
+        updater.logger.warning.assert_called_once()
+
     def test_direct_update_check_never_resolves_latest_for_commit_pin(self):
         updater = self._updater()
         updater.process_handler = Mock()

@@ -37,6 +37,10 @@ class Update:
     _schedule_thread_started = False
     _schedule_thread_count = 0
     _schedule_thread_lock = threading.Lock()
+    _api_update_job = None
+    _api_next_check_at = None
+    _api_update_interval_hours = 24
+    _api_update_start_time = "04:00"
 
     def __init__(self, process_handler):
         self.process_handler = process_handler
@@ -414,6 +418,8 @@ class Update:
             }
             self._safe_record_update_status(process_name, payload)
             return payload
+        if key == "dumb_api_service":
+            return self.check_api_update(process_name)
         if not self.supports_manual_update(key, config):
             payload = {
                 "status": "unsupported",
@@ -429,6 +435,97 @@ class Update:
             )
             self._safe_record_update_status(process_name, payload)
             return payload
+
+    def _api_update_config(self):
+        configured = CONFIG_MANAGER.get_instance(None, "dumb_api_service") or {}
+        return {
+            **configured,
+            "repo_owner": "I-am-PUID-0",
+            "repo_name": "DUMB",
+            "auto_update": False,
+            "auto_update_mode": "check_only",
+            "auto_update_interval": self._api_update_interval_hours,
+            "auto_update_start_time": self._api_update_start_time,
+        }
+
+    def check_api_update(self, process_name="DUMB API"):
+        """Check the controller image version without attempting self-installation."""
+        config = self._api_update_config()
+        payload = self._manual_update_check_internal(
+            process_name,
+            config,
+            "dumb_api_service",
+            None,
+        )
+        next_check_at = self._calculate_next_run_at(
+            self._api_update_interval_hours,
+            self._api_update_start_time,
+            int(time.time()) + 1,
+        )
+        Update._api_next_check_at = next_check_at
+        payload = {
+            **payload,
+            "update_check_enabled": True,
+            "update_check_required": True,
+            "auto_update_enabled": False,
+            "auto_update_mode": "check_only",
+            "auto_update_interval": self._api_update_interval_hours,
+            "auto_update_start_time": self._api_update_start_time,
+            "next_check_at": next_check_at,
+        }
+        self._safe_record_update_status(process_name, payload)
+        return payload
+
+    def _run_api_update_check_if_due(self, process_name):
+        now_ts = int(time.time())
+        due_at = Update._api_next_check_at
+        if due_at is None:
+            due_at = self._calculate_next_run_at(
+                self._api_update_interval_hours,
+                self._api_update_start_time,
+                now_ts,
+            )
+            Update._api_next_check_at = due_at
+        if now_ts < due_at:
+            return
+        try:
+            self.check_api_update(process_name)
+        except Exception as error:
+            Update._api_next_check_at = self._calculate_next_run_at(
+                self._api_update_interval_hours,
+                self._api_update_start_time,
+                now_ts + 1,
+            )
+            self.logger.warning("Scheduled DUMB API update check failed: %s", error)
+
+    def start_api_update_monitor(self, process_name="DUMB API"):
+        """Always monitor DUMB API releases; installation remains operator-owned."""
+        if Update._api_update_job:
+            try:
+                self.scheduler.cancel_job(Update._api_update_job)
+            except Exception:
+                pass
+        Update._api_next_check_at = self._calculate_next_run_at(
+            self._api_update_interval_hours,
+            self._api_update_start_time,
+            int(time.time()) + 1,
+        )
+        Update._api_update_job = self.scheduler.every(1).minutes.do(
+            self._run_api_update_check_if_due,
+            process_name,
+        )
+        self._ensure_scheduler_running(process_name)
+
+        def initial_check():
+            try:
+                self.check_api_update(process_name)
+            except Exception as error:
+                self.logger.warning(
+                    "Initial DUMB API update check failed: %s",
+                    error,
+                )
+
+        threading.Thread(target=initial_check, daemon=True).start()
 
     def _manual_update_check_internal(self, process_name, config, key, instance_name):
         block_reason = self._get_update_block_reason(config, key)
@@ -880,6 +977,7 @@ class Update:
                 "status": "no_update",
                 "current_version": current_version,
                 "available_version": latest_version,
+                "releases_behind": update_info.get("releases_behind"),
                 "message": update_info.get("message"),
                 "checked_at": checked_at,
                 "auto_update_enabled": auto_update_enabled,
@@ -905,6 +1003,7 @@ class Update:
             "status": status,
             "current_version": current_version,
             "available_version": latest_version,
+            "releases_behind": update_info.get("releases_behind"),
             "reason": block_reason,
             "message": update_info.get("message"),
             "checked_at": checked_at,

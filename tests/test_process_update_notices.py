@@ -211,6 +211,23 @@ class ProcessUpdateNoticeHelperTests(unittest.TestCase):
         self.assertEqual(entry["release_url"], "https://example.test/custom")
         self.assertEqual(entry["notes_label"], "Custom notes")
 
+    def test_build_update_notice_entry_includes_release_distance(self):
+        entry = process_router._build_update_notice_entry(
+            {
+                "process_name": "DUMB API",
+                "status": "update_available",
+                "current_version": "2.1.0",
+                "available_version": "2.4.0",
+                "releases_behind": 3,
+            },
+            {
+                "process_name": "DUMB API",
+                "repo_url": "https://github.com/I-am-PUID-0/DUMB",
+            },
+        )
+
+        self.assertEqual(3, entry["releases_behind"])
+
     def test_update_notices_filters_project_scope_to_dumb_processes(self):
         api_state = FakeAPIState()
         api_state.statuses = [

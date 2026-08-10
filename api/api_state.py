@@ -25,6 +25,7 @@ class APIState:
         )
         self._update_notices_lock = threading.Lock()
         self._update_notices = self._load_update_notices()
+        self._restore_project_update_statuses()
         self._ensure_first_run_update_notice()
         self._symlink_backup_cache = {}
         self._symlink_backup_cache_lock = threading.Lock()
@@ -41,6 +42,7 @@ class APIState:
             if isinstance(payload, dict):
                 applied = payload.get("applied")
                 info = payload.get("info")
+                project_statuses = payload.get("project_statuses")
                 return {
                     "applied": (
                         [item for item in applied if isinstance(item, dict)]
@@ -52,12 +54,87 @@ class APIState:
                         if isinstance(info, list)
                         else []
                     ),
+                    "project_statuses": (
+                        {
+                            str(key): dict(value)
+                            for key, value in project_statuses.items()
+                            if isinstance(value, dict)
+                        }
+                        if isinstance(project_statuses, dict)
+                        else {}
+                    ),
                 }
         except FileNotFoundError:
             pass
         except Exception as exc:
             self.logger.debug("Failed to load update notices: %s", exc)
-        return {"applied": [], "info": []}
+        return {"applied": [], "info": [], "project_statuses": {}}
+
+    def _restore_project_update_statuses(self):
+        statuses = self._update_notices.get("project_statuses", {})
+        if not isinstance(statuses, dict):
+            return
+        with self._update_cache_lock:
+            for normalized, payload in statuses.items():
+                if isinstance(payload, dict):
+                    self._update_cache[str(normalized)] = dict(payload)
+
+    def _is_project_update_process(self, process_name):
+        normalized = self._normalize_process_name(process_name)
+        if normalized in {"dumbapi", "dmbapi", "dumbfrontend", "dmbfrontend"}:
+            return True
+        try:
+            key, _ = CONFIG_MANAGER.find_key_for_process(process_name)
+        except Exception:
+            key = None
+        return key in {"dumb_api_service", "dumb_frontend"}
+
+    def _persist_project_update_status(self, process_name, payload):
+        if not self._is_project_update_process(process_name):
+            return
+        if payload.get("status") not in {
+            "update_available",
+            "blocked",
+            "no_update",
+            "updated",
+            "error",
+            "failed",
+            "disabled",
+        }:
+            return
+        allowed_fields = {
+            "process_name",
+            "status",
+            "reason",
+            "message",
+            "current_version",
+            "previous_version",
+            "available_version",
+            "releases_behind",
+            "checked_at",
+            "applied_at",
+            "release_url",
+            "notes_label",
+            "auto_update_enabled",
+            "auto_update_mode",
+            "auto_update_interval",
+            "auto_update_start_time",
+            "update_check_enabled",
+            "update_check_required",
+            "next_check_at",
+            "last_check_error",
+            "last_check_failed_at",
+        }
+        retained = {
+            key: value
+            for key, value in payload.items()
+            if key in allowed_fields and value is not None
+        }
+        normalized = self._normalize_process_name(process_name)
+        with self._update_notices_lock:
+            statuses = self._update_notices.setdefault("project_statuses", {})
+            statuses[normalized] = retained
+            self._save_update_notices()
 
     def _current_dumb_version(self):
         env_version = (os.environ.get("DUMB_VERSION") or "").strip()
@@ -186,6 +263,7 @@ class APIState:
             return
         normalized = self._normalize_process_name(process_name)
         now_ts = int(time.time())
+        incoming_status = payload.get("status")
         with self._update_cache_lock:
             previous = self._update_cache.get(normalized)
             update_payload = {
@@ -193,6 +271,40 @@ class APIState:
                 "checked_at": payload.get("checked_at") or now_ts,
                 **payload,
             }
+            if (
+                self._is_project_update_process(process_name)
+                and incoming_status == "scheduled"
+                and isinstance(previous, dict)
+                and previous.get("status")
+                in {"update_available", "blocked", "no_update"}
+            ):
+                update_payload = {
+                    **previous,
+                    **{
+                        key: value
+                        for key, value in update_payload.items()
+                        if key
+                        in {
+                            "auto_update_enabled",
+                            "auto_update_mode",
+                            "auto_update_interval",
+                            "auto_update_start_time",
+                            "next_check_at",
+                        }
+                    },
+                }
+            if (
+                self._is_project_update_process(process_name)
+                and incoming_status in {"error", "failed"}
+                and isinstance(previous, dict)
+                and previous.get("status") in {"update_available", "blocked"}
+            ):
+                update_payload = {
+                    **previous,
+                    "last_check_error": payload.get("message")
+                    or "The latest update check failed.",
+                    "last_check_failed_at": now_ts,
+                }
             if update_payload.get("status") == "updated":
                 update_payload.setdefault("applied_at", now_ts)
                 if isinstance(previous, dict):
@@ -206,6 +318,8 @@ class APIState:
                         "current_version", previous.get("available_version")
                     )
             self._update_cache[normalized] = update_payload
+
+        self._persist_project_update_status(process_name, update_payload)
 
         if update_payload.get("status") == "updated":
             self._record_applied_update_notice(process_name, update_payload, previous)
@@ -231,7 +345,7 @@ class APIState:
                 or f"Version {update_payload.get('available_version') or 'unknown'} is available.",
                 service_name=process_name,
             )
-        elif update_payload.get("status") in {"error", "failed"}:
+        elif incoming_status in {"error", "failed"}:
             notify_event(
                 "update.failed",
                 "critical",
