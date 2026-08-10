@@ -1,5 +1,18 @@
 # Changelog
 
+## [2.18.0](https://github.com/I-am-PUID-0/DUMB/compare/2.17.1...2.18.0) (2026-08-10)
+
+
+### ✨ Features
+
+* **logging:** support runtime API debug logging controls ([cc58e7c](https://github.com/I-am-PUID-0/DUMB/commit/cc58e7c226ddcad79534f95c1d32d89d0039d28c))
+* **updates:** retain project notices and monitor API releases ([27c16f1](https://github.com/I-am-PUID-0/DUMB/commit/27c16f13fb44d669714a7374ff2f8058829a53b6))
+
+
+### 🐛 Bug Fixes
+
+* **updates:** make frontend self-updates transactional ([5865fd5](https://github.com/I-am-PUID-0/DUMB/commit/5865fd5ada58f1dc1b8b7d1dc186e69ad20d70a2))
+
 ## [2.17.1](https://github.com/I-am-PUID-0/DUMB/compare/2.17.0...2.17.1) (2026-08-10)
 
 
