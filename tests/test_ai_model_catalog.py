@@ -64,6 +64,19 @@ class AiModelCatalogTests(unittest.TestCase):
         self.assertIsNone(model_lifecycle("google_gemini", "gemini-2.5-flash"))
         self.assertIsNone(model_lifecycle("google_gemini", "gemini-2.5-flash-lite"))
 
+    def test_openai_legacy_completion_models_recommend_terra(self):
+        for model in (
+            "gpt-3.5-turbo-instruct",
+            "babbage-002",
+            "davinci-002",
+            "gpt-3.5-turbo-1106",
+        ):
+            with self.subTest(model=model):
+                lifecycle = model_lifecycle("openai", model, "2026-08-10")
+
+                self.assertEqual(lifecycle["shutdown_date"], "2026-09-28")
+                self.assertEqual(lifecycle["replacement"], "gpt-5.6-terra")
+
     def test_catalog_comparison_reports_new_or_changed_models(self):
         observed = [
             {

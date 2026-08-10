@@ -139,10 +139,10 @@ OPENAI_MODEL_LIFECYCLE = _catalog(
         ("gpt-4-0125-preview", "2026-03-26", "gpt-5"),
         ("gpt-4-turbo-preview", "2026-03-26", "gpt-5"),
         ("gpt-4-turbo-preview-completions", "2026-03-26", "gpt-5"),
-        ("gpt-3.5-turbo-instruct", "2026-09-28", "gpt-5.4-mini"),
-        ("babbage-002", "2026-09-28", "gpt-5.4-mini"),
-        ("davinci-002", "2026-09-28", "gpt-5.4-mini"),
-        ("gpt-3.5-turbo-1106", "2026-09-28", "gpt-5.4-mini"),
+        ("gpt-3.5-turbo-instruct", "2026-09-28", "gpt-5.6-terra"),
+        ("babbage-002", "2026-09-28", "gpt-5.6-terra"),
+        ("davinci-002", "2026-09-28", "gpt-5.6-terra"),
+        ("gpt-3.5-turbo-1106", "2026-09-28", "gpt-5.6-terra"),
     ]
 )
 
