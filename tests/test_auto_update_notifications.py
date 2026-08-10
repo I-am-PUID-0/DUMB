@@ -478,6 +478,99 @@ class UpdateNotificationTests(unittest.TestCase):
         self.assertFalse(payload["configured_target_installed"])
         self.assertEqual("dev-bbbbbbbb", payload["available_version"])
 
+    def test_mediastorm_status_uses_oci_digest_for_latest(self):
+        updater = self._updater()
+        config = {"release_version": "latest"}
+        target = {
+            "selector": "latest",
+            "current_version": "v1.5.0-20260806",
+            "current_digest": "sha256:" + "a" * 64,
+            "available_digest": "sha256:" + "b" * 64,
+            "installed": False,
+        }
+
+        with patch("utils.auto_update.mediastorm_target_status", return_value=target):
+            payload = updater._manual_check_mediastorm(
+                "mediastorm",
+                config,
+                None,
+                1,
+                True,
+                24,
+                "04:00",
+                2,
+            )
+
+        self.assertEqual("update_available", payload["status"])
+        self.assertEqual("v1.5.0-20260806", payload["current_version"])
+        self.assertEqual("latest@bbbbbbbbbbbb", payload["available_version"])
+
+    def test_mediastorm_pinned_oci_target_remains_blocked(self):
+        updater = self._updater()
+        target = {
+            "selector": "1.5.0",
+            "current_version": "v1.4.0-20260701",
+            "current_digest": "sha256:" + "a" * 64,
+            "available_digest": "sha256:" + "b" * 64,
+            "installed": False,
+        }
+
+        with patch("utils.auto_update.mediastorm_target_status", return_value=target):
+            payload = updater._manual_check_mediastorm(
+                "mediastorm",
+                {"release_version_enabled": True, "release_version": "1.5.0"},
+                "release",
+                1,
+                False,
+                24,
+                "04:00",
+                None,
+            )
+
+        self.assertEqual("blocked", payload["status"])
+        self.assertEqual("1.5.0", payload["available_version"])
+        self.assertFalse(payload["configured_target_installed"])
+
+    def test_mediastorm_update_installs_changed_latest_oci_digest(self):
+        updater = self._updater()
+        updater.process_handler = Mock(
+            process_names=[],
+            setup_tracker={"mediastorm"},
+            setup_tracker_lock=threading.Lock(),
+        )
+        updater.start_process = Mock(return_value=("started", None))
+        target = {
+            "selector": "latest",
+            "current_version": "v1.5.0-20260806",
+            "current_digest": "sha256:" + "a" * 64,
+            "available_digest": "sha256:" + "b" * 64,
+            "installed": False,
+        }
+        config = {"release_version": "latest"}
+
+        with (
+            patch("utils.auto_update.mediastorm_target_status", return_value=target),
+            patch(
+                "utils.auto_update.setup_release_version", return_value=(True, None)
+            ) as install,
+            patch("utils.auto_update.setup_project", return_value=(True, None)),
+            patch("utils.auto_update.Versions") as versions,
+        ):
+            versions.return_value.version_check.return_value = (
+                "v1.5.0-20260807",
+                None,
+            )
+            success, message = updater.update_check_mediastorm(
+                "mediastorm", config, "mediastorm", None
+            )
+
+        self.assertTrue(success)
+        self.assertIn("v1.5.0-20260807", message)
+        install.assert_called_once_with(
+            updater.process_handler, config, "mediastorm", "mediastorm"
+        )
+        self.assertNotIn("mediastorm", updater.process_handler.setup_tracker)
+
     def test_direct_update_installs_changed_nzbdav_release_tag_commit(self):
         updater = self._updater()
         updater.process_handler = Mock(

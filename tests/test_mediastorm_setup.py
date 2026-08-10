@@ -152,10 +152,10 @@ class MediaStormSetupTests(unittest.TestCase):
             }
 
             def install_runtime(_config, version):
-                self.assertEqual(version, "v1.2.3")
+                self.assertEqual(version, "latest")
                 self._runtime_tree(config_dir / "runtime")
                 return {
-                    "version": version,
+                    "version": "v1.2.3",
                     "image_digest": "sha256:" + "a" * 64,
                     "oci_reference": "latest",
                     "runtime_dir": str(config_dir / "runtime"),
@@ -183,11 +183,7 @@ class MediaStormSetupTests(unittest.TestCase):
                     "_postgres_database_url",
                     return_value="postgresql://db/mediastorm",
                 ),
-                patch.object(
-                    setup.downloader,
-                    "get_latest_release",
-                    return_value=("v1.2.3", None),
-                ),
+                patch.object(setup.downloader, "get_latest_release") as latest,
                 patch.object(
                     setup, "install_mediastorm_runtime", side_effect=install_runtime
                 ) as install,
@@ -200,6 +196,7 @@ class MediaStormSetupTests(unittest.TestCase):
 
             self.assertTrue(success, error)
             install.assert_called_once()
+            latest.assert_not_called()
 
     def test_running_postgres_reconciles_newly_registered_databases(self):
         postgres_config = {
@@ -270,7 +267,7 @@ class MediaStormSetupTests(unittest.TestCase):
         self.assertTrue(success, error)
         initialize_databases.assert_not_called()
 
-    def test_release_update_installs_verified_oci_runtime(self):
+    def test_latest_update_uses_oci_without_github_release_lookup(self):
         config = {
             "release_version": "latest",
             "repo_owner": "godver3",
@@ -283,11 +280,7 @@ class MediaStormSetupTests(unittest.TestCase):
             "runtime_dir": "/mediastorm/runtime",
         }
         with (
-            patch.object(
-                setup.downloader,
-                "get_latest_release",
-                return_value=("v1.5.0-20260711", None),
-            ),
+            patch.object(setup.downloader, "get_latest_release") as latest,
             patch.object(
                 setup, "install_mediastorm_runtime", return_value=installed
             ) as install,
@@ -298,7 +291,8 @@ class MediaStormSetupTests(unittest.TestCase):
             )
 
         self.assertTrue(success, error)
-        install.assert_called_once_with(config, "v1.5.0-20260711")
+        latest.assert_not_called()
+        install.assert_called_once_with(config, "latest")
 
     def test_pinned_release_uses_selected_oci_reference_without_latest_lookup(self):
         config = {

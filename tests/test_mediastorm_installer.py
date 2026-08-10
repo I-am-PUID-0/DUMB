@@ -14,6 +14,7 @@ from utils.mediastorm_installer import (
     mediastorm_install_selector,
     mediastorm_runtime_ready,
     mediastorm_runtime_matches_selection,
+    mediastorm_target_status,
     normalize_mediastorm_version,
 )
 
@@ -37,10 +38,11 @@ def _write_symlink_layer(path: Path, name: str, target: str) -> None:
 
 
 class _FakeOCIClient:
-    def __init__(self, layers, missing_references=None):
+    def __init__(self, layers, missing_references=None, index_digest=None):
         self.layers = layers
         self.missing_references = set(missing_references or [])
         self.resolved_references = []
+        self.index_digest = index_digest or "sha256:" + "a" * 64
 
     def resolve_manifest(self, repository, reference):
         self.resolved_references.append(reference)
@@ -52,7 +54,7 @@ class _FakeOCIClient:
             "repository": repository,
             "reference": reference,
             "architecture": "arm64",
-            "index_digest": "sha256:" + "a" * 64,
+            "index_digest": self.index_digest,
             "manifest_digest": "sha256:" + "b" * 64,
             "layers": [
                 {
@@ -186,6 +188,76 @@ class MediaStormInstallerTests(unittest.TestCase):
             )
             self.assertTrue(mediastorm_runtime_matches_selection(runtime, "latest"))
 
+    def test_latest_uses_oci_version_when_github_release_metadata_lags(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            layer = root / "layer.tar.gz"
+            entries = {
+                "root/mediastorm": (b"server", 0o755),
+                "opt/strmr-web/index.html": (b"web", 0o644),
+                "opt/iroh/iroh-direct-spike": (b"iroh", 0o755),
+                "app/version.txt": (b"1.5.0\n20260807\n", 0o644),
+            }
+            for binary in ("ffmpeg", "ffprobe", "yt-dlp", "deno"):
+                entries[f"usr/local/bin/{binary}"] = (b"binary", 0o755)
+            _write_layer(layer, entries)
+
+            def fake_python_environment(runtime):
+                python = runtime / "python-venv" / "bin" / "python3"
+                python.parent.mkdir(parents=True)
+                python.write_text("python", encoding="utf-8")
+
+            config = {"config_dir": str(root / "mediastorm")}
+            with patch(
+                "utils.mediastorm_installer._build_python_environment",
+                side_effect=fake_python_environment,
+            ):
+                result = install_mediastorm_runtime(
+                    config,
+                    "v1.5.0-20260806",
+                    client=_FakeOCIClient([layer]),
+                )
+
+            self.assertEqual(result["version"], "v1.5.0-20260807")
+            self.assertEqual(result["install_selector"], "latest")
+
+    def test_target_status_compares_selected_oci_digest(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            runtime = Path(temp_dir) / "mediastorm" / "runtime"
+            for relative in (
+                "mediastorm",
+                "web/index.html",
+                "iroh/iroh-direct-spike",
+                "python-venv/bin/python3",
+                "bin/ffmpeg",
+                "bin/ffprobe",
+                "bin/yt-dlp",
+                "bin/deno",
+            ):
+                target = runtime / relative
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text("runtime", encoding="utf-8")
+            (runtime / "version.txt").write_text("v1.5.0-20260806\n", encoding="utf-8")
+            (runtime / "install-selector.txt").write_text("latest\n", encoding="utf-8")
+            old_digest = "sha256:" + "c" * 64
+            current_digest = "sha256:" + "a" * 64
+            (runtime / "image-digest.txt").write_text(
+                f"{old_digest}\n", encoding="utf-8"
+            )
+            config = {"config_dir": str(runtime.parent)}
+            client = _FakeOCIClient([], index_digest=current_digest)
+
+            pending = mediastorm_target_status(config, client=client)
+            self.assertFalse(pending["installed"])
+            self.assertEqual(pending["current_digest"], old_digest)
+            self.assertEqual(pending["available_digest"], current_digest)
+
+            (runtime / "image-digest.txt").write_text(
+                f"{current_digest}\n", encoding="utf-8"
+            )
+            installed = mediastorm_target_status(config, client=client)
+            self.assertTrue(installed["installed"])
+
     def test_installs_pinned_semver_reference_and_accepts_dated_internal_version(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
@@ -313,6 +385,8 @@ class MediaStormInstallerTests(unittest.TestCase):
                     {
                         "config_dir": str(config_dir),
                         "container_image": "godver3/mediastorm",
+                        "release_version_enabled": True,
+                        "release_version": "v1.5.0-20260711",
                     },
                     "v1.5.0-20260711",
                     client=_FakeOCIClient([layer]),

@@ -27,6 +27,7 @@ from utils.service_postgres import (
 )
 from utils.zilean_dotnet import prepare_zilean_for_net10
 from utils.mediastorm_installer import (
+    MEDIASTORM_OCI_REFERENCE,
     MediaStormInstallError,
     install_mediastorm_runtime,
     mediastorm_app_version_text,
@@ -764,14 +765,8 @@ def setup_release_version(process_handler, config, process_name, key):
         return additional_setup(process_handler, process_name, config, key)
 
     if key == "mediastorm":
-        requested_version = str(config.get("release_version") or "latest")
-        if requested_version.lower() == "latest":
-            requested_version, error = downloader.get_latest_release(
-                config["repo_owner"], config["repo_name"]
-            )
-            if error:
-                return False, error
         try:
+            requested_version = mediastorm_install_selector(config)
             result = install_mediastorm_runtime(config, requested_version)
         except MediaStormInstallError as exc:
             return False, str(exc)
@@ -6984,12 +6979,8 @@ def setup_mediastorm(
                 "run the install phase.",
             )
         requested_version = str(config.get("release_version") or "latest")
-        if requested_version.lower() == "latest":
-            requested_version, error = downloader.get_latest_release(
-                config["repo_owner"], config["repo_name"]
-            )
-            if error:
-                return False, error
+        if install_selector == MEDIASTORM_OCI_REFERENCE:
+            requested_version = install_selector
         try:
             result = install_mediastorm_runtime(config, requested_version)
         except MediaStormInstallError as exc:

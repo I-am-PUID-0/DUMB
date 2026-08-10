@@ -213,15 +213,13 @@ def mediastorm_install_selector(config: dict) -> str:
 def _mediastorm_install_request(config: dict, requested_version: str) -> dict:
     selector = mediastorm_install_selector(config)
     if selector == MEDIASTORM_OCI_REFERENCE:
-        expected_version = normalize_mediastorm_version(requested_version)
-        if not expected_version or expected_version == "vlatest":
-            raise MediaStormInstallError(
-                "A concrete mediastorm release is required for latest."
-            )
         return {
             "selector": selector,
             "references": [MEDIASTORM_OCI_REFERENCE],
-            "expected_version": expected_version,
+            # The OCI latest tag can move before the matching GitHub release
+            # is published. Its digest and embedded version marker are the
+            # authoritative update identity for this moving channel.
+            "expected_version": None,
             "expected_prefix": None,
         }
 
@@ -308,6 +306,47 @@ def mediastorm_runtime_ready(runtime_dir: str | Path) -> bool:
         runtime / "bin" / "deno",
     )
     return all(path.is_file() for path in required)
+
+
+def mediastorm_target_status(
+    config: dict,
+    *,
+    client: OCIRegistryClient | None = None,
+) -> dict:
+    """Compare the installed runtime with the selected OCI manifest digest."""
+    selector = mediastorm_install_selector(config)
+    runtime = Path(config.get("config_dir") or "/mediastorm") / "runtime"
+    registry_client = client or OCIRegistryClient(registry=MEDIASTORM_OCI_REGISTRY)
+    try:
+        manifest = registry_client.resolve_manifest(MEDIASTORM_OCI_REPOSITORY, selector)
+    except OCIImageError as exc:
+        raise MediaStormInstallError(
+            "Unable to resolve the selected mediastorm OCI image."
+        ) from exc
+
+    def read_marker(name: str) -> str:
+        try:
+            return (runtime / name).read_text(encoding="utf-8").strip()
+        except OSError:
+            return ""
+
+    current_version = normalize_mediastorm_version(read_marker("version.txt"))
+    current_digest = read_marker("image-digest.txt").lower()
+    available_digest = str(manifest["index_digest"]).strip().lower()
+    selector_matches = mediastorm_runtime_matches_selection(runtime, selector)
+    installed = bool(
+        mediastorm_runtime_ready(runtime)
+        and selector_matches
+        and current_digest
+        and current_digest == available_digest
+    )
+    return {
+        "selector": selector,
+        "current_version": current_version,
+        "current_digest": current_digest,
+        "available_digest": available_digest,
+        "installed": installed,
+    }
 
 
 def _build_python_environment(runtime_dir: Path) -> None:
@@ -421,6 +460,10 @@ def install_mediastorm_runtime(
             raise MediaStormInstallError(
                 "mediastorm OCI image contains no version marker."
             ) from exc
+        if not _MEDIASTORM_RELEASE_PATTERN.fullmatch(actual_version.removeprefix("v")):
+            raise MediaStormInstallError(
+                "mediastorm OCI image contains an invalid version marker."
+            )
         expected_version = install_request["expected_version"]
         expected_prefix = install_request["expected_prefix"]
         version_mismatch = expected_version and actual_version != expected_version
