@@ -51,6 +51,9 @@ _MEDIASTORM_PYTHON_LINK = "/.venv"
 _MEDIASTORM_LOG_DIR = "/log"
 _NZBDAV_PREBUILT_MARKER = ".dumb_nzbdav_prebuilt.json"
 _NZBDAV_PREBUILT_FORMAT = 1
+_NZBDAV_SOURCE_BUILD_MARKER = ".dumb_nzbdav_source_build"
+_NZBDAV_SOURCE_BUILD_FORMAT = 3
+_SQLITE_FILE_RE = re.compile(r"(?i).+\.(?:db|sqlite|sqlite3)(?:-(?:wal|shm|journal))?$")
 _NZBDAV_SERVICE_PROVIDER = json.dumps(
     {
         "name": "DUMB",
@@ -371,8 +374,14 @@ def _update_postgres_url(
 
 
 def _prepare_nzbdav_source_tree(target_dir: str) -> tuple[bool, str | None]:
-    # Prevent stale source files from mixed branch/release extracts.
-    cleanup_targets = ["backend", "frontend", "app", _NZBDAV_PREBUILT_MARKER]
+    # Prevent stale source files from mixed branch/release extracts. Keep the
+    # live app output until a clean publish candidate has passed validation.
+    cleanup_targets = [
+        "backend",
+        "frontend",
+        _NZBDAV_PREBUILT_MARKER,
+        _NZBDAV_SOURCE_BUILD_MARKER,
+    ]
     try:
         for entry in cleanup_targets:
             path = os.path.join(target_dir, entry)
@@ -452,6 +461,109 @@ def _source_build_enabled(config: dict) -> bool:
     return bool(str(config.get("commit_sha") or "").strip()) or bool(
         config.get("branch_enabled")
     )
+
+
+def _nzbdav_source_build_is_current(config_dir: str) -> bool:
+    try:
+        marker = Path(config_dir, _NZBDAV_SOURCE_BUILD_MARKER).read_text(
+            encoding="utf-8"
+        )
+    except OSError:
+        return False
+    return marker.strip() == str(_NZBDAV_SOURCE_BUILD_FORMAT)
+
+
+def _write_nzbdav_source_build_marker(config_dir: str) -> None:
+    marker_path = os.path.join(config_dir, _NZBDAV_SOURCE_BUILD_MARKER)
+    atomic_write_private_text(marker_path, f"{_NZBDAV_SOURCE_BUILD_FORMAT}\n")
+
+
+def _update_persistent_excludes(
+    config: dict, target_dir: str, extra_paths=None
+) -> list[str]:
+    """Return update exclusions with service-owned persistent state guarded."""
+
+    target = Path(os.path.abspath(target_dir))
+    protected: set[str] = set()
+
+    def protect(value) -> None:
+        text = str(value or "").strip()
+        if not text:
+            return
+        candidate = Path(text)
+        if not candidate.is_absolute():
+            candidate = target / candidate
+        candidate = Path(os.path.abspath(candidate))
+        try:
+            candidate.relative_to(target)
+        except ValueError:
+            return
+        if candidate != target:
+            protected.add(str(candidate))
+
+    for path in config.get("exclude_dirs") or []:
+        protect(path)
+    for path in extra_paths or []:
+        protect(path)
+
+    for field in (
+        "config_file",
+        "config_path",
+        "data_dir",
+        "data_path",
+        "db_dir",
+        "db_path",
+        "database_dir",
+        "database_path",
+    ):
+        protect(config.get(field))
+
+    env = config.get("env") or {}
+    if isinstance(env, dict):
+        for field in (
+            "CONFIG_PATH",
+            "CONFIG_DIR",
+            "DATA_PATH",
+            "DATA_DIR",
+            "DB_PATH",
+            "DB_DIR",
+            "DATABASE_PATH",
+            "DATABASE_DIR",
+        ):
+            protect(env.get(field))
+
+    # These directory names conventionally contain application-owned state,
+    # not replaceable source/runtime output. Existing service defaults still
+    # provide more specific exclusions where their layout requires them.
+    for directory_name in ("data", "db", "database", "databases"):
+        candidate = target / directory_name
+        if candidate.exists() or candidate.is_symlink():
+            protect(candidate)
+
+    # Preserve SQLite databases and their active sidecars even when an older
+    # service config omitted them from exclude_dirs. Keep the scan bounded to
+    # the install root; nested database trees belong under protected dirs or
+    # explicit config paths.
+    try:
+        for entry in target.iterdir():
+            if entry.is_file() and _SQLITE_FILE_RE.fullmatch(entry.name):
+                protect(entry)
+    except OSError:
+        pass
+
+    # NzbDAV/InfiniDysk stores these databases directly in CONFIG_PATH, which
+    # defaults to the mixed source/runtime root. Add absent paths too so the
+    # extraction boundary cannot introduce or overwrite them during updates.
+    process_name = str(config.get("process_name") or "").lower()
+    repo_name = str(config.get("repo_name") or "").lower()
+    if "nzbdav" in process_name or repo_name in {"nzbdav", "infinidysk"}:
+        for filename in ("db.sqlite", "metrics.sqlite"):
+            database = target / filename
+            protect(database)
+            for suffix in ("-wal", "-shm", "-journal"):
+                protect(f"{database}{suffix}")
+
+    return sorted(protected)
 
 
 def _nzbdav_prebuilt_architecture() -> str | None:
@@ -618,6 +730,44 @@ def _resolve_nzbdav_release_selector(
     return None, error or f"latest NzbDAV {channel} could not be resolved"
 
 
+def _select_nzbdav_prebuilt_asset(
+    release_info: dict, architecture: str, repo_name: str | None
+) -> tuple[dict | None, str | None]:
+    expected_suffix = f"-linux-{architecture}.tar.gz"
+    supported_prefixes = ("infinidysk-", "nzbdav-")
+    matching_assets = [
+        asset
+        for asset in release_info.get("assets", [])
+        if str(asset.get("name") or "").lower().startswith(supported_prefixes)
+        and str(asset.get("name") or "").lower().endswith(expected_suffix)
+    ]
+    if not matching_assets:
+        return None, (
+            "release does not provide an InfiniDysk/NzbDAV "
+            f"linux-{architecture} archive"
+        )
+
+    configured_prefix = f"{str(repo_name or '').strip().lower()}-"
+    preferred_prefixes = []
+    for prefix in (configured_prefix, "infinidysk-", "nzbdav-"):
+        if prefix in supported_prefixes and prefix not in preferred_prefixes:
+            preferred_prefixes.append(prefix)
+    for prefix in preferred_prefixes:
+        preferred = [
+            asset
+            for asset in matching_assets
+            if str(asset.get("name") or "").lower().startswith(prefix)
+        ]
+        if len(preferred) == 1:
+            return preferred[0], None
+        if len(preferred) > 1:
+            return None, (
+                f"release provides multiple {prefix.rstrip('-')} "
+                f"linux-{architecture} archives"
+            )
+    return None, f"release provides ambiguous linux-{architecture} archives"
+
+
 def _install_nzbdav_prebuilt_release(
     config: dict,
     process_name: str,
@@ -637,19 +787,12 @@ def _install_nzbdav_prebuilt_release(
     )
     if not release_info:
         return None, release_error or f"release {release_tag} has no GitHub release"
-    expected_suffix = f"-linux-{architecture}.tar.gz"
-    matching_assets = [
-        asset
-        for asset in release_info.get("assets", [])
-        if str(asset.get("name") or "").lower().startswith("nzbdav-")
-        and str(asset.get("name") or "").lower().endswith(expected_suffix)
-    ]
-    if len(matching_assets) != 1:
-        return None, (
-            f"release {release_tag} does not provide exactly one NzbDAV "
-            f"linux-{architecture} archive"
-        )
-    asset = matching_assets[0]
+    asset, asset_error = _select_nzbdav_prebuilt_asset(
+        release_info, architecture, config.get("repo_name")
+    )
+    if not asset:
+        return None, f"release {release_tag} {asset_error}"
+    asset_name = str(asset.get("name") or "")
     published_digest = str(asset.get("digest") or "").strip().lower()
     if not re.fullmatch(r"sha256:[0-9a-f]{64}", published_digest):
         return (
@@ -677,7 +820,7 @@ def _install_nzbdav_prebuilt_release(
         success, error = downloader.download_and_extract(
             asset_url,
             candidate_dir,
-            zip_folder_name=f"nzbdav-*-linux-{architecture}",
+            zip_folder_name=asset_name.removesuffix(".tar.gz"),
             expected_sha256=published_digest,
         )
         if not success:
@@ -846,13 +989,11 @@ def setup_release_version(process_handler, config, process_name, key):
             prebuilt_error or "unknown archive error",
         )
 
+    exclude_dirs = _update_persistent_excludes(config, target_dir)
     if config.get("clear_on_update"):
-        exclude_dirs = config.get("exclude_dirs", [])
         success, error = clear_directory(target_dir, exclude_dirs)
         if not success:
             return False, f"Failed to clear directory: {error}"
-    else:
-        exclude_dirs = None
 
     if key == "nzbdav":
         success, error = _prepare_nzbdav_source_tree(target_dir)
@@ -1023,8 +1164,10 @@ def setup_branch_version(process_handler, config, process_name, key):
                     has_output = any(os.scandir(backend_output_dir))
             except Exception:
                 has_output = False
-            return has_output and os.path.isfile(
-                os.path.join(target_dir, "version.txt")
+            return (
+                has_output
+                and os.path.isfile(os.path.join(target_dir, "version.txt"))
+                and _nzbdav_source_build_is_current(target_dir)
             )
         if service_key == "maintainerr":
             return _maintainerr_runtime_ready(target_dir) and os.path.isfile(
@@ -1143,17 +1286,17 @@ def setup_branch_version(process_handler, config, process_name, key):
                         commit_sha[:12],
                     )
 
-        exclude_dirs = None
+        additional_preserve_paths = []
         if config.get("clear_on_update"):
-            exclude_dirs = config.get("exclude_dirs", [])
             if key == "decypharr":
-                preserve_paths = [
+                additional_preserve_paths = [
                     os.path.join(target_dir, "pkg", "server", "assets", "build"),
                     os.path.join(target_dir, ".dumb_frontend_build_fingerprint"),
                 ]
-                for preserve_path in preserve_paths:
-                    if preserve_path not in exclude_dirs:
-                        exclude_dirs.append(preserve_path)
+        exclude_dirs = _update_persistent_excludes(
+            config, target_dir, additional_preserve_paths
+        )
+        if config.get("clear_on_update"):
             success, error = clear_directory(target_dir, exclude_dirs)
             if not success:
                 return False, f"Failed to clear directory: {error}"
@@ -3656,8 +3799,10 @@ def setup_nzbdav(
                         return False, source_sha_error
                     version_to_write = f"{resolved_release}-{source_sha[:8]}"
 
+                    exclude_dirs = _update_persistent_excludes(
+                        config, nzbdav_config_dir
+                    )
                     if config.get("clear_on_update"):
-                        exclude_dirs = config.get("exclude_dirs", [])
                         success, error = clear_directory(
                             nzbdav_config_dir, exclude_dirs
                         )
@@ -3673,6 +3818,7 @@ def setup_nzbdav(
                         repo_name=config.get("repo_name"),
                         release_version=source_sha,
                         target_dir=nzbdav_config_dir,
+                        exclude_dirs=exclude_dirs,
                     )
                     if not success:
                         return False, f"Failed to download NzbDAV: {error}"
@@ -3891,7 +4037,7 @@ def setup_nzbdav_build(process_handler, config):
             "dotnet_target": _required_dotnet_sdk_major(
                 [backend_project_path], backend_project_path
             ),
-            "artifact_format": 2,
+            "artifact_format": _NZBDAV_SOURCE_BUILD_FORMAT,
         },
     )
     artifact_restore_dir = tempfile.mkdtemp(
@@ -3957,6 +4103,7 @@ def setup_nzbdav_build(process_handler, config):
                     chown_recursive(
                         os.path.join(frontend_dir, "dist-node"), user_id, group_id
                     )
+                    _write_nzbdav_source_build_marker(nzbdav_config_dir)
                     logger.info(
                         "Restored verified NzbDAV backend and frontend build outputs from cache."
                     )
@@ -3995,66 +4142,95 @@ def setup_nzbdav_build(process_handler, config):
         "DOTNET_CLI_HOME": dotnet_home,
         "NUGET_PACKAGES": nuget_dir,
     }
-    success, error = setup_environment(
-        process_handler,
-        "nzbdav",
-        platforms,
-        nzbdav_config_dir,
-        dotnet_options={
-            "project_paths": [backend_project_path],
-            "output_dir": backend_output_dir,
-            "restore_project_path": backend_project_path,
-            "env": dotnet_env,
-        },
-    )
-    if not success:
-        return False, error
-
-    static_files_src = os.path.join(backend_project_dir, "WebDav", "StaticFiles")
-    static_files_dst = os.path.join(backend_output_dir, "WebDav", "StaticFiles")
-    if os.path.isdir(static_files_src):
-        if os.path.exists(static_files_dst):
-            shutil.rmtree(static_files_dst)
-        os.makedirs(os.path.dirname(static_files_dst), exist_ok=True)
-        shutil.copytree(static_files_src, static_files_dst)
-        logger.info("Copied NzbDAV WebDav static files into publish output.")
-
-    config_template_path = os.path.join(
-        backend_project_dir,
-        "Api",
-        "SabControllers",
-        "GetConfig",
-        "config_template.json",
-    )
-    if os.path.isfile(config_template_path):
-        shutil.copy2(
-            config_template_path,
-            os.path.join(backend_output_dir, "config_template.json"),
+    with tempfile.TemporaryDirectory(
+        prefix=".nzbdav-publish-candidate-",
+        dir=_same_filesystem_staging_parent(backend_output_dir),
+    ) as publish_staging:
+        candidate_output_dir = os.path.join(publish_staging, "app")
+        candidate_wwwroot = os.path.join(
+            candidate_output_dir,
+            os.path.relpath(backend_wwwroot, backend_output_dir),
         )
-        chown_single(
-            os.path.join(backend_output_dir, "config_template.json"), user_id, group_id
-        )
-
-    if frontend_dir:
-        success, error = _run_pnpm_script(
-            process_handler, frontend_dir, "build:server", "pnpm_build_server"
+        success, error = setup_environment(
+            process_handler,
+            "nzbdav",
+            platforms,
+            nzbdav_config_dir,
+            dotnet_options={
+                "project_paths": [backend_project_path],
+                "output_dir": candidate_output_dir,
+                "restore_project_path": backend_project_path,
+                "env": dotnet_env,
+            },
         )
         if not success:
             return False, error
 
-        frontend_ready, frontend_error = _validate_nzbdav_frontend_runtime(frontend_dir)
-        if not frontend_ready:
-            return False, frontend_error
+        static_files_src = os.path.join(backend_project_dir, "WebDav", "StaticFiles")
+        static_files_dst = os.path.join(candidate_output_dir, "WebDav", "StaticFiles")
+        if os.path.isdir(static_files_src):
+            os.makedirs(os.path.dirname(static_files_dst), exist_ok=True)
+            shutil.copytree(static_files_src, static_files_dst)
+            logger.info("Copied NzbDAV WebDav static files into publish candidate.")
 
-    if frontend_dir:
-        frontend_build_dir = _find_nzbdav_frontend_build_dir(frontend_dir, config)
-        if frontend_build_dir:
-            if os.path.exists(backend_wwwroot):
-                shutil.rmtree(backend_wwwroot)
-            shutil.copytree(frontend_build_dir, backend_wwwroot)
-            logger.info("Copied NzbDAV frontend build into backend wwwroot.")
-        else:
-            logger.warning("Frontend build output not found. Skipping wwwroot copy.")
+        config_template_path = os.path.join(
+            backend_project_dir,
+            "Api",
+            "SabControllers",
+            "GetConfig",
+            "config_template.json",
+        )
+        if os.path.isfile(config_template_path):
+            shutil.copy2(
+                config_template_path,
+                os.path.join(candidate_output_dir, "config_template.json"),
+            )
+
+        if frontend_dir:
+            success, error = _run_pnpm_script(
+                process_handler, frontend_dir, "build:server", "pnpm_build_server"
+            )
+            if not success:
+                return False, error
+
+            frontend_ready, frontend_error = _validate_nzbdav_frontend_runtime(
+                frontend_dir
+            )
+            if not frontend_ready:
+                return False, frontend_error
+
+            frontend_build_dir = _find_nzbdav_frontend_build_dir(frontend_dir, config)
+            if frontend_build_dir:
+                shutil.copytree(frontend_build_dir, candidate_wwwroot)
+                logger.info("Copied NzbDAV frontend build into publish candidate.")
+            else:
+                logger.warning(
+                    "Frontend build output not found. Skipping wwwroot copy."
+                )
+
+        candidate_command, candidate_error = _nzbdav_build_command(
+            candidate_output_dir, dotnet_dir=backend_project_dir
+        )
+        if not candidate_command:
+            return False, candidate_error
+        runtime_ready, runtime_error = _validate_nzbdav_runtimeconfig(
+            os.path.join(candidate_output_dir, "NzbWebDAV.runtimeconfig.json")
+        )
+        if not runtime_ready:
+            return False, runtime_error
+
+        activated, activation_error = _activate_nzbdav_build_artifact(
+            [(candidate_output_dir, backend_output_dir)]
+        )
+        if not activated:
+            return (
+                False,
+                "NzbDAV publish candidate activation failed safely: "
+                f"{activation_error}",
+            )
+
+    chown_recursive(backend_output_dir, user_id, group_id)
+    _write_nzbdav_source_build_marker(nzbdav_config_dir)
 
     try:
         artifact_staging = tempfile.mkdtemp(
@@ -5208,9 +5384,8 @@ def setup_tautulli(
 
     if needs_download:
         logger.warning("Tautulli not found at %s. Downloading...", tautulli_py_path)
-        exclude_dirs = None
+        exclude_dirs = _update_persistent_excludes(config, config_dir)
         if config.get("clear_on_update"):
-            exclude_dirs = config.get("exclude_dirs", [])
             success, error = clear_directory(config_dir, exclude_dirs)
             if not success:
                 return False, f"Failed to clear directory: {error}"
@@ -5398,9 +5573,8 @@ def setup_seerr(
                 instance_name,
                 repo_marker,
             )
-            exclude_dirs = None
+            exclude_dirs = _update_persistent_excludes(instance, instance_config_dir)
             if instance.get("clear_on_update"):
-                exclude_dirs = instance.get("exclude_dirs", [])
                 success, error = clear_directory(instance_config_dir, exclude_dirs)
                 if not success:
                     return False, f"Failed to clear directory: {error}"
@@ -6044,9 +6218,8 @@ def setup_traefik_proxy_admin(
         logger.warning(
             "Traefik Proxy Admin not found at %s. Downloading...", package_marker
         )
-        exclude_dirs = None
+        exclude_dirs = _update_persistent_excludes(config, config_dir)
         if config.get("clear_on_update"):
-            exclude_dirs = config.get("exclude_dirs", [])
             success, error = clear_directory(config_dir, exclude_dirs)
             if not success:
                 return False, f"Failed to clear Traefik Proxy Admin directory: {error}"
@@ -7176,9 +7349,8 @@ def setup_pulsarr(
 
     if needs_download:
         logger.warning("Pulsarr not found at %s. Downloading...", repo_marker)
-        exclude_dirs = None
+        exclude_dirs = _update_persistent_excludes(config, config_dir)
         if config.get("clear_on_update"):
-            exclude_dirs = config.get("exclude_dirs", [])
             success, error = clear_directory(config_dir, exclude_dirs)
             if not success:
                 return False, f"Failed to clear Pulsarr directory: {error}"
@@ -7731,9 +7903,8 @@ def setup_profilarr(
                 instance_name,
                 instance_config_dir,
             )
-            exclude_dirs = None
+            exclude_dirs = _update_persistent_excludes(instance, instance_config_dir)
             if instance.get("clear_on_update"):
-                exclude_dirs = instance.get("exclude_dirs", [])
                 success, error = clear_directory(instance_config_dir, exclude_dirs)
                 if not success:
                     return False, f"Failed to clear directory: {error}"
@@ -8513,9 +8684,8 @@ def setup_neutarr(
                 instance_name,
                 repo_marker,
             )
-            exclude_dirs = None
+            exclude_dirs = _update_persistent_excludes(instance, instance_config_dir)
             if instance.get("clear_on_update"):
-                exclude_dirs = instance.get("exclude_dirs", [])
                 success, error = clear_directory(instance_config_dir, exclude_dirs)
                 if not success:
                     return False, f"Failed to clear directory: {error}"

@@ -565,17 +565,21 @@ class Downloader:
 
     @staticmethod
     def _normalized_archive_excludes(target_dir, exclude_dirs=None):
-        target = Path(target_dir).resolve()
+        target = Path(os.path.abspath(target_dir))
+        resolved_target = target.resolve()
         normalized = set()
         for value in exclude_dirs or []:
             candidate = Path(str(value))
             if candidate.is_absolute():
                 try:
-                    candidate = candidate.resolve().relative_to(target)
+                    candidate = Path(os.path.abspath(candidate)).relative_to(target)
                 except ValueError:
-                    # An absolute exclusion outside this install root cannot
-                    # match an archive-relative member safely.
-                    continue
+                    try:
+                        candidate = candidate.resolve().relative_to(resolved_target)
+                    except ValueError:
+                        # An absolute exclusion outside this install root cannot
+                        # match an archive-relative member safely.
+                        continue
             text = str(candidate).replace("\\", "/").strip("/")
             if text and text not in {".", ".."} and ".." not in Path(text).parts:
                 normalized.add(text)

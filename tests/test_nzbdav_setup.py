@@ -11,6 +11,30 @@ from utils import setup
 
 
 class NzbDAVSetupTests(unittest.TestCase):
+    @staticmethod
+    def _write_nzbdav_source(root: Path) -> None:
+        backend = root / "backend"
+        backend.mkdir(parents=True)
+        (backend / "NzbWebDAV.csproj").write_text(
+            "<Project><PropertyGroup><TargetFramework>net10.0</TargetFramework>"
+            "</PropertyGroup></Project>",
+            encoding="utf-8",
+        )
+        (root / "version.txt").write_text("main-12345678\n", encoding="utf-8")
+
+    @staticmethod
+    def _write_nzbdav_publish(output_dir: str, hashing_version: str) -> None:
+        output = Path(output_dir)
+        output.mkdir(parents=True)
+        (output / "NzbWebDAV.dll").write_text("backend", encoding="utf-8")
+        (output / "NzbWebDAV.deps.json").write_text("{}", encoding="utf-8")
+        (output / "NzbWebDAV.runtimeconfig.json").write_text(
+            '{"runtimeOptions":{"frameworks":['
+            '{"name":"Microsoft.AspNetCore.App","version":"10.0.0"}]}}',
+            encoding="utf-8",
+        )
+        (output / "System.IO.Hashing.dll").write_text(hashing_version, encoding="utf-8")
+
     def test_configure_exposes_release_version_without_internal_commit_suffix(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             version_path = Path(tmpdir) / "version.txt"
@@ -213,6 +237,168 @@ class NzbDAVSetupTests(unittest.TestCase):
                     "new",
                     (live / component / "marker").read_text(encoding="utf-8"),
                 )
+
+    def test_source_preparation_preserves_live_backend_until_activation(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            for source_dir in ("backend", "frontend"):
+                (root / source_dir).mkdir()
+            app = root / "app"
+            app.mkdir()
+            (app / "System.IO.Hashing.dll").write_text("10.0.9", encoding="utf-8")
+
+            success, error = setup._prepare_nzbdav_source_tree(str(root))
+
+            self.assertTrue(success, error)
+            self.assertFalse((root / "backend").exists())
+            self.assertFalse((root / "frontend").exists())
+            self.assertEqual(
+                "10.0.9",
+                (app / "System.IO.Hashing.dll").read_text(encoding="utf-8"),
+            )
+
+    def test_update_clear_preserves_config_data_and_sqlite_state(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            data = root / "data"
+            data.mkdir()
+            (data / "state.json").write_text("state", encoding="utf-8")
+            config_file = root / "settings.json"
+            config_file.write_text("settings", encoding="utf-8")
+            for database_name in ("db.sqlite", "db.sqlite-wal", "metrics.db"):
+                (root / database_name).write_text(database_name, encoding="utf-8")
+            runtime_file = root / "old-runtime.dll"
+            runtime_file.write_text("replaceable", encoding="utf-8")
+            config = {
+                "process_name": "NzbDAV",
+                "repo_name": "infinidysk",
+                "config_file": str(config_file),
+                "exclude_dirs": [],
+            }
+
+            exclusions = setup._update_persistent_excludes(config, str(root))
+            success, error = setup.clear_directory(str(root), exclusions)
+
+            self.assertTrue(success, error)
+            self.assertTrue(config_file.is_file())
+            self.assertTrue((data / "state.json").is_file())
+            self.assertTrue((root / "db.sqlite").is_file())
+            self.assertTrue((root / "db.sqlite-wal").is_file())
+            self.assertTrue((root / "metrics.db").is_file())
+            self.assertFalse(runtime_file.exists())
+
+    def test_archive_exclusions_preserve_symlinked_data_directory(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir) / "service"
+            external_data = Path(tmpdir) / "persistent-data"
+            root.mkdir()
+            external_data.mkdir()
+            (root / "data").symlink_to(external_data, target_is_directory=True)
+
+            exclusions = setup._update_persistent_excludes({}, str(root))
+            normalized = setup.downloader._normalized_archive_excludes(
+                str(root), exclusions
+            )
+
+            self.assertIn(str(root / "data"), exclusions)
+            self.assertEqual({"data"}, normalized)
+
+    def test_source_build_atomically_replaces_stale_backend_dependencies(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            self._write_nzbdav_source(root)
+            live_app = root / "app"
+            live_app.mkdir()
+            (live_app / "System.IO.Hashing.dll").write_text("10.0.9", encoding="utf-8")
+            (live_app / "removed-dependency.dll").write_text("stale", encoding="utf-8")
+            config = {"config_dir": str(root)}
+            build_toolchain = {}
+
+            def build_key(_service, _source, **kwargs):
+                build_toolchain.update(kwargs["toolchain"])
+                return "a" * 64
+
+            def publish(_handler, _key, _platforms, _config_dir, **kwargs):
+                output_dir = kwargs["dotnet_options"]["output_dir"]
+                self.assertNotEqual(str(live_app), output_dir)
+                self._write_nzbdav_publish(output_dir, "10.0.10")
+                return True, None
+
+            with (
+                patch.object(setup, "chown_recursive", return_value=(True, None)),
+                patch.object(
+                    setup,
+                    "_patch_nzbdav_embedded_resource_util",
+                    return_value=(True, None),
+                ),
+                patch.object(
+                    setup, "_nzbdav_uses_internal_nzb_models", return_value=False
+                ),
+                patch.object(setup.INSTALL_CACHE, "build_key", side_effect=build_key),
+                patch.object(
+                    setup.INSTALL_CACHE,
+                    "restore_artifact",
+                    return_value=(False, "artifact not found"),
+                ),
+                patch.object(
+                    setup.INSTALL_CACHE, "store_artifact", return_value=(True, None)
+                ),
+                patch.object(setup, "setup_environment", side_effect=publish),
+            ):
+                success, error = setup.setup_nzbdav_build(Mock(), config)
+
+            self.assertTrue(success, error)
+            self.assertEqual(3, build_toolchain["artifact_format"])
+            self.assertEqual(
+                "10.0.10",
+                (live_app / "System.IO.Hashing.dll").read_text(encoding="utf-8"),
+            )
+            self.assertFalse((live_app / "removed-dependency.dll").exists())
+            self.assertTrue(setup._nzbdav_source_build_is_current(str(root)))
+            self.assertFalse(list(root.glob(".nzbdav-publish-candidate-*")))
+
+    def test_source_build_failure_preserves_existing_backend(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            self._write_nzbdav_source(root)
+            live_app = root / "app"
+            live_app.mkdir()
+            (live_app / "System.IO.Hashing.dll").write_text("10.0.9", encoding="utf-8")
+            config = {"config_dir": str(root)}
+
+            def failed_publish(_handler, _key, _platforms, _config_dir, **kwargs):
+                output_dir = kwargs["dotnet_options"]["output_dir"]
+                self._write_nzbdav_publish(output_dir, "partial-10.0.10")
+                return False, "publish failed"
+
+            with (
+                patch.object(setup, "chown_recursive", return_value=(True, None)),
+                patch.object(
+                    setup,
+                    "_patch_nzbdav_embedded_resource_util",
+                    return_value=(True, None),
+                ),
+                patch.object(
+                    setup, "_nzbdav_uses_internal_nzb_models", return_value=False
+                ),
+                patch.object(setup.INSTALL_CACHE, "build_key", return_value="b" * 64),
+                patch.object(
+                    setup.INSTALL_CACHE,
+                    "restore_artifact",
+                    return_value=(False, "artifact not found"),
+                ),
+                patch.object(setup, "setup_environment", side_effect=failed_publish),
+            ):
+                success, error = setup.setup_nzbdav_build(Mock(), config)
+
+            self.assertFalse(success)
+            self.assertEqual("publish failed", error)
+            self.assertEqual(
+                "10.0.9",
+                (live_app / "System.IO.Hashing.dll").read_text(encoding="utf-8"),
+            )
+            self.assertFalse(setup._nzbdav_source_build_is_current(str(root)))
+            self.assertFalse(list(root.glob(".nzbdav-publish-candidate-*")))
 
     def test_commit_pin_requires_full_sha_and_normalizes_case(self):
         commit_sha = "A" * 40
@@ -417,8 +603,8 @@ class NzbDAVSetupTests(unittest.TestCase):
             config = {
                 "process_name": "NzbDAV",
                 "config_dir": str(root),
-                "repo_owner": "nzbdav",
-                "repo_name": "nzbdav",
+                "repo_owner": "infinidysk",
+                "repo_name": "infinidysk",
             }
 
             def populate_candidate(_url, target_dir, **kwargs):
@@ -456,14 +642,17 @@ class NzbDAVSetupTests(unittest.TestCase):
                 self.assertEqual(
                     f"sha256:{published_digest}", kwargs["expected_sha256"]
                 )
+                self.assertEqual(
+                    "infinidysk-v1.0.0-linux-arm64", kwargs["zip_folder_name"]
+                )
                 return True, None
 
             release_info = {
                 "assets": [
                     {
-                        "name": "nzbdav-v0.10.0-rc.2-linux-arm64.tar.gz",
+                        "name": "infinidysk-v1.0.0-linux-arm64.tar.gz",
                         "digest": f"sha256:{published_digest}",
-                        "browser_download_url": "https://example.test/nzbdav.tar.gz",
+                        "browser_download_url": "https://example.test/infinidysk.tar.gz",
                     }
                 ]
             }
@@ -488,20 +677,42 @@ class NzbDAVSetupTests(unittest.TestCase):
                 patch.object(setup, "chown_single", return_value=(True, None)),
             ):
                 result, error = setup._install_nzbdav_prebuilt_release(
-                    config, "NzbDAV", "v0.10.0-rc.2", str(root)
+                    config, "NzbDAV", "v1.0.0", str(root)
                 )
                 runtime_ready, runtime_error = setup._nzbdav_prebuilt_runtime_ready(
                     str(root)
                 )
 
             self.assertIsNone(error)
-            self.assertEqual(
-                f"v0.10.0-rc.2-{release_sha[:8]}", result["version_marker"]
-            )
+            self.assertEqual(f"v1.0.0-{release_sha[:8]}", result["version_marker"])
             self.assertTrue((root / "app" / "NzbWebDAV.dll").is_file())
             self.assertTrue((root / "frontend" / "dist-node" / "server.js").is_file())
             self.assertTrue((root / setup._NZBDAV_PREBUILT_MARKER).is_file())
             self.assertTrue(runtime_ready, runtime_error)
+
+    def test_prebuilt_asset_selection_retains_legacy_nzbdav_compatibility(self):
+        legacy = {
+            "name": "nzbdav-v0.10.0-linux-x64.tar.gz",
+            "digest": f"sha256:{'a' * 64}",
+        }
+
+        selected, error = setup._select_nzbdav_prebuilt_asset(
+            {"assets": [legacy]}, "x64", "infinidysk"
+        )
+
+        self.assertIsNone(error)
+        self.assertIs(legacy, selected)
+
+    def test_prebuilt_asset_selection_prefers_configured_canonical_name(self):
+        legacy = {"name": "nzbdav-v1.0.0-linux-x64.tar.gz"}
+        renamed = {"name": "infinidysk-v1.0.0-linux-x64.tar.gz"}
+
+        selected, error = setup._select_nzbdav_prebuilt_asset(
+            {"assets": [legacy, renamed]}, "x64", "infinidysk"
+        )
+
+        self.assertIsNone(error)
+        self.assertIs(renamed, selected)
 
     def test_prebuilt_unavailable_falls_back_to_source_release(self):
         release_sha = "c" * 40
