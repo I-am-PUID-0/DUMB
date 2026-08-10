@@ -7376,28 +7376,11 @@ def _patch_profilarr_requirements(backend_dir: str) -> None:
         return
 
 
-def _profilarr_deno_version(config_dir: str) -> str:
-    dockerfile = os.path.join(config_dir, "Dockerfile")
-    try:
-        with open(dockerfile, "r", encoding="utf-8") as handle:
-            content = handle.read()
-    except OSError as exc:
-        raise RuntimeError(f"Unable to read Profilarr v2 Dockerfile: {exc}") from exc
-    match = re.search(
-        r"^FROM\s+denoland/deno:(\d+\.\d+\.\d+)\s+AS\s+builder\s*$",
-        content,
-        re.M,
-    )
-    if not match:
-        raise RuntimeError(
-            "Profilarr v2 does not declare a supported Deno builder version."
-        )
-    return match.group(1)
-
-
 def _ensure_profilarr_deno(config_dir: str) -> tuple[str | None, str | None]:
+    from utils.profilarr_settings import profilarr_deno_version
+
     try:
-        deno_version = _profilarr_deno_version(config_dir)
+        deno_version = profilarr_deno_version(config_dir)
     except RuntimeError as exc:
         return None, str(exc)
 
@@ -7534,11 +7517,19 @@ def _build_profilarr_v2(
         }
     )
 
+    uses_jsonc_manifest = os.path.isfile(os.path.join(config_dir, "deno.jsonc"))
+    install_command = (
+        [deno_bin, "ci"]
+        if uses_jsonc_manifest
+        else [deno_bin, "install", "--node-modules-dir"]
+    )
+    vite_specifier = "vite" if uses_jsonc_manifest else "npm:vite"
+
     success, error = _run_profilarr_build_step(
         process_handler,
         "profilarr_deno_install",
         config_dir,
-        [deno_bin, "install", "--node-modules-dir"],
+        install_command,
         env,
     )
     if not success:
@@ -7547,7 +7538,7 @@ def _build_profilarr_v2(
         process_handler,
         "profilarr_v2_build",
         config_dir,
-        [deno_bin, "run", "-A", "npm:vite", "build"],
+        [deno_bin, "run", "-A", vite_specifier, "build"],
         env,
     )
     if not success:

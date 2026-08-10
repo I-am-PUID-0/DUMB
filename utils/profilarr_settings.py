@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import re
 import sqlite3
 import subprocess
 from pathlib import Path
@@ -14,7 +15,8 @@ from utils.versions import PROFILARR_LEGACY_RELEASE_VERSION
 logger = logging.getLogger(__name__)
 
 DEFAULT_PROFILARR_REPO = "https://github.com/johman10/profilarr-trash-guides"
-PROFILARR_V2_LAYOUT_FILES = ("deno.json", "package.json", "vite.config.ts")
+PROFILARR_V2_DENO_MANIFESTS = ("deno.json", "deno.jsonc")
+PROFILARR_V2_LAYOUT_FILES = ("vite.config.ts",)
 
 
 def profilarr_v2_runtime_environment(
@@ -43,12 +45,59 @@ def detect_profilarr_layout(config_dir: str) -> str | None:
         return "v1"
     if os.path.isfile(os.path.join(config_dir, "runtime", "profilarr")):
         return "v2"
-    if all(
+    has_deno_manifest = any(
         os.path.isfile(os.path.join(config_dir, filename))
-        for filename in PROFILARR_V2_LAYOUT_FILES
-    ) and os.path.isdir(os.path.join(config_dir, "src")):
+        for filename in PROFILARR_V2_DENO_MANIFESTS
+    )
+    if (
+        has_deno_manifest
+        and all(
+            os.path.isfile(os.path.join(config_dir, filename))
+            for filename in PROFILARR_V2_LAYOUT_FILES
+        )
+        and os.path.isdir(os.path.join(config_dir, "src"))
+    ):
         return "v2"
     return None
+
+
+def profilarr_deno_version(config_dir: str) -> str:
+    """Return the Deno builder version declared by Profilarr's Dockerfile."""
+    dockerfile = os.path.join(config_dir, "Dockerfile")
+    try:
+        with open(dockerfile, "r", encoding="utf-8") as handle:
+            content = handle.read()
+    except OSError as exc:
+        raise RuntimeError(f"Unable to read Profilarr v2 Dockerfile: {exc}") from exc
+
+    match = re.search(
+        r"^FROM\s+denoland/deno:(\S+)\s+AS\s+builder\s*$",
+        content,
+        re.I | re.M,
+    )
+    if not match:
+        raise RuntimeError(
+            "Profilarr v2 does not declare a supported Deno builder version."
+        )
+
+    image_tag = match.group(1)
+    if re.fullmatch(r"\d+\.\d+\.\d+", image_tag):
+        return image_tag
+
+    arg_reference = re.fullmatch(r"\$\{([A-Za-z_][A-Za-z0-9_]*)\}", image_tag)
+    if arg_reference:
+        arg_name = re.escape(arg_reference.group(1))
+        arg_match = re.search(
+            rf"^ARG\s+{arg_name}=(\d+\.\d+\.\d+)\s*$",
+            content,
+            re.M,
+        )
+        if arg_match:
+            return arg_match.group(1)
+
+    raise RuntimeError(
+        "Profilarr v2 does not declare a supported Deno builder version."
+    )
 
 
 def profilarr_runtime_ready(config_dir: str) -> bool:

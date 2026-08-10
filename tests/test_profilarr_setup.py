@@ -110,6 +110,7 @@ class ProfilarrSetupTests(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
+            (root / "deno.json").touch()
             for filename in profilarr_settings.PROFILARR_V2_LAYOUT_FILES:
                 (root / filename).touch()
             (root / "src").mkdir()
@@ -117,6 +118,39 @@ class ProfilarrSetupTests(unittest.TestCase):
             layout, error = validate_profilarr_layout("Profiles", str(root))
             self.assertEqual("v2", layout)
             self.assertIsNone(error)
+
+    def test_layout_detection_supports_v2_jsonc_without_package_json(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            (root / "deno.jsonc").touch()
+            (root / "vite.config.ts").touch()
+            (root / "src").mkdir()
+
+            layout, error = validate_profilarr_layout("Profiles", str(root))
+
+            self.assertEqual("v2", layout)
+            self.assertIsNone(error)
+
+    def test_deno_version_supports_direct_and_arg_dockerfile_tags(self):
+        dockerfiles = {
+            "direct": "FROM denoland/deno:2.7.12 AS builder\n",
+            "arg": (
+                "ARG DENO_VERSION=2.8.3\n"
+                "FROM denoland/deno:${DENO_VERSION} AS builder\n"
+            ),
+        }
+
+        for source_kind, dockerfile in dockerfiles.items():
+            with (
+                self.subTest(source_kind=source_kind),
+                tempfile.TemporaryDirectory() as tmpdir,
+            ):
+                (Path(tmpdir) / "Dockerfile").write_text(dockerfile, encoding="utf-8")
+
+                self.assertEqual(
+                    "2.7.12" if source_kind == "direct" else "2.8.3",
+                    profilarr_settings.profilarr_deno_version(tmpdir),
+                )
 
     def test_v2_arr_reconciliation_only_changes_dumb_managed_rows(self):
         with tempfile.TemporaryDirectory() as tmpdir:
