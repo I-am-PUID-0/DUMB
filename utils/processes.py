@@ -16,6 +16,21 @@ from json import dump
 STARTUP_TERMINAL_PHASES = {"ready", "degraded", "shutting_down"}
 
 
+def _immediate_exit_summary(stdout_output: str, stderr_output: str) -> str | None:
+    """Select one redacted, bounded error line without returning a stack trace."""
+
+    for output in (stderr_output, stdout_output):
+        for raw_line in str(output or "").splitlines():
+            line = " ".join(raw_line.strip().split())
+            lower = line.lower()
+            if not line or lower == "traceback (most recent call last):":
+                continue
+            if lower.startswith(("at ", "--- end of", 'file "')):
+                continue
+            return line[:500]
+    return None
+
+
 class ProcessHandler:
     _instance = None
 
@@ -773,6 +788,13 @@ class ProcessHandler:
                         self.logger.error(
                             f"{process_name} exited shortly after start with return code 0"
                         )
+                        summary = _immediate_exit_summary(stdout_output, stderr_output)
+                        if summary:
+                            return (
+                                False,
+                                f"{process_name} failed to stay running (exit code 0): "
+                                f"{summary}",
+                            )
                         return False, f"{process_name} failed to stay running."
                     self.logger.info(
                         f"{process_name} completed shortly after start with return code 0"
@@ -781,6 +803,13 @@ class ProcessHandler:
                 self.logger.error(
                     f"{process_name} exited shortly after start with return code {process.returncode}"
                 )
+                summary = _immediate_exit_summary(stdout_output, stderr_output)
+                if summary:
+                    return (
+                        False,
+                        f"{process_name} failed to stay running (exit code "
+                        f"{process.returncode}): {summary}",
+                    )
                 return False, f"{process_name} failed to stay running."
             time.sleep(interval_seconds)
 

@@ -124,6 +124,28 @@ class NzbDAVSetupTests(unittest.TestCase):
             process_handler, config, "NzbDAV", "nzbdav"
         )
 
+    def test_official_prerelease_selector_resolves_to_rc_channel(self):
+        config = {
+            "repo_owner": "infinidysk",
+            "repo_name": "infinidysk",
+        }
+        with (
+            patch.object(
+                setup.downloader,
+                "get_ref_commit_sha",
+                return_value=("a" * 40, None),
+            ) as resolve_ref,
+            patch.object(setup.downloader, "get_latest_release") as latest,
+        ):
+            resolved, error = setup._resolve_nzbdav_release_selector(
+                config, "prerelease"
+            )
+
+        self.assertIsNone(error)
+        self.assertEqual("rc", resolved)
+        resolve_ref.assert_called_once_with("infinidysk", "infinidysk", "rc")
+        latest.assert_not_called()
+
     def test_artifact_restore_staging_resolves_data_root_symlink(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
@@ -246,6 +268,8 @@ class NzbDAVSetupTests(unittest.TestCase):
             app = root / "app"
             app.mkdir()
             (app / "System.IO.Hashing.dll").write_text("10.0.9", encoding="utf-8")
+            (root / setup._NZBDAV_PREBUILT_MARKER).write_text("{}", encoding="utf-8")
+            (root / setup._NZBDAV_SOURCE_BUILD_MARKER).write_text("3", encoding="utf-8")
 
             success, error = setup._prepare_nzbdav_source_tree(str(root))
 
@@ -256,6 +280,25 @@ class NzbDAVSetupTests(unittest.TestCase):
                 "10.0.9",
                 (app / "System.IO.Hashing.dll").read_text(encoding="utf-8"),
             )
+            self.assertTrue((root / setup._NZBDAV_PREBUILT_MARKER).is_file())
+            self.assertTrue((root / setup._NZBDAV_SOURCE_BUILD_MARKER).is_file())
+
+    def test_ownership_preflight_repairs_state_without_walking_blobs(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            (root / "blobs" / "aa" / "bb").mkdir(parents=True)
+            (root / "db.sqlite.maintenance.lock").write_text("lock", encoding="utf-8")
+            (root / "logs").mkdir()
+
+            with patch.object(
+                setup, "chown_recursive", return_value=(True, None)
+            ) as recursive:
+                success, error = setup._normalize_nzbdav_writable_ownership(
+                    str(root), os.getuid(), os.getgid()
+                )
+
+        self.assertTrue(success, error)
+        recursive.assert_called_once_with(str(root / "logs"), os.getuid(), os.getgid())
 
     def test_update_clear_preserves_config_data_and_sqlite_state(self):
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -613,12 +656,14 @@ class NzbDAVSetupTests(unittest.TestCase):
                 frontend = candidate / "frontend"
                 backend.mkdir(parents=True)
                 for name in (
+                    "NzbWebDAV",
                     "NzbWebDAV.dll",
                     "NzbWebDAV.deps.json",
                     "librapidyenc.so",
                     "libe_sqlite3.so",
                 ):
                     (backend / name).write_text(name, encoding="utf-8")
+                (backend / "NzbWebDAV").chmod(0o755)
                 (backend / "NzbWebDAV.runtimeconfig.json").write_text(
                     '{"runtimeOptions":{"frameworks":['
                     '{"name":"Microsoft.AspNetCore.App","version":"10.0.0"}]}}',
@@ -643,7 +688,12 @@ class NzbDAVSetupTests(unittest.TestCase):
                     f"sha256:{published_digest}", kwargs["expected_sha256"]
                 )
                 self.assertEqual(
-                    "infinidysk-v1.0.0-linux-arm64", kwargs["zip_folder_name"]
+                    [
+                        "infinidysk-v1.0.0-linux-arm64",
+                        "infinidysk-*-linux-arm64",
+                        "nzbdav-*-linux-arm64",
+                    ],
+                    kwargs["zip_folder_name"],
                 )
                 return True, None
 
@@ -688,6 +738,9 @@ class NzbDAVSetupTests(unittest.TestCase):
             self.assertTrue((root / "app" / "NzbWebDAV.dll").is_file())
             self.assertTrue((root / "frontend" / "dist-node" / "server.js").is_file())
             self.assertTrue((root / setup._NZBDAV_PREBUILT_MARKER).is_file())
+            self.assertEqual(
+                "prebuilt", setup.read_nzbdav_install_info(str(root))["method"]
+            )
             self.assertTrue(runtime_ready, runtime_error)
 
     def test_prebuilt_asset_selection_retains_legacy_nzbdav_compatibility(self):
@@ -713,6 +766,93 @@ class NzbDAVSetupTests(unittest.TestCase):
 
         self.assertIsNone(error)
         self.assertIs(renamed, selected)
+
+    def test_prebuilt_asset_selection_prefers_exact_rolling_channel_alias(self):
+        rolling = {"name": "infinidysk-dev-linux-x64.tar.gz"}
+        internally_versioned = {"name": "infinidysk-vdev-linux-x64.tar.gz"}
+
+        selected, error = setup._select_nzbdav_prebuilt_asset(
+            {"tag_name": "dev", "assets": [internally_versioned, rolling]},
+            "x64",
+            "infinidysk",
+            "dev",
+        )
+
+        self.assertIsNone(error)
+        self.assertIs(rolling, selected)
+        self.assertEqual(
+            [
+                "infinidysk-dev-linux-x64",
+                "infinidysk-*-linux-x64",
+                "nzbdav-*-linux-x64",
+            ],
+            setup._nzbdav_prebuilt_archive_roots(rolling["name"], "dev"),
+        )
+
+    def test_prebuilt_rejects_stale_rolling_release_assets(self):
+        current_sha = "f" * 40
+        stale_sha = "a" * 40
+        config = {
+            "repo_owner": "infinidysk",
+            "repo_name": "infinidysk",
+        }
+        release_info = {
+            "tag_name": "dev",
+            "target_commitish": stale_sha,
+            "assets": [
+                {
+                    "name": "infinidysk-dev-linux-x64.tar.gz",
+                    "digest": f"sha256:{'b' * 64}",
+                    "browser_download_url": "https://example.test/dev.tar.gz",
+                }
+            ],
+        }
+
+        with (
+            patch.object(setup.platform, "machine", return_value="x86_64"),
+            patch.object(
+                setup.downloader,
+                "fetch_github_release_info",
+                return_value=(release_info, None),
+            ),
+            patch.object(
+                setup.downloader,
+                "get_ref_commit_sha",
+                return_value=(current_sha, None),
+            ),
+            patch.object(setup.downloader, "download_and_extract") as download,
+        ):
+            result, error = setup._install_nzbdav_prebuilt_release(
+                config, "NzbDAV", "dev", "/tmp/nzbdav-test"
+            )
+
+        self.assertIsNone(result)
+        self.assertIn("archives target aaaaaaaa", error)
+        self.assertIn("tag now points to ffffffff", error)
+        download.assert_not_called()
+
+    def test_prebuilt_runtime_prefers_native_host_over_leftover_sdk(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            app = root / "app"
+            app.mkdir()
+            native = app / "NzbWebDAV"
+            native.write_text("native", encoding="utf-8")
+            native.chmod(0o755)
+            (app / "NzbWebDAV.dll").write_text("dll", encoding="utf-8")
+            sdk = root / ".dotnet-sdk" / "dotnet"
+            sdk.parent.mkdir()
+            sdk.write_text("sdk", encoding="utf-8")
+
+            prebuilt_command, prebuilt_error = setup._nzbdav_build_command(
+                str(app), prefer_native=True
+            )
+            source_command, source_error = setup._nzbdav_build_command(str(app))
+
+        self.assertIsNone(prebuilt_error)
+        self.assertEqual([str(native)], prebuilt_command)
+        self.assertIsNone(source_error)
+        self.assertEqual([str(sdk), str(app / "NzbWebDAV.dll")], source_command)
 
     def test_prebuilt_unavailable_falls_back_to_source_release(self):
         release_sha = "c" * 40
@@ -750,10 +890,71 @@ class NzbDAVSetupTests(unittest.TestCase):
                 success, error = setup.setup_release_version(
                     Mock(), config, "NzbDAV", "nzbdav"
                 )
+            install_info = setup.read_nzbdav_install_info(tmpdir)
 
         self.assertTrue(success, error)
         prebuilt.assert_called_once()
         source_download.assert_called_once()
+        self.assertEqual("source", install_info["method"])
+        self.assertEqual("archive unavailable", install_info["fallback_reason"])
+
+    def test_install_provenance_redacts_fallback_details(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            setup._write_nzbdav_install_info(
+                tmpdir,
+                method="source",
+                requested_selector="dev",
+                fallback_reason="download failed?token=do-not-expose",
+            )
+
+            install_info = setup.read_nzbdav_install_info(tmpdir)
+
+        self.assertEqual(
+            "download failed?token=[REDACTED]", install_info["fallback_reason"]
+        )
+
+    def test_lts_tag_without_release_object_falls_back_to_same_source_commit(self):
+        release_sha = "e" * 40
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = {
+                "process_name": "NzbDAV",
+                "config_dir": tmpdir,
+                "repo_owner": "infinidysk",
+                "repo_name": "infinidysk",
+                "release_version": "lts",
+                "clear_on_update": False,
+            }
+            with (
+                patch.object(
+                    setup.downloader,
+                    "get_ref_commit_sha",
+                    return_value=(release_sha, None),
+                ),
+                patch.object(
+                    setup.downloader,
+                    "fetch_github_release_info",
+                    return_value=(None, "release not found"),
+                ),
+                patch.object(
+                    setup.downloader,
+                    "download_release_version",
+                    return_value=(True, None),
+                ) as source_download,
+                patch.object(setup, "additional_setup", return_value=(True, None)),
+                patch.object(setup.versions, "version_write"),
+            ):
+                success, error = setup.setup_release_version(
+                    Mock(), config, "NzbDAV", "nzbdav"
+                )
+            install_info = setup.read_nzbdav_install_info(tmpdir)
+
+        self.assertTrue(success, error)
+        self.assertEqual(
+            release_sha, source_download.call_args.kwargs["release_version"]
+        )
+        self.assertEqual("source", install_info["method"])
+        self.assertEqual("lts", install_info["resolved_release"])
+        self.assertIn("release not found", install_info["fallback_reason"])
 
     def test_prerelease_source_fallback_uses_resolved_immutable_commit(self):
         release_sha = "d" * 40

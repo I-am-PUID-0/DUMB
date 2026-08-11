@@ -236,6 +236,34 @@ class VersionsHelperTests(unittest.TestCase):
         self.assertEqual(info["current_version"], "v0.10.0-rc.3-cf468605")
         self.assertEqual(info["latest_version"], "v0.10.0-rc.3")
 
+    def test_official_nzbdav_prerelease_check_tracks_rc_not_dev(self):
+        versions = Versions()
+
+        def fail_latest(*args, **kwargs):
+            raise AssertionError("official prerelease must use the rc channel")
+
+        versions.downloader.get_latest_release = fail_latest
+        versions.downloader.get_ref_commit_sha = lambda *args, **kwargs: (
+            "cf468605" + ("a" * 32),
+            None,
+        )
+        versions.version_check = lambda *args, **kwargs: (
+            "rc-cf468605",
+            None,
+        )
+
+        update_needed, info = versions.compare_versions(
+            "NzbDAV",
+            "infinidysk",
+            "infinidysk",
+            None,
+            "nzbdav",
+            prerelease=True,
+        )
+
+        self.assertFalse(update_needed)
+        self.assertEqual("rc", info["latest_version"])
+
     def test_nzbdav_stable_marker_compares_by_commit_but_displays_release(self):
         versions = Versions()
         versions.downloader.get_latest_release = lambda *args, **kwargs: (

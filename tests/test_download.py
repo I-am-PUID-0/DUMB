@@ -94,6 +94,25 @@ class DownloaderHelperTests(unittest.TestCase):
         download.INSTALL_CACHE = _InstallCache()
         self.downloader = download.Downloader()
 
+    def test_archive_root_filter_accepts_only_explicit_aliases(self):
+        accepted = [
+            "infinidysk-dev-linux-x64",
+            "infinidysk-*-linux-x64",
+            "nzbdav-*-linux-x64",
+        ]
+
+        self.assertEqual(
+            "app/NzbWebDAV",
+            self.downloader._strict_relative_path(
+                "infinidysk-vdev-linux-x64/app/NzbWebDAV", accepted
+            ),
+        )
+        self.assertIsNone(
+            self.downloader._strict_relative_path(
+                "infinidysk-other-linux-arm64/app/NzbWebDAV", accepted
+            )
+        )
+
     def test_get_headers_uses_accept_header_without_token(self):
         self.assertEqual(
             self.downloader.get_headers(),

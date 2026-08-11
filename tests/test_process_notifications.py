@@ -150,7 +150,11 @@ class ProcessNotificationTests(unittest.TestCase):
             )
 
         self.assertFalse(success)
-        self.assertEqual("go_build failed to stay running.", error)
+        self.assertEqual(
+            "go_build failed to stay running (exit code 1): "
+            "fatal error: fuse.h: No such file or directory",
+            error,
+        )
         self.assertEqual(
             "fatal error: fuse.h: No such file or directory", handler.stderr
         )
@@ -245,7 +249,11 @@ class ProcessNotificationTests(unittest.TestCase):
             success, error = handler.start_process("Example", "/tmp", ["example"])
 
         self.assertFalse(success)
-        self.assertEqual("Example failed to stay running.", error)
+        self.assertEqual(
+            "Example failed to stay running (exit code 0): "
+            "recovered panic: database permission denied",
+            error,
+        )
         self.assertEqual("recovered panic: database permission denied", handler.stdout)
         self.assertTrue(
             any(

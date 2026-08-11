@@ -624,9 +624,21 @@ class Downloader:
         if not normalized:
             return None
         if zip_folder_name:
-            archive_root_pattern = str(zip_folder_name).replace("\\", "/").rstrip("/")
+            raw_patterns = (
+                zip_folder_name
+                if isinstance(zip_folder_name, (list, tuple))
+                else [zip_folder_name]
+            )
+            archive_root_patterns = [
+                str(value).replace("\\", "/").rstrip("/")
+                for value in raw_patterns
+                if str(value).strip()
+            ]
             member_root, separator, remainder = normalized.partition("/")
-            if fnmatch.fnmatchcase(member_root, archive_root_pattern):
+            if any(
+                fnmatch.fnmatchcase(member_root, pattern)
+                for pattern in archive_root_patterns
+            ):
                 normalized = remainder if separator else member_root
             elif not single:
                 return None

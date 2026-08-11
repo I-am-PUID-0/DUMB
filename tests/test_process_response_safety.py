@@ -68,6 +68,7 @@ def _install_process_router_stubs():
     setup = types.ModuleType("utils.setup")
     setup.COMMIT_PIN_SERVICE_KEYS = set()
     setup.ensure_managed_postgres_database = lambda *args, **kwargs: None
+    setup.read_nzbdav_install_info = lambda *args, **kwargs: None
     setup.setup_project = lambda *args, **kwargs: None
     sys.modules["utils.setup"] = setup
 
@@ -276,6 +277,7 @@ class MediaStormCredentialResponseTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(capabilities["install_cache_limit_settings"])
         self.assertTrue(capabilities["service_reset"])
         self.assertTrue(capabilities["runtime_api_log_level"])
+        self.assertTrue(capabilities["nzbdav_install_info"])
 
     async def test_missing_credential_does_not_return_a_password(self):
         with (

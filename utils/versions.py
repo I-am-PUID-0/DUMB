@@ -716,9 +716,23 @@ class Versions:
                     "latest_version": latest_branch_version,
                 }
 
-            latest_release_version, error = self.downloader.get_latest_release(
-                repo_owner, repo_name, nightly=nightly, prerelease=prerelease
-            )
+            latest_release_version = None
+            error = None
+            if (
+                key == "nzbdav"
+                and prerelease
+                and str(repo_owner or "").strip().lower() == "infinidysk"
+                and str(repo_name or "").strip().lower() == "infinidysk"
+            ):
+                rc_sha, _ = self.downloader.get_ref_commit_sha(
+                    repo_owner, repo_name, "rc"
+                )
+                if rc_sha:
+                    latest_release_version = "rc"
+            if not latest_release_version and not error:
+                latest_release_version, error = self.downloader.get_latest_release(
+                    repo_owner, repo_name, nightly=nightly, prerelease=prerelease
+                )
             if not latest_release_version:
                 self.logger.error(
                     f"Failed to get the latest release for {process_name}: {error}"

@@ -10,6 +10,7 @@ from utils.resource_limits import pnpm_concurrency
 from utils.apt_lock import run_locked
 from utils.port_probe import is_port_available as _is_port_available
 from utils.private_files import atomic_write_private_text
+from utils.logger import redact_sensitive_log_data
 from utils.install_cache import INSTALL_CACHE, shared_cache_path
 from utils.transactional_install import DeferredClearTransaction
 from utils.arr_postgres import apply_arr_postgres_config
@@ -53,6 +54,8 @@ _NZBDAV_PREBUILT_MARKER = ".dumb_nzbdav_prebuilt.json"
 _NZBDAV_PREBUILT_FORMAT = 1
 _NZBDAV_SOURCE_BUILD_MARKER = ".dumb_nzbdav_source_build"
 _NZBDAV_SOURCE_BUILD_FORMAT = 3
+_NZBDAV_INSTALL_STATE = ".dumb_nzbdav_install.json"
+_NZBDAV_INSTALL_STATE_FORMAT = 1
 _SQLITE_FILE_RE = re.compile(r"(?i).+\.(?:db|sqlite|sqlite3)(?:-(?:wal|shm|journal))?$")
 _NZBDAV_SERVICE_PROVIDER = json.dumps(
     {
@@ -379,8 +382,6 @@ def _prepare_nzbdav_source_tree(target_dir: str) -> tuple[bool, str | None]:
     cleanup_targets = [
         "backend",
         "frontend",
-        _NZBDAV_PREBUILT_MARKER,
-        _NZBDAV_SOURCE_BUILD_MARKER,
     ]
     try:
         for entry in cleanup_targets:
@@ -476,6 +477,90 @@ def _nzbdav_source_build_is_current(config_dir: str) -> bool:
 def _write_nzbdav_source_build_marker(config_dir: str) -> None:
     marker_path = os.path.join(config_dir, _NZBDAV_SOURCE_BUILD_MARKER)
     atomic_write_private_text(marker_path, f"{_NZBDAV_SOURCE_BUILD_FORMAT}\n")
+
+
+def _write_nzbdav_install_info(config_dir: str, **values) -> None:
+    def bounded(value):
+        text = redact_sensitive_log_data(str(value or "")).strip()
+        return text[:1000] or None
+
+    payload = {
+        "format": _NZBDAV_INSTALL_STATE_FORMAT,
+        "method": bounded(values.get("method")),
+        "requested_selector": bounded(values.get("requested_selector")),
+        "resolved_release": bounded(values.get("resolved_release")),
+        "source_commit": bounded(values.get("source_commit")),
+        "asset_name": bounded(values.get("asset_name")),
+        "fallback_reason": bounded(values.get("fallback_reason")),
+        "installed_at": int(values.get("installed_at") or time.time()),
+    }
+    state_path = os.path.join(config_dir, _NZBDAV_INSTALL_STATE)
+    atomic_write_private_text(
+        state_path, json.dumps(payload, sort_keys=True, separators=(",", ":"))
+    )
+    chown_single(state_path, user_id, group_id)
+
+
+def read_nzbdav_install_info(config_dir: str | None) -> dict | None:
+    """Return bounded, non-sensitive install provenance for API/UI display."""
+
+    if not config_dir:
+        return None
+    path = Path(config_dir, _NZBDAV_INSTALL_STATE)
+    try:
+        if path.is_symlink() or not path.is_file() or path.stat().st_size > 16_384:
+            raise ValueError("install state is not a bounded regular file")
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        if payload.get("format") != _NZBDAV_INSTALL_STATE_FORMAT:
+            raise ValueError("unsupported install-state format")
+        method = str(payload.get("method") or "").strip().lower()
+        if method not in {"prebuilt", "source"}:
+            raise ValueError("unsupported install method")
+        result = {"method": method}
+        for key in (
+            "requested_selector",
+            "resolved_release",
+            "source_commit",
+            "asset_name",
+            "fallback_reason",
+        ):
+            value = redact_sensitive_log_data(str(payload.get(key) or "")).strip()
+            if value:
+                result[key] = value[:1000]
+        installed_at = payload.get("installed_at")
+        if isinstance(installed_at, int) and installed_at > 0:
+            result["installed_at"] = installed_at
+        return result
+    except (OSError, TypeError, ValueError, json.JSONDecodeError):
+        # Upgrade compatibility: older installs only have a method marker.
+        if Path(config_dir, _NZBDAV_PREBUILT_MARKER).is_file():
+            return {"method": "prebuilt"}
+        if Path(config_dir, _NZBDAV_SOURCE_BUILD_MARKER).is_file():
+            return {"method": "source"}
+        return None
+
+
+def _record_nzbdav_source_install(
+    config_dir: str,
+    *,
+    requested_selector: str,
+    source_commit: str | None,
+    resolved_release: str | None = None,
+    fallback_reason: str | None = None,
+) -> None:
+    _write_nzbdav_source_build_marker(config_dir)
+    try:
+        os.remove(os.path.join(config_dir, _NZBDAV_PREBUILT_MARKER))
+    except FileNotFoundError:
+        pass
+    _write_nzbdav_install_info(
+        config_dir,
+        method="source",
+        requested_selector=requested_selector,
+        resolved_release=resolved_release,
+        source_commit=source_commit,
+        fallback_reason=fallback_reason,
+    )
 
 
 def _update_persistent_excludes(
@@ -579,6 +664,7 @@ def _nzbdav_prebuilt_critical_paths(
     backend_relative: str = "app", frontend_relative: str = "frontend"
 ) -> tuple[str, ...]:
     return (
+        f"{backend_relative}/NzbWebDAV",
         f"{backend_relative}/NzbWebDAV.dll",
         f"{backend_relative}/NzbWebDAV.deps.json",
         f"{backend_relative}/NzbWebDAV.runtimeconfig.json",
@@ -719,6 +805,17 @@ def _resolve_nzbdav_release_selector(
     if release_lower not in {"latest", "prerelease"}:
         return release_tag, None
 
+    if (
+        release_lower == "prerelease"
+        and str(config.get("repo_owner") or "").strip().lower() == "infinidysk"
+        and str(config.get("repo_name") or "").strip().lower() == "infinidysk"
+    ):
+        rc_sha, _ = downloader.get_ref_commit_sha(
+            config.get("repo_owner"), config.get("repo_name"), "rc"
+        )
+        if rc_sha:
+            return "rc", None
+
     resolved_tag, error = downloader.get_latest_release(
         config.get("repo_owner"),
         config.get("repo_name"),
@@ -731,7 +828,10 @@ def _resolve_nzbdav_release_selector(
 
 
 def _select_nzbdav_prebuilt_asset(
-    release_info: dict, architecture: str, repo_name: str | None
+    release_info: dict,
+    architecture: str,
+    repo_name: str | None,
+    release_tag: str | None = None,
 ) -> tuple[dict | None, str | None]:
     expected_suffix = f"-linux-{architecture}.tar.gz"
     supported_prefixes = ("infinidysk-", "nzbdav-")
@@ -758,6 +858,18 @@ def _select_nzbdav_prebuilt_asset(
             for asset in matching_assets
             if str(asset.get("name") or "").lower().startswith(prefix)
         ]
+        normalized_tag = (
+            str(release_tag or release_info.get("tag_name") or "").strip().lower()
+        )
+        if normalized_tag:
+            exact_name = f"{prefix}{normalized_tag}{expected_suffix}"
+            exact = [
+                asset
+                for asset in preferred
+                if str(asset.get("name") or "").lower() == exact_name
+            ]
+            if len(exact) == 1:
+                return exact[0], None
         if len(preferred) == 1:
             return preferred[0], None
         if len(preferred) > 1:
@@ -768,11 +880,34 @@ def _select_nzbdav_prebuilt_asset(
     return None, f"release provides ambiguous linux-{architecture} archives"
 
 
+def _nzbdav_prebuilt_archive_roots(asset_name: str, release_tag: str) -> list[str]:
+    """Return bounded accepted roots for an official prebuilt archive."""
+
+    stem = asset_name.removesuffix(".tar.gz")
+    roots = [stem]
+    match = re.fullmatch(
+        r"(?:infinidysk|nzbdav)-.+-linux-(x64|arm64)", stem, re.IGNORECASE
+    )
+    if match:
+        architecture = match.group(1).lower()
+        # A rolling release asset (notably ``rc``) is a renamed byte-for-byte
+        # copy whose archive root retains the concrete semantic version.
+        roots.extend(
+            [
+                f"infinidysk-*-linux-{architecture}",
+                f"nzbdav-*-linux-{architecture}",
+            ]
+        )
+    return roots
+
+
 def _install_nzbdav_prebuilt_release(
     config: dict,
     process_name: str,
     requested_release: str,
     target_dir: str,
+    *,
+    original_selector: str | None = None,
 ) -> tuple[dict | None, str | None]:
     architecture = _nzbdav_prebuilt_architecture()
     if not architecture:
@@ -788,7 +923,7 @@ def _install_nzbdav_prebuilt_release(
     if not release_info:
         return None, release_error or f"release {release_tag} has no GitHub release"
     asset, asset_error = _select_nzbdav_prebuilt_asset(
-        release_info, architecture, config.get("repo_name")
+        release_info, architecture, config.get("repo_name"), release_tag
     )
     if not asset:
         return None, f"release {release_tag} {asset_error}"
@@ -810,6 +945,13 @@ def _install_nzbdav_prebuilt_release(
             None,
             sha_error or f"release tag {release_tag} commit could not be resolved",
         )
+    release_target = str(release_info.get("target_commitish") or "").strip().lower()
+    if re.fullmatch(r"[0-9a-f]{40}", release_target) and release_target != release_sha:
+        return (
+            None,
+            f"release {release_tag} archives target {release_target[:8]}, but the "
+            f"tag now points to {release_sha[:8]}",
+        )
 
     staging_parent = _same_filesystem_staging_parent(target_dir)
     os.makedirs(staging_parent, exist_ok=True)
@@ -820,7 +962,7 @@ def _install_nzbdav_prebuilt_release(
         success, error = downloader.download_and_extract(
             asset_url,
             candidate_dir,
-            zip_folder_name=asset_name.removesuffix(".tar.gz"),
+            zip_folder_name=_nzbdav_prebuilt_archive_roots(asset_name, release_tag),
             expected_sha256=published_digest,
         )
         if not success:
@@ -848,6 +990,15 @@ def _install_nzbdav_prebuilt_release(
             "installed_at": int(time.time()),
         }
         _write_nzbdav_prebuilt_marker(candidate_dir, marker_metadata)
+        _write_nzbdav_install_info(
+            candidate_dir,
+            method="prebuilt",
+            requested_selector=original_selector or requested_release,
+            resolved_release=release_tag,
+            source_commit=release_sha,
+            asset_name=asset_name,
+            installed_at=marker_metadata["installed_at"],
+        )
         for candidate_path in (
             candidate_app_dir,
             os.path.join(candidate_dir, "frontend"),
@@ -863,10 +1014,18 @@ def _install_nzbdav_prebuilt_release(
                     os.path.join(candidate_dir, _NZBDAV_PREBUILT_MARKER),
                     os.path.join(target_dir, _NZBDAV_PREBUILT_MARKER),
                 ),
+                (
+                    os.path.join(candidate_dir, _NZBDAV_INSTALL_STATE),
+                    os.path.join(target_dir, _NZBDAV_INSTALL_STATE),
+                ),
             ]
         )
         if not activated:
             return None, f"prebuilt activation failed safely: {activation_error}"
+        try:
+            os.remove(os.path.join(target_dir, _NZBDAV_SOURCE_BUILD_MARKER))
+        except FileNotFoundError:
+            pass
         logger.info(
             "Installed verified NzbDAV prebuilt archive %s (%s).",
             asset.get("name"),
@@ -951,6 +1110,10 @@ def setup_release_version(process_handler, config, process_name, key):
         return additional_setup(process_handler, process_name, config, key)
 
     nzbdav_release_marker = None
+    nzbdav_prebuilt_error = None
+    nzbdav_requested_release = None
+    nzbdav_resolved_release = None
+    nzbdav_release_sha = None
     download_release_version = config["release_version"]
     if key == "nzbdav":
         requested_release = str(config.get("release_version") or "").strip()
@@ -967,6 +1130,9 @@ def setup_release_version(process_handler, config, process_name, key):
         if not release_sha:
             return False, release_sha_error
         nzbdav_release_marker = f"{resolved_release}-{release_sha[:8]}"
+        nzbdav_requested_release = requested_release
+        nzbdav_resolved_release = resolved_release
+        nzbdav_release_sha = release_sha
         download_release_version = release_sha
 
         prebuilt, prebuilt_error = _install_nzbdav_prebuilt_release(
@@ -974,6 +1140,7 @@ def setup_release_version(process_handler, config, process_name, key):
             process_name,
             resolved_release,
             target_dir,
+            original_selector=requested_release,
         )
         if prebuilt:
             versions.version_write(
@@ -988,6 +1155,7 @@ def setup_release_version(process_handler, config, process_name, key):
             "falling back to the existing source-build path.",
             prebuilt_error or "unknown archive error",
         )
+        nzbdav_prebuilt_error = prebuilt_error or "unknown archive error"
 
     exclude_dirs = _update_persistent_excludes(config, target_dir)
     if config.get("clear_on_update"):
@@ -1088,6 +1256,13 @@ def setup_release_version(process_handler, config, process_name, key):
             key,
             version_path=os.path.join(config["config_dir"], "version.txt"),
             version=nzbdav_release_marker,
+        )
+        _record_nzbdav_source_install(
+            config["config_dir"],
+            requested_selector=nzbdav_requested_release or config["release_version"],
+            resolved_release=nzbdav_resolved_release,
+            source_commit=nzbdav_release_sha,
+            fallback_reason=nzbdav_prebuilt_error,
         )
 
     return True, None
@@ -1270,6 +1445,15 @@ def setup_branch_version(process_handler, config, process_name, key):
                     target_dir, commit_sha
                 )
                 if state_matches and marker_matches:
+                    if (
+                        key == "nzbdav"
+                        and not Path(target_dir, _NZBDAV_INSTALL_STATE).is_file()
+                    ):
+                        _record_nzbdav_source_install(
+                            target_dir,
+                            requested_selector=source_ref,
+                            source_commit=current_sha,
+                        )
                     logger.info(
                         "%s '%s' unchanged for %s (%s); skipping reinstall/setup.",
                         source_kind.capitalize(),
@@ -1372,6 +1556,12 @@ def setup_branch_version(process_handler, config, process_name, key):
                         "updated_at": int(time.time()),
                     },
                 )
+        if key == "nzbdav":
+            _record_nzbdav_source_install(
+                target_dir,
+                requested_selector=source_ref,
+                source_commit=current_sha or commit_sha,
+            )
 
     return True, None
 
@@ -3712,6 +3902,55 @@ def setup_decypharr(install_only: bool = False, configure_only: bool = False):
         return False, f"Error during Decypharr setup: {e}"
 
 
+def _normalize_nzbdav_writable_ownership(
+    config_path: str, owner_uid: int, owner_gid: int
+) -> tuple[bool, str | None]:
+    """Repair bounded InfiniDysk state without walking its blob store."""
+
+    root = os.path.realpath(config_path)
+    if not os.path.isdir(root):
+        return False, f"InfiniDysk configuration directory is unavailable: {root}"
+
+    recursive_state_dirs = {"db", "database", "databases", "data-protection", "logs"}
+    writable_file_names = {
+        "version.txt",
+        "initial_admin_password",
+        "initial_admin_password.txt",
+        _NZBDAV_PREBUILT_MARKER,
+        _NZBDAV_SOURCE_BUILD_MARKER,
+        _NZBDAV_INSTALL_STATE,
+    }
+
+    try:
+        chown_single(root, owner_uid, owner_gid)
+        with os.scandir(root) as entries:
+            for entry in entries:
+                if entry.is_symlink():
+                    continue
+                name = entry.name
+                lower_name = name.lower()
+                if entry.is_file(follow_symlinks=False) and (
+                    name in writable_file_names
+                    or _SQLITE_FILE_RE.fullmatch(name)
+                    or lower_name.endswith(".maintenance.lock")
+                    or lower_name.endswith((".json", ".yaml", ".yml", ".xml"))
+                ):
+                    chown_single(entry.path, owner_uid, owner_gid)
+                elif (
+                    entry.is_dir(follow_symlinks=False)
+                    and lower_name in recursive_state_dirs
+                ):
+                    owned, error = chown_recursive(entry.path, owner_uid, owner_gid)
+                    if not owned:
+                        return (
+                            False,
+                            f"InfiniDysk cannot access {entry.path}: {error}",
+                        )
+        return True, None
+    except OSError as error:
+        return False, f"InfiniDysk ownership preflight failed for {root}: {error}"
+
+
 def setup_nzbdav(
     process_handler, install_only: bool = False, configure_only: bool = False
 ):
@@ -3722,6 +3961,7 @@ def setup_nzbdav(
     logger.info("Starting NzbDAV setup...")
 
     try:
+        source_fallback_info = None
         if install_only and configure_only:
             return False, "Invalid NzbDAV setup phase."
         nzbdav_config_dir = config.get("config_dir", "/nzbdav")
@@ -3775,6 +4015,7 @@ def setup_nzbdav(
                     config.get("process_name") or "NzbDAV",
                     resolved_release,
                     nzbdav_config_dir,
+                    original_selector=str(release or "latest"),
                 )
                 if prebuilt:
                     versions.version_write(
@@ -3798,6 +4039,12 @@ def setup_nzbdav(
                     if not source_sha:
                         return False, source_sha_error
                     version_to_write = f"{resolved_release}-{source_sha[:8]}"
+                    source_fallback_info = {
+                        "requested_selector": str(release or "latest"),
+                        "resolved_release": resolved_release,
+                        "source_commit": source_sha,
+                        "fallback_reason": prebuilt_error or "unknown archive error",
+                    }
 
                     exclude_dirs = _update_persistent_excludes(
                         config, nzbdav_config_dir
@@ -3873,6 +4120,8 @@ def setup_nzbdav(
             success, error = setup_nzbdav_build(process_handler, config)
             if not success:
                 return False, error
+            if source_fallback_info:
+                _record_nzbdav_source_install(nzbdav_config_dir, **source_fallback_info)
         elif build_needed and configure_only:
             return False, "NzbDAV build output missing during configure phase."
 
@@ -3884,6 +4133,7 @@ def setup_nzbdav(
                     if backend_project_path
                     else nzbdav_config_dir
                 ),
+                prefer_native=prebuilt_ready,
             )
             if not backend_command:
                 return False, error
@@ -3898,6 +4148,12 @@ def setup_nzbdav(
 
         if nzbdav_config_file and os.path.exists(nzbdav_config_file):
             chown_single(nzbdav_config_file, user_id, group_id)
+
+        ownership_ok, ownership_error = _normalize_nzbdav_writable_ownership(
+            config_path, user_id, group_id
+        )
+        if not ownership_ok:
+            return False, ownership_error
 
         if install_only:
             logger.info("NzbDAV install phase: skipping runtime config patch.")
@@ -4799,7 +5055,7 @@ def _find_nzbdav_frontend_build_dir(frontend_dir, config):
     return None
 
 
-def _nzbdav_build_command(backend_output_dir, dotnet_dir=None):
+def _nzbdav_build_command(backend_output_dir, dotnet_dir=None, *, prefer_native=False):
     if not os.path.isdir(backend_output_dir):
         return None, f"NzbDAV output directory not found: {backend_output_dir}"
 
@@ -4848,7 +5104,20 @@ def _nzbdav_build_command(backend_output_dir, dotnet_dir=None):
 
     selected_dll = preferred_dll or runtimeconfig_dll or (dlls[0] if dlls else None)
 
-    # Prefer local dotnet + DLL to avoid launching host binaries against older system runtimes.
+    binaries.sort(
+        key=lambda path: (
+            os.path.basename(path).lower() != "nzbwebdav",
+            os.path.basename(path).lower(),
+        )
+    )
+
+    # Verified release archives ship a framework-dependent native apphost.
+    # Prefer it even when a local SDK remains from an earlier source build.
+    if prefer_native and binaries:
+        return [binaries[0]], None
+
+    # Source builds prefer the managed SDK plus application DLL so their
+    # target framework does not bind to an older system runtime.
     if selected_dll and local_dotnet_cmd:
         return [local_dotnet_cmd, selected_dll], None
     if binaries:

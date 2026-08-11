@@ -16,6 +16,7 @@ from utils.ai_diagnostics import record_config_change, record_diagnostic_event
 from utils.setup import (
     COMMIT_PIN_SERVICE_KEYS,
     ensure_managed_postgres_database,
+    read_nzbdav_install_info,
     setup_project,
 )
 from utils.core_services import has_core_service
@@ -905,6 +906,11 @@ def fetch_process(
         if updater:
             supports_manual_update = updater.supports_manual_update(config_key, config)
         repo_url, sponsorship_url = _service_project_urls(config_key, config)
+        install_info = (
+            read_nzbdav_install_info(config.get("config_dir"))
+            if config_key == "nzbdav"
+            else None
+        )
 
         return _safe_api_response(
             {
@@ -917,6 +923,7 @@ def fetch_process(
                 "supports_manual_update": supports_manual_update,
                 "repo_url": repo_url,
                 "sponsorship_url": sponsorship_url,
+                "install_info": install_info,
             }
         )
     except HTTPException:
@@ -946,6 +953,10 @@ def fetch_processes(
                 if api_state and process_name
                 else None
             )
+            if config_key == "nzbdav" and isinstance(config, dict):
+                process["install_info"] = read_nzbdav_install_info(
+                    config.get("config_dir")
+                )
         return _safe_api_response({"processes": processes})
     except HTTPException:
         raise
@@ -5586,6 +5597,7 @@ async def get_capabilities(current_user: str = Depends(get_optional_current_user
         "project_update_release_distance": True,
         "api_update_check_always_on": True,
         "runtime_api_log_level": True,
+        "nzbdav_install_info": True,
     }
 
 
