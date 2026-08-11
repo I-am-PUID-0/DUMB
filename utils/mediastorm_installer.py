@@ -5,7 +5,9 @@ import subprocess
 import tarfile
 import tempfile
 from pathlib import Path, PurePosixPath
+from typing import Callable
 
+from utils.download import Downloader
 from utils.global_logger import logger
 from utils.oci_image import OCIImageError, OCIRegistryClient
 
@@ -13,6 +15,8 @@ MEDIASTORM_PYTHON_PACKAGES = ("parsett==1.8.5", "subliminal==2.6.0")
 MEDIASTORM_OCI_REGISTRY = "registry-1.docker.io"
 MEDIASTORM_OCI_REPOSITORY = "godver3/mediastorm"
 MEDIASTORM_OCI_REFERENCE = "latest"
+MEDIASTORM_SOURCE_OWNER = "godver3"
+MEDIASTORM_SOURCE_REPOSITORY = "mediastorm"
 _MEDIASTORM_RELEASE_PATTERN = re.compile(
     r"^v?(\d+\.\d+\.\d+)(?:-(\d{8}))?$", re.IGNORECASE
 )
@@ -402,6 +406,7 @@ def install_mediastorm_runtime(
     requested_version: str,
     *,
     client: OCIRegistryClient | None = None,
+    release_ref_resolver: Callable[[str], tuple[str | None, str | None]] | None = None,
 ) -> dict:
     config_dir = Path(config.get("config_dir") or "/mediastorm")
     runtime_dir = config_dir / "runtime"
@@ -412,12 +417,33 @@ def install_mediastorm_runtime(
 
     manifest = None
     resolve_errors = []
-    for reference in install_request["references"]:
+    references = list(install_request["references"])
+    for index, reference in enumerate(references):
         try:
             manifest = registry_client.resolve_manifest(repository, reference)
             break
         except OCIImageError as exc:
             resolve_errors.append(f"{reference}: {exc}")
+            if index == 0 and install_request["expected_version"]:
+                resolver = release_ref_resolver
+                if resolver is None:
+                    downloader = Downloader()
+                    resolver = lambda release_tag: downloader.get_ref_commit_sha(
+                        MEDIASTORM_SOURCE_OWNER,
+                        MEDIASTORM_SOURCE_REPOSITORY,
+                        release_tag,
+                    )
+                release_tag = install_request["expected_version"]
+                commit_sha, commit_error = resolver(release_tag)
+                if commit_sha and _MEDIASTORM_COMMIT_PATTERN.fullmatch(commit_sha):
+                    references.insert(index + 1, commit_sha.lower())
+                elif commit_error:
+                    logger.warning(
+                        "Could not resolve mediastorm release %s to its immutable "
+                        "OCI commit tag: %s",
+                        release_tag,
+                        commit_error,
+                    )
     if manifest is None:
         raise MediaStormInstallError(
             "Unable to resolve the requested mediastorm OCI reference: "

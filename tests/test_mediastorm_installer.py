@@ -325,18 +325,75 @@ class MediaStormInstallerTests(unittest.TestCase):
                 python.write_text("python", encoding="utf-8")
 
             config["config_dir"] = str(root / "mediastorm")
-            client = _FakeOCIClient([layer], missing_references={"1.5.020260711"})
+            commit_sha = "c" * 40
+            client = _FakeOCIClient(
+                [layer], missing_references={"1.5.020260711", commit_sha}
+            )
             with patch(
                 "utils.mediastorm_installer._build_python_environment",
                 side_effect=fake_python_environment,
             ):
                 result = install_mediastorm_runtime(
-                    config, "v1.5.0-20260711", client=client
+                    config,
+                    "v1.5.0-20260711",
+                    client=client,
+                    release_ref_resolver=lambda _tag: (commit_sha, None),
                 )
 
-            self.assertEqual(client.resolved_references, ["1.5.020260711", "1.5.0"])
+            self.assertEqual(
+                client.resolved_references,
+                ["1.5.020260711", commit_sha, "1.5.0"],
+            )
             self.assertEqual(result["oci_reference"], "1.5.0")
             self.assertEqual(result["version"], "v1.5.0-20260711")
+
+    def test_github_release_pin_prefers_immutable_commit_oci_tag(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            layer = root / "layer.tar.gz"
+            entries = {
+                "root/mediastorm": (b"server", 0o755),
+                "opt/strmr-web/index.html": (b"web", 0o644),
+                "opt/iroh/iroh-direct-spike": (b"iroh", 0o755),
+                "app/version.txt": (b"1.5.0\n20260806\n", 0o644),
+            }
+            for binary in ("ffmpeg", "ffprobe", "yt-dlp", "deno"):
+                entries[f"usr/local/bin/{binary}"] = (b"binary", 0o755)
+            _write_layer(layer, entries)
+
+            def fake_python_environment(runtime):
+                python = runtime / "python-venv" / "bin" / "python3"
+                python.parent.mkdir(parents=True)
+                python.write_text("python", encoding="utf-8")
+
+            commit_sha = "c" * 40
+            config = {
+                "config_dir": str(root / "mediastorm"),
+                "release_version_enabled": True,
+                "release_version": "v1.5.0-20260806",
+            }
+            client = _FakeOCIClient([layer], missing_references={"1.5.020260806"})
+            with patch(
+                "utils.mediastorm_installer._build_python_environment",
+                side_effect=fake_python_environment,
+            ):
+                result = install_mediastorm_runtime(
+                    config,
+                    "v1.5.0-20260806",
+                    client=client,
+                    release_ref_resolver=lambda tag: (
+                        (commit_sha, None)
+                        if tag == "v1.5.0-20260806"
+                        else (None, "unexpected tag")
+                    ),
+                )
+
+            self.assertEqual(
+                client.resolved_references,
+                ["1.5.020260806", commit_sha],
+            )
+            self.assertEqual(result["oci_reference"], commit_sha)
+            self.assertEqual(result["version"], "v1.5.0-20260806")
 
     def test_accepts_commit_and_digest_pins_but_rejects_arbitrary_tags(self):
         commit = "a" * 40
