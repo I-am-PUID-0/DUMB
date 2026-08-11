@@ -1,5 +1,20 @@
 # Changelog
 
+## [2.19.0](https://github.com/I-am-PUID-0/DUMB/compare/2.18.0...2.19.0) (2026-08-11)
+
+
+### ✨ Features
+
+* **infinidysk:** harden prebuilt installs and source fallback ([ea0d476](https://github.com/I-am-PUID-0/DUMB/commit/ea0d4763d2fe94ac394d72daffae115f18d520db))
+
+
+### 🐛 Bug Fixes
+
+* **mediastorm:** resolve dated releases through immutable OCI tags ([94d4f9a](https://github.com/I-am-PUID-0/DUMB/commit/94d4f9abba68351048f9e4bb199c3e7a74544a0f))
+* **updates:** report configured branch targets for all source services ([757bd84](https://github.com/I-am-PUID-0/DUMB/commit/757bd845b60de631bbd15fd8b58e8e3b986f5742))
+* **updates:** support frontend activation on Docker overlay layers ([1286b5d](https://github.com/I-am-PUID-0/DUMB/commit/1286b5d13fdf490e2bd6d0adb67c195ce8e4d1c9))
+* **updates:** track configured frontend installs correctly ([cba5912](https://github.com/I-am-PUID-0/DUMB/commit/cba5912aef6a461385f1367ac7d09f490945f35f))
+
 ## [2.18.0](https://github.com/I-am-PUID-0/DUMB/compare/2.17.1...2.18.0) (2026-08-10)
 
 
