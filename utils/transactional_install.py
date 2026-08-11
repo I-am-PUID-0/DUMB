@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import errno
 import json
 import os
 import shutil
@@ -35,11 +36,14 @@ class TransactionError(RuntimeError):
 
 
 class DirectoryReleaseTransaction:
-    """Prepare a replacement directory and atomically swap it into place.
+    """Prepare a replacement directory and swap it into place safely.
 
     The candidate is always adjacent to the target, which keeps the activation
-    rename on one filesystem. A durable journal allows the next attempt to
-    recover an interrupted rename before new work begins.
+    rename on one filesystem. Docker overlay lower/merged directories cannot
+    be renamed when redirect_dir is disabled, even though ``st_dev`` matches.
+    That one-time case uses a complete rollback copy plus a journaled replace.
+    A durable journal allows the next attempt to recover an interrupted swap
+    before new work begins.
     """
 
     def __init__(self, target_dir: str, process_name: str):
@@ -51,6 +55,9 @@ class DirectoryReleaseTransaction:
         )
         self.previous = self.target.parent / (
             f".{self.target.name}.dumb-previous-{self.identifier}"
+        )
+        self.previous_staging = self.target.parent / (
+            f".{self.target.name}.dumb-previous-staging-{self.identifier}"
         )
         journal_name = f"{self.target.name}-{self.identifier}.json"
         self.journal = install_cache_root() / "transactions" / journal_name
@@ -64,6 +71,7 @@ class DirectoryReleaseTransaction:
             "target": str(self.target),
             "candidate": str(self.candidate),
             "previous": str(self.previous),
+            "previous_staging": str(self.previous_staging),
             "state": state,
             "message": message,
             "updated_at": int(time.time()),
@@ -89,8 +97,30 @@ class DirectoryReleaseTransaction:
                     continue
                 candidate = Path(payload.get("candidate", ""))
                 previous = Path(payload.get("previous", ""))
+                previous_staging_value = payload.get("previous_staging")
+                previous_staging = (
+                    Path(previous_staging_value) if previous_staging_value else None
+                )
                 state = payload.get("state")
-                if not target.exists() and previous.exists():
+                if state == "copying_previous":
+                    if previous_staging and previous_staging.is_dir():
+                        shutil.rmtree(previous_staging, ignore_errors=True)
+                    if previous.exists():
+                        shutil.rmtree(previous, ignore_errors=True)
+                    if candidate.exists():
+                        shutil.rmtree(candidate, ignore_errors=True)
+                    journal.unlink(missing_ok=True)
+                    recovered.append("discarded_incomplete_overlay_copy")
+                    continue
+                if state == "replacing_overlay_target" and previous.exists():
+                    if target.exists():
+                        if target.is_dir() and not target.is_symlink():
+                            shutil.rmtree(target)
+                        else:
+                            target.unlink(missing_ok=True)
+                    os.replace(previous, target)
+                    recovered.append("restored_overlay_previous")
+                elif not target.exists() and previous.exists():
                     os.replace(previous, target)
                     recovered.append("restored_previous")
                 elif previous.exists() and state in {
@@ -120,6 +150,8 @@ class DirectoryReleaseTransaction:
                     shutil.rmtree(previous)
                 if candidate.exists():
                     shutil.rmtree(candidate, ignore_errors=True)
+                if previous_staging and previous_staging.is_dir():
+                    shutil.rmtree(previous_staging, ignore_errors=True)
                 journal.unlink(missing_ok=True)
             except (OSError, ValueError, json.JSONDecodeError) as error:
                 logger.warning(
@@ -139,6 +171,22 @@ class DirectoryReleaseTransaction:
     def mark_building(self) -> None:
         self._write_journal("building")
 
+    def _activate_overlay_fallback(self) -> None:
+        """Replace a lower/merged overlay directory with a writable candidate."""
+        self._write_journal("copying_previous")
+        if self.previous_staging.exists():
+            shutil.rmtree(self.previous_staging)
+        shutil.copytree(
+            self.target,
+            self.previous_staging,
+            symlinks=True,
+            copy_function=_reflink_or_copy,
+        )
+        os.replace(self.previous_staging, self.previous)
+        self._write_journal("replacing_overlay_target")
+        shutil.rmtree(self.target)
+        os.replace(self.candidate, self.target)
+
     def activate(self) -> None:
         if not self.candidate.is_dir():
             raise TransactionError("install candidate does not exist")
@@ -146,13 +194,33 @@ class DirectoryReleaseTransaction:
         target_existed = self.target.exists()
         try:
             if target_existed:
-                os.replace(self.target, self.previous)
-            os.replace(self.candidate, self.target)
+                try:
+                    os.replace(self.target, self.previous)
+                except OSError as error:
+                    if error.errno != errno.EXDEV:
+                        raise
+                    logger.info(
+                        "Using overlay-safe candidate activation for %s at %s.",
+                        self.process_name,
+                        self.target,
+                    )
+                    self._activate_overlay_fallback()
+                else:
+                    os.replace(self.candidate, self.target)
+            else:
+                os.replace(self.candidate, self.target)
             self.activated = True
             self._write_journal("activated")
         except OSError as error:
-            if not self.target.exists() and self.previous.exists():
+            if self.previous.exists():
+                if self.target.exists():
+                    if self.target.is_dir() and not self.target.is_symlink():
+                        shutil.rmtree(self.target)
+                    else:
+                        self.target.unlink(missing_ok=True)
                 os.replace(self.previous, self.target)
+            if self.previous_staging.is_dir():
+                shutil.rmtree(self.previous_staging, ignore_errors=True)
             self._write_journal("failed", str(error))
             raise TransactionError(
                 f"failed activating install candidate: {error}"
@@ -184,6 +252,8 @@ class DirectoryReleaseTransaction:
         self._write_journal("committing")
         if self.candidate.exists():
             shutil.rmtree(self.candidate, ignore_errors=True)
+        if self.previous_staging.exists():
+            shutil.rmtree(self.previous_staging, ignore_errors=True)
         if self.previous.exists() and not keep_previous:
             shutil.rmtree(self.previous)
         self._write_journal("committed")
@@ -195,6 +265,8 @@ class DirectoryReleaseTransaction:
             return
         if self.candidate.exists():
             shutil.rmtree(self.candidate, ignore_errors=True)
+        if self.previous_staging.exists():
+            shutil.rmtree(self.previous_staging, ignore_errors=True)
         self._write_journal("failed", message)
         self.journal.unlink(missing_ok=True)
 

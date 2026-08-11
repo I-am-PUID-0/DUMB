@@ -49,6 +49,8 @@ class Update:
         self.downloader = Downloader()
         self._rollback_snapshots = {}
         self._active_install_operation = None
+        self._manual_update_request_lock = threading.Lock()
+        self._active_manual_update_request = None
         self._update_timing_lock = threading.Lock()
         self._update_timings = {}
 
@@ -1297,6 +1299,72 @@ class Update:
         target=None,
         protection_override=None,
     ):
+        if not hasattr(self, "_manual_update_request_lock"):
+            self._manual_update_request_lock = threading.Lock()
+            self._active_manual_update_request = None
+        signature = (
+            str(process_name or "").strip(),
+            bool(allow_override),
+            str(target or "").strip().lower(),
+            str(protection_override or "").strip().lower(),
+        )
+        request = None
+        with self._manual_update_request_lock:
+            active = self._active_manual_update_request
+            if active is None:
+                active = {
+                    "signature": signature,
+                    "event": threading.Event(),
+                    "payload": None,
+                }
+                self._active_manual_update_request = active
+            elif active["signature"] != signature:
+                active_name = active["signature"][0] or "another service"
+                return {
+                    "status": "installing",
+                    "reason": "update_in_progress",
+                    "message": f"An update for {active_name} is already in progress.",
+                }
+            else:
+                request = active
+
+        if request is not None:
+            self.logger.info(
+                "Coalescing duplicate manual update install request for %s.",
+                process_name,
+            )
+            request["event"].wait()
+            if isinstance(request.get("payload"), dict):
+                return dict(request["payload"])
+            return {
+                "status": "error",
+                "reason": "coalesced_update_failed",
+                "message": f"The update request for {process_name} failed before producing a result.",
+            }
+
+        payload = None
+        try:
+            payload = self._manual_update_install_once(
+                process_name,
+                allow_override=allow_override,
+                target=target,
+                protection_override=protection_override,
+            )
+            return payload
+        finally:
+            with self._manual_update_request_lock:
+                active["payload"] = payload
+                active["event"].set()
+                if self._active_manual_update_request is active:
+                    self._active_manual_update_request = None
+
+    def _manual_update_install_once(
+        self,
+        process_name,
+        allow_override=False,
+        target=None,
+        protection_override=None,
+    ):
         key, instance_name = CONFIG_MANAGER.find_key_for_process(process_name)
         config = CONFIG_MANAGER.get_instance(instance_name, key) if key else None
         requested_target = str(target or "").strip().lower()
@@ -1469,7 +1537,9 @@ class Update:
                     )
                 if not success:
                     status = "no_update"
-                    if isinstance(message, str) and "Failed" in message:
+                    if isinstance(message, str) and any(
+                        marker in message.lower() for marker in ("failed", "error")
+                    ):
                         status = "error"
                     payload = {
                         "status": status,

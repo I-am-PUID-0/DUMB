@@ -345,6 +345,36 @@ class TransactionalInstallTests(unittest.TestCase):
 
             self.assertEqual((target / "version.txt").read_text(), "old")
 
+    def test_overlay_cross_device_rename_uses_copy_activation_and_can_roll_back(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            target = root / "service"
+            target.mkdir()
+            (target / "version.txt").write_text("old", encoding="utf-8")
+            transaction = DirectoryReleaseTransaction(str(target), "Example")
+            transaction.journal = root / "journals" / "transaction.json"
+            candidate = Path(transaction.prepare())
+            (candidate / "version.txt").write_text("new", encoding="utf-8")
+            real_replace = os.replace
+
+            def reject_lower_directory_rename(source, destination):
+                if Path(source) == target and Path(destination) == transaction.previous:
+                    raise OSError(errno.EXDEV, "simulated overlay rename")
+                return real_replace(source, destination)
+
+            with patch(
+                "utils.transactional_install.os.replace",
+                side_effect=reject_lower_directory_rename,
+            ):
+                transaction.activate()
+
+            self.assertTrue(transaction.activated)
+            self.assertEqual((target / "version.txt").read_text(), "new")
+            self.assertEqual((transaction.previous / "version.txt").read_text(), "old")
+            self.assertFalse(transaction.previous_staging.exists())
+            self.assertTrue(transaction.rollback())
+            self.assertEqual((target / "version.txt").read_text(), "old")
+
     def test_candidate_activation_can_roll_back(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
@@ -454,6 +484,46 @@ class TransactionalInstallTests(unittest.TestCase):
 
             self.assertIn("rolled_back_uncommitted_activation", recovered)
             self.assertEqual((target / "version.txt").read_text(), "old")
+            self.assertFalse(journal.exists())
+
+    def test_recovery_restores_overlay_copy_during_target_replacement(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            target = root / "service"
+            previous = root / ".service.previous"
+            candidate = root / ".service.candidate"
+            target.mkdir()
+            previous.mkdir()
+            candidate.mkdir()
+            (target / "partial.txt").write_text("partial", encoding="utf-8")
+            (previous / "version.txt").write_text("old", encoding="utf-8")
+            (candidate / "version.txt").write_text("new", encoding="utf-8")
+            transaction_root = root / "transactions"
+            transaction_root.mkdir()
+            journal = transaction_root / "service-test.json"
+            journal.write_text(
+                json.dumps(
+                    {
+                        "target": str(target),
+                        "previous": str(previous),
+                        "candidate": str(candidate),
+                        "state": "replacing_overlay_target",
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            from utils import transactional_install
+
+            with patch.object(
+                transactional_install, "install_cache_root", return_value=root
+            ):
+                recovered = DirectoryReleaseTransaction.recover_incomplete(str(target))
+
+            self.assertIn("restored_overlay_previous", recovered)
+            self.assertEqual((target / "version.txt").read_text(), "old")
+            self.assertFalse((target / "partial.txt").exists())
+            self.assertFalse(candidate.exists())
             self.assertFalse(journal.exists())
 
     def test_deferred_clear_can_restore_after_partial_enospc_failure(self):

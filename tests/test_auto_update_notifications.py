@@ -490,6 +490,87 @@ class UpdateNotificationTests(unittest.TestCase):
             ["installing", "updated"],
         )
 
+    def test_duplicate_manual_update_requests_share_one_install_result(self):
+        updater = self._updater()
+        config = {
+            "pinned_version": "",
+            "commit_sha": "",
+            "release_version_enabled": False,
+            "release_version": "latest",
+            "branch_enabled": False,
+            "branch": "main",
+        }
+        config_manager = Mock()
+        config_manager.find_key_for_process.return_value = ("example", None)
+        config_manager.get_instance.return_value = config
+        install_started = threading.Event()
+        release_install = threading.Event()
+        duplicate_waiting = threading.Event()
+        results = []
+
+        def update_check(*_args):
+            install_started.set()
+            self.assertTrue(release_install.wait(2))
+            return True, "Updated Example."
+
+        def observe_coalescing(message, *_args):
+            if str(message).startswith("Coalescing duplicate"):
+                duplicate_waiting.set()
+
+        def run_install():
+            results.append(updater.manual_update_install("Example"))
+
+        updater.update_check = Mock(side_effect=update_check)
+        updater.logger.info.side_effect = observe_coalescing
+
+        with (
+            patch("utils.auto_update.CONFIG_MANAGER", config_manager),
+            patch(
+                "utils.auto_update.INSTALL_CACHE.begin_operation",
+                return_value="operation-id",
+            ),
+            patch("utils.auto_update.INSTALL_CACHE.update_operation"),
+        ):
+            first = threading.Thread(target=run_install)
+            second = threading.Thread(target=run_install)
+            first.start()
+            self.assertTrue(install_started.wait(2))
+            second.start()
+            self.assertTrue(duplicate_waiting.wait(2))
+            release_install.set()
+            first.join(2)
+            second.join(2)
+
+        self.assertFalse(first.is_alive())
+        self.assertFalse(second.is_alive())
+        self.assertEqual([result["status"] for result in results], ["updated"] * 2)
+        updater.update_check.assert_called_once()
+
+    def test_lowercase_candidate_failure_is_recorded_as_error(self):
+        updater = self._updater()
+        config = {
+            "pinned_version": "",
+            "commit_sha": "",
+            "release_version_enabled": False,
+            "release_version": "latest",
+            "branch_enabled": False,
+            "branch": "main",
+        }
+        config_manager = Mock()
+        config_manager.find_key_for_process.return_value = ("dumb_frontend", None)
+        config_manager.get_instance.return_value = config
+        updater.update_check = Mock(
+            return_value=(False, "Candidate activation failed; frontend restored.")
+        )
+
+        with patch("utils.auto_update.CONFIG_MANAGER", config_manager):
+            payload = updater._manual_update_install_unprotected("DUMB Frontend")
+
+        self.assertEqual(payload["status"], "error")
+        updater._safe_record_update_status.assert_called_once_with(
+            "DUMB Frontend", payload
+        )
+
     def test_commit_sha_blocks_moving_update_target(self):
         updater = self._updater()
 
