@@ -222,10 +222,14 @@ class Versions:
                 )
             except Exception:
                 config = None
-            if isinstance(config, dict) and str(config.get("commit_sha") or "").strip():
-                commit_marker = self.read_version_marker(config.get("config_dir") or "")
-                if commit_marker:
-                    return commit_marker, None
+            configured_source_marker = isinstance(config, dict) and (
+                str(config.get("commit_sha") or "").strip()
+                or config.get("branch_enabled")
+            )
+            if configured_source_marker:
+                source_marker = self.read_version_marker(config.get("config_dir") or "")
+                if source_marker:
+                    return source_marker, None
 
             if key == "dumb_api_service":
                 env_version = (os.environ.get("DUMB_VERSION") or "").strip()
@@ -596,7 +600,11 @@ class Versions:
 
     def version_write(self, process_name, key=None, version_path=None, version=None):
         try:
-            if key == "zilean":
+            if key == "dumb_frontend":
+                version_path = version_path or "/dumb/frontend/version.txt"
+                with open(version_path, "w") as f:
+                    f.write(version)
+            elif key == "zilean":
                 version_path = "/zilean/version.txt"
                 with open(version_path, "w") as f:
                     f.write(version)

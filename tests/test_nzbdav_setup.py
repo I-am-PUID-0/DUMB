@@ -546,6 +546,50 @@ class NzbDAVSetupTests(unittest.TestCase):
         self.assertEqual("build failed", error)
         version_write.assert_not_called()
 
+    def test_frontend_branch_marker_is_written_after_source_setup_succeeds(self):
+        branch_sha = "a" * 40
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = {
+                "process_name": "DUMB Frontend",
+                "config_dir": tmpdir,
+                "repo_owner": "example",
+                "repo_name": "frontend",
+                "commit_sha": "",
+                "branch_enabled": True,
+                "branch": "dev",
+                "clear_on_update": False,
+            }
+            with (
+                patch.object(
+                    setup.downloader,
+                    "get_branch",
+                    return_value=("https://example.invalid/archive.zip", "source"),
+                ),
+                patch.object(
+                    setup.downloader,
+                    "get_ref_commit_sha",
+                    side_effect=((branch_sha, None), (None, None)),
+                ),
+                patch.object(
+                    setup.downloader,
+                    "download_and_extract",
+                    return_value=(True, None),
+                ),
+                patch.object(setup, "additional_setup", return_value=(True, None)),
+            ):
+                success, error = setup.setup_branch_version(
+                    Mock(),
+                    config,
+                    "DUMB Frontend",
+                    "dumb_frontend",
+                )
+
+            self.assertTrue(success, error)
+            self.assertEqual(
+                "dev-aaaaaaaa",
+                (Path(tmpdir) / "version.txt").read_text(encoding="utf-8"),
+            )
+
     def test_release_tag_marker_records_resolved_commit_after_setup(self):
         release_sha = "d" * 40
         with tempfile.TemporaryDirectory() as tmpdir:

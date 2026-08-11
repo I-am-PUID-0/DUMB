@@ -127,6 +127,84 @@ class UpdateNotificationTests(unittest.TestCase):
             self.assertIn("DUMB Frontend", process_handler.process_names)
             process_handler.stop_process.assert_not_called()
 
+    def test_frontend_candidate_verification_reports_missing_artifacts(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            target = root / "frontend"
+            target.mkdir()
+            (target / "old-runtime").write_text("old", encoding="utf-8")
+            updater, process_handler, config = self._frontend_transaction_updater(
+                target
+            )
+
+            with (
+                patch(
+                    "utils.transactional_install.install_cache_root",
+                    return_value=root / "cache",
+                ),
+                patch.object(CONFIG_MANAGER, "save_config", create=True),
+            ):
+                success, message = updater._transactional_frontend_update(
+                    "DUMB Frontend",
+                    config,
+                    "dumb_frontend",
+                    None,
+                    "v1.80.0",
+                    lambda: (True, None),
+                )
+
+            self.assertFalse(success)
+            self.assertIn("package.json", message)
+            self.assertIn(".output/server/index.mjs", message)
+            self.assertTrue((target / "old-runtime").is_file())
+            process_handler.stop_process.assert_not_called()
+
+    def test_configured_frontend_release_bypasses_scheduled_update_guard(self):
+        updater = self._updater()
+        updater.process_handler = Mock()
+        config = {
+            "auto_update": True,
+            "release_version_enabled": True,
+            "release_version": "v1.81.0",
+        }
+
+        def run_candidate(
+            process_name,
+            candidate_config,
+            key,
+            instance_name,
+            source_identity,
+            installer,
+        ):
+            return installer()
+
+        updater._transactional_frontend_update = Mock(side_effect=run_candidate)
+
+        with (
+            patch(
+                "utils.auto_update.setup_release_version",
+                return_value=(True, None),
+            ) as setup_release,
+            patch("utils.auto_update.setup_project") as setup_default,
+        ):
+            success, error = updater._install_configured_target(
+                "DUMB Frontend",
+                config,
+                "dumb_frontend",
+                None,
+                "release",
+            )
+
+        self.assertTrue(success)
+        self.assertIsNone(error)
+        setup_release.assert_called_once_with(
+            updater.process_handler,
+            config,
+            "DUMB Frontend",
+            "dumb_frontend",
+        )
+        setup_default.assert_not_called()
+
     def test_frontend_failed_activation_restores_previous_runtime(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
@@ -791,6 +869,41 @@ class UpdateNotificationTests(unittest.TestCase):
         self.assertEqual("dev-aaaaaaaa", payload["available_version"])
         self.assertEqual("branch", payload["configured_target_kind"])
         self.assertFalse(payload["configured_target_installed"])
+        versions.return_value.compare_versions.assert_not_called()
+
+    def test_frontend_branch_marker_reports_configured_target_installed(self):
+        updater = self._updater()
+        updater.downloader.get_ref_commit_sha.return_value = ("a" * 40, None)
+        config = {
+            "branch_enabled": True,
+            "branch": "dev",
+            "repo_owner": "nicocapalbo",
+            "repo_name": "dmbdb",
+        }
+
+        with patch("utils.auto_update.Versions") as versions:
+            versions.return_value.version_check.return_value = (
+                "dev-aaaaaaaa",
+                None,
+            )
+            payload = updater._manual_check_generic_repo(
+                "DUMB Frontend",
+                config,
+                "dumb_frontend",
+                None,
+                "branch",
+                1,
+                False,
+                24,
+                "04:00",
+                None,
+            )
+
+        self.assertEqual("no_update", payload["status"])
+        self.assertEqual("dev-aaaaaaaa", payload["current_version"])
+        self.assertEqual("dev-aaaaaaaa", payload["available_version"])
+        self.assertEqual("branch", payload["configured_target_kind"])
+        self.assertTrue(payload["configured_target_installed"])
         versions.return_value.compare_versions.assert_not_called()
 
     def test_moving_nzbdav_release_tag_reports_changed_commit(self):

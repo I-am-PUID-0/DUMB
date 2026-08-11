@@ -1538,6 +1538,24 @@ def setup_branch_version(process_handler, config, process_name, key):
                     version_path=os.path.join(target_dir, "version.txt"),
                     version=f"commit-{commit_sha[:12]}",
                 )
+            elif key == "dumb_frontend":
+                frontend_branch_version = (
+                    f"{source_ref}-{current_sha[:8]}"
+                    if current_sha
+                    else f"branch-{source_ref}"
+                )
+                marker_written, marker_error = versions.version_write(
+                    process_name=config.get("process_name") or process_name,
+                    key=key,
+                    version_path=os.path.join(target_dir, "version.txt"),
+                    version=frontend_branch_version,
+                )
+                if not marker_written:
+                    return (
+                        False,
+                        "Failed to record the installed frontend branch revision: "
+                        f"{marker_error}",
+                    )
             if source_kind == "branch":
                 current_sha, _ = _fetch_branch_head_sha(
                     config["repo_owner"], config["repo_name"], source_ref

@@ -1580,11 +1580,30 @@ class Update:
         instance_name,
         block_reason,
     ):
+        def install_selected_source():
+            # Explicit configured-target installs must not reuse setup_project's
+            # scheduled-update guard. A fixed release with auto_update enabled
+            # is deliberately skipped by normal setup, but this operator action
+            # is an explicit request to install that exact release. Candidate-
+            # first frontend/TPA installs can safely invoke the selected source
+            # installer directly; other services retain their existing setup
+            # orchestration and runtime snapshot behavior.
+            candidate_first = key in {"dumb_frontend", "traefik_proxy_admin"}
+            if candidate_first and block_reason == "release":
+                return setup_release_version(
+                    self.process_handler, config, process_name, key
+                )
+            if candidate_first and block_reason in {"branch", "commit"}:
+                return setup_branch_version(
+                    self.process_handler, config, process_name, key
+                )
+            return setup_project(self.process_handler, process_name)
+
         if key in {"dumb_frontend", "traefik_proxy_admin"}:
             source_identity = self._configured_target_label(config, block_reason)
 
             def install_candidate():
-                return setup_project(self.process_handler, process_name)
+                return install_selected_source()
 
             if key == "dumb_frontend":
                 return self._transactional_frontend_update(
@@ -1610,7 +1629,7 @@ class Update:
             if process_name in self.process_handler.setup_tracker:
                 self.process_handler.setup_tracker.remove(process_name)
 
-        success, error = setup_project(self.process_handler, process_name)
+        success, error = install_selected_source()
         if not success:
             return (
                 False,
@@ -1662,13 +1681,24 @@ class Update:
                 os.path.join(candidate_dir, "package.json"),
                 os.path.join(candidate_dir, ".output", "server", "index.mjs"),
             )
-            if not all(
-                os.path.isfile(path) and os.path.getsize(path) > 0 for path in required
-            ):
+            invalid_required = [
+                os.path.relpath(path, candidate_dir)
+                for path in required
+                if not os.path.isfile(path) or os.path.getsize(path) <= 0
+            ]
+            if invalid_required:
+                invalid_summary = ", ".join(invalid_required)
+                self.logger.error(
+                    "Frontend candidate verification failed at %s; missing or "
+                    "empty required artifacts: %s",
+                    candidate_dir,
+                    invalid_summary,
+                )
                 transaction.abandon("candidate verification failed")
                 return (
                     False,
-                    "Candidate verification failed; existing frontend retained.",
+                    "Candidate verification failed; missing or empty artifacts: "
+                    f"{invalid_summary}. Existing frontend retained.",
                 )
         finally:
             config["config_dir"] = original_dir

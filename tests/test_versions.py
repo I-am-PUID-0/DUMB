@@ -2,6 +2,8 @@ import sys
 import tempfile
 import types
 import unittest
+from pathlib import Path
+from unittest.mock import patch
 
 
 class _Logger:
@@ -129,6 +131,27 @@ class VersionsHelperTests(unittest.TestCase):
             Versions.display_version("decypharr", "v2.4-0dec23ac"),
             "v2.4-0dec23ac",
         )
+
+    def test_frontend_branch_version_prefers_installed_source_marker(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            Path(tmpdir, "version.txt").write_text("dev-a797e3cc\n", encoding="utf-8")
+            config = {
+                "config_dir": tmpdir,
+                "branch_enabled": True,
+                "branch": "dev",
+                "commit_sha": "",
+            }
+            with patch.object(
+                versions_module.CONFIG_MANAGER,
+                "get_instance",
+                return_value=config,
+            ):
+                version, error = Versions().version_check(
+                    "DUMB Frontend", None, "dumb_frontend"
+                )
+
+        self.assertIsNone(error)
+        self.assertEqual("dev-a797e3cc", version)
 
     def test_control_plane_comparison_includes_release_distance(self):
         versions = Versions()
