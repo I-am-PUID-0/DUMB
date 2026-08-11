@@ -871,11 +871,7 @@ class Update:
                 "next_check_at": None if release_is_blocked else next_check_at,
             }
 
-        branch_enabled = bool(config.get("branch_enabled")) and key in {
-            "decypharr",
-            "nzbdav",
-            "neutarr",
-        }
+        branch_enabled = bool(config.get("branch_enabled"))
         if branch_enabled:
             current_version, current_error = versions.version_check(
                 process_name, instance_name, key

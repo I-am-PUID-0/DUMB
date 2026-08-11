@@ -732,6 +732,67 @@ class UpdateNotificationTests(unittest.TestCase):
         self.assertTrue(installed["configured_target_installed"])
         versions.return_value.compare_versions.assert_not_called()
 
+    def test_frontend_release_downgrade_reports_configured_target(self):
+        updater = self._updater()
+        config = {
+            "release_version_enabled": True,
+            "release_version": "v1.81.0",
+            "repo_owner": "nicocapalbo",
+            "repo_name": "dmbdb",
+        }
+
+        with patch("utils.auto_update.Versions") as versions:
+            versions.return_value.version_check.return_value = ("v1.82.0", None)
+            payload = updater._manual_check_generic_repo(
+                "DUMB Frontend",
+                config,
+                "dumb_frontend",
+                None,
+                "release",
+                1,
+                False,
+                24,
+                "04:00",
+                None,
+            )
+
+        self.assertEqual("blocked", payload["status"])
+        self.assertEqual("v1.81.0", payload["available_version"])
+        self.assertEqual("release", payload["configured_target_kind"])
+        self.assertFalse(payload["configured_target_installed"])
+        versions.return_value.compare_versions.assert_not_called()
+
+    def test_frontend_branch_reports_configured_target(self):
+        updater = self._updater()
+        updater.downloader.get_ref_commit_sha.return_value = ("a" * 40, None)
+        config = {
+            "branch_enabled": True,
+            "branch": "dev",
+            "repo_owner": "nicocapalbo",
+            "repo_name": "dmbdb",
+        }
+
+        with patch("utils.auto_update.Versions") as versions:
+            versions.return_value.version_check.return_value = ("v1.82.0", None)
+            payload = updater._manual_check_generic_repo(
+                "DUMB Frontend",
+                config,
+                "dumb_frontend",
+                None,
+                "branch",
+                1,
+                False,
+                24,
+                "04:00",
+                None,
+            )
+
+        self.assertEqual("blocked", payload["status"])
+        self.assertEqual("dev-aaaaaaaa", payload["available_version"])
+        self.assertEqual("branch", payload["configured_target_kind"])
+        self.assertFalse(payload["configured_target_installed"])
+        versions.return_value.compare_versions.assert_not_called()
+
     def test_moving_nzbdav_release_tag_reports_changed_commit(self):
         updater = self._updater()
         new_sha = "b" * 40
