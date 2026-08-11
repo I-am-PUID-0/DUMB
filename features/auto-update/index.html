@@ -5671,15 +5671,23 @@ tag such as <code>dev</code>, <code>lts</code>, or <code>edge</code>, provided n
 branch selector takes precedence. NzbDAV tags containing a digit remain
 fixed configured releases. A non-empty <code>commit_sha</code> always disables moving
 update checks, including the initial post-setup check.</p>
+<p>InfiniDysk/NzbDAV release updates are prebuilt-first. DUMB verifies the
+exact architecture archive and its published digest, then automatically
+builds the same resolved commit from source when the GitHub Release or a
+usable archive is unavailable. A missing prebuilt therefore does not strand
+the service on a broken install. The service Updates panel reports the
+installed method and any fallback reason when the backend supports
+<code>nzbdav_install_info</code>.</p>
 </div>
-<p>After changing a fixed release, branch, or commit selection, use <strong>Check for
-updates</strong>. When the configured target differs from the installed version, the
-Updates panel shows <strong>Install configured release</strong>, <strong>Install configured
-branch</strong>, or <strong>Install configured commit</strong>. This applies the saved selection
-without clearing it. <strong>Override + latest</strong> is a separate escape hatch that
-temporarily bypasses any saved release, branch, commit, or pinned-version
-selection and installs the latest stable release. DUMB restores the saved
-configuration after that one installation.</p>
+<p>After saving a fixed release, branch, or commit selection, the Updates panel
+shows <strong>Install configured release</strong>, <strong>Install configured branch</strong>, or
+<strong>Install configured commit</strong> without requiring a successful update check.
+<strong>Check for updates</strong> remains useful for resolving the exact current branch
+head and refreshing displayed version details. Applying the configured target
+keeps the saved selection active. <strong>Override + latest</strong> is a separate escape
+hatch that temporarily bypasses any saved release, branch, commit, or
+pinned-version selection and installs the latest stable release. DUMB restores
+the saved configuration after that one installation.</p>
 <h3 id="check-only-and-review-on-the-dashboard">Check only and review on the dashboard<a class="headerlink" href="#check-only-and-review-on-the-dashboard" title="Permanent link">&para;</a></h3>
 <p>Set <code>auto_update</code> to <code>true</code> and <code>auto_update_mode</code> to <code>check_only</code> when you want
 DUMB to check on schedule without stopping, restarting, or changing the

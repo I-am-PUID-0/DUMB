@@ -5547,6 +5547,7 @@ the operator selects <strong>Prune to limit</strong>. See
 <li>Per-service auto-restart overrides</li>
 <li>Media Library Protection policy and Plex library preferences on Plex, Jellyfin, and Emby pages</li>
 <li>On-demand update checks and auto-update scheduling</li>
+<li>InfiniDysk/NzbDAV install provenance in Updates (verified prebuilt archive or source build, resolved release, and automatic fallback reason)</li>
 <li>A <strong>Sponsor</strong> action when the backend publishes a support link for the service</li>
 <li>Seerr Sync controls when viewing a Seerr instance</li>
 <li>Symlink Job Center (for symlink-capable services) with active jobs, recent history, retry, and failure clearing</li>
@@ -5786,9 +5787,12 @@ increment the Auto-restart unhealthy threshold.</p>
 <li><strong>Check for updates</strong> runs a one-time update check even if auto-update is disabled.</li>
 <li><strong>Install update</strong> applies the latest available update when allowed.</li>
 <li><strong>Install configured release</strong>, <strong>Install configured branch</strong>, or <strong>Install
-  configured commit</strong> appears when that saved source selection differs from the
-  installed version and the backend advertises <code>configured_source_install</code>.
-  It installs the displayed configured target and keeps the selection active.</li>
+  configured commit</strong> is derived from the saved service configuration when the
+  backend advertises <code>configured_source_install</code>; it does not depend on a prior
+  successful update check. Fixed releases and commits hide the action when the
+  installed version already matches. Branch selections remain directly
+  installable because the selected branch can move. The action installs the
+  displayed configured target and keeps the selection active.</li>
 <li><strong>Override + latest</strong> appears when a service is pinned and temporarily ignores
   any saved release, branch, commit, or pinned-version selection to install the
   latest stable release. The saved configuration is restored afterward.</li>

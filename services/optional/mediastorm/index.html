@@ -5455,7 +5455,7 @@
 <tr>
 <td>GitHub release</td>
 <td><code>v1.5.0-20260711</code></td>
-<td>Resolves the matching dated or semantic OCI release tag and requires the exact internal version.</td>
+<td>Resolves the GitHub tag to its immutable full-commit OCI tag when upstream did not publish a matching dated OCI tag, then requires the exact internal version.</td>
 </tr>
 <tr>
 <td>Full commit tag</td>
@@ -5531,7 +5531,7 @@ removed by mediastorm after the admin password changes.</p>
 <li><strong><code>admin</code> / <code>admin</code> is rejected:</strong> On current builds, entering only the public default is intentionally incomplete. Fill the <strong>New admin password</strong> and <strong>Confirm new password</strong> fields on the same login form. API clients receive HTTP <code>428</code> with code <code>password_change_required</code> and must resubmit the login with <code>newPassword</code>.</li>
 <li><strong>Onboarding asks for another password change:</strong> Update mediastorm. Current onboarding recognizes that the password was already secured during first sign-in and leaves the second password change optional.</li>
 <li><strong>Install fails during an OCI layer download:</strong> Confirm the DUMB container can reach Docker Hub and has enough free space for the compressed image plus the staged runtime. Retrying the start repeats the verified install.</li>
-<li><strong>OCI version mismatch for a pin:</strong> The selected dated release expects an exact internal version, but the resolved OCI tag contains another build. DUMB preserves the existing runtime. Confirm that the pinned release/tag pair exists upstream, or return to the unpinned <code>latest</code> channel.</li>
+<li><strong>OCI version mismatch for a pin:</strong> The selected dated release expects an exact internal version. DUMB first tries a matching dated OCI tag, then the immutable full-commit OCI tag resolved from the official GitHub release, and uses the semantic OCI tag only as a compatibility fallback. If every available image contains another build, DUMB preserves the existing runtime. Confirm that the release and its commit-specific image still exist upstream, or return to the unpinned <code>latest</code> channel.</li>
 <li><strong>Pinned version cannot be resolved:</strong> Confirm the value is a published mediastorm release tag, full 40-character commit tag, or complete <code>sha256:</code> digest. Short commit hashes and branch names are intentionally rejected.</li>
 <li><strong>Discovery is empty or metadata is missing:</strong> Verify both TMDB and TVDB keys in <code>/admin</code>.</li>
 <li><strong>An embedded link opens the DUMB page instead:</strong> Refresh the mediastorm service page to renew iframe context, then retry. Report the exact mediastorm path that escaped the iframe.</li>

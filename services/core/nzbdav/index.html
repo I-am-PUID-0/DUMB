@@ -5571,6 +5571,67 @@ configured interval and installs it when the underlying commit changes. Manual
 <p>The installed marker is recorded as <code>dev-&lt;short-sha&gt;</code>. The source archive is
 downloaded by the resolved full SHA, so the installed source and recorded
 marker remain consistent even if the tag moves during the update.</p>
+<h3 id="prebuilt-archives-and-automatic-source-fallback">Prebuilt archives and automatic source fallback<a class="headerlink" href="#prebuilt-archives-and-automatic-source-fallback" title="Permanent link">&para;</a></h3>
+<p>For InfiniDysk release selectors, DUMB first looks for the official
+architecture-specific <code>linux-x64</code> or <code>linux-arm64</code> release archive. It requires
+GitHub's published SHA-256 digest, resolves the selected tag to its full commit,
+requires the release asset's target commit to still match that tag, validates
+the complete backend and frontend runtime, and activates them as one
+rollback-safe unit. DUMB selects the exact channel asset deterministically and
+accepts only InfiniDysk/NzbDAV archive roots for the selected CPU architecture.
+This handles renamed rolling assets such as <code>rc</code>, whose downloaded archive can
+keep the concrete RC version in its internal root directory.</p>
+<p>If a selected tag has no GitHub Release object, has no compatible archive, or
+has release assets that lag behind a moved channel tag, DUMB automatically
+downloads the current resolved commit and uses its source-build path. The same
+fallback applies when archive verification fails. This keeps the service
+installable while making the fallback reproducible. Open the service page's
+<strong>Updates</strong> panel to see <strong>Installed using</strong>, the resolved release, the selected
+archive when applicable, and the prebuilt fallback reason.</p>
+<p>The practical channel behavior is:</p>
+<table>
+<thead>
+<tr>
+<th>Selector</th>
+<th>DUMB behavior</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>latest</code></td>
+<td>Resolve the current stable GitHub Release, then use its verified archive or source fallback</td>
+</tr>
+<tr>
+<td><code>prerelease</code></td>
+<td>For the official InfiniDysk repository, follow the <code>rc</code> channel so a newer <code>dev</code> snapshot cannot be mistaken for an RC; then use its verified archive or source fallback</td>
+</tr>
+<tr>
+<td><code>dev</code>, <code>rc</code>, <code>lts</code>, <code>edge</code></td>
+<td>Track the exact digit-free tag when it exists; use a matching verified release archive when published, otherwise build that tag's resolved commit</td>
+</tr>
+<tr>
+<td>Versioned/dated tag</td>
+<td>Treat it as a fixed configured release; use its verified archive when published, otherwise build its resolved commit</td>
+</tr>
+<tr>
+<td>Full <code>commit_sha</code> or branch</td>
+<td>Source build by design</td>
+</tr>
+</tbody>
+</table>
+<div class="admonition note">
+<p class="admonition-title">Why DUMB does not unpack the Docker image</p>
+<p>The official InfiniDysk container is Alpine/musl-based, while DUMB's
+runtime and managed packages are Ubuntu/glibc-based. Extracting application
+files from that image would also pull a runtime layout and native libraries
+built for a different libc boundary. The official Ubuntu-built release
+archives are the compatible prebuilt format for DUMB; source fallback is
+the compatibility path when no usable archive exists.</p>
+</div>
+<p>After a prebuilt install, DUMB starts the archive's framework-dependent native
+apphost against DUMB's compatible .NET runtime, even if a local .NET SDK remains
+from an older source build. Source installs continue to launch through the
+managed local SDK and application DLL.</p>
 <p>The same revision suffix remains visible for the rolling <strong>prerelease</strong> channel
 and for branch, exact-commit, or other moving-tag installs. Ordinary stable
 release versions are shown in the frontend as their clean release tag (for
