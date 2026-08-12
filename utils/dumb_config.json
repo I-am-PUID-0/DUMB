@@ -845,6 +845,7 @@
       "MEDIASTORM_IROH_DIRECT_DIR": "/mediastorm/runtime/iroh",
       "DATABASE_URL": "",
       "PATH": "/mediastorm/runtime/python-venv/bin:/mediastorm/runtime/bin:/usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+      "LD_LIBRARY_PATH": "/mediastorm/runtime/lib/jellyfin-ffmpeg/lib",
       "LIBGL_ALWAYS_SOFTWARE": "1",
       "VK_ICD_FILENAMES": "/usr/share/vulkan/icd.d/lavapipe_icd.json"
     }
