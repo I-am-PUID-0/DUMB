@@ -1,4 +1,5 @@
 import io
+import os
 import tarfile
 import tempfile
 import unittest
@@ -35,6 +36,32 @@ def _write_symlink_layer(path: Path, name: str, target: str) -> None:
         info.linkname = target
         info.mode = 0o777
         archive.addfile(info)
+
+
+def _write_mixed_layer(
+    path: Path,
+    *,
+    files: dict[str, tuple[bytes, int]] | None = None,
+    symlinks: dict[str, str] | None = None,
+    directories: tuple[str, ...] = (),
+) -> None:
+    with tarfile.open(path, "w:gz") as archive:
+        for name in directories:
+            info = tarfile.TarInfo(name)
+            info.type = tarfile.DIRTYPE
+            info.mode = 0o755
+            archive.addfile(info)
+        for name, (content, mode) in (files or {}).items():
+            info = tarfile.TarInfo(name)
+            info.size = len(content)
+            info.mode = mode
+            archive.addfile(info, io.BytesIO(content))
+        for name, target in (symlinks or {}).items():
+            info = tarfile.TarInfo(name)
+            info.type = tarfile.SYMTYPE
+            info.linkname = target
+            info.mode = 0o777
+            archive.addfile(info)
 
 
 class _FakeOCIClient:
@@ -127,6 +154,119 @@ class MediaStormInstallerTests(unittest.TestCase):
                 MediaStormInstallError, "unsupported link: root/mediastorm"
             ):
                 apply_mediastorm_layer(layer, root / "output")
+
+    def test_extracts_jellyfin_bundle_as_runtime_relative_links(self):
+        # The amd64 images install ffmpeg/ffprobe from the jellyfin-ffmpeg
+        # package and expose them through absolute container links under
+        # /usr/local/bin. The staged runtime must keep those links relative.
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            layer = root / "layer.tar.gz"
+            output = root / "output"
+            _write_mixed_layer(
+                layer,
+                directories=(
+                    "usr/lib/jellyfin-ffmpeg/",
+                    "usr/lib/jellyfin-ffmpeg/lib/",
+                ),
+                files={
+                    "usr/lib/jellyfin-ffmpeg/ffmpeg": (b"ffmpeg-binary", 0o755),
+                    "usr/lib/jellyfin-ffmpeg/ffprobe": (b"ffprobe-binary", 0o755),
+                    "usr/lib/jellyfin-ffmpeg/lib/libz.so.1.3.1": (b"libz", 0o644),
+                },
+                symlinks={
+                    "usr/lib/jellyfin-ffmpeg/lib/libz.so": "libz.so.1.3.1",
+                    "usr/local/bin/ffmpeg": "/usr/lib/jellyfin-ffmpeg/ffmpeg",
+                    "usr/local/bin/ffprobe": "/usr/lib/jellyfin-ffmpeg/ffprobe",
+                },
+            )
+
+            apply_mediastorm_layer(layer, output)
+
+            self.assertEqual(
+                (output / "lib" / "jellyfin-ffmpeg" / "ffmpeg").read_bytes(),
+                b"ffmpeg-binary",
+            )
+            self.assertTrue((output / "bin" / "ffmpeg").is_symlink())
+            self.assertEqual(
+                os.readlink(output / "bin" / "ffmpeg"),
+                "../lib/jellyfin-ffmpeg/ffmpeg",
+            )
+            self.assertEqual(
+                os.readlink(output / "bin" / "ffprobe"),
+                "../lib/jellyfin-ffmpeg/ffprobe",
+            )
+            self.assertEqual(
+                os.readlink(output / "lib" / "jellyfin-ffmpeg" / "lib" / "libz.so"),
+                "libz.so.1.3.1",
+            )
+            self.assertEqual(
+                (output / "bin" / "ffmpeg").resolve().read_bytes(),
+                b"ffmpeg-binary",
+            )
+
+    def test_installs_amd64_runtime_with_jellyfin_ffmpeg_links(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            layer = root / "layer.tar.gz"
+            files = {
+                "app/mediastorm": (b"server", 0o755),
+                "opt/strmr-web/index.html": (b"web", 0o644),
+                "opt/iroh/iroh-direct-spike": (b"iroh", 0o755),
+                "app/version.txt": (b"1.5.0\n20260811\n", 0o644),
+                "parse_title.py": (b"", 0o644),
+                "parse_title_batch.py": (b"", 0o644),
+                "search_subtitles.py": (b"", 0o644),
+                "download_subtitle.py": (b"", 0o644),
+                "detect_credits.py": (b"", 0o644),
+                "usr/lib/jellyfin-ffmpeg/ffmpeg": (b"ffmpeg-binary", 0o755),
+                "usr/lib/jellyfin-ffmpeg/ffprobe": (b"ffprobe-binary", 0o755),
+                "usr/local/bin/yt-dlp": (b"yt-dlp", 0o755),
+                "usr/local/bin/deno": (b"deno", 0o755),
+            }
+            _write_mixed_layer(
+                layer,
+                files=files,
+                symlinks={
+                    "root/mediastorm": "/app/mediastorm",
+                    "usr/local/bin/ffmpeg": "/usr/lib/jellyfin-ffmpeg/ffmpeg",
+                    "usr/local/bin/ffprobe": "/usr/lib/jellyfin-ffmpeg/ffprobe",
+                },
+            )
+
+            def fake_python_environment(runtime):
+                python = runtime / "python-venv" / "bin" / "python3"
+                python.parent.mkdir(parents=True)
+                python.write_text("python", encoding="utf-8")
+
+            config = {
+                "config_dir": str(root / "mediastorm"),
+            }
+            with patch(
+                "utils.mediastorm_installer._build_python_environment",
+                side_effect=fake_python_environment,
+            ):
+                result = install_mediastorm_runtime(
+                    config,
+                    "latest",
+                    client=_FakeOCIClient([layer]),
+                )
+
+            runtime = root / "mediastorm" / "runtime"
+            self.assertEqual(result["version"], "v1.5.0-20260811")
+            self.assertTrue(mediastorm_runtime_ready(runtime))
+            self.assertEqual(
+                os.readlink(runtime / "bin" / "ffmpeg"),
+                "../lib/jellyfin-ffmpeg/ffmpeg",
+            )
+            self.assertEqual(
+                (runtime / "bin" / "ffmpeg").resolve().read_bytes(),
+                b"ffmpeg-binary",
+            )
+            self.assertEqual(
+                (runtime / "lib" / "jellyfin-ffmpeg" / "ffprobe").read_bytes(),
+                b"ffprobe-binary",
+            )
 
     def test_installs_verified_runtime_atomically(self):
         with tempfile.TemporaryDirectory() as temp_dir:

@@ -1,4 +1,5 @@
 import os
+import posixpath
 import re
 import shutil
 import subprocess
@@ -40,10 +41,14 @@ _SOURCE_FILES = {
     "usr/local/bin/yt-dlp": "bin/yt-dlp",
     "usr/local/bin/deno": "bin/deno",
 }
-_MEDIASTORM_COMPATIBILITY_LINK = ("root/mediastorm", "/app/mediastorm")
 _SOURCE_DIRECTORIES = {
     "opt/strmr-web": "web",
     "opt/iroh": "iroh",
+    # The amd64 images install ffmpeg/ffprobe from the jellyfin-ffmpeg package
+    # and expose them through absolute container links under /usr/local/bin.
+    # Extract the whole bundle so the binaries and their bundled libraries
+    # travel with the staged runtime.
+    "usr/lib/jellyfin-ffmpeg": "lib/jellyfin-ffmpeg",
 }
 
 
@@ -71,6 +76,27 @@ def _mapped_path(source_path: str) -> str | None:
         if source_path.startswith(prefix):
             return f"{target_dir}/{source_path[len(prefix):]}"
     return None
+
+
+def _mapped_link_target(source_path: str, linkname: str) -> str | None:
+    """Resolve a container link to its allowlisted runtime path, if any.
+
+    Absolute link targets resolve from the container root; relative targets
+    resolve from the link's own directory. Only targets that stay inside an
+    allowlisted source path are considered supported.
+    """
+    target = str(linkname or "").replace("\\", "/")
+    if not target:
+        return None
+    if target.startswith("/"):
+        resolved = posixpath.normpath(target[1:])
+    else:
+        resolved = posixpath.normpath(
+            posixpath.join(posixpath.dirname(source_path), target)
+        )
+    if not resolved or ".." in PurePosixPath(resolved).parts:
+        return None
+    return _mapped_path(resolved)
 
 
 def _safe_destination(root: Path, relative_path: str) -> Path:
@@ -137,19 +163,37 @@ def apply_mediastorm_layer(
                 continue
             destination = _safe_destination(root, mapped)
             if member.issym() or member.islnk():
-                if (
-                    member.issym()
-                    and (source_path, member.linkname) == _MEDIASTORM_COMPATIBILITY_LINK
-                ):
-                    # Current upstream images keep /root/mediastorm as a
-                    # compatibility alias while installing the real binary at
-                    # /app/mediastorm. Extract the allowlisted regular file
-                    # from its own layer and do not reproduce the absolute
-                    # container symlink inside DUMB's staged runtime.
-                    continue
-                raise MediaStormInstallError(
-                    f"mediastorm OCI runtime contains an unsupported link: {source_path}"
+                mapped_target = (
+                    _mapped_link_target(source_path, member.linkname)
+                    if member.issym()
+                    else None
                 )
+                if mapped_target is None:
+                    raise MediaStormInstallError(
+                        f"mediastorm OCI runtime contains an unsupported link: {source_path}"
+                    )
+                if mapped_target == mapped:
+                    # The link is a container-internal alias for the same
+                    # runtime file (for example /root/mediastorm ->
+                    # /app/mediastorm). The regular file is extracted from its
+                    # own layer entry, so do not reproduce the alias.
+                    continue
+                # Rewrite container links as runtime-relative symlinks so the
+                # staged runtime stays self-contained (for example
+                # /usr/local/bin/ffmpeg -> /usr/lib/jellyfin-ffmpeg/ffmpeg).
+                relative_target = posixpath.relpath(
+                    mapped_target, posixpath.dirname(mapped)
+                )
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                if destination.exists() or destination.is_symlink():
+                    _remove_existing(destination)
+                try:
+                    destination.symlink_to(relative_target)
+                except OSError as exc:
+                    raise MediaStormInstallError(
+                        f"Unable to install mediastorm OCI link: {source_path}"
+                    ) from exc
+                continue
             if member.isdir():
                 if destination.exists() and not destination.is_dir():
                     _remove_existing(destination)
