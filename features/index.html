@@ -2064,6 +2064,8 @@
       
         
       
+        
+      
     
     
     
@@ -2189,7 +2191,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../services/core/nzbdav/" class="md-nav__link">
+      <a href="../services/core/infinidysk/" class="md-nav__link">
         
   
   
@@ -2198,7 +2200,37 @@
   <span class="md-ellipsis">
     
   
-    NzbDAV
+    InfiniDysk
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../services/core/nzbdav/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-replace" viewBox="0 0 24 24"><path d="M14 4a1 1 0 0 1 1-1M15 10a1 1 0 0 1-1-1M21 4a1 1 0 0 0-1-1M21 9a1 1 0 0 1-1 1M3 7l3 3 3-3"/><path d="M6 10V5a2 2 0 0 1 2-2h2"/><rect width="7" height="7" x="3" y="14" rx="1"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    NzbDAV migration
   
 
     
@@ -5171,7 +5203,7 @@
 <li><strong>Unified Deployment</strong> – Combines multiple tools into a single, easy-to-deploy system with onboarding-driven setup.</li>
 <li><strong>Built-In Media Server Integration</strong> – Includes <strong>Plex Media Server, Jellyfin, and Emby</strong>, fully embedded in the container to eliminate mount propagation issues.</li>
 <li><strong>Automated Content Management</strong> – Uses <strong>Debrid</strong> and <strong>Usenet</strong> services alongside <strong>Plex Discover Watchlists</strong>, <strong>Trakt lists</strong>, and <strong>Seerr</strong> to automate media retrieval.</li>
-<li><strong>Arr + WebDAV Workflows</strong> – Supports <strong>Sonarr, Radarr, Lidarr, Whisparr</strong>, plus WebDAV-driven clients like <strong>Decypharr</strong> (Debrid and Usenet), <strong>NzbDAV</strong>, and <strong>AltMount</strong>.</li>
+<li><strong>Arr + WebDAV Workflows</strong> – Supports <strong>Sonarr, Radarr, Lidarr, Whisparr</strong>, plus WebDAV-driven clients like <strong>Decypharr</strong> (Debrid and Usenet), <strong>InfiniDysk</strong>, and <strong>AltMount</strong>.</li>
 <li><strong>NeutArr automation</strong> – Core backlog-search automation to fill missing content and upgrade quality.</li>
 <li><strong>Pulsarr watchlist automation</strong> – Optional Plex watchlist request flow that can route requests into Sonarr and Radarr.</li>
 <li><strong>Maintainerr library cleanup</strong> – Optional rule-based review collections and delayed cleanup actions for Plex, Jellyfin, or Emby libraries.</li>
@@ -5189,7 +5221,7 @@
 <li><strong>Advanced Logging &amp; Monitoring</strong> – View and filter service logs directly from the <a href="../services/dumb/dumb-frontend/">DUMB Frontend</a>.</li>
 <li><strong><a href="ffprobe-monitor/">FFprobe monitor</a></strong> – Background worker that detects and unsticks ffprobe scans in Sonarr/Radarr.</li>
 <li><strong>Real-Time Metrics</strong> – Monitor CPU, memory, disk, and network usage with WebSocket-powered live updates.</li>
-<li><strong><a href="rclone-optimizer/">Rclone Streaming Optimizer</a></strong> – Benchmark bounded NzbDAV-backed rclone profiles against live provider traffic, compare startup/warm/cold behavior, and explicitly apply or roll back a deployment-specific recommendation.</li>
+<li><strong><a href="rclone-optimizer/">Rclone Streaming Optimizer</a></strong> – Benchmark bounded InfiniDysk-backed rclone profiles against live provider traffic, compare startup/warm/cold behavior, and explicitly apply or roll back a deployment-specific recommendation.</li>
 <li><strong><a href="notifications/">Notifications</a></strong> – Route persistent backend health and operational events through Apprise or generic JSON webhooks with retries, cooldowns, recovery messages, and delivery history.</li>
 <li><strong><a href="ai-assistant/">AI Assistant</a></strong> – Optional local or cloud model diagnostics using redacted logs, service config, and dependency context.</li>
 </ul>
@@ -5204,7 +5236,7 @@
 <ul>
 <li><strong>Riven Backend</strong> and <strong>CLI Debrid</strong> provide Debrid-oriented orchestration for searching, collecting, and organizing media.</li>
 <li><strong>Decypharr</strong> supports Debrid, native Usenet, and hybrid Arr workflows with torrent/Sabnzbd-compatible endpoints and symlink libraries.</li>
-<li><strong>NzbDAV</strong> provides an NZB WebDAV gateway and Arr download-client integration for Usenet workflows.</li>
+<li><strong>InfiniDysk</strong> provides an NZB WebDAV gateway and Arr download-client integration for Usenet workflows.</li>
 <li><strong>AltMount</strong> provides a Usenet streaming workflow with WebDAV access, SABnzbd-compatible Arr integration, built-in FUSE/rclone modes, and operator-selected direct, symlink, or STRM imports.</li>
 </ul>
 <h3 id="arr-automation"><strong>Arr automation</strong><a class="headerlink" href="#arr-automation" title="Permanent link">&para;</a></h3>
@@ -5214,7 +5246,7 @@
 <li><strong>NeutArr</strong> handles missing-content and quality-upgrade searches across selected Arr instances.</li>
 <li><strong>Profilarr</strong> syncs profiles, custom formats, regex patterns, and media-management settings for Sonarr/Radarr.</li>
 </ul>
-<p>During onboarding, selecting Decypharr, NzbDAV, AltMount, or combinations of them can wire Arr instances automatically. DUMB uses <code>core_service</code> to keep those integrations scoped to the intended workflow.</p>
+<p>During onboarding, selecting Decypharr, InfiniDysk, AltMount, or combinations of them can wire Arr instances automatically. DUMB uses <code>core_service</code> to keep those integrations scoped to the intended workflow.</p>
 <h3 id="requests-and-watchlists"><strong>Requests and watchlists</strong><a class="headerlink" href="#requests-and-watchlists" title="Permanent link">&para;</a></h3>
 <ul>
 <li><strong>Seerr</strong> provides a request and discovery portal that can feed Sonarr/Radarr.</li>
@@ -5247,7 +5279,7 @@
 <li><strong>Run Onboarding</strong> to select core services and auto-enable required dependencies.</li>
 <li><strong>Scan Lists &amp; Requests</strong> from Plex, Trakt, and Seerr.</li>
 <li><strong>Fetch From Debrid or Usenet</strong> providers (Real-Debrid, AllDebrid, etc.).</li>
-<li><strong>Route Through Orchestrators</strong> (Riven/CLI Debrid) or <strong>Arr clients</strong> (Decypharr/NzbDAV/AltMount).</li>
+<li><strong>Route Through Orchestrators</strong> (Riven/CLI Debrid) or <strong>Arr clients</strong> (Decypharr/InfiniDysk/AltMount).</li>
 <li><strong>Mount &amp; Organize Content</strong> via Zurg + rclone and Arr-managed libraries.</li>
 <li><strong>Stream via Plex/Jellyfin/Emby</strong> using internal paths and embedded media servers.</li>
 <li><strong>Access Safely</strong> through DUMB embedded UI routes, TPA-managed hostnames, or Cloudflare Tunnel routes that all terminate at DUMB Traefik.</li>

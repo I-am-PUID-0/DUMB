@@ -2077,6 +2077,8 @@
       
         
       
+        
+      
     
     
     
@@ -2203,7 +2205,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../nzbdav/" class="md-nav__link">
+      <a href="../infinidysk/" class="md-nav__link">
         
   
   
@@ -2212,7 +2214,37 @@
   <span class="md-ellipsis">
     
   
-    NzbDAV
+    InfiniDysk
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../nzbdav/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-replace" viewBox="0 0 24 24"><path d="M14 4a1 1 0 0 1 1-1M15 10a1 1 0 0 1-1-1M21 4a1 1 0 0 0-1-1M21 9a1 1 0 0 1-1 1M3 7l3 3 3-3"/><path d="M6 10V5a2 2 0 0 1 2-2h2"/><rect width="7" height="7" x="3" y="14" rx="1"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    NzbDAV migration
   
 
     
@@ -5517,15 +5549,15 @@ set (single value or list):</p>
 <td><code>decypharr</code></td>
 </tr>
 <tr>
-<td><code>nzbdav</code></td>
-<td><code>nzbdav</code></td>
+<td><code>infinidysk</code></td>
+<td><code>infinidysk</code></td>
 </tr>
 </tbody>
 </table>
 <p>These tags are created automatically if they do not exist.</p>
 <h3 id="indexer-routing-via-tags">Indexer routing via tags<a class="headerlink" href="#indexer-routing-via-tags" title="Permanent link">&para;</a></h3>
 <p>Prowlarr uses tags to decide which indexers sync into which Arr apps. DUMB links each Arr app
-to the tag matching its core service(s), so Decypharr, NzbDAV, and AltMount indexers stay separated.</p>
+to the tag matching its core service(s), so Decypharr, InfiniDysk, and AltMount indexers stay separated.</p>
 <p>When you add custom indexers in Prowlarr, make sure the correct tag is applied so they sync to
 the intended Arr apps.</p>
 <h3 id="custom-indexer-sync-decypharr">Custom indexer sync (Decypharr)<a class="headerlink" href="#custom-indexer-sync-decypharr" title="Permanent link">&para;</a></h3>
@@ -5537,7 +5569,7 @@ the intended Arr apps.</p>
 <li><strong>StremThru</strong> (Torznab) using the hosted endpoint</li>
 </ul>
 <p>If Decypharr is enabled, DUMB automatically enables the public StremThru indexer.</p>
-<p>For Whisparr applications, DUMB widens Prowlarr sync categories to include the Movie/TV roots used by the Zilean/StremThru custom definitions plus the common XXX categories. This lets the custom indexers sync to Whisparr while keeping the normal Decypharr/NzbDAV/AltMount tag separation.</p>
+<p>For Whisparr applications, DUMB widens Prowlarr sync categories to include the Movie/TV roots used by the Zilean/StremThru custom definitions plus the common XXX categories. This lets the custom indexers sync to Whisparr while keeping the normal Decypharr/InfiniDysk/AltMount tag separation.</p>
 <p>Custom definitions are pulled from the <code>Prowlarr-Indexers</code> repository and stored in
 <code>&lt;prowlarr_config_dir&gt;/Definitions/Custom</code> (or <code>&lt;prowlarr_config_dir&gt;/indexer/Definitions/Custom</code> when present).</p>
 <p>Other custom indexers in the definition repository are available to add manually in Prowlarr.</p>

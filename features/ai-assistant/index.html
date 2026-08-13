@@ -2202,6 +2202,8 @@
       
         
       
+        
+      
     
     
     
@@ -2327,7 +2329,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/core/nzbdav/" class="md-nav__link">
+      <a href="../../services/core/infinidysk/" class="md-nav__link">
         
   
   
@@ -2336,7 +2338,37 @@
   <span class="md-ellipsis">
     
   
-    NzbDAV
+    InfiniDysk
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/core/nzbdav/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-replace" viewBox="0 0 24 24"><path d="M14 4a1 1 0 0 1 1-1M15 10a1 1 0 0 1-1-1M21 4a1 1 0 0 0-1-1M21 9a1 1 0 0 1-1 1M3 7l3 3 3-3"/><path d="M6 10V5a2 2 0 0 1 2-2h2"/><rect width="7" height="7" x="3" y="14" rx="1"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    NzbDAV migration
   
 
     
@@ -5405,8 +5437,8 @@
 </ul>
 <p>The evidence summary reports the exact time window, sources that were available, log files and bytes scanned, and a deterministic confidence hint. The model is instructed to cite timestamps and measurements, distinguish facts from correlations, and say when evidence is insufficient.</p>
 <p>Deep log scanning is independent of the truncated frontend log table. The backend reads retained files directly within <code>max_log_scan_mb</code>, then includes aggregates and selected redacted excerpts. It does not give the model arbitrary filesystem access.</p>
-<h3 id="nzbdav-native-evidence">NzbDAV Native Evidence<a class="headerlink" href="#nzbdav-native-evidence" title="Permanent link">&para;</a></h3>
-<p>NzbDAV has an additional read-only native collector for the maintained <code>nzbdav/nzbdav</code> fork. When available, it reads the existing NzbDAV SQLite stores and queue logs to compare:</p>
+<h3 id="infinidysk-native-evidence">InfiniDysk Native Evidence<a class="headerlink" href="#infinidysk-native-evidence" title="Permanent link">&para;</a></h3>
+<p>InfiniDysk has an additional read-only native collector for the maintained <code>infinidysk/infinidysk</code> fork. When available, it reads the existing InfiniDysk SQLite stores and queue logs to compare:</p>
 <ul>
 <li>Concurrent queue worker count and connection budget context</li>
 <li>Segment success, missing article, error, retry, and provider latency rates</li>
@@ -5536,7 +5568,7 @@
 <p>Good context checks:</p>
 <ul>
 <li>Ask <code>What does DUMB stand for?</code> and confirm the bundle includes <code>dumb_product.expansion</code> as <code>Distributed Unlimited Media Bridge</code>.</li>
-<li>Ask <code>What services should I use for Usenet in DUMB?</code> and confirm the bundle includes <code>dumb_service_catalog</code>, <code>dumb_workflow_rules</code>, and docs snippets for Decypharr, NzbDAV, AltMount, Prowlarr, or core-service routing.</li>
+<li>Ask <code>What services should I use for Usenet in DUMB?</code> and confirm the bundle includes <code>dumb_service_catalog</code>, <code>dumb_workflow_rules</code>, and docs snippets for Decypharr, InfiniDysk, AltMount, Prowlarr, or core-service routing.</li>
 <li>Toggle <strong>Docs context</strong> off and on, then compare the preview bundle. With docs enabled, the bundle should include a <code>docs_context</code> block with source paths and excerpts.</li>
 <li>Keep <strong>Include configs</strong> off for broad stack planning until you specifically need redacted configuration details.</li>
 </ul>
@@ -5674,11 +5706,11 @@
 <li>"Why are multiple services unhealthy?"</li>
 <li>"Does this look like a proxy, database, mount, or service config problem?"</li>
 <li>"What services should I use for Usenet?"</li>
-<li>"Should this stack use Decypharr, NzbDAV, AltMount, or a combined workflow?"</li>
+<li>"Should this stack use Decypharr, InfiniDysk, AltMount, or a combined workflow?"</li>
 </ul>
 <p>Stack preview mode is especially important when enabling optional configs. The compact process list, dependency graph, and docs context are normally useful, while <strong>Include configs</strong> should be enabled only when you need deeper cross-service config reasoning and have reviewed the preview.</p>
 <p>For provider calls, Stack AI Assist compacts the preview bundle before sending it to the model. This keeps local models and Open WebUI/Ollama setups from failing on context length while preserving the full preview for operator review. Workflow-planning questions omit log tails from the provider prompt so the model focuses on DUMB service selection instead of generic troubleshooting. The effective context limit still depends on the selected model and its Ollama/Open WebUI runtime settings, so one model can reject a prompt that another model accepts with the same DUMB settings. If you need deep config or long-log analysis for one service, use that service's <strong>AI Assist</strong> tab.</p>
-<p>Stack workflow prompts also include a DUMB-specific service catalog. For example, Usenet planning is grounded around DUMB services such as Decypharr, NzbDAV, AltMount, Arr apps, Prowlarr, and rclone instead of generic external download-client advice. If a provider returns a generic Usenet answer that recommends SABnzbd, NZBGet, or NZBHydra as the primary path, DUMB replaces it with the DUMB-native planning answer.</p>
+<p>Stack workflow prompts also include a DUMB-specific service catalog. For example, Usenet planning is grounded around DUMB services such as Decypharr, InfiniDysk, AltMount, Arr apps, Prowlarr, and rclone instead of generic external download-client advice. If a provider returns a generic Usenet answer that recommends SABnzbd, NZBGet, or NZBHydra as the primary path, DUMB replaces it with the DUMB-native planning answer.</p>
 <p>Product identity prompts are also guarded. If a provider invents a different acronym expansion, DUMB returns the canonical product fact instead: <strong>Distributed Unlimited Media Bridge</strong>.</p>
 <h2 id="configuration">Configuration<a class="headerlink" href="#configuration" title="Permanent link">&para;</a></h2>
 <p>Settings are stored under <code>dumb.ai</code> in <code>dumb_config.json</code>:</p>

@@ -2053,6 +2053,8 @@
       
         
       
+        
+      
     
     
     
@@ -2178,7 +2180,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../services/core/nzbdav/" class="md-nav__link">
+      <a href="../services/core/infinidysk/" class="md-nav__link">
         
   
   
@@ -2187,7 +2189,37 @@
   <span class="md-ellipsis">
     
   
-    NzbDAV
+    InfiniDysk
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../services/core/nzbdav/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-replace" viewBox="0 0 24 24"><path d="M14 4a1 1 0 0 1 1-1M15 10a1 1 0 0 1-1-1M21 4a1 1 0 0 0-1-1M21 9a1 1 0 0 1-1 1M3 7l3 3 3-3"/><path d="M6 10V5a2 2 0 0 1 2-2h2"/><rect width="7" height="7" x="3" y="14" rx="1"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    NzbDAV migration
   
 
     
@@ -5263,7 +5295,7 @@
 <ul>
 <li><em>Embedded media servers</em> — Plex, Jellyfin, and Emby run inside the same container, ensuring seamless access to mounted content and full internal control</li>
 <li><em>Service coordination</em> — via the internal DUMB API and real-time config management</li>
-<li><em>Automated acquisition</em> — with Riven, CLI Debrid, and Decypharr orchestration plus NzbDAV and AltMount Usenet workflows</li>
+<li><em>Automated acquisition</em> — with Riven, CLI Debrid, and Decypharr orchestration plus InfiniDysk and AltMount Usenet workflows</li>
 <li><em>Cloud storage mounting</em> — through rclone mounts direct to debrid (e.g., Real-Debrid WebDAV) or utilizing Zurg's WebDAV</li>
 <li><em>Arr automation</em> — Sonarr, Radarr, Lidarr, and Whisparr handle queues, renaming, and library organization</li>
 <li><em>Library management</em> — using symlinks, metadata enrichment, and optional server updates</li>
@@ -5275,8 +5307,8 @@
 <div class="admonition info">
 <p class="admonition-title">Combined workflows</p>
 <p>You can attach a single Arr instance to multiple workflows by setting
-<code>core_service</code> to a list (for example <code>["decypharr", "nzbdav", "altmount"]</code>).
-Combinations that include Decypharr plus NzbDAV or AltMount use
+<code>core_service</code> to a list (for example <code>["decypharr", "infinidysk", "altmount"]</code>).
+Combinations that include Decypharr plus InfiniDysk or AltMount use
 <code>/mnt/debrid/combined_symlinks/&lt;slug&gt;</code> for the Decypharr-managed Arr root.
 AltMount's own import strategy and Arr path still require operator review.</p>
 </div>
@@ -5316,7 +5348,7 @@ AltMount's own import strategy and Arr path still require operator review.</p>
 <td>Debrid and native Usenet workflow for Arr download clients and symlink libraries</td>
 </tr>
 <tr>
-<td><strong>NzbDAV</strong></td>
+<td><strong>InfiniDysk</strong></td>
 <td>Usenet WebDAV gateway and Arr download-client integration</td>
 </tr>
 <tr>

@@ -6,18 +6,18 @@
   
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="description" content="Learn about Tautulli in DUMB, the Distributed Unlimited Media Bridge platform for Debrid, Usenet, Arr apps, and media server automation.">
+  <meta name="description" content="Configure InfiniDysk in DUMB for Usenet streaming, WebDAV access, NNTP providers, Arr integration, rclone mounts, metrics, and database migration.">
   
     <meta name="author" content="DUMB Team">
   
   
-    <link rel="canonical" href="https://dumbarr.com/services/optional/tautulli/">
+    <link rel="canonical" href="https://dumbarr.com/services/core/infinidysk/">
   
   
-    <link rel="prev" href="../riven-frontend/">
+    <link rel="prev" href="../decypharr/">
   
   
-    <link rel="next" href="../bazarr/">
+    <link rel="next" href="../nzbdav/">
   
   
     
@@ -30,7 +30,7 @@
   
     
       
-        <title>Tautulli - Distributed Unlimited Media Bridge</title>
+        <title>InfiniDysk - Distributed Unlimited Media Bridge</title>
       
     
   
@@ -109,9 +109,9 @@
     <meta property="og:type" content="website">
     <meta property="og:locale" content="en_US">
     <meta property="og:site_name" content="DUMB — Distributed Unlimited Media Bridge">
-    <meta property="og:title" content="Tautulli">
-    <meta property="og:description" content="Learn about Tautulli in DUMB, the Distributed Unlimited Media Bridge platform for Debrid, Usenet, Arr apps, and media server automation.">
-    <meta property="og:url" content="https://dumbarr.com/services/optional/tautulli/">
+    <meta property="og:title" content="InfiniDysk">
+    <meta property="og:description" content="Configure InfiniDysk in DUMB for Usenet streaming, WebDAV access, NNTP providers, Arr integration, rclone mounts, metrics, and database migration.">
+    <meta property="og:url" content="https://dumbarr.com/services/core/infinidysk/">
     <meta property="og:image" content="https://dumbarr.com/assets/images/DUMB.png">
     <meta property="og:image:secure_url" content="https://dumbarr.com/assets/images/DUMB.png">
     <meta property="og:image:type" content="image/png">
@@ -119,8 +119,8 @@
     <meta property="og:image:height" content="1024">
     <meta property="og:image:alt" content="Distributed Unlimited Media Bridge ecosystem and architecture overview">
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Tautulli">
-    <meta name="twitter:description" content="Learn about Tautulli in DUMB, the Distributed Unlimited Media Bridge platform for Debrid, Usenet, Arr apps, and media server automation.">
+    <meta name="twitter:title" content="InfiniDysk">
+    <meta name="twitter:description" content="Configure InfiniDysk in DUMB for Usenet streaming, WebDAV access, NNTP providers, Arr integration, rclone mounts, metrics, and database migration.">
     <meta name="twitter:image" content="https://dumbarr.com/assets/images/DUMB.png">
     <meta name="twitter:image:alt" content="Distributed Unlimited Media Bridge ecosystem and architecture overview">
     
@@ -148,16 +148,16 @@
           {
             "@type": "ListItem",
             "position": 3,
-            "name": "Optional",
-            "item": "https://dumbarr.com/services/optional/"
+            "name": "Core",
+            "item": "https://dumbarr.com/services/core/"
           }
           
           ,
           {
             "@type": "ListItem",
             "position": 4,
-            "name": "Tautulli",
-            "item": "https://dumbarr.com/services/optional/tautulli/"
+            "name": "InfiniDysk",
+            "item": "https://dumbarr.com/services/core/infinidysk/"
           }
         ]
       }
@@ -184,7 +184,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#tautulli" class="md-skip">
+        <a href="#infinidysk-core-service" class="md-skip">
           Skip to content
         </a>
       
@@ -228,7 +228,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Tautulli
+              InfiniDysk
             
           </span>
         </div>
@@ -2034,8 +2034,10 @@
                 
   
   
+    
   
   
+  
     
     
       
@@ -2089,17 +2091,15 @@
       
     
     
-    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
       
         
         
-          
-        
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6_3" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_3" checked>
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../core/" class="md-nav__link ">
+            <a href="../" class="md-nav__link ">
               
   
   
@@ -2125,7 +2125,7 @@
             
           </div>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_3_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_3_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_6_3">
             <span class="md-nav__icon md-icon"></span>
             
@@ -2145,7 +2145,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../core/cli-debrid/" class="md-nav__link">
+      <a href="../cli-debrid/" class="md-nav__link">
         
   
   
@@ -2175,7 +2175,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../core/decypharr/" class="md-nav__link">
+      <a href="../decypharr/" class="md-nav__link">
         
   
   
@@ -2202,10 +2202,39 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../../core/infinidysk/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-cloud" viewBox="0 0 24 24"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    InfiniDysk
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -2223,6 +2252,126 @@
   
 
       </a>
+      
+        
+
+
+<nav class="md-nav md-nav--secondary" aria-label="On this page">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      On this page
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#workflow-diagram" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Workflow diagram
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#service-relationships" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Service Relationships
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-infinidysk-provides" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What InfiniDysk provides
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#configuration-in-dumb_configjson" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Configuration in dumb_config.json
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#integration-with-dumb" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Integration with DUMB
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#accessing-the-ui" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Accessing the UI
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting-tips" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Troubleshooting Tips
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#migration-from-nzbdav" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Migration from NzbDAV
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#resources" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Resources
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -2235,7 +2384,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../core/nzbdav/" class="md-nav__link">
+      <a href="../nzbdav/" class="md-nav__link">
         
   
   
@@ -2265,7 +2414,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../core/altmount/" class="md-nav__link">
+      <a href="../altmount/" class="md-nav__link">
         
   
   
@@ -2295,7 +2444,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../core/plex-media-server/" class="md-nav__link">
+      <a href="../plex-media-server/" class="md-nav__link">
         
   
   
@@ -2325,7 +2474,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../core/jellyfin/" class="md-nav__link">
+      <a href="../jellyfin/" class="md-nav__link">
         
   
   
@@ -2355,7 +2504,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../core/emby/" class="md-nav__link">
+      <a href="../emby/" class="md-nav__link">
         
   
   
@@ -2385,7 +2534,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../core/seerr/" class="md-nav__link">
+      <a href="../seerr/" class="md-nav__link">
         
   
   
@@ -2415,7 +2564,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../core/riven-backend/" class="md-nav__link">
+      <a href="../riven-backend/" class="md-nav__link">
         
   
   
@@ -2445,7 +2594,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../core/sonarr/" class="md-nav__link">
+      <a href="../sonarr/" class="md-nav__link">
         
   
   
@@ -2475,7 +2624,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../core/radarr/" class="md-nav__link">
+      <a href="../radarr/" class="md-nav__link">
         
   
   
@@ -2505,7 +2654,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../core/lidarr/" class="md-nav__link">
+      <a href="../lidarr/" class="md-nav__link">
         
   
   
@@ -2535,7 +2684,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../core/prowlarr/" class="md-nav__link">
+      <a href="../prowlarr/" class="md-nav__link">
         
   
   
@@ -2565,7 +2714,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../core/whisparr/" class="md-nav__link">
+      <a href="../whisparr/" class="md-nav__link">
         
   
   
@@ -2595,7 +2744,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../core/neutarr/" class="md-nav__link">
+      <a href="../neutarr/" class="md-nav__link">
         
   
   
@@ -2625,7 +2774,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../core/profilarr/" class="md-nav__link">
+      <a href="../profilarr/" class="md-nav__link">
         
   
   
@@ -2902,8 +3051,6 @@
                 
   
   
-    
-  
   
   
     
@@ -2947,15 +3094,17 @@
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_5" checked>
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6_5" >
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../" class="md-nav__link ">
+            <a href="../../optional/" class="md-nav__link ">
               
   
   
@@ -2981,7 +3130,7 @@
             
           </div>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_5_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_5_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_6_5">
             <span class="md-nav__icon md-icon"></span>
             
@@ -3001,7 +3150,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../pgadmin/" class="md-nav__link">
+      <a href="../../optional/pgadmin/" class="md-nav__link">
         
   
   
@@ -3031,7 +3180,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../riven-frontend/" class="md-nav__link">
+      <a href="../../optional/riven-frontend/" class="md-nav__link">
         
   
   
@@ -3058,39 +3207,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-bar-chart-3" viewBox="0 0 24 24"><path d="M3 3v16a2 2 0 0 0 2 2h16M18 17V9M13 17V5M8 17v-3"/></svg>
-  
-  <span class="md-ellipsis">
-    
-  
-    Tautulli
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../../optional/tautulli/" class="md-nav__link">
         
   
   
@@ -3108,159 +3228,6 @@
   
 
       </a>
-      
-        
-
-
-<nav class="md-nav md-nav--secondary" aria-label="On this page">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      On this page
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#overview" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Overview
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#default-port" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Default port
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#configuration-settings-in-dumb_configjson" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Configuration settings in dumb_config.json
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#initial-setup" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Initial setup
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#connecting-to-plex" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Connecting to Plex
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#key-features" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Key features
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#notifications" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Notifications
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#newsletter-feature" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Newsletter feature
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#accessing-via-dumb-frontend" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Accessing via DUMB frontend
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#data-retention" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Data retention
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#tips" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Tips
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#resources" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Resources
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -3273,7 +3240,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../bazarr/" class="md-nav__link">
+      <a href="../../optional/bazarr/" class="md-nav__link">
         
   
   
@@ -3303,7 +3270,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../pulsarr/" class="md-nav__link">
+      <a href="../../optional/pulsarr/" class="md-nav__link">
         
   
   
@@ -3333,7 +3300,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../maintainerr/" class="md-nav__link">
+      <a href="../../optional/maintainerr/" class="md-nav__link">
         
   
   
@@ -3363,7 +3330,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../mediastorm/" class="md-nav__link">
+      <a href="../../optional/mediastorm/" class="md-nav__link">
         
   
   
@@ -3393,7 +3360,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../traefik-proxy-admin/" class="md-nav__link">
+      <a href="../../optional/traefik-proxy-admin/" class="md-nav__link">
         
   
   
@@ -3423,7 +3390,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../authelia/" class="md-nav__link">
+      <a href="../../optional/authelia/" class="md-nav__link">
         
   
   
@@ -3453,7 +3420,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../cloudflared/" class="md-nav__link">
+      <a href="../../optional/cloudflared/" class="md-nav__link">
         
   
   
@@ -3483,7 +3450,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../zilean/" class="md-nav__link">
+      <a href="../../optional/zilean/" class="md-nav__link">
         
   
   
@@ -5275,10 +5242,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#overview" class="md-nav__link">
+  <a href="#workflow-diagram" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Overview
+        Workflow diagram
       
     </span>
   </a>
@@ -5286,10 +5253,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#default-port" class="md-nav__link">
+  <a href="#service-relationships" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Default port
+        Service Relationships
       
     </span>
   </a>
@@ -5297,10 +5264,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#configuration-settings-in-dumb_configjson" class="md-nav__link">
+  <a href="#what-infinidysk-provides" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Configuration settings in dumb_config.json
+        What InfiniDysk provides
       
     </span>
   </a>
@@ -5308,10 +5275,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#initial-setup" class="md-nav__link">
+  <a href="#configuration-in-dumb_configjson" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Initial setup
+        Configuration in dumb_config.json
       
     </span>
   </a>
@@ -5319,10 +5286,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#connecting-to-plex" class="md-nav__link">
+  <a href="#integration-with-dumb" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Connecting to Plex
+        Integration with DUMB
       
     </span>
   </a>
@@ -5330,10 +5297,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#key-features" class="md-nav__link">
+  <a href="#accessing-the-ui" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Key features
+        Accessing the UI
       
     </span>
   </a>
@@ -5341,10 +5308,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#notifications" class="md-nav__link">
+  <a href="#troubleshooting-tips" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Notifications
+        Troubleshooting Tips
       
     </span>
   </a>
@@ -5352,43 +5319,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#newsletter-feature" class="md-nav__link">
+  <a href="#migration-from-nzbdav" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Newsletter feature
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#accessing-via-dumb-frontend" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Accessing via DUMB frontend
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#data-retention" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Data retention
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#tips" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Tips
+        Migration from NzbDAV
       
     </span>
   </a>
@@ -5470,7 +5404,7 @@
         <a href="../" class="md-path__link">
           
   <span class="md-ellipsis">
-    Optional
+    Core
   </span>
 
         </a>
@@ -5487,7 +5421,7 @@
                 
                   
   
-    <a href="https://github.com/I-am-PUID-0/DUMB_docs/edit/master/docs/services/optional/tautulli.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+    <a href="https://github.com/I-am-PUID-0/DUMB_docs/edit/master/docs/services/core/infinidysk.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
       
       <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-file-pen" viewBox="0 0 24 24"><path d="M12.659 22H18a2 2 0 0 0 2-2V8a2.4 2.4 0 0 0-.706-1.706l-3.588-3.588A2.4 2.4 0 0 0 14 2H6a2 2 0 0 0-2 2v9.34"/><path d="M14 2v5a1 1 0 0 0 1 1h5M10.378 12.622a1 1 0 0 1 3 3.003L8.36 20.637a2 2 0 0 1-.854.506l-2.867.837a.5.5 0 0 1-.62-.62l.836-2.869a2 2 0 0 1 .506-.853z"/></svg>
     </a>
@@ -5496,258 +5430,691 @@
     
       
     
-    <a href="https://github.com/I-am-PUID-0/DUMB_docs/raw/master/docs/services/optional/tautulli.md" title="View source of this page" class="md-content__button md-icon">
+    <a href="https://github.com/I-am-PUID-0/DUMB_docs/raw/master/docs/services/core/infinidysk.md" title="View source of this page" class="md-content__button md-icon">
       
       <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-file-code-2" viewBox="0 0 24 24"><path d="M4 12.15V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.706.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2h-3.35"/><path d="M14 2v5a1 1 0 0 0 1 1h5M5 16l-3 3 3 3M9 22l3-3-3-3"/></svg>
     </a>
   
 
 
-<h1 id="tautulli">Tautulli<a class="headerlink" href="#tautulli" title="Permanent link">&para;</a></h1>
-<p>Tautulli is a monitoring and statistics application for Plex Media Server. It tracks what has been watched, who watched it, when and where they watched it, and how it was watched, providing detailed analytics and notifications.</p>
+<h1 id="infinidysk-core-service">InfiniDysk (Core Service)<a class="headerlink" href="#infinidysk-core-service" title="Permanent link">&para;</a></h1>
+<p><strong>InfiniDysk</strong> is a combined backend + frontend WebDAV service for <strong>Usenet</strong> workflows. In DUMB it runs as a single service that exposes a Web UI, a WebDAV endpoint for browsing/serving content, and a backend API used for automation.</p>
+<h2 id="workflow-diagram">Workflow diagram<a class="headerlink" href="#workflow-diagram" title="Permanent link">&para;</a></h2>
+<pre class="mermaid"><code>%%{ init: { "flowchart": { "curve": "basis" } } }%%
+flowchart TD
+    A([Request Sources:&lt;br/&gt;Seerr, Trakt,&lt;br/&gt;Plex Watchlist,&lt;br/&gt;NeutArr])
+    B[Arr Services:&lt;br/&gt;Sonarr, Radarr,&lt;br/&gt;Lidarr,&lt;br/&gt;Whisparr]
+    C[[Prowlarr / Indexers]]
+    D[InfiniDysk]
+    E@{shape: cloud, label: "Usenet Providers"}
+    F[[Rclone]]
+    G[(WebDAV Mount Root:&lt;br/&gt;/mnt/debrid/&lt;br/&gt;infinidysk)]
+    H[(QBit Download Symlinks:&lt;br/&gt;/mnt/debrid/infinidysk/&lt;br/&gt;completed-symlinks)]
+    I[Arr Rename + Link Step:&lt;br/&gt;Hard Link / Symlink]
+    J[(Final Symlink Root:&lt;br/&gt;/mnt/debrid/&lt;br/&gt;infinidysk-symlinks)]
+    K([Media Servers:&lt;br/&gt;Plex, Jellyfin,&lt;br/&gt;Emby])
+
+    E === D
+    D === F
+    linkStyle 0 stroke:transparent,stroke-width:0;
+    linkStyle 1 stroke:transparent,stroke-width:0;
+
+    A ==&gt; B
+    C &lt;==&gt; B
+    B &lt;==&gt; D
+    D e1@==&gt; E
+    F e2@==&gt; D
+    F e3@==&gt; G
+    D ==&gt; H
+    H ==&gt; G
+    H ==&gt; B
+    B ==&gt; I
+    I ==&gt; J
+    J e4@==&gt; G
+    K e5@&lt;==&gt; J
+
+
+    classDef animate stroke-dasharray: 9,5,stroke-dashoffset: 900,animation: dash 25s linear infinite;
+    class e1,e2,e3,e4,e5 animate</code></pre>
 <hr />
-<h2 id="overview">Overview<a class="headerlink" href="#overview" title="Permanent link">&para;</a></h2>
-<p>Tautulli provides:</p>
-<ul>
-<li><strong>Playback monitoring</strong> - Real-time view of active streams</li>
-<li><strong>Watch statistics</strong> - Historical data on viewing habits</li>
-<li><strong>User tracking</strong> - Per-user watch history and statistics</li>
-<li><strong>Library analytics</strong> - Insights into your media library</li>
-<li><strong>Notifications</strong> - Alerts for playback events, new content, and more</li>
-<li><strong>Graphs and reports</strong> - Visual representations of your Plex usage</li>
-</ul>
-<hr />
-<h2 id="default-port">Default port<a class="headerlink" href="#default-port" title="Permanent link">&para;</a></h2>
+<h2 id="service-relationships">Service Relationships<a class="headerlink" href="#service-relationships" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
-<th>Service</th>
-<th>Port</th>
+<th>Classification</th>
+<th>Role</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>Tautulli</td>
-<td>8181</td>
+<td>Core Service</td>
+<td>NZB WebDAV gateway</td>
+</tr>
+<tr>
+<td>Depends On</td>
+<td><a href="../../dependent/rclone/">rclone</a></td>
+</tr>
+<tr>
+<td>Optional</td>
+<td>Sonarr, Radarr, Lidarr, Whisparr, Prowlarr, NeutArr</td>
+</tr>
+<tr>
+<td>Exposes UI</td>
+<td>Yes (Web UI + WebDAV)</td>
 </tr>
 </tbody>
 </table>
 <hr />
-<h2 id="configuration-settings-in-dumb_configjson">Configuration settings in <code>dumb_config.json</code><a class="headerlink" href="#configuration-settings-in-dumb_configjson" title="Permanent link">&para;</a></h2>
-<p>Below is a sample configuration for Tautulli within the <code>dumb_config.json</code> file:</p>
-<div class="highlight"><pre><span></span><code><span class="nt">&quot;tautulli&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<span class="w">  </span><span class="nt">&quot;enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;process_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Tautulli&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;repo_owner&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Tautulli&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;repo_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Tautulli&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;release_version_enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;release_version&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;latest&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;commit_sha&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;branch_enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;branch&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;master&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;suppress_logging&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;log_level&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;INFO&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;port&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">8181</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;auto_update&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;auto_update_interval&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">24</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;auto_update_start_time&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;04:00&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;clear_on_update&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;exclude_dirs&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
-<span class="w">    </span><span class="s2">&quot;/tautulli/data&quot;</span>
-<span class="w">  </span><span class="p">],</span>
-<span class="w">  </span><span class="nt">&quot;platforms&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
-<span class="w">    </span><span class="s2">&quot;python&quot;</span>
-<span class="w">  </span><span class="p">],</span>
-<span class="w">  </span><span class="nt">&quot;command&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
-<span class="w">    </span><span class="s2">&quot;/tautulli/venv/bin/python&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="s2">&quot;Tautulli.py&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="s2">&quot;--config&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="s2">&quot;/tautulli/data/config.ini&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="s2">&quot;--datadir&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="s2">&quot;/tautulli/data&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="s2">&quot;--nolaunch&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="s2">&quot;--port&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="s2">&quot;{port}&quot;</span>
-<span class="w">  </span><span class="p">],</span>
-<span class="w">  </span><span class="nt">&quot;config_dir&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/tautulli&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;config_file&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/tautulli/data/config.ini&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;log_file&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/tautulli/data/logs/tautulli.log&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;env&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{}</span>
-<span class="p">}</span>
-</code></pre></div>
-<h3 id="configuration-key-descriptions">Configuration key descriptions<a class="headerlink" href="#configuration-key-descriptions" title="Permanent link">&para;</a></h3>
-<ul>
-<li><strong><code>enabled</code></strong>: Whether to start the Tautulli service.</li>
-<li><strong><code>process_name</code></strong>: Display name used in logs and the frontend.</li>
-<li><strong><code>repo_owner</code></strong> / <strong><code>repo_name</code></strong>: GitHub repository to pull from.</li>
-<li><strong><code>release_version_enabled</code></strong> / <strong><code>release_version</code></strong>: Use a tagged release if enabled.</li>
-<li><strong><code>commit_sha</code></strong>: Build an exact Tautulli revision from its full 40-character GitHub SHA. It overrides release/branch selection and disables automatic updates until cleared.</li>
-<li><strong><code>branch_enabled</code></strong> / <strong><code>branch</code></strong>: Use a specific branch if enabled.</li>
-<li><strong><code>suppress_logging</code></strong>: If <code>true</code>, disables log output for this service.</li>
-<li><strong><code>log_level</code></strong>: Logging verbosity.</li>
-<li><strong><code>port</code></strong>: Port the Tautulli web UI is exposed on.</li>
-<li><strong><code>auto_update</code></strong>: Enables automatic self-updates from GitHub.</li>
-<li><strong><code>auto_update_interval</code></strong>: How often (in hours) to check for updates.</li>
-<li><strong><code>clear_on_update</code></strong>: Clears build artifacts or cache during updates.</li>
-<li><strong><code>exclude_dirs</code></strong>: Prevents specific directories from being affected by updates.</li>
-<li><strong><code>platforms</code></strong>: Required runtime (typically <code>python</code>).</li>
-<li><strong><code>command</code></strong>: The command used to launch Tautulli.</li>
-<li><strong><code>config_dir</code></strong> / <strong><code>config_file</code></strong>: Where configuration files are stored.</li>
-<li><strong><code>log_file</code></strong>: Path to the Tautulli log file.</li>
-<li><strong><code>env</code></strong>: Environment variables passed at runtime.</li>
-</ul>
-<hr />
-<h2 id="initial-setup">Initial setup<a class="headerlink" href="#initial-setup" title="Permanent link">&para;</a></h2>
-<p>After enabling Tautulli and starting the service:</p>
-<ol>
-<li>Access the Tautulli UI at <code>http://&lt;host&gt;:8181</code></li>
-<li>Complete the setup wizard:</li>
-<li>Connect to your Plex Media Server</li>
-<li>Enter your Plex server URL (<code>http://127.0.0.1:32400</code> for DUMB's internal Plex)</li>
-<li>Authenticate with your Plex account or use a Plex token</li>
-</ol>
-<hr />
-<h2 id="connecting-to-plex">Connecting to Plex<a class="headerlink" href="#connecting-to-plex" title="Permanent link">&para;</a></h2>
-<p>Since Plex runs inside the DUMB container, use the internal address:</p>
+<h2 id="what-infinidysk-provides">What InfiniDysk provides<a class="headerlink" href="#what-infinidysk-provides" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
-<th>Setting</th>
-<th>Value</th>
+<th>Endpoint</th>
+<th>Purpose</th>
+<th>Default</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><strong>Plex IP or Hostname</strong></td>
-<td><code>127.0.0.1</code></td>
+<td>Web UI + WebDAV</td>
+<td>Primary UI and WebDAV endpoint</td>
+<td><code>http://&lt;host&gt;:3000/</code></td>
 </tr>
 <tr>
-<td><strong>Port</strong></td>
-<td><code>32400</code></td>
-</tr>
-<tr>
-<td><strong>Use SSL</strong></td>
-<td>No (internal connection)</td>
+<td>Backend API</td>
+<td>Internal API for DUMB automation</td>
+<td><code>http://127.0.0.1:8080/</code></td>
 </tr>
 </tbody>
 </table>
-<div class="admonition tip">
-<p class="admonition-title">Plex token</p>
-<p>You can use your Plex token instead of signing in. The token is available in your <code>dumb_config.json</code> under the <code>plex_token</code> field.</p>
+<p>InfiniDysk also exposes a <strong>Usenet download client</strong> path in Arr by emulating a Sabnzbd-compatible API. DUMB registers this client automatically when <code>core_service: infinidysk</code> (or <code>core_service</code> includes <code>infinidysk</code>) is set on Arr instances.</p>
+<div class="admonition info">
+<p class="admonition-title">WebDAV endpoint</p>
+<p>rclone and Arr download clients point at the WebDAV endpoint on the frontend port.</p>
 </div>
 <hr />
-<h2 id="key-features">Key features<a class="headerlink" href="#key-features" title="Permanent link">&para;</a></h2>
-<h3 id="activity-monitoring">Activity monitoring<a class="headerlink" href="#activity-monitoring" title="Permanent link">&para;</a></h3>
-<p>View real-time playback activity:</p>
+<h2 id="configuration-in-dumb_configjson">Configuration in <code>dumb_config.json</code><a class="headerlink" href="#configuration-in-dumb_configjson" title="Permanent link">&para;</a></h2>
+<div class="admonition important">
+<p class="admonition-title">DUMB defaults to InfiniDysk</p>
+<p>DUMB installs and updates the renamed project from
+<a href="https://github.com/infinidysk/infinidysk"><code>infinidysk/infinidysk</code></a> by
+default. The legacy <code>nzbdav</code> DUMB service key and <code>NZBDAV_*</code> environment
+variables remain compatibility aliases. Existing configs containing either
+former DUMB repository default, <code>nzbdav-dev/nzbdav</code> or <code>nzbdav/nzbdav</code>,
+follow the maintained repository automatically; intentional custom forks
+remain unchanged. User-visible identity changes remain opt-in.</p>
+</div>
+<div class="admonition tip">
+<p class="admonition-title">Support the maintainer</p>
+<p>If InfiniDysk is useful to your stack, you can support the maintainer
+through <a href="https://buymeacoffee.com/hoivikaj">Buy Me a Coffee</a>. DUMB also
+exposes this link through the frontend's InfiniDysk service page and
+<strong>Settings → About</strong>.</p>
+</div>
+<div class="highlight"><pre><span></span><code><span class="nt">&quot;infinidysk&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;process_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;InfiniDysk&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;repo_owner&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;infinidysk&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;repo_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;infinidysk&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;release_version_enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;release_version&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;latest&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;commit_sha&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;branch_enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;branch&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;main&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;suppress_logging&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;log_level&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;INFO&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;frontend_port&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">3000</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;backend_port&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">8080</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;auto_update&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;auto_update_interval&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">24</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;auto_update_start_time&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;04:00&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;symlink_backup_enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;symlink_backup_interval&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">168</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;symlink_backup_start_time&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;04:00&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;symlink_backup_path&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/config/symlink-repair/snapshots/infinidysk-{timestamp}.json&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;symlink_backup_include_broken&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;symlink_backup_retention_count&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;symlink_backup_roots&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">        </span><span class="s2">&quot;/mnt/debrid/infinidysk-symlinks&quot;</span>
+<span class="w">    </span><span class="p">],</span>
+<span class="w">    </span><span class="nt">&quot;clear_on_update&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;exclude_dirs&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[],</span>
+<span class="w">    </span><span class="nt">&quot;platforms&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">        </span><span class="s2">&quot;pnpm&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="s2">&quot;dotnet&quot;</span>
+<span class="w">    </span><span class="p">],</span>
+<span class="w">    </span><span class="nt">&quot;command&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[],</span>
+<span class="w">    </span><span class="nt">&quot;config_dir&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/infinidysk&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;log_file&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/log/infinidysk.log&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;webdav_password&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;env&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{}</span>
+<span class="p">},</span>
+</code></pre></div>
+<h3 id="key-configuration-fields">Key Configuration Fields<a class="headerlink" href="#key-configuration-fields" title="Permanent link">&para;</a></h3>
 <ul>
-<li>Currently playing streams</li>
-<li>Transcoding status</li>
-<li>Bandwidth usage</li>
-<li>Client information</li>
+<li><code>enabled</code>: Toggle to run InfiniDysk via DUMB.</li>
+<li><code>frontend_port</code>: Port for the Web UI and WebDAV endpoint.</li>
+<li><code>backend_port</code>: Port for the backend API.</li>
+<li><code>commit_sha</code>: Optional full 40-character GitHub SHA. When set, DUMB builds
+  that exact InfiniDysk revision instead of selecting a release or branch.</li>
+<li><code>webdav_password</code>: Default WebDAV password (overridden by <code>WEBDAV_PASSWORD</code>).</li>
+<li><code>config_dir</code>: Path where InfiniDysk data is stored.</li>
+<li><code>log_file</code>: Path for the consolidated InfiniDysk log.</li>
+<li><code>env</code>: Optional environment variables (see below).</li>
 </ul>
-<h3 id="watch-statistics">Watch statistics<a class="headerlink" href="#watch-statistics" title="Permanent link">&para;</a></h3>
-<p>Track viewing patterns:</p>
-<ul>
-<li>Most watched content</li>
-<li>Peak usage times</li>
-<li>User engagement</li>
-<li>Play duration vs content duration</li>
-</ul>
-<h3 id="history">History<a class="headerlink" href="#history" title="Permanent link">&para;</a></h3>
-<p>Complete playback history with:</p>
-<ul>
-<li>Date and time</li>
-<li>User who watched</li>
-<li>Device/client used</li>
-<li>Watch duration</li>
-<li>Transcode information</li>
-</ul>
-<h3 id="graphs">Graphs<a class="headerlink" href="#graphs" title="Permanent link">&para;</a></h3>
-<p>Visual analytics including:</p>
-<ul>
-<li>Daily/weekly/monthly play counts</li>
-<li>Concurrent streams over time</li>
-<li>Library growth</li>
-<li>User activity comparisons</li>
-</ul>
-<hr />
-<h2 id="notifications">Notifications<a class="headerlink" href="#notifications" title="Permanent link">&para;</a></h2>
-<p>Tautulli supports extensive notification options:</p>
+<div class="admonition warning">
+<p class="admonition-title">WebDAV credentials</p>
+<p>If <code>webdav_password</code> is blank, DUMB generates one at startup and stores it in the config.
+Change the password before exposing InfiniDysk outside your trusted network.</p>
+</div>
+<h3 id="tracking-a-moving-infinidysk-release-tag">Tracking a moving InfiniDysk release tag<a class="headerlink" href="#tracking-a-moving-infinidysk-release-tag" title="Permanent link">&para;</a></h3>
+<p>InfiniDysk tags do not need a matching GitHub Release. To track a tag such as
+<code>dev</code>, enable the release selector and use the tag name:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">&quot;infinidysk&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;release_version_enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;release_version&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;dev&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;commit_sha&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;branch_enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;auto_update&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>DUMB treats any digit-free InfiniDysk tag, such as <code>dev</code>, <code>lts</code>, or <code>edge</code>, as a
+moving release channel. With <code>auto_update: true</code>, DUMB checks it at the normal
+configured interval and installs it when the underlying commit changes. Manual
+<strong>Check for updates</strong> and <strong>Install update</strong> remain available.</p>
+<p>The installed marker is recorded as <code>dev-&lt;short-sha&gt;</code>. The source archive is
+downloaded by the resolved full SHA, so the installed source and recorded
+marker remain consistent even if the tag moves during the update.</p>
+<h3 id="prebuilt-archives-and-automatic-source-fallback">Prebuilt archives and automatic source fallback<a class="headerlink" href="#prebuilt-archives-and-automatic-source-fallback" title="Permanent link">&para;</a></h3>
+<p>For InfiniDysk release selectors, DUMB first looks for the official
+architecture-specific <code>linux-x64</code> or <code>linux-arm64</code> release archive. It requires
+GitHub's published SHA-256 digest, resolves the selected tag to its full commit,
+requires the release asset's target commit to still match that tag, validates
+the complete backend and frontend runtime, and activates them as one
+rollback-safe unit. DUMB selects the exact channel asset deterministically and
+accepts only InfiniDysk or legacy NzbDAV archive roots for the selected CPU architecture.
+This handles renamed rolling assets such as <code>rc</code>, whose downloaded archive can
+keep the concrete RC version in its internal root directory.</p>
+<p>If a selected tag has no GitHub Release object, has no compatible archive, or
+has release assets that lag behind a moved channel tag, DUMB automatically
+downloads the current resolved commit and uses its source-build path. The same
+fallback applies when archive verification fails. This keeps the service
+installable while making the fallback reproducible. Open the service page's
+<strong>Updates</strong> panel to see <strong>Installed using</strong>, the resolved release, the selected
+archive when applicable, and the prebuilt fallback reason.</p>
+<p>The practical channel behavior is:</p>
 <table>
 <thead>
 <tr>
-<th>Trigger</th>
-<th>Example Use</th>
+<th>Selector</th>
+<th>DUMB behavior</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><strong>Playback start</strong></td>
-<td>Alert when someone starts watching</td>
+<td><code>latest</code></td>
+<td>Resolve the current stable GitHub Release, then use its verified archive or source fallback</td>
 </tr>
 <tr>
-<td><strong>Playback stop</strong></td>
-<td>Log when playback ends</td>
+<td><code>prerelease</code></td>
+<td>For the official InfiniDysk repository, follow the <code>rc</code> channel so a newer <code>dev</code> snapshot cannot be mistaken for an RC; then use its verified archive or source fallback</td>
 </tr>
 <tr>
-<td><strong>New content</strong></td>
-<td>Notify when new media is added</td>
+<td><code>dev</code>, <code>rc</code>, <code>lts</code>, <code>edge</code></td>
+<td>Track the exact digit-free tag when it exists; use a matching verified release archive when published, otherwise build that tag's resolved commit</td>
 </tr>
 <tr>
-<td><strong>Buffer warnings</strong></td>
-<td>Alert on playback issues</td>
+<td>Versioned/dated tag</td>
+<td>Treat it as a fixed configured release; use its verified archive when published, otherwise build its resolved commit</td>
 </tr>
 <tr>
-<td><strong>Plex server down</strong></td>
-<td>Monitor server availability</td>
+<td>Full <code>commit_sha</code> or branch</td>
+<td>Source build by design</td>
 </tr>
 </tbody>
 </table>
-<p>Notification agents include:</p>
-<ul>
-<li>Discord</li>
-<li>Slack</li>
-<li>Email</li>
-<li>Telegram</li>
-<li>Webhook</li>
-<li>And many more</li>
-</ul>
-<hr />
-<h2 id="newsletter-feature">Newsletter feature<a class="headerlink" href="#newsletter-feature" title="Permanent link">&para;</a></h2>
-<p>Tautulli can generate and send newsletters with:</p>
-<ul>
-<li>Recently added content</li>
-<li>Popular content this week</li>
-<li>User-specific recommendations</li>
-</ul>
-<hr />
-<h2 id="accessing-via-dumb-frontend">Accessing via DUMB frontend<a class="headerlink" href="#accessing-via-dumb-frontend" title="Permanent link">&para;</a></h2>
-<p>When the embedded service UI feature is enabled, Tautulli can be accessed through the DUMB frontend at:</p>
-<div class="highlight"><pre><span></span><code>http://&lt;dumb-host&gt;:18080/service/ui/tautulli
+<div class="admonition note">
+<p class="admonition-title">Why DUMB does not unpack the Docker image</p>
+<p>The official InfiniDysk container is Alpine/musl-based, while DUMB's
+runtime and managed packages are Ubuntu/glibc-based. Extracting application
+files from that image would also pull a runtime layout and native libraries
+built for a different libc boundary. The official Ubuntu-built release
+archives are the compatible prebuilt format for DUMB; source fallback is
+the compatibility path when no usable archive exists.</p>
+</div>
+<p>After a prebuilt install, DUMB starts the archive's framework-dependent native
+apphost against DUMB's compatible .NET runtime, even if a local .NET SDK remains
+from an older source build. Source installs continue to launch through the
+managed local SDK and application DLL.</p>
+<p>The same revision suffix remains visible for the rolling <strong>prerelease</strong> channel
+and for branch, exact-commit, or other moving-tag installs. Ordinary stable
+release versions are shown in the frontend as their clean release tag (for
+example, <code>v0.10.0</code>); DUMB retains the resolved commit internally for download,
+cache, and source-integrity checks rather than presenting it as part of the
+stable version.</p>
+<p>When the selected tag also has an architecture-specific InfiniDysk release archive,
+DUMB tries that archive first. The rolling <code>rc</code> GitHub Release is therefore a
+valid moving channel: DUMB resolves its current commit and asset digest before
+installing it. Branch and exact-commit selections remain source builds.</p>
+<p>DUMB accepts the current <code>infinidysk-&lt;version&gt;-linux-&lt;arch&gt;.tar.gz</code> release
+artifact and the former <code>nzbdav-&lt;version&gt;-linux-&lt;arch&gt;.tar.gz</code> name. The selected
+asset must include a published SHA-256 digest, and its archive root must match
+the asset name. When both names are published for one release, DUMB prefers the
+name matching the configured repository. A renamed official artifact therefore
+uses the verified prebuilt path instead of silently falling back to a source
+build.</p>
+<p>Existing installations whose marker is only <code>dev</code> perform one update to adopt
+the commit-aware marker. Tags containing any digit, such as <code>v0.9.5</code>,
+<code>2026.08.03</code>, or <code>dev2</code>, remain pinned configured releases and do not enable
+scheduled automatic updates. Use <strong>Install configured release</strong> to apply those
+tags intentionally.</p>
+<h3 id="pinning-an-exact-infinidysk-commit">Pinning an exact InfiniDysk commit<a class="headerlink" href="#pinning-an-exact-infinidysk-commit" title="Permanent link">&para;</a></h3>
+<p>Set <code>commit_sha</code> to the complete SHA from the configured <code>repo_owner</code> and
+<code>repo_name</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">&quot;infinidysk&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;repo_owner&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;infinidysk&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;repo_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;infinidysk&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;commit_sha&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;0123456789abcdef0123456789abcdef01234567&quot;</span>
+<span class="p">}</span>
 </code></pre></div>
-<hr />
-<h2 id="data-retention">Data retention<a class="headerlink" href="#data-retention" title="Permanent link">&para;</a></h2>
-<p>Tautulli stores historical data in a SQLite database. Configure retention settings in:</p>
-<p><strong>Settings <span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"/></svg></span> General <span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"/></svg></span> History</strong></p>
+<p>The commit pin overrides <code>release_version_enabled</code> and <code>branch_enabled</code>.
+Automatic updates stay disabled while the pin is present. Change the SHA to
+move deliberately to another revision, or clear it to return to the configured
+release/branch strategy.</p>
+<p>After saving a new SHA, open <strong>Updates</strong> and select <strong>Install configured
+commit</strong>. This installs and restarts InfiniDysk on the saved commit. Do not use
+<strong>Override + latest</strong> for this operation; that action intentionally installs the
+latest moving release while leaving the saved pin in place for a later restart.</p>
+<h3 id="source-build-update-safety">Source-build update safety<a class="headerlink" href="#source-build-update-safety" title="Permanent link">&para;</a></h3>
+<p>Branch and exact-commit updates publish the .NET backend into a clean candidate
+directory, validate the complete runtime, and then replace the installed backend
+as one unit. This prevents assemblies removed or upgraded upstream from remaining
+in <code>/infinidysk/app</code> and being loaded alongside the new build.</p>
+<p>After upgrading from an older DUMB version, an existing branch or commit install
+may rebuild once even when its Git revision has not changed. That one-time rebuild
+records the current source-build format and replaces any legacy overlaid output.
+Do not manually delete <code>/infinidysk/app</code> or enable <code>clear_on_update</code> for this recovery;
+use <strong>Install configured release/branch/commit</strong> and let DUMB preserve the previous
+backend until the replacement candidate passes validation.</p>
+<p><code>clear_on_update</code> applies only to replaceable source and runtime files. Before
+any clear or archive merge, DUMB automatically carries forward configured
+exclusions, an in-tree <code>config_file</code>, explicit config/data/database path fields,
+conventional <code>data</code>/<code>db</code> directories, root-level SQLite databases and active
+WAL/SHM/journal sidecars, and symlinked persistent data directories. This guard
+also applies when an older saved configuration omitted those paths from
+<code>exclude_dirs</code>.</p>
+<p>Keep normal backups of application databases and configuration. The update guard
+prevents DUMB's installer from intentionally clearing those files; it is not a
+replacement for backups or application-native database recovery.</p>
+<h3 id="environment-variables">Environment Variables<a class="headerlink" href="#environment-variables" title="Permanent link">&para;</a></h3>
 <ul>
-<li>Days to keep history</li>
-<li>Days to keep hosted images</li>
-<li>Grouping options for history entries</li>
+<li><code>LOG_LEVEL</code>: Logging level for InfiniDysk (defaults to <code>INFO</code>).</li>
+<li><code>WEBDAV_USER</code>: Override the WebDAV username (defaults to <code>admin</code>).</li>
+<li><code>WEBDAV_PASSWORD</code>: Override the WebDAV password.</li>
+<li><code>CONFIG_PATH</code>: Override the InfiniDysk config path (defaults to <code>config_dir</code>).</li>
+<li><code>FRONTEND_BACKEND_API_KEY</code>: Backend API key shared with the frontend.</li>
+<li><code>ASPNETCORE_URLS</code>: Backend bind address (defaults to <code>http://+:&lt;backend_port&gt;</code>).</li>
+<li><code>PORT</code>: Frontend port (defaults to <code>frontend_port</code>).</li>
+<li><code>BACKEND_URL</code>: Frontend-to-backend URL (defaults to <code>http://127.0.0.1:&lt;backend_port&gt;</code>).</li>
+</ul>
+<div class="admonition danger">
+<p class="admonition-title">Protect API keys</p>
+<p><code>FRONTEND_BACKEND_API_KEY</code> grants backend access. Treat it like a secret and avoid committing it to source control.</p>
+</div>
+<hr />
+<h2 id="integration-with-dumb">Integration with DUMB<a class="headerlink" href="#integration-with-dumb" title="Permanent link">&para;</a></h2>
+<p>When InfiniDysk starts, DUMB performs several automation steps:</p>
+<ul>
+<li>Syncs Arr instance details into the InfiniDysk database</li>
+<li>Ensures API categories exist for Arr integrations</li>
+<li>Creates <code>/mnt/debrid/infinidysk-symlinks/&lt;category&gt;</code> roots</li>
+<li>Updates Arr permissions and root folders</li>
+<li>Adds or updates a download client named <code>InfiniDysk</code> in Arr</li>
+</ul>
+<p>The Arr instance list is stored in InfiniDysk’s SQLite config under <code>arr.instances</code>, so DUMB can merge user edits with auto-detected instances.</p>
+<div class="admonition info">
+<p class="admonition-title">Startup timing</p>
+<p>If the InfiniDysk backend is not reachable yet, DUMB retries the download-client setup shortly after startup.</p>
+</div>
+<h3 id="database-migration-startup">Database migration startup<a class="headerlink" href="#database-migration-startup" title="Permanent link">&para;</a></h3>
+<p>DUMB starts the InfiniDysk frontend before running the blocking database migration.
+This is the default launch behavior and lets the Web UI show InfiniDysk's live
+<strong>Database maintenance in progress</strong> page, including migration steps, progress,
+and elapsed time, even when a large database takes a long time to migrate.</p>
+<p>After a successful migration, DUMB starts the normal backend and the page reloads
+into InfiniDysk when it becomes healthy. If migration fails, DUMB keeps the frontend
+alive through InfiniDysk's brief failure-display window, then stops it and exits the
+InfiniDysk process with the migration's non-zero exit code. No separate setting is
+required.</p>
+<h3 id="arr-core_service-setting">Arr <code>core_service</code> setting<a class="headerlink" href="#arr-core_service-setting" title="Permanent link">&para;</a></h3>
+<p>For Sonarr/Radarr/Lidarr/Whisparr instances you want wired to InfiniDysk, set
+<code>core_service</code> to <code>infinidysk</code> or include it in a list:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">&quot;core_service&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;infinidysk&quot;</span>
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><span class="nt">&quot;core_service&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;decypharr&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;infinidysk&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;altmount&quot;</span><span class="p">]</span>
+</code></pre></div>
+<p>This tells DUMB to auto-configure Arr integration around InfiniDysk’s WebDAV and download-client workflows.
+See <a href="../../../reference/core-service/">Core Service Routing</a> for how <code>core_service</code> affects automation.</p>
+<h3 id="1-rclone-webdav-mount">1. rclone WebDAV Mount<a class="headerlink" href="#1-rclone-webdav-mount" title="Permanent link">&para;</a></h3>
+<p>Create a dedicated rclone instance for InfiniDysk and point it at the WebDAV endpoint:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">&quot;rclone&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;instances&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;InfiniDysk&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">&quot;enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;core_service&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;infinidysk&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;process_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;rclone w/ InfiniDysk&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;suppress_logging&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;log_level&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;INFO&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;key_type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;InfiniDysk&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;zurg_enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;decypharr_enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;mount_dir&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/mnt/debrid&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;mount_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;infinidysk&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;config_dir&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/config&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;config_file&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/config/rclone.config&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;log_file&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/log/rclone_w_infinidysk.log&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;zurg_config_file&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;cache_dir&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/cache&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;command&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[],</span>
+<span class="w">      </span><span class="nt">&quot;api_key&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&quot;</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>When <code>key_type</code> is set to <code>InfiniDysk</code>, DUMB configures rclone to use:</p>
+<ul>
+<li><code>http://127.0.0.1:&lt;frontend_port&gt;/</code> as the WebDAV URL</li>
+<li><code>WEBDAV_USER</code> / <code>WEBDAV_PASSWORD</code> (or the values stored in the InfiniDysk DB)</li>
+<li>an rclone RC listener on the first available port starting at <code>5572</code></li>
+</ul>
+<p>DUMB reserves RC ports already assigned to other managed rclone instances and
+AltMount, and also checks active listeners before selecting the port. On first
+setup, DUMB enables <strong>Settings -&gt; Rclone Server</strong> in InfiniDysk and points it at the
+local RC listener so WebDAV changes can invalidate rclone's VFS directory cache.
+Later InfiniDysk UI changes to the RC enablement, host, username, or password are
+preserved. A saved <code>--rc-addr</code> and <code>--dir-cache-time</code> in the rclone command are
+also retained when they remain valid.</p>
+<p>Default rclone mount path (if not overridden) is:</p>
+<div class="highlight"><pre><span></span><code>/mnt/debrid/infinidysk
+</code></pre></div>
+<h4 id="streaming-optimization">Streaming optimization<a class="headerlink" href="#streaming-optimization" title="Permanent link">&para;</a></h4>
+<p>When the backend advertises <code>rclone_optimizer_infinidysk</code>, open the dedicated
+InfiniDysk-backed <strong>rclone service page</strong> and select <strong>Rclone Optimizer</strong>. The primary
+job indicator, content picker, live measurements, report, apply, and rollback
+controls belong to rclone because those are rclone settings. The InfiniDysk page only
+shows a contextual link while an associated rclone test is active.</p>
+<p>The test does pull content through InfiniDysk's authenticated WebDAV server and the
+configured Usenet providers. It also consumes InfiniDysk Overview and stream-trace API
+data while rclone RC and DUMB host metrics describe the mount and system side.
+Review <a href="../../../features/rclone-optimizer/">Rclone Streaming Optimizer</a> before
+testing, especially the provider traffic and concurrency limits.</p>
+<h3 id="2-arr-integration-sonarrradarr">2. Arr Integration (Sonarr/Radarr)<a class="headerlink" href="#2-arr-integration-sonarrradarr" title="Permanent link">&para;</a></h3>
+<p>Set <code>core_service</code> to <code>infinidysk</code> (or include <code>infinidysk</code> in a list) for the Sonarr and
+Radarr instances you want wired to InfiniDysk:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">&quot;sonarr&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;instances&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;Default&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">&quot;enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;core_service&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;infinidysk&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;port&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">8989</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">},</span>
+<span class="nt">&quot;radarr&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;instances&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;Default&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">&quot;enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;core_service&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;infinidysk&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;port&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">7878</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>DUMB will:</p>
+<ul>
+<li>Create symlink roots at <code>/mnt/debrid/infinidysk-symlinks/&lt;category&gt;</code></li>
+<li>Configure InfiniDysk to recognize these paths</li>
+<li>Update Arr permissions (enable chmod + set folder/file modes)</li>
+<li>Attempt to add an <code>infinidysk</code> download client in the Arrs using their API keys</li>
+</ul>
+<p>When <code>core_service</code> includes both <code>decypharr</code> and <code>infinidysk</code>, the root folder base
+shifts to <code>/mnt/debrid/combined_symlinks/&lt;category&gt;</code>. Other multi-service
+combinations keep the InfiniDysk symlink root unless another workflow owns its own
+root-folder setup.</p>
+<div class="admonition info">
+<p class="admonition-title">Automatic vs manual wiring</p>
+<p>When <code>core_service</code> is set to <code>infinidysk</code> (or includes it), DUMB
+automatically configures download clients, root folders, and permissions.
+If <code>core_service</code> includes both <code>decypharr</code> and <code>infinidysk</code>, the Arr root folder
+base switches to <code>/mnt/debrid/combined_symlinks/&lt;category&gt;</code>.
+Manual setup is only needed when <code>core_service</code> is blank or you want to override
+the combined workflow wiring.</p>
+</div>
+<h3 id="category-mapping">Category mapping<a class="headerlink" href="#category-mapping" title="Permanent link">&para;</a></h3>
+<p>By default, DUMB maps Arr types to categories:</p>
+<table>
+<thead>
+<tr>
+<th>Arr service</th>
+<th>Default category</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Radarr</td>
+<td><code>movies</code></td>
+</tr>
+<tr>
+<td>Sonarr</td>
+<td><code>tv</code></td>
+</tr>
+<tr>
+<td>Lidarr</td>
+<td><code>music</code></td>
+</tr>
+<tr>
+<td>Whisparr</td>
+<td><code>whisparr</code></td>
+</tr>
+</tbody>
+</table>
+<p>Instance names are slugified into categories if present (for example, <code>Radarr 4K</code> becomes <code>radarr-4k</code>).</p>
+<hr />
+<h2 id="accessing-the-ui">Accessing the UI<a class="headerlink" href="#accessing-the-ui" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Navigate to: <code>http://&lt;host&gt;:&lt;frontend_port&gt;</code> (default port <code>3000</code>)</li>
+<li>WebDAV endpoint: <code>http://&lt;host&gt;:&lt;frontend_port&gt;/</code></li>
+</ul>
+<div class="admonition warning">
+<p class="admonition-title">Port conflicts and auto-shift</p>
+<p>InfiniDysk defaults (<code>3000</code>/<code>8080</code>) overlap with Riven defaults. DUMB can auto-shift
+conflicting ports at container startup or during the onboarding core-service
+start flow, updating <code>dumb_config.json</code> accordingly.
+Per-service stop/start/restart does not re-run port conflict resolution, so fix
+conflicts manually before restarting a single service.</p>
+</div>
+<hr />
+<h2 id="troubleshooting-tips">Troubleshooting Tips<a class="headerlink" href="#troubleshooting-tips" title="Permanent link">&para;</a></h2>
+<h3 id="infinidysk-starts-but-its-port-is-already-open">InfiniDysk starts but its port is already open<a class="headerlink" href="#infinidysk-starts-but-its-port-is-already-open" title="Permanent link">&para;</a></h3>
+<p>The maintained InfiniDysk fork serves a controlled migration status responder while
+blocking database migrations run. During that phase the backend port can accept
+connections, but <code>/health</code> returns HTTP <code>503</code> with
+<code>{"status":"migrating"}</code>. DUMB's service health shows <strong>Starting</strong> and keeps
+stack readiness open until InfiniDysk's real backend returns <code>Healthy</code>.</p>
+<p>This is not an Auto-restart failure. Do not repeatedly restart or interrupt a
+legitimate migration. Open InfiniDysk's embedded UI to view its migration progress.
+If the state never advances, inspect InfiniDysk logs and available storage before
+deciding whether recovery is required.</p>
+<h3 id="compare-infinidysk-performance">Compare InfiniDysk performance<a class="headerlink" href="#compare-infinidysk-performance" title="Permanent link">&para;</a></h3>
+<p>Open the InfiniDysk service page's <strong>AI Assist</strong> tab and choose <strong>Performance</strong> to compare a selected window with the previous matching period or with the period before the latest DUMB-saved setting change.</p>
+<p>In addition to generic logs and process metrics, DUMB can read the maintained fork's <code>metrics.sqlite</code> and <code>db.sqlite</code> in read-only mode. The evidence includes queue worker settings, segment success/missing/error/retry rates, provider latency, read-session activity, queue completion/failure timing, long-running queue processors, and busy-period throughput.</p>
+<p>Use <strong>Preview bundle</strong> first to confirm native telemetry is available and check the exact coverage. These metrics do not measure Plex click-to-first-frame latency, so playback-start conclusions should remain qualified unless Plex-side timing is correlated separately.</p>
+<p>See <a href="../../../features/ai-assistant/#infinidysk-native-evidence">AI Assistant</a> for the full evidence and safety model.</p>
+<h3 id="assess-sqlite-pressure">Assess SQLite pressure<a class="headerlink" href="#assess-sqlite-pressure" title="Permanent link">&para;</a></h3>
+<p>InfiniDysk currently stores its operational and metrics data in SQLite. DUMB can optionally monitor both databases from <strong>Metrics → Settings → Database Health Monitoring</strong> or the InfiniDysk service page's <strong>Database Health</strong> panel.</p>
+<p>Start with <strong>Standard / passive</strong> mode and collect through normal imports, health checks, and playback. Use <strong>Enhanced / read-only probes</strong> when you also want bounded SQLite metadata latency. Repeated lock/busy/timeout errors, sustained WAL growth, slow probes, or network-filesystem placement are stronger reasons to investigate PostgreSQL than database size alone. See <a href="../../../features/metrics/#database-health-monitoring">Metrics Collection</a> for the safety boundary and interpretation guidance.</p>
+<div class="admonition warning">
+<p class="admonition-title">Permission changes</p>
+<p>DUMB updates Arr media-management permissions to enable chmod operations (folder <code>777</code>, file <code>666</code>).
+If you manage permissions manually, review these settings after integration.</p>
+</div>
+<ul>
+<li>If rclone fails to authenticate, verify <code>WEBDAV_USER</code>/<code>WEBDAV_PASSWORD</code> and restart the container.</li>
+<li>If Arr download clients are not created, confirm each Arr instance is enabled and has a readable <code>config.xml</code> for API key discovery.</li>
+<li>If Arr root folders are missing, verify <code>core_service</code> includes <code>infinidysk</code> and the Arr API is reachable.</li>
+<li>Every release install automatically tries InfiniDysk's matching verified Linux
+  x64/ARM64 prebuilt archive first. If the archive is absent, has no published
+  SHA-256 digest, fails validation, or is not available for the current
+  architecture, DUMB keeps the live runtime untouched and automatically falls
+  back to the source build. This behavior is inherent and has no user-facing
+  toggle. The moving <code>prerelease</code> selector resolves and tracks the newest GitHub
+  prerelease through the same GitHub prerelease-list flow used by CLI Debrid.
+  Its installed marker is <code>&lt;tag&gt;-&lt;short-sha&gt;</code>; update checks resolve the current
+  tag commit before comparing, so an unchanged prerelease is reported as current
+  while a tag moved to a different commit remains detectable.
+  Source fallback resolves the selected tag to its immutable commit before
+  downloading; branch/commit installs use an on-demand managed .NET SDK.
+  DUMB merges the InfiniDysk-specific build variables with the container environment so system tools
+  remain available, and invokes <code>/bin/bash</code> explicitly when installing the SDK.
+  An error such as <code>No such file or directory: 'bash'</code> indicates an image that
+  predates this fix and should be retested after pulling a fixed tag and
+  recreating the container.</li>
+<li>Check <code>/log</code> for InfiniDysk startup errors, and ensure <code>frontend_port</code>/<code>backend_port</code> are not already in use.</li>
 </ul>
 <hr />
-<h2 id="tips">Tips<a class="headerlink" href="#tips" title="Permanent link">&para;</a></h2>
+<h2 id="migration-from-nzbdav">Migration from NzbDAV<a class="headerlink" href="#migration-from-nzbdav" title="Permanent link">&para;</a></h2>
+<p>Fresh DUMB installations use the canonical <code>infinidysk</code> service key,
+<strong>InfiniDysk</strong> process name, <code>INFINIDYSK_*</code> configuration prefix,
+<code>/infinidysk</code> runtime root, <code>/mnt/debrid/infinidysk</code> mount, and
+<code>/mnt/debrid/infinidysk-symlinks</code> library root.</p>
+<p>Existing installations are not silently moved. DUMB accepts the legacy
+<code>nzbdav</code> key, dependency tokens, paths, and <code>NZBDAV_*</code> variables, normalizes
+them in memory, and continues writing the legacy identity back to disk until
+the user opts in. If both top-level service keys are present, DUMB refuses to
+guess which entry owns the existing data.</p>
+<p>The dashboard presents existing installations with <strong>Review migration</strong> and
+<strong>Remind me later</strong>. The reminder is stored by the backend, so it applies across
+browsers and reappears after seven days.</p>
+<div class="admonition danger">
+<p class="admonition-title">Create and verify an independent backup first</p>
+<p>Before accepting either migration path, back up the DUMB configuration,
+InfiniDysk/NzbDAV state, Arr and Prowlarr databases, affected media-server
+configuration, and the symlink library to storage outside the paths DUMB
+will migrate. Confirm that the backup is readable and restorable. DUMB
+creates a private rollback bundle during migration, but that bundle is a
+recovery aid—not a replacement for an independent backup. The dashboard
+requires an explicit acknowledgement of this backup before it enables
+<strong>Migrate now</strong>.</p>
+</div>
+<p>The available compatibility cutover changes the persisted service identity and
+managed process name to InfiniDysk. It can also rename DUMB-generated attached
+instance/process labels such as <code>Radarr NzbDAV</code> to <code>Radarr InfiniDysk</code>. Before
+writing those changes, DUMB saves a private copy of the complete configuration
+under <code>/config/migrations/infinidysk-backups</code>. Saved dashboard ordering,
+keyboard shortcuts, and notification service filters follow any renamed
+process labels. It does not change:</p>
 <ul>
-<li>Enable the "Notify on concurrent streams" option to monitor account sharing.</li>
-<li>Use the API to integrate Tautulli data with other services or dashboards.</li>
-<li>Export statistics regularly for backup purposes.</li>
-<li>The "Recently Added" notification is useful for announcing new content to users.</li>
-<li>Logs can be viewed via DUMB's Frontend or at <code>/tautulli/data/logs/tautulli.log</code>.</li>
+<li><code>/nzbdav</code> or another existing runtime path</li>
+<li><code>/mnt/debrid/nzbdav</code> or <code>/mnt/debrid/nzbdav-symlinks</code></li>
+<li>Arr categories, root folders, item paths, tags, or tag IDs</li>
+<li>media-server library paths</li>
+<li>existing symlink targets</li>
 </ul>
+<p>The exact former DUMB repository defaults are updated to
+<a href="https://github.com/infinidysk/infinidysk"><code>infinidysk/infinidysk</code></a> so installs
+and updates continue to resolve; intentional custom forks remain untouched.
+Restart DUMB after accepting the compatibility cutover when the service is
+enabled.</p>
+<p>The optional <strong>Migrate the complete InfiniDysk namespace</strong> path performs the
+remaining cutover as one guarded operation. It is not enabled until its
+preflight passes. The preflight makes no changes and checks:</p>
+<ul>
+<li>InfiniDysk has no active reads;</li>
+<li>linked Arr queues are empty and their APIs are reachable;</li>
+<li>every enabled InfiniDysk-linked rclone, Radarr, Sonarr, Lidarr, Whisparr,
+  NeutArr, Profilarr, and Seerr instance is inventoried, including singular,
+  list, and combined <code>core_service</code>/<code>core_services</code> values;</li>
+<li>enabled Prowlarr instances are reachable so their Arr application
+  connections and the shared legacy <code>nzbdav</code> tag can be inventoried;</li>
+<li>affected Plex, Jellyfin, and Emby servers are idle and their library APIs
+  are reachable;</li>
+<li>destination paths do not contain conflicting data;</li>
+<li>active mounts can be detached and every filesystem move is an atomic,
+  rollback-safe rename; and</li>
+<li>every detected legacy path is under a supported DUMB-managed root. This
+  includes generated attached-service config and log paths such as
+  <code>/radarr/nzbdav</code> and <code>/log/rclone_w_nzbdav.log</code>; paths outside managed roots
+  remain blocked for manual review.</li>
+</ul>
+<p>Before downtime begins, DUMB stores the complete DUMB configuration, relevant
+application configuration/database files, Arr, Prowlarr, and media-library API
+snapshots, scan-guard state, and a symlink manifest in a private mode-<code>0700</code>
+bundle under <code>/config/migrations/infinidysk-backups</code>. The symlink snapshot
+catalogs link paths and target strings without checking target existence, so
+backup cannot trigger reads or metadata waits through the active rclone/FUSE
+mount.</p>
+<p>These internal snapshots are designed to reverse this specific cutover. They
+cannot protect against pre-existing corruption, failure of the storage holding
+both the live data and rollback bundle, or unrelated application writes made
+during the migration.</p>
+<p>When applied, DUMB stops affected services in downstream-first order, detaches
+the old rclone mount, moves the runtime/mount/symlink/log paths plus discovered
+DUMB-managed attached-service paths, rewrites symlink targets and InfiniDysk
+configuration records, saves the canonical DUMB paths, and restarts the stack
+in provider-first order. Every linked service that was running before the
+cutover is restarted, and DUMB reruns setup for rclone, Arr, NeutArr, Profilarr,
+and Seerr so their generated integration state sees the canonical linkage.
+Services that were stopped remain stopped. Any running service whose DUMB
+process or instance label is renamed is also included even when its linkage is
+otherwise unrelated, preventing an old process from being orphaned under its
+former name. It then updates and verifies linked Arr root folders,
+existing movie/series/artist paths, managed download-client names/categories,
+Arr tag labels (without changing tag IDs), Prowlarr Arr application names and
+core-service tag labels (also without changing IDs), and Plex/Jellyfin/Emby
+library paths. If a stage fails, DUMB stops the partially migrated stack,
+restores paths and saved files, reapplies the previous application references,
+restarts the original process names, and reports whether rollback completed or
+needs attention. Rollback publishes its own path, configuration, service, Arr,
+Prowlarr, media-library, and scan-guard progress stages. A terminal rolled-back
+job finishes at 100% and retains a redacted root-cause message; 100% means the
+recovery workflow finished, not that the requested cutover succeeded.</p>
+<p>Combined relationships remain combined: for example,
+<code>decypharr, nzbdav</code> becomes <code>decypharr,infinidysk</code>; DUMB does not discard the
+Decypharr relationship. Zurg is deliberately not an InfiniDysk migration
+consumer. Its <code>core_service</code> field is used by other workflows and does not make
+Zurg part of this cutover.</p>
+<p>The complete cutover runs as a backend-persisted background job. The migration
+dialog shows the current stage, percentage, and recent stage history. Closing
+the dialog or navigating to another page does not cancel the job; a persistent
+<strong>InfiniDysk migration running</strong> banner shows the latest progress and reopens
+the dialog. Reloading the dashboard reattaches to the same job. If it finishes
+while the dialog is closed, the banner retains the result until it is opened or
+dismissed. The latest persisted result remains reopenable from the InfiniDysk
+service page after a later dashboard reload.</p>
+<p>Do not restart the DUMB container while the migration is active. A backend
+restart cannot safely resume an in-process filesystem/API cutover, so DUMB
+marks the retained job <strong>interrupted</strong> and directs the operator to inspect its
+private backup bundle and current service paths before retrying. Normal dialog
+closure and dashboard navigation do not interrupt it.</p>
+<p>The final paths are <code>/infinidysk</code>, <code>/log/infinidysk.log</code>,
+<code>/mnt/debrid/infinidysk</code>, and
+<code>/mnt/debrid/infinidysk-symlinks</code>. Historical snapshot filenames are retained;
+future scheduled snapshots use <code>infinidysk-{timestamp}.json</code>. DUMB intentionally
+does not launch Arr or media-server scans after success. Review service health,
+then scan the affected libraries so their availability state is refreshed.</p>
+<div class="admonition warning">
+<p class="admonition-title">Preflight must be current</p>
+<p>A passing preflight expires after 30 minutes. DUMB repeats the live queue,
+playback, API, and path checks immediately before the first backup or stop.
+Any changed condition blocks the migration without moving data.</p>
+</div>
 <hr />
 <h2 id="resources">Resources<a class="headerlink" href="#resources" title="Permanent link">&para;</a></h2>
 <ul>
-<li><a href="https://github.com/Tautulli/Tautulli">Tautulli GitHub Repository</a></li>
-<li><a href="https://github.com/Tautulli/Tautulli/wiki">Tautulli Wiki</a></li>
+<li><a href="https://github.com/infinidysk/infinidysk">InfiniDysk repository used by DUMB (default)</a></li>
+<li><a href="https://buymeacoffee.com/hoivikaj">Support the InfiniDysk maintainer</a></li>
+<li><a href="https://github.com/nzbdav/nzbdav">Former maintained NzbDAV repository</a></li>
+<li><a href="https://github.com/nzbdav-dev/nzbdav">Original NzbDAV repository</a></li>
 </ul>
 
 
@@ -5789,7 +6156,7 @@
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../riven-frontend/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Riven Frontend">
+          <a href="../decypharr/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Decypharr">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-arrow-left" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7M19 12H5"/></svg>
@@ -5799,20 +6166,20 @@
                 Previous
               </span>
               <div class="md-ellipsis">
-                Riven Frontend
+                Decypharr
               </div>
             </div>
           </a>
         
         
           
-          <a href="../bazarr/" class="md-footer__link md-footer__link--next" aria-label="Next: Bazarr">
+          <a href="../nzbdav/" class="md-footer__link md-footer__link--next" aria-label="Next: NzbDAV migration">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Bazarr
+                NzbDAV migration
               </div>
             </div>
             <div class="md-footer__button md-icon">

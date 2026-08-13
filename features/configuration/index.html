@@ -2202,6 +2202,8 @@
       
         
       
+        
+      
     
     
     
@@ -2327,7 +2329,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/core/nzbdav/" class="md-nav__link">
+      <a href="../../services/core/infinidysk/" class="md-nav__link">
         
   
   
@@ -2336,7 +2338,37 @@
   <span class="md-ellipsis">
     
   
-    NzbDAV
+    InfiniDysk
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/core/nzbdav/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-replace" viewBox="0 0 24 24"><path d="M14 4a1 1 0 0 1 1-1M15 10a1 1 0 0 1-1-1M21 4a1 1 0 0 0-1-1M21 9a1 1 0 0 1-1 1M3 7l3 3 3-3"/><path d="M6 10V5a2 2 0 0 1 2-2h2"/><rect width="7" height="7" x="3" y="14" rx="1"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    NzbDAV migration
   
 
     
@@ -5398,7 +5430,7 @@ API when you need valid JSON.</p>
     &quot;cli_debrid&quot;: { ... },
     &quot;cli_battery&quot;: { ... },
     &quot;decypharr&quot;: { ... },
-    &quot;nzbdav&quot;: { ... },
+    &quot;infinidysk&quot;: { ... },
     &quot;emby&quot;: { ... },
     &quot;jellyfin&quot;: { ... },
     &quot;lidarr&quot;: { ... },
@@ -5511,7 +5543,7 @@ API when you need valid JSON.</p>
 <li><a href="../../services/optional/cloudflared/">Cloudflared</a></li>
 <li><a href="../../services/core/decypharr/">Decypharr</a></li>
 <li><a href="../../services/core/cli-debrid/">CLI Debrid</a></li>
-<li><a href="../../services/core/nzbdav/">NzbDAV</a></li>
+<li><a href="../../services/core/infinidysk/">InfiniDysk</a></li>
 <li><a href="../../services/core/altmount/">AltMount</a></li>
 <li><a href="../../services/core/plex-media-server/">Plex Media Server</a></li>
 <li><a href="../../services/core/jellyfin/">Jellyfin</a></li>
@@ -5546,7 +5578,7 @@ a comma-separated string, or a list.</p>
 <ul>
 <li><code>""</code> (blank): no core integration</li>
 <li><code>decypharr</code>: route Arr automation through Decypharr</li>
-<li><code>nzbdav</code>: route Arr automation through NzbDAV</li>
+<li><code>infinidysk</code>: route Arr automation through InfiniDysk</li>
 <li><code>altmount</code>: route Arr automation through AltMount</li>
 </ul>
 <p>To combine workflows, use a list or a comma-separated <code>core_service</code>.</p>
@@ -5562,7 +5594,7 @@ a comma-separated string, or a list.</p>
 <div class="highlight"><pre><span></span><code><span class="nt">&quot;radarr&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;instances&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">    </span><span class="nt">&quot;Default&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<span class="w">      </span><span class="nt">&quot;core_service&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;nzbdav&quot;</span>
+<span class="w">      </span><span class="nt">&quot;core_service&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;infinidysk&quot;</span>
 <span class="w">    </span><span class="p">}</span>
 <span class="w">  </span><span class="p">}</span>
 <span class="p">}</span>
@@ -5570,7 +5602,7 @@ a comma-separated string, or a list.</p>
 <div class="highlight"><pre><span></span><code><span class="nt">&quot;whisparr&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;instances&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">    </span><span class="nt">&quot;Combined&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<span class="w">      </span><span class="nt">&quot;core_service&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;decypharr&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;nzbdav&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;altmount&quot;</span><span class="p">]</span>
+<span class="w">      </span><span class="nt">&quot;core_service&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;decypharr&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;infinidysk&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;altmount&quot;</span><span class="p">]</span>
 <span class="w">    </span><span class="p">}</span>
 <span class="w">  </span><span class="p">}</span>
 <span class="p">}</span>

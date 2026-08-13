@@ -2290,6 +2290,8 @@
       
         
       
+        
+      
     
     
     
@@ -2415,7 +2417,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/core/nzbdav/" class="md-nav__link">
+      <a href="../../services/core/infinidysk/" class="md-nav__link">
         
   
   
@@ -2424,7 +2426,37 @@
   <span class="md-ellipsis">
     
   
-    NzbDAV
+    InfiniDysk
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/core/nzbdav/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-replace" viewBox="0 0 24 24"><path d="M14 4a1 1 0 0 1 1-1M15 10a1 1 0 0 1-1-1M21 4a1 1 0 0 0-1-1M21 9a1 1 0 0 1-1 1M3 7l3 3 3-3"/><path d="M6 10V5a2 2 0 0 1 2-2h2"/><rect width="7" height="7" x="3" y="14" rx="1"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    NzbDAV migration
   
 
     
@@ -5548,11 +5580,12 @@ the operator selects <strong>Prune to limit</strong>. See
 <li>Media Library Protection policy and Plex library preferences on Plex, Jellyfin, and Emby pages</li>
 <li>On-demand update checks and auto-update scheduling</li>
 <li>InfiniDysk/NzbDAV install provenance in Updates (verified prebuilt archive or source build, resolved release, and automatic fallback reason)</li>
+<li>An opt-in InfiniDysk migration notice with <strong>Remind me later</strong>, compatibility-only branding, and a guarded complete-namespace preflight/apply path with persistent background progress</li>
 <li>A <strong>Sponsor</strong> action when the backend publishes a support link for the service</li>
 <li>Seerr Sync controls when viewing a Seerr instance</li>
 <li>Symlink Job Center (for symlink-capable services) with active jobs, recent history, retry, and failure clearing</li>
 <li>Guided SQLite-to-PostgreSQL rehearsal/cutover panel on every backend-advertised supported service, with explicit rehearsal/cutover success notices, automatic cutover selection, close-while-active confirmation, and persistent background running/completion indicators</li>
-<li>An <strong>Rclone Optimizer</strong> tab and persistent active-job banner on NzbDAV-backed rclone instances when the backend advertises <code>rclone_optimizer_nzbdav</code>; the NzbDAV page shows only a link to an associated active rclone job</li>
+<li>An <strong>Rclone Optimizer</strong> tab and persistent active-job banner on InfiniDysk-backed rclone instances when the backend advertises <code>rclone_optimizer_infinidysk</code>; the InfiniDysk page shows only a link to an associated active rclone job</li>
 <li>Sidebar operator QoL controls (quick filters, saved views, compact mode, and command palette)</li>
 </ul>
 <hr />
@@ -5579,28 +5612,54 @@ attention indicator on Tools. <strong>Docs</strong> remains available directly i
 <p class="admonition-title">API service controls</p>
 <p>The DUMB API service does not show Start/Stop/Restart controls in the UI.</p>
 </div>
+<h3 id="infinidysk-namespace-migration">InfiniDysk namespace migration<a class="headerlink" href="#infinidysk-namespace-migration" title="Permanent link">&para;</a></h3>
+<p>Legacy NzbDAV installations receive a backend-persisted migration notice. The
+compatibility choice changes identity and optional attached-service labels but
+keeps every path. The complete namespace choice remains locked until <strong>Run
+preflight</strong> confirms empty Arr queues, no active reads/playback/scans, reachable
+Arr/Prowlarr/media APIs, conflict-free destinations, and rollback-safe
+filesystem moves.</p>
+<p>After a passing preflight, the dialog shows filesystem, Arr path/category/tag,
+Prowlarr application/tag, and media-library change counts and requires
+acknowledgement of service downtime, the normal
+post-cutover library scan, and rollback limits. Applying remains unavailable if
+the token expires or any live condition changes. A user who previously chose
+compatibility-only can reopen the full migration from the InfiniDysk service
+page; <strong>Remind me later</strong> remains available before the identity cutover.</p>
+<p>The complete namespace cutover starts a backend-persisted job. Its dialog shows
+stage, percentage, and recent progress events. Closing the dialog prompts that
+the operation will continue, then promotes an <strong>InfiniDysk migration running</strong>
+banner with <strong>Open progress</strong>. Navigation and browser reloads reattach to the
+same job. A terminal result reached while the dialog is closed remains in a
+dismissible <strong>Open result</strong> banner, and the latest persisted result remains
+reopenable from the InfiniDysk service page after reload. Restarting DUMB
+itself interrupts rather than resumes the job, and
+the retained result directs the operator to inspect the migration backup before
+retrying.</p>
+<p>See <a href="../../services/core/infinidysk/#migration-from-nzbdav">InfiniDysk migration</a>
+for the exact paths, backup contents, validation, and rollback behavior.</p>
 <h3 id="reset-remove">Reset / Remove<a class="headerlink" href="#reset-remove" title="Permanent link">&para;</a></h3>
 <p>When the backend advertises <code>service_reset</code>, eligible service pages show <strong>Reset / Remove</strong>. <strong>Reset DUMB configuration</strong> disables the selected target and restores its DUMB defaults without deleting application files. <strong>Remove service files</strong> also clears only the paths listed in the preview; custom instances are removed from <code>dumb_config</code>, while required default instances and single-instance services remain as disabled templates.</p>
 <p>The confirmation dialog identifies shared or custom paths that DUMB will retain, lists references from other configured services, and requires the exact process name. Media mounts, symlink libraries, caches, PostgreSQL databases, external stores, and other service configuration are never removed by this action. See <a href="../../features/service-reset/">Service Reset and Removal</a> before using the file-removal option.</p>
 <h3 id="rclone-optimizer-tab">Rclone Optimizer tab<a class="headerlink" href="#rclone-optimizer-tab" title="Permanent link">&para;</a></h3>
-<p>NzbDAV-backed rclone pages expose active Arr-category content selection, the
+<p>InfiniDysk-backed rclone pages expose active Arr-category content selection, the
 content base and per-category discovery counts, safety limits, live job progress,
 candidate results, warm/cold startup comparison, and explicit apply/rollback
-controls. Safely resolved mount-relative NzbDAV read paths are opened on isolated
+controls. Safely resolved mount-relative InfiniDysk read paths are opened on isolated
 rclone shadow mounts; the production mount is used only for metadata discovery.
-The report labels values as actually varied, fixed constraints, NzbDAV
+The report labels values as actually varied, fixed constraints, InfiniDysk
 recommendations, bundled assumptions, or preserved; shows current-to-tested effective values for every
 candidate; and warns that the winner is a profile-bundle result rather than
 proof that each flag is independently optimal. Unrelated preserved command
 values remain hidden because they can contain credentials. Completed jobs also
 show verified shadow-mount, runtime-directory, and candidate-cache cleanup.
-The NzbDAV recommendation role applies a one-week minimum to
+The InfiniDysk recommendation role applies a one-week minimum to
 <code>--dir-cache-time</code> and <code>--vfs-cache-max-age</code> while retaining any longer existing
-value. It explains that the former relies on NzbDAV RC invalidation and the latter
+value. It explains that the former relies on InfiniDysk RC invalidation and the latter
 is warm-data retention guidance; neither is presented as score-selected. If RC
 is disabled, mismatched, or unreachable, the job notices include a repair/fallback
 warning.
-Each NzbDAV provider-evidence panel always shows the candidate-matched
+Each InfiniDysk provider-evidence panel always shows the candidate-matched
 <strong>Providers</strong>, <strong>Retries</strong>, <strong>Bytes</strong>, <strong>Provider wait</strong>, and <strong>Connection wait</strong>
 aggregate fields. When no retained trace matched—or trace capture was
 unavailable—the fields explicitly show that no value is available instead of
@@ -5661,7 +5720,7 @@ state, and hides the notice. DUMB recognizes both <code>initial_admin_password</
 <ul>
 <li>For multi-instance dependency services (for example <code>rclone</code>, <code>zurg</code>), the graph scopes dependencies to instances linked to the current core service via <code>core_service</code>/<code>core_services</code>. Instance-scoped conditional dependencies are filtered so that only the specific instance associated with the current service is shown -- for example, "Rclone w/ CLID" only shows its specific Zurg instance, not Zurg instances belonging to other rclone configurations.</li>
 <li>If no linked dependency instance exists, the panel reports that mapping gap instead of treating an unrelated instance as valid.</li>
-<li>The panel also infers links from service config relationships (<code>core_service</code>, <code>core_services</code>, <code>wait_for_url</code>, <code>wait_for_dir</code>) so service-specific relationships (for example Seerr, Tautulli, Arr instances tied to Decypharr/NzbDAV/AltMount, or optional access services) can show real dependency edges.</li>
+<li>The panel also infers links from service config relationships (<code>core_service</code>, <code>core_services</code>, <code>wait_for_url</code>, <code>wait_for_dir</code>) so service-specific relationships (for example Seerr, Tautulli, Arr instances tied to Decypharr/InfiniDysk/AltMount, or optional access services) can show real dependency edges.</li>
 <li>Dependency resolution runs on the backend (<code>GET /api/process/dependency-graph</code>) so startup ordering and dependency edges are aligned with backend process/config semantics.</li>
 <li>The dependency graph surfaces <strong>conditional startup dependencies</strong> from the backend startup ordering logic. These are dependencies that only apply when specific services are enabled -- for example, Prowlarr depends on Sonarr/Radarr only when those are enabled; Tautulli depends on Plex only when Plex is enabled; NeutArr depends on arr services only when <code>use_neutarr</code> is enabled on those instances. These appear with the <code>conditional_startup_map</code> signal and are styled the same as other hard runtime dependencies.</li>
 <li>Each dependency edge displays its signal type as a colored badge tag with a tooltip explaining the signal. Signal types include:<ul>
@@ -5940,7 +5999,7 @@ tab appears.</p>
 <li><strong>Full window</strong> toggle</li>
 <li>UI path selector for services with multiple entry points (for example Zilean)</li>
 </ul>
-<p>NzbDAV uses a trailing slash in its embedded UI path to match its frontend routing.</p>
+<p>InfiniDysk uses a trailing slash in its embedded UI path to match its frontend routing.</p>
 <p>DUMB discovers public routes through its authenticated loopback integration
 with TPA. A route must be enabled and match the managed service's target port;
 non-loopback targets must also match the service name. dmbdb never guesses a

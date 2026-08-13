@@ -2075,6 +2075,8 @@
       
         
       
+        
+      
     
     
     
@@ -2203,7 +2205,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../core/nzbdav/" class="md-nav__link">
+      <a href="../../core/infinidysk/" class="md-nav__link">
         
   
   
@@ -2212,7 +2214,37 @@
   <span class="md-ellipsis">
     
   
-    NzbDAV
+    InfiniDysk
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../core/nzbdav/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-replace" viewBox="0 0 24 24"><path d="M14 4a1 1 0 0 1 1-1M15 10a1 1 0 0 1-1-1M21 4a1 1 0 0 0-1-1M21 9a1 1 0 0 1-1 1M3 7l3 3 3-3"/><path d="M6 10V5a2 2 0 0 1 2-2h2"/><rect width="7" height="7" x="3" y="14" rx="1"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    NzbDAV migration
   
 
     
@@ -5417,7 +5449,7 @@
 <li><strong><code>process_name</code></strong>: The label used in logs and process tracking.</li>
 <li><strong><code>suppress_logging</code></strong>: If <code>true</code>, disables log output for this service.</li>
 <li><strong><code>log_level</code></strong>: Logging verbosity level (e.g., <code>DEBUG</code>, <code>INFO</code>).</li>
-<li><strong><code>key_type</code></strong>: The debrid or WebDAV service to use (<code>RealDebrid</code>, <code>AllDebrid</code>, <code>NzbDAV</code>, etc.).</li>
+<li><strong><code>key_type</code></strong>: The debrid or WebDAV service to use (<code>RealDebrid</code>, <code>AllDebrid</code>, <code>InfiniDysk</code>, etc.).</li>
 <li><strong><code>zurg_enabled</code></strong>: Whether Zurg is linked to this rclone mount.</li>
 <li><strong><code>decypharr_enabled</code></strong>: Whether Decypharr is linked to this rclone mount.</li>
 <li><strong><code>mount_dir</code></strong>: The container path where the remote drive is to be mounted.</li>
@@ -5438,7 +5470,7 @@
 <ul>
 <li><strong>Zurg enabled</strong>: API key should be defined in the <strong>Zurg instance</strong>, not the rclone one.</li>
 <li><strong>Decypharr enabled</strong>: API key should be defined in the <strong>Decypharr</strong> config.</li>
-<li><strong>NzbDAV</strong>: Credentials read from <code>WEBDAV_USER</code>/<code>WEBDAV_PASSWORD</code> or NzbDAV database. The rclone <code>api_key</code> field is ignored.</li>
+<li><strong>InfiniDysk</strong>: Credentials read from <code>WEBDAV_USER</code>/<code>WEBDAV_PASSWORD</code> or InfiniDysk database. The rclone <code>api_key</code> field is ignored.</li>
 <li><strong>Direct AllDebrid connection</strong>: <code>api_key</code> must be set in the rclone instance when both <code>decypharr_enabled</code> and <code>zurg_enabled</code> are unset or blank.</li>
 <li><strong>Direct TorBox / TorBox-FTP connection</strong>: Set <code>username</code> to your TorBox email and <code>password</code> to your TorBox account password.</li>
 <li><strong>Direct Premiumize connection</strong>: Set <code>customer_id</code> and <code>api_key</code>.</li>
@@ -5449,7 +5481,7 @@
 <ul>
 <li>Each <code>instance name</code> is <strong>unique</strong></li>
 <li>Each <code>process_name</code> is <strong>unique</strong></li>
-<li>The <code>key_type</code> must match the type of Debrid or WebDAV service used (e.g., <code>RealDebrid</code>, <code>AllDebrid</code>, <code>TorBox</code>, <code>Premiumize</code>, <code>NzbDAV</code>)</li>
+<li>The <code>key_type</code> must match the type of Debrid or WebDAV service used (e.g., <code>RealDebrid</code>, <code>AllDebrid</code>, <code>TorBox</code>, <code>Premiumize</code>, <code>InfiniDysk</code>)</li>
 <li>Direct WebDAV/FTP credential fields such as <code>username</code>, <code>password</code>, and <code>customer_id</code> are valid rclone instance keys and should persist across restarts.</li>
 </ul>
 <div class="admonition example">
@@ -5556,41 +5588,41 @@ This enables advanced control without modifying CLI or config files.</p>
 <p>For more info, see <a href="https://rclone.org/docs/#environment-variables">rclone docs</a>.</p>
 <hr />
 <h2 id="optimizing-rclone-for-media-server-usage">Optimizing rclone for Media Server Usage<a class="headerlink" href="#optimizing-rclone-for-media-server-usage" title="Permanent link">&para;</a></h2>
-<p>For an NzbDAV-backed rclone instance, DUMB can benchmark bounded profiles against
+<p>For an InfiniDysk-backed rclone instance, DUMB can benchmark bounded profiles against
 the live WebDAV/provider path and produce a deployment-specific report. Open the
 <strong>Rclone Optimizer</strong> tab on that rclone service page. The job uses an isolated
 read-only shadow mount/cache, measures first byte and startup-buffer time, and
 never applies its recommendation automatically. The report shows the complete
 optimizer-relevant effective settings for every candidate, distinguishing
-actually varied streaming values from fixed constraints, NzbDAV recommendations,
+actually varied streaming values from fixed constraints, InfiniDysk recommendations,
 bundled assumptions, and preserved flags; it also verifies that shadow mounts and test artifacts are
 removed before a job completes. Content discovery scans the
-NzbDAV <code>content/&lt;category&gt;</code> paths DUMB derives from enabled Arr instances, but
+InfiniDysk <code>content/&lt;category&gt;</code> paths DUMB derives from enabled Arr instances, but
 measured reads use safely resolved mount-relative paths on isolated shadow mounts
-instead of the production mount. Stop the media server and wait until NzbDAV has
+instead of the production mount. Stop the media server and wait until InfiniDysk has
 no imports, library ingestion, or unrelated active reads before starting a test;
 concurrent activity skews results and increases provider load. See the
 <a href="../../../features/rclone-optimizer/">Rclone Streaming Optimizer</a> guide for content
 selection, provider-risk limits, reports, apply, and rollback behavior. The
 provider-evidence report always exposes its aggregate Providers, Retries, Bytes,
 Provider wait, and Connection wait fields, including an explicit unavailable
-state when NzbDAV did not retain a candidate-matched trace. Applying or rolling
+state when InfiniDysk did not retain a candidate-matched trace. Applying or rolling
 back settings verifies removal of the previous production FUSE mount before
 rclone is restarted and requires the replacement mount to remain accessible.
-For NzbDAV, fresh DUMB-generated commands default both <code>--dir-cache-time</code> and
+For InfiniDysk, fresh DUMB-generated commands default both <code>--dir-cache-time</code> and
 <code>--vfs-cache-max-age</code> to <code>1w</code>. The optimizer recommends at least that value and
-preserves longer existing values. The long directory cache relies on NzbDAV's
+preserves longer existing values. The long directory cache relies on InfiniDysk's
 RC notifications to invalidate changed paths; the report warns when that RC
 connection is disabled, mismatched, or unreachable. The long VFS cache age keeps
 recently streamed data warm, while <code>--vfs-cache-max-size</code> continues to bound disk
-use. These are NzbDAV operational recommendations, not benchmark-scored values.</p>
+use. These are InfiniDysk operational recommendations, not benchmark-scored values.</p>
 <p>To improve streaming performance and reduce excessive bandwidth usage when using rclone with media servers (e.g., Plex, Jellyfin, Emby), consider tuning the mount behavior using additional flags.</p>
 <div class="admonition note">
 <p class="admonition-title">The examples below are generic</p>
 <p>The <code>10s</code> directory-cache and <code>6h</code> VFS-cache-age values below are generic
-examples for older or non-NzbDAV mounts. Do not copy those shorter values
-over DUMB's NzbDAV defaults. For an NzbDAV-backed mount, use the optimizer's
-<code>1w</code> minimum guidance (or retain a longer existing value) and keep NzbDAV's
+examples for older or non-InfiniDysk mounts. Do not copy those shorter values
+over DUMB's InfiniDysk defaults. For an InfiniDysk-backed mount, use the optimizer's
+<code>1w</code> minimum guidance (or retain a longer existing value) and keep InfiniDysk's
 rclone RC notification connection healthy.</p>
 </div>
 <div class="admonition warning">

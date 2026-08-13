@@ -2061,6 +2061,8 @@
       
         
       
+        
+      
     
     
     
@@ -2186,7 +2188,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/core/nzbdav/" class="md-nav__link">
+      <a href="../../services/core/infinidysk/" class="md-nav__link">
         
   
   
@@ -2195,7 +2197,37 @@
   <span class="md-ellipsis">
     
   
-    NzbDAV
+    InfiniDysk
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/core/nzbdav/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-replace" viewBox="0 0 24 24"><path d="M14 4a1 1 0 0 1 1-1M15 10a1 1 0 0 1-1-1M21 4a1 1 0 0 0-1-1M21 9a1 1 0 0 1-1 1M3 7l3 3 3-3"/><path d="M6 10V5a2 2 0 0 1 2-2h2"/><rect width="7" height="7" x="3" y="14" rx="1"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    NzbDAV migration
   
 
     
@@ -3978,6 +4010,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#infinidysk-migration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        InfiniDysk migration
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#related-files" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -5234,6 +5277,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#infinidysk-migration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        InfiniDysk migration
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#related-files" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -5487,13 +5541,13 @@ difference between an application starting, degraded, and restart-worthy
 unhealthy state matters.</p>
 <h4 id="example-response_3">Example Response:<a class="headerlink" href="#example-response_3" title="Permanent link">&para;</a></h4>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
-<span class="w">  </span><span class="nt">&quot;process_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;NzbDAV&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;process_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;InfiniDysk&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;running&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;healthy&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;health_status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;starting&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;health_reason&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;NzbDAV reports migrating&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;health_reason&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;InfiniDysk reports migrating&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;health_details&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<span class="w">    </span><span class="nt">&quot;probe&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;NzbDAV backend health&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;probe&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;InfiniDysk backend health&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;endpoint&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/health&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;supported&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;http_status&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">503</span><span class="p">,</span>
@@ -5513,16 +5567,16 @@ terminal failure summaries.</p>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;phase&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;stabilizing&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;terminal&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;expected_services&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;DUMB API&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;DUMB Frontend&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;NzbDAV&quot;</span><span class="p">],</span>
+<span class="w">  </span><span class="nt">&quot;expected_services&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;DUMB API&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;DUMB Frontend&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;InfiniDysk&quot;</span><span class="p">],</span>
 <span class="w">  </span><span class="nt">&quot;services&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">    </span><span class="nt">&quot;DUMB API&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">&quot;state&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ready&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;reason&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">},</span>
 <span class="w">    </span><span class="nt">&quot;DUMB Frontend&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">&quot;state&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ready&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;reason&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">},</span>
-<span class="w">    </span><span class="nt">&quot;NzbDAV&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;InfiniDysk&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">      </span><span class="nt">&quot;state&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;starting&quot;</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;reason&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;NzbDAV reports migrating&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;reason&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;InfiniDysk reports migrating&quot;</span><span class="p">,</span>
 <span class="w">      </span><span class="nt">&quot;health_status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;starting&quot;</span><span class="p">,</span>
 <span class="w">      </span><span class="nt">&quot;health_details&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<span class="w">        </span><span class="nt">&quot;probe&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;NzbDAV backend health&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;probe&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;InfiniDysk backend health&quot;</span><span class="p">,</span>
 <span class="w">        </span><span class="nt">&quot;endpoint&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/health&quot;</span><span class="p">,</span>
 <span class="w">        </span><span class="nt">&quot;http_status&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">503</span><span class="p">,</span>
 <span class="w">        </span><span class="nt">&quot;reported_status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;migrating&quot;</span>
@@ -5588,7 +5642,7 @@ without clearing or bypassing it.</p>
 <code>configured_target_installed</code>. Clients can use these fields to offer the
 matching configured-target installation action only when it is needed.</p>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
-<span class="w">  </span><span class="nt">&quot;process_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;NzbDAV&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;process_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;InfiniDysk&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;allow_override&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;target&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;configured&quot;</span>
 <span class="p">}</span>
@@ -5597,7 +5651,7 @@ matching configured-target installation action only when it is needed.</p>
 <code>update_timing_metrics</code> is advertised:</p>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;updated&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;message&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Updated NzbDAV to v0.10.0-rc.2.&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;message&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Updated InfiniDysk to v0.10.0-rc.2.&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;install_duration_seconds&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">97.4</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;downtime_seconds&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">21.8</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;downtime_status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;completed&quot;</span><span class="p">,</span>
@@ -5710,7 +5764,7 @@ overrides. Clients should show update timing only when
 <li>inferred links from <code>core_service</code>/<code>core_services</code></li>
 <li>inferred links from <code>wait_for_url</code>/<code>wait_for_dir</code> entries (including localhost port matching)</li>
 <li>inferred links from <code>wait_for_mounts</code> by matching required mount paths to provider service mount points</li>
-<li>rclone provider links (<code>zurg_enabled</code>, <code>decypharr_enabled</code>, <code>key_type=nzbdav</code>) to reflect WebDAV provider dependencies directly</li>
+<li>rclone provider links (<code>zurg_enabled</code>, <code>decypharr_enabled</code>, <code>key_type=infinidysk</code>) to reflect WebDAV provider dependencies directly</li>
 <li>non-core hard dependency map for service-specific startup requirements (for example <code>riven_frontend -&gt; riven_backend</code>, <code>zilean -&gt; postgres</code>, <code>pgadmin -&gt; postgres</code>)</li>
 <li>conditional startup dependencies from the backend startup ordering logic -- config-aware dependencies like <code>tautulli -&gt; plex</code> (when plex is enabled), <code>bazarr -&gt; sonarr/radarr</code> (when those Arrs are enabled), <code>prowlarr -&gt; sonarr/radarr</code> (when those Arrs are enabled), <code>neutarr -&gt; sonarr</code> (when Sonarr has <code>use_neutarr</code> enabled), etc. For instance-scoped services (<code>rclone</code>, <code>zurg</code>), conditional deps are filtered per-instance so that only the specific associated instances are shown (for example, a rclone instance with <code>zurg_enabled</code> only shows its own zurg instance, not zurg instances belonging to other rclone configurations)</li>
 <li>documented integration links (soft linkage, <code>scope=all</code> only) -- for example <code>seerr -&gt; sonarr/radarr</code> request routing</li>
@@ -5754,7 +5808,7 @@ prerequisite/dependent stages around the selected service.</p>
 <p>Returns optional services. You can pass <code>core_service</code> and <code>optional_services</code> query params to tailor the list.</p>
 <hr />
 <h3 id="post-processsymlink-repair"><code>POST /process/symlink-repair</code><a class="headerlink" href="#post-processsymlink-repair" title="Permanent link">&para;</a></h3>
-<p>Runs symlink target rewrites for service symlink trees (Decypharr, NzbDAV, CLI Debrid, Riven).</p>
+<p>Runs symlink target rewrites for service symlink trees (Decypharr, InfiniDysk, CLI Debrid, Riven).</p>
 <p>Use this endpoint when mount paths change and existing symlink targets need to be rewritten.</p>
 <h4 id="request-body_3">Request Body:<a class="headerlink" href="#request-body_3" title="Permanent link">&para;</a></h4>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
@@ -5790,7 +5844,7 @@ prerequisite/dependent stages around the selected service.</p>
 <li><code>overwrite_existing</code> controls behavior when a destination symlink already exists during root migration.</li>
 <li><code>copy_instead_of_move</code> (root migration mode) creates destination symlinks and keeps source symlinks in place.</li>
 <li>If <code>roots</code> is omitted, backend defaults are used:
-  <code>/mnt/debrid/decypharr_symlinks</code>, <code>/mnt/debrid/nzbdav-symlinks</code>,
+  <code>/mnt/debrid/decypharr_symlinks</code>, <code>/mnt/debrid/infinidysk-symlinks</code>,
   <code>/mnt/debrid/combined_symlinks</code>, <code>/mnt/debrid/clid_symlinks</code>, and
   <code>riven_backend.symlink_library_path</code> when configured.</li>
 <li><code>backup_path</code> is written only for non-dry-run operations with changes.</li>
@@ -5920,10 +5974,10 @@ prerequisite/dependent stages around the selected service.</p>
 <h3 id="post-processpostgres-migrationstart"><code>POST /process/postgres-migration/start</code><a class="headerlink" href="#post-processpostgres-migrationstart" title="Permanent link">&para;</a></h3>
 <p>Queues a persisted rehearsal or cutover job.</p>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
-<span class="w">  </span><span class="nt">&quot;process_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Sonarr NzbDAV&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;process_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Sonarr InfiniDysk&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;mode&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;rehearsal&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;include_logs&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;confirmation&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;MIGRATE Sonarr NzbDAV&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;confirmation&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;MIGRATE Sonarr InfiniDysk&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;acknowledge_unsupported&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;acknowledge_backup&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;acknowledge_target_reset&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span>
@@ -5939,7 +5993,7 @@ prerequisite/dependent stages around the selected service.</p>
 <h3 id="post-processpostgres-migrationrollback"><code>POST /process/postgres-migration/rollback</code><a class="headerlink" href="#post-processpostgres-migrationrollback" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;job_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;example-job-id&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;confirmation&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ROLLBACK Sonarr NzbDAV&quot;</span>
+<span class="w">  </span><span class="nt">&quot;confirmation&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ROLLBACK Sonarr InfiniDysk&quot;</span>
 <span class="p">}</span>
 </code></pre></div>
 <p>Restores the job's preserved application configuration when applicable, persists <code>postgres_enabled: false</code>, and restarts the service against SQLite when it was running. This does not reverse-copy changes made after PostgreSQL cutover.</p>
@@ -5979,8 +6033,8 @@ configured persistent cache directory. Clients should gate this endpoint on the
 <hr />
 <h2 id="rclone-streaming-optimizer">Rclone streaming optimizer<a class="headerlink" href="#rclone-streaming-optimizer" title="Permanent link">&para;</a></h2>
 <p>These authenticated process routes are available when capability
-<code>rclone_optimizer_nzbdav</code> is true. Only enabled DUMB-managed rclone instances
-whose <code>key_type</code> is <code>NzbDAV</code> are eligible.</p>
+<code>rclone_optimizer_infinidysk</code> is true. Only enabled DUMB-managed rclone instances
+whose <code>key_type</code> is <code>InfiniDysk</code> are eligible.</p>
 <table>
 <thead>
 <tr>
@@ -5993,12 +6047,12 @@ whose <code>key_type</code> is <code>NzbDAV</code> are eligible.</p>
 <tr>
 <td><code>GET</code></td>
 <td><code>/process/rclone-optimizer/instances</code></td>
-<td>List eligible NzbDAV rclone instances and mount state</td>
+<td>List eligible InfiniDysk rclone instances and mount state</td>
 </tr>
 <tr>
 <td><code>GET</code></td>
 <td><code>/process/rclone-optimizer/content?process_name=...</code></td>
-<td>Derive active NzbDAV Arr categories, perform bounded <code>content/&lt;category&gt;</code> discovery, and return automatic recent/older/large/typical suggestions</td>
+<td>Derive active InfiniDysk Arr categories, perform bounded <code>content/&lt;category&gt;</code> discovery, and return automatic recent/older/large/typical suggestions</td>
 </tr>
 <tr>
 <td><code>POST</code></td>
@@ -6039,8 +6093,8 @@ whose <code>key_type</code> is <code>NzbDAV</code> are eligible.</p>
 </table>
 <p>Start request:</p>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
-<span class="w">  </span><span class="nt">&quot;process_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;rclone w/ NzbDAV&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;selected_paths&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;content/radarr-nzbdav/Example Movie (2026).mkv&quot;</span><span class="p">],</span>
+<span class="w">  </span><span class="nt">&quot;process_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;rclone w/ InfiniDysk&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;selected_paths&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;content/radarr-infinidysk/Example Movie (2026).mkv&quot;</span><span class="p">],</span>
 <span class="w">  </span><span class="nt">&quot;depth&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;standard&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;limits&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">    </span><span class="nt">&quot;max_vfs_cache_gib&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">5</span><span class="p">,</span>
@@ -6057,11 +6111,11 @@ whose <code>key_type</code> is <code>NzbDAV</code> are eligible.</p>
 <p>Content discovery returns <code>discovery_mode=active_arr_categories</code>, <code>content_base</code>,
 and an <code>active_categories</code> list containing service, instance, category,
 availability, and discovered-file count. Each file includes the mount-relative
-<code>path</code> used by the job and a friendly <code>display_path</code> under NzbDAV <code>content</code>.
+<code>path</code> used by the job and a friendly <code>display_path</code> under InfiniDysk <code>content</code>.
 <code>automatic_selection</code> is ordered first in <code>files</code> and includes <code>selection_key</code>,
 <code>selection_label</code>, and <code>selection_reason</code> so clients can explain each suggestion
 while allowing the operator to replace it.</p>
-<p>Each candidate result includes <code>trace_capture</code>, which reports whether NzbDAV
+<p>Each candidate result includes <code>trace_capture</code>, which reports whether InfiniDysk
 stream tracing was available, enabled or retained, the retained session count,
 and overflow state. An unavailable capture is distinct from an available capture
 whose retained sessions did not match the selected paths. The frontend aggregates
@@ -6069,12 +6123,12 @@ the candidate's <code>stream_traces</code> into unique providers plus summed ret
 served, provider-wait time, and connection-wait time; these fields remain visible
 as unavailable when <code>stream_traces</code> is empty.</p>
 <p>Jobs include a <code>setting_model</code> that declares the five comparison roles:
-<code>actually_varied</code>, <code>fixed_constraints</code>, <code>nzbdav_recommended</code>,
-<code>bundled_assumptions</code>, and <code>preserved</code>. The NzbDAV-recommended values are
+<code>actually_varied</code>, <code>fixed_constraints</code>, <code>infinidysk_recommended</code>,
+<code>bundled_assumptions</code>, and <code>preserved</code>. The InfiniDysk-recommended values are
 <code>--dir-cache-time</code> and <code>--vfs-cache-max-age</code>; every candidate uses at least <code>1w</code>,
 while existing values already at or above one week are retained. They are
 operational guidance rather than score-selected benchmark dimensions. Jobs add
-a warning when the associated NzbDAV RC notification configuration is disabled,
+a warning when the associated InfiniDysk RC notification configuration is disabled,
 mismatched, or unreachable.
 Every candidate result includes <code>setting_comparison</code>, an ordered list of the
 complete optimizer-relevant effective settings. Each entry contains <code>flag</code>,
@@ -6097,6 +6151,97 @@ hex values; job files are stored privately under <code>/config/rclone-optimizer/
 Jobs active during a DUMB restart are marked interrupted and are not resumed.</p>
 <p>See <a href="../../features/rclone-optimizer/">Rclone Streaming Optimizer</a> for test and
 provider-safety behavior.</p>
+<h2 id="infinidysk-migration">InfiniDysk migration<a class="headerlink" href="#infinidysk-migration" title="Permanent link">&para;</a></h2>
+<h3 id="get-processinfinidysk-migrationstatus"><code>GET /process/infinidysk-migration/status</code><a class="headerlink" href="#get-processinfinidysk-migrationstatus" title="Permanent link">&para;</a></h3>
+<p>Returns whether a legacy NzbDAV deployment needs review, whether the notice is
+due or snoozed, the legacy paths and DUMB-generated attached-service names that
+were found, and the modes supported by this backend.</p>
+<h3 id="post-processinfinidysk-migrationremind-later"><code>POST /process/infinidysk-migration/remind-later</code><a class="headerlink" href="#post-processinfinidysk-migrationremind-later" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="p">{</span><span class="w"> </span><span class="nt">&quot;days&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">7</span><span class="w"> </span><span class="p">}</span>
+</code></pre></div>
+<p>Persists the reminder on the DUMB instance. <code>days</code> must be between 1 and 90.</p>
+<h3 id="post-processinfinidysk-migrationpreflight"><code>POST /process/infinidysk-migration/preflight</code><a class="headerlink" href="#post-processinfinidysk-migrationpreflight" title="Permanent link">&para;</a></h3>
+<p>Runs the non-mutating full-namespace preflight and returns a short-lived token,
+expiry, blockers/warnings, filesystem moves, active-read count, and counts of
+planned Arr (including tag-label), Prowlarr application/tag, and media-library
+updates. The response never includes application API keys or download-client
+secrets. The private backend state retains the complete rollback snapshots with
+mode <code>0600</code>.</p>
+<p><code>ready</code> remains false when InfiniDysk has active reads, an Arr queue is not
+empty, a media server is busy or cannot be inventoried, an application API is
+unreachable, a destination conflicts, a move crosses filesystems, or a legacy
+path lies outside DUMB-managed roots. Generated attached-service paths such as
+<code>/radarr/nzbdav</code> and <code>/log/rclone_w_nzbdav.log</code> are discovered and planned
+automatically.</p>
+<h3 id="get-processinfinidysk-migrationjob-status"><code>GET /process/infinidysk-migration/job-status</code><a class="headerlink" href="#get-processinfinidysk-migrationjob-status" title="Permanent link">&para;</a></h3>
+<p>Returns the latest persisted complete-namespace job, or a specific job when a
+32-character hexadecimal <code>job_id</code> query parameter is supplied. The public job
+record includes <code>status</code>, <code>stage</code>, <code>message</code>, <code>progress</code>, up to 100 recent
+stage events, and the terminal result or safe error text. Active statuses are
+<code>queued</code>, <code>running</code>, and <code>rolling_back</code>.</p>
+<p>The dashboard polls this route after the migration dialog is closed or the
+page is reloaded. A DUMB backend restart marks an active retained job
+<code>interrupted</code>; it is not resumed automatically because the operator must first
+inspect the backup bundle and current namespace paths.</p>
+<h3 id="post-processinfinidysk-migrationapply"><code>POST /process/infinidysk-migration/apply</code><a class="headerlink" href="#post-processinfinidysk-migrationapply" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;mode&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;retain_legacy_namespace&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;rename_attached_services&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;confirmation&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;MIGRATE TO INFINIDYSK&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;acknowledge_external_backup&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>The available compatibility cutover adopts the canonical service/process
+identity and can rename DUMB-generated attached instance/process labels. It
+first saves a private complete-config backup under
+<code>/config/migrations/infinidysk-backups</code>, and retains runtime, mount, symlink,
+Arr category/root/tag, and media-server library paths. Both migration modes
+require the external-backup acknowledgement.</p>
+<p>The complete namespace request uses the token from the latest passing
+preflight and requires all four acknowledgements. The external-backup
+acknowledgement confirms that the operator has a current, verified backup
+outside the paths DUMB will migrate; DUMB's private rollback bundle is not a
+substitute for that backup.</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;mode&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;full_namespace&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;rename_attached_services&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;confirmation&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;MIGRATE TO INFINIDYSK&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;preflight_token&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&lt;short-lived preflight token&gt;&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;acknowledge_downtime&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;acknowledge_library_scan&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;acknowledge_rollback_limits&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;acknowledge_external_backup&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>The full-namespace request returns immediately with the persisted background
+job:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;job&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;job_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;0123456789abcdef0123456789abcdef&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;queued&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;stage&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;queued&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;progress&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>The worker repeats live safety checks immediately before applying. It then
+backs up configuration and application snapshots, stops the dependency chain,
+atomically moves managed runtime/mount/symlink/log and discovered attached
+service paths, rewrites symlink targets and saved InfiniDysk configuration,
+restarts the chain, updates Arr
+root/item/download-client references and tag labels while preserving tag IDs,
+updates media-server library paths, and
+verifies the persisted API values. Failures trigger automatic path,
+configuration, application-reference, process-name, and scan-guard rollback.
+The terminal job <code>result</code> identifies the private backup bundle and reports
+changed symlinks, InfiniDysk database records, Arr references, and media
+libraries.</p>
+<p>Historical symlink snapshots are retained under their original names. Future
+scheduled snapshots use the canonical name. A successful response instructs
+the operator to run normal Arr and media-server library scans; the migration
+does not initiate scans automatically.</p>
+<p>Saved dashboard ordering, keyboard shortcuts, and notification service filters
+are updated when their exact process names are renamed.</p>
 <h3 id="get-processcapabilities"><code>GET /process/capabilities</code><a class="headerlink" href="#get-processcapabilities" title="Permanent link">&para;</a></h3>
 <p>Returns backend capabilities and feature flags. Used by the frontend to determine available features.</p>
 <h4 id="example-response_6">Example Response:<a class="headerlink" href="#example-response_6" title="Permanent link">&para;</a></h4>
@@ -6141,9 +6286,15 @@ provider-safety behavior.</p>
 <span class="w">  </span><span class="nt">&quot;mediastorm_initial_admin_password&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;notifications&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;startup_lifecycle&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;infinidysk_migration&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;infinidysk_full_namespace_migration&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;infinidysk_migration_jobs&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;runtime_api_log_level&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;rclone_optimizer&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;rclone_optimizer_nzbdav&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span>
+<span class="w">  </span><span class="nt">&quot;rclone_optimizer_infinidysk&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;rclone_optimizer_nzbdav&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;infinidysk_install_info&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;nzbdav_install_info&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span>
 <span class="p">}</span>
 </code></pre></div>
 <p><code>metrics_history_hot_activation</code> means the frontend can enable, start, and synchronize DUMB-managed PostgreSQL for Metrics history without restarting DUMB. Clients must continue using the restart-based guidance when this flag is absent.</p>
@@ -6214,12 +6365,36 @@ provider-safety behavior.</p>
 <td>Whether <code>GET /process/startup-status</code> exposes readiness-aware startup phases</td>
 </tr>
 <tr>
+<td><code>infinidysk_migration</code></td>
+<td>Whether the opt-in status, server-persisted reminder, and compatibility-cutover routes are available</td>
+</tr>
+<tr>
+<td><code>infinidysk_full_namespace_migration</code></td>
+<td>Whether the guarded path/category/library migration and rollback workflow is available</td>
+</tr>
+<tr>
+<td><code>infinidysk_migration_jobs</code></td>
+<td>Whether complete-namespace cutovers run as persisted, pollable background jobs with close/reopen progress</td>
+</tr>
+<tr>
 <td><code>rclone_optimizer</code></td>
 <td>Whether background rclone optimizer job routes are available</td>
 </tr>
 <tr>
+<td><code>rclone_optimizer_infinidysk</code></td>
+<td>Whether the optimizer supports InfiniDysk-backed rclone instances</td>
+</tr>
+<tr>
 <td><code>rclone_optimizer_nzbdav</code></td>
-<td>Whether the optimizer supports NzbDAV-backed rclone instances</td>
+<td>Legacy capability alias retained for older dashboard clients</td>
+</tr>
+<tr>
+<td><code>infinidysk_install_info</code></td>
+<td>Whether InfiniDysk install provenance is included in process/update data</td>
+</tr>
+<tr>
+<td><code>nzbdav_install_info</code></td>
+<td>Legacy capability alias retained for older dashboard clients</td>
 </tr>
 <tr>
 <td><code>symlink_repair</code></td>

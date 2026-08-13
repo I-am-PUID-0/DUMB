@@ -2077,6 +2077,8 @@
       
         
       
+        
+      
     
     
     
@@ -2203,7 +2205,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../nzbdav/" class="md-nav__link">
+      <a href="../infinidysk/" class="md-nav__link">
         
   
   
@@ -2212,7 +2214,37 @@
   <span class="md-ellipsis">
     
   
-    NzbDAV
+    InfiniDysk
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../nzbdav/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-replace" viewBox="0 0 24 24"><path d="M14 4a1 1 0 0 1 1-1M15 10a1 1 0 0 1-1-1M21 4a1 1 0 0 0-1-1M21 9a1 1 0 0 1-1 1M3 7l3 3 3-3"/><path d="M6 10V5a2 2 0 0 1 2-2h2"/><rect width="7" height="7" x="3" y="14" rx="1"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    NzbDAV migration
   
 
     
@@ -5383,7 +5415,7 @@
 </tr>
 <tr>
 <td>Optional</td>
-<td>Decypharr, NzbDAV, AltMount, Prowlarr</td>
+<td>Decypharr, InfiniDysk, AltMount, Prowlarr</td>
 </tr>
 <tr>
 <td>Exposes UI</td>
@@ -5427,7 +5459,7 @@
 </code></pre></div>
 <h3 id="key-configuration-fields">Key Configuration Fields<a class="headerlink" href="#key-configuration-fields" title="Permanent link">&para;</a></h3>
 <ul>
-<li><code>core_service</code>: Set to <code>decypharr</code>, <code>nzbdav</code>, <code>altmount</code>, or a list of workflow keys to enable DUMB integration.</li>
+<li><code>core_service</code>: Set to <code>decypharr</code>, <code>infinidysk</code>, <code>altmount</code>, or a list of workflow keys to enable DUMB integration.</li>
 <li><code>use_neutarr</code>: Opt this instance into NeutArr automation.</li>
 <li><code>postgres_enabled</code>: Opt this instance into DUMB-managed PostgreSQL config. SQLite is the default; set this to <code>true</code> only when you want Lidarr to use PostgreSQL.</li>
 <li><code>postgres_main_db</code> / <code>postgres_log_db</code>: Optional database-name overrides. When blank, DUMB uses <code>lidarr-main</code> and <code>lidarr-log</code> for the default instance, or unique instance-scoped names for additional instances.</li>
@@ -5473,9 +5505,9 @@
 <h2 id="integration-with-dumb">Integration with DUMB<a class="headerlink" href="#integration-with-dumb" title="Permanent link">&para;</a></h2>
 <ul>
 <li>For Decypharr integration, set <code>core_service</code> to <code>decypharr</code> and follow the <a href="../decypharr/">Decypharr guide</a>.</li>
-<li>For NzbDAV integration, set <code>core_service</code> to <code>nzbdav</code> and follow the <a href="../nzbdav/">NzbDAV guide</a>.</li>
+<li>For InfiniDysk integration, set <code>core_service</code> to <code>infinidysk</code> and follow the <a href="../infinidysk/">InfiniDysk guide</a>.</li>
 <li>For AltMount integration, set <code>core_service</code> to <code>altmount</code> and follow the <a href="../altmount/">AltMount guide</a>.</li>
-<li>For combined workflows, set <code>core_service</code> to a list such as <code>["decypharr", "nzbdav", "altmount"]</code>.</li>
+<li>For combined workflows, set <code>core_service</code> to a list such as <code>["decypharr", "infinidysk", "altmount"]</code>.</li>
 <li>Use <a href="../prowlarr/">Prowlarr</a> to centrally manage indexers and sync them to Lidarr.</li>
 <li>DUMB enables Arr folder permission updates and applies permissions to configured root folders during integration.</li>
 <li>See <a href="../../../reference/core-service/">Core Service Routing</a> for how <code>core_service</code> affects automation.</li>

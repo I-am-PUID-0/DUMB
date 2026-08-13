@@ -2061,6 +2061,8 @@
       
         
       
+        
+      
     
     
     
@@ -2186,7 +2188,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/core/nzbdav/" class="md-nav__link">
+      <a href="../../services/core/infinidysk/" class="md-nav__link">
         
   
   
@@ -2195,7 +2197,37 @@
   <span class="md-ellipsis">
     
   
-    NzbDAV
+    InfiniDysk
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/core/nzbdav/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-replace" viewBox="0 0 24 24"><path d="M14 4a1 1 0 0 1 1-1M15 10a1 1 0 0 1-1-1M21 4a1 1 0 0 0-1-1M21 9a1 1 0 0 1-1 1M3 7l3 3 3-3"/><path d="M6 10V5a2 2 0 0 1 2-2h2"/><rect width="7" height="7" x="3" y="14" rx="1"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    NzbDAV migration
   
 
     
@@ -5338,7 +5370,7 @@
 </ul>
 <p>Back up both <code>/data</code> and any irreplaceable symlink-library state before a migration or rollback.</p>
 <h2 id="why-can-the-frontend-not-reach-the-backend">Why can the frontend not reach the backend?<a class="headerlink" href="#why-can-the-frontend-not-reach-the-backend" title="Permanent link">&para;</a></h2>
-<p>Confirm both services are running, PostgreSQL is healthy, and the frontend's configured backend/origin URL matches the backend's assigned port. Riven and NzbDAV share desired defaults (<code>3000</code> and <code>8080</code>), so use the ports saved in the runtime DUMB configuration after conflict resolution.</p>
+<p>Confirm both services are running, PostgreSQL is healthy, and the frontend's configured backend/origin URL matches the backend's assigned port. Riven and InfiniDysk share desired defaults (<code>3000</code> and <code>8080</code>), so use the ports saved in the runtime DUMB configuration after conflict resolution.</p>
 <h2 id="how-should-i-move-an-existing-riven-symlink-tree">How should I move an existing Riven symlink tree?<a class="headerlink" href="#how-should-i-move-an-existing-riven-symlink-tree" title="Permanent link">&para;</a></h2>
 <p>Use DUMB's Symlinks panel to create a snapshot, preview the rewrite/root migration, and then apply it. A manual rollback restores link entries but cannot merge application/database changes made after a migration.</p>
 <h2 id="related-pages">Related pages<a class="headerlink" href="#related-pages" title="Permanent link">&para;</a></h2>

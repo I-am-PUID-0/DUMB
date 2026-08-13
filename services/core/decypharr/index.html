@@ -17,7 +17,7 @@
     <link rel="prev" href="../cli-debrid/">
   
   
-    <link rel="next" href="../nzbdav/">
+    <link rel="next" href="../infinidysk/">
   
   
     
@@ -2077,6 +2077,8 @@
       
         
       
+        
+      
     
     
     
@@ -2341,7 +2343,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../nzbdav/" class="md-nav__link">
+      <a href="../infinidysk/" class="md-nav__link">
         
   
   
@@ -2350,7 +2352,37 @@
   <span class="md-ellipsis">
     
   
-    NzbDAV
+    InfiniDysk
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../nzbdav/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-replace" viewBox="0 0 24 24"><path d="M14 4a1 1 0 0 1 1-1M15 10a1 1 0 0 1-1-1M21 4a1 1 0 0 0-1-1M21 9a1 1 0 0 1-1 1M3 7l3 3 3-3"/><path d="M6 10V5a2 2 0 0 1 2-2h2"/><rect width="7" height="7" x="3" y="14" rx="1"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    NzbDAV migration
   
 
     
@@ -5569,7 +5601,7 @@ changed or cleared.</p>
 <span class="w">  </span><span class="nt">&quot;backup_path&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/config/symlink-repair/decypharr-manifest.json&quot;</span>
 <span class="p">}</span>
 </code></pre></div>
-<p>When Arr <code>core_service</code> changes from Decypharr-only to combined Decypharr+NzbDAV, root folders move
+<p>When Arr <code>core_service</code> changes from Decypharr-only to combined Decypharr+InfiniDysk, root folders move
 from <code>/mnt/debrid/decypharr_symlinks/&lt;slug&gt;</code> to <code>/mnt/debrid/combined_symlinks/&lt;slug&gt;</code>.
 Use root migration mode:</p>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
@@ -5604,7 +5636,7 @@ as the username/password pair expected by Decypharr.</p>
 <code>core_service</code> to <code>decypharr</code> or include it in a list:</p>
 <div class="highlight"><pre><span></span><code><span class="nt">&quot;core_service&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;decypharr&quot;</span>
 </code></pre></div>
-<div class="highlight"><pre><span></span><code><span class="nt">&quot;core_service&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;decypharr&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;nzbdav&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;altmount&quot;</span><span class="p">]</span>
+<div class="highlight"><pre><span></span><code><span class="nt">&quot;core_service&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;decypharr&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;infinidysk&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;altmount&quot;</span><span class="p">]</span>
 </code></pre></div>
 <p>This tells DUMB to auto-configure Arr integration around Decypharr’s WebDAV and symlink workflows.
 See <a href="../../../reference/core-service/">Core Service Routing</a> for how <code>core_service</code> affects automation.</p>
@@ -5692,7 +5724,7 @@ Usenet provider credentials.</p>
 <h3 id="2-configure-root-folders-in-arrs">2. Configure Root Folders in Arrs<a class="headerlink" href="#2-configure-root-folders-in-arrs" title="Permanent link">&para;</a></h3>
 <p>When <code>core_service</code> is set to <code>decypharr</code> (or includes it), DUMB
 automatically creates the root folders and updates the Arr settings for you.
-If <code>core_service</code> includes Decypharr plus another workflow service such as <code>nzbdav</code> or <code>altmount</code>, the Arr root folder base switches to <code>/mnt/debrid/combined_symlinks/&lt;slug&gt;</code>. Decypharr-only hybrid Debrid+Usenet setups keep the Decypharr root.
+If <code>core_service</code> includes Decypharr plus another workflow service such as <code>infinidysk</code> or <code>altmount</code>, the Arr root folder base switches to <code>/mnt/debrid/combined_symlinks/&lt;slug&gt;</code>. Decypharr-only hybrid Debrid+Usenet setups keep the Decypharr root.
 Manual configuration is only required when <code>core_service</code> is left blank or you
 want to override the combined workflow wiring.</p>
 <p>Inside the Sonarr and Radarr web UI:</p>
@@ -5712,7 +5744,7 @@ want to override the combined workflow wiring.</p>
 </div>
 <div class="admonition info">
 <p class="admonition-title">Combined root folder</p>
-<p>If <code>core_service</code> includes Decypharr plus another workflow service such as <code>nzbdav</code> or <code>altmount</code>, DUMB switches the base path to <code>/mnt/debrid/combined_symlinks/{slugged folder name}</code> for the Arr root folders. Decypharr-only hybrid Debrid+Usenet setups keep the Decypharr root.</p>
+<p>If <code>core_service</code> includes Decypharr plus another workflow service such as <code>infinidysk</code> or <code>altmount</code>, DUMB switches the base path to <code>/mnt/debrid/combined_symlinks/{slugged folder name}</code> for the Arr root folders. Decypharr-only hybrid Debrid+Usenet setups keep the Decypharr root.</p>
 </div>
 <div class="admonition info">
 <p class="admonition-title">Per-instance folders</p>
@@ -5729,7 +5761,7 @@ use that folder for both the Arr root folder and your media server library.</p>
 <h3 id="3-connect-decypharr-to-arrs">3. Connect Decypharr to Arrs<a class="headerlink" href="#3-connect-decypharr-to-arrs" title="Permanent link">&para;</a></h3>
 <p>When <code>core_service</code> is set to <code>decypharr</code> (or includes it), DUMB
 automatically wires the download client and Arr permissions. If <code>core_service</code> includes Decypharr plus another workflow service such as
-<code>nzbdav</code> or <code>altmount</code>, Arrs will point at
+<code>infinidysk</code> or <code>altmount</code>, Arrs will point at
 <code>/mnt/debrid/combined_symlinks/&lt;slug&gt;</code> instead of the Decypharr-only root.
 Manual configuration is only required when <code>core_service</code> is left blank or you
 want to override the combined workflow wiring.</p>
@@ -5835,13 +5867,13 @@ If you manage permissions manually, review these settings after integration.</p>
         
         
           
-          <a href="../nzbdav/" class="md-footer__link md-footer__link--next" aria-label="Next: NzbDAV">
+          <a href="../infinidysk/" class="md-footer__link md-footer__link--next" aria-label="Next: InfiniDysk">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                NzbDAV
+                InfiniDysk
               </div>
             </div>
             <div class="md-footer__button md-icon">

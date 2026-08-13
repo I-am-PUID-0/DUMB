@@ -2077,6 +2077,8 @@
       
         
       
+        
+      
     
     
     
@@ -2203,7 +2205,7 @@
   
   
     <li class="md-nav__item">
-      <a href="nzbdav/" class="md-nav__link">
+      <a href="infinidysk/" class="md-nav__link">
         
   
   
@@ -2212,7 +2214,37 @@
   <span class="md-ellipsis">
     
   
-    NzbDAV
+    InfiniDysk
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="nzbdav/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-replace" viewBox="0 0 24 24"><path d="M14 4a1 1 0 0 1 1-1M15 10a1 1 0 0 1-1-1M21 4a1 1 0 0 0-1-1M21 9a1 1 0 0 1-1 1M3 7l3 3 3-3"/><path d="M6 10V5a2 2 0 0 1 2-2h2"/><rect width="7" height="7" x="3" y="14" rx="1"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    NzbDAV migration
   
 
     
@@ -5261,7 +5293,7 @@
 <td>Zilean, Sonarr, Radarr, Lidarr, Whisparr</td>
 </tr>
 <tr>
-<td><a href="nzbdav/">NzbDAV</a></td>
+<td><a href="infinidysk/">InfiniDysk</a></td>
 <td>WebDAV service for NZB access and Arr download client integration</td>
 <td>rclone</td>
 <td>Sonarr, Radarr, Lidarr, Whisparr</td>
@@ -5306,19 +5338,19 @@
 <td><a href="sonarr/">Sonarr</a></td>
 <td>TV automation and organization</td>
 <td></td>
-<td>Prowlarr, Decypharr, NzbDAV, AltMount</td>
+<td>Prowlarr, Decypharr, InfiniDysk, AltMount</td>
 </tr>
 <tr>
 <td><a href="radarr/">Radarr</a></td>
 <td>Movie automation and organization</td>
 <td></td>
-<td>Prowlarr, Decypharr, NzbDAV, AltMount</td>
+<td>Prowlarr, Decypharr, InfiniDysk, AltMount</td>
 </tr>
 <tr>
 <td><a href="lidarr/">Lidarr</a></td>
 <td>Music automation and organization</td>
 <td></td>
-<td>Prowlarr, Decypharr, NzbDAV, AltMount</td>
+<td>Prowlarr, Decypharr, InfiniDysk, AltMount</td>
 </tr>
 <tr>
 <td><a href="prowlarr/">Prowlarr</a></td>
@@ -5330,7 +5362,7 @@
 <td><a href="whisparr/">Whisparr</a></td>
 <td>Adult content automation and organization</td>
 <td></td>
-<td>Prowlarr, Decypharr, NzbDAV, AltMount</td>
+<td>Prowlarr, Decypharr, InfiniDysk, AltMount</td>
 </tr>
 <tr>
 <td><a href="neutarr/">NeutArr</a></td>
@@ -5382,11 +5414,11 @@
 <li><strong>Requires:</strong> Content to already exist in <code>/mnt/debrid</code></li>
 <li><strong>Does Not Scrape</strong> or collect — serves media fetched by others</li>
 </ul>
-<h3 id="nzbdav"><a href="nzbdav/">NzbDAV</a><a class="headerlink" href="#nzbdav" title="Permanent link">&para;</a></h3>
+<h3 id="infinidysk"><a href="infinidysk/">InfiniDysk</a><a class="headerlink" href="#infinidysk" title="Permanent link">&para;</a></h3>
 <ul>
 <li><strong>Requires:</strong> <a href="../dependent/rclone/">rclone</a></li>
 <li><strong>Optionally Uses:</strong> Sonarr, Radarr, Lidarr, and Whisparr for NZB client integration</li>
-<li><strong>Outputs:</strong> WebDAV mount at <code>/mnt/debrid/nzbdav</code> plus symlink roots for Arrs</li>
+<li><strong>Outputs:</strong> WebDAV mount at <code>/mnt/debrid/infinidysk</code> plus symlink roots for Arrs</li>
 </ul>
 <h3 id="altmount"><a href="altmount/">AltMount</a><a class="headerlink" href="#altmount" title="Permanent link">&para;</a></h3>
 <ul>
@@ -5421,7 +5453,7 @@
 </ul>
 <h3 id="arrs-sonarrradarrlidarrwhisparr">Arrs (Sonarr/Radarr/Lidarr/Whisparr)<a class="headerlink" href="#arrs-sonarrradarrlidarrwhisparr" title="Permanent link">&para;</a></h3>
 <ul>
-<li><strong>Requires:</strong> A download client such as <a href="decypharr/">Decypharr</a>, <a href="nzbdav/">NzbDAV</a>, or <a href="altmount/">AltMount</a></li>
+<li><strong>Requires:</strong> A download client such as <a href="decypharr/">Decypharr</a>, <a href="infinidysk/">InfiniDysk</a>, or <a href="altmount/">AltMount</a></li>
 <li><strong>Optionally Uses:</strong> <a href="prowlarr/">Prowlarr</a> to manage and sync indexers</li>
 <li><strong>Outputs:</strong> Organized media libraries and renamed files for your media servers</li>
 </ul>

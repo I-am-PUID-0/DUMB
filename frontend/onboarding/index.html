@@ -2224,6 +2224,8 @@
       
         
       
+        
+      
     
     
     
@@ -2349,7 +2351,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/core/nzbdav/" class="md-nav__link">
+      <a href="../../services/core/infinidysk/" class="md-nav__link">
         
   
   
@@ -2358,7 +2360,37 @@
   <span class="md-ellipsis">
     
   
-    NzbDAV
+    InfiniDysk
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/core/nzbdav/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-replace" viewBox="0 0 24 24"><path d="M14 4a1 1 0 0 1 1-1M15 10a1 1 0 0 1-1-1M21 4a1 1 0 0 0-1-1M21 9a1 1 0 0 1-1 1M3 7l3 3 3-3"/><path d="M6 10V5a2 2 0 0 1 2-2h2"/><rect width="7" height="7" x="3" y="14" rx="1"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    NzbDAV migration
   
 
     
@@ -5444,7 +5476,7 @@ flowchart TD
 <tbody>
 <tr>
 <td><strong>Orchestrators</strong></td>
-<td>Riven Backend, CLI Debrid, Decypharr, NzbDAV, AltMount</td>
+<td>Riven Backend, CLI Debrid, Decypharr, InfiniDysk, AltMount</td>
 </tr>
 <tr>
 <td><strong>Request/automation</strong></td>
@@ -5468,7 +5500,7 @@ flowchart TD
 <p class="admonition-title">Guided setup</p>
 <ol>
 <li>Choose <strong>Debrid</strong>, <strong>Usenet</strong>, or <strong>Both</strong>.</li>
-<li>Choose the Usenet workflow service (<strong>Decypharr</strong>, <strong>NzbDAV</strong>, <strong>AltMount</strong>, NzbDAV + AltMount, or <strong>All</strong>) when using Usenet.</li>
+<li>Choose the Usenet workflow service (<strong>Decypharr</strong>, <strong>InfiniDysk</strong>, <strong>AltMount</strong>, InfiniDysk + AltMount, or <strong>All</strong>) when using Usenet.</li>
 <li>Decide whether to use <strong>Arrs</strong> (required for Usenet).</li>
 <li>If using both workflows, pick <strong>Combined</strong> or <strong>Separate</strong> Arr instances.</li>
 <li>(Optional) Enable <strong>multi-quality</strong> Sonarr/Radarr instances.</li>
@@ -5677,9 +5709,9 @@ setup may fail to fully configure dependencies and integrations.</p>
 </ul>
 <p>For Arr services and NeutArr, instance names can be used to split workflows (e.g., Debrid vs Usenet, or multiple
 quality tiers). </p>
-<p>Combined Arr workflows that include Decypharr plus NzbDAV or AltMount use
+<p>Combined Arr workflows that include Decypharr plus InfiniDysk or AltMount use
 <code>/mnt/debrid/combined_symlinks/&lt;slug&gt;</code> for the Decypharr-managed root. An
-AltMount-only route—or NzbDAV + AltMount without Decypharr—does not get a
+AltMount-only route—or InfiniDysk + AltMount without Decypharr—does not get a
 combined root automatically.</p>
 <hr />
 <h2 id="after-onboarding">After onboarding<a class="headerlink" href="#after-onboarding" title="Permanent link">&para;</a></h2>

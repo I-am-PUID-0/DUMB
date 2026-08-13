@@ -2246,6 +2246,8 @@
       
         
       
+        
+      
     
     
     
@@ -2371,7 +2373,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/core/nzbdav/" class="md-nav__link">
+      <a href="../../services/core/infinidysk/" class="md-nav__link">
         
   
   
@@ -2380,7 +2382,37 @@
   <span class="md-ellipsis">
     
   
-    NzbDAV
+    InfiniDysk
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/core/nzbdav/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-replace" viewBox="0 0 24 24"><path d="M14 4a1 1 0 0 1 1-1M15 10a1 1 0 0 1-1-1M21 4a1 1 0 0 0-1-1M21 9a1 1 0 0 1-1 1M3 7l3 3 3-3"/><path d="M6 10V5a2 2 0 0 1 2-2h2"/><rect width="7" height="7" x="3" y="14" rx="1"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    NzbDAV migration
   
 
     
@@ -5666,9 +5698,9 @@ each service's Updates panel when the backend advertises
 <p class="admonition-title">Auto-update and strategy interaction</p>
 <p>Automatic scheduling is disabled when <code>pinned_version</code>, <code>commit_sha</code>,
 <code>release_version_enabled</code>, or <code>branch_enabled</code> are set. Exceptions are a
-<code>nightly</code> or <code>prerelease</code> release selector and a digit-free NzbDAV release
+<code>nightly</code> or <code>prerelease</code> release selector and a digit-free InfiniDysk release
 tag such as <code>dev</code>, <code>lts</code>, or <code>edge</code>, provided no commit, pinned-version, or
-branch selector takes precedence. NzbDAV tags containing a digit remain
+branch selector takes precedence. InfiniDysk tags containing a digit remain
 fixed configured releases. A non-empty <code>commit_sha</code> always disables moving
 update checks, including the initial post-setup check.</p>
 <p>InfiniDysk/NzbDAV release updates are prebuilt-first. DUMB verifies the
@@ -5677,7 +5709,7 @@ builds the same resolved commit from source when the GitHub Release or a
 usable archive is unavailable. A missing prebuilt therefore does not strand
 the service on a broken install. The service Updates panel reports the
 installed method and any fallback reason when the backend supports
-<code>nzbdav_install_info</code>.</p>
+<code>infinidysk_install_info</code> (or the legacy <code>nzbdav_install_info</code> alias).</p>
 </div>
 <p>After saving a fixed release, branch, or commit selection, the Updates panel
 shows <strong>Install configured release</strong>, <strong>Install configured branch</strong>, or
@@ -5756,7 +5788,7 @@ Scheduled auto-update checks are disabled when <code>branch_enabled</code> is tr
 <h3 id="exact-commit-pinning">Exact commit pinning<a class="headerlink" href="#exact-commit-pinning" title="Permanent link">&para;</a></h3>
 <p>Source-build services can be pinned to an immutable GitHub revision:</p>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
-<span class="w">  </span><span class="nt">&quot;nzbdav&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;infinidysk&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">    </span><span class="nt">&quot;commit_sha&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;0123456789abcdef0123456789abcdef01234567&quot;</span>
 <span class="w">  </span><span class="p">}</span>
 <span class="p">}</span>
@@ -5780,7 +5812,7 @@ update operation's older selection over it.</p>
 <li>Traefik Proxy Admin</li>
 <li>CLI Debrid</li>
 <li>Decypharr</li>
-<li>NzbDAV</li>
+<li>InfiniDysk</li>
 <li>Phalanx DB</li>
 <li>Tautulli</li>
 <li>Pulsarr</li>

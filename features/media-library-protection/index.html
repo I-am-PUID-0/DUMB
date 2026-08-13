@@ -6,7 +6,7 @@
   
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="description" content="Protect Plex, Jellyfin, and Emby libraries from destructive scans when rclone, NzbDAV, Decypharr, Zurg, AltMount, or CLI Debrid is stopped, updated, or unavailable.">
+  <meta name="description" content="Protect Plex, Jellyfin, and Emby libraries from destructive scans when rclone, InfiniDysk, Decypharr, Zurg, AltMount, or CLI Debrid is stopped, updated, or unavailable.">
   
     <meta name="author" content="DUMB Team">
   
@@ -110,7 +110,7 @@
     <meta property="og:locale" content="en_US">
     <meta property="og:site_name" content="DUMB — Distributed Unlimited Media Bridge">
     <meta property="og:title" content="Media Library Protection">
-    <meta property="og:description" content="Protect Plex, Jellyfin, and Emby libraries from destructive scans when rclone, NzbDAV, Decypharr, Zurg, AltMount, or CLI Debrid is stopped, updated, or unavailable.">
+    <meta property="og:description" content="Protect Plex, Jellyfin, and Emby libraries from destructive scans when rclone, InfiniDysk, Decypharr, Zurg, AltMount, or CLI Debrid is stopped, updated, or unavailable.">
     <meta property="og:url" content="https://dumbarr.com/features/media-library-protection/">
     <meta property="og:image" content="https://dumbarr.com/assets/images/DUMB.png">
     <meta property="og:image:secure_url" content="https://dumbarr.com/assets/images/DUMB.png">
@@ -120,7 +120,7 @@
     <meta property="og:image:alt" content="Distributed Unlimited Media Bridge ecosystem and architecture overview">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="Media Library Protection">
-    <meta name="twitter:description" content="Protect Plex, Jellyfin, and Emby libraries from destructive scans when rclone, NzbDAV, Decypharr, Zurg, AltMount, or CLI Debrid is stopped, updated, or unavailable.">
+    <meta name="twitter:description" content="Protect Plex, Jellyfin, and Emby libraries from destructive scans when rclone, InfiniDysk, Decypharr, Zurg, AltMount, or CLI Debrid is stopped, updated, or unavailable.">
     <meta name="twitter:image" content="https://dumbarr.com/assets/images/DUMB.png">
     <meta name="twitter:image:alt" content="Distributed Unlimited Media Bridge ecosystem and architecture overview">
     
@@ -2169,6 +2169,8 @@
       
         
       
+        
+      
     
     
     
@@ -2294,7 +2296,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/core/nzbdav/" class="md-nav__link">
+      <a href="../../services/core/infinidysk/" class="md-nav__link">
         
   
   
@@ -2303,7 +2305,37 @@
   <span class="md-ellipsis">
     
   
-    NzbDAV
+    InfiniDysk
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/core/nzbdav/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-replace" viewBox="0 0 24 24"><path d="M14 4a1 1 0 0 1 1-1M15 10a1 1 0 0 1-1-1M21 4a1 1 0 0 0-1-1M21 9a1 1 0 0 1-1 1M3 7l3 3 3-3"/><path d="M6 10V5a2 2 0 0 1 2-2h2"/><rect width="7" height="7" x="3" y="14" rx="1"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    NzbDAV migration
   
 
     
@@ -5281,7 +5313,7 @@
 
 <h1 id="media-library-protection">Media Library Protection<a class="headerlink" href="#media-library-protection" title="Permanent link">&para;</a></h1>
 <p>Media Library Protection reduces the chance that Plex, Jellyfin, or Emby interprets a temporary storage outage as deleted media. It is <strong>enabled by default</strong> and can be disabled globally or per media server.</p>
-<p>The feature covers DUMB-managed storage dependencies such as rclone, NzbDAV, Decypharr, Zurg, AltMount, and CLI Debrid. DUMB maps each operation to affected media servers through configured mount paths; when it cannot safely narrow the relationship, it protects every enabled media server.</p>
+<p>The feature covers DUMB-managed storage dependencies such as rclone, InfiniDysk, Decypharr, Zurg, AltMount, and CLI Debrid. DUMB maps each operation to affected media servers through configured mount paths; when it cannot safely narrow the relationship, it protects every enabled media server.</p>
 <div class="admonition important">
 <p class="admonition-title">Protection is not a backup</p>
 <p>This feature reduces outage risk but cannot reverse an application database change that already occurred. Keep media-server database/config backups, and avoid exposing the media server directly to mount paths that can disappear without warning.</p>

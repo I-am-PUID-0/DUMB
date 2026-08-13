@@ -2246,6 +2246,8 @@
       
         
       
+        
+      
     
     
     
@@ -2371,7 +2373,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/core/nzbdav/" class="md-nav__link">
+      <a href="../../services/core/infinidysk/" class="md-nav__link">
         
   
   
@@ -2380,7 +2382,37 @@
   <span class="md-ellipsis">
     
   
-    NzbDAV
+    InfiniDysk
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/core/nzbdav/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-replace" viewBox="0 0 24 24"><path d="M14 4a1 1 0 0 1 1-1M15 10a1 1 0 0 1-1-1M21 4a1 1 0 0 0-1-1M21 9a1 1 0 0 1-1 1M3 7l3 3 3-3"/><path d="M6 10V5a2 2 0 0 1 2-2h2"/><rect width="7" height="7" x="3" y="14" rx="1"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    NzbDAV migration
   
 
     
@@ -5551,7 +5583,7 @@
 <span class="w">      </span><span class="nt">&quot;interval_sec&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">60</span><span class="p">,</span>
 <span class="w">      </span><span class="nt">&quot;log_tail_bytes&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">262144</span><span class="p">,</span>
 <span class="w">      </span><span class="nt">&quot;services&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<span class="w">        </span><span class="nt">&quot;nzbdav&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nt">&quot;infinidysk&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">          </span><span class="nt">&quot;enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
 <span class="w">          </span><span class="nt">&quot;mode&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;standard&quot;</span><span class="p">,</span>
 <span class="w">          </span><span class="nt">&quot;ignore_network_storage&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span>
@@ -5715,7 +5747,7 @@
 <tbody>
 <tr>
 <td><strong>SQLite</strong></td>
-<td>NzbDAV, CLI Debrid, CLI Battery, Emby, Jellyfin, Maintainerr, Profilarr, Tautulli, and Plex; Sonarr, Radarr, Lidarr, Prowlarr, and Whisparr when PostgreSQL is disabled</td>
+<td>InfiniDysk, CLI Debrid, CLI Battery, Emby, Jellyfin, Maintainerr, Profilarr, Tautulli, and Plex; Sonarr, Radarr, Lidarr, Prowlarr, and Whisparr when PostgreSQL is disabled</td>
 </tr>
 <tr>
 <td><strong>SQLite or PostgreSQL</strong></td>
@@ -5955,7 +5987,7 @@ curl<span class="w"> </span><span class="s2">&quot;http://localhost:3005/api/met
 <p>Returns the current metrics snapshot.</p>
 <h3 id="database-health">Database health<a class="headerlink" href="#database-health" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code>GET<span class="w"> </span>/api/metrics/database-health
-GET<span class="w"> </span>/api/metrics/database-health?process_name<span class="o">=</span>NzbDAV<span class="p">&amp;</span><span class="nv">refresh</span><span class="o">=</span><span class="nb">true</span>
+GET<span class="w"> </span>/api/metrics/database-health?process_name<span class="o">=</span>InfiniDysk<span class="p">&amp;</span><span class="nv">refresh</span><span class="o">=</span><span class="nb">true</span>
 </code></pre></div>
 <p>The optional <code>process_name</code> filter returns one service. <code>refresh=true</code> invalidates cached database probes before collecting; normal <code>/api/metrics</code> and WebSocket snapshots reuse the configured slower database interval.</p>
 <h3 id="historical-metrics">Historical metrics<a class="headerlink" href="#historical-metrics" title="Permanent link">&para;</a></h3>
