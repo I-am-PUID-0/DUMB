@@ -118,7 +118,32 @@ jobs:
           RCLONE_RELEASE=$(latest_tag rclone/rclone)
           RCLONE_TAG=${RCLONE_RELEASE#v}
           ZURG_REF=$(github_api https://api.github.com/repos/debridmediamanager/zurg-testing/commits/main | jq -er '.sha')
-          GO_VERSION=$(public_json 'https://go.dev/dl/?mode=json' | jq -er '.[0].version | sub("^go"; "")')
+          GO_RELEASE=$(public_json 'https://go.dev/dl/?mode=json' | jq -er '.[0].version | sub("^go"; "")')
+          [[ "$GO_RELEASE" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || {
+            echo "Go release API returned an invalid stable version: $GO_RELEASE" >&2
+            exit 1
+          }
+          GO_MINOR=${GO_RELEASE%.*}
+          GO_PATCH=${GO_RELEASE##*.}
+          GO_VERSION=$(public_json "https://hub.docker.com/v2/repositories/library/golang/tags?page_size=100&name=${GO_MINOR}." | \
+            jq -r --arg minor "${GO_MINOR}." --argjson max_patch "$GO_PATCH" '
+              .results[]
+              | select(.name | startswith($minor))
+              | select(.name | test("^[0-9]+\\.[0-9]+\\.[0-9]+-bookworm$"))
+              | select(any(.images[]?; .architecture == "amd64"))
+              | select(any(.images[]?; .architecture == "arm64"))
+              | .name
+              | sub("-bookworm$"; "")
+              | select((split(".")[2] | tonumber) <= $max_patch)
+            ' | sort -V | tail -n 1)
+          [[ -n "$GO_VERSION" ]] || {
+            echo "No golang:${GO_MINOR}.x-bookworm image at or below Go ${GO_RELEASE} supports both amd64 and arm64." >&2
+            exit 1
+          }
+          echo "Go upstream stable is ${GO_RELEASE}; selected golang:${GO_VERSION}-bookworm for amd64 and arm64."
+          if [[ "$GO_VERSION" != "$GO_RELEASE" ]]; then
+            echo "::notice title=Go image publication lag::Go ${GO_RELEASE} is current, but golang:${GO_RELEASE}-bookworm is not available for both target architectures. Building with golang:${GO_VERSION}-bookworm."
+          fi
           NPM_VERSION=$(public_json https://registry.npmjs.org/npm | \
             jq -r '.versions | keys[] | select(test("^12\\.[0-9]+\\.[0-9]+$"))' | sort -V | tail -n 1)
           PNPM_VERSION=$(public_json https://registry.npmjs.org/pnpm | jq -er '.["dist-tags"]["latest-10"]')
