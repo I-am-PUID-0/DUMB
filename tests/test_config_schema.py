@@ -60,7 +60,7 @@ class DumbConfigSchemaTests(unittest.TestCase):
 
     def test_scheduled_updates_default_to_install_mode(self):
         self.assertEqual("install", self.config["dumb"]["frontend"]["auto_update_mode"])
-        self.assertEqual("install", self.config["nzbdav"]["auto_update_mode"])
+        self.assertEqual("install", self.config["infinidysk"]["auto_update_mode"])
         self.assertEqual(
             "install",
             self.config["profilarr"]["instances"]["Default"]["auto_update_mode"],
@@ -68,12 +68,15 @@ class DumbConfigSchemaTests(unittest.TestCase):
 
     def test_schema_rejects_unknown_auto_update_mode(self):
         invalid_config = json.loads(json.dumps(self.config))
-        invalid_config["nzbdav"]["auto_update_mode"] = "notify"
+        invalid_config["infinidysk"]["auto_update_mode"] = "notify"
 
         errors = list(Draft7Validator(self.schema).iter_errors(invalid_config))
 
         self.assertTrue(
-            any(list(error.path) == ["nzbdav", "auto_update_mode"] for error in errors)
+            any(
+                list(error.path) == ["infinidysk", "auto_update_mode"]
+                for error in errors
+            )
         )
 
     def test_schema_rejects_non_positive_managed_user_ids(self):
@@ -97,7 +100,7 @@ class DumbConfigSchemaTests(unittest.TestCase):
             ("traefik_proxy_admin",),
             ("cli_debrid",),
             ("decypharr",),
-            ("nzbdav",),
+            ("infinidysk",),
             ("phalanx_db",),
             ("tautulli",),
             ("pulsarr",),
@@ -133,12 +136,12 @@ class DumbConfigSchemaTests(unittest.TestCase):
 
     def test_source_commit_sha_schema_rejects_short_values(self):
         invalid_config = json.loads(json.dumps(self.config))
-        invalid_config["nzbdav"]["commit_sha"] = "abc1234"
+        invalid_config["infinidysk"]["commit_sha"] = "abc1234"
 
         errors = list(Draft7Validator(self.schema).iter_errors(invalid_config))
 
         self.assertTrue(
-            any(list(error.path) == ["nzbdav", "commit_sha"] for error in errors)
+            any(list(error.path) == ["infinidysk", "commit_sha"] for error in errors)
         )
 
     def test_top_level_config_keys_are_declared_and_required(self):

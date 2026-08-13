@@ -47,6 +47,10 @@ from utils.arr_postgres_migration import (
 from utils.port_probe import is_port_available as _is_port_available
 from utils.versions import Versions
 from utils.install_cache import INSTALL_CACHE
+from utils.infinidysk_migration import (
+    INFINIDYSK_MIGRATION_MANAGER,
+    InfiniDyskMigrationError,
+)
 from utils.service_reset import (
     ServiceResetError,
     build_service_reset_preview,
@@ -104,6 +108,23 @@ class InstallArtifactClearRequest(BaseModel):
 
 class InstallCacheCleanupRequest(BaseModel):
     scopes: List[str] = Field(min_length=1, max_length=5)
+    model_config = ConfigDict(extra="forbid")
+
+
+class InfiniDyskMigrationReminderRequest(BaseModel):
+    days: int = Field(default=7, ge=1, le=90)
+    model_config = ConfigDict(extra="forbid")
+
+
+class InfiniDyskMigrationApplyRequest(BaseModel):
+    mode: str = "retain_legacy_namespace"
+    rename_attached_services: bool = True
+    confirmation: str
+    preflight_token: Optional[str] = Field(default=None, max_length=200)
+    acknowledge_downtime: bool = False
+    acknowledge_library_scan: bool = False
+    acknowledge_rollback_limits: bool = False
+    acknowledge_external_backup: bool = False
     model_config = ConfigDict(extra="forbid")
 
 
@@ -239,7 +260,7 @@ DEPENDENCY_TRUTH_TABLE = [
         "signal": "rclone_provider_nzbdav",
         "classification": "hard",
         "strength": "hard_runtime",
-        "description": "Rclone instance is configured to use NzbDAV as provider.",
+        "description": "Rclone instance is configured to use InfiniDysk as provider.",
     },
     {
         "signal": "zilean_optional_integration",
@@ -362,7 +383,7 @@ SPONSORSHIP_URLS_BY_KEY = {
     "pulsarr": "https://ko-fi.com/jamcalli",
     "maintainerr": "https://opencollective.com/maintainerr",
     "mediastorm": "https://github.com/sponsors/godver3",
-    "nzbdav": "https://buymeacoffee.com/hoivikaj",
+    "infinidysk": "https://buymeacoffee.com/hoivikaj",
     "traefik": "https://github.com/sponsors/traefik",
     "traefik_proxy_admin": "https://github.com/sponsors/I-am-PUID-0",
     "authelia": "https://github.com/sponsors/authelia",
@@ -416,7 +437,7 @@ CORE_SERVICE_DEPENDENCIES = {
     "riven_backend": ["zurg", "rclone", "postgres"],
     "cli_debrid": ["zurg", "rclone", "cli_battery", "phalanx_db"],
     "decypharr": ["rclone"],
-    "nzbdav": ["rclone"],
+    "infinidysk": ["rclone"],
     "plex": [],
     "jellyfin": [],
     "emby": [],
@@ -476,7 +497,7 @@ ONBOARDING_CORE_SERVICE_KEYS = {
     "emby",
     "cli_debrid",
     "decypharr",
-    "nzbdav",
+    "infinidysk",
     "altmount",
     "riven_backend",
     "radarr",
@@ -497,7 +518,7 @@ CORE_SERVICE_NAMES = {
     "emby": "Emby Media Server",
     "cli_debrid": "CLID",
     "decypharr": "Decypharr",
-    "nzbdav": "NzbDAV",
+    "infinidysk": "InfiniDysk",
     "altmount": "AltMount",
     "riven_backend": "Riven",
     "radarr": "Radarr",
@@ -548,17 +569,17 @@ Decypharr Service
 - Debrid and Usenet workflow service with qBittorrent and Sabnzbd-compatible Arr APIs.
 - Utilizes Sonarr, Radarr, Lidarr, and Whisparr for media requests and management.
 - Provides WebDAV access plus DFS/rclone mount modes for media files.
-- Supports native Usenet in Decypharr 2.0+ without requiring NzbDAV or AltMount.
+- Supports native Usenet in Decypharr 2.0+ without requiring InfiniDysk or AltMount.
 
 Documentation: https://dumbarr.com/services/core/decypharr""",
-    "nzbdav": """\
-NzbDAV Service
+    "infinidysk": """\
+InfiniDysk Service
 - Implementation of QbitTorrent with Multiple NZB provider service support.
 - Utilizes Sonarr and Radarr for media requests and management.
 - Provides a WebDAV connection for easy access to media files.
 - Integrates with Rclone for mounting of WebDAV content.
 
-Documentation: https://dumbarr.com/services/core/nzbdav/""",
+Documentation: https://dumbarr.com/services/core/infinidysk/""",
     "altmount": """\
 AltMount Service
 - Alternative Usenet-focused WebDAV and SABnzbd-compatible download workflow.
@@ -800,8 +821,8 @@ SERVICE_OPTION_DESCRIPTIONS = {
     "suppress_logging": "If true, silences all service log output.",
     "log_level": "Verbosity level for logs (e.g. DEBUG, INFO, WARN).",
     "port": "TCP port the service will listen on.",
-    "frontend_port": "TCP port the NzbDAV frontend will listen on.",
-    "backend_port": "TCP port the NzbDAV backend will listen on.",
+    "frontend_port": "TCP port the InfiniDysk frontend will listen on.",
+    "backend_port": "TCP port the InfiniDysk backend will listen on.",
     "auto_update": "Enable scheduled update checks.",
     "auto_update_mode": "Scheduled action: install available updates or only report them on the dashboard.",
     "auto_update_interval": "Hours between automatic update checks.",
@@ -826,8 +847,8 @@ SERVICE_OPTION_DESCRIPTIONS = {
     "postgres_database": "Optional PostgreSQL database name. Leave blank for DUMB's service or per-instance default.",
     "postgres_main_db": "Optional PostgreSQL main database name. Leave blank for DUMB's per-instance default.",
     "postgres_log_db": "Optional PostgreSQL log database name. Leave blank for DUMB's per-instance default.",
-    "core_service": "Specifies which core service(s) this service applies to; e.g., decypharr, nzbdav, altmount, combined values (decypharr,nzbdav), or none (blank).",
-    "webdav_password": "Password for accessing the NzbDAV WebDAV service. Leave blank to auto-generate.",
+    "core_service": "Specifies which core service(s) this service applies to; e.g., decypharr, infinidysk, altmount, combined values (decypharr,infinidysk), or none (blank). Legacy nzbdav values remain accepted.",
+    "webdav_password": "Password for accessing the InfiniDysk WebDAV service. Leave blank to auto-generate.",
     "pinned_version": "The specific binary release version to deploy, or latest.",
     "tunnel_token": "Cloudflare Tunnel token used by cloudflared to connect this DUMB instance to Cloudflare.",
     "public_url": "Public HTTPS URL for the Authelia portal, such as https://auth.example.com.",
@@ -908,7 +929,7 @@ def fetch_process(
         repo_url, sponsorship_url = _service_project_urls(config_key, config)
         install_info = (
             read_nzbdav_install_info(config.get("config_dir"))
-            if config_key == "nzbdav"
+            if config_key == "infinidysk"
             else None
         )
 
@@ -953,7 +974,7 @@ def fetch_processes(
                 if api_state and process_name
                 else None
             )
-            if config_key == "nzbdav" and isinstance(config, dict):
+            if config_key == "infinidysk" and isinstance(config, dict):
                 process["install_info"] = read_nzbdav_install_info(
                     config.get("config_dir")
                 )
@@ -1111,8 +1132,11 @@ def dependency_graph(
                 add_by_key("zurg", "rclone_provider_zurg", scoped=True)
             if bool(process_config.get("decypharr_enabled")):
                 add_by_key("decypharr", "rclone_provider_decypharr")
-            if _normalize_dep_token(process_config.get("key_type") or "") == "nzbdav":
-                add_by_key("nzbdav", "rclone_provider_nzbdav")
+            if (
+                _normalize_dep_token(process_config.get("key_type") or "")
+                == "infinidysk"
+            ):
+                add_by_key("infinidysk", "rclone_provider_nzbdav")
 
             return results
 
@@ -4149,9 +4173,9 @@ def _seed_used_ports(config: dict, used_ports: dict[int, str], logger=None) -> N
             continue
 
         if cfg.get("enabled"):
-            if key == "nzbdav":
-                _add(cfg.get("frontend_port"), "nzbdav:frontend_port")
-                _add(cfg.get("backend_port"), "nzbdav:backend_port")
+            if key == "infinidysk":
+                _add(cfg.get("frontend_port"), "infinidysk:frontend_port")
+                _add(cfg.get("backend_port"), "infinidysk:backend_port")
             _add(cfg.get("port"), f"{key}:port")
 
 
@@ -4260,9 +4284,9 @@ def _start_optional_service(
     _reserve_config_port(
         opt_key, opt_cfg, "port", used_ports, logger, allow_in_use_for_owner=is_running
     )
-    if opt_key == "nzbdav":
+    if opt_key == "infinidysk":
         _reserve_config_port(
-            "nzbdav",
+            "infinidysk",
             opt_cfg,
             "frontend_port",
             used_ports,
@@ -4271,7 +4295,7 @@ def _start_optional_service(
             allow_in_use_for_owner=is_running,
         )
         _reserve_config_port(
-            "nzbdav",
+            "infinidysk",
             opt_cfg,
             "backend_port",
             used_ports,
@@ -4599,7 +4623,7 @@ def _run_startup(request: UnifiedStartRequest, updater, api_state, logger):
                             )
 
             logger.debug(f"Dependencies for '{config_key}': {dependencies}")
-            post_core_rclone = config_key == "nzbdav" or (
+            post_core_rclone = config_key == "infinidysk" or (
                 config_key == "decypharr" and mount_type == "external_rclone"
             )
             post_core_rclone_processes = []
@@ -4623,6 +4647,12 @@ def _run_startup(request: UnifiedStartRequest, updater, api_state, logger):
                         display = CORE_SERVICE_NAMES.get(
                             config_key, config_key.replace("_", " ").title()
                         )
+                        if (
+                            config_key == "infinidysk"
+                            and "nzbdav"
+                            in str(effective_config.get("process_name") or "").lower()
+                        ):
+                            display = "NzbDAV"
                         if config_key == "decypharr" and dep != "rclone":
                             display += f" ({service_type.title()})"
                         clean_display = (
@@ -4708,8 +4738,8 @@ def _run_startup(request: UnifiedStartRequest, updater, api_state, logger):
                                         "decypharr"
                                         if config_key == "decypharr"
                                         else (
-                                            "nzbdav"
-                                            if config_key == "nzbdav"
+                                            "infinidysk"
+                                            if config_key == "infinidysk"
                                             else service_type
                                         )
                                     ),
@@ -4724,7 +4754,7 @@ def _run_startup(request: UnifiedStartRequest, updater, api_state, logger):
                                         else f"/log/rclone_w_{clean_display}.log"
                                     ),
                                 }
-                                if config_key == "nzbdav":
+                                if config_key == "infinidysk":
                                     rclone_cfg.update(
                                         {
                                             "zurg_enabled": False,
@@ -5012,9 +5042,9 @@ def _run_startup(request: UnifiedStartRequest, updater, api_state, logger):
                     logger,
                     allow_in_use_for_owner=is_running,
                 )
-                if config_key == "nzbdav":
+                if config_key == "infinidysk":
                     _reserve_config_port(
-                        "nzbdav",
+                        "infinidysk",
                         core_cfg,
                         "frontend_port",
                         used_ports,
@@ -5023,7 +5053,7 @@ def _run_startup(request: UnifiedStartRequest, updater, api_state, logger):
                         allow_in_use_for_owner=is_running,
                     )
                     _reserve_config_port(
-                        "nzbdav",
+                        "infinidysk",
                         core_cfg,
                         "backend_port",
                         used_ports,
@@ -5584,7 +5614,11 @@ async def get_capabilities(current_user: str = Depends(get_optional_current_user
         "database_health_service_keys": sorted(SUPPORTED_SERVICE_KEYS),
         "notifications": True,
         "startup_lifecycle": True,
+        "infinidysk_migration": True,
+        "infinidysk_full_namespace_migration": True,
+        "infinidysk_migration_jobs": True,
         "rclone_optimizer": True,
+        "rclone_optimizer_infinidysk": True,
         "rclone_optimizer_nzbdav": True,
         "ai_diagnostics": True,
         "ai_provider_profiles": True,
@@ -5597,8 +5631,137 @@ async def get_capabilities(current_user: str = Depends(get_optional_current_user
         "project_update_release_distance": True,
         "api_update_check_always_on": True,
         "runtime_api_log_level": True,
+        "infinidysk_install_info": True,
         "nzbdav_install_info": True,
     }
+
+
+@process_router.get("/infinidysk-migration/status")
+async def get_infinidysk_migration_status(
+    current_user: str = Depends(get_optional_current_user),
+):
+    return await run_in_threadpool(INFINIDYSK_MIGRATION_MANAGER.status)
+
+
+@process_router.post("/infinidysk-migration/remind-later")
+async def remind_infinidysk_migration_later(
+    request: InfiniDyskMigrationReminderRequest,
+    current_user: str = Depends(get_optional_current_user),
+):
+    try:
+        return await run_in_threadpool(
+            INFINIDYSK_MIGRATION_MANAGER.remind_later, request.days
+        )
+    except InfiniDyskMigrationError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from None
+
+
+@process_router.post("/infinidysk-migration/preflight")
+async def preflight_infinidysk_namespace_migration(
+    process_handler=Depends(get_process_handler),
+    logger=Depends(get_logger),
+    current_user: str = Depends(get_optional_current_user),
+):
+    startup = process_handler.get_startup_status() if process_handler else {}
+    if startup.get("phase") not in {"ready", "degraded"}:
+        raise HTTPException(
+            status_code=409,
+            detail="The InfiniDysk namespace preflight is unavailable until DUMB startup completes.",
+        )
+    try:
+        return await run_in_threadpool(
+            INFINIDYSK_MIGRATION_MANAGER.preflight, process_handler, logger
+        )
+    except InfiniDyskMigrationError as error:
+        raise HTTPException(status_code=409, detail=str(error)) from None
+
+
+@process_router.get("/infinidysk-migration/job-status")
+def get_infinidysk_migration_job_status(
+    job_id: Optional[str] = Query(default=None, pattern=r"^[0-9a-f]{32}$"),
+    current_user: str = Depends(get_optional_current_user),
+):
+    job = INFINIDYSK_MIGRATION_MANAGER.get_job(job_id)
+    if job_id and not job:
+        raise HTTPException(status_code=404, detail="Migration job not found.")
+    return {"job": job}
+
+
+@process_router.post("/infinidysk-migration/apply")
+async def apply_infinidysk_migration(
+    request: InfiniDyskMigrationApplyRequest,
+    process_handler=Depends(get_process_handler),
+    updater=Depends(get_updater),
+    logger=Depends(get_logger),
+    current_user: str = Depends(get_optional_current_user),
+):
+    if request.mode not in {"retain_legacy_namespace", "full_namespace"}:
+        raise HTTPException(
+            status_code=400,
+            detail="Unknown InfiniDysk migration mode.",
+        )
+    if request.confirmation.strip() != "MIGRATE TO INFINIDYSK":
+        raise HTTPException(
+            status_code=400,
+            detail="Enter MIGRATE TO INFINIDYSK to confirm the cutover.",
+        )
+    if not request.acknowledge_external_backup:
+        raise HTTPException(
+            status_code=400,
+            detail="Confirm that you have a current, verified independent backup before applying the InfiniDysk migration.",
+        )
+    if request.mode == "full_namespace" and not all(
+        (
+            request.acknowledge_downtime,
+            request.acknowledge_library_scan,
+            request.acknowledge_rollback_limits,
+        )
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail="Acknowledge downtime, the post-migration library scan, and rollback limits before applying the full namespace migration.",
+        )
+
+    startup = process_handler.get_startup_status() if process_handler else {}
+    if startup.get("phase") not in {"ready", "degraded"}:
+        raise HTTPException(
+            status_code=409,
+            detail="The InfiniDysk migration is unavailable until DUMB startup completes.",
+        )
+
+    if request.mode == "full_namespace":
+        try:
+            job = await run_in_threadpool(
+                INFINIDYSK_MIGRATION_MANAGER.start_full_namespace_job,
+                request.preflight_token or "",
+                request.rename_attached_services,
+                process_handler,
+                logger,
+                updater,
+            )
+            return {"job": job}
+        except InfiniDyskMigrationError as error:
+            raise HTTPException(status_code=409, detail=str(error)) from None
+
+    def guarded_apply():
+        update_lock = getattr(updater, "updating", None)
+        acquired = update_lock is None or update_lock.acquire(blocking=False)
+        if not acquired:
+            raise InfiniDyskMigrationError(
+                "A service update is already active. Retry the migration after it finishes."
+            )
+        try:
+            return INFINIDYSK_MIGRATION_MANAGER.apply_brand_cutover(
+                request.rename_attached_services
+            )
+        finally:
+            if update_lock is not None:
+                update_lock.release()
+
+    try:
+        return await run_in_threadpool(guarded_apply)
+    except InfiniDyskMigrationError as error:
+        raise HTTPException(status_code=409, detail=str(error)) from None
 
 
 @process_router.get("/mediastorm-initial-admin-password")

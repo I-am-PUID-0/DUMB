@@ -1,7 +1,10 @@
+from utils.service_identity import canonical_service_key
+
+
 def _normalize_service_name(value):
     if not isinstance(value, str):
         return ""
-    return value.strip().lower()
+    return canonical_service_key(value)
 
 
 def normalize_core_services(value):

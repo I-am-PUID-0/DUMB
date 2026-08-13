@@ -1539,7 +1539,7 @@
         "api_keys"
       ]
     },
-    "nzbdav": {
+    "infinidysk": {
       "type": "object",
       "properties": {
         "enabled": {
@@ -5273,7 +5273,7 @@
     "cli_debrid",
     "cli_battery",
     "decypharr",
-    "nzbdav",
+    "infinidysk",
     "emby",
     "jellyfin",
     "lidarr",

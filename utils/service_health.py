@@ -79,7 +79,7 @@ class HttpProbe:
 
 
 HTTP_PROBES = {
-    "nzbdav": HttpProbe("NzbDAV backend health", "/health", "backend_port"),
+    "infinidysk": HttpProbe("InfiniDysk backend health", "/health", "backend_port"),
     "jellyfin": HttpProbe("Jellyfin health", "/health"),
     "emby": HttpProbe("Emby application ping", "/emby/System/Ping"),
     "plex": HttpProbe(

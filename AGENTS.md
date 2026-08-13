@@ -2,7 +2,7 @@
 
 ## Project purpose and runtime model
 
-DUMB (Distributed Unlimited Media Bridge) is an all-in-one Docker-oriented media automation stack. The Python backend coordinates a FastAPI API, service process lifecycle management, configuration generation/migration, update checks, logs, metrics, authentication, and integrations for bundled services such as Arr apps, Plex/Jellyfin/Emby, Decypharr, NzbDAV, Riven, Traefik, cloudflared, PostgreSQL, and related tools.
+DUMB (Distributed Unlimited Media Bridge) is an all-in-one Docker-oriented media automation stack. The Python backend coordinates a FastAPI API, service process lifecycle management, configuration generation/migration, update checks, logs, metrics, authentication, and integrations for bundled services such as Arr apps, Plex/Jellyfin/Emby, Decypharr, InfiniDysk (including legacy NzbDAV compatibility), Riven, Traefik, cloudflared, PostgreSQL, and related tools.
 
 The container runtime expects persistent paths such as `/config`, `/log`, `/data`, `/mnt/debrid`, and `/healthcheck`. Many modules intentionally use these absolute paths, so local tests often rely on fallback paths or mocks rather than a fully running container.
 

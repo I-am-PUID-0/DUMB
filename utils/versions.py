@@ -7,8 +7,8 @@ PROFILARR_LEGACY_RELEASE_VERSION = "v1.1.4"
 
 
 def display_version(key: str | None, version: str | None) -> str | None:
-    """Hide internal source identity only for ordinary NzbDAV releases."""
-    if key != "nzbdav" or not version:
+    """Hide internal source identity only for ordinary InfiniDysk releases."""
+    if key != "infinidysk" or not version:
         return version
     value = str(version).strip()
     match = re.fullmatch(
@@ -243,8 +243,11 @@ class Versions:
             elif key == "decypharr":
                 version_path = "/decypharr/version.txt"
                 is_file = True
-            elif key == "nzbdav":
-                version_path = "/nzbdav/version.txt"
+            elif key == "infinidysk":
+                config = CONFIG_MANAGER.get("infinidysk") or {}
+                version_path = os.path.join(
+                    config.get("config_dir") or "/infinidysk", "version.txt"
+                )
                 is_file = True
             elif key == "tautulli":
                 config = CONFIG_MANAGER.get_instance(instance_name, key)
@@ -557,7 +560,7 @@ class Versions:
                         elif (
                             key == "zilean"
                             or key == "decypharr"
-                            or key == "nzbdav"
+                            or key == "infinidysk"
                             or key == "tautulli"
                             or key == "bazarr"
                             or key == "huntarr"
@@ -612,8 +615,11 @@ class Versions:
                 version_path = "/decypharr/version.txt"
                 with open(version_path, "w") as f:
                     f.write(version)
-            elif key == "nzbdav":
-                version_path = "/nzbdav/version.txt"
+            elif key == "infinidysk":
+                config = CONFIG_MANAGER.get("infinidysk") or {}
+                version_path = version_path or os.path.join(
+                    config.get("config_dir") or "/infinidysk", "version.txt"
+                )
                 with open(version_path, "w") as f:
                     f.write(version)
             elif key == "tautulli":
@@ -680,7 +686,7 @@ class Versions:
             config = self._get_service_config_for_compare(key, instance_name)
             if key in (
                 "decypharr",
-                "nzbdav",
+                "infinidysk",
                 "neutarr",
                 "maintainerr",
                 "profilarr",
@@ -727,7 +733,7 @@ class Versions:
             latest_release_version = None
             error = None
             if (
-                key == "nzbdav"
+                key == "infinidysk"
                 and prerelease
                 and str(repo_owner or "").strip().lower() == "infinidysk"
                 and str(repo_name or "").strip().lower() == "infinidysk"
@@ -785,8 +791,8 @@ class Versions:
                         "current_version": current_version,
                         "latest_version": latest_release_version,
                     }
-            if key == "nzbdav":
-                # NzbDAV release installs persist tag-shortSHA so DUMB can
+            if key == "infinidysk":
+                # InfiniDysk release installs persist tag-shortSHA so DUMB can
                 # detect a moved rolling/prerelease tag. Compare against the
                 # same immutable marker instead of repeatedly comparing the
                 # marker with GitHub's plain tag name.
@@ -795,7 +801,7 @@ class Versions:
                 )
                 if not normalized_latest:
                     raise Exception(marker_error)
-            if nightly and key != "nzbdav":
+            if nightly and key != "infinidysk":
                 current_date = ".".join(str(normalized_current).split(".")[0:3])
                 latest_date = ".".join(str(normalized_latest).split(".")[0:3])
                 if current_date == latest_date:

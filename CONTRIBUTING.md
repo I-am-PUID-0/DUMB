@@ -130,7 +130,7 @@ config during normal cleanup.
 Each worker uses isolated service state and a shared verified install cache under
 the workspace parent. Reports and per-case stdout/stderr are written beneath
 `.regression-reports/` and are ignored by Git. Keep concurrency bounded: source
-builds such as Seerr, NzbDAV, and Traefik Proxy Admin can consume substantial CPU,
+builds such as Seerr, InfiniDysk, and Traefik Proxy Admin can consume substantial CPU,
 memory, network bandwidth, and temporary storage.
 
 The `nzbdav-prebuilt-rc` case starts an older fixed RC, changes the saved target

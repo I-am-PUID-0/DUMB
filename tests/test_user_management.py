@@ -4,7 +4,7 @@ import sys
 import tempfile
 import types
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 
 def _install_stubs():
@@ -30,6 +30,42 @@ user_management = importlib.import_module("utils.user_management")
 
 
 class UserManagementSecurityTests(unittest.TestCase):
+    def _symlink_migration_calls(self, *, legacy_identity, config_dir):
+        config = types.SimpleNamespace(
+            get=lambda key, default=None: {
+                "data_root": "/data",
+                "infinidysk": {"config_dir": config_dir},
+            }.get(key, default),
+            uses_legacy_infinidysk_identity=lambda: legacy_identity,
+        )
+        migrate = Mock()
+        with (
+            patch.object(user_management, "config", config),
+            patch.object(user_management, "is_mount", return_value=True),
+            patch.object(user_management, "cleanup_broken_symlinks"),
+            patch.object(user_management, "migrate_and_symlink", migrate),
+            patch.object(user_management.os.path, "lexists", return_value=False),
+            patch.object(user_management.os.path, "exists", return_value=False),
+        ):
+            user_management.migrate_symlinks()
+        return [call.args for call in migrate.call_args_list]
+
+    def test_fresh_install_creates_only_canonical_infinidysk_root(self):
+        calls = self._symlink_migration_calls(
+            legacy_identity=False, config_dir="/infinidysk"
+        )
+
+        self.assertIn(("/infinidysk", "/data/infinidysk"), calls)
+        self.assertNotIn(("/nzbdav", "/data/nzbdav"), calls)
+
+    def test_legacy_install_does_not_create_an_unused_canonical_root(self):
+        calls = self._symlink_migration_calls(
+            legacy_identity=True, config_dir="/nzbdav"
+        )
+
+        self.assertIn(("/nzbdav", "/data/nzbdav"), calls)
+        self.assertNotIn(("/infinidysk", "/data/infinidysk"), calls)
+
     def test_dynamic_workers_use_all_available_cpus_on_local_filesystem(self):
         with (
             patch.object(user_management, "_available_cpu_count", return_value=128),

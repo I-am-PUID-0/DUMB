@@ -35,8 +35,8 @@ class ServiceHealthMonitorTests(unittest.TestCase):
         request.return_value = FakeResponse(body="Healthy")
 
         result = self.monitor.check(
-            "nzbdav",
-            "NzbDAV",
+            "infinidysk",
+            "InfiniDysk",
             {"backend_port": 8080},
             process_identity=123,
         )
@@ -74,8 +74,8 @@ class ServiceHealthMonitorTests(unittest.TestCase):
         )
 
         result = self.monitor.check(
-            "nzbdav",
-            "NzbDAV",
+            "infinidysk",
+            "InfiniDysk",
             {"backend_port": 8080},
             process_identity=123,
         )
@@ -101,8 +101,8 @@ class ServiceHealthMonitorTests(unittest.TestCase):
         )
 
         result = self.monitor.check(
-            "nzbdav",
-            "NzbDAV",
+            "infinidysk",
+            "InfiniDysk",
             {"backend_port": 8080},
         )
 
@@ -126,8 +126,8 @@ class ServiceHealthMonitorTests(unittest.TestCase):
         )
 
         result = self.monitor.check(
-            "nzbdav",
-            "NzbDAV",
+            "infinidysk",
+            "InfiniDysk",
             {"backend_port": 8080},
         )
 
@@ -143,8 +143,8 @@ class ServiceHealthMonitorTests(unittest.TestCase):
         )
 
         result = self.monitor.check(
-            "nzbdav",
-            "NzbDAV",
+            "infinidysk",
+            "InfiniDysk",
             {"backend_port": 8080},
         )
 
@@ -230,7 +230,7 @@ class ServiceHealthMonitorTests(unittest.TestCase):
 
         result = self.monitor.check(
             "rclone",
-            "Rclone w/ NzbDAV",
+            "Rclone w/ InfiniDysk",
             {
                 "command": [
                     "rclone",
@@ -316,9 +316,9 @@ class ServiceHealthMonitorTests(unittest.TestCase):
         monitor = ServiceHealthMonitor(cache_ttl_seconds=60)
         config = {"backend_port": 8080}
 
-        first = monitor.check("nzbdav", "NzbDAV", config, process_identity=123)
-        second = monitor.check("nzbdav", "NzbDAV", config, process_identity=123)
-        third = monitor.check("nzbdav", "NzbDAV", config, process_identity=456)
+        first = monitor.check("infinidysk", "InfiniDysk", config, process_identity=123)
+        second = monitor.check("infinidysk", "InfiniDysk", config, process_identity=123)
+        third = monitor.check("infinidysk", "InfiniDysk", config, process_identity=456)
 
         self.assertEqual(first, second)
         self.assertEqual(first["status"], third["status"])

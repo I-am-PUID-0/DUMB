@@ -45,7 +45,7 @@
     },
     {
       "id": "nzbdav-release",
-      "key": "nzbdav",
+      "key": "infinidysk",
       "previous": "v0.9.4",
       "selector": "release",
       "qualified": true,
@@ -59,7 +59,7 @@
     },
     {
       "id": "nzbdav-prebuilt-rc",
-      "key": "nzbdav",
+      "key": "infinidysk",
       "previous": "v0.10.0-rc.1",
       "target_version": "prerelease",
       "update_target": "channel",

@@ -35,7 +35,7 @@ SQLITE_SERVICE_KEYS = {
     "emby",
     "jellyfin",
     "maintainerr",
-    "nzbdav",
+    "infinidysk",
     "plex",
     "profilarr",
     "pulsarr",
@@ -383,9 +383,9 @@ class DatabaseHealthCollector:
                 ("main", os.path.join(config_dir, ARR_DATABASE_FILES[key])),
                 ("logs", os.path.join(config_dir, "logs.db")),
             ]
-        if key == "nzbdav":
+        if key == "infinidysk":
             env = service.get("env") or {}
-            base = str(env.get("CONFIG_PATH") or config_dir or "/nzbdav")
+            base = str(env.get("CONFIG_PATH") or config_dir or "/infinidysk")
             return [
                 ("main", os.path.join(base, "db.sqlite")),
                 ("metrics", os.path.join(base, "metrics.sqlite")),

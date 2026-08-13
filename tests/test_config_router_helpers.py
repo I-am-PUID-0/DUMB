@@ -170,6 +170,26 @@ def _service_schema():
 
 
 class ConfigRouterHelperTests(unittest.TestCase):
+    def test_legacy_nzbdav_global_update_normalizes_to_infinidysk(self):
+        payload = {
+            "nzbdav": {"enabled": True, "config_dir": "/nzbdav"},
+        }
+
+        result = config_router._normalize_legacy_global_config(payload)
+
+        self.assertNotIn("nzbdav", result)
+        self.assertTrue(result["infinidysk"]["enabled"])
+        self.assertEqual("/nzbdav", result["infinidysk"]["config_dir"])
+
+    def test_conflicting_service_identities_are_rejected(self):
+        payload = {
+            "nzbdav": {"enabled": True},
+            "infinidysk": {"enabled": False},
+        }
+
+        with self.assertRaisesRegex(Exception, "will not guess"):
+            config_router._normalize_legacy_global_config(payload)
+
     def test_redact_notification_secrets_returns_copy(self):
         original = {
             "dumb": {

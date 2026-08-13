@@ -70,7 +70,7 @@ PERSISTENT_DATA_NAMES = {
     "cli_battery": "cli_debrid",
     "phalanx_db": "phalanx_db",
     "decypharr": "decypharr",
-    "nzbdav": "nzbdav",
+    "infinidysk": "infinidysk",
     "plex": "plex",
     "tautulli": "tautulli",
     "bazarr": "bazarr",
@@ -261,6 +261,10 @@ def _persistent_data_path(
         config_dir = str(current.get("config_dir") or "").strip()
         leaf = os.path.basename(config_dir.rstrip("/"))
         return os.path.join(data_root, f"zurg_{leaf}") if leaf else None
+    if service_key == "infinidysk":
+        config_dir = str(current.get("config_dir") or "").strip()
+        leaf = os.path.basename(config_dir.rstrip("/"))
+        return os.path.join(data_root, leaf or "infinidysk")
     name = PERSISTENT_DATA_NAMES.get(service_key)
     if not name:
         return None

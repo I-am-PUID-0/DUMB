@@ -145,7 +145,7 @@ class FrontendStartupTests(unittest.TestCase):
         failures = run_grouped_preinstall(
             [
                 ("seerr", "Seerr Main"),
-                ("seerr", "Seerr NzbDAV"),
+                ("seerr", "Seerr InfiniDysk"),
                 ("sonarr", "Sonarr Main"),
             ],
             install_target,

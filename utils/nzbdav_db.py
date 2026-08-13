@@ -10,9 +10,9 @@ _COLUMN_NAME_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 def _get_config_path(config_dir: Optional[str] = None) -> str:
     if config_dir:
         return config_dir
-    cfg = CONFIG_MANAGER.get("nzbdav", {})
+    cfg = CONFIG_MANAGER.get("infinidysk") or {}
     env_cfg = cfg.get("env", {}) if isinstance(cfg, dict) else {}
-    return env_cfg.get("CONFIG_PATH") or cfg.get("config_dir") or "/nzbdav"
+    return env_cfg.get("CONFIG_PATH") or cfg.get("config_dir") or "/infinidysk"
 
 
 def _get_db_path(config_dir: Optional[str] = None) -> str:
@@ -28,7 +28,7 @@ def _connect(db_path: str) -> sqlite3.Connection:
 def list_tables(config_dir: Optional[str] = None) -> list[str]:
     db_path = _get_db_path(config_dir)
     if not os.path.exists(db_path):
-        raise FileNotFoundError(f"NzbDAV db not found: {db_path}")
+        raise FileNotFoundError(f"InfiniDysk db not found: {db_path}")
     with _connect(db_path) as conn:
         rows = conn.execute(
             "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name"
@@ -72,7 +72,7 @@ def _get_table_column_names(conn: sqlite3.Connection, table: str) -> set[str]:
 def get_table_columns(table: str, config_dir: Optional[str] = None) -> list[dict]:
     db_path = _get_db_path(config_dir)
     if not os.path.exists(db_path):
-        raise FileNotFoundError(f"NzbDAV db not found: {db_path}")
+        raise FileNotFoundError(f"InfiniDysk db not found: {db_path}")
     with _connect(db_path) as conn:
         _validate_table_name(conn, table)
         rows = conn.execute(f"PRAGMA table_info({table})").fetchall()
@@ -101,7 +101,7 @@ def fetch_rows(
 ) -> list[dict]:
     db_path = _get_db_path(config_dir)
     if not os.path.exists(db_path):
-        raise FileNotFoundError(f"NzbDAV db not found: {db_path}")
+        raise FileNotFoundError(f"InfiniDysk db not found: {db_path}")
     if not isinstance(limit, int) or not isinstance(offset, int):
         raise TypeError("limit and offset must be integers.")
     if limit < 0 or offset < 0:
@@ -122,7 +122,7 @@ def upsert_row(
 ) -> Tuple[bool, Optional[str]]:
     db_path = _get_db_path(config_dir)
     if not os.path.exists(db_path):
-        return False, f"NzbDAV db not found: {db_path}"
+        return False, f"InfiniDysk db not found: {db_path}"
     if not isinstance(data, dict):
         return False, "Data must be a mapping of column names to values."
     if not data:
@@ -200,7 +200,7 @@ def delete_rows(
 ) -> Tuple[bool, Optional[str]]:
     db_path = _get_db_path(config_dir)
     if not os.path.exists(db_path):
-        return False, f"NzbDAV db not found: {db_path}"
+        return False, f"InfiniDysk db not found: {db_path}"
     if not where_sql.strip():
         return False, "Refusing to delete without a WHERE clause."
     if len(where_sql) > 500:
@@ -221,8 +221,9 @@ def _find_backend_config_item_path(config_dir: Optional[str] = None) -> Optional
     candidates = [
         os.path.join(base, "backend", "Database", "Models", "ConfigItem.cs"),
         os.path.join(
-            "/data", "nzbdav", "backend", "Database", "Models", "ConfigItem.cs"
+            "/data", "infinidysk", "backend", "Database", "Models", "ConfigItem.cs"
         ),
+        os.path.join("/infinidysk", "backend", "Database", "Models", "ConfigItem.cs"),
         os.path.join("/nzbdav", "backend", "Database", "Models", "ConfigItem.cs"),
     ]
     for path in candidates:
@@ -234,7 +235,7 @@ def _find_backend_config_item_path(config_dir: Optional[str] = None) -> Optional
 def get_config_items(config_dir: Optional[str] = None) -> Dict[str, str]:
     db_path = _get_db_path(config_dir)
     if not os.path.exists(db_path):
-        raise FileNotFoundError(f"NzbDAV db not found: {db_path}")
+        raise FileNotFoundError(f"InfiniDysk db not found: {db_path}")
     with _connect(db_path) as conn:
         rows = conn.execute(
             "SELECT ConfigName, ConfigValue FROM ConfigItems ORDER BY ConfigName"
@@ -249,7 +250,7 @@ def list_config_names(config_dir: Optional[str] = None) -> list[str]:
 def dump_config_items(config_dir: Optional[str] = None) -> list[dict]:
     db_path = _get_db_path(config_dir)
     if not os.path.exists(db_path):
-        raise FileNotFoundError(f"NzbDAV db not found: {db_path}")
+        raise FileNotFoundError(f"InfiniDysk db not found: {db_path}")
     with _connect(db_path) as conn:
         rows = conn.execute(
             "SELECT ConfigName, ConfigValue FROM ConfigItems ORDER BY ConfigName"
@@ -260,7 +261,7 @@ def dump_config_items(config_dir: Optional[str] = None) -> list[dict]:
 def list_known_config_names(config_dir: Optional[str] = None) -> list[str]:
     config_item_path = _find_backend_config_item_path(config_dir)
     if not config_item_path:
-        raise FileNotFoundError("NzbDAV ConfigItem.cs not found.")
+        raise FileNotFoundError("InfiniDysk ConfigItem.cs not found.")
     try:
         with open(config_item_path, "r") as f:
             contents = f.read()
@@ -273,7 +274,7 @@ def list_known_config_names(config_dir: Optional[str] = None) -> list[str]:
 def list_accounts(config_dir: Optional[str] = None) -> list[dict]:
     db_path = _get_db_path(config_dir)
     if not os.path.exists(db_path):
-        raise FileNotFoundError(f"NzbDAV db not found: {db_path}")
+        raise FileNotFoundError(f"InfiniDysk db not found: {db_path}")
     with _connect(db_path) as conn:
         rows = conn.execute(
             "SELECT Type, Username FROM Accounts ORDER BY Type, Username"
@@ -284,7 +285,7 @@ def list_accounts(config_dir: Optional[str] = None) -> list[dict]:
 def get_config_value(name: str, config_dir: Optional[str] = None) -> Optional[str]:
     db_path = _get_db_path(config_dir)
     if not os.path.exists(db_path):
-        raise FileNotFoundError(f"NzbDAV db not found: {db_path}")
+        raise FileNotFoundError(f"InfiniDysk db not found: {db_path}")
     with _connect(db_path) as conn:
         row = conn.execute(
             "SELECT ConfigValue FROM ConfigItems WHERE ConfigName = ?",
@@ -298,7 +299,7 @@ def set_config_value(
 ) -> Tuple[bool, Optional[str]]:
     db_path = _get_db_path(config_dir)
     if not os.path.exists(db_path):
-        return False, f"NzbDAV db not found: {db_path}"
+        return False, f"InfiniDysk db not found: {db_path}"
     try:
         with _connect(db_path) as conn:
             conn.execute(
@@ -310,5 +311,5 @@ def set_config_value(
             conn.commit()
         return True, None
     except sqlite3.Error as e:
-        logger.error("Failed to update NzbDAV config: %s", e)
+        logger.error("Failed to update InfiniDysk config: %s", e)
         return False, str(e)

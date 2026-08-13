@@ -149,7 +149,7 @@ class DownloaderHelperTests(unittest.TestCase):
 
         with patch.object(self.downloader, "fetch_with_retries", return_value=response):
             version, error = self.downloader.get_latest_release(
-                "nzbdav", "nzbdav", prerelease=True
+                "infinidysk", "infinidysk", prerelease=True
             )
 
         self.assertIsNone(error)
@@ -418,12 +418,12 @@ class DownloaderHelperTests(unittest.TestCase):
             ) as extract,
         ):
             success, error = self.downloader.download_release_version(
-                process_name="NzbDAV",
-                key="nzbdav",
-                repo_owner="nzbdav",
-                repo_name="nzbdav",
+                process_name="InfiniDysk",
+                key="infinidysk",
+                repo_owner="infinidysk",
+                repo_name="infinidysk",
                 release_version="dev",
-                target_dir="/nzbdav",
+                target_dir="/infinidysk",
             )
 
         self.assertTrue(success, error)
@@ -431,9 +431,9 @@ class DownloaderHelperTests(unittest.TestCase):
         self.assertEqual(
             extract.call_args.args[:3],
             (
-                "https://api.github.com/repos/nzbdav/nzbdav/zipball/dev",
-                "/nzbdav",
-                "nzbdav-nzbdav*",
+                "https://api.github.com/repos/infinidysk/infinidysk/zipball/dev",
+                "/infinidysk",
+                "infinidysk-infinidysk*",
             ),
         )
 
@@ -444,18 +444,18 @@ class DownloaderHelperTests(unittest.TestCase):
             return_value=(True, None),
         ) as extract:
             success, error = self.downloader.download_release_version(
-                process_name="NzbDAV",
-                key="nzbdav",
-                repo_owner="nzbdav",
-                repo_name="nzbdav",
+                process_name="InfiniDysk",
+                key="infinidysk",
+                repo_owner="infinidysk",
+                repo_name="infinidysk",
                 release_version="preview/test",
-                target_dir="/nzbdav",
+                target_dir="/infinidysk",
             )
 
         self.assertTrue(success, error)
         self.assertEqual(
             extract.call_args.args[0],
-            "https://api.github.com/repos/nzbdav/nzbdav/zipball/preview%2Ftest",
+            "https://api.github.com/repos/infinidysk/infinidysk/zipball/preview%2Ftest",
         )
 
     def test_handle_rate_limits_uses_retry_after_header(self):

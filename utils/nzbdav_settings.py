@@ -4,10 +4,61 @@ from utils.core_services import get_core_services, has_core_service
 from utils import nzbdav_db
 from utils.url_security import safe_request, safe_urlopen
 from utils.user_management import chown_recursive, chown_single
+from contextlib import contextmanager
 from typing import Optional, Tuple
 import defusedxml.ElementTree as ET
 import json, os, time, urllib.request, urllib.error, urllib.parse
 import threading
+
+_NZBDAV_PATCH_CONTEXT = threading.local()
+
+
+@contextmanager
+def defer_nzbdav_runtime_integrations():
+    """Skip live Arr calls while a guarded migration has the Arrs stopped."""
+
+    previous = bool(getattr(_NZBDAV_PATCH_CONTEXT, "defer_runtime_integrations", False))
+    _NZBDAV_PATCH_CONTEXT.defer_runtime_integrations = True
+    try:
+        yield
+    finally:
+        _NZBDAV_PATCH_CONTEXT.defer_runtime_integrations = previous
+
+
+def _uses_legacy_namespace(config: Optional[dict] = None) -> bool:
+    """Keep existing NzbDAV paths stable until a full migration is approved."""
+    config = (
+        config if isinstance(config, dict) else (CONFIG_MANAGER.get("infinidysk") or {})
+    )
+    env = config.get("env") or {}
+    values = [
+        config.get("config_dir"),
+        config.get("log_file"),
+        config.get("symlink_backup_path"),
+        env.get("CONFIG_PATH"),
+        *(config.get("symlink_backup_roots") or []),
+    ]
+    return any(
+        "/nzbdav" in str(value).lower() or "nzbdav-symlinks" in str(value).lower()
+        for value in values
+        if value
+    )
+
+
+def _infinidysk_symlink_root(config: Optional[dict] = None) -> str:
+    return (
+        "/mnt/debrid/nzbdav-symlinks"
+        if _uses_legacy_namespace(config)
+        else "/mnt/debrid/infinidysk-symlinks"
+    )
+
+
+def _infinidysk_mount_root(config: Optional[dict] = None) -> str:
+    return (
+        "/mnt/debrid/nzbdav"
+        if _uses_legacy_namespace(config)
+        else "/mnt/debrid/infinidysk"
+    )
 
 
 def _parse_arr_api_key(config_xml_path: str) -> str:
@@ -58,7 +109,7 @@ def _collect_arr_entries() -> Tuple[list[dict], list[dict], list[dict], list[dic
         for inst_key, inst in instances.items():
             if not inst.get("enabled"):
                 continue
-            if not has_core_service(inst, "nzbdav"):
+            if not has_core_service(inst, "infinidysk"):
                 continue
             port = inst.get("port") or inst.get("host_port")
             try:
@@ -96,7 +147,7 @@ def _collect_arr_entries() -> Tuple[list[dict], list[dict], list[dict], list[dic
 
 
 def get_nzbdav_arr_categories() -> list[dict]:
-    """Return non-secret category metadata for DUMB-managed NzbDAV Arr links."""
+    """Return non-secret category metadata for DUMB-managed InfiniDysk Arr links."""
     buckets = _collect_arr_entries()
     result = []
     seen = set()
@@ -170,7 +221,7 @@ def sync_nzbdav_rclone_rc(
     if not updates:
         return True, None
 
-    nzbdav_config = CONFIG_MANAGER.get("nzbdav", {}) or {}
+    nzbdav_config = CONFIG_MANAGER.get("infinidysk") or {}
     env_config = nzbdav_config.get("env", {}) or {}
     api_key = env_config.get("FRONTEND_BACKEND_API_KEY") or nzbdav_db.get_config_value(
         "api.key"
@@ -189,18 +240,18 @@ def sync_nzbdav_rclone_rc(
         try:
             with safe_urlopen(request, timeout=5) as response:
                 if 200 <= response.status < 300:
-                    logger.info("Configured NzbDAV to use rclone RC at %s.", host)
+                    logger.info("Configured InfiniDysk to use rclone RC at %s.", host)
                     return True, None
         except (urllib.error.URLError, TimeoutError, OSError):
             logger.debug(
-                "NzbDAV API unavailable while configuring rclone RC; updating its database directly."
+                "InfiniDysk API unavailable while configuring rclone RC; updating its database directly."
             )
 
     for key, value in updates.items():
         ok, error = nzbdav_db.set_config_value(key, value)
         if not ok:
             return False, error
-    logger.info("Seeded NzbDAV rclone RC settings at %s.", host)
+    logger.info("Seeded InfiniDysk rclone RC settings at %s.", host)
     return True, None
 
 
@@ -439,7 +490,7 @@ def ensure_nzbdav_download_client(
     nzbdav_port: int,
     nzbdav_api_key: str,
     service: str,
-    name: str = "nzbdav",
+    name: str = "InfiniDysk",
     category_map: Optional[dict] = None,
     category: Optional[str] = None,
     test_before_save: bool = False,
@@ -522,8 +573,10 @@ def ensure_nzbdav_download_client(
         _arr_req(_arr_url(arr_host, api_version, "downloadclient"), arr_api_key, "GET")
         or []
     )
+    managed_names = {name.lower(), "infinidysk", "nzbdav"}
     match = next(
-        (c for c in existing if (c.get("name") or "").lower() == name.lower()), None
+        (c for c in existing if (c.get("name") or "").strip().lower() in managed_names),
+        None,
     )
 
     if match:
@@ -680,7 +733,14 @@ def _merge_instances(existing: list[dict], auto_list: list[dict]) -> list[dict]:
 
 
 def patch_nzbdav_config():
-    config = CONFIG_MANAGER.get("nzbdav", {}) or {}
+    config = CONFIG_MANAGER.get("infinidysk") or {}
+    download_client_name = (
+        "NzbDAV"
+        if "nzbdav" in str(config.get("process_name") or "").lower()
+        else "InfiniDysk"
+    )
+    standalone_symlink_root = _infinidysk_symlink_root(config)
+    standalone_mount_root = _infinidysk_mount_root(config)
     backend_port = int(config.get("backend_port") or 8080)
     env_cfg = config.get("env", {}) if isinstance(config, dict) else {}
 
@@ -700,7 +760,9 @@ def patch_nzbdav_config():
         and not lidarr_entries
         and not whisparr_entries
     ):
-        logger.info("No Radarr/Sonarr/Lidarr/Whisparr instances configured for NzbDAV.")
+        logger.info(
+            "No Radarr/Sonarr/Lidarr/Whisparr instances configured for InfiniDysk."
+        )
         return False, None
 
     root_paths = []
@@ -716,14 +778,16 @@ def patch_nzbdav_config():
             if not category:
                 continue
             core_services = _instance_core_services(svc_name, entry.get("Instance"))
-            use_combined = "decypharr" in core_services and "nzbdav" in core_services
+            use_combined = (
+                "decypharr" in core_services and "infinidysk" in core_services
+            )
             symlink_root = (
                 "/mnt/debrid/combined_symlinks"
                 if use_combined
-                else "/mnt/debrid/nzbdav-symlinks"
+                else standalone_symlink_root
             )
             logger.info(
-                "NzbDAV Arr rootfolder base for %s:%s set to %s (combined=%s)",
+                "InfiniDysk Arr rootfolder base for %s:%s set to %s (combined=%s)",
                 svc_name,
                 entry.get("Instance") or "default",
                 symlink_root,
@@ -736,7 +800,7 @@ def patch_nzbdav_config():
         try:
             _ensure_symlink_roots(sorted(base_roots) + root_paths)
         except Exception as e:
-            logger.warning("Failed to ensure NzbDAV symlink roots: %s", e)
+            logger.warning("Failed to ensure InfiniDysk symlink roots: %s", e)
 
     try:
         existing = nzbdav_db.get_config_value("arr.instances")
@@ -776,7 +840,7 @@ def patch_nzbdav_config():
         if not ok:
             return False, err
         updated = True
-        logger.info("Updated NzbDAV arr.instances configuration.")
+        logger.info("Updated InfiniDysk arr.instances configuration.")
 
     try:
         current_categories = nzbdav_db.get_config_value("api.categories") or ""
@@ -798,17 +862,23 @@ def patch_nzbdav_config():
             if not ok:
                 return False, err
             updated = True
-            logger.info("Updated NzbDAV api.categories to %s", desired_categories)
+            logger.info("Updated InfiniDysk api.categories to %s", desired_categories)
     except FileNotFoundError as e:
         return False, str(e)
 
     rclone_mount_dir = nzbdav_db.get_config_value("rclone.mount-dir")
     if not rclone_mount_dir:
-        ok, err = nzbdav_db.set_config_value("rclone.mount-dir", "/mnt/debrid/nzbdav")
+        ok, err = nzbdav_db.set_config_value("rclone.mount-dir", standalone_mount_root)
         if not ok:
             return updated, err
         updated = True
-        logger.info("Set NzbDAV rclone.mount-dir to /mnt/debrid/nzbdav.")
+        logger.info("Set InfiniDysk rclone.mount-dir to %s.", standalone_mount_root)
+
+    if getattr(_NZBDAV_PATCH_CONTEXT, "defer_runtime_integrations", False):
+        logger.info(
+            "Deferring InfiniDysk Arr root/download-client calls until the guarded migration restarts its consumers."
+        )
+        return updated, None
 
     try:
         for entry in radarr_entries:
@@ -818,15 +888,15 @@ def patch_nzbdav_config():
             if root_path:
                 core_services = _instance_core_services("radarr", entry.get("Instance"))
                 use_combined = (
-                    "decypharr" in core_services and "nzbdav" in core_services
+                    "decypharr" in core_services and "infinidysk" in core_services
                 )
                 symlink_root = (
                     "/mnt/debrid/combined_symlinks"
                     if use_combined
-                    else "/mnt/debrid/nzbdav-symlinks"
+                    else standalone_symlink_root
                 )
                 logger.info(
-                    "NzbDAV Arr rootfolder base for radarr:%s set to %s (combined=%s)",
+                    "InfiniDysk Arr rootfolder base for radarr:%s set to %s (combined=%s)",
                     entry.get("Instance") or "default",
                     symlink_root,
                     use_combined,
@@ -863,15 +933,15 @@ def patch_nzbdav_config():
             if root_path:
                 core_services = _instance_core_services("sonarr", entry.get("Instance"))
                 use_combined = (
-                    "decypharr" in core_services and "nzbdav" in core_services
+                    "decypharr" in core_services and "infinidysk" in core_services
                 )
                 symlink_root = (
                     "/mnt/debrid/combined_symlinks"
                     if use_combined
-                    else "/mnt/debrid/nzbdav-symlinks"
+                    else standalone_symlink_root
                 )
                 logger.info(
-                    "NzbDAV Arr rootfolder base for sonarr:%s set to %s (combined=%s)",
+                    "InfiniDysk Arr rootfolder base for sonarr:%s set to %s (combined=%s)",
                     entry.get("Instance") or "default",
                     symlink_root,
                     use_combined,
@@ -908,15 +978,15 @@ def patch_nzbdav_config():
             if root_path:
                 core_services = _instance_core_services("lidarr", entry.get("Instance"))
                 use_combined = (
-                    "decypharr" in core_services and "nzbdav" in core_services
+                    "decypharr" in core_services and "infinidysk" in core_services
                 )
                 symlink_root = (
                     "/mnt/debrid/combined_symlinks"
                     if use_combined
-                    else "/mnt/debrid/nzbdav-symlinks"
+                    else standalone_symlink_root
                 )
                 logger.info(
-                    "NzbDAV Arr rootfolder base for lidarr:%s set to %s (combined=%s)",
+                    "InfiniDysk Arr rootfolder base for lidarr:%s set to %s (combined=%s)",
                     entry.get("Instance") or "default",
                     symlink_root,
                     use_combined,
@@ -955,15 +1025,15 @@ def patch_nzbdav_config():
                     "whisparr", entry.get("Instance")
                 )
                 use_combined = (
-                    "decypharr" in core_services and "nzbdav" in core_services
+                    "decypharr" in core_services and "infinidysk" in core_services
                 )
                 symlink_root = (
                     "/mnt/debrid/combined_symlinks"
                     if use_combined
-                    else "/mnt/debrid/nzbdav-symlinks"
+                    else standalone_symlink_root
                 )
                 logger.info(
-                    "NzbDAV Arr rootfolder base for whisparr:%s set to %s (combined=%s)",
+                    "InfiniDysk Arr rootfolder base for whisparr:%s set to %s (combined=%s)",
                     entry.get("Instance") or "default",
                     symlink_root,
                     use_combined,
@@ -997,12 +1067,14 @@ def patch_nzbdav_config():
         logger.warning("Failed to ensure Arr root folders: %s", e)
 
     if not nzbdav_api_key:
-        logger.warning("NzbDAV API key not found; skipping Arr download client setup.")
+        logger.warning(
+            "InfiniDysk API key not found; skipping Arr download client setup."
+        )
         return updated, None
 
     if not _wait_for_nzbdav("127.0.0.1", backend_port, timeout_s=10, interval_s=1.0):
         logger.warning(
-            "NzbDAV backend not reachable on %s:%s; skipping download client setup.",
+            "InfiniDysk backend not reachable on %s:%s; skipping download client setup.",
             "127.0.0.1",
             backend_port,
         )
@@ -1032,7 +1104,7 @@ def patch_nzbdav_config():
                 backend_port,
                 nzbdav_api_key,
                 "radarr",
-                name="nzbdav",
+                name=download_client_name,
                 category=entry.get("Category"),
                 category_map=category_map,
                 api_version=api_version,
@@ -1057,7 +1129,7 @@ def patch_nzbdav_config():
                 backend_port,
                 nzbdav_api_key,
                 "sonarr",
-                name="nzbdav",
+                name=download_client_name,
                 category=entry.get("Category"),
                 category_map=category_map,
                 api_version=api_version,
@@ -1082,7 +1154,7 @@ def patch_nzbdav_config():
                 backend_port,
                 nzbdav_api_key,
                 "lidarr",
-                name="nzbdav",
+                name=download_client_name,
                 category=entry.get("Category"),
                 category_map=category_map,
                 api_version=api_version,
@@ -1107,7 +1179,7 @@ def patch_nzbdav_config():
                 backend_port,
                 nzbdav_api_key,
                 "whisparr",
-                name="nzbdav",
+                name=download_client_name,
                 category=entry.get("Category"),
                 category_map=category_map,
                 api_version=api_version,

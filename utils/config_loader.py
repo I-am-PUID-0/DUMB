@@ -3,6 +3,7 @@ from json import load, dump, JSONDecodeError
 from jsonschema import validate, ValidationError
 from dotenv import load_dotenv, find_dotenv
 from collections import OrderedDict
+from utils.service_identity import INFINIDYSK_KEY, INFINIDYSK_LEGACY_KEY
 
 MODULE_FILE = globals().get(
     "__file__", os.path.join(os.getcwd(), "utils", "config_loader.py")
@@ -42,6 +43,8 @@ class ConfigManager:
         self.schema_path = os.path.abspath(schema_path)
         self.default_config_path = os.path.abspath(default_config_path)
 
+        self._legacy_infinidysk_identity = False
+
         if not os.path.exists(self.file_path):
             raise FileNotFoundError(f"Config file not found: {self.file_path}")
         if not os.path.exists(self.schema_path):
@@ -51,6 +54,94 @@ class ConfigManager:
         # self.update_config_with_top_level_defaults()
         self.schema = self._load_schema()
         self.config = self._load_and_validate_config()
+
+    @staticmethod
+    def _map_infinidysk_identity(config, target_key):
+        if not isinstance(config, dict):
+            return config
+        has_canonical = INFINIDYSK_KEY in config
+        has_legacy = INFINIDYSK_LEGACY_KEY in config
+        if has_canonical and has_legacy:
+            raise ValueError(
+                "Configuration contains both 'infinidysk' and 'nzbdav'. "
+                "DUMB will not guess which service owns the existing data. "
+                "Remove one entry or restore the last known-good configuration."
+            )
+        source_key = (
+            INFINIDYSK_LEGACY_KEY if target_key == INFINIDYSK_KEY else INFINIDYSK_KEY
+        )
+        if source_key not in config or target_key in config:
+            return config
+        mapped = OrderedDict()
+        for key, value in config.items():
+            mapped[target_key if key == source_key else key] = value
+        return mapped
+
+    @staticmethod
+    def _map_infinidysk_tokens(value, target, _top_level=True):
+        if isinstance(value, dict):
+            mapped = copy.deepcopy(value)
+            for key, child in mapped.items():
+                if _top_level and str(key).lower() == "zurg":
+                    mapped[key] = copy.deepcopy(child)
+                elif key in {"core_service", "key_type"} and isinstance(child, str):
+                    mapped[key] = ",".join(
+                        (
+                            target
+                            if part.strip().lower() in {"nzbdav", "infinidysk"}
+                            else part
+                        )
+                        for part in child.split(",")
+                    )
+                elif key == "core_services" and isinstance(child, list):
+                    mapped[key] = [
+                        (
+                            ",".join(
+                                (
+                                    target
+                                    if part.strip().lower() in {"nzbdav", "infinidysk"}
+                                    else part
+                                )
+                                for part in item.split(",")
+                            )
+                            if isinstance(item, str)
+                            else item
+                        )
+                        for item in child
+                    ]
+                else:
+                    mapped[key] = ConfigManager._map_infinidysk_tokens(
+                        child, target, False
+                    )
+            return mapped
+        if isinstance(value, list):
+            return [
+                ConfigManager._map_infinidysk_tokens(item, target, False)
+                for item in value
+            ]
+        return value
+
+    def _canonicalize_runtime_config(self, config):
+        mapped = self._map_infinidysk_identity(config, INFINIDYSK_KEY)
+        return self._map_infinidysk_tokens(mapped, INFINIDYSK_KEY)
+
+    def _serialize_config_for_disk(self, config):
+        serialized = copy.deepcopy(config)
+        if self._legacy_infinidysk_identity:
+            serialized = self._map_infinidysk_tokens(serialized, INFINIDYSK_LEGACY_KEY)
+            serialized = self._map_infinidysk_identity(
+                serialized, INFINIDYSK_LEGACY_KEY
+            )
+        return serialized
+
+    def uses_legacy_infinidysk_identity(self):
+        return bool(self._legacy_infinidysk_identity)
+
+    def adopt_infinidysk_identity(self):
+        self._legacy_infinidysk_identity = False
+
+    def restore_legacy_infinidysk_identity(self):
+        self._legacy_infinidysk_identity = True
 
     def _atomic_write(self, data):
         """Write config atomically to prevent corruption on crash or kill signal.
@@ -73,7 +164,7 @@ class ConfigManager:
             except OSError:
                 pass
             with os.fdopen(fd, "w") as tmp_file:
-                dump(data, tmp_file, indent=4)
+                dump(self._serialize_config_for_disk(data), tmp_file, indent=4)
             os.replace(tmp_path, self.file_path)
         except Exception:
             try:
@@ -165,6 +256,17 @@ class ConfigManager:
                 default_config = load(default_file, object_pairs_hook=OrderedDict)
 
             existing_config = self._load_config()
+            if (
+                INFINIDYSK_KEY in existing_config
+                and INFINIDYSK_LEGACY_KEY in existing_config
+            ):
+                self._map_infinidysk_identity(existing_config, INFINIDYSK_KEY)
+            self._legacy_infinidysk_identity = (
+                INFINIDYSK_LEGACY_KEY in existing_config
+                and INFINIDYSK_KEY not in existing_config
+            )
+            existing_disk_config = copy.deepcopy(existing_config)
+            existing_config = self._canonicalize_runtime_config(existing_config)
             bazarr_config_migrated = False
             mediastorm_process_name_migrated = False
             nzbdav_repository_migrated = False
@@ -193,7 +295,7 @@ class ConfigManager:
             # Follow the NzbDAV project's maintained repository transitions.
             # Only exact former DUMB defaults migrate automatically; every
             # intentional custom owner/repository remains untouched.
-            nzbdav_cfg = existing_config.get("nzbdav")
+            nzbdav_cfg = existing_config.get(INFINIDYSK_KEY)
             nzbdav_repository = (
                 (
                     str(nzbdav_cfg.get("repo_owner") or "").strip().casefold(),
@@ -254,7 +356,7 @@ class ConfigManager:
             pruned_config = self._prune_extraneous_keys(merged_config, default_config)
 
             if (
-                pruned_config != existing_config
+                self._serialize_config_for_disk(pruned_config) != existing_disk_config
                 or bazarr_config_migrated
                 or mediastorm_process_name_migrated
                 or nzbdav_repository_migrated
@@ -306,7 +408,7 @@ class ConfigManager:
         return merged
 
     def _load_and_validate_config(self):
-        config = self._load_config()
+        config = self._canonicalize_runtime_config(self._load_config())
         try:
             validate(instance=config, schema=self.schema)
         except ValidationError as e:
@@ -319,7 +421,7 @@ class ConfigManager:
         return self._merge_with_env(config)
 
     def _load_and_merge_config(self):
-        config = self._load_config()
+        config = self._canonicalize_runtime_config(self._load_config())
         return self._merge_with_env(config)
 
     def _merge_with_env(self, config, prefix=None):
@@ -349,6 +451,15 @@ class ConfigManager:
             pass
 
         value = os.getenv(env_var)
+        if not value and keys and str(keys[0]).lower() == INFINIDYSK_KEY:
+            legacy_keys = [INFINIDYSK_LEGACY_KEY, *keys[1:]]
+            legacy_env_var = "_".join(str(key).upper() for key in legacy_keys)
+            legacy_secret_file = f"/run/secrets/{legacy_env_var}"
+            try:
+                with open(legacy_secret_file, "r") as file:
+                    value = file.read().strip()
+            except IOError:
+                value = os.getenv(legacy_env_var)
         # print(f"_get_env_var Value for {env_var}: {value}")
 
         return value if value and value.strip() != "" else None
@@ -490,7 +601,11 @@ class ConfigManager:
             self.config[key] = value
 
     def reload(self):
-        self.config = self._load_and_merge_config()
+        config = self._load_config()
+        self._legacy_infinidysk_identity = (
+            INFINIDYSK_LEGACY_KEY in config and INFINIDYSK_KEY not in config
+        )
+        self.config = self._merge_with_env(self._canonicalize_runtime_config(config))
 
     def find_key_for_process(self, process_name):
         for key, value in self.config.items():

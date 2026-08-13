@@ -599,7 +599,7 @@ class ProcessHandler:
             subprocess_access_logger = None
             log_to_main = True
             if key in {
-                "nzbdav",
+                "infinidysk",
                 "zilean",
                 "rclone",
                 "traefik",
@@ -1130,7 +1130,7 @@ class ProcessHandler:
             policy.update(max_attempts=6, wait_timeout=15)
         elif key in ("postgres",):
             policy.update(max_attempts=6, wait_timeout=15)
-        elif key in ("rclone", "decypharr", "nzbdav", "altmount", "zurg"):
+        elif key in ("rclone", "decypharr", "infinidysk", "altmount", "zurg"):
             policy.update(max_attempts=4, wait_timeout=12)
         elif key in ("bazarr",):
             # Bazarr's supervisor exits promptly while the child commonly
@@ -1237,7 +1237,7 @@ class ProcessHandler:
                 "clients",
                 (
                     "decypharr",
-                    "nzbdav",
+                    "infinidysk",
                     "altmount",
                     "rclone",
                     "zurg",

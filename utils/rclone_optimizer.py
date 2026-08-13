@@ -1,4 +1,4 @@
-"""Background, provider-conscious rclone streaming optimization for NzbDAV mounts.
+"""Background, provider-conscious rclone streaming optimization for InfiniDysk mounts.
 
 The optimizer never benchmarks against the production mount directly.  Each candidate
 uses a short-lived read-only shadow mount with its own VFS cache and loopback RC port.
@@ -117,7 +117,7 @@ def _setting_role(flag: str) -> str:
     if flag in FIXED_CONSTRAINT_FLAGS:
         return "fixed_constraint"
     if flag in NZBDAV_RECOMMENDED_FLAGS:
-        return "nzbdav_recommended"
+        return "infinidysk_recommended"
     if flag in BUNDLED_ASSUMPTION_FLAGS:
         return "bundled_assumption"
     return "preserved"
@@ -225,7 +225,7 @@ def _candidate_profiles(
     candidates = [
         {
             "id": "baseline",
-            "label": "Current streaming knobs (bounded + NzbDAV guidance)",
+            "label": "Current streaming knobs (bounded + InfiniDysk guidance)",
             "settings": {
                 "--vfs-cache-max-size": f"{max_cache}G",
                 **recommended_timeouts,
@@ -400,7 +400,10 @@ class RcloneOptimizerManager:
         for instance in instances.values():
             if not isinstance(instance, dict):
                 continue
-            if str(instance.get("key_type") or "").lower() != "nzbdav":
+            if str(instance.get("key_type") or "").lower() not in {
+                "infinidysk",
+                "nzbdav",
+            }:
                 continue
             cache_root = Path(str(instance.get("cache_dir") or "/cache"))
             shadow_root = cache_root / ".dumb-rclone-optimizer"
@@ -498,7 +501,10 @@ class RcloneOptimizerManager:
         for instance_name, instance in instances.items():
             if not isinstance(instance, dict):
                 continue
-            if str(instance.get("key_type") or "").lower() != "nzbdav":
+            if str(instance.get("key_type") or "").lower() not in {
+                "infinidysk",
+                "nzbdav",
+            }:
                 continue
             mount_path = os.path.join(
                 str(instance.get("mount_dir") or "/mnt/debrid"),
@@ -512,7 +518,7 @@ class RcloneOptimizerManager:
                     "enabled": instance.get("enabled") is True,
                     "mount_path": mount_path,
                     "mounted": os.path.ismount(mount_path),
-                    "source_service": "NzbDAV",
+                    "source_service": "InfiniDysk",
                 }
             )
         return result
@@ -525,16 +531,19 @@ class RcloneOptimizerManager:
                 continue
             if instance.get("process_name") != process_name:
                 continue
-            if str(instance.get("key_type") or "").lower() != "nzbdav":
+            if str(instance.get("key_type") or "").lower() not in {
+                "infinidysk",
+                "nzbdav",
+            }:
                 raise RcloneOptimizerError(
-                    "Only NzbDAV-backed rclone instances are supported."
+                    "Only InfiniDysk-backed rclone instances are supported."
                 )
             if instance.get("enabled") is not True:
                 raise RcloneOptimizerError(
                     "The rclone instance must be enabled before testing."
                 )
             return name, instance
-        raise RcloneOptimizerError("NzbDAV-backed rclone instance was not found.")
+        raise RcloneOptimizerError("InfiniDysk-backed rclone instance was not found.")
 
     @staticmethod
     def _mount_path(instance: dict[str, Any]) -> Path:
@@ -556,7 +565,7 @@ class RcloneOptimizerManager:
         ]
         if not active_categories:
             raise RcloneOptimizerError(
-                "No enabled Arr instances are linked to NzbDAV, so no active content categories could be discovered."
+                "No enabled Arr instances are linked to InfiniDysk, so no active content categories could be discovered."
             )
         started = time.monotonic()
         items: list[dict[str, Any]] = []
@@ -622,7 +631,7 @@ class RcloneOptimizerManager:
         if not items:
             categories = ", ".join(item["category"] for item in active_categories)
             raise RcloneOptimizerError(
-                f"No suitable media files were found in the active NzbDAV categories: {categories}."
+                f"No suitable media files were found in the active InfiniDysk categories: {categories}."
             )
         ordered = sorted(items, key=lambda item: item["mtime"], reverse=True)
         picks: list[tuple[str, str, str, dict[str, Any]]] = [
@@ -689,7 +698,7 @@ class RcloneOptimizerManager:
             "active_categories": category_results,
             "scanned": scanned,
             "truncated": scanned > max_files or time.monotonic() - started > 15,
-            "selection_note": "The files at the top are representative automatic suggestions, not required choices. Keep them, replace them, or mix in your own files (up to eight total). Each entry is resolved to a safe mount-relative read path and opened on every isolated rclone shadow mount. Recent/older are cache-likelihood heuristics; NzbDAV telemetry determines what actually happened during each read.",
+            "selection_note": "The files at the top are representative automatic suggestions, not required choices. Keep them, replace them, or mix in your own files (up to eight total). Each entry is resolved to a safe mount-relative read path and opened on every isolated rclone shadow mount. Recent/older are cache-likelihood heuristics; InfiniDysk telemetry determines what actually happened during each read.",
             "automatic_selection": selected,
             "files": [item for _index, item in visible_items[:500]],
         }
@@ -708,7 +717,7 @@ class RcloneOptimizerManager:
             "job_id": job_id,
             "process_name": process_name,
             "instance_name": instance_name,
-            "source_service": "NzbDAV",
+            "source_service": "InfiniDysk",
             "status": "queued",
             "stage": "Queued",
             "progress": 0,
@@ -729,6 +738,8 @@ class RcloneOptimizerManager:
                     "concurrent_streams",
                 ],
                 "bundled_assumptions": sorted(BUNDLED_ASSUMPTION_FLAGS),
+                "infinidysk_recommended": sorted(NZBDAV_RECOMMENDED_FLAGS),
+                # Compatibility for saved jobs and clients predating the rebrand.
                 "nzbdav_recommended": sorted(NZBDAV_RECOMMENDED_FLAGS),
                 "preserved": "Apart from the isolated mount/cache/RC/read-only/log plumbing required for safe testing, all other existing user flags are carried into every shadow command unchanged and are not evaluated by this optimizer.",
                 "confidence_note": "The recommendation identifies the best-performing predefined bundle. It does not prove that every value in that bundle is individually optimal.",
@@ -737,8 +748,8 @@ class RcloneOptimizerManager:
             "results": [],
             "recommendation": None,
             "warnings": [
-                "The test reads real data through NzbDAV and its configured Usenet providers.",
-                "For reliable results, stop Plex, Jellyfin, Emby, and other media servers, then wait until NzbDAV is idle with no imports, library ingestion, or unrelated active reads before starting the test.",
+                "The test reads real data through InfiniDysk and its configured Usenet providers.",
+                "For reliable results, stop Plex, Jellyfin, Emby, and other media servers, then wait until InfiniDysk is idle with no imports, library ingestion, or unrelated active reads before starting the test.",
                 "No provider cache purge is performed; recent and older samples are reported separately.",
             ],
             "error": None,
@@ -863,7 +874,7 @@ class RcloneOptimizerManager:
             self._update(
                 job,
                 status="preflight",
-                stage="Checking limits and NzbDAV",
+                stage="Checking limits and InfiniDysk",
                 progress=2,
                 started_at=_utcnow(),
             )
@@ -885,15 +896,15 @@ class RcloneOptimizerManager:
                 )
                 if not trace_enabled_by_job:
                     job["warnings"].append(
-                        "NzbDAV stream tracing could not be enabled. Performance measurements will continue, but provider trace matching will be marked unavailable."
+                        "InfiniDysk stream tracing could not be enabled. Performance measurements will continue, but provider trace matching will be marked unavailable."
                     )
                     self._update(job, warnings=job["warnings"])
             rc_healthy, rc_detail = self._nzbdav_rc_health(instance)
             if not rc_healthy:
                 job["warnings"].append(
-                    "NzbDAV rclone RC notifications are not healthy: "
+                    "InfiniDysk rclone RC notifications are not healthy: "
                     f"{rc_detail}. The one-week directory-cache recommendation assumes "
-                    "NzbDAV can invalidate changed paths; repair RC or choose a shorter "
+                    "InfiniDysk can invalidate changed paths; repair RC or choose a shorter "
                     "--dir-cache-time fallback."
                 )
                 self._update(job, warnings=job["warnings"])
@@ -929,7 +940,7 @@ class RcloneOptimizerManager:
                 self._update(job, results=results)
                 if result.get("provider_guard_stop"):
                     job["warnings"].append(
-                        "Testing stopped early because NzbDAV reported provider errors, retries, failover, or an open circuit."
+                        "Testing stopped early because InfiniDysk reported provider errors, retries, failover, or an open circuit."
                     )
                     break
                 if result.get("resource_limit_stop"):
@@ -1056,7 +1067,7 @@ class RcloneOptimizerManager:
         )
         if data is None:
             raise RcloneOptimizerError(
-                "NzbDAV metrics API is unavailable or authentication failed."
+                "InfiniDysk metrics API is unavailable or authentication failed."
             )
 
     def _shadow_command(
@@ -1214,6 +1225,9 @@ class RcloneOptimizerManager:
                     sample = future.result()
                     samples.append(sample)
                     live_resource = self._resource_snapshot(process, cache_path)
+                    infinidysk_summary = self._summarize_nzbdav(
+                        self._nzbdav_json(overview_path)
+                    )
                     peak_rss_mib = max(
                         peak_rss_mib, float(live_resource.get("rss_mib") or 0)
                     )
@@ -1229,9 +1243,9 @@ class RcloneOptimizerManager:
                             "rclone": self._rclone_json(rc_port, "/core/stats"),
                             "memory": self._rclone_json(rc_port, "/core/memstats"),
                             "resources": live_resource,
-                            "nzbdav": self._summarize_nzbdav(
-                                self._nzbdav_json(overview_path)
-                            ),
+                            "infinidysk": infinidysk_summary,
+                            # Compatibility for dmbdb/API clients predating the rebrand.
+                            "nzbdav": infinidysk_summary,
                         },
                     )
         after = self._nzbdav_json(overview_path)
@@ -1279,6 +1293,10 @@ class RcloneOptimizerManager:
             else None
         )
         provider_guard_stop = self._provider_guard(before, after, trace_summaries)
+        infinidysk_window = {
+            "before": self._summarize_nzbdav(before),
+            "after": self._summarize_nzbdav(after),
+        }
         return {
             "id": profile["id"],
             "label": profile["label"],
@@ -1298,10 +1316,9 @@ class RcloneOptimizerManager:
                 "excluded_samples": len(samples) - len(values),
             },
             "resources": resource,
-            "nzbdav": {
-                "before": self._summarize_nzbdav(before),
-                "after": self._summarize_nzbdav(after),
-            },
+            "infinidysk": infinidysk_window,
+            # Compatibility for dmbdb/API clients predating the rebrand.
+            "nzbdav": infinidysk_window,
             "trace_count": len(trace_summaries),
             "stream_traces": trace_summaries,
             "trace_capture": trace_capture,
@@ -1460,8 +1477,8 @@ class RcloneOptimizerManager:
             "settings": settings,
             "setting_comparison": winner.get("setting_comparison") or [],
             "summary": winner["summary"],
-            "reason": "Best-performing predefined streaming bundle by the bounded score across startup time, first byte, seek latency, sustained throughput, resource use, and excluded/error samples. NzbDAV's one-week directory and VFS cache recommendations are architecture guidance shared by every candidate, not score-selected values.",
-            "confidence_note": "This result compares complete profiles. It does not prove that every individual value in the winning bundle is optimal; the one-week NzbDAV cache timeouts are recommended operational policy rather than benchmark findings.",
+            "reason": "Best-performing predefined streaming bundle by the bounded score across startup time, first byte, seek latency, sustained throughput, resource use, and excluded/error samples. InfiniDysk's one-week directory and VFS cache recommendations are architecture guidance shared by every candidate, not score-selected values.",
+            "confidence_note": "This result compares complete profiles. It does not prove that every individual value in the winning bundle is optimal; the one-week InfiniDysk cache timeouts are recommended operational policy rather than benchmark findings.",
             "requires_review": True,
             "applied": False,
         }
@@ -1812,7 +1829,7 @@ class RcloneOptimizerManager:
         )
 
     def _nzbdav_json(self, path: str, method: str = "GET") -> Any:
-        config = CONFIG_MANAGER.get("nzbdav") or {}
+        config = CONFIG_MANAGER.get("infinidysk") or CONFIG_MANAGER.get("nzbdav") or {}
         api_key = (config.get("env") or {}).get("FRONTEND_BACKEND_API_KEY")
         if not api_key:
             try:
@@ -1852,11 +1869,11 @@ class RcloneOptimizerManager:
             configured_user = str(self._nzbdav_config_value("rclone.user") or "")
             configured_pass = str(self._nzbdav_config_value("rclone.pass") or "")
         except (ImportError, OSError, ValueError, TypeError):
-            return False, "DUMB could not read NzbDAV's saved RC configuration"
+            return False, "DUMB could not read InfiniDysk's saved RC configuration"
         if not enabled:
-            return False, "RC notifications are disabled in NzbDAV"
+            return False, "RC notifications are disabled in InfiniDysk"
         if not configured_host:
-            return False, "NzbDAV has no configured rclone RC host"
+            return False, "InfiniDysk has no configured rclone RC host"
 
         flags = _parse_flag_map(instance.get("command") or [])[1]
         if "--rc" not in flags:
@@ -1876,21 +1893,24 @@ class RcloneOptimizerManager:
             configured_url = urllib.parse.urlparse(configured_host)
             configured_port = int(configured_url.port or 80)
         except (TypeError, ValueError):
-            return False, "NzbDAV's configured rclone RC host is invalid"
+            return False, "InfiniDysk's configured rclone RC host is invalid"
         if (
             configured_url.scheme != "http"
             or configured_url.hostname not in {"127.0.0.1", "localhost", "::1"}
             or configured_port != rc_port
         ):
-            return False, "NzbDAV's RC host does not match this rclone instance"
+            return False, "InfiniDysk's RC host does not match this rclone instance"
 
         rc_user = str(flags.get("--rc-user") or "")
         rc_pass = str(flags.get("--rc-pass") or "")
         if configured_user != rc_user or configured_pass != rc_pass:
-            return False, "NzbDAV's RC credentials do not match this rclone instance"
+            return (
+                False,
+                "InfiniDysk's RC credentials do not match this rclone instance",
+            )
         if self._rclone_json(rc_port, "/core/version", rc_user, rc_pass) is None:
             return False, "the configured production rclone RC endpoint is unreachable"
-        return True, "NzbDAV RC notifications are enabled and reachable"
+        return True, "InfiniDysk RC notifications are enabled and reachable"
 
     @staticmethod
     def _nzbdav_config_value(key: str) -> Any:

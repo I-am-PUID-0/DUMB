@@ -26,7 +26,7 @@ from utils.private_files import atomic_write_private_text
 MEDIA_KEYS = ("plex", "jellyfin", "emby")
 STORAGE_KEYS = {
     "rclone",
-    "nzbdav",
+    "infinidysk",
     "decypharr",
     "zurg",
     "altmount",
@@ -185,6 +185,14 @@ class MediaServerAdapter:
     def restore_scan_guard(self, snapshot: dict) -> list[str]:
         raise NotImplementedError
 
+    def library_paths(self) -> list[dict]:
+        """Return stable library identifiers and their configured source paths."""
+        raise NotImplementedError
+
+    def replace_library_paths(self, libraries: list[dict]) -> list[dict]:
+        """Replace library source paths with an exact previously inventoried set."""
+        raise NotImplementedError
+
 
 class PlexAdapter(MediaServerAdapter):
     def _connect(self):
@@ -285,6 +293,40 @@ class PlexAdapter(MediaServerAdapter):
         if restored:
             plex.settings.save()
         return restored
+
+    def library_paths(self) -> list[dict]:
+        plex = self._connect()
+        return [
+            {
+                "id": str(section.key),
+                "name": str(section.title),
+                "paths": [str(path) for path in section.locations],
+            }
+            for section in plex.library.sections()
+        ]
+
+    def replace_library_paths(self, libraries: list[dict]) -> list[dict]:
+        plex = self._connect()
+        sections = {str(section.key): section for section in plex.library.sections()}
+        changed = []
+        for desired in libraries or []:
+            section_id = str(desired.get("id") or "")
+            section = sections.get(section_id)
+            if section is None:
+                raise RuntimeError(
+                    f"Plex library section {section_id or desired.get('name')} no longer exists"
+                )
+            paths = [str(path) for path in desired.get("paths") or []]
+            if not paths:
+                raise RuntimeError(
+                    f"Refusing to remove every path from Plex library {section.title}"
+                )
+            if list(section.locations) != paths:
+                section.edit(location=paths)
+                changed.append(
+                    {"id": section_id, "name": str(section.title), "paths": paths}
+                )
+        return changed
 
 
 class MediaBrowserAdapter(MediaServerAdapter):
@@ -431,6 +473,55 @@ class MediaBrowserAdapter(MediaServerAdapter):
                 restored.append(f"library:{item_id}")
         return restored
 
+    def library_paths(self) -> list[dict]:
+        return [
+            {
+                "id": str(folder.get("ItemId") or folder.get("Id") or ""),
+                "name": str(folder.get("Name") or ""),
+                "paths": [str(path) for path in folder.get("Locations") or []],
+            }
+            for folder in self._virtual_folders()
+        ]
+
+    def replace_library_paths(self, libraries: list[dict]) -> list[dict]:
+        current = self.library_paths()
+        by_id = {str(item.get("id") or ""): item for item in current if item.get("id")}
+        by_name = {str(item.get("name") or ""): item for item in current}
+        changed = []
+        for desired in libraries or []:
+            name = str(desired.get("name") or "")
+            existing = by_id.get(str(desired.get("id") or "")) or by_name.get(name)
+            if existing is None:
+                raise RuntimeError(
+                    f"{self.key.title()} library {name or desired.get('id')} no longer exists"
+                )
+            desired_paths = [str(path) for path in desired.get("paths") or []]
+            if not desired_paths:
+                raise RuntimeError(
+                    f"Refusing to remove every path from {self.key.title()} library {name}"
+                )
+            current_paths = [str(path) for path in existing.get("paths") or []]
+            if current_paths == desired_paths:
+                continue
+            for path in desired_paths:
+                if path not in current_paths:
+                    self._request(
+                        "POST",
+                        "/Library/VirtualFolders/Paths",
+                        params={"name": name, "path": path, "refreshLibrary": "false"},
+                    )
+            for path in current_paths:
+                if path not in desired_paths:
+                    self._request(
+                        "DELETE",
+                        "/Library/VirtualFolders/Paths",
+                        params={"name": name, "path": path, "refreshLibrary": "false"},
+                    )
+            changed.append(
+                {"id": desired.get("id"), "name": name, "paths": desired_paths}
+            )
+        return changed
+
 
 def build_adapter(key: str, process_name: str, logger) -> MediaServerAdapter:
     config = CONFIG_MANAGER.get(key, {}) or {}
@@ -522,16 +613,16 @@ class MediaProtectionManager:
             for field in ("mount_path", "mount_dir"):
                 if config.get(field):
                     mounts.add(os.path.normpath(config[field]))
-        elif key in {"nzbdav", "zurg"}:
+        elif key in {"infinidysk", "zurg"}:
             rclone_instances = (CONFIG_MANAGER.get("rclone", {}) or {}).get(
                 "instances", {}
             ) or {}
             for instance in rclone_instances.values():
                 if not isinstance(instance, dict) or not instance.get("enabled"):
                     continue
-                matches = key == "nzbdav" and (
-                    str(instance.get("key_type") or "").lower() == "nzbdav"
-                    or str(instance.get("core_service") or "").lower() == "nzbdav"
+                matches = key == "infinidysk" and (
+                    str(instance.get("key_type") or "").lower() == "infinidysk"
+                    or str(instance.get("core_service") or "").lower() == "infinidysk"
                 )
                 matches = matches or (key == "zurg" and instance.get("zurg_enabled"))
                 if matches and instance.get("mount_dir") and instance.get("mount_name"):

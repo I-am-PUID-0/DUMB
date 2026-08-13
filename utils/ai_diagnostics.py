@@ -805,13 +805,13 @@ def _table_exists(connection: sqlite3.Connection, table: str) -> bool:
 def _nzbdav_config(base: Path) -> dict:
     path = base / "db.sqlite"
     if not path.is_file():
-        return {"available": False, "reason": "NzbDAV config database not found."}
+        return {"available": False, "reason": "InfiniDysk config database not found."}
     try:
         with _sqlite_connect_readonly(path) as connection:
             if not _table_exists(connection, "ConfigItems"):
                 return {
                     "available": False,
-                    "reason": "NzbDAV ConfigItems table is unavailable.",
+                    "reason": "InfiniDysk ConfigItems table is unavailable.",
                 }
             rows = dict(connection.execute("""
                     SELECT ConfigName, ConfigValue
@@ -828,7 +828,7 @@ def _nzbdav_config(base: Path) -> dict:
     except (OSError, sqlite3.Error) as exc:
         return {
             "available": False,
-            "reason": f"NzbDAV config query failed: {type(exc).__name__}",
+            "reason": f"InfiniDysk config query failed: {type(exc).__name__}",
         }
     total_pool = None
     provider_count = None
@@ -1075,17 +1075,17 @@ def collect_nzbdav_diagnostics(
         env.get("CONFIG_PATH")
         or service_config.get("config_dir")
         or service_config.get("config_path")
-        or "/nzbdav"
+        or "/infinidysk"
     )
     base = Path(str(configured))
     if base.suffix:
         base = base.parent
     result = {
-        "collector": "nzbdav",
+        "collector": "infinidysk",
         "available": False,
         "config": _nzbdav_config(base),
         "limitations": [
-            "NzbDAV metrics do not measure Plex click-to-first-frame latency.",
+            "InfiniDysk metrics do not measure Plex click-to-first-frame latency.",
             "Observed changes are correlations unless the comparison boundary is a recorded configuration event.",
         ],
     }
@@ -1114,10 +1114,10 @@ def collect_nzbdav_diagnostics(
                 result["available"] = True
         except (OSError, sqlite3.Error) as exc:
             result["metrics_error"] = (
-                f"NzbDAV metrics query failed: {type(exc).__name__}"
+                f"InfiniDysk metrics query failed: {type(exc).__name__}"
             )
     else:
-        result["metrics_error"] = "NzbDAV metrics database not found."
+        result["metrics_error"] = "InfiniDysk metrics database not found."
 
     files = (log_scan or {}).get("_file_ranges") or (
         (log_scan or {}).get("_files") or []
@@ -1158,7 +1158,7 @@ def collect_native_diagnostics(
     windows: dict,
     log_scan: dict | None,
 ) -> dict:
-    if str(config_key or "").lower() == "nzbdav":
+    if str(config_key or "").lower() == "infinidysk":
         return collect_nzbdav_diagnostics(
             service_config,
             windows=windows,
@@ -1212,7 +1212,7 @@ def build_recommendation_context(evidence: dict) -> list[dict]:
         recommendations.append(
             {
                 "id": "investigate-nzbdav-processor-stalls",
-                "title": "Investigate long-running NzbDAV queue processors",
+                "title": "Investigate long-running InfiniDysk queue processors",
                 "risk": "low",
                 "action": "review",
                 "reason": f"{stalls} queue item(s) exceeded five minutes in the selected window.",

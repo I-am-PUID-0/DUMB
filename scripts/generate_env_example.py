@@ -21,7 +21,7 @@ def _title_part(part: str) -> str:
         "id": "ID",
         "pgadmin": "pgAdmin",
         "postgres": "PostgreSQL",
-        "nzbdav": "NzbDAV",
+        "infinidysk": "InfiniDysk",
         "cli": "CLI",
         "debrid": "Debrid",
         "rclone": "Rclone",

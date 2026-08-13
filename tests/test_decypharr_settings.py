@@ -77,8 +77,8 @@ for module_name, previous_module in _PREVIOUS_MODULES.items():
 class DecypharrSettingsTests(unittest.TestCase):
     def test_combined_root_requires_decypharr_plus_companion_workflow(self):
         self.assertFalse(_uses_combined_root(["decypharr"]))
-        self.assertFalse(_uses_combined_root(["nzbdav", "altmount"]))
-        self.assertTrue(_uses_combined_root(["decypharr", "nzbdav"]))
+        self.assertFalse(_uses_combined_root(["infinidysk", "altmount"]))
+        self.assertTrue(_uses_combined_root(["decypharr", "infinidysk"]))
         self.assertTrue(_uses_combined_root(["decypharr", "altmount"]))
         self.assertTrue(_uses_combined_root(["Decypharr", " AltMount "]))
 

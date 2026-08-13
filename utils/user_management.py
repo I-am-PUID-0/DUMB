@@ -311,7 +311,6 @@ def migrate_symlinks():
                 ("/cli_debrid/data", os.path.join(data_root, "cli_debrid")),
                 ("/phalanx_db/data", os.path.join(data_root, "phalanx_db")),
                 ("/decypharr", os.path.join(data_root, "decypharr")),
-                ("/nzbdav", os.path.join(data_root, "nzbdav")),
                 ("/plex", os.path.join(data_root, "plex")),
                 ("/tautulli", os.path.join(data_root, "tautulli")),
                 ("/bazarr", os.path.join(data_root, "bazarr")),
@@ -337,6 +336,25 @@ def migrate_symlinks():
                 ("/mediastorm", os.path.join(data_root, "mediastorm")),
                 ("/altmount", os.path.join(data_root, "altmount")),
             ]
+
+            legacy_nzbdav_data = os.path.join(data_root, "nzbdav")
+            infinidysk_config = config.get("infinidysk") or {}
+            configured_root = str(infinidysk_config.get("config_dir") or "")
+            legacy_namespace = (
+                config.uses_legacy_infinidysk_identity()
+                or configured_root == "/nzbdav"
+                or configured_root.startswith("/nzbdav/")
+                or os.path.lexists("/nzbdav")
+                or os.path.exists(legacy_nzbdav_data)
+            )
+            if legacy_namespace:
+                # Existing installations keep this root until a guarded full
+                # namespace migration is available and explicitly selected.
+                symlink_map.append(("/nzbdav", legacy_nzbdav_data))
+            else:
+                symlink_map.append(
+                    ("/infinidysk", os.path.join(data_root, "infinidysk"))
+                )
 
             for original_path, data_path in symlink_map:
                 migrate_and_symlink(original_path, data_path)

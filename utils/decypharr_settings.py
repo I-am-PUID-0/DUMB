@@ -133,7 +133,7 @@ def _collect_arr_entries(
     return entries
 
 
-COMBINED_ROOT_COMPANION_SERVICES = {"nzbdav", "altmount"}
+COMBINED_ROOT_COMPANION_SERVICES = {"infinidysk", "altmount"}
 
 
 def _uses_combined_root(core_services: list[str]) -> bool:

@@ -74,6 +74,7 @@ def _install_process_router_stubs():
 
     core_services = types.ModuleType("utils.core_services")
     core_services.has_core_service = lambda *args, **kwargs: False
+    core_services.get_core_services = lambda *args, **kwargs: {}
     sys.modules["utils.core_services"] = core_services
 
     dependency_map = types.ModuleType("utils.dependency_map")
@@ -112,11 +113,11 @@ from api.routers import process as process_router
 class ProcessResponseSanitizerTests(unittest.TestCase):
     def test_nzbdav_project_links_include_maintained_fork_sponsor(self):
         repo_url, sponsorship_url = process_router._service_project_urls(
-            "nzbdav",
-            {"repo_owner": "nzbdav", "repo_name": "nzbdav"},
+            "infinidysk",
+            {"repo_owner": "infinidysk", "repo_name": "infinidysk"},
         )
 
-        self.assertEqual(repo_url, "https://github.com/nzbdav/nzbdav")
+        self.assertEqual(repo_url, "https://github.com/infinidysk/infinidysk")
         self.assertEqual(sponsorship_url, "https://buymeacoffee.com/hoivikaj")
 
     def test_sanitizes_traceback_keys_recursively(self):
@@ -241,6 +242,58 @@ class MediaStormCredentialResponseTests(unittest.IsolatedAsyncioTestCase):
             )
 
         self.assertEqual(raised.exception.status_code, 409)
+
+    async def test_full_infinidysk_migration_requires_independent_backup(self):
+        request = types.SimpleNamespace(
+            mode="full_namespace",
+            rename_attached_services=True,
+            confirmation="MIGRATE TO INFINIDYSK",
+            preflight_token="preflight-token",
+            acknowledge_downtime=True,
+            acknowledge_library_scan=True,
+            acknowledge_rollback_limits=True,
+            acknowledge_external_backup=False,
+        )
+
+        with self.assertRaises(process_router.HTTPException) as raised:
+            await process_router.apply_infinidysk_migration(
+                request,
+                process_handler=types.SimpleNamespace(
+                    get_startup_status=lambda: {"phase": "ready"}
+                ),
+                updater=types.SimpleNamespace(updating=threading.Lock()),
+                logger=types.SimpleNamespace(),
+                current_user=None,
+            )
+
+        self.assertEqual(raised.exception.status_code, 400)
+        self.assertIn("independent backup", raised.exception.detail)
+
+    async def test_compatibility_infinidysk_migration_requires_independent_backup(self):
+        request = types.SimpleNamespace(
+            mode="retain_legacy_namespace",
+            rename_attached_services=True,
+            confirmation="MIGRATE TO INFINIDYSK",
+            preflight_token=None,
+            acknowledge_downtime=False,
+            acknowledge_library_scan=False,
+            acknowledge_rollback_limits=False,
+            acknowledge_external_backup=False,
+        )
+
+        with self.assertRaises(process_router.HTTPException) as raised:
+            await process_router.apply_infinidysk_migration(
+                request,
+                process_handler=types.SimpleNamespace(
+                    get_startup_status=lambda: {"phase": "ready"}
+                ),
+                updater=types.SimpleNamespace(updating=threading.Lock()),
+                logger=types.SimpleNamespace(),
+                current_user=None,
+            )
+
+        self.assertEqual(raised.exception.status_code, 400)
+        self.assertIn("independent backup", raised.exception.detail)
 
     async def test_credential_response_is_no_store_and_capability_gated(self):
         with (

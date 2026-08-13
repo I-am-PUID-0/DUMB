@@ -222,7 +222,7 @@ class SetupDotnetTests(unittest.TestCase):
             ):
                 success, error = setup.setup_dotnet_environment(
                     handler,
-                    "nzbdav",
+                    "infinidysk",
                     temp_dir,
                     project_paths=[],
                     restore_project_path=str(project_path),

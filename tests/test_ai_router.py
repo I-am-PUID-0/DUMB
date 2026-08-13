@@ -939,9 +939,9 @@ class AiRouterTests(unittest.TestCase):
                 "available": True,
                 "sources": [
                     {
-                        "title": "NzbDAV",
-                        "path": "services/core/nzbdav.md",
-                        "url": "https://dumbarr.com/services/core/nzbdav/",
+                        "title": "InfiniDysk",
+                        "path": "services/core/infinidysk.md",
+                        "url": "https://dumbarr.com/services/core/infinidysk/",
                         "source": "web",
                         "excerpt": "y" * 5000,
                     }
@@ -989,7 +989,7 @@ class AiRouterTests(unittest.TestCase):
         self.assertIn("DUMB PRODUCT FACTS", user)
         self.assertIn("Docker Universal Media Box", user)
         self.assertIn("dumb_service_catalog", system)
-        self.assertIn("Decypharr, NzbDAV, AltMount", system)
+        self.assertIn("Decypharr, InfiniDysk, AltMount", system)
         self.assertIn("external SABnzbd", system)
         self.assertIn("NZBGet", system)
         self.assertIn("CRITICAL DUMB WORKFLOW RULES", user)
@@ -1022,7 +1022,7 @@ class AiRouterTests(unittest.TestCase):
         finalized = ai._finalize_stack_analysis(bundle, generic)
 
         self.assertIn("Decypharr", finalized)
-        self.assertIn("NzbDAV", finalized)
+        self.assertIn("InfiniDysk", finalized)
         self.assertIn("AltMount", finalized)
         self.assertIn("Prowlarr: stopped", finalized)
         self.assertNotIn("Install one and configure", finalized)
@@ -1179,8 +1179,8 @@ class AiRouterTests(unittest.TestCase):
             docs_root = Path(tmpdir)
             (docs_root / "index.md").write_text("# DUMB Docs\n")
             for relative, content in {
-                "reference/core-service.md": "# Core Service Routing\nUse nzbdav or altmount for Usenet workflows.",
-                "services/core/nzbdav.md": "# NzbDAV\nUsenet WebDAV and Arr download-client integration.",
+                "reference/core-service.md": "# Core Service Routing\nUse infinidysk or altmount for Usenet workflows.",
+                "services/core/infinidysk.md": "# InfiniDysk\nUsenet WebDAV and Arr download-client integration.",
                 "services/core/altmount.md": "# AltMount\nAlternative Usenet workflow.",
                 "services/core/decypharr.md": "# Decypharr\nDebrid and native Usenet workflow.",
                 "features/index.md": "# Features\nDebrid and Usenet services.",
@@ -1206,7 +1206,7 @@ class AiRouterTests(unittest.TestCase):
 
         paths = [source["path"] for source in context["sources"]]
         self.assertIn("reference/core-service.md", paths)
-        self.assertIn("services/core/nzbdav.md", paths)
+        self.assertIn("services/core/infinidysk.md", paths)
         self.assertIn("services/core/altmount.md", paths)
 
     def test_build_diagnostic_bundle_redacts_config_and_tails_logs(self):

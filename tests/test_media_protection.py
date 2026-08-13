@@ -249,6 +249,79 @@ class MediaProtectionTests(unittest.TestCase):
         self.manager._recover(result["token"])
         self.assertEqual(self.notify_event.call_count, 1)
 
+    def test_plex_library_paths_are_replaced_as_one_exact_set(self):
+        section = Mock()
+        section.key = "7"
+        section.title = "Movies"
+        section.locations = ["/mnt/debrid/nzbdav-symlinks/movies"]
+
+        def edit(**kwargs):
+            section.locations = list(kwargs["location"])
+
+        section.edit.side_effect = edit
+        plex = Mock()
+        plex.library.sections.return_value = [section]
+        adapter = media_protection.PlexAdapter(
+            "plex", "Plex Media Server", {}, {}, self.logger
+        )
+        with patch.object(adapter, "_connect", return_value=plex):
+            self.assertEqual(
+                ["/mnt/debrid/nzbdav-symlinks/movies"],
+                adapter.library_paths()[0]["paths"],
+            )
+            changed = adapter.replace_library_paths(
+                [
+                    {
+                        "id": "7",
+                        "name": "Movies",
+                        "paths": ["/mnt/debrid/infinidysk-symlinks/movies"],
+                    }
+                ]
+            )
+        self.assertEqual(1, len(changed))
+        section.edit.assert_called_once_with(
+            location=["/mnt/debrid/infinidysk-symlinks/movies"]
+        )
+
+    def test_jellyfin_library_path_adds_destination_before_removing_source(self):
+        adapter = media_protection.MediaBrowserAdapter(
+            "jellyfin",
+            "Jellyfin Media Server",
+            {"port": 8096},
+            {"api_key": "secret"},
+            self.logger,
+        )
+        current = ["/mnt/debrid/nzbdav-symlinks/shows"]
+        calls = []
+
+        def folders():
+            return [{"ItemId": "9", "Name": "Shows", "Locations": list(current)}]
+
+        def request(method, path, **kwargs):
+            calls.append((method, path, kwargs.get("params")))
+            target = kwargs["params"]["path"]
+            if method == "POST":
+                current.append(target)
+            else:
+                current.remove(target)
+
+        with (
+            patch.object(adapter, "_virtual_folders", side_effect=folders),
+            patch.object(adapter, "_request", side_effect=request),
+        ):
+            adapter.replace_library_paths(
+                [
+                    {
+                        "id": "9",
+                        "name": "Shows",
+                        "paths": ["/mnt/debrid/infinidysk-symlinks/shows"],
+                    }
+                ]
+            )
+        self.assertEqual(["/mnt/debrid/infinidysk-symlinks/shows"], current)
+        self.assertEqual("POST", calls[0][0])
+        self.assertEqual("DELETE", calls[1][0])
+
 
 if __name__ == "__main__":
     unittest.main()

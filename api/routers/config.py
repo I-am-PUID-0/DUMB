@@ -133,6 +133,17 @@ def _deep_merge_dict(target: Dict[str, Any], updates: Dict[str, Any]) -> Dict[st
 
 
 def _normalize_legacy_global_config(config: Dict[str, Any]) -> Dict[str, Any]:
+    if "nzbdav" in config and "infinidysk" in config:
+        raise HTTPException(
+            status_code=409,
+            detail="Both 'nzbdav' and 'infinidysk' were supplied. DUMB will not guess which service identity owns the existing data.",
+        )
+    legacy_infinidysk = config.pop("nzbdav", None)
+    if isinstance(legacy_infinidysk, dict):
+        canonical = config.get("infinidysk")
+        if isinstance(canonical, dict):
+            legacy_infinidysk.update(canonical)
+        config["infinidysk"] = legacy_infinidysk
     riven_backend = config.get("riven_backend")
     if isinstance(riven_backend, dict) and riven_backend.get("wait_for_dir") is None:
         riven_backend["wait_for_dir"] = ""
@@ -731,16 +742,24 @@ async def update_config(
             )
             try:
                 config_key, _ = CONFIG_MANAGER.find_key_for_process(process_name)
-                if config_key in ("nzbdav", "sonarr", "radarr", "lidarr", "whisparr"):
+                if config_key in (
+                    "infinidysk",
+                    "sonarr",
+                    "radarr",
+                    "lidarr",
+                    "whisparr",
+                ):
                     from utils.nzbdav_settings import patch_nzbdav_config
 
                     patched, err = patch_nzbdav_config()
                     if not patched and err:
                         logger.warning(
-                            "NzbDAV auto-sync after config update failed: %s", err
+                            "InfiniDysk auto-sync after config update failed: %s", err
                         )
             except Exception as exc:
-                logger.warning("NzbDAV auto-sync after config update skipped: %s", exc)
+                logger.warning(
+                    "InfiniDysk auto-sync after config update skipped: %s", exc
+                )
 
         return {
             "status": "service config updated",
@@ -755,6 +774,7 @@ async def update_config(
     updates = _preserve_redacted_media_protection_secrets(
         updates, CONFIG_MANAGER.config
     )
+    updates = _normalize_legacy_global_config(copy.deepcopy(updates))
     if not updates:
         raise HTTPException(
             status_code=400, detail="No updates provided for global config."
@@ -804,15 +824,17 @@ async def update_config(
     try:
         touched_keys = set(updates.keys())
         if touched_keys.intersection(
-            {"nzbdav", "sonarr", "radarr", "lidarr", "whisparr"}
+            {"infinidysk", "sonarr", "radarr", "lidarr", "whisparr"}
         ):
             from utils.nzbdav_settings import patch_nzbdav_config
 
             patched, err = patch_nzbdav_config()
             if not patched and err:
-                logger.warning("NzbDAV auto-sync after config update failed: %s", err)
+                logger.warning(
+                    "InfiniDysk auto-sync after config update failed: %s", err
+                )
     except Exception as exc:
-        logger.warning("NzbDAV auto-sync after config update skipped: %s", exc)
+        logger.warning("InfiniDysk auto-sync after config update skipped: %s", exc)
 
     if "seerr_sync" in updates:
         try:

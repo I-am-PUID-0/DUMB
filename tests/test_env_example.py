@@ -113,6 +113,7 @@ class ConfigLoaderMigrationTests(unittest.TestCase):
         config_manager = _load_config_manager_class()
         with tempfile.TemporaryDirectory() as temp_dir:
             config = json.loads((ROOT / "utils" / "dumb_config.json").read_text())
+            config["nzbdav"] = config.pop("infinidysk")
             config["nzbdav"]["env"].pop("SERVICE_PROVIDER")
             config_path = Path(temp_dir) / "dumb_config.json"
             config_path.write_text(json.dumps(config), encoding="utf-8")
@@ -130,7 +131,7 @@ class ConfigLoaderMigrationTests(unittest.TestCase):
             persisted = json.loads(config_path.read_text(encoding="utf-8"))
             self.assertEqual(
                 expected,
-                json.loads(manager.get("nzbdav")["env"]["SERVICE_PROVIDER"]),
+                json.loads(manager.get("infinidysk")["env"]["SERVICE_PROVIDER"]),
             )
             self.assertEqual(
                 expected,
@@ -142,6 +143,7 @@ class ConfigLoaderMigrationTests(unittest.TestCase):
         config_manager = _load_config_manager_class()
         with tempfile.TemporaryDirectory() as temp_dir:
             config = json.loads((ROOT / "utils" / "dumb_config.json").read_text())
+            config["nzbdav"] = config.pop("infinidysk")
             config["nzbdav"]["repo_owner"] = "nzbdav-dev"
             config["nzbdav"]["repo_name"] = "nzbdav"
             config_path = Path(temp_dir) / "dumb_config.json"
@@ -153,8 +155,8 @@ class ConfigLoaderMigrationTests(unittest.TestCase):
             )
 
             persisted = json.loads(config_path.read_text(encoding="utf-8"))
-            self.assertEqual("infinidysk", manager.get("nzbdav")["repo_owner"])
-            self.assertEqual("infinidysk", manager.get("nzbdav")["repo_name"])
+            self.assertEqual("infinidysk", manager.get("infinidysk")["repo_owner"])
+            self.assertEqual("infinidysk", manager.get("infinidysk")["repo_name"])
             self.assertEqual("infinidysk", persisted["nzbdav"]["repo_owner"])
             self.assertEqual("infinidysk", persisted["nzbdav"]["repo_name"])
             self.assertTrue(Path(f"{config_path}.bak").is_file())
@@ -163,6 +165,7 @@ class ConfigLoaderMigrationTests(unittest.TestCase):
         config_manager = _load_config_manager_class()
         with tempfile.TemporaryDirectory() as temp_dir:
             config = json.loads((ROOT / "utils" / "dumb_config.json").read_text())
+            config["nzbdav"] = config.pop("infinidysk")
             config["nzbdav"]["repo_owner"] = "nzbdav"
             config["nzbdav"]["repo_name"] = "nzbdav"
             config_path = Path(temp_dir) / "dumb_config.json"
@@ -174,8 +177,8 @@ class ConfigLoaderMigrationTests(unittest.TestCase):
             )
 
             persisted = json.loads(config_path.read_text(encoding="utf-8"))
-            self.assertEqual("infinidysk", manager.get("nzbdav")["repo_owner"])
-            self.assertEqual("infinidysk", manager.get("nzbdav")["repo_name"])
+            self.assertEqual("infinidysk", manager.get("infinidysk")["repo_owner"])
+            self.assertEqual("infinidysk", manager.get("infinidysk")["repo_name"])
             self.assertEqual("infinidysk", persisted["nzbdav"]["repo_owner"])
             self.assertEqual("infinidysk", persisted["nzbdav"]["repo_name"])
             self.assertTrue(Path(f"{config_path}.bak").is_file())
@@ -184,6 +187,7 @@ class ConfigLoaderMigrationTests(unittest.TestCase):
         config_manager = _load_config_manager_class()
         with tempfile.TemporaryDirectory() as temp_dir:
             config = json.loads((ROOT / "utils" / "dumb_config.json").read_text())
+            config["nzbdav"] = config.pop("infinidysk")
             config["nzbdav"]["repo_owner"] = "example-maintainer"
             config_path = Path(temp_dir) / "dumb_config.json"
             config_path.write_text(json.dumps(config), encoding="utf-8")
@@ -193,12 +197,18 @@ class ConfigLoaderMigrationTests(unittest.TestCase):
                 schema_path=str(ROOT / "utils" / "dumb_config_schema.json"),
             )
 
-            self.assertEqual("example-maintainer", manager.get("nzbdav")["repo_owner"])
+            persisted = json.loads(config_path.read_text(encoding="utf-8"))
+            self.assertEqual(
+                "example-maintainer", manager.get("infinidysk")["repo_owner"]
+            )
+            self.assertIn("nzbdav", persisted)
+            self.assertNotIn("infinidysk", persisted)
 
     def test_obsolete_nzbdav_prebuilt_preference_is_pruned(self):
         config_manager = _load_config_manager_class()
         with tempfile.TemporaryDirectory() as temp_dir:
             config = json.loads((ROOT / "utils" / "dumb_config.json").read_text())
+            config["nzbdav"] = config.pop("infinidysk")
             config["nzbdav"]["prefer_prebuilt_release"] = False
             config_path = Path(temp_dir) / "dumb_config.json"
             config_path.write_text(json.dumps(config), encoding="utf-8")
@@ -209,8 +219,85 @@ class ConfigLoaderMigrationTests(unittest.TestCase):
             )
 
             persisted = json.loads(config_path.read_text(encoding="utf-8"))
-            self.assertNotIn("prefer_prebuilt_release", manager.get("nzbdav"))
+            self.assertNotIn("prefer_prebuilt_release", manager.get("infinidysk"))
             self.assertNotIn("prefer_prebuilt_release", persisted["nzbdav"])
+
+    def test_legacy_identity_and_dependency_tokens_stay_legacy_on_disk(self):
+        config_manager = _load_config_manager_class()
+        with tempfile.TemporaryDirectory() as temp_dir:
+            config = json.loads((ROOT / "utils" / "dumb_config.json").read_text())
+            config["nzbdav"] = config.pop("infinidysk")
+            config["radarr"]["instances"]["Default"]["core_service"] = "nzbdav"
+            config["rclone"]["instances"]["RealDebrid"]["key_type"] = "nzbdav"
+            config["zurg"]["instances"]["RealDebrid"]["core_service"] = "nzbdav"
+            config_path = Path(temp_dir) / "dumb_config.json"
+            config_path.write_text(json.dumps(config), encoding="utf-8")
+
+            manager = config_manager(
+                file_path=str(config_path),
+                schema_path=str(ROOT / "utils" / "dumb_config_schema.json"),
+            )
+            manager.save_config()
+
+            persisted = json.loads(config_path.read_text(encoding="utf-8"))
+            self.assertTrue(manager.uses_legacy_infinidysk_identity())
+            self.assertIn("infinidysk", manager.config)
+            self.assertNotIn("nzbdav", manager.config)
+            self.assertEqual(
+                "infinidysk",
+                manager.config["radarr"]["instances"]["Default"]["core_service"],
+            )
+            self.assertIn("nzbdav", persisted)
+            self.assertNotIn("infinidysk", persisted)
+            self.assertEqual(
+                "nzbdav",
+                persisted["radarr"]["instances"]["Default"]["core_service"],
+            )
+            self.assertEqual(
+                "nzbdav",
+                persisted["rclone"]["instances"]["RealDebrid"]["key_type"],
+            )
+            self.assertEqual(
+                "nzbdav",
+                manager.config["zurg"]["instances"]["RealDebrid"]["core_service"],
+            )
+            self.assertEqual(
+                "nzbdav",
+                persisted["zurg"]["instances"]["RealDebrid"]["core_service"],
+            )
+
+    def test_legacy_plural_core_services_map_combined_tokens(self):
+        config_manager = _load_config_manager_class()
+
+        mapped = config_manager._map_infinidysk_tokens(
+            {
+                "profilarr": {
+                    "instances": {
+                        "Combined": {"core_services": ["decypharr, nzbdav", "altmount"]}
+                    }
+                }
+            },
+            "infinidysk",
+        )
+
+        self.assertEqual(
+            ["decypharr,infinidysk", "altmount"],
+            mapped["profilarr"]["instances"]["Combined"]["core_services"],
+        )
+
+    def test_both_service_keys_are_rejected_without_guessing(self):
+        config_manager = _load_config_manager_class()
+        with tempfile.TemporaryDirectory() as temp_dir:
+            config = json.loads((ROOT / "utils" / "dumb_config.json").read_text())
+            config["nzbdav"] = dict(config["infinidysk"])
+            config_path = Path(temp_dir) / "dumb_config.json"
+            config_path.write_text(json.dumps(config), encoding="utf-8")
+
+            with self.assertRaisesRegex(ValueError, "both 'infinidysk' and 'nzbdav'"):
+                config_manager(
+                    file_path=str(config_path),
+                    schema_path=str(ROOT / "utils" / "dumb_config_schema.json"),
+                )
 
     def test_bazarr_legacy_config_path_is_persisted(self):
         config_manager = _load_config_manager_class()

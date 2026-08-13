@@ -15,19 +15,19 @@ class CoreServiceNormalizationTests(unittest.TestCase):
     def test_normalize_core_services_accepts_strings_and_sequences(self):
         self.assertEqual(
             normalize_core_services([" Decypharr ", "nzbdav, zurg", None, 42]),
-            ["decypharr", "nzbdav", "zurg"],
+            ["decypharr", "infinidysk", "zurg"],
         )
         self.assertEqual(
-            normalize_core_services("decypharr, nzbdav"), ["decypharr", "nzbdav"]
+            normalize_core_services("decypharr, nzbdav"), ["decypharr", "infinidysk"]
         )
 
     def test_get_core_services_merges_and_deduplicates_legacy_and_plural_fields(self):
         config = {
             "core_service": "Decypharr",
-            "core_services": ["decypharr", "NzbDAV, zurg"],
+            "core_services": ["decypharr", "InfiniDysk, zurg"],
         }
 
-        self.assertEqual(get_core_services(config), ["decypharr", "nzbdav", "zurg"])
+        self.assertEqual(get_core_services(config), ["decypharr", "infinidysk", "zurg"])
         self.assertTrue(has_core_service(config, "NZBDAV"))
         self.assertFalse(has_core_service(config, "riven"))
 
@@ -141,25 +141,28 @@ class ConditionalDependencyMapTests(unittest.TestCase):
                     "instances": {
                         "zurg": {"enabled": True, "zurg_enabled": True},
                         "decypharr": {"enabled": True, "decypharr_enabled": True},
-                        "usenet": {"enabled": True, "core_service": "nzbdav"},
-                        "disabled": {"enabled": False, "key_type": "nzbdav"},
+                        "usenet": {"enabled": True, "core_service": "infinidysk"},
+                        "disabled": {"enabled": False, "key_type": "infinidysk"},
                     }
                 }
             }
         )
 
-        self.assertEqual(deps["rclone"], {"zurg", "decypharr", "nzbdav"})
+        self.assertEqual(deps["rclone"], {"zurg", "decypharr", "infinidysk"})
 
     def test_filter_conditional_deps_for_rclone_instance_replaces_aggregate_union(self):
-        aggregate = {"rclone": {"zurg", "decypharr", "nzbdav"}, "prowlarr": {"sonarr"}}
+        aggregate = {
+            "rclone": {"zurg", "decypharr", "infinidysk"},
+            "prowlarr": {"sonarr"},
+        }
 
         filtered = filter_conditional_deps_for_instance(
             aggregate,
             "rclone",
-            {"enabled": True, "key_type": "nzbdav"},
+            {"enabled": True, "key_type": "infinidysk"},
         )
 
-        self.assertEqual(filtered["rclone"], {"nzbdav"})
+        self.assertEqual(filtered["rclone"], {"infinidysk"})
         self.assertEqual(filtered["prowlarr"], {"sonarr"})
 
         no_provider = filter_conditional_deps_for_instance(

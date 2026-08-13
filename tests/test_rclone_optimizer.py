@@ -14,10 +14,10 @@ class _ConfigManager:
     def __init__(self, cache_dir):
         self.instance = {
             "enabled": True,
-            "process_name": "rclone w/ NzbDAV",
-            "key_type": "nzbdav",
+            "process_name": "rclone w/ InfiniDysk",
+            "key_type": "infinidysk",
             "mount_dir": "/mnt/debrid",
-            "mount_name": "nzbdav",
+            "mount_name": "infinidysk",
             "cache_dir": str(cache_dir),
             "command": [
                 "rclone",
@@ -33,7 +33,7 @@ class _ConfigManager:
 
     def get(self, key, default=None):
         if key == "rclone":
-            return {"instances": {"NzbDAV": self.instance}}
+            return {"instances": {"InfiniDysk": self.instance}}
         if key in {"puid", "pgid"}:
             return 1000
         return default
@@ -48,9 +48,9 @@ class RcloneOptimizerTests(unittest.TestCase):
         config.get.side_effect = lambda key, default=None: {
             "radarr": {
                 "instances": {
-                    "NzbDAV": {
+                    "InfiniDysk": {
                         "enabled": True,
-                        "core_service": "nzbdav",
+                        "core_service": "infinidysk",
                         "port": 7878,
                         "config_file": "/config/radarr-nzbdav.xml",
                     },
@@ -76,8 +76,8 @@ class RcloneOptimizerTests(unittest.TestCase):
             [
                 {
                     "service": "radarr",
-                    "instance_name": "NzbDAV",
-                    "category": "radarr-nzbdav",
+                    "instance_name": "InfiniDysk",
+                    "category": "radarr-infinidysk",
                 }
             ],
             categories,
@@ -86,7 +86,7 @@ class RcloneOptimizerTests(unittest.TestCase):
     def test_discover_content_uses_only_active_arr_categories(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
-            mount = root / "mount" / "nzbdav"
+            mount = root / "mount" / "infinidysk"
             active_media = mount / "content" / "radarr-nzbdav" / "visible.mkv"
             inactive_media = mount / "content" / "stale-category" / "ignored.mkv"
             hidden_media = (
@@ -107,7 +107,7 @@ class RcloneOptimizerTests(unittest.TestCase):
                     return_value=[
                         {
                             "service": "radarr",
-                            "instance_name": "NzbDAV",
+                            "instance_name": "InfiniDysk",
                             "category": "radarr-nzbdav",
                         }
                     ],
@@ -118,7 +118,7 @@ class RcloneOptimizerTests(unittest.TestCase):
                     logger=unittest.mock.Mock(),
                     base_dir=str(root / "optimizer"),
                 )
-                discovered = manager.discover_content("rclone w/ NzbDAV")
+                discovered = manager.discover_content("rclone w/ InfiniDysk")
 
         self.assertEqual("active_arr_categories", discovered["discovery_mode"])
         self.assertEqual(str(mount / "content"), discovered["content_base"])
@@ -135,7 +135,7 @@ class RcloneOptimizerTests(unittest.TestCase):
     def test_discover_content_maps_category_symlink_to_rclone_target(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
-            mount = root / "mount" / "nzbdav"
+            mount = root / "mount" / "infinidysk"
             target = mount / ".ids" / "a" / "opaque-id"
             target.parent.mkdir(parents=True)
             with target.open("wb") as handle:
@@ -154,7 +154,7 @@ class RcloneOptimizerTests(unittest.TestCase):
                     return_value=[
                         {
                             "service": "radarr",
-                            "instance_name": "NzbDAV",
+                            "instance_name": "InfiniDysk",
                             "category": "radarr-nzbdav",
                         }
                     ],
@@ -165,7 +165,7 @@ class RcloneOptimizerTests(unittest.TestCase):
                     logger=unittest.mock.Mock(),
                     base_dir=str(root / "optimizer"),
                 )
-                discovered = manager.discover_content("rclone w/ NzbDAV")
+                discovered = manager.discover_content("rclone w/ InfiniDysk")
 
         self.assertEqual(1, len(discovered["files"]))
         self.assertEqual(".ids/a/opaque-id", discovered["files"][0]["path"])
@@ -177,7 +177,7 @@ class RcloneOptimizerTests(unittest.TestCase):
     def test_automatic_content_suggestions_are_labeled_and_listed_first(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
-            mount = root / "mount" / "nzbdav"
+            mount = root / "mount" / "infinidysk"
             category_root = mount / "content" / "radarr-nzbdav"
             category_root.mkdir(parents=True)
             now = time.time()
@@ -197,7 +197,7 @@ class RcloneOptimizerTests(unittest.TestCase):
                     return_value=[
                         {
                             "service": "radarr",
-                            "instance_name": "NzbDAV",
+                            "instance_name": "InfiniDysk",
                             "category": "radarr-nzbdav",
                         }
                     ],
@@ -208,7 +208,7 @@ class RcloneOptimizerTests(unittest.TestCase):
                     logger=unittest.mock.Mock(),
                     base_dir=str(root / "optimizer"),
                 )
-                discovered = manager.discover_content("rclone w/ NzbDAV")
+                discovered = manager.discover_content("rclone w/ InfiniDysk")
 
         automatic = discovered["automatic_selection"]
         automatic_paths = [item["path"] for item in automatic]
@@ -222,7 +222,7 @@ class RcloneOptimizerTests(unittest.TestCase):
     def test_discover_content_requires_an_active_nzbdav_arr_category(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
-            mount = root / "mount" / "nzbdav"
+            mount = root / "mount" / "infinidysk"
             mount.mkdir(parents=True)
             config = _ConfigManager(root / "cache")
             config.instance["mount_dir"] = str(root / "mount")
@@ -242,7 +242,7 @@ class RcloneOptimizerTests(unittest.TestCase):
                     rclone_optimizer.RcloneOptimizerError,
                     "No enabled Arr instances",
                 ):
-                    manager.discover_content("rclone w/ NzbDAV")
+                    manager.discover_content("rclone w/ InfiniDysk")
 
     def test_managed_flag_merge_preserves_user_flags_and_paths(self):
         command = [
@@ -291,7 +291,7 @@ class RcloneOptimizerTests(unittest.TestCase):
             )
         )
         self.assertEqual(
-            "Current streaming knobs (bounded + NzbDAV guidance)",
+            "Current streaming knobs (bounded + InfiniDysk guidance)",
             quick[0]["label"],
         )
 
@@ -394,7 +394,7 @@ class RcloneOptimizerTests(unittest.TestCase):
                 job_id = "d" * 32
                 manager._jobs[job_id] = {
                     "job_id": job_id,
-                    "process_name": "rclone w/ NzbDAV",
+                    "process_name": "rclone w/ InfiniDysk",
                     "status": "completed",
                     "recommendation": {
                         "label": "Legacy",
@@ -450,8 +450,10 @@ class RcloneOptimizerTests(unittest.TestCase):
         self.assertTrue(by_flag["--buffer-size"]["varied_across_candidates"])
         self.assertFalse(by_flag["--buffer-size"]["independently_evaluated"])
         self.assertEqual("fixed_constraint", by_flag["--vfs-cache-max-size"]["role"])
-        self.assertEqual("nzbdav_recommended", by_flag["--dir-cache-time"]["role"])
-        self.assertEqual("nzbdav_recommended", by_flag["--vfs-cache-max-age"]["role"])
+        self.assertEqual("infinidysk_recommended", by_flag["--dir-cache-time"]["role"])
+        self.assertEqual(
+            "infinidysk_recommended", by_flag["--vfs-cache-max-age"]["role"]
+        )
         self.assertEqual("preserved", by_flag["--transfers"]["role"])
         self.assertEqual("4", by_flag["--transfers"]["tested_value"])
         self.assertNotIn("--links", by_flag)
@@ -561,7 +563,9 @@ class RcloneOptimizerTests(unittest.TestCase):
                     side_effect=lambda _instance: events.append("wait"),
                 ),
             ):
-                manager._restart_production_mount("rclone w/ NzbDAV", config.instance)
+                manager._restart_production_mount(
+                    "rclone w/ InfiniDysk", config.instance
+                )
 
             self.assertEqual(["stop", "unmount", "start", "wait"], events)
 
@@ -583,10 +587,10 @@ class RcloneOptimizerTests(unittest.TestCase):
                     "could not detach its production mount",
                 ):
                     manager._restart_production_mount(
-                        "rclone w/ NzbDAV", config.instance
+                        "rclone w/ InfiniDysk", config.instance
                     )
 
-            process_handler.stop_process.assert_called_once_with("rclone w/ NzbDAV")
+            process_handler.stop_process.assert_called_once_with("rclone w/ InfiniDysk")
             process_handler.start_process.assert_not_called()
 
     def test_mount_accessibility_rejects_stale_fuse_mount(self):
@@ -657,7 +661,7 @@ class RcloneOptimizerTests(unittest.TestCase):
                 json.dumps(
                     {
                         "job_id": job_id,
-                        "process_name": "rclone w/ NzbDAV",
+                        "process_name": "rclone w/ InfiniDysk",
                         "status": "benchmarking",
                         "created_at": "2026-01-01T00:00:00+00:00",
                     }
@@ -713,7 +717,7 @@ class RcloneOptimizerTests(unittest.TestCase):
                     "env": {"FRONTEND_BACKEND_API_KEY": "test-api-key"},
                     "backend_port": 8080,
                 }
-                if key == "nzbdav"
+                if key == "infinidysk"
                 else default
             )
             response = unittest.mock.MagicMock()
@@ -894,7 +898,7 @@ class RcloneOptimizerTests(unittest.TestCase):
                 job_id = "c" * 32
                 manager._jobs[job_id] = {
                     "job_id": job_id,
-                    "process_name": "rclone w/ NzbDAV",
+                    "process_name": "rclone w/ InfiniDysk",
                     "status": "applied",
                     "previous_command": [],
                     "recommendation": {"applied": True},

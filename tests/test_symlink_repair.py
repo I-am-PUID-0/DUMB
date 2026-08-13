@@ -6,6 +6,7 @@ import types
 import unittest
 import warnings
 from pathlib import Path
+from unittest import mock
 
 
 class _Logger:
@@ -108,6 +109,34 @@ class SymlinkRepairHelperTests(unittest.TestCase):
         self.assertEqual(report["recorded_entries"], 1)
         self.assertEqual(report["skipped_broken"], 1)
         self.assertEqual(manifest["entries"][0]["link_path"], str(good))
+
+    def test_backup_manifest_can_catalog_without_dereferencing_targets(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir, "links")
+            root.mkdir()
+            link = root / "remote.mkv"
+            link.symlink_to("/mnt/remote/media.mkv")
+            directory_link = root / "remote-directory"
+            directory_link.symlink_to("/mnt/remote/library", target_is_directory=True)
+            manifest_path = Path(temp_dir, "snapshot.json")
+
+            with mock.patch.object(
+                symlink_repair,
+                "_target_exists",
+                side_effect=AssertionError("target must not be dereferenced"),
+            ):
+                report = symlink_repair.backup_symlink_manifest(
+                    [str(root)],
+                    str(manifest_path),
+                    check_targets=False,
+                )
+            manifest = json.loads(manifest_path.read_text())
+
+        self.assertEqual(report["recorded_entries"], 2)
+        self.assertFalse(manifest["targets_checked"])
+        self.assertTrue(
+            all(entry["target_exists"] is None for entry in manifest["entries"])
+        )
 
     def test_preview_and_restore_symlink_manifest_handle_existing_paths(self):
         with tempfile.TemporaryDirectory() as temp_dir:

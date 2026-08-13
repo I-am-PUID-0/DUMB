@@ -185,9 +185,9 @@ class Downloader:
             else:
                 architecture = None
 
-            # NzbDAV is built from source, so its configured version may be a Git
+            # InfiniDysk is built from source, so its configured version may be a Git
             # tag such as "dev" without a corresponding GitHub Release object.
-            if key == "nzbdav":
+            if key == "infinidysk":
                 encoded_version = quote(str(release_version), safe="")
                 release_info = {
                     "tag_name": release_version,

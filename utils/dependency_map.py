@@ -172,8 +172,8 @@ def build_conditional_dependency_map(
         if instance.get("decypharr_enabled"):
             rclone_deps.add("decypharr")
         key_type = (instance.get("key_type") or "").lower()
-        if key_type == "nzbdav" or has_core_service(instance, "nzbdav"):
-            rclone_deps.add("nzbdav")
+        if key_type == "infinidysk" or has_core_service(instance, "infinidysk"):
+            rclone_deps.add("infinidysk")
     if rclone_deps:
         deps["rclone"] = rclone_deps
 
@@ -190,8 +190,8 @@ def _get_rclone_instance_deps(instance_config: dict) -> set[str]:
     if instance_config.get("decypharr_enabled"):
         deps.add("decypharr")
     key_type = (instance_config.get("key_type") or "").lower()
-    if key_type == "nzbdav" or has_core_service(instance_config, "nzbdav"):
-        deps.add("nzbdav")
+    if key_type == "infinidysk" or has_core_service(instance_config, "infinidysk"):
+        deps.add("infinidysk")
     return deps
 
 

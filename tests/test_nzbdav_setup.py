@@ -7,10 +7,98 @@ import unittest
 from pathlib import Path
 from unittest.mock import Mock, patch
 
-from utils import setup
+from utils import nzbdav_settings, setup
 
 
-class NzbDAVSetupTests(unittest.TestCase):
+class InfiniDyskSetupTests(unittest.TestCase):
+    def test_namespace_paths_default_to_infinidysk_for_new_configs(self):
+        config = {"config_dir": "/infinidysk"}
+        self.assertEqual(
+            "/mnt/debrid/infinidysk-symlinks",
+            nzbdav_settings._infinidysk_symlink_root(config),
+        )
+        self.assertEqual(
+            "/mnt/debrid/infinidysk",
+            nzbdav_settings._infinidysk_mount_root(config),
+        )
+
+    def test_namespace_paths_retain_nzbdav_for_existing_configs(self):
+        config = {
+            "config_dir": "/nzbdav",
+            "symlink_backup_roots": ["/mnt/debrid/nzbdav-symlinks"],
+        }
+        self.assertEqual(
+            "/mnt/debrid/nzbdav-symlinks",
+            nzbdav_settings._infinidysk_symlink_root(config),
+        )
+        self.assertEqual(
+            "/mnt/debrid/nzbdav",
+            nzbdav_settings._infinidysk_mount_root(config),
+        )
+
+    def test_guarded_migration_defers_live_arr_calls_but_persists_provider_config(
+        self,
+    ):
+        config_manager = Mock()
+        config_manager.get.return_value = {
+            "process_name": "InfiniDysk",
+            "config_dir": "/infinidysk",
+            "backend_port": 8080,
+            "env": {},
+        }
+        values = {
+            "api.key": "provider-key",
+            "arr.instances": "{}",
+            "api.categories": "",
+            "rclone.mount-dir": "",
+        }
+
+        with (
+            patch.object(nzbdav_settings, "CONFIG_MANAGER", config_manager),
+            patch.object(
+                nzbdav_settings,
+                "_collect_arr_entries",
+                return_value=(
+                    [
+                        {
+                            "Host": "http://127.0.0.1:7878",
+                            "ApiKey": "arr-key",
+                            "Category": "movies",
+                            "Instance": "InfiniDysk",
+                        }
+                    ],
+                    [],
+                    [],
+                    [],
+                ),
+            ),
+            patch.object(nzbdav_settings, "_instance_core_services", return_value=[]),
+            patch.object(nzbdav_settings, "_ensure_symlink_roots"),
+            patch.object(
+                nzbdav_settings.nzbdav_db,
+                "get_config_value",
+                side_effect=lambda name: values.get(name),
+            ),
+            patch.object(
+                nzbdav_settings.nzbdav_db,
+                "set_config_value",
+                return_value=(True, None),
+            ) as setter,
+            patch.object(nzbdav_settings, "_wait_for_arr") as wait_for_arr,
+            patch.object(nzbdav_settings, "_wait_for_nzbdav") as wait_for_provider,
+        ):
+            with nzbdav_settings.defer_nzbdav_runtime_integrations():
+                updated, error = nzbdav_settings.patch_nzbdav_config()
+
+        self.assertTrue(updated)
+        self.assertIsNone(error)
+        wait_for_arr.assert_not_called()
+        wait_for_provider.assert_not_called()
+        self.assertIn(
+            ("rclone.mount-dir", "/mnt/debrid/infinidysk"),
+            [item.args for item in setter.call_args_list],
+        )
+
     @staticmethod
     def _write_nzbdav_source(root: Path) -> None:
         backend = root / "backend"
@@ -41,7 +129,7 @@ class NzbDAVSetupTests(unittest.TestCase):
             version_path.write_text("v0.10.0-0dec23ac\n", encoding="utf-8")
             config = {
                 "enabled": True,
-                "process_name": "NzbDAV",
+                "process_name": "InfiniDysk",
                 "config_dir": tmpdir,
                 "webdav_password": "configured-password",
                 "backend_port": 8080,
@@ -50,7 +138,7 @@ class NzbDAVSetupTests(unittest.TestCase):
                 "env": {},
             }
             config_manager = Mock()
-            config_manager.find_key_for_process.return_value = ("nzbdav", None)
+            config_manager.find_key_for_process.return_value = ("infinidysk", None)
             config_manager.get_instance.return_value = config
             process_handler = Mock()
             process_handler.setup_tracker = set()
@@ -62,7 +150,7 @@ class NzbDAVSetupTests(unittest.TestCase):
             ):
                 success, error = setup._setup_project_inner(
                     process_handler,
-                    "NzbDAV",
+                    "InfiniDysk",
                     install_phase=False,
                     configure_phase=True,
                 )
@@ -80,7 +168,7 @@ class NzbDAVSetupTests(unittest.TestCase):
 
     def test_fresh_prerelease_install_handles_comparison_error_without_type_crash(self):
         config = {
-            "process_name": "NzbDAV",
+            "process_name": "InfiniDysk",
             "config_dir": "/nzbdav",
             "release_version_enabled": True,
             "release_version": "prerelease",
@@ -89,7 +177,7 @@ class NzbDAVSetupTests(unittest.TestCase):
             "commit_sha": "",
         }
         config_manager = Mock()
-        config_manager.find_key_for_process.return_value = ("nzbdav", None)
+        config_manager.find_key_for_process.return_value = ("infinidysk", None)
         config_manager.get_instance.return_value = config
         process_handler = Mock()
         process_handler.setup_tracker = set()
@@ -114,14 +202,14 @@ class NzbDAVSetupTests(unittest.TestCase):
         ):
             success, error = setup._setup_project_inner(
                 process_handler,
-                "NzbDAV",
+                "InfiniDysk",
                 install_phase=True,
                 configure_phase=False,
             )
 
         self.assertTrue(success, error)
         install_release.assert_called_once_with(
-            process_handler, config, "NzbDAV", "nzbdav"
+            process_handler, config, "InfiniDysk", "infinidysk"
         )
 
     def test_official_prerelease_selector_resolves_to_rc_channel(self):
@@ -313,7 +401,7 @@ class NzbDAVSetupTests(unittest.TestCase):
             runtime_file = root / "old-runtime.dll"
             runtime_file.write_text("replaceable", encoding="utf-8")
             config = {
-                "process_name": "NzbDAV",
+                "process_name": "InfiniDysk",
                 "repo_name": "infinidysk",
                 "config_file": str(config_file),
                 "exclude_dirs": [],
@@ -472,7 +560,7 @@ class NzbDAVSetupTests(unittest.TestCase):
         commit_sha = "a" * 40
         config = {
             "enabled": True,
-            "process_name": "NzbDAV",
+            "process_name": "InfiniDysk",
             "config_dir": "/nzbdav",
             "release_version_enabled": True,
             "release_version": "latest",
@@ -489,7 +577,7 @@ class NzbDAVSetupTests(unittest.TestCase):
             patch.object(
                 setup.CONFIG_MANAGER,
                 "find_key_for_process",
-                return_value=("nzbdav", None),
+                return_value=("infinidysk", None),
             ),
             patch.object(setup.CONFIG_MANAGER, "get_instance", return_value=config),
             patch.object(
@@ -498,11 +586,11 @@ class NzbDAVSetupTests(unittest.TestCase):
             patch.object(setup, "setup_release_version") as install_release,
             patch.object(setup, "setup_nzbdav", return_value=(True, None)),
         ):
-            success, error = setup.install_project(process_handler, "NzbDAV")
+            success, error = setup.install_project(process_handler, "InfiniDysk")
 
         self.assertTrue(success, error)
         install_source.assert_called_once_with(
-            process_handler, config, "NzbDAV", "nzbdav"
+            process_handler, config, "InfiniDysk", "infinidysk"
         )
         install_release.assert_not_called()
 
@@ -594,7 +682,7 @@ class NzbDAVSetupTests(unittest.TestCase):
         release_sha = "d" * 40
         with tempfile.TemporaryDirectory() as tmpdir:
             config = {
-                "process_name": "NzbDAV",
+                "process_name": "InfiniDysk",
                 "config_dir": tmpdir,
                 "repo_owner": "nzbdav",
                 "repo_name": "nzbdav",
@@ -624,7 +712,7 @@ class NzbDAVSetupTests(unittest.TestCase):
                 patch.object(setup.versions, "version_write") as version_write,
             ):
                 success, error = setup.setup_release_version(
-                    Mock(), config, "NzbDAV", "nzbdav"
+                    Mock(), config, "InfiniDysk", "infinidysk"
                 )
 
         self.assertTrue(success, error)
@@ -633,8 +721,8 @@ class NzbDAVSetupTests(unittest.TestCase):
             download_release.call_args.kwargs["release_version"],
         )
         version_write.assert_called_once_with(
-            "NzbDAV",
-            "nzbdav",
+            "InfiniDysk",
+            "infinidysk",
             version_path=os.path.join(tmpdir, "version.txt"),
             version=f"dev-{release_sha[:8]}",
         )
@@ -643,7 +731,7 @@ class NzbDAVSetupTests(unittest.TestCase):
         release_sha = "e" * 40
         with tempfile.TemporaryDirectory() as tmpdir:
             config = {
-                "process_name": "NzbDAV",
+                "process_name": "InfiniDysk",
                 "config_dir": tmpdir,
                 "repo_owner": "nzbdav",
                 "repo_name": "nzbdav",
@@ -675,7 +763,7 @@ class NzbDAVSetupTests(unittest.TestCase):
                 patch.object(setup.versions, "version_write") as version_write,
             ):
                 success, error = setup.setup_release_version(
-                    Mock(), config, "NzbDAV", "nzbdav"
+                    Mock(), config, "InfiniDysk", "infinidysk"
                 )
 
         self.assertFalse(success)
@@ -688,7 +776,7 @@ class NzbDAVSetupTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
             config = {
-                "process_name": "NzbDAV",
+                "process_name": "InfiniDysk",
                 "config_dir": str(root),
                 "repo_owner": "infinidysk",
                 "repo_name": "infinidysk",
@@ -771,7 +859,7 @@ class NzbDAVSetupTests(unittest.TestCase):
                 patch.object(setup, "chown_single", return_value=(True, None)),
             ):
                 result, error = setup._install_nzbdav_prebuilt_release(
-                    config, "NzbDAV", "v1.0.0", str(root)
+                    config, "InfiniDysk", "v1.0.0", str(root)
                 )
                 runtime_ready, runtime_error = setup._nzbdav_prebuilt_runtime_ready(
                     str(root)
@@ -786,6 +874,12 @@ class NzbDAVSetupTests(unittest.TestCase):
                 "prebuilt", setup.read_nzbdav_install_info(str(root))["method"]
             )
             self.assertTrue(runtime_ready, runtime_error)
+
+            canonical_marker = root / setup._NZBDAV_PREBUILT_MARKER
+            legacy_marker = root / setup._NZBDAV_LEGACY_PREBUILT_MARKER
+            canonical_marker.rename(legacy_marker)
+            legacy_ready, legacy_error = setup._nzbdav_prebuilt_runtime_ready(str(root))
+            self.assertTrue(legacy_ready, legacy_error)
 
     def test_prebuilt_asset_selection_retains_legacy_nzbdav_compatibility(self):
         legacy = {
@@ -867,7 +961,7 @@ class NzbDAVSetupTests(unittest.TestCase):
             patch.object(setup.downloader, "download_and_extract") as download,
         ):
             result, error = setup._install_nzbdav_prebuilt_release(
-                config, "NzbDAV", "dev", "/tmp/nzbdav-test"
+                config, "InfiniDysk", "dev", "/tmp/nzbdav-test"
             )
 
         self.assertIsNone(result)
@@ -902,7 +996,7 @@ class NzbDAVSetupTests(unittest.TestCase):
         release_sha = "c" * 40
         with tempfile.TemporaryDirectory() as tmpdir:
             config = {
-                "process_name": "NzbDAV",
+                "process_name": "InfiniDysk",
                 "config_dir": tmpdir,
                 "repo_owner": "nzbdav",
                 "repo_name": "nzbdav",
@@ -932,7 +1026,7 @@ class NzbDAVSetupTests(unittest.TestCase):
                 patch.object(setup.versions, "version_write"),
             ):
                 success, error = setup.setup_release_version(
-                    Mock(), config, "NzbDAV", "nzbdav"
+                    Mock(), config, "InfiniDysk", "infinidysk"
                 )
             install_info = setup.read_nzbdav_install_info(tmpdir)
 
@@ -961,7 +1055,7 @@ class NzbDAVSetupTests(unittest.TestCase):
         release_sha = "e" * 40
         with tempfile.TemporaryDirectory() as tmpdir:
             config = {
-                "process_name": "NzbDAV",
+                "process_name": "InfiniDysk",
                 "config_dir": tmpdir,
                 "repo_owner": "infinidysk",
                 "repo_name": "infinidysk",
@@ -988,7 +1082,7 @@ class NzbDAVSetupTests(unittest.TestCase):
                 patch.object(setup.versions, "version_write"),
             ):
                 success, error = setup.setup_release_version(
-                    Mock(), config, "NzbDAV", "nzbdav"
+                    Mock(), config, "InfiniDysk", "infinidysk"
                 )
             install_info = setup.read_nzbdav_install_info(tmpdir)
 
@@ -1004,7 +1098,7 @@ class NzbDAVSetupTests(unittest.TestCase):
         release_sha = "d" * 40
         with tempfile.TemporaryDirectory() as tmpdir:
             config = {
-                "process_name": "NzbDAV",
+                "process_name": "InfiniDysk",
                 "config_dir": tmpdir,
                 "repo_owner": "nzbdav",
                 "repo_name": "nzbdav",
@@ -1039,7 +1133,7 @@ class NzbDAVSetupTests(unittest.TestCase):
                 patch.object(setup.versions, "version_write") as version_write,
             ):
                 success, error = setup.setup_release_version(
-                    Mock(), config, "NzbDAV", "nzbdav"
+                    Mock(), config, "InfiniDysk", "infinidysk"
                 )
 
         self.assertTrue(success, error)
@@ -1049,8 +1143,8 @@ class NzbDAVSetupTests(unittest.TestCase):
             source_download.call_args.kwargs["release_version"],
         )
         version_write.assert_called_once_with(
-            "NzbDAV",
-            "nzbdav",
+            "InfiniDysk",
+            "infinidysk",
             version_path=os.path.join(tmpdir, "version.txt"),
             version=f"v0.10.0-rc.3-{release_sha[:8]}",
         )

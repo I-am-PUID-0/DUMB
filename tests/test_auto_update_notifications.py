@@ -685,7 +685,7 @@ class UpdateNotificationTests(unittest.TestCase):
             with self.subTest(release=release):
                 self.assertTrue(
                     Update._is_nzbdav_named_release_channel(
-                        "nzbdav",
+                        "infinidysk",
                         {
                             "release_version_enabled": True,
                             "release_version": release,
@@ -697,7 +697,7 @@ class UpdateNotificationTests(unittest.TestCase):
             with self.subTest(release=release):
                 self.assertFalse(
                     Update._is_nzbdav_named_release_channel(
-                        "nzbdav",
+                        "infinidysk",
                         {
                             "release_version_enabled": True,
                             "release_version": release,
@@ -720,16 +720,16 @@ class UpdateNotificationTests(unittest.TestCase):
         config = {
             "commit_sha": commit_sha,
             "auto_update": True,
-            "repo_owner": "nzbdav",
-            "repo_name": "nzbdav",
+            "repo_owner": "infinidysk",
+            "repo_name": "infinidysk",
         }
 
         with patch("utils.auto_update.Versions") as versions:
             versions.return_value.version_check.return_value = ("v0.8.1", None)
             pending = updater._manual_check_generic_repo(
-                "NzbDAV",
+                "InfiniDysk",
                 config,
-                "nzbdav",
+                "infinidysk",
                 None,
                 "commit",
                 1,
@@ -743,9 +743,9 @@ class UpdateNotificationTests(unittest.TestCase):
                 None,
             )
             installed = updater._manual_check_generic_repo(
-                "NzbDAV",
+                "InfiniDysk",
                 config,
-                "nzbdav",
+                "infinidysk",
                 None,
                 "commit",
                 2,
@@ -766,16 +766,16 @@ class UpdateNotificationTests(unittest.TestCase):
         config = {
             "release_version_enabled": True,
             "release_version": "v0.7.9",
-            "repo_owner": "nzbdav",
-            "repo_name": "nzbdav",
+            "repo_owner": "infinidysk",
+            "repo_name": "infinidysk",
         }
 
         with patch("utils.auto_update.Versions") as versions:
             versions.return_value.version_check.return_value = ("v0.8.1", None)
             pending = updater._manual_check_generic_repo(
-                "NzbDAV",
+                "InfiniDysk",
                 config,
-                "nzbdav",
+                "infinidysk",
                 None,
                 "release",
                 1,
@@ -789,9 +789,9 @@ class UpdateNotificationTests(unittest.TestCase):
                 None,
             )
             installed = updater._manual_check_generic_repo(
-                "NzbDAV",
+                "InfiniDysk",
                 config,
-                "nzbdav",
+                "infinidysk",
                 None,
                 "release",
                 2,
@@ -913,8 +913,8 @@ class UpdateNotificationTests(unittest.TestCase):
         config = {
             "release_version_enabled": True,
             "release_version": "dev",
-            "repo_owner": "nzbdav",
-            "repo_name": "nzbdav",
+            "repo_owner": "infinidysk",
+            "repo_name": "infinidysk",
         }
 
         with patch("utils.auto_update.Versions") as versions:
@@ -923,9 +923,9 @@ class UpdateNotificationTests(unittest.TestCase):
                 None,
             )
             payload = updater._manual_check_generic_repo(
-                "NzbDAV",
+                "InfiniDysk",
                 config,
-                "nzbdav",
+                "infinidysk",
                 None,
                 None,
                 1,
@@ -1046,8 +1046,8 @@ class UpdateNotificationTests(unittest.TestCase):
         config = {
             "release_version_enabled": True,
             "release_version": "dev",
-            "repo_owner": "nzbdav",
-            "repo_name": "nzbdav",
+            "repo_owner": "infinidysk",
+            "repo_name": "infinidysk",
         }
 
         with (
@@ -1063,16 +1063,20 @@ class UpdateNotificationTests(unittest.TestCase):
                 "dev-bbbbbbbb",
                 None,
             )
-            success, message = updater.update_check("NzbDAV", config, "nzbdav", None)
+            success, message = updater.update_check(
+                "InfiniDysk", config, "infinidysk", None
+            )
 
         self.assertTrue(success, message)
         self.assertIn("dev-cccccccc", message)
         self.assertEqual("dev", config["release_version"])
         install_release.assert_called_once_with(
-            updater.process_handler, config, "NzbDAV", "nzbdav"
+            updater.process_handler, config, "InfiniDysk", "infinidysk"
         )
-        finish_setup.assert_called_once_with(updater.process_handler, "NzbDAV")
-        updater.start_process.assert_called_once_with("NzbDAV", config, "nzbdav", None)
+        finish_setup.assert_called_once_with(updater.process_handler, "InfiniDysk")
+        updater.start_process.assert_called_once_with(
+            "InfiniDysk", config, "infinidysk", None
+        )
 
     def test_commit_pin_disables_initial_update_even_for_prerelease_selector(self):
         updater = self._updater()
@@ -1084,32 +1088,32 @@ class UpdateNotificationTests(unittest.TestCase):
         updater.initial_update_check = Mock()
         updater.start_process = Mock(return_value=("started", None))
         config_manager = Mock()
-        config_manager.find_key_for_process.return_value = ("nzbdav", None)
+        config_manager.find_key_for_process.return_value = ("infinidysk", None)
         config_manager.get_instance.return_value = {
-            "process_name": "NzbDAV",
+            "process_name": "InfiniDysk",
             "auto_update": True,
             "commit_sha": "a" * 40,
             "release_version_enabled": True,
             "release_version": "prerelease",
         }
         existing_job = object()
-        Update._jobs = {"NzbDAV": existing_job}
-        Update._next_check_at = {"NzbDAV": 123}
+        Update._jobs = {"InfiniDysk": existing_job}
+        Update._next_check_at = {"InfiniDysk": 123}
 
         with (
             patch("utils.auto_update.CONFIG_MANAGER", config_manager),
             patch("utils.auto_update.setup_project", return_value=(True, None)),
             patch("utils.auto_update.threading.Thread") as update_thread,
         ):
-            process, error = updater.auto_update("NzbDAV", enable_update=True)
+            process, error = updater.auto_update("InfiniDysk", enable_update=True)
 
         self.assertEqual("started", process)
         self.assertIsNone(error)
         updater.initial_update_check.assert_not_called()
         update_thread.assert_not_called()
         updater.scheduler.cancel_job.assert_called_once_with(existing_job)
-        self.assertNotIn("NzbDAV", Update._jobs)
-        self.assertNotIn("NzbDAV", Update._next_check_at)
+        self.assertNotIn("InfiniDysk", Update._jobs)
+        self.assertNotIn("InfiniDysk", Update._next_check_at)
 
     def test_digit_free_nzbdav_release_tag_allows_auto_update_schedule(self):
         updater = self._updater()
@@ -1120,9 +1124,9 @@ class UpdateNotificationTests(unittest.TestCase):
         updater.reschedule_symlink_backup = Mock()
         updater.initial_update_check = Mock(return_value=(True, None))
         config_manager = Mock()
-        config_manager.find_key_for_process.return_value = ("nzbdav", None)
+        config_manager.find_key_for_process.return_value = ("infinidysk", None)
         config_manager.get_instance.return_value = {
-            "process_name": "NzbDAV",
+            "process_name": "InfiniDysk",
             "auto_update": True,
             "release_version_enabled": True,
             "release_version": "dev",
@@ -1134,13 +1138,18 @@ class UpdateNotificationTests(unittest.TestCase):
             patch("utils.auto_update.CONFIG_MANAGER", config_manager),
             patch("utils.auto_update.threading.Thread") as update_thread,
         ):
-            process, error = updater.auto_update("NzbDAV", enable_update=True)
+            process, error = updater.auto_update("InfiniDysk", enable_update=True)
 
         self.assertTrue(process)
         self.assertIsNone(error)
         update_thread.assert_called_once_with(
             target=updater.update_schedule,
-            args=("NzbDAV", config_manager.get_instance.return_value, "nzbdav", None),
+            args=(
+                "InfiniDysk",
+                config_manager.get_instance.return_value,
+                "infinidysk",
+                None,
+            ),
         )
         update_thread.return_value.start.assert_called_once_with()
         updater.initial_update_check.assert_called_once()
@@ -1154,9 +1163,9 @@ class UpdateNotificationTests(unittest.TestCase):
         updater.reschedule_symlink_backup = Mock()
         updater.start_process = Mock(return_value=("started", None))
         config_manager = Mock()
-        config_manager.find_key_for_process.return_value = ("nzbdav", None)
+        config_manager.find_key_for_process.return_value = ("infinidysk", None)
         config_manager.get_instance.return_value = {
-            "process_name": "NzbDAV",
+            "process_name": "InfiniDysk",
             "auto_update": True,
             "release_version_enabled": True,
             "release_version": "v0.9.5",
@@ -1169,7 +1178,7 @@ class UpdateNotificationTests(unittest.TestCase):
             patch("utils.auto_update.setup_project", return_value=(True, None)),
             patch("utils.auto_update.threading.Thread") as update_thread,
         ):
-            process, error = updater.auto_update("NzbDAV", enable_update=True)
+            process, error = updater.auto_update("InfiniDysk", enable_update=True)
 
         self.assertEqual("started", process)
         self.assertIsNone(error)
@@ -1184,23 +1193,23 @@ class UpdateNotificationTests(unittest.TestCase):
             "release_version": "dev",
         }
         config_manager = Mock()
-        config_manager.find_key_for_process.return_value = ("nzbdav", None)
+        config_manager.find_key_for_process.return_value = ("infinidysk", None)
         config_manager.get_instance.return_value = config
 
         with patch("utils.auto_update.CONFIG_MANAGER", config_manager):
-            success, message = updater.reschedule_auto_update("NzbDAV")
+            success, message = updater.reschedule_auto_update("InfiniDysk")
 
         self.assertTrue(success)
         self.assertEqual("Auto-update rescheduled", message)
         updater.update_schedule.assert_called_once_with(
-            "NzbDAV", config, "nzbdav", None
+            "InfiniDysk", config, "infinidysk", None
         )
 
     def test_reschedule_blocks_numeric_nzbdav_release_tag(self):
         updater = self._updater()
         existing_job = object()
-        Update._jobs = {"NzbDAV": existing_job}
-        Update._next_check_at = {"NzbDAV": 123}
+        Update._jobs = {"InfiniDysk": existing_job}
+        Update._next_check_at = {"InfiniDysk": 123}
         updater.update_schedule = Mock()
         updater.auto_update_interval = Mock(return_value=24)
         updater.auto_update_start_time = Mock(return_value="04:00")
@@ -1210,11 +1219,11 @@ class UpdateNotificationTests(unittest.TestCase):
             "release_version": "v0.9.5",
         }
         config_manager = Mock()
-        config_manager.find_key_for_process.return_value = ("nzbdav", None)
+        config_manager.find_key_for_process.return_value = ("infinidysk", None)
         config_manager.get_instance.return_value = config
 
         with patch("utils.auto_update.CONFIG_MANAGER", config_manager):
-            success, message = updater.reschedule_auto_update("NzbDAV")
+            success, message = updater.reschedule_auto_update("InfiniDysk")
 
         self.assertTrue(success)
         self.assertEqual("Auto-update disabled by release v0.9.5", message)
@@ -1227,27 +1236,27 @@ class UpdateNotificationTests(unittest.TestCase):
     def test_reschedule_cancels_existing_job_for_commit_pin(self):
         updater = self._updater()
         existing_job = object()
-        Update._jobs = {"NzbDAV": existing_job}
-        Update._next_check_at = {"NzbDAV": 123}
+        Update._jobs = {"InfiniDysk": existing_job}
+        Update._next_check_at = {"InfiniDysk": 123}
         updater.update_schedule = Mock()
         updater.auto_update_interval = Mock(return_value=24)
         updater.auto_update_start_time = Mock(return_value="04:00")
         config_manager = Mock()
-        config_manager.find_key_for_process.return_value = ("nzbdav", None)
+        config_manager.find_key_for_process.return_value = ("infinidysk", None)
         config_manager.get_instance.return_value = {
             "auto_update": True,
             "commit_sha": "a" * 40,
         }
 
         with patch("utils.auto_update.CONFIG_MANAGER", config_manager):
-            success, message = updater.reschedule_auto_update("NzbDAV")
+            success, message = updater.reschedule_auto_update("InfiniDysk")
 
         self.assertTrue(success)
         self.assertEqual("Auto-update disabled by commit pin", message)
         updater.scheduler.cancel_job.assert_called_once_with(existing_job)
         updater.update_schedule.assert_not_called()
-        self.assertNotIn("NzbDAV", Update._jobs)
-        self.assertNotIn("NzbDAV", Update._next_check_at)
+        self.assertNotIn("InfiniDysk", Update._jobs)
+        self.assertNotIn("InfiniDysk", Update._next_check_at)
         status = updater._safe_record_update_status.call_args.args[1]
         self.assertEqual("blocked", status["status"])
         self.assertEqual("commit", status["reason"])
@@ -1256,8 +1265,8 @@ class UpdateNotificationTests(unittest.TestCase):
     def test_stale_scheduled_callback_stops_when_commit_pin_is_detected(self):
         updater = self._updater()
         existing_job = object()
-        Update._jobs = {"NzbDAV": existing_job}
-        Update._next_check_at = {"NzbDAV": 123}
+        Update._jobs = {"InfiniDysk": existing_job}
+        Update._next_check_at = {"InfiniDysk": 123}
         updater.scheduled_update_check = Mock()
         config_manager = Mock()
         config_manager.get_instance.return_value = {
@@ -1267,16 +1276,16 @@ class UpdateNotificationTests(unittest.TestCase):
 
         with patch("utils.auto_update.CONFIG_MANAGER", config_manager):
             updater._run_scheduled_update_if_due(
-                "NzbDAV",
+                "InfiniDysk",
                 {"auto_update": True},
-                "nzbdav",
+                "infinidysk",
                 None,
             )
 
         updater.scheduler.cancel_job.assert_called_once_with(existing_job)
         updater.scheduled_update_check.assert_not_called()
-        self.assertNotIn("NzbDAV", Update._jobs)
-        self.assertNotIn("NzbDAV", Update._next_check_at)
+        self.assertNotIn("InfiniDysk", Update._jobs)
+        self.assertNotIn("InfiniDysk", Update._next_check_at)
 
     def test_scheduled_check_only_reports_update_without_installing(self):
         updater = self._updater()
@@ -1412,13 +1421,13 @@ class UpdateNotificationTests(unittest.TestCase):
 
         with patch("utils.auto_update.Versions") as versions:
             success, message = updater.update_check(
-                "NzbDAV",
+                "InfiniDysk",
                 {
                     "commit_sha": "a" * 40,
                     "release_version_enabled": False,
                     "release_version": "latest",
                 },
-                "nzbdav",
+                "infinidysk",
                 None,
             )
 
@@ -1430,8 +1439,8 @@ class UpdateNotificationTests(unittest.TestCase):
         updater = self._updater()
         commit_sha = "b" * 40
         config = {
-            "repo_owner": "nzbdav",
-            "repo_name": "nzbdav",
+            "repo_owner": "infinidysk",
+            "repo_name": "infinidysk",
             "pinned_version": "",
             "commit_sha": "",
             "release_version_enabled": False,
@@ -1440,7 +1449,7 @@ class UpdateNotificationTests(unittest.TestCase):
             "branch": "main",
         }
         config_manager = Mock()
-        config_manager.find_key_for_process.return_value = ("nzbdav", None)
+        config_manager.find_key_for_process.return_value = ("infinidysk", None)
         config_manager.get_instance.return_value = config
 
         def install_while_source_changes(*_args):
@@ -1451,12 +1460,12 @@ class UpdateNotificationTests(unittest.TestCase):
                     "branch_enabled": False,
                 }
             )
-            return True, "Updated NzbDAV."
+            return True, "Updated InfiniDysk."
 
         updater.update_check = Mock(side_effect=install_while_source_changes)
 
         with patch("utils.auto_update.CONFIG_MANAGER", config_manager):
-            payload = updater.manual_update_install("NzbDAV", allow_override=True)
+            payload = updater.manual_update_install("InfiniDysk", allow_override=True)
 
         self.assertEqual("updated", payload["status"])
         self.assertEqual(commit_sha, config["commit_sha"])
@@ -1464,15 +1473,15 @@ class UpdateNotificationTests(unittest.TestCase):
         self.assertFalse(config["branch_enabled"])
         updater.logger.info.assert_any_call(
             "Preserving newer source selection for %s saved during manual update.",
-            "NzbDAV",
+            "InfiniDysk",
         )
         updater.process_handler = Mock()
         with patch("utils.auto_update.Versions") as versions:
             success, message = Update.update_check(
                 updater,
-                "NzbDAV",
+                "InfiniDysk",
                 config,
-                "nzbdav",
+                "infinidysk",
                 None,
             )
         self.assertFalse(success)
@@ -1483,8 +1492,8 @@ class UpdateNotificationTests(unittest.TestCase):
         updater = self._updater()
         commit_sha = "c" * 40
         config = {
-            "repo_owner": "nzbdav",
-            "repo_name": "nzbdav",
+            "repo_owner": "infinidysk",
+            "repo_name": "infinidysk",
             "pinned_version": "",
             "commit_sha": "",
             "release_version_enabled": False,
@@ -1493,30 +1502,30 @@ class UpdateNotificationTests(unittest.TestCase):
             "branch": "main",
         }
         config_manager = Mock()
-        config_manager.find_key_for_process.return_value = ("nzbdav", None)
+        config_manager.find_key_for_process.return_value = ("infinidysk", None)
         config_manager.get_instance.return_value = config
 
         def install_while_source_changes(*_args):
             config["commit_sha"] = commit_sha
-            return True, "Updated NzbDAV."
+            return True, "Updated InfiniDysk."
 
         updater.update_check = Mock(side_effect=install_while_source_changes)
 
         with patch("utils.auto_update.CONFIG_MANAGER", config_manager):
-            payload = updater.manual_update_install("NzbDAV")
+            payload = updater.manual_update_install("InfiniDysk")
 
         self.assertEqual("updated", payload["status"])
         self.assertEqual(commit_sha, config["commit_sha"])
         updater.logger.info.assert_any_call(
             "Preserving newer source selection for %s saved during manual update.",
-            "NzbDAV",
+            "InfiniDysk",
         )
 
     def test_manual_latest_override_temporarily_ignores_branch_selection(self):
         updater = self._updater()
         config = {
-            "repo_owner": "nzbdav",
-            "repo_name": "nzbdav",
+            "repo_owner": "infinidysk",
+            "repo_name": "infinidysk",
             "pinned_version": "",
             "commit_sha": "",
             "release_version_enabled": True,
@@ -1525,19 +1534,19 @@ class UpdateNotificationTests(unittest.TestCase):
             "branch": "main",
         }
         config_manager = Mock()
-        config_manager.find_key_for_process.return_value = ("nzbdav", None)
+        config_manager.find_key_for_process.return_value = ("infinidysk", None)
         config_manager.get_instance.return_value = config
 
         def assert_latest_selection(*_args):
             self.assertFalse(config["branch_enabled"])
             self.assertFalse(config["release_version_enabled"])
             self.assertEqual("", config["commit_sha"])
-            return True, "Updated NzbDAV to latest stable release."
+            return True, "Updated InfiniDysk to latest stable release."
 
         updater.update_check = Mock(side_effect=assert_latest_selection)
 
         with patch("utils.auto_update.CONFIG_MANAGER", config_manager):
-            payload = updater.manual_update_install("NzbDAV", allow_override=True)
+            payload = updater.manual_update_install("InfiniDysk", allow_override=True)
 
         self.assertEqual("updated", payload["status"])
         self.assertTrue(config["branch_enabled"])
@@ -1556,8 +1565,8 @@ class UpdateNotificationTests(unittest.TestCase):
         updater.update_check = Mock()
         commit_sha = "d" * 40
         config = {
-            "repo_owner": "nzbdav",
-            "repo_name": "nzbdav",
+            "repo_owner": "infinidysk",
+            "repo_name": "infinidysk",
             "commit_sha": commit_sha,
             "release_version_enabled": False,
             "release_version": "latest",
@@ -1565,7 +1574,7 @@ class UpdateNotificationTests(unittest.TestCase):
             "branch": "main",
         }
         config_manager = Mock()
-        config_manager.find_key_for_process.return_value = ("nzbdav", None)
+        config_manager.find_key_for_process.return_value = ("infinidysk", None)
         config_manager.get_instance.return_value = config
 
         with (
@@ -1575,19 +1584,19 @@ class UpdateNotificationTests(unittest.TestCase):
             ) as setup,
         ):
             payload = updater.manual_update_install(
-                "NzbDAV",
+                "InfiniDysk",
                 allow_override=False,
                 target="configured",
             )
 
         self.assertEqual("updated", payload["status"])
         self.assertEqual(commit_sha, config["commit_sha"])
-        setup.assert_called_once_with(updater.process_handler, "NzbDAV")
+        setup.assert_called_once_with(updater.process_handler, "InfiniDysk")
         updater.update_check.assert_not_called()
         updater.start_process.assert_called_once_with(
-            "NzbDAV",
+            "InfiniDysk",
             config,
-            "nzbdav",
+            "infinidysk",
             None,
         )
 
@@ -1601,8 +1610,8 @@ class UpdateNotificationTests(unittest.TestCase):
         updater.start_process = Mock(return_value=("started", None))
         updater.update_check = Mock()
         config = {
-            "repo_owner": "nzbdav",
-            "repo_name": "nzbdav",
+            "repo_owner": "infinidysk",
+            "repo_name": "infinidysk",
             "commit_sha": "",
             "release_version_enabled": True,
             "release_version": "v0.7.9",
@@ -1610,7 +1619,7 @@ class UpdateNotificationTests(unittest.TestCase):
             "branch": "main",
         }
         config_manager = Mock()
-        config_manager.find_key_for_process.return_value = ("nzbdav", None)
+        config_manager.find_key_for_process.return_value = ("infinidysk", None)
         config_manager.get_instance.return_value = config
 
         with (
@@ -1620,7 +1629,7 @@ class UpdateNotificationTests(unittest.TestCase):
             ) as setup,
         ):
             payload = updater.manual_update_install(
-                "NzbDAV",
+                "InfiniDysk",
                 allow_override=False,
                 target="configured",
             )
@@ -1628,7 +1637,7 @@ class UpdateNotificationTests(unittest.TestCase):
         self.assertEqual("updated", payload["status"])
         self.assertTrue(config["release_version_enabled"])
         self.assertEqual("v0.7.9", config["release_version"])
-        setup.assert_called_once_with(updater.process_handler, "NzbDAV")
+        setup.assert_called_once_with(updater.process_handler, "InfiniDysk")
         updater.update_check.assert_not_called()
 
     @patch("utils.auto_update.Versions")
@@ -1643,14 +1652,14 @@ class UpdateNotificationTests(unittest.TestCase):
 
         self.assertFalse(
             updater._should_run_install_phase_for_preinstalled(
-                "NzbDAV", "nzbdav", None, config
+                "InfiniDysk", "infinidysk", None, config
             )
         )
 
         versions.return_value.version_check.return_value = ("commit-bbbbbbbbbbbb", None)
         self.assertTrue(
             updater._should_run_install_phase_for_preinstalled(
-                "NzbDAV", "nzbdav", None, config
+                "InfiniDysk", "infinidysk", None, config
             )
         )
 
@@ -1662,8 +1671,8 @@ class UpdateNotificationTests(unittest.TestCase):
         config = {
             "release_version_enabled": True,
             "release_version": "dev",
-            "repo_owner": "nzbdav",
-            "repo_name": "nzbdav",
+            "repo_owner": "infinidysk",
+            "repo_name": "infinidysk",
         }
         versions.return_value.version_check.return_value = (
             f"dev-{release_sha[:8]}",
@@ -1672,14 +1681,14 @@ class UpdateNotificationTests(unittest.TestCase):
 
         self.assertFalse(
             updater._should_run_install_phase_for_preinstalled(
-                "NzbDAV", "nzbdav", None, config
+                "InfiniDysk", "infinidysk", None, config
             )
         )
 
         versions.return_value.version_check.return_value = ("dev-aaaaaaaa", None)
         self.assertTrue(
             updater._should_run_install_phase_for_preinstalled(
-                "NzbDAV", "nzbdav", None, config
+                "InfiniDysk", "infinidysk", None, config
             )
         )
 

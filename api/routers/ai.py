@@ -216,7 +216,7 @@ DOCS_CONTEXT_INDEX = [
             "workflow",
             "usenet",
             "debrid",
-            "nzbdav",
+            "infinidysk",
             "altmount",
             "decypharr",
             "arr",
@@ -231,15 +231,15 @@ DOCS_CONTEXT_INDEX = [
             "workflow",
             "usenet",
             "debrid",
-            "nzbdav",
+            "infinidysk",
             "altmount",
             "decypharr",
         ],
     },
     {
-        "path": "services/core/nzbdav.md",
-        "title": "NzbDAV",
-        "keywords": ["usenet", "nzbdav", "nzb", "webdav", "sabnzbd", "arr"],
+        "path": "services/core/infinidysk.md",
+        "title": "InfiniDysk",
+        "keywords": ["usenet", "infinidysk", "nzb", "webdav", "sabnzbd", "arr"],
     },
     {
         "path": "services/core/altmount.md",
@@ -332,7 +332,7 @@ SERVICE_DOC_PATHS = {
     "jellyfin": "services/core/jellyfin.md",
     "lidarr": "services/core/lidarr.md",
     "neutarr": "services/core/neutarr.md",
-    "nzbdav": "services/core/nzbdav.md",
+    "infinidysk": "services/core/infinidysk.md",
     "pgadmin": "services/optional/pgadmin.md",
     "plex": "services/core/plex-media-server.md",
     "postgres": "services/dependent/postgres.md",
@@ -355,17 +355,17 @@ SERVICE_DOC_PATHS = {
 DUMB_SERVICE_CATALOG = {
     "usenet_workflows": [
         {
-            "service": "NzbDAV",
-            "config_key": "nzbdav",
+            "service": "InfiniDysk",
+            "config_key": "infinidysk",
             "role": "Usenet WebDAV gateway and Arr download-client integration.",
             "use_when": "You want a dedicated Usenet workflow with WebDAV-backed access and DUMB-managed Arr integration.",
-            "docs": "https://dumbarr.com/services/core/nzbdav/",
+            "docs": "https://dumbarr.com/services/core/infinidysk/",
         },
         {
             "service": "AltMount",
             "config_key": "altmount",
             "role": "Alternative Usenet WebDAV and SABnzbd-compatible workflow.",
-            "use_when": "You want the AltMount Usenet workflow instead of, or alongside, NzbDAV.",
+            "use_when": "You want the AltMount Usenet workflow instead of, or alongside, InfiniDysk.",
             "docs": "https://dumbarr.com/services/core/altmount/",
         },
         {
@@ -405,15 +405,15 @@ DUMB_SERVICE_CATALOG = {
         },
     ],
     "guidance": [
-        "For DUMB Usenet planning, prefer Decypharr, NzbDAV, and/or AltMount as workflow services.",
+        "For DUMB Usenet planning, prefer Decypharr, InfiniDysk, and/or AltMount as workflow services.",
         "SABnzbd-compatible means a DUMB service can expose an Arr download-client API; do not recommend external SABnzbd/NZBGet as the primary DUMB service unless the user explicitly asks for external clients.",
-        "Use core_service on Arr instances to wire Sonarr/Radarr/Lidarr/Whisparr to decypharr, nzbdav, altmount, or a list for combined workflows.",
+        "Use core_service on Arr instances to wire Sonarr/Radarr/Lidarr/Whisparr to decypharr, infinidysk, altmount, or a list for combined workflows. Legacy nzbdav values remain accepted.",
     ],
 }
 
 DUMB_WORKFLOW_RULES = {
     "authority": "This is a DUMB-specific answer. DUMB docs and dumb_service_catalog override generic media-stack knowledge.",
-    "usenet_primary_dumb_services": ["Decypharr", "NzbDAV", "AltMount"],
+    "usenet_primary_dumb_services": ["Decypharr", "InfiniDysk", "AltMount"],
     "usenet_support_services": [
         "Sonarr",
         "Radarr",
@@ -424,7 +424,7 @@ DUMB_WORKFLOW_RULES = {
     ],
     "not_primary_dumb_services": ["SABnzbd", "NZBGet", "NZBHydra"],
     "rules": [
-        "Recommend Decypharr, NzbDAV, and/or AltMount for DUMB Usenet workflow selection.",
+        "Recommend Decypharr, InfiniDysk, and/or AltMount for DUMB Usenet workflow selection.",
         "Describe Arr apps as automation clients that should be wired to the selected DUMB workflow using core_service.",
         "Describe Prowlarr as indexer management for Arr apps.",
         "Describe rclone only when the selected workflow needs mount support.",
@@ -1630,7 +1630,7 @@ def _service_state(processes: dict[str, dict], *keys: str) -> str:
 def _authoritative_usenet_answer(bundle: dict) -> str:
     processes = _process_lookup(bundle)
     decypharr_state = _service_state(processes, "decypharr")
-    nzbdav_state = _service_state(processes, "nzbdav")
+    nzbdav_state = _service_state(processes, "infinidysk")
     altmount_state = _service_state(processes, "altmount")
     prowlarr_state = _service_state(processes, "prowlarr", "Prowlarr")
     rclone_state = _service_state(processes, "rclone")
@@ -1639,13 +1639,13 @@ def _authoritative_usenet_answer(bundle: dict) -> str:
         [
             "## Direct Answer",
             "",
-            "For Usenet inside DUMB, choose one of the DUMB-native workflow services: **Decypharr**, **NzbDAV**, or **AltMount**. Do not add SABnzbd, NZBGet, or NZBHydra as the primary recommendation unless you intentionally want an external/non-DUMB download-client workflow.",
+            "For Usenet inside DUMB, choose one of the DUMB-native workflow services: **Decypharr**, **InfiniDysk**, or **AltMount**. Do not add SABnzbd, NZBGet, or NZBHydra as the primary recommendation unless you intentionally want an external/non-DUMB download-client workflow.",
             "",
             "## Recommended DUMB Path",
             "",
             "1. **Decypharr**: best fit if you want one workflow that can cover debrid plus native Usenet-style Arr integration.",
-            "2. **NzbDAV**: best fit if you want a dedicated Usenet WebDAV/SABnzbd-compatible workflow managed by DUMB.",
-            "3. **AltMount**: best fit if you prefer the AltMount Usenet workflow or want to compare it alongside NzbDAV.",
+            "2. **InfiniDysk**: best fit if you want a dedicated Usenet WebDAV/SABnzbd-compatible workflow managed by DUMB.",
+            "3. **AltMount**: best fit if you prefer the AltMount Usenet workflow or want to compare it alongside InfiniDysk.",
             "",
             "## Support Services",
             "",
@@ -1657,14 +1657,14 @@ def _authoritative_usenet_answer(bundle: dict) -> str:
             "## Current Stack Signal",
             "",
             f"- Decypharr: {decypharr_state}",
-            f"- NzbDAV: {nzbdav_state}",
+            f"- InfiniDysk: {nzbdav_state}",
             f"- AltMount: {altmount_state}",
             f"- Prowlarr: {prowlarr_state}",
             f"- rclone: {rclone_state}",
             "",
             "## Next Steps",
             "",
-            "1. Pick **Decypharr**, **NzbDAV**, or **AltMount** as the Usenet workflow service.",
+            "1. Pick **Decypharr**, **InfiniDysk**, or **AltMount** as the Usenet workflow service.",
             "2. Start or enable **Prowlarr** if you want indexer management.",
             "3. Point Arr apps at the chosen workflow with `core_service`.",
             "4. Use the selected service page's AI Assist for service-specific setup or log troubleshooting.",
@@ -1897,7 +1897,7 @@ def _build_stack_diagnostic_bundle(
         for entry in processes:
             if entry.get("enabled") is not True:
                 continue
-            if str(entry.get("config_key") or "").lower() != "nzbdav":
+            if str(entry.get("config_key") or "").lower() != "infinidysk":
                 continue
             process_name = entry.get("process_name")
             service_config, _ = _find_service_config_with_path(
@@ -2147,7 +2147,7 @@ def _diagnostic_messages(bundle: dict) -> list[dict]:
         "source of truth, and treat dumb_service_catalog as authoritative for DUMB "
         "workflow planning. Answer the user's question directly before summarizing data. "
         "If the question asks what to use, compare the relevant DUMB services and give "
-        "a recommended path. For Usenet planning, compare Decypharr, NzbDAV, AltMount, "
+        "a recommended path. For Usenet planning, compare Decypharr, InfiniDysk, AltMount, "
         "and the Arr/Prowlarr/rclone support roles. Do not recommend external SABnzbd "
         "or NZBGet as primary DUMB services unless the user explicitly asks for external "
         "clients; if you mention them, label them as external/non-DUMB. Do not merely "

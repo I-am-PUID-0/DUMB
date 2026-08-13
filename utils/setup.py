@@ -50,11 +50,14 @@ _INSTALL_CLEAR_SCOPE = contextvars.ContextVar("dumb_install_clear_scope", defaul
 _MEDIASTORM_RUNTIME_LINK_DIR = "/"
 _MEDIASTORM_PYTHON_LINK = "/.venv"
 _MEDIASTORM_LOG_DIR = "/log"
-_NZBDAV_PREBUILT_MARKER = ".dumb_nzbdav_prebuilt.json"
+_NZBDAV_PREBUILT_MARKER = ".dumb_infinidysk_prebuilt.json"
+_NZBDAV_LEGACY_PREBUILT_MARKER = ".dumb_nzbdav_prebuilt.json"
 _NZBDAV_PREBUILT_FORMAT = 1
-_NZBDAV_SOURCE_BUILD_MARKER = ".dumb_nzbdav_source_build"
+_NZBDAV_SOURCE_BUILD_MARKER = ".dumb_infinidysk_source_build"
+_NZBDAV_LEGACY_SOURCE_BUILD_MARKER = ".dumb_nzbdav_source_build"
 _NZBDAV_SOURCE_BUILD_FORMAT = 3
-_NZBDAV_INSTALL_STATE = ".dumb_nzbdav_install.json"
+_NZBDAV_INSTALL_STATE = ".dumb_infinidysk_install.json"
+_NZBDAV_LEGACY_INSTALL_STATE = ".dumb_nzbdav_install.json"
 _NZBDAV_INSTALL_STATE_FORMAT = 1
 _SQLITE_FILE_RE = re.compile(r"(?i).+\.(?:db|sqlite|sqlite3)(?:-(?:wal|shm|journal))?$")
 _NZBDAV_SERVICE_PROVIDER = json.dumps(
@@ -71,7 +74,7 @@ COMMIT_PIN_SERVICE_KEYS = frozenset(
         "traefik_proxy_admin",
         "cli_debrid",
         "decypharr",
-        "nzbdav",
+        "infinidysk",
         "phalanx_db",
         "tautulli",
         "pulsarr",
@@ -392,7 +395,7 @@ def _prepare_nzbdav_source_tree(target_dir: str) -> tuple[bool, str | None]:
                 os.remove(path)
         return True, None
     except Exception as e:
-        return False, f"Failed preparing NzbDAV source tree at {target_dir}: {e}"
+        return False, f"Failed preparing InfiniDysk source tree at {target_dir}: {e}"
 
 
 def _prepare_decypharr_source_tree(target_dir: str) -> tuple[bool, str | None]:
@@ -465,13 +468,16 @@ def _source_build_enabled(config: dict) -> bool:
 
 
 def _nzbdav_source_build_is_current(config_dir: str) -> bool:
-    try:
-        marker = Path(config_dir, _NZBDAV_SOURCE_BUILD_MARKER).read_text(
-            encoding="utf-8"
-        )
-    except OSError:
-        return False
-    return marker.strip() == str(_NZBDAV_SOURCE_BUILD_FORMAT)
+    for marker_name in (
+        _NZBDAV_SOURCE_BUILD_MARKER,
+        _NZBDAV_LEGACY_SOURCE_BUILD_MARKER,
+    ):
+        try:
+            marker = Path(config_dir, marker_name).read_text(encoding="utf-8")
+        except OSError:
+            continue
+        return marker.strip() == str(_NZBDAV_SOURCE_BUILD_FORMAT)
+    return False
 
 
 def _write_nzbdav_source_build_marker(config_dir: str) -> None:
@@ -506,38 +512,47 @@ def read_nzbdav_install_info(config_dir: str | None) -> dict | None:
 
     if not config_dir:
         return None
-    path = Path(config_dir, _NZBDAV_INSTALL_STATE)
-    try:
-        if path.is_symlink() or not path.is_file() or path.stat().st_size > 16_384:
-            raise ValueError("install state is not a bounded regular file")
-        payload = json.loads(path.read_text(encoding="utf-8"))
-        if payload.get("format") != _NZBDAV_INSTALL_STATE_FORMAT:
-            raise ValueError("unsupported install-state format")
-        method = str(payload.get("method") or "").strip().lower()
-        if method not in {"prebuilt", "source"}:
-            raise ValueError("unsupported install method")
-        result = {"method": method}
-        for key in (
-            "requested_selector",
-            "resolved_release",
-            "source_commit",
-            "asset_name",
-            "fallback_reason",
-        ):
-            value = redact_sensitive_log_data(str(payload.get(key) or "")).strip()
-            if value:
-                result[key] = value[:1000]
-        installed_at = payload.get("installed_at")
-        if isinstance(installed_at, int) and installed_at > 0:
-            result["installed_at"] = installed_at
-        return result
-    except (OSError, TypeError, ValueError, json.JSONDecodeError):
-        # Upgrade compatibility: older installs only have a method marker.
-        if Path(config_dir, _NZBDAV_PREBUILT_MARKER).is_file():
-            return {"method": "prebuilt"}
-        if Path(config_dir, _NZBDAV_SOURCE_BUILD_MARKER).is_file():
-            return {"method": "source"}
-        return None
+    for state_name in (_NZBDAV_INSTALL_STATE, _NZBDAV_LEGACY_INSTALL_STATE):
+        path = Path(config_dir, state_name)
+        try:
+            if path.is_symlink() or not path.is_file() or path.stat().st_size > 16_384:
+                raise ValueError("install state is not a bounded regular file")
+            payload = json.loads(path.read_text(encoding="utf-8"))
+            if payload.get("format") != _NZBDAV_INSTALL_STATE_FORMAT:
+                raise ValueError("unsupported install-state format")
+            method = str(payload.get("method") or "").strip().lower()
+            if method not in {"prebuilt", "source"}:
+                raise ValueError("unsupported install method")
+            result = {"method": method}
+            for key in (
+                "requested_selector",
+                "resolved_release",
+                "source_commit",
+                "asset_name",
+                "fallback_reason",
+            ):
+                value = redact_sensitive_log_data(str(payload.get(key) or "")).strip()
+                if value:
+                    result[key] = value[:1000]
+            installed_at = payload.get("installed_at")
+            if isinstance(installed_at, int) and installed_at > 0:
+                result["installed_at"] = installed_at
+            return result
+        except (OSError, TypeError, ValueError, json.JSONDecodeError):
+            continue
+
+    # Upgrade compatibility: older installs only have a method marker.
+    if any(
+        Path(config_dir, name).is_file()
+        for name in (_NZBDAV_PREBUILT_MARKER, _NZBDAV_LEGACY_PREBUILT_MARKER)
+    ):
+        return {"method": "prebuilt"}
+    if any(
+        Path(config_dir, name).is_file()
+        for name in (_NZBDAV_SOURCE_BUILD_MARKER, _NZBDAV_LEGACY_SOURCE_BUILD_MARKER)
+    ):
+        return {"method": "source"}
+    return None
 
 
 def _record_nzbdav_source_install(
@@ -549,10 +564,11 @@ def _record_nzbdav_source_install(
     fallback_reason: str | None = None,
 ) -> None:
     _write_nzbdav_source_build_marker(config_dir)
-    try:
-        os.remove(os.path.join(config_dir, _NZBDAV_PREBUILT_MARKER))
-    except FileNotFoundError:
-        pass
+    for marker_name in (_NZBDAV_PREBUILT_MARKER, _NZBDAV_LEGACY_PREBUILT_MARKER):
+        try:
+            os.remove(os.path.join(config_dir, marker_name))
+        except FileNotFoundError:
+            pass
     _write_nzbdav_install_info(
         config_dir,
         method="source",
@@ -636,12 +652,15 @@ def _update_persistent_excludes(
     except OSError:
         pass
 
-    # NzbDAV/InfiniDysk stores these databases directly in CONFIG_PATH, which
-    # defaults to the mixed source/runtime root. Add absent paths too so the
+    # InfiniDysk (and legacy NzbDAV installs) stores these databases directly in
+    # CONFIG_PATH, which defaults to the mixed source/runtime root. Add absent paths so the
     # extraction boundary cannot introduce or overwrite them during updates.
     process_name = str(config.get("process_name") or "").lower()
     repo_name = str(config.get("repo_name") or "").lower()
-    if "nzbdav" in process_name or repo_name in {"nzbdav", "infinidysk"}:
+    if any(name in process_name for name in {"infinidysk", "nzbdav"}) or repo_name in {
+        "infinidysk",
+        "nzbdav",
+    }:
         for filename in ("db.sqlite", "metrics.sqlite"):
             database = target / filename
             protect(database)
@@ -682,7 +701,7 @@ def _nzbdav_prebuilt_file_manifest(root: str, relative_paths) -> list[dict]:
     for relative in relative_paths:
         candidate = Path(root, relative)
         if not candidate.is_file() or candidate.is_symlink():
-            raise OSError(f"NzbDAV prebuilt runtime file is missing: {relative}")
+            raise OSError(f"InfiniDysk prebuilt runtime file is missing: {relative}")
         entries.append(
             {
                 "path": str(relative),
@@ -698,7 +717,7 @@ def _validate_nzbdav_runtimeconfig(runtimeconfig_path: str) -> tuple[bool, str |
         with open(runtimeconfig_path, encoding="utf-8") as handle:
             runtimeconfig = json.load(handle)
     except (OSError, ValueError, json.JSONDecodeError) as error:
-        return False, f"NzbDAV prebuilt runtimeconfig is invalid: {error}"
+        return False, f"InfiniDysk prebuilt runtimeconfig is invalid: {error}"
     options = runtimeconfig.get("runtimeOptions") or {}
     frameworks = options.get("frameworks") or []
     if not any(
@@ -707,7 +726,7 @@ def _validate_nzbdav_runtimeconfig(runtimeconfig_path: str) -> tuple[bool, str |
         for item in frameworks
         if isinstance(item, dict)
     ):
-        return False, "NzbDAV prebuilt archive does not target ASP.NET Core 10."
+        return False, "InfiniDysk prebuilt archive does not target ASP.NET Core 10."
     return True, None
 
 
@@ -732,14 +751,21 @@ def _validate_nzbdav_prebuilt_candidate(candidate_dir: str) -> tuple[bool, str |
     version_path = os.path.join(candidate_dir, "version.txt")
     try:
         if not Path(version_path).read_text(encoding="utf-8").strip():
-            return False, "NzbDAV prebuilt archive has an empty version marker."
+            return False, "InfiniDysk prebuilt archive has an empty version marker."
     except OSError as error:
-        return False, f"NzbDAV prebuilt archive version is unavailable: {error}"
+        return False, f"InfiniDysk prebuilt archive version is unavailable: {error}"
     return True, None
 
 
 def _write_nzbdav_prebuilt_marker(config_dir: str, metadata: dict) -> None:
-    marker_path = os.path.join(config_dir, _NZBDAV_PREBUILT_MARKER)
+    marker_path = next(
+        (
+            os.path.join(config_dir, name)
+            for name in (_NZBDAV_PREBUILT_MARKER, _NZBDAV_LEGACY_PREBUILT_MARKER)
+            if os.path.isfile(os.path.join(config_dir, name))
+        ),
+        os.path.join(config_dir, _NZBDAV_PREBUILT_MARKER),
+    )
     payload = {
         "format": _NZBDAV_PREBUILT_FORMAT,
         **metadata,
@@ -759,7 +785,14 @@ def _write_nzbdav_prebuilt_marker(config_dir: str, metadata: dict) -> None:
 def _nzbdav_prebuilt_runtime_ready(
     config_dir: str, backend_output_dir: str | None = None
 ) -> tuple[bool, str | None]:
-    marker_path = os.path.join(config_dir, _NZBDAV_PREBUILT_MARKER)
+    marker_path = next(
+        (
+            os.path.join(config_dir, name)
+            for name in (_NZBDAV_PREBUILT_MARKER, _NZBDAV_LEGACY_PREBUILT_MARKER)
+            if os.path.isfile(os.path.join(config_dir, name))
+        ),
+        os.path.join(config_dir, _NZBDAV_PREBUILT_MARKER),
+    )
     try:
         with open(marker_path, encoding="utf-8") as handle:
             marker = json.load(handle)
@@ -794,7 +827,7 @@ def _nzbdav_prebuilt_runtime_ready(
             raise ValueError(frontend_error)
         return True, None
     except (OSError, TypeError, ValueError, json.JSONDecodeError) as error:
-        return False, f"NzbDAV prebuilt runtime is not reusable: {error}"
+        return False, f"InfiniDysk prebuilt runtime is not reusable: {error}"
 
 
 def _resolve_nzbdav_release_selector(
@@ -824,7 +857,7 @@ def _resolve_nzbdav_release_selector(
     if resolved_tag:
         return resolved_tag, None
     channel = "prerelease" if release_lower == "prerelease" else "stable release"
-    return None, error or f"latest NzbDAV {channel} could not be resolved"
+    return None, error or f"latest InfiniDysk {channel} could not be resolved"
 
 
 def _select_nzbdav_prebuilt_asset(
@@ -911,7 +944,10 @@ def _install_nzbdav_prebuilt_release(
 ) -> tuple[dict | None, str | None]:
     architecture = _nzbdav_prebuilt_architecture()
     if not architecture:
-        return None, f"no NzbDAV prebuilt archive is supported for {platform.machine()}"
+        return (
+            None,
+            f"no InfiniDysk prebuilt archive is supported for {platform.machine()}",
+        )
 
     release_tag, error = _resolve_nzbdav_release_selector(config, requested_release)
     if not release_tag:
@@ -956,7 +992,7 @@ def _install_nzbdav_prebuilt_release(
     staging_parent = _same_filesystem_staging_parent(target_dir)
     os.makedirs(staging_parent, exist_ok=True)
     candidate_dir = tempfile.mkdtemp(
-        prefix=".nzbdav-prebuilt-candidate-", dir=staging_parent
+        prefix=".infinidysk-prebuilt-candidate-", dir=staging_parent
     )
     try:
         success, error = downloader.download_and_extract(
@@ -971,7 +1007,7 @@ def _install_nzbdav_prebuilt_release(
             candidate_dir
         )
         if not candidate_ready:
-            INSTALL_CACHE.invalidate_download(asset_url, "invalid-nzbdav-prebuilt")
+            INSTALL_CACHE.invalidate_download(asset_url, "invalid-infinidysk-prebuilt")
             return None, candidate_error
 
         backend_output_dir = config.get("backend_output_dir") or os.path.join(
@@ -1027,7 +1063,7 @@ def _install_nzbdav_prebuilt_release(
         except FileNotFoundError:
             pass
         logger.info(
-            "Installed verified NzbDAV prebuilt archive %s (%s).",
+            "Installed verified InfiniDysk prebuilt archive %s (%s).",
             asset.get("name"),
             published_digest,
         )
@@ -1115,7 +1151,7 @@ def setup_release_version(process_handler, config, process_name, key):
     nzbdav_resolved_release = None
     nzbdav_release_sha = None
     download_release_version = config["release_version"]
-    if key == "nzbdav":
+    if key == "infinidysk":
         requested_release = str(config.get("release_version") or "").strip()
         resolved_release, resolve_error = _resolve_nzbdav_release_selector(
             config, requested_release
@@ -1151,7 +1187,7 @@ def setup_release_version(process_handler, config, process_name, key):
             )
             return True, None
         logger.warning(
-            "Verified NzbDAV prebuilt archive was unavailable or invalid (%s); "
+            "Verified InfiniDysk prebuilt archive was unavailable or invalid (%s); "
             "falling back to the existing source-build path.",
             prebuilt_error or "unknown archive error",
         )
@@ -1163,7 +1199,7 @@ def setup_release_version(process_handler, config, process_name, key):
         if not success:
             return False, f"Failed to clear directory: {error}"
 
-    if key == "nzbdav":
+    if key == "infinidysk":
         success, error = _prepare_nzbdav_source_tree(target_dir)
         if not success:
             return False, error
@@ -1250,7 +1286,7 @@ def setup_release_version(process_handler, config, process_name, key):
     if not success:
         return False, error
 
-    if key == "nzbdav":
+    if key == "infinidysk":
         versions.version_write(
             process_name,
             key,
@@ -1329,7 +1365,7 @@ def setup_branch_version(process_handler, config, process_name, key):
             return os.path.isfile(
                 os.path.join(target_dir, "decypharr")
             ) and os.path.isfile(os.path.join(target_dir, "version.txt"))
-        if service_key == "nzbdav":
+        if service_key == "infinidysk":
             backend_output_dir = config.get("backend_output_dir") or os.path.join(
                 target_dir, "app"
             )
@@ -1446,7 +1482,7 @@ def setup_branch_version(process_handler, config, process_name, key):
                 )
                 if state_matches and marker_matches:
                     if (
-                        key == "nzbdav"
+                        key == "infinidysk"
                         and not Path(target_dir, _NZBDAV_INSTALL_STATE).is_file()
                     ):
                         _record_nzbdav_source_install(
@@ -1485,7 +1521,7 @@ def setup_branch_version(process_handler, config, process_name, key):
             if not success:
                 return False, f"Failed to clear directory: {error}"
 
-        if key == "nzbdav":
+        if key == "infinidysk":
             success, error = _prepare_nzbdav_source_tree(target_dir)
             if not success:
                 return False, error
@@ -1503,7 +1539,12 @@ def setup_branch_version(process_handler, config, process_name, key):
         if not success:
             return False, f"Failed to download source archive: {error}"
 
-        if not commit_sha and key in {"nzbdav", "neutarr", "pulsarr", "maintainerr"}:
+        if not commit_sha and key in {
+            "infinidysk",
+            "neutarr",
+            "pulsarr",
+            "maintainerr",
+        }:
             branch_name = (config.get("branch") or "main").strip() or "main"
             branch_sha, branch_sha_error = _fetch_branch_head_sha(
                 config["repo_owner"], config["repo_name"], branch_name
@@ -1574,7 +1615,7 @@ def setup_branch_version(process_handler, config, process_name, key):
                         "updated_at": int(time.time()),
                     },
                 )
-        if key == "nzbdav":
+        if key == "infinidysk":
             _record_nzbdav_source_install(
                 target_dir,
                 requested_selector=source_ref,
@@ -1590,12 +1631,12 @@ def additional_setup(process_handler, process_name, config, key):
         if not success:
             return False, f"Failed to make vite modifications: {error}"
 
-    if key == "nzbdav":
+    if key == "infinidysk":
         success, error = setup_nzbdav_build(process_handler, config)
         if not success:
             return False, error
 
-    if config.get("platforms") and key != "nzbdav":
+    if config.get("platforms") and key != "infinidysk":
         success, error = setup_environment(
             process_handler, key, config["platforms"], config["config_dir"]
         )
@@ -1824,7 +1865,7 @@ def _setup_project_inner(
 
     with process_handler.setup_tracker_lock:
         already_setup = process_name in process_handler.setup_tracker
-    if configure_phase and already_setup and not key == "nzbdav":
+    if configure_phase and already_setup and not key == "infinidysk":
         process_handler.logger.info(
             f"{process_name} is already set up. Skipping setup."
         )
@@ -2023,20 +2064,20 @@ def _setup_project_inner(
                 shutil.copy(src, dest)
                 logger.info(f"Copied .env from {src} to {dest}")
 
-        if configure_phase and key == "nzbdav":
+        if configure_phase and key == "infinidysk":
             webdav_password = (config.get("webdav_password") or "").strip()
             if not webdav_password:
                 webdav_password = secrets.token_urlsafe(24)
                 config["webdav_password"] = webdav_password
                 CONFIG_MANAGER.save_config(process_name)
-                logger.info("Generated NzbDAV WebDAV password.")
+                logger.info("Generated InfiniDysk WebDAV password.")
 
             backend_port = str(config.get("backend_port", 8080))
             default_env = {
                 "LOG_LEVEL": config.get("log_level", "INFO").upper(),
                 "WEBDAV_PASSWORD": webdav_password,
                 "ASPNETCORE_URLS": f"http://+:{backend_port}",
-                "CONFIG_PATH": config.get("config_dir") or "/nzbdav",
+                "CONFIG_PATH": config.get("config_dir") or "/infinidysk",
                 "PORT": str(config.get("frontend_port", 3000)),
                 "NODE_ENV": "production",
                 "BACKEND_URL": f"http://127.0.0.1:{backend_port}",
@@ -2048,7 +2089,7 @@ def _setup_project_inner(
                 if env_key not in default_env:
                     env[env_key] = value
             version_path = os.path.join(
-                config.get("config_dir", "/nzbdav"), "version.txt"
+                config.get("config_dir", "/infinidysk"), "version.txt"
             )
             if os.path.exists(version_path):
                 try:
@@ -2062,13 +2103,13 @@ def _setup_project_inner(
                             # application while retaining the full marker on
                             # disk for DUMB's update comparisons.
                             env["NZBDAV_VERSION"] = versions.display_version(
-                                "nzbdav", version_value
+                                "infinidysk", version_value
                             )
                         else:
                             env.pop("NZBDAV_VERSION", None)
                 except OSError:
                     logger.warning(
-                        "Failed to read NzbDAV version file at %s", version_path
+                        "Failed to read InfiniDysk version file at %s", version_path
                     )
             config["env"] = env
 
@@ -2418,7 +2459,7 @@ def _setup_project_inner(
             if not success:
                 return False, error
 
-        if key == "nzbdav":
+        if key == "infinidysk":
             success, error = setup_nzbdav(
                 process_handler,
                 install_only=install_phase and not configure_phase,
@@ -3935,8 +3976,11 @@ def _normalize_nzbdav_writable_ownership(
         "initial_admin_password",
         "initial_admin_password.txt",
         _NZBDAV_PREBUILT_MARKER,
+        _NZBDAV_LEGACY_PREBUILT_MARKER,
         _NZBDAV_SOURCE_BUILD_MARKER,
+        _NZBDAV_LEGACY_SOURCE_BUILD_MARKER,
         _NZBDAV_INSTALL_STATE,
+        _NZBDAV_LEGACY_INSTALL_STATE,
     }
 
     try:
@@ -3972,17 +4016,17 @@ def _normalize_nzbdav_writable_ownership(
 def setup_nzbdav(
     process_handler, install_only: bool = False, configure_only: bool = False
 ):
-    config = CONFIG_MANAGER.get("nzbdav")
+    config = CONFIG_MANAGER.get("infinidysk")
     if not config:
-        return False, "Configuration for NzbDAV not found."
+        return False, "Configuration for InfiniDysk not found."
 
-    logger.info("Starting NzbDAV setup...")
+    logger.info("Starting InfiniDysk setup...")
 
     try:
         source_fallback_info = None
         if install_only and configure_only:
-            return False, "Invalid NzbDAV setup phase."
-        nzbdav_config_dir = config.get("config_dir", "/nzbdav")
+            return False, "Invalid InfiniDysk setup phase."
+        nzbdav_config_dir = config.get("config_dir", "/infinidysk")
         nzbdav_config_file = config.get("config_file")
         backend_output_dir = config.get("backend_output_dir") or os.path.join(
             nzbdav_config_dir, "app"
@@ -3992,7 +4036,7 @@ def setup_nzbdav(
         )
         config_path = config.get("env", {}).get("CONFIG_PATH") or nzbdav_config_dir
         if not os.path.exists(nzbdav_config_dir):
-            logger.debug(f"Creating NzbDAV config directory at {nzbdav_config_dir}")
+            logger.debug(f"Creating InfiniDysk config directory at {nzbdav_config_dir}")
             os.makedirs(nzbdav_config_dir, exist_ok=True)
         chown_single(nzbdav_config_dir, user_id, group_id)
         os.makedirs(config_path, exist_ok=True)
@@ -4010,10 +4054,10 @@ def setup_nzbdav(
             if configure_only:
                 return False, (
                     prebuilt_runtime_error
-                    or "NzbDAV source project and prebuilt runtime are not installed."
+                    or "InfiniDysk source project and prebuilt runtime are not installed."
                 )
             logger.warning(
-                "NzbDAV source project and reusable prebuilt runtime were not found "
+                "InfiniDysk source project and reusable prebuilt runtime were not found "
                 "at %s. Downloading...",
                 nzbdav_config_dir,
             )
@@ -4030,7 +4074,7 @@ def setup_nzbdav(
                     return False, resolve_error
                 prebuilt, prebuilt_error = _install_nzbdav_prebuilt_release(
                     config,
-                    config.get("process_name") or "NzbDAV",
+                    config.get("process_name") or "InfiniDysk",
                     resolved_release,
                     nzbdav_config_dir,
                     original_selector=str(release or "latest"),
@@ -4038,14 +4082,14 @@ def setup_nzbdav(
                 if prebuilt:
                     versions.version_write(
                         process_name=config.get("process_name"),
-                        key="nzbdav",
+                        key="infinidysk",
                         version_path=os.path.join(nzbdav_config_dir, "version.txt"),
                         version=prebuilt["version_marker"],
                     )
                     prebuilt_ready = True
                 else:
                     logger.warning(
-                        "Verified NzbDAV prebuilt archive was unavailable or "
+                        "Verified InfiniDysk prebuilt archive was unavailable or "
                         "invalid (%s); falling back to the existing source-build path.",
                         prebuilt_error or "unknown archive error",
                     )
@@ -4078,7 +4122,7 @@ def setup_nzbdav(
                         return False, error
                     success, error = downloader.download_release_version(
                         process_name=config.get("process_name"),
-                        key="nzbdav",
+                        key="infinidysk",
                         repo_owner=config.get("repo_owner"),
                         repo_name=config.get("repo_name"),
                         release_version=source_sha,
@@ -4086,10 +4130,10 @@ def setup_nzbdav(
                         exclude_dirs=exclude_dirs,
                     )
                     if not success:
-                        return False, f"Failed to download NzbDAV: {error}"
+                        return False, f"Failed to download InfiniDysk: {error}"
                     versions.version_write(
                         process_name=config.get("process_name"),
-                        key="nzbdav",
+                        key="infinidysk",
                         version_path=os.path.join(nzbdav_config_dir, "version.txt"),
                         version=version_to_write,
                     )
@@ -4101,7 +4145,7 @@ def setup_nzbdav(
                 if not backend_project_path or not os.path.exists(backend_project_path):
                     return (
                         False,
-                        error or "NzbDAV backend project not found after download.",
+                        error or "InfiniDysk backend project not found after download.",
                     )
 
         build_needed = False
@@ -4141,7 +4185,7 @@ def setup_nzbdav(
             if source_fallback_info:
                 _record_nzbdav_source_install(nzbdav_config_dir, **source_fallback_info)
         elif build_needed and configure_only:
-            return False, "NzbDAV build output missing during configure phase."
+            return False, "InfiniDysk build output missing during configure phase."
 
         if not install_only:
             backend_command, error = _nzbdav_build_command(
@@ -4174,20 +4218,20 @@ def setup_nzbdav(
             return False, ownership_error
 
         if install_only:
-            logger.info("NzbDAV install phase: skipping runtime config patch.")
+            logger.info("InfiniDysk install phase: skipping runtime config patch.")
         elif configure_only:
             try:
                 from utils.nzbdav_settings import patch_nzbdav_config
 
                 patched, err = patch_nzbdav_config()
                 if not patched and err:
-                    logger.warning("NzbDAV post-setup config patch failed: %s", err)
+                    logger.warning("InfiniDysk post-setup config patch failed: %s", err)
             except Exception as e:
-                logger.warning("NzbDAV post-setup config patch skipped: %s", e)
+                logger.warning("InfiniDysk post-setup config patch skipped: %s", e)
 
         return True, None
     except Exception as e:
-        return False, f"Error during NzbDAV setup: {e}"
+        return False, f"Error during InfiniDysk setup: {e}"
 
 
 def _same_filesystem_staging_parent(target_dir: str) -> str:
@@ -4199,22 +4243,22 @@ def _same_filesystem_staging_parent(target_dir: str) -> str:
 
 def _validate_nzbdav_frontend_runtime(frontend_dir):
     if not frontend_dir:
-        return False, "NzbDAV frontend directory was not found."
+        return False, "InfiniDysk frontend directory was not found."
     required_files = (
         os.path.join(frontend_dir, "dist-node", "server.js"),
         os.path.join(frontend_dir, "build", "server", "index.js"),
     )
     for required_file in required_files:
         if not os.path.isfile(required_file):
-            return False, f"NzbDAV frontend build output missing: {required_file}"
+            return False, f"InfiniDysk frontend build output missing: {required_file}"
     client_dir = os.path.join(frontend_dir, "build", "client")
     if not os.path.isdir(client_dir):
-        return False, f"NzbDAV frontend client build missing: {client_dir}"
+        return False, f"InfiniDysk frontend client build missing: {client_dir}"
     return True, None
 
 
 def _activate_nzbdav_build_artifact(activation_paths):
-    """Activate a verified NzbDAV backend/frontend artifact as one rollback unit."""
+    """Activate a verified InfiniDysk backend/frontend artifact as one rollback unit."""
 
     paths = [(str(restored), str(live)) for restored, live in activation_paths]
     for restored, _live in paths:
@@ -4259,7 +4303,7 @@ def _activate_nzbdav_build_artifact(activation_paths):
 
 
 def setup_nzbdav_build(process_handler, config):
-    nzbdav_config_dir = config.get("config_dir", "/nzbdav")
+    nzbdav_config_dir = config.get("config_dir", "/infinidysk")
     backend_output_dir = config.get("backend_output_dir") or os.path.join(
         nzbdav_config_dir, "app"
     )
@@ -4278,7 +4322,7 @@ def setup_nzbdav_build(process_handler, config):
     chown_recursive(backend_project_dir, user_id, group_id)
     patched, patch_error = _patch_nzbdav_embedded_resource_util(backend_project_path)
     if not patched and patch_error:
-        logger.warning("NzbDAV resource patch skipped: %s", patch_error)
+        logger.warning("InfiniDysk resource patch skipped: %s", patch_error)
     uses_internal_nzb_models = _nzbdav_uses_internal_nzb_models(backend_project_path)
     if uses_internal_nzb_models and _nzbdav_namespace_patch_needed(
         backend_project_path
@@ -4287,13 +4331,15 @@ def setup_nzbdav_build(process_handler, config):
             backend_project_path
         )
         if not namespace_patched and namespace_patch_error:
-            logger.warning("NzbDAV namespace patch skipped: %s", namespace_patch_error)
+            logger.warning(
+                "InfiniDysk namespace patch skipped: %s", namespace_patch_error
+            )
     if uses_internal_nzb_models and _nzbdav_main_api_patch_needed(backend_project_path):
         api_patched, api_patch_error = _patch_nzbdav_main_api_compat(
             backend_project_path
         )
         if not api_patched and api_patch_error:
-            logger.warning("NzbDAV main API patch skipped: %s", api_patch_error)
+            logger.warning("InfiniDysk main API patch skipped: %s", api_patch_error)
 
     version_marker = os.path.join(nzbdav_config_dir, "version.txt")
     try:
@@ -4304,7 +4350,7 @@ def setup_nzbdav_build(process_handler, config):
     if frontend_dir:
         artifact_inputs.append(frontend_dir)
     artifact_key = INSTALL_CACHE.build_key(
-        "nzbdav",
+        "infinidysk",
         source_identity,
         inputs=artifact_inputs,
         toolchain={
@@ -4315,11 +4361,11 @@ def setup_nzbdav_build(process_handler, config):
         },
     )
     artifact_restore_dir = tempfile.mkdtemp(
-        prefix=".nzbdav-artifact-restore-",
+        prefix=".infinidysk-artifact-restore-",
         dir=_same_filesystem_staging_parent(nzbdav_config_dir),
     )
     artifact_hit, artifact_error = INSTALL_CACHE.restore_artifact(
-        "nzbdav", artifact_key, artifact_restore_dir
+        "infinidysk", artifact_key, artifact_restore_dir
     )
     if artifact_hit:
         output_relative = os.path.relpath(backend_output_dir, nzbdav_config_dir)
@@ -4379,32 +4425,32 @@ def setup_nzbdav_build(process_handler, config):
                     )
                     _write_nzbdav_source_build_marker(nzbdav_config_dir)
                     logger.info(
-                        "Restored verified NzbDAV backend and frontend build outputs from cache."
+                        "Restored verified InfiniDysk backend and frontend build outputs from cache."
                     )
                     return True, None
                 logger.warning(
-                    "NzbDAV build artifact activation failed safely: %s",
+                    "InfiniDysk build artifact activation failed safely: %s",
                     activation_error,
                 )
             else:
                 logger.warning(
-                    "NzbDAV cached frontend dependencies could not be restored: %s",
+                    "InfiniDysk cached frontend dependencies could not be restored: %s",
                     dependency_error,
                 )
         else:
             logger.warning(
-                "Ignoring incomplete NzbDAV build artifact after restore%s.",
+                "Ignoring incomplete InfiniDysk build artifact after restore%s.",
                 f": {frontend_artifact_error}" if frontend_artifact_error else "",
             )
     elif artifact_error not in {None, "artifact not found"}:
-        logger.warning("NzbDAV build artifact was not reusable: %s", artifact_error)
+        logger.warning("InfiniDysk build artifact was not reusable: %s", artifact_error)
     shutil.rmtree(artifact_restore_dir, ignore_errors=True)
 
     platforms = ["dotnet"]
     if frontend_dir:
         platforms.insert(0, "pnpm")
 
-    logger.info("Setting up NzbDAV build environment...")
+    logger.info("Setting up InfiniDysk build environment...")
     dotnet_home = os.path.join(nzbdav_config_dir, ".dotnet")
     nuget_dir = os.path.join(nzbdav_config_dir, ".nuget", "packages")
     os.makedirs(dotnet_home, exist_ok=True)
@@ -4417,7 +4463,7 @@ def setup_nzbdav_build(process_handler, config):
         "NUGET_PACKAGES": nuget_dir,
     }
     with tempfile.TemporaryDirectory(
-        prefix=".nzbdav-publish-candidate-",
+        prefix=".infinidysk-publish-candidate-",
         dir=_same_filesystem_staging_parent(backend_output_dir),
     ) as publish_staging:
         candidate_output_dir = os.path.join(publish_staging, "app")
@@ -4427,7 +4473,7 @@ def setup_nzbdav_build(process_handler, config):
         )
         success, error = setup_environment(
             process_handler,
-            "nzbdav",
+            "infinidysk",
             platforms,
             nzbdav_config_dir,
             dotnet_options={
@@ -4445,7 +4491,7 @@ def setup_nzbdav_build(process_handler, config):
         if os.path.isdir(static_files_src):
             os.makedirs(os.path.dirname(static_files_dst), exist_ok=True)
             shutil.copytree(static_files_src, static_files_dst)
-            logger.info("Copied NzbDAV WebDav static files into publish candidate.")
+            logger.info("Copied InfiniDysk WebDav static files into publish candidate.")
 
         config_template_path = os.path.join(
             backend_project_dir,
@@ -4476,7 +4522,7 @@ def setup_nzbdav_build(process_handler, config):
             frontend_build_dir = _find_nzbdav_frontend_build_dir(frontend_dir, config)
             if frontend_build_dir:
                 shutil.copytree(frontend_build_dir, candidate_wwwroot)
-                logger.info("Copied NzbDAV frontend build into publish candidate.")
+                logger.info("Copied InfiniDysk frontend build into publish candidate.")
             else:
                 logger.warning(
                     "Frontend build output not found. Skipping wwwroot copy."
@@ -4499,7 +4545,7 @@ def setup_nzbdav_build(process_handler, config):
         if not activated:
             return (
                 False,
-                "NzbDAV publish candidate activation failed safely: "
+                "InfiniDysk publish candidate activation failed safely: "
                 f"{activation_error}",
             )
 
@@ -4508,7 +4554,7 @@ def setup_nzbdav_build(process_handler, config):
 
     try:
         artifact_staging = tempfile.mkdtemp(
-            prefix=".nzbdav-artifact-", dir=os.path.dirname(nzbdav_config_dir)
+            prefix=".infinidysk-artifact-", dir=os.path.dirname(nzbdav_config_dir)
         )
         shutil.copytree(
             backend_output_dir,
@@ -4530,10 +4576,10 @@ def setup_nzbdav_build(process_handler, config):
                     os.path.join(staged_frontend, runtime_name),
                     symlinks=True,
                 )
-        INSTALL_CACHE.store_artifact("nzbdav", artifact_key, artifact_staging)
+        INSTALL_CACHE.store_artifact("infinidysk", artifact_key, artifact_staging)
     except (OSError, ValueError) as artifact_error:
         logger.warning(
-            "NzbDAV build artifact cache write failed safely: %s", artifact_error
+            "InfiniDysk build artifact cache write failed safely: %s", artifact_error
         )
     finally:
         if "artifact_staging" in locals():
@@ -4903,7 +4949,12 @@ def _nzbdav_main_api_patch_needed(backend_project_path):
 
 
 def _write_nzbdav_start_script(config_dir, backend_command, frontend_dir, backend_port):
-    script_path = os.path.join(config_dir, "nzbdav_start.sh")
+    script_name = (
+        "nzbdav_start.sh"
+        if os.path.basename(os.path.normpath(config_dir)).lower() == "nzbdav"
+        else "infinidysk_start.sh"
+    )
+    script_path = os.path.join(config_dir, script_name)
     backend_cmd = " ".join(shlex.quote(part) for part in backend_command)
     script_lines = [
         "#!/bin/sh",
@@ -5024,7 +5075,7 @@ def _find_nzbdav_backend_project(config_dir, config):
                 candidates.append(os.path.join(root, file))
 
     if not candidates:
-        return None, "No .csproj files found for NzbDAV backend."
+        return None, "No .csproj files found for InfiniDysk backend."
 
     scored = []
     for path in candidates:
@@ -5032,7 +5083,7 @@ def _find_nzbdav_backend_project(config_dir, config):
         score = 0
         if any(token in lower for token in ("api", "server", "backend", "web")):
             score += 2
-        if "nzbdav" in lower:
+        if "infinidysk" in lower or "nzbdav" in lower:
             score += 1
         scored.append((score, len(path), path))
 
@@ -5075,7 +5126,7 @@ def _find_nzbdav_frontend_build_dir(frontend_dir, config):
 
 def _nzbdav_build_command(backend_output_dir, dotnet_dir=None, *, prefer_native=False):
     if not os.path.isdir(backend_output_dir):
-        return None, f"NzbDAV output directory not found: {backend_output_dir}"
+        return None, f"InfiniDysk output directory not found: {backend_output_dir}"
 
     binaries = []
     dlls = []
@@ -5143,7 +5194,7 @@ def _nzbdav_build_command(backend_output_dir, dotnet_dir=None, *, prefer_native=
     if selected_dll:
         return ["dotnet", selected_dll], None
 
-    return None, "NzbDAV publish output did not include an executable or DLL."
+    return None, "InfiniDysk publish output did not include an executable or DLL."
 
 
 def build_decypharr_dev(process_handler, config):
@@ -10102,10 +10153,10 @@ def rclone_setup():
                         f"user = {username}",
                         f"pass = {obscured_password}",
                     ]
-                elif key_type == "nzbdav":
+                elif key_type == "infinidysk":
                     from utils import nzbdav_db
 
-                    nzbdav_cfg = CONFIG_MANAGER.get("nzbdav", {})
+                    nzbdav_cfg = CONFIG_MANAGER.get("infinidysk") or {}
                     nzbdav_env = (
                         nzbdav_cfg.get("env", {})
                         if isinstance(nzbdav_cfg, dict)
@@ -10132,7 +10183,9 @@ def rclone_setup():
                         if value:
                             webdav_pass = value
                     except FileNotFoundError as e:
-                        logger.warning("NzbDAV db not found for rclone setup: %s", e)
+                        logger.warning(
+                            "InfiniDysk db not found for rclone setup: %s", e
+                        )
 
                     if env_webdav_user:
                         webdav_user = env_webdav_user
@@ -10149,7 +10202,7 @@ def rclone_setup():
                     if webdav_pass:
                         if looks_like_dotnet_password_hash(webdav_pass):
                             logger.warning(
-                                "NzbDAV webdav.pass is a hashed value; set WEBDAV_PASSWORD to configure rclone."
+                                "InfiniDysk webdav.pass is a hashed value; set WEBDAV_PASSWORD to configure rclone."
                             )
                         else:
                             obscured_password = obscure_password(webdav_pass)
@@ -10226,7 +10279,7 @@ def rclone_setup():
                         else:
                             parsed_flags[item] = None
                     i += 1
-                if instance.get("key_type", "").lower() == "nzbdav":
+                if instance.get("key_type", "").lower() == "infinidysk":
                     default_flags.update(
                         {
                             "--vfs-cache-mode": "full",
@@ -10240,7 +10293,7 @@ def rclone_setup():
                     )
                 rc_port = None
                 previous_rc_port = _extract_rclone_rc_port(existing)
-                is_nzbdav = instance.get("key_type", "").lower() == "nzbdav"
+                is_nzbdav = instance.get("key_type", "").lower() == "infinidysk"
                 if instance.get("decypharr_enabled") or is_nzbdav:
                     all_instances = CONFIG_MANAGER.get("rclone", {}).get(
                         "instances", {}
@@ -10302,7 +10355,7 @@ def rclone_setup():
                     )
                     if not ok and sync_error:
                         logger.warning(
-                            "Failed to configure NzbDAV rclone RC settings: %s",
+                            "Failed to configure InfiniDysk rclone RC settings: %s",
                             sync_error,
                         )
 

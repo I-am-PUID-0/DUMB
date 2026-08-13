@@ -56,10 +56,13 @@ def _ensure_parent_dir(path: str) -> None:
 def default_symlink_roots() -> list[str]:
     roots = [
         "/mnt/debrid/decypharr_symlinks",
-        "/mnt/debrid/nzbdav-symlinks",
+        "/mnt/debrid/infinidysk-symlinks",
         "/mnt/debrid/combined_symlinks",
         "/mnt/debrid/clid_symlinks",
     ]
+    infinidysk_cfg = CONFIG_MANAGER.get("infinidysk") or {}
+    configured_infinidysk_roots = infinidysk_cfg.get("symlink_backup_roots") or []
+    roots.extend(configured_infinidysk_roots)
     riven_cfg = CONFIG_MANAGER.get("riven_backend") or {}
     riven_root = (riven_cfg.get("symlink_library_path") or "").strip()
     if riven_root:
@@ -101,11 +104,16 @@ def _collect_symlink_paths(roots: list[str]) -> tuple[list[str], list[str]]:
         if not os.path.exists(root):
             missing_roots.append(root)
             continue
-        for current_root, dirs, files in os.walk(root, followlinks=False):
-            for name in dirs + files:
-                full_path = os.path.join(current_root, name)
-                if os.path.islink(full_path):
-                    paths.append(full_path)
+        pending = [root]
+        while pending:
+            current_root = pending.pop()
+            with os.scandir(current_root) as iterator:
+                entries = sorted(iterator, key=lambda item: item.name, reverse=True)
+            for entry in entries:
+                if entry.is_symlink():
+                    paths.append(entry.path)
+                elif entry.is_dir(follow_symlinks=False):
+                    pending.append(entry.path)
     return paths, missing_roots
 
 
@@ -390,6 +398,7 @@ def backup_symlink_manifest(
     backup_path: str,
     include_broken: bool = True,
     progress_callback: Callable[[dict[str, Any]], None] | None = None,
+    check_targets: bool = True,
 ) -> dict[str, Any]:
     destination = (backup_path or "").strip()
     if not destination:
@@ -420,8 +429,8 @@ def backup_symlink_manifest(
     for link_path in symlink_paths:
         try:
             target = os.readlink(link_path)
-            target_exists = _target_exists(link_path, target)
-            if not include_broken and not target_exists:
+            target_exists = _target_exists(link_path, target) if check_targets else None
+            if check_targets and not include_broken and not target_exists:
                 skipped_broken += 1
                 continue
             entries.append(
@@ -456,6 +465,7 @@ def backup_symlink_manifest(
         "created_at": datetime.utcnow().isoformat() + "Z",
         "roots": resolved_roots,
         "include_broken": include_broken,
+        "targets_checked": check_targets,
         "entries": entries,
     }
     _ensure_parent_dir(destination)

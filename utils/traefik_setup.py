@@ -18,7 +18,7 @@ UI_SERVICE_DEFS = [
     {"name": "cli_debrid", "config_key": "cli_debrid"},
     {"name": "cli_battery", "config_key": "cli_battery"},
     {"name": "decypharr", "config_key": "decypharr"},
-    {"name": "nzbdav", "config_key": "nzbdav"},
+    {"name": "infinidysk", "config_key": "infinidysk"},
     {
         "name": "emby",
         "config_key": "emby",
@@ -262,7 +262,7 @@ def _resolve_ui_service(service_def: Dict[str, Any]) -> List[Dict[str, Any]]:
                 process_name = instance_cfg.get("process_name", service_def["name"])
                 services.append(
                     {
-                        "name": process_name,  # Use full process name (e.g., "Sonarr NzbDAV")
+                        "name": process_name,  # Use full process name (e.g., "Sonarr InfiniDysk")
                         "process_name": process_name,
                         "config_key": config_key,  # This is the service type (e.g., "sonarr")
                         "host": host,
@@ -281,7 +281,7 @@ def _resolve_ui_service(service_def: Dict[str, Any]) -> List[Dict[str, Any]]:
     host = cfg.get("host", "127.0.0.1")
     if host in ("0.0.0.0", "::"):
         host = "127.0.0.1"
-    if config_key == "nzbdav":
+    if config_key == "infinidysk":
         port = cfg.get("frontend_port")
         if not port:
             return []
@@ -301,7 +301,7 @@ def _resolve_ui_service(service_def: Dict[str, Any]) -> List[Dict[str, Any]]:
     }
     if config_key == "authelia":
         service["public_url"] = str(cfg.get("public_url") or "").strip()
-    if config_key == "nzbdav":
+    if config_key == "infinidysk":
         direct_url_template = cfg.get("direct_url")
         if direct_url_template:
             service["direct_url"] = direct_url_template.format_map(
@@ -494,14 +494,14 @@ def generate_traefik_config(services: List[Dict[str, Any]]) -> Dict[str, Any]:
                 "service": internal_service or service_entry,
                 "middlewares": middlewares,
             }
-            if service_name == "nzbdav":
+            if service_name == "infinidysk":
                 referer_router = f"{service_name}_referer_router"
                 traefik_config["http"]["routers"][referer_router] = {
                     "entryPoints": ["web"],
                     "rule": (
                         # Use HeaderRegexp (not HeadersRegexp) - correct Traefik v2+ syntax
-                        # Match requests with Referer header containing /ui/nzbdav
-                        # And PathPrefix to catch root-relative requests from NzbDAV UI
+                        # Match requests with Referer containing the InfiniDysk UI path.
+                        # And PathPrefix to catch root-relative requests from InfiniDysk UI
                         f"HeaderRegexp(`Referer`, `.*\\/ui\\/{service_name}.*`) && "
                         "PathPrefix(`/`)"
                     ),

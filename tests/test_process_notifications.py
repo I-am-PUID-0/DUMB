@@ -323,7 +323,7 @@ class ProcessNotificationTests(unittest.TestCase):
         process = Mock()
         process.poll.return_value = None
         handler.processes[1234] = {
-            "name": "NzbDAV",
+            "name": "InfiniDysk",
             "process_obj": process,
             "start_time": 1,
         }
@@ -331,15 +331,15 @@ class ProcessNotificationTests(unittest.TestCase):
             return_value={
                 "status": "starting",
                 "healthy": True,
-                "reason": "NzbDAV reports migrating",
+                "reason": "InfiniDysk reports migrating",
                 "details": {
-                    "probe": "NzbDAV backend health",
+                    "probe": "InfiniDysk backend health",
                     "http_status": 503,
                 },
             }
         )
 
-        readiness = handler.get_service_readiness("NzbDAV")
+        readiness = handler.get_service_readiness("InfiniDysk")
 
         self.assertEqual(readiness["state"], "starting")
         self.assertEqual(readiness["health_status"], "starting")
@@ -351,12 +351,12 @@ class ProcessNotificationTests(unittest.TestCase):
             return_value={
                 "status": "starting",
                 "healthy": True,
-                "reason": "NzbDAV reports migrating",
-                "details": {"probe": "NzbDAV backend health"},
+                "reason": "InfiniDysk reports migrating",
+                "details": {"probe": "InfiniDysk backend health"},
             }
         )
 
-        healthy, reason = handler._check_process_health("NzbDAV", 1234)
+        healthy, reason = handler._check_process_health("InfiniDysk", 1234)
 
         self.assertTrue(healthy)
         self.assertIn("migrating", reason)

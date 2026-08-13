@@ -33,7 +33,7 @@ class RegressionServiceUpdateTests(unittest.TestCase):
             ) as run,
         ):
             regression_service_update._set_configured_release_target(
-                "case", "NzbDAV", "rc"
+                "case", "InfiniDysk", "rc"
             )
 
         command = run.call_args.args[0]
@@ -48,7 +48,7 @@ class RegressionServiceUpdateTests(unittest.TestCase):
             regression_service_update, "_run", return_value=response
         ) as run:
             result = regression_service_update._post_update(
-                "case", "NzbDAV", 60, target="configured"
+                "case", "InfiniDysk", 60, target="configured"
             )
 
         payload = json.loads(
@@ -63,7 +63,9 @@ class RegressionServiceUpdateTests(unittest.TestCase):
         with patch.object(
             regression_service_update, "_run", return_value=response
         ) as run:
-            regression_service_update._post_update("case", "NzbDAV", 60, target=None)
+            regression_service_update._post_update(
+                "case", "InfiniDysk", 60, target=None
+            )
 
         command = run.call_args.args[0]
         payload = json.loads(command[command.index("-d") + 1])

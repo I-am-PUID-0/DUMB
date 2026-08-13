@@ -35,7 +35,7 @@ class AiDiagnosticsTests(unittest.TestCase):
             record_config_change(
                 {"workers": 1},
                 {"workers": 2},
-                process_name="NzbDAV",
+                process_name="InfiniDysk",
                 actor=None,
                 source="test",
                 logger=logger_without_debug,
@@ -43,7 +43,7 @@ class AiDiagnosticsTests(unittest.TestCase):
             record_diagnostic_event(
                 "restart",
                 "Restart requested",
-                process_name="NzbDAV",
+                process_name="InfiniDysk",
                 actor=None,
                 logger=logger_without_debug,
             )
@@ -55,11 +55,11 @@ class AiDiagnosticsTests(unittest.TestCase):
             changed = store.record_config_change(
                 {"workers": 1, "api_key": "old-secret"},
                 {"workers": 4, "api_key": "new-secret"},
-                process_name="NzbDAV",
+                process_name="InfiniDysk",
                 actor="private-user@example.invalid",
                 source="test",
             )
-            events = store.list(process_name="NzbDAV")
+            events = store.list(process_name="InfiniDysk")
 
         self.assertEqual(changed, 2)
         self.assertEqual(events[0]["actor"], "authenticated")
@@ -71,7 +71,7 @@ class AiDiagnosticsTests(unittest.TestCase):
 
     def test_retained_log_scan_is_bounded_and_reports_new_errors(self):
         with tempfile.TemporaryDirectory() as temp_dir:
-            log_path = Path(temp_dir) / "NzbDAV.log"
+            log_path = Path(temp_dir) / "InfiniDysk.log"
             now = datetime.now(timezone.utc)
             stamp = now.isoformat()
             content = (
@@ -99,20 +99,20 @@ class AiDiagnosticsTests(unittest.TestCase):
             {
                 "timestamp": 100.0,
                 "dumb_managed": [
-                    {"name": "NzbDAV", "pid": 1, "cpu_percent": 10, "rss": 100}
+                    {"name": "InfiniDysk", "pid": 1, "cpu_percent": 10, "rss": 100}
                 ],
             },
             {
                 "timestamp": 200.0,
                 "dumb_managed": [
-                    {"name": "NzbDAV", "pid": 2, "cpu_percent": 20, "rss": 150}
+                    {"name": "InfiniDysk", "pid": 2, "cpu_percent": 20, "rss": 150}
                 ],
             },
         ]
 
         result = build_runtime_comparison(
             _HistoryManager(items),
-            "NzbDAV",
+            "InfiniDysk",
             since=150,
             until=250,
             comparison_since=50,

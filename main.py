@@ -147,9 +147,9 @@ def _seed_used_ports(config_obj: dict, used_ports: dict[int, str]) -> None:
             continue
 
         if cfg.get("enabled"):
-            if key == "nzbdav":
-                _add(cfg.get("frontend_port"), "nzbdav:frontend_port")
-                _add(cfg.get("backend_port"), "nzbdav:backend_port")
+            if key == "infinidysk":
+                _add(cfg.get("frontend_port"), "infinidysk:frontend_port")
+                _add(cfg.get("backend_port"), "infinidysk:backend_port")
             _add(cfg.get("port"), f"{key}:port")
 
 
@@ -187,20 +187,20 @@ def _apply_global_port_reservations(config_manager) -> None:
             continue
 
         if cfg.get("enabled"):
-            if key == "nzbdav":
+            if key == "infinidysk":
                 changed |= _reserve_config_port(
                     cfg,
                     "frontend_port",
                     used_ports,
-                    "nzbdav:frontend_port",
-                    "NzbDAV frontend port",
+                    "infinidysk:frontend_port",
+                    "InfiniDysk frontend port",
                 )
                 changed |= _reserve_config_port(
                     cfg,
                     "backend_port",
                     used_ports,
-                    "nzbdav:backend_port",
-                    "NzbDAV backend port",
+                    "infinidysk:backend_port",
+                    "InfiniDysk backend port",
                 )
             changed |= _reserve_config_port(
                 cfg,
@@ -1000,7 +1000,7 @@ def main():
             "neutarr",
             "profilarr",
             "decypharr",
-            "nzbdav",
+            "infinidysk",
             "altmount",
             "rclone",
             "postgres",

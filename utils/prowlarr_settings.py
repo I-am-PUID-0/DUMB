@@ -1131,7 +1131,7 @@ def patch_prowlarr_apps() -> Tuple[bool, Optional[str]]:
                 svc
                 for entry in arr_entries
                 for svc in entry.get("core_services") or []
-                if svc in ("decypharr", "nzbdav")
+                if svc in ("decypharr", "infinidysk")
             }
         )
         if decypharr_enabled and "decypharr" not in needed_tags:

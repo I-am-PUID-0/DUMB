@@ -29,9 +29,9 @@ class AltMountSettingsTests(unittest.TestCase):
                             "config_file": "/sonarr/config.xml",
                             "instance_name": "Usenet",
                         },
-                        "NzbDAV": {
+                        "InfiniDysk": {
                             "enabled": True,
-                            "core_service": "nzbdav",
+                            "core_service": "infinidysk",
                             "port": 8991,
                         },
                     }

@@ -104,25 +104,25 @@ class VersionsHelperTests(unittest.TestCase):
 
     def test_nzbdav_stable_release_hides_internal_commit_suffix(self):
         self.assertEqual(
-            Versions.display_version("nzbdav", "v0.10.0-0dec23ac"),
+            Versions.display_version("infinidysk", "v0.10.0-0dec23ac"),
             "v0.10.0",
         )
         self.assertEqual(
-            Versions.display_version("nzbdav", "2026.08.05-0dec23ac"),
+            Versions.display_version("infinidysk", "2026.08.05-0dec23ac"),
             "2026.08.05",
         )
 
     def test_nzbdav_rolling_versions_keep_commit_suffix(self):
         self.assertEqual(
-            Versions.display_version("nzbdav", "v0.10.0-rc.3-cf468605"),
+            Versions.display_version("infinidysk", "v0.10.0-rc.3-cf468605"),
             "v0.10.0-rc.3-cf468605",
         )
         self.assertEqual(
-            Versions.display_version("nzbdav", "dev-cf468605"),
+            Versions.display_version("infinidysk", "dev-cf468605"),
             "dev-cf468605",
         )
         self.assertEqual(
-            Versions.display_version("nzbdav", "main-cf468605"),
+            Versions.display_version("infinidysk", "main-cf468605"),
             "main-cf468605",
         )
 
@@ -246,11 +246,11 @@ class VersionsHelperTests(unittest.TestCase):
         )
 
         update_needed, info = versions.compare_versions(
-            "NzbDAV",
-            "nzbdav",
-            "nzbdav",
+            "InfiniDysk",
+            "example-maintainer",
+            "example-repo",
             None,
-            "nzbdav",
+            "infinidysk",
             prerelease=True,
         )
 
@@ -276,11 +276,11 @@ class VersionsHelperTests(unittest.TestCase):
         )
 
         update_needed, info = versions.compare_versions(
-            "NzbDAV",
+            "InfiniDysk",
             "infinidysk",
             "infinidysk",
             None,
-            "nzbdav",
+            "infinidysk",
             prerelease=True,
         )
 
@@ -303,11 +303,11 @@ class VersionsHelperTests(unittest.TestCase):
         )
 
         update_needed, info = versions.compare_versions(
-            "NzbDAV",
-            "nzbdav",
-            "nzbdav",
+            "InfiniDysk",
+            "example-maintainer",
+            "example-repo",
             None,
-            "nzbdav",
+            "infinidysk",
         )
 
         self.assertFalse(update_needed)
@@ -330,11 +330,11 @@ class VersionsHelperTests(unittest.TestCase):
         )
 
         update_needed, info = versions.compare_versions(
-            "NzbDAV",
-            "nzbdav",
-            "nzbdav",
+            "InfiniDysk",
+            "example-maintainer",
+            "example-repo",
             None,
-            "nzbdav",
+            "infinidysk",
             prerelease=True,
         )
 
@@ -357,11 +357,11 @@ class VersionsHelperTests(unittest.TestCase):
         )
 
         update_needed, _ = versions.compare_versions(
-            "NzbDAV",
-            "nzbdav",
-            "nzbdav",
+            "InfiniDysk",
+            "infinidysk",
+            "infinidysk",
             None,
-            "nzbdav",
+            "infinidysk",
             prerelease=True,
         )
 
@@ -383,11 +383,11 @@ class VersionsHelperTests(unittest.TestCase):
         )
 
         update_needed, error = versions.compare_versions(
-            "NzbDAV",
-            "nzbdav",
-            "nzbdav",
+            "InfiniDysk",
+            "infinidysk",
+            "infinidysk",
             None,
-            "nzbdav",
+            "infinidysk",
             prerelease=True,
         )
 

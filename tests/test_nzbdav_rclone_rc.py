@@ -4,7 +4,7 @@ from unittest.mock import patch
 from utils import nzbdav_settings
 
 
-class NzbDAVRcloneRcTests(unittest.TestCase):
+class InfiniDyskRcloneRcTests(unittest.TestCase):
     def test_empty_settings_are_seeded_once(self):
         values = {
             "rclone.rc-enabled": "false",

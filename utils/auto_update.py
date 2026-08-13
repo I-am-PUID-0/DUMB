@@ -66,12 +66,12 @@ class Update:
     def _resolve_nzbdav_release_marker(self, config):
         release = str(config.get("release_version") or "").strip()
         if not release:
-            return None, "NzbDAV release tag is required."
+            return None, "InfiniDysk release tag is required."
         sha, error = self.downloader.get_ref_commit_sha(
             config.get("repo_owner"), config.get("repo_name"), release
         )
         if not sha:
-            return None, error or "Failed to resolve NzbDAV release tag commit SHA."
+            return None, error or "Failed to resolve InfiniDysk release tag commit SHA."
         return f"{release}-{sha[:8]}", None
 
     def supports_manual_update(self, key, config):
@@ -94,7 +94,7 @@ class Update:
 
     @staticmethod
     def _is_nzbdav_named_release_channel(key, config):
-        if key != "nzbdav" or not config.get("release_version_enabled"):
+        if key != "infinidysk" or not config.get("release_version_enabled"):
             return False
         release = str(config.get("release_version") or "").strip().lower()
         if not release or release in {"latest", "nightly", "prerelease"}:
@@ -271,7 +271,7 @@ class Update:
             return
 
     def supports_symlink_backup(self, key):
-        return key in {"decypharr", "nzbdav", "cli_debrid", "riven_backend"}
+        return key in {"decypharr", "infinidysk", "cli_debrid", "riven_backend"}
 
     def symlink_backup_enabled(self, process_name, config, key):
         if not self.supports_symlink_backup(key):
@@ -817,7 +817,7 @@ class Update:
                     "next_check_at": None if release_is_blocked else next_check_at,
                 }
             available_version = release_value
-            if key == "nzbdav":
+            if key == "infinidysk":
                 available_version, ref_error = self._resolve_nzbdav_release_marker(
                     config
                 )
@@ -2385,7 +2385,7 @@ class Update:
 
         if config.get("branch_enabled") and key in {
             "decypharr",
-            "nzbdav",
+            "infinidysk",
             "profilarr",
         }:
             branch_name = (config.get("branch") or "main").strip() or "main"
@@ -2408,8 +2408,8 @@ class Update:
                 if current_version.startswith(f"{branch_name}-"):
                     return False
                 return True
-            # NzbDAV branch installs persist as "<branch>-<short_sha>" (or fallback "branch-<name>").
-            if key == "nzbdav":
+            # InfiniDysk branch installs persist as "<branch>-<short_sha>" (or fallback "branch-<name>").
+            if key == "infinidysk":
                 head_sha, head_err = self._fetch_branch_head_sha(
                     config.get("repo_owner"), config.get("repo_name"), branch_name
                 )
@@ -2420,7 +2420,7 @@ class Update:
                     return True
                 if head_err:
                     self.logger.debug(
-                        "NzbDAV branch SHA lookup failed for preinstall check: %s",
+                        "InfiniDysk branch SHA lookup failed for preinstall check: %s",
                         head_err,
                     )
                 if current_version.startswith(f"{branch_name}-"):
@@ -2450,13 +2450,13 @@ class Update:
                 or "nightly" in requested_lower
             ):
                 return False
-            if key == "nzbdav":
+            if key == "infinidysk":
                 expected, ref_error = self._resolve_nzbdav_release_marker(config)
                 if expected:
                     return current_version != expected
                 if ref_error:
                     self.logger.debug(
-                        "NzbDAV release tag SHA lookup failed for preinstall check: %s",
+                        "InfiniDysk release tag SHA lookup failed for preinstall check: %s",
                         ref_error,
                     )
                 return True
@@ -3008,7 +3008,7 @@ class Update:
             self.logger.info(f"Checking for stable updates for {process_name}.")
 
         if (
-            key == "nzbdav"
+            key == "infinidysk"
             and config.get("release_version_enabled")
             and not nightly
             and not prerelease
@@ -3523,7 +3523,7 @@ class Update:
     def _rollback_persistent_paths(key, config, target_dir):
         values = list(config.get("exclude_dirs") or [])
         defaults = {
-            "nzbdav": [
+            "infinidysk": [
                 "blobs",
                 "data",
                 "data-protection",
@@ -3927,7 +3927,7 @@ class Update:
             elif error:
                 self.logger.warning("Decypharr config patch failed: %s", error)
 
-        if key == "nzbdav":
+        if key == "infinidysk":
             if self.process_handler.shutting_down:
                 return process, "Shutdown requested"
             from utils.nzbdav_settings import patch_nzbdav_config
@@ -3935,7 +3935,7 @@ class Update:
             time.sleep(10)
             patched, error = patch_nzbdav_config()
             if patched:
-                self.logger.info("Restarting NzbDAV to apply new config")
+                self.logger.info("Restarting InfiniDysk to apply new config")
                 self.process_handler.stop_process(process_name)
                 self.process_handler.start_process(
                     process_name,
@@ -3946,7 +3946,7 @@ class Update:
                     env=env,
                 )
             elif error:
-                self.logger.warning("NzbDAV config patch failed: %s", error)
+                self.logger.warning("InfiniDysk config patch failed: %s", error)
 
         if key in [
             "prowlarr",

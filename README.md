@@ -85,7 +85,7 @@ DUMB is designed to reduce the glue work that usually comes with multi-service m
 | [mediastorm](https://github.com/godver3/mediastorm)              | [godver3](https://github.com/godver3)                                | [README](https://github.com/godver3/mediastorm#readme) • [Issues](https://github.com/godver3/mediastorm/issues)                                  | [Sponsor](https://github.com/sponsors/godver3)                                                   |
 | [NeutArr](https://github.com/I-am-PUID-0/NeutArr)                | [I-am-PUID-0](https://github.com/I-am-PUID-0)                            | [Issues](https://github.com/I-am-PUID-0/NeutArr/issues)                                     | [Donate](https://github.com/sponsors/I-am-PUID-0)                                      |
 | [Lidarr](https://lidarr.audio/)                                   | [Lidarr Team](https://github.com/Lidarr/Lidarr)                      | [Docs](https://wiki.servarr.com/) • [Discord](https://lidarr.audio/discord)                                                                       | [Sponsor](https://github.com/sponsors/Lidarr)                                                     |
-| [NzbDAV (DUMB default fork)](https://github.com/nzbdav/nzbdav)  | [nzbdav](https://github.com/nzbdav)                                  | [Fork docs](https://github.com/nzbdav/nzbdav) • [Fork issues](https://github.com/nzbdav/nzbdav/issues) • [Original repository](https://github.com/nzbdav-dev/nzbdav)              | [Support](https://buymeacoffee.com/hoivikaj)                                                        |
+| [InfiniDysk](https://github.com/infinidysk/infinidysk)  | [infinidysk](https://github.com/infinidysk)                                  | [Documentation](https://www.infinidysk.com/) • [Issues](https://github.com/infinidysk/infinidysk/issues) • [Migration guide](https://www.infinidysk.com/getting-started/migration/)              | [Support](https://buymeacoffee.com/hoivikaj)                                                        |
 | [Profilarr](https://github.com/Dictionarry-Hub/profilarr)         | [Dictionarry Hub](https://github.com/Dictionarry-Hub)                | [Docs](https://dictionarry.dev/profilarr-setup/installation) • [Issues](https://github.com/Dictionarry-Hub/profilarr/issues)                   | [Sponsor](https://github.com/sponsors/Dictionarry-Hub)                                            |
 | [pgAdmin 4](https://www.pgadmin.org/)                             | [pgAdmin Team](https://www.pgadmin.org/development/)                 | [Docs](https://www.pgadmin.org/docs/) • [Support](https://www.pgadmin.org/support/)                                                            | [Donate](https://www.pgadmin.org/donate/)                                                         |
 | [phalanx_db](https://github.com/godver3/phalanx_db_hyperswarm)   | [godver3](https://github.com/godver3)                                | [Discord](https://discord.gg/jAmqZJCZJ4)                                                                                                         | [Sponsor](https://github.com/sponsors/godver3)                                                    |
@@ -205,7 +205,7 @@ The following table describes the ports used by the container. The mappings are 
 | `8096`         | TCP      | Jellyfin Media Server - Web UI accessible at the assigned port (default HTTP)        |
 | `8686`         | TCP      | Lidarr - Web UI accessible at the assigned port                                      |
 | `8088`         | TCP      | AltMount - Web UI/API accessible at the assigned port                                |
-| `3000`         | TCP      | NzbDAV frontend - Web UI accessible at the assigned port                             |
+| `3000`         | TCP      | InfiniDysk frontend - Web UI accessible at the assigned port                             |
 | `3003`         | TCP      | Pulsarr - Web UI accessible at the assigned port                                     |
 | `6246`         | TCP      | Maintainerr - Web UI accessible at the assigned port                                  |
 | `6767`         | TCP      | Bazarr - Web UI accessible at the assigned port                                      |
@@ -213,7 +213,7 @@ The following table describes the ports used by the container. The mappings are 
 | `9091`         | TCP      | Authelia - Identity portal/API accessible at the assigned port                       |
 | `18080`        | TCP      | Traefik - Reverse proxy entrypoint for embedded UIs and TPA-managed routes           |
 | `18081`        | TCP      | Traefik - Dashboard/API used by Traefik Proxy Admin diagnostics                      |
-| `8080`         | TCP      | NzbDAV backend - The API is accessible at the assigned port                          |
+| `8080`         | TCP      | InfiniDysk backend - The API is accessible at the assigned port                          |
 | `5050`         | TCP      | pgAdmin 4 -  Web UI accessible at the assigned port                                  |
 | `5055`         | TCP      | Seerr - Web UI accessible at the assigned port                                       |
 | `8888`         | TCP      | Phalanx DB - The API is accessible at the assigned port                              |

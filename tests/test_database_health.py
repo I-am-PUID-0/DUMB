@@ -21,7 +21,7 @@ def _config(config_dir, log_file, service_settings=None, mode="standard"):
                     "interval_sec": 15,
                     "log_tail_bytes": 16384,
                     "services": {
-                        "nzbdav": {
+                        "infinidysk": {
                             "enabled": True,
                             "mode": mode,
                         }
@@ -29,9 +29,9 @@ def _config(config_dir, log_file, service_settings=None, mode="standard"):
                 }
             }
         },
-        "nzbdav": {
+        "infinidysk": {
             "enabled": True,
-            "process_name": "NzbDAV",
+            "process_name": "InfiniDysk",
             "config_dir": config_dir,
             "log_file": log_file,
             "env": {},
@@ -45,7 +45,7 @@ class DatabaseHealthCollectorTests(unittest.TestCase):
         collector = DatabaseHealthCollector()
         config = {
             "dumb": {"metrics": {"database_health": {"enabled": False}}},
-            "nzbdav": {"enabled": True, "process_name": "NzbDAV"},
+            "infinidysk": {"enabled": True, "process_name": "InfiniDysk"},
             "plex": {"enabled": False, "process_name": "Plex Media Server"},
         }
 
@@ -53,7 +53,7 @@ class DatabaseHealthCollectorTests(unittest.TestCase):
 
         self.assertFalse(result["enabled"])
         self.assertEqual(result["supported_count"], 1)
-        self.assertEqual(result["services"][0]["id"], "nzbdav")
+        self.assertEqual(result["services"][0]["id"], "infinidysk")
         self.assertEqual(result["services"][0]["pressure"], "disabled")
 
     def test_database_probe_waits_until_service_startup_is_ready(self):
@@ -113,7 +113,7 @@ class DatabaseHealthCollectorTests(unittest.TestCase):
             }
             with patch("utils.database_health._storage_for_path", return_value=storage):
                 first = collector.snapshot(config)["services"][0]
-                config["dumb"]["metrics"]["database_health"]["services"]["nzbdav"][
+                config["dumb"]["metrics"]["database_health"]["services"]["infinidysk"][
                     "ignore_network_storage"
                 ] = True
                 waiting = collector.snapshot(config, refresh_if_stale=False)[
@@ -574,7 +574,7 @@ class DatabaseHealthCollectorTests(unittest.TestCase):
                 "lidarr",
                 "maintainerr",
                 "mediastorm",
-                "nzbdav",
+                "infinidysk",
                 "pgadmin",
                 "phalanx_db",
                 "plex",

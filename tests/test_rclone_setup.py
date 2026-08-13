@@ -20,7 +20,7 @@ class _ConfigManager:
     def get(self, key, default=None):
         if key == "rclone":
             return self._rclone_config
-        if key == "nzbdav":
+        if key == "infinidysk":
             return {"backend_port": 8080, "env": {}}
         return default
 
@@ -34,20 +34,20 @@ class RcloneSetupTests(unittest.TestCase):
             root = Path(temp_dir)
             instance = {
                 "enabled": True,
-                "process_name": "rclone w/ NzbDAV",
+                "process_name": "rclone w/ InfiniDysk",
                 "log_level": "INFO",
-                "key_type": "nzbdav",
+                "key_type": "infinidysk",
                 "zurg_enabled": False,
                 "decypharr_enabled": False,
                 "mount_dir": str(root / "mounts"),
-                "mount_name": "nzbdav",
+                "mount_name": "infinidysk",
                 "cache_dir": str(root / "cache"),
                 "config_dir": str(root / "config"),
                 "config_file": str(root / "config" / "rclone.config"),
                 "zurg_config_file": "",
                 "command": [],
             }
-            manager = _ConfigManager({"instances": {"NzbDAV": instance}})
+            manager = _ConfigManager({"instances": {"InfiniDysk": instance}})
 
             with (
                 patch.object(setup, "CONFIG_MANAGER", manager),
@@ -75,13 +75,13 @@ class RcloneSetupTests(unittest.TestCase):
             root = Path(temp_dir)
             instance = {
                 "enabled": True,
-                "process_name": "rclone w/ NzbDAV",
+                "process_name": "rclone w/ InfiniDysk",
                 "log_level": "INFO",
-                "key_type": "nzbdav",
+                "key_type": "infinidysk",
                 "zurg_enabled": False,
                 "decypharr_enabled": False,
                 "mount_dir": str(root / "mounts"),
-                "mount_name": "nzbdav",
+                "mount_name": "infinidysk",
                 "cache_dir": str(root / "cache"),
                 "config_dir": str(root / "config"),
                 "config_file": str(root / "config" / "rclone.config"),
@@ -90,11 +90,11 @@ class RcloneSetupTests(unittest.TestCase):
                     "rclone",
                     "mount",
                     "nzbdav:",
-                    str(root / "mounts" / "nzbdav"),
+                    str(root / "mounts" / "infinidysk"),
                     "--dir-cache-time=20s",
                 ],
             }
-            manager = _ConfigManager({"instances": {"NzbDAV": instance}})
+            manager = _ConfigManager({"instances": {"InfiniDysk": instance}})
 
             with (
                 patch.object(setup, "CONFIG_MANAGER", manager),
@@ -137,7 +137,7 @@ class RcloneSetupTests(unittest.TestCase):
         instance = {"command": []}
         instances = {
             "Other": {"command": ["rclone", "mount", "--rc-addr", ":5572"]},
-            "NzbDAV": instance,
+            "InfiniDysk": instance,
         }
 
         port = setup._select_rclone_rc_port(
@@ -154,7 +154,7 @@ class RcloneSetupTests(unittest.TestCase):
 
         port = setup._select_rclone_rc_port(
             instance,
-            {"NzbDAV": instance},
+            {"InfiniDysk": instance},
             port_available=lambda _port: True,
         )
 
