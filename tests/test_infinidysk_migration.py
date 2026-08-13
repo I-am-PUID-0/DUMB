@@ -7,10 +7,13 @@ from pathlib import Path
 from unittest.mock import MagicMock, call, patch
 
 from utils.infinidysk_migration import (
+    ARR_INVENTORY_TIMEOUT_SECONDS,
     ARR_SERVICE_API,
     InfiniDyskMigrationError,
     InfiniDyskMigrationManager,
+    QUIESCE_TIMEOUT_SECONDS,
     _config_fingerprint,
+    _migration_arr_req,
     _replace_namespace_text,
     _rewrite_config_namespace,
 )
@@ -61,6 +64,285 @@ def legacy_config():
 class InfiniDyskMigrationTests(unittest.TestCase):
     def test_whisparr_inventory_uses_current_series_endpoint(self):
         self.assertEqual(("v3", "series"), ARR_SERVICE_API["whisparr"])
+
+    def test_migration_arr_requests_use_catalog_sized_timeout(self):
+        with patch("utils.infinidysk_migration._arr_req") as request:
+            _migration_arr_req("http://127.0.0.1:8990/api/v3/series", "secret")
+
+        request.assert_called_once_with(
+            "http://127.0.0.1:8990/api/v3/series",
+            "secret",
+            "GET",
+            None,
+            timeout=ARR_INVENTORY_TIMEOUT_SECONDS,
+        )
+
+    def test_preflight_reports_transient_activity_without_blocking_job_start(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            manager = InfiniDyskMigrationManager(Path(temp_dir) / "state.json")
+            config_manager = MagicMock()
+            config_manager.config = {
+                "infinidysk": {"enabled": True, "process_name": "NzbDAV"}
+            }
+            arr = [{"process_name": "Sonarr NzbDAV", "queue_count": 3}]
+            media = [
+                {
+                    "service_key": "plex",
+                    "process_name": "Plex",
+                    "libraries": [],
+                    "activity": {"state": "busy", "active_sessions": 1},
+                }
+            ]
+            with (
+                patch("utils.infinidysk_migration.CONFIG_MANAGER", config_manager),
+                patch.object(
+                    manager, "_legacy_paths", return_value=[{"value": "/nzbdav"}]
+                ),
+                patch.object(
+                    manager, "_namespace_filesystem_plan", return_value=([], [])
+                ),
+                patch.object(manager, "_linked_service_inventory", return_value=[]),
+                patch.object(manager, "_arr_snapshot", return_value=(arr, [])),
+                patch.object(manager, "_prowlarr_snapshot", return_value=([], [])),
+                patch.object(manager, "_media_snapshot", return_value=(media, [])),
+                patch.object(
+                    manager, "_infinidysk_active_reads", return_value=(2, None)
+                ),
+            ):
+                result = manager.preflight(MagicMock(), MagicMock())
+
+        self.assertTrue(result["ready"])
+        self.assertEqual(3, len(result["pending_conditions"]))
+        self.assertIn("3 queued", result["pending_conditions"][0])
+        self.assertIn("media activity", result["pending_conditions"][1])
+        self.assertIn("2 active read", result["pending_conditions"][2])
+
+    def test_quiescence_stops_producer_then_latches_arr_before_provider(self):
+        manager = InfiniDyskMigrationManager()
+        config = {
+            "infinidysk": {"enabled": True, "process_name": "NzbDAV"},
+            "sonarr": {
+                "instances": {
+                    "NzbDAV": {
+                        "enabled": True,
+                        "core_service": "infinidysk",
+                        "process_name": "Sonarr NzbDAV",
+                    }
+                }
+            },
+            "neutarr": {
+                "instances": {
+                    "NzbDAV": {
+                        "enabled": True,
+                        "core_service": "infinidysk",
+                        "process_name": "NeutArr NzbDAV",
+                    }
+                }
+            },
+        }
+        running_names = {"NzbDAV", "Sonarr NzbDAV", "NeutArr NzbDAV"}
+
+        class Process:
+            def __init__(self, name):
+                self.name = name
+
+            def poll(self):
+                return None if self.name in running_names else 0
+
+        handler = MagicMock()
+        handler.process_names = {name: Process(name) for name in running_names}
+        handler._prefixed_name.side_effect = lambda value: value
+        handler.stop_process.side_effect = lambda name: running_names.discard(name)
+        preflight = {
+            "arr": [
+                {
+                    "process_name": "Sonarr NzbDAV",
+                    "host": "http://127.0.0.1:8990",
+                    "api_version": "v3",
+                    "api_key": "secret",
+                }
+            ],
+            "prowlarr": [],
+            "media": [],
+        }
+        final_snapshot = {
+            **preflight["arr"][0],
+            "service_key": "sonarr",
+            "instance_name": "NzbDAV",
+            "item_endpoint": "series",
+            "queue_count": 0,
+            "roots": [],
+            "items": [],
+            "clients": [],
+            "tags": [],
+        }
+        stopped = []
+        with (
+            patch(
+                "utils.infinidysk_migration._migration_arr_req",
+                side_effect=[
+                    {"totalRecords": 1, "records": [{}]},
+                    {"totalRecords": 0, "records": []},
+                    {"totalRecords": 0, "records": []},
+                ],
+            ),
+            patch.object(
+                manager,
+                "_arr_target_snapshot",
+                return_value=(final_snapshot, []),
+            ),
+            patch.object(manager, "_infinidysk_active_reads", return_value=(0, None)),
+            patch("utils.infinidysk_migration.time.sleep", return_value=None),
+        ):
+            refreshed = manager._quiesce_for_cutover(
+                config,
+                preflight,
+                ["NzbDAV", "Sonarr NzbDAV", "NeutArr NzbDAV"],
+                handler,
+                MagicMock(),
+                MagicMock(),
+                stopped,
+                [],
+            )
+
+        self.assertEqual(
+            ["NeutArr NzbDAV", "Sonarr NzbDAV", "NzbDAV"],
+            [item.args[0] for item in handler.stop_process.call_args_list],
+        )
+        self.assertEqual(["NzbDAV", "Sonarr NzbDAV", "NeutArr NzbDAV"], stopped)
+        self.assertEqual(0, refreshed["arr"][0]["queue_count"])
+        self.assertEqual([], refreshed["pending_conditions"])
+
+    def test_quiescence_timeout_refuses_cutover_before_stopping_provider(self):
+        manager = InfiniDyskMigrationManager()
+        handler = MagicMock()
+        handler.process_names = {}
+        handler._prefixed_name.side_effect = lambda value: value
+
+        with (
+            patch.object(manager, "_infinidysk_active_reads", return_value=(1, None)),
+            patch(
+                "utils.infinidysk_migration.time.monotonic",
+                side_effect=[100.0, 100.0 + QUIESCE_TIMEOUT_SECONDS],
+            ),
+        ):
+            with self.assertRaisesRegex(
+                InfiniDyskMigrationError,
+                "timed out after one hour before any namespace paths were moved",
+            ):
+                manager._quiesce_for_cutover(
+                    {
+                        "infinidysk": {
+                            "enabled": True,
+                            "process_name": "NzbDAV",
+                        }
+                    },
+                    {"arr": [], "prowlarr": [], "media": []},
+                    ["NzbDAV"],
+                    handler,
+                    MagicMock(),
+                    MagicMock(),
+                    [],
+                    [],
+                )
+
+        handler.stop_process.assert_not_called()
+
+    def test_operator_can_stop_active_playback_without_bypassing_read_drain(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            manager = InfiniDyskMigrationManager(Path(temp_dir) / "state.json")
+            job_id = "a" * 32
+            manager._save_job(
+                {
+                    "job_id": job_id,
+                    "status": "running",
+                    "stage": "quiescing",
+                    "message": "Waiting for playback.",
+                    "progress": 24,
+                    "events": [],
+                    "worker_id": manager._worker_id,
+                }
+            )
+            manager._reset_playback_override(job_id)
+            manager._set_playback_override_availability(job_id, ["Plex"])
+
+            requested = manager.request_playback_stop(job_id)
+
+            self.assertTrue(requested["playback_stop_requested"])
+            self.assertFalse(requested["playback_override_available"])
+            self.assertEqual(["Plex"], requested["active_media_servers"])
+
+            running_names = {"NzbDAV", "Plex"}
+
+            class Process:
+                def __init__(self, name):
+                    self.name = name
+
+                def poll(self):
+                    return None if self.name in running_names else 0
+
+            handler = MagicMock()
+            handler.process_names = {name: Process(name) for name in running_names}
+            handler._prefixed_name.side_effect = lambda value: value
+            handler.stop_process.side_effect = lambda name: running_names.discard(name)
+            adapter = MagicMock()
+            adapter.activity.return_value = {
+                "state": "busy",
+                "active_sessions": 1,
+            }
+            adapter.library_paths.return_value = [
+                {"id": "1", "path": "/mnt/debrid/nzbdav-symlinks/movies"}
+            ]
+            adapter.enter_scan_guard.return_value = {"guarded": True}
+            progress = MagicMock()
+            scan_guards = []
+            stopped = []
+
+            with (
+                patch("utils.infinidysk_migration.build_adapter", return_value=adapter),
+                patch.object(
+                    manager,
+                    "_infinidysk_active_reads",
+                    side_effect=[(1, None), (0, None)],
+                ),
+                patch("utils.infinidysk_migration.time.sleep", return_value=None),
+            ):
+                refreshed = manager._quiesce_for_cutover(
+                    {
+                        "infinidysk": {
+                            "enabled": True,
+                            "process_name": "NzbDAV",
+                        }
+                    },
+                    {
+                        "arr": [],
+                        "prowlarr": [],
+                        "media": [{"service_key": "plex", "process_name": "Plex"}],
+                    },
+                    ["NzbDAV", "Plex"],
+                    handler,
+                    MagicMock(),
+                    progress,
+                    stopped,
+                    scan_guards,
+                    job_id=job_id,
+                )
+
+        self.assertEqual(
+            ["Plex", "NzbDAV"],
+            [item.args[0] for item in handler.stop_process.call_args_list],
+        )
+        self.assertEqual(["NzbDAV", "Plex"], stopped)
+        self.assertTrue(refreshed["media"][0]["playback_interrupted"])
+        self.assertEqual(
+            [{"guarded": True}], [item["snapshot"] for item in scan_guards]
+        )
+        self.assertTrue(
+            any(
+                "Operator approved playback interruption" in item.args[1]
+                for item in progress.call_args_list
+            )
+        )
 
     def test_primary_service_restart_name_stays_canonical_when_attached_names_change(
         self,
@@ -121,9 +403,11 @@ class InfiniDyskMigrationTests(unittest.TestCase):
                 rename_attached_services,
                 process_handler,
                 logger,
+                job_id=None,
                 progress_callback=None,
             ):
                 self.assertEqual(token, preflight_token)
+                self.assertEqual(32, len(job_id))
                 progress_callback("filesystem", "Moving paths.", 38)
                 progress_callback("validation", "Validating results.", 97)
                 return {"status": "completed", "message": "Migration complete."}
@@ -1146,6 +1430,22 @@ class InfiniDyskMigrationTests(unittest.TestCase):
                 if force_setup:
                     raise RuntimeError("simulated dependent restart failure")
 
+            def quiesce_all(
+                _config,
+                preflight,
+                old_process_names,
+                process_handler,
+                _logger,
+                _progress,
+                stopped,
+                _scan_guards,
+                job_id=None,
+            ):
+                stopped.extend(
+                    manager._stop_processes(process_handler, old_process_names)
+                )
+                return preflight
+
             with (
                 patch("utils.infinidysk_migration.CONFIG_MANAGER", manager_config),
                 patch(
@@ -1157,6 +1457,7 @@ class InfiniDyskMigrationTests(unittest.TestCase):
                 patch.object(
                     manager, "_infinidysk_active_reads", return_value=(0, None)
                 ),
+                patch.object(manager, "_quiesce_for_cutover", side_effect=quiesce_all),
                 patch.object(manager, "_migrate_infinidysk_database", return_value=0),
                 patch.object(manager, "_start_processes", side_effect=fail_new_start),
             ):
@@ -1177,7 +1478,17 @@ class InfiniDyskMigrationTests(unittest.TestCase):
                     for process_name, _linkage in consumers.values()
                 ),
             ]
-            self.assertEqual((expected_new, True, True), start_calls[0])
+            producer_names = {
+                "NeutArr InfiniDysk",
+                "Profilarr InfiniDysk",
+                "Seerr InfiniDysk",
+            }
+            expected_new_without_producers = [
+                name for name in expected_new if name not in producer_names
+            ]
+            self.assertEqual(
+                (expected_new_without_producers, True, True), start_calls[0]
+            )
             self.assertEqual((expected_old, False, False), start_calls[-1])
             self.assertNotIn("Zurg Usenet", start_calls[0][0])
             self.assertNotIn("Zurg Usenet", start_calls[-1][0])

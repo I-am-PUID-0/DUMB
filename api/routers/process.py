@@ -128,6 +128,12 @@ class InfiniDyskMigrationApplyRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
+class InfiniDyskMigrationPlaybackStopRequest(BaseModel):
+    job_id: str = Field(pattern=r"^[0-9a-f]{32}$")
+    confirmation: str
+    model_config = ConfigDict(extra="forbid")
+
+
 class RescheduleSymlinkBackupRequest(BaseModel):
     process_name: str
 
@@ -5617,6 +5623,7 @@ async def get_capabilities(current_user: str = Depends(get_optional_current_user
         "infinidysk_migration": True,
         "infinidysk_full_namespace_migration": True,
         "infinidysk_migration_jobs": True,
+        "infinidysk_migration_playback_override": True,
         "rclone_optimizer": True,
         "rclone_optimizer_infinidysk": True,
         "rclone_optimizer_nzbdav": True,
@@ -5685,6 +5692,26 @@ def get_infinidysk_migration_job_status(
     if job_id and not job:
         raise HTTPException(status_code=404, detail="Migration job not found.")
     return {"job": job}
+
+
+@process_router.post("/infinidysk-migration/stop-playback")
+async def stop_playback_for_infinidysk_migration(
+    request: InfiniDyskMigrationPlaybackStopRequest,
+    current_user: str = Depends(get_optional_current_user),
+):
+    if request.confirmation.strip() != "STOP ACTIVE PLAYBACK":
+        raise HTTPException(
+            status_code=400,
+            detail="Enter STOP ACTIVE PLAYBACK to confirm that active streams may be terminated.",
+        )
+    try:
+        job = await run_in_threadpool(
+            INFINIDYSK_MIGRATION_MANAGER.request_playback_stop,
+            request.job_id,
+        )
+        return {"job": job}
+    except InfiniDyskMigrationError as error:
+        raise HTTPException(status_code=409, detail=str(error)) from None
 
 
 @process_router.post("/infinidysk-migration/apply")

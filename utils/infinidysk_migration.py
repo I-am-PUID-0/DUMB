@@ -66,6 +66,9 @@ INFINIDYSK_CORE_CONSUMER_KEYS = (
     "seerr",
 )
 PREFLIGHT_TTL_SECONDS = 30 * 60
+ARR_INVENTORY_TIMEOUT_SECONDS = 120
+QUIESCE_TIMEOUT_SECONDS = 60 * 60
+QUIESCE_POLL_SECONDS = 5
 ACTIVE_JOB_STATUSES = {"queued", "running", "rolling_back"}
 NAMESPACE_PATH_MAPPINGS = (
     ("/mnt/debrid/nzbdav-symlinks", "/mnt/debrid/infinidysk-symlinks"),
@@ -148,6 +151,37 @@ def _safe_error_detail(error: Exception) -> str:
     return (detail or error.__class__.__name__)[:500]
 
 
+def _migration_arr_req(
+    url: str,
+    key: str,
+    method: str = "GET",
+    data: dict | None = None,
+):
+    """Use a catalog-sized timeout for every guarded Arr migration request."""
+    return _arr_req(
+        url,
+        key,
+        method,
+        data,
+        timeout=ARR_INVENTORY_TIMEOUT_SECONDS,
+    )
+
+
+def _migration_prowlarr_req(
+    url: str,
+    key: str,
+    method: str = "GET",
+    data: dict | None = None,
+):
+    return _prowlarr_req(
+        url,
+        key,
+        method,
+        data,
+        timeout=ARR_INVENTORY_TIMEOUT_SECONDS,
+    )
+
+
 class InfiniDyskMigrationManager:
     def __init__(self, state_path: str | os.PathLike | None = None):
         configured = os.environ.get("DUMB_INFINIDYSK_MIGRATION_STATE")
@@ -156,6 +190,63 @@ class InfiniDyskMigrationManager:
         self._job_lock = threading.RLock()
         self._active_job_thread = None
         self._worker_id = secrets.token_hex(16)
+        self._playback_override = {
+            "job_id": None,
+            "available": False,
+            "requested": False,
+            "media_servers": [],
+        }
+
+    def _reset_playback_override(self, job_id: str | None = None) -> None:
+        with self._job_lock:
+            self._playback_override = {
+                "job_id": job_id,
+                "available": False,
+                "requested": False,
+                "media_servers": [],
+            }
+
+    def _set_playback_override_availability(
+        self, job_id: str | None, media_servers: list[str]
+    ) -> None:
+        if not job_id:
+            return
+        with self._job_lock:
+            if self._playback_override.get("job_id") != job_id:
+                return
+            self._playback_override["media_servers"] = list(
+                dict.fromkeys(str(name) for name in media_servers if name)
+            )
+            self._playback_override["available"] = bool(media_servers) and not bool(
+                self._playback_override.get("requested")
+            )
+
+    def _playback_stop_requested(self, job_id: str | None) -> bool:
+        if not job_id:
+            return False
+        with self._job_lock:
+            return bool(
+                self._playback_override.get("job_id") == job_id
+                and self._playback_override.get("requested")
+            )
+
+    def _playback_override_media_servers(self, job_id: str | None) -> list[str]:
+        if not job_id:
+            return []
+        with self._job_lock:
+            if self._playback_override.get("job_id") != job_id:
+                return []
+            return list(self._playback_override.get("media_servers") or [])
+
+    def _finish_playback_stop_request(self, job_id: str | None) -> None:
+        if not job_id:
+            return
+        with self._job_lock:
+            if self._playback_override.get("job_id") != job_id:
+                return
+            self._playback_override["available"] = False
+            self._playback_override["requested"] = False
+            self._playback_override["media_servers"] = []
 
     def _load_state(self) -> dict:
         try:
@@ -240,7 +331,41 @@ class InfiniDyskMigrationManager:
                 job["error"] = job["message"]
                 job["progress"] = int(job.get("progress") or 0)
                 self._save_job(job)
+            playback_override = self._playback_override
+            if job.get("status") in ACTIVE_JOB_STATUSES and secrets.compare_digest(
+                str(job.get("job_id") or ""),
+                str(playback_override.get("job_id") or ""),
+            ):
+                job["playback_override_available"] = bool(
+                    playback_override.get("available")
+                )
+                job["playback_stop_requested"] = bool(
+                    playback_override.get("requested")
+                )
+                job["active_media_servers"] = list(
+                    playback_override.get("media_servers") or []
+                )
             return copy.deepcopy(job)
+
+    def request_playback_stop(self, job_id: str) -> dict:
+        job = self.get_job(job_id)
+        if not job or job.get("status") not in ACTIVE_JOB_STATUSES:
+            raise InfiniDyskMigrationError(
+                "The InfiniDysk namespace migration is not active."
+            )
+        if job.get("stage") != "quiescing":
+            raise InfiniDyskMigrationError(
+                "Playback can be stopped only while the migration is waiting for safe cutover conditions."
+            )
+        with self._job_lock:
+            override = self._playback_override
+            if override.get("job_id") != job_id or not override.get("available"):
+                raise InfiniDyskMigrationError(
+                    "No active media-server playback is currently available to stop."
+                )
+            override["requested"] = True
+            override["available"] = False
+        return self.get_job(job_id) or job
 
     def start_full_namespace_job(
         self,
@@ -300,6 +425,7 @@ class InfiniDyskMigrationManager:
                 message="Waiting for the guarded namespace migration worker.",
                 percent=0,
             )
+            self._reset_playback_override(job["job_id"])
             thread = threading.Thread(
                 target=self._run_full_namespace_job,
                 args=(
@@ -344,6 +470,7 @@ class InfiniDyskMigrationManager:
                 rename_attached_services,
                 process_handler,
                 logger,
+                job_id=job["job_id"],
                 progress_callback=lambda stage, message, percent, status="running": self._update_job(
                     job,
                     status=status,
@@ -382,6 +509,7 @@ class InfiniDyskMigrationManager:
                 error=str(error),
             )
         finally:
+            self._reset_playback_override()
             if update_lock is not None:
                 update_lock.release()
 
@@ -708,92 +836,117 @@ class InfiniDyskMigrationManager:
         return actions, blockers
 
     @staticmethod
+    def _arr_target_snapshot(
+        target: dict, process_handler
+    ) -> tuple[dict | None, list[str]]:
+        blockers = []
+        key = target["service_key"]
+        instance = target["config"]
+        process_name = target["process_name"]
+        if not InfiniDyskMigrationManager._process_running(
+            process_handler, process_name
+        ):
+            return None, [
+                f"{process_name} must be running so DUMB can inventory its queue and paths."
+            ]
+        port = instance.get("port") or instance.get("host_port")
+        token = _parse_arr_api_key(str(instance.get("config_file") or ""))
+        if not port or not token:
+            return None, [
+                f"{process_name} is missing a usable port or API key for guarded path updates."
+            ]
+        host = f"http://127.0.0.1:{int(port)}"
+        api_version, item_endpoint = ARR_SERVICE_API[key]
+        endpoint = "queue"
+        try:
+            queue = (
+                _migration_arr_req(
+                    _arr_url(
+                        host,
+                        api_version,
+                        "queue?page=1&pageSize=1000&includeUnknownMovieItems=true&includeUnknownSeriesItems=true",
+                    ),
+                    token,
+                    "GET",
+                )
+                or {}
+            )
+            queue_records = (
+                queue.get("records") if isinstance(queue, dict) else queue
+            ) or []
+            total_records = (
+                int(queue.get("totalRecords") or len(queue_records))
+                if isinstance(queue, dict)
+                else len(queue_records)
+            )
+            endpoint = "root folders"
+            roots = (
+                _migration_arr_req(
+                    _arr_url(host, api_version, "rootfolder"), token, "GET"
+                )
+                or []
+            )
+            endpoint = item_endpoint
+            items = (
+                _migration_arr_req(
+                    _arr_url(host, api_version, item_endpoint), token, "GET"
+                )
+                or []
+            )
+            endpoint = "download clients"
+            clients = (
+                _migration_arr_req(
+                    _arr_url(host, api_version, "downloadclient"), token, "GET"
+                )
+                or []
+            )
+            endpoint = "tags"
+            tags = (
+                _migration_arr_req(_arr_url(host, api_version, "tag"), token, "GET")
+                or []
+            )
+        except Exception as error:
+            detail = _safe_error_detail(error)
+            timeout_hint = (
+                f" after {ARR_INVENTORY_TIMEOUT_SECONDS} seconds"
+                if isinstance(error, (TimeoutError, OSError))
+                and "timed out" in detail.lower()
+                else ""
+            )
+            return None, [
+                f"{process_name} API inventory failed while reading {endpoint}{timeout_hint}: {detail}."
+            ]
+        return (
+            {
+                "service_key": key,
+                "instance_name": target["instance_name"],
+                "process_name": process_name,
+                "host": host,
+                "api_version": api_version,
+                "item_endpoint": item_endpoint,
+                "api_key": token,
+                "roots": roots,
+                "items": items,
+                "clients": clients,
+                "tags": tags,
+                "queue_count": total_records,
+            },
+            blockers,
+        )
+
+    @staticmethod
     def _arr_snapshot(config: dict, process_handler) -> tuple[list[dict], list[str]]:
         snapshots = []
         blockers = []
         for target in InfiniDyskMigrationManager._linked_instances(
             config, set(ARR_SERVICE_API)
         ):
-            key = target["service_key"]
-            instance = target["config"]
-            process_name = target["process_name"]
-            if not InfiniDyskMigrationManager._process_running(
-                process_handler, process_name
-            ):
-                blockers.append(
-                    f"{process_name} must be running so DUMB can inventory its queue and paths."
-                )
-                continue
-            port = instance.get("port") or instance.get("host_port")
-            token = _parse_arr_api_key(str(instance.get("config_file") or ""))
-            if not port or not token:
-                blockers.append(
-                    f"{process_name} is missing a usable port or API key for guarded path updates."
-                )
-                continue
-            host = f"http://127.0.0.1:{int(port)}"
-            api_version, item_endpoint = ARR_SERVICE_API[key]
-            try:
-                queue = (
-                    _arr_req(
-                        _arr_url(
-                            host,
-                            api_version,
-                            "queue?page=1&pageSize=1000&includeUnknownMovieItems=true&includeUnknownSeriesItems=true",
-                        ),
-                        token,
-                        "GET",
-                    )
-                    or {}
-                )
-                queue_records = (
-                    queue.get("records") if isinstance(queue, dict) else queue
-                ) or []
-                total_records = (
-                    int(queue.get("totalRecords") or len(queue_records))
-                    if isinstance(queue, dict)
-                    else len(queue_records)
-                )
-                if total_records:
-                    blockers.append(
-                        f"{process_name} has {total_records} queued item(s). Drain its queue before the namespace cutover."
-                    )
-                roots = (
-                    _arr_req(_arr_url(host, api_version, "rootfolder"), token, "GET")
-                    or []
-                )
-                items = (
-                    _arr_req(_arr_url(host, api_version, item_endpoint), token, "GET")
-                    or []
-                )
-                clients = (
-                    _arr_req(
-                        _arr_url(host, api_version, "downloadclient"), token, "GET"
-                    )
-                    or []
-                )
-                tags = _arr_req(_arr_url(host, api_version, "tag"), token, "GET") or []
-            except Exception:
-                blockers.append(
-                    f"{process_name} API inventory failed. Verify the service is healthy before retrying."
-                )
-                continue
-            snapshots.append(
-                {
-                    "service_key": key,
-                    "instance_name": target["instance_name"],
-                    "process_name": process_name,
-                    "host": host,
-                    "api_version": api_version,
-                    "item_endpoint": item_endpoint,
-                    "api_key": token,
-                    "roots": roots,
-                    "items": items,
-                    "clients": clients,
-                    "tags": tags,
-                    "queue_count": total_records,
-                }
+            snapshot, target_blockers = InfiniDyskMigrationManager._arr_target_snapshot(
+                target, process_handler
             )
+            blockers.extend(target_blockers)
+            if snapshot is not None:
+                snapshots.append(snapshot)
         return snapshots, blockers
 
     @staticmethod
@@ -827,12 +980,13 @@ class InfiniDyskMigrationManager:
             host = f"http://127.0.0.1:{int(port)}"
             try:
                 applications = (
-                    _prowlarr_req(f"{host}/api/v1/applications", token, "GET") or []
+                    _migration_prowlarr_req(f"{host}/api/v1/applications", token, "GET")
+                    or []
                 )
-                tags = _prowlarr_req(f"{host}/api/v1/tag", token, "GET") or []
-            except Exception:
+                tags = _migration_prowlarr_req(f"{host}/api/v1/tag", token, "GET") or []
+            except Exception as error:
                 blockers.append(
-                    f"{process_name} API inventory failed. Verify the service is healthy before retrying."
+                    f"{process_name} API inventory failed: {_safe_error_detail(error)}."
                 )
                 continue
             snapshots.append(
@@ -868,7 +1022,7 @@ class InfiniDyskMigrationManager:
                 continue
             adapter = build_adapter(key, process_name, logger)
             activity = adapter.activity()
-            if activity.get("state") != "idle":
+            if activity.get("state") == "unknown":
                 blockers.append(
                     f"{process_name} is {activity.get('state', 'unknown')}: {activity.get('reason') or 'activity could not be verified'}."
                 )
@@ -885,6 +1039,7 @@ class InfiniDyskMigrationManager:
                     "service_key": key,
                     "process_name": process_name,
                     "libraries": libraries,
+                    "activity": activity,
                 }
             )
         return snapshots, blockers
@@ -944,7 +1099,9 @@ class InfiniDyskMigrationManager:
             "expires_at": preflight.get("expires_at"),
             "ready": not bool(preflight.get("blockers")),
             "blockers": list(preflight.get("blockers") or []),
+            "pending_conditions": list(preflight.get("pending_conditions") or []),
             "warnings": list(preflight.get("warnings") or []),
+            "quiesce_timeout_seconds": QUIESCE_TIMEOUT_SECONDS,
             "filesystem": list(preflight.get("filesystem") or []),
             "arr_services": [
                 {
@@ -1047,9 +1204,19 @@ class InfiniDyskMigrationManager:
             )
             if active_error:
                 blockers.append(active_error)
-            elif active_reads:
-                blockers.append(
-                    f"InfiniDysk has {active_reads} active read(s). Stop playback and wait for reads to drain."
+            pending_conditions = [
+                f"{item['process_name']} has {int(item.get('queue_count') or 0)} queued item(s). DUMB will stop queue producers, wait for this queue to drain, and hold the Arr stopped once it is empty."
+                for item in arr
+                if int(item.get("queue_count") or 0) > 0
+            ]
+            pending_conditions.extend(
+                f"{item['process_name']} currently has media activity. DUMB will wait for it to become idle, guard scans, and then hold the server stopped."
+                for item in media
+                if (item.get("activity") or {}).get("state") == "busy"
+            )
+            if active_reads:
+                pending_conditions.append(
+                    f"InfiniDysk has {active_reads} active read(s). DUMB will wait for them to drain after stopping affected media servers."
                 )
             preflight = {
                 "token": secrets.token_urlsafe(32),
@@ -1063,9 +1230,11 @@ class InfiniDyskMigrationManager:
                 "media": media,
                 "active_reads": active_reads,
                 "blockers": blockers,
+                "pending_conditions": pending_conditions,
                 "warnings": [
                     "Historical snapshot filenames are retained; future snapshots use the InfiniDysk name.",
                     "The migration changes paths but does not start a media-library scan automatically.",
+                    "At apply time DUMB automatically stops linked request/search producers first, waits up to one hour for Arr queues and playback to drain, and holds each safe service stopped through the cutover.",
                 ],
             }
             state = self._load_state()
@@ -1545,7 +1714,7 @@ class InfiniDyskMigrationManager:
                 or original_applications.get(application_id) == target
             ):
                 continue
-            _prowlarr_req(
+            _migration_prowlarr_req(
                 f"{host}/api/v1/applications/{application_id}",
                 token,
                 "PUT",
@@ -1563,7 +1732,7 @@ class InfiniDyskMigrationManager:
             tag_id = str(target.get("id") or "")
             if not tag_id or original_tags.get(tag_id) == target:
                 continue
-            _prowlarr_req(f"{host}/api/v1/tag/{tag_id}", token, "PUT", target)
+            _migration_prowlarr_req(f"{host}/api/v1/tag/{tag_id}", token, "PUT", target)
             changed_tags += 1
         return {"applications": changed_applications, "tags": changed_tags}
 
@@ -1574,7 +1743,8 @@ class InfiniDyskMigrationManager:
         current_applications = {
             str(item.get("id")): item
             for item in (
-                _prowlarr_req(f"{host}/api/v1/applications", token, "GET") or []
+                _migration_prowlarr_req(f"{host}/api/v1/applications", token, "GET")
+                or []
             )
         }
         for target in desired.get("applications") or []:
@@ -1600,7 +1770,9 @@ class InfiniDyskMigrationManager:
 
         current_tags = {
             str(item.get("id")): item
-            for item in (_prowlarr_req(f"{host}/api/v1/tag", token, "GET") or [])
+            for item in (
+                _migration_prowlarr_req(f"{host}/api/v1/tag", token, "GET") or []
+            )
         }
         for target in desired.get("tags") or []:
             tag_id = str(target.get("id") or "")
@@ -1629,7 +1801,10 @@ class InfiniDyskMigrationManager:
         current_root_paths = {
             str(root.get("path") or "")
             for root in (
-                _arr_req(_arr_url(host, api_version, "rootfolder"), token, "GET") or []
+                _migration_arr_req(
+                    _arr_url(host, api_version, "rootfolder"), token, "GET"
+                )
+                or []
             )
         }
         for root_id, target in desired_roots.items():
@@ -1642,12 +1817,20 @@ class InfiniDyskMigrationManager:
                 continue
             payload = {"path": new_path}
             if api_version == "v1":
-                payload = _get_lidarr_rootfolder_payload(host, token, new_path) or {}
+                payload = (
+                    _get_lidarr_rootfolder_payload(
+                        host,
+                        token,
+                        new_path,
+                        timeout=ARR_INVENTORY_TIMEOUT_SECONDS,
+                    )
+                    or {}
+                )
                 if not payload:
                     raise RuntimeError(
                         f"Could not construct the Lidarr root-folder payload for {new_path}"
                     )
-            _arr_req(
+            _migration_arr_req(
                 _arr_url(host, api_version, "rootfolder"),
                 token,
                 "POST",
@@ -1664,7 +1847,7 @@ class InfiniDyskMigrationManager:
             original = original_items.get(item_id) or {}
             if not item_id or original.get("path") == target.get("path"):
                 continue
-            _arr_req(
+            _migration_arr_req(
                 _arr_url(
                     host,
                     api_version,
@@ -1684,7 +1867,7 @@ class InfiniDyskMigrationManager:
             original = original_clients.get(client_id) or {}
             if not client_id or original == target:
                 continue
-            _arr_req(
+            _migration_arr_req(
                 _arr_url(host, api_version, f"downloadclient/{client_id}"),
                 token,
                 "PUT",
@@ -1700,7 +1883,7 @@ class InfiniDyskMigrationManager:
             original = original_tags.get(tag_id) or {}
             if not tag_id or original == target:
                 continue
-            _arr_req(
+            _migration_arr_req(
                 _arr_url(host, api_version, f"tag/{tag_id}"),
                 token,
                 "PUT",
@@ -1709,7 +1892,8 @@ class InfiniDyskMigrationManager:
             changed_tags += 1
 
         current_roots = (
-            _arr_req(_arr_url(host, api_version, "rootfolder"), token, "GET") or []
+            _migration_arr_req(_arr_url(host, api_version, "rootfolder"), token, "GET")
+            or []
         )
         for root_id, original in original_roots.items():
             target = desired_roots.get(root_id) or {}
@@ -1727,7 +1911,7 @@ class InfiniDyskMigrationManager:
             if not current or not current.get("id"):
                 continue
             try:
-                _arr_req(
+                _migration_arr_req(
                     _arr_url(host, api_version, f"rootfolder/{current.get('id')}"),
                     token,
                     "DELETE",
@@ -1768,7 +1952,8 @@ class InfiniDyskMigrationManager:
         api_version = snapshot["api_version"]
         item_endpoint = snapshot["item_endpoint"]
         current_roots = (
-            _arr_req(_arr_url(host, api_version, "rootfolder"), token, "GET") or []
+            _migration_arr_req(_arr_url(host, api_version, "rootfolder"), token, "GET")
+            or []
         )
         root_paths = {str(root.get("path") or "") for root in current_roots}
         for root in desired.get("roots") or []:
@@ -1778,7 +1963,10 @@ class InfiniDyskMigrationManager:
         current_items = {
             str(item.get("id")): item
             for item in (
-                _arr_req(_arr_url(host, api_version, item_endpoint), token, "GET") or []
+                _migration_arr_req(
+                    _arr_url(host, api_version, item_endpoint), token, "GET"
+                )
+                or []
             )
         }
         for item in desired.get("items") or []:
@@ -1790,7 +1978,9 @@ class InfiniDyskMigrationManager:
         current_clients = {
             str(item.get("id")): item
             for item in (
-                _arr_req(_arr_url(host, api_version, "downloadclient"), token, "GET")
+                _migration_arr_req(
+                    _arr_url(host, api_version, "downloadclient"), token, "GET"
+                )
                 or []
             )
         }
@@ -1817,7 +2007,8 @@ class InfiniDyskMigrationManager:
         current_tags = {
             str(item.get("id")): item
             for item in (
-                _arr_req(_arr_url(host, api_version, "tag"), token, "GET") or []
+                _migration_arr_req(_arr_url(host, api_version, "tag"), token, "GET")
+                or []
             )
         }
         for tag in desired.get("tags") or []:
@@ -2016,6 +2207,268 @@ class InfiniDyskMigrationManager:
         return running
 
     @staticmethod
+    def _quiesce_producer_processes(config: dict, preflight: dict) -> list[str]:
+        names = [
+            item["process_name"]
+            for item in InfiniDyskMigrationManager._linked_instances(
+                config, {"neutarr", "profilarr", "seerr"}
+            )
+        ]
+        names.extend(
+            str(item.get("process_name") or "")
+            for item in preflight.get("prowlarr") or []
+        )
+        return list(dict.fromkeys(name for name in names if name))
+
+    def _quiesce_for_cutover(
+        self,
+        config: dict,
+        preflight: dict,
+        old_process_names: list[str],
+        process_handler,
+        logger,
+        progress,
+        running: list[str],
+        scan_guards: list[dict],
+        job_id: str | None = None,
+    ) -> dict:
+        """Drain transient activity and latch each service stopped when safe."""
+        producers = self._quiesce_producer_processes(config, preflight)
+        if producers:
+            progress(
+                "quiescing",
+                "Stopping linked request, search, and indexer producers so Arr queues cannot refill.",
+                20,
+            )
+            running.extend(self._stop_processes(process_handler, producers))
+
+        arr_targets = self._linked_instances(config, set(ARR_SERVICE_API))
+        arr_preflight = {
+            str(item.get("process_name") or ""): item
+            for item in preflight.get("arr") or []
+        }
+        media_targets = [
+            {
+                "service_key": item["service_key"],
+                "process_name": item["process_name"],
+            }
+            for item in preflight.get("media") or []
+        ]
+        captured_arr: dict[str, dict] = {}
+        captured_media: dict[str, dict] = {}
+        deadline = time.monotonic() + QUIESCE_TIMEOUT_SECONDS
+        last_message = None
+        last_reported_at = 0.0
+
+        while True:
+            pending = []
+            for target in arr_targets:
+                process_name = target["process_name"]
+                if process_name in captured_arr:
+                    continue
+                original = arr_preflight.get(process_name)
+                if not original:
+                    raise InfiniDyskMigrationError(
+                        f"{process_name} has no saved Arr inventory for automatic quiescence."
+                    )
+                try:
+                    queue = (
+                        _migration_arr_req(
+                            _arr_url(
+                                original["host"],
+                                original["api_version"],
+                                "queue?page=1&pageSize=1000&includeUnknownMovieItems=true&includeUnknownSeriesItems=true",
+                            ),
+                            original["api_key"],
+                            "GET",
+                        )
+                        or {}
+                    )
+                    records = (
+                        queue.get("records") if isinstance(queue, dict) else queue
+                    ) or []
+                    queue_count = (
+                        int(queue.get("totalRecords") or len(records))
+                        if isinstance(queue, dict)
+                        else len(records)
+                    )
+                except Exception as error:
+                    raise InfiniDyskMigrationError(
+                        f"{process_name} queue could not be checked while quiescing: "
+                        f"{_safe_error_detail(error)}."
+                    ) from error
+                if queue_count:
+                    pending.append(f"{process_name}: {queue_count} queued")
+                    continue
+                snapshot, blockers = self._arr_target_snapshot(target, process_handler)
+                if blockers or snapshot is None:
+                    raise InfiniDyskMigrationError(
+                        blockers[0]
+                        if blockers
+                        else f"{process_name} could not be inventoried while quiescing."
+                    )
+                if int(snapshot.get("queue_count") or 0):
+                    pending.append(
+                        f"{process_name}: queue changed while capturing its final inventory"
+                    )
+                    continue
+                final_queue = (
+                    _migration_arr_req(
+                        _arr_url(
+                            snapshot["host"],
+                            snapshot["api_version"],
+                            "queue?page=1&pageSize=1000&includeUnknownMovieItems=true&includeUnknownSeriesItems=true",
+                        ),
+                        snapshot["api_key"],
+                        "GET",
+                    )
+                    or {}
+                )
+                final_records = (
+                    final_queue.get("records")
+                    if isinstance(final_queue, dict)
+                    else final_queue
+                ) or []
+                final_count = (
+                    int(final_queue.get("totalRecords") or len(final_records))
+                    if isinstance(final_queue, dict)
+                    else len(final_records)
+                )
+                if final_count:
+                    pending.append(
+                        f"{process_name}: {final_count} queued after final inventory"
+                    )
+                    continue
+                running.extend(self._stop_processes(process_handler, [process_name]))
+                captured_arr[process_name] = snapshot
+
+            stop_active_playback = self._playback_stop_requested(job_id)
+            if stop_active_playback:
+                requested_servers = self._playback_override_media_servers(job_id)
+                progress(
+                    "quiescing",
+                    "Operator approved playback interruption; stopping active media server"
+                    f"{'s' if len(requested_servers) != 1 else ''}: "
+                    f"{', '.join(requested_servers) or 'affected media servers'}.",
+                    25,
+                )
+            busy_media_servers = []
+            for target in media_targets:
+                process_name = target["process_name"]
+                if process_name in captured_media:
+                    continue
+                adapter = build_adapter(target["service_key"], process_name, logger)
+                activity = adapter.activity()
+                state = str(activity.get("state") or "unknown")
+                if state == "unknown":
+                    raise InfiniDyskMigrationError(
+                        f"{process_name} activity could not be verified while quiescing: "
+                        f"{activity.get('reason') or 'unknown error'}."
+                    )
+                if state != "idle":
+                    if stop_active_playback:
+                        libraries = adapter.library_paths()
+                        guard = {
+                            "service_key": target["service_key"],
+                            "process_name": process_name,
+                            "snapshot": adapter.enter_scan_guard(),
+                        }
+                        scan_guards.append(guard)
+                        running.extend(
+                            self._stop_processes(process_handler, [process_name])
+                        )
+                        captured_media[process_name] = {
+                            "service_key": target["service_key"],
+                            "process_name": process_name,
+                            "libraries": libraries,
+                            "activity": activity,
+                            "playback_interrupted": True,
+                        }
+                        continue
+                    sessions = activity.get("active_sessions")
+                    suffix = (
+                        f" ({sessions} active session(s))"
+                        if sessions is not None
+                        else ""
+                    )
+                    pending.append(f"{process_name}: {state}{suffix}")
+                    busy_media_servers.append(process_name)
+                    continue
+                libraries = adapter.library_paths()
+                guard = {
+                    "service_key": target["service_key"],
+                    "process_name": process_name,
+                    "snapshot": adapter.enter_scan_guard(),
+                }
+                scan_guards.append(guard)
+                running.extend(self._stop_processes(process_handler, [process_name]))
+                captured_media[process_name] = {
+                    "service_key": target["service_key"],
+                    "process_name": process_name,
+                    "libraries": libraries,
+                    "activity": activity,
+                }
+
+            if stop_active_playback:
+                self._finish_playback_stop_request(job_id)
+            else:
+                self._set_playback_override_availability(job_id, busy_media_servers)
+
+            active_reads, active_error = self._infinidysk_active_reads(
+                config, process_handler
+            )
+            if active_error:
+                raise InfiniDyskMigrationError(active_error)
+            if active_reads:
+                pending.append(f"InfiniDysk: {active_reads} active read(s)")
+
+            if (
+                len(captured_arr) == len(arr_targets)
+                and len(captured_media) == len(media_targets)
+                and not pending
+            ):
+                break
+
+            now = time.monotonic()
+            summary = "; ".join(pending) or "waiting for services to settle"
+            if summary != last_message or now - last_reported_at >= 30:
+                progress(
+                    "quiescing",
+                    "Waiting for safe cutover conditions. "
+                    f"Resolve failed/held Arr items while producers remain stopped: {summary}.",
+                    24,
+                )
+                last_message = summary
+                last_reported_at = now
+            if now >= deadline:
+                raise InfiniDyskMigrationError(
+                    "Automatic quiescence timed out after one hour before any namespace paths were moved. "
+                    f"Remaining activity: {summary}."
+                )
+            time.sleep(min(QUIESCE_POLL_SECONDS, max(0.0, deadline - now)))
+
+        progress(
+            "quiescing",
+            "Queues and playback are drained; holding affected services stopped through the cutover.",
+            27,
+        )
+        running.extend(self._stop_processes(process_handler, old_process_names))
+        self._finish_playback_stop_request(job_id)
+        running_set = set(running)
+        running[:] = [name for name in old_process_names if name in running_set]
+
+        refreshed = copy.deepcopy(preflight)
+        refreshed["arr"] = [
+            captured_arr[target["process_name"]] for target in arr_targets
+        ]
+        refreshed["media"] = [
+            captured_media[target["process_name"]] for target in media_targets
+        ]
+        refreshed["active_reads"] = 0
+        refreshed["pending_conditions"] = []
+        return refreshed
+
+    @staticmethod
     def _start_processes(
         process_handler,
         process_names: list[str],
@@ -2088,6 +2541,7 @@ class InfiniDyskMigrationManager:
         process_handler,
         logger,
         progress_callback=None,
+        job_id: str | None = None,
     ) -> dict:
         with self._lock:
 
@@ -2148,6 +2602,9 @@ class InfiniDyskMigrationManager:
             old_process_names = self._affected_processes(
                 config, preflight, rename_attached_services
             )
+            producer_process_names = set(
+                self._quiesce_producer_processes(config, preflight)
+            )
             original_service_name = str(
                 self._service_config(config).get("process_name") or "InfiniDysk"
             )
@@ -2163,23 +2620,21 @@ class InfiniDyskMigrationManager:
             prowlarr_changes = []
             media_changes = []
             try:
-                progress("scan_guards", "Guarding media-server library scans.", 20)
-                for media in preflight.get("media") or []:
-                    adapter = build_adapter(
-                        media["service_key"], media["process_name"], logger
-                    )
-                    scan_guards.append(
-                        {
-                            "service_key": media["service_key"],
-                            "process_name": media["process_name"],
-                            "snapshot": adapter.enter_scan_guard(),
-                        }
-                    )
+                preflight = self._quiesce_for_cutover(
+                    config,
+                    preflight,
+                    old_process_names,
+                    process_handler,
+                    logger,
+                    progress,
+                    running,
+                    scan_guards,
+                    job_id=job_id,
+                )
                 self._write_private_json(
                     backup_bundle / "scan-guards.json", {"guards": scan_guards}
                 )
-                progress("stopping", "Stopping affected services downstream-first.", 28)
-                running = self._stop_processes(process_handler, old_process_names)
+                self._write_private_json(backup_bundle / "preflight.json", preflight)
                 progress("filesystem", "Moving managed namespace paths atomically.", 38)
                 moved = self._move_namespace_paths(preflight.get("filesystem") or [])
 
@@ -2241,8 +2696,34 @@ class InfiniDyskMigrationManager:
                 database_changes = self._migrate_infinidysk_database(
                     str(service.get("config_dir") or "/infinidysk")
                 )
-                new_running = [renamed_processes.get(name, name) for name in running]
-                progress("starting", "Restarting services provider-first.", 68)
+                new_running = [
+                    renamed_processes.get(name, name)
+                    for name in running
+                    if name not in producer_process_names
+                ]
+                held_producers = [
+                    renamed_processes.get(name, name)
+                    for name in running
+                    if name in producer_process_names
+                ]
+                prowlarr_names = {
+                    renamed_processes.get(
+                        str(item.get("process_name") or ""),
+                        str(item.get("process_name") or ""),
+                    )
+                    for item in preflight.get("prowlarr") or []
+                }
+                held_prowlarr = [
+                    name for name in held_producers if name in prowlarr_names
+                ]
+                held_producers = [
+                    name for name in held_producers if name not in prowlarr_names
+                ]
+                progress(
+                    "starting",
+                    "Restarting the provider, Arrs, and media servers while request/search producers remain stopped.",
+                    68,
+                )
                 self._start_processes(
                     process_handler,
                     new_running,
@@ -2261,7 +2742,7 @@ class InfiniDyskMigrationManager:
                         str(desired.get("process_name") or "")
                     )
                     self._retry(
-                        lambda original=original: _arr_req(
+                        lambda original=original: _migration_arr_req(
                             _arr_url(
                                 original["host"],
                                 original["api_version"],
@@ -2277,6 +2758,13 @@ class InfiniDyskMigrationManager:
                         {"process_name": desired["process_name"], **result}
                     )
                 prowlarr_snapshots = preflight.get("prowlarr") or []
+                if held_prowlarr:
+                    progress(
+                        "starting_prowlarr",
+                        "Restarting Prowlarr for guarded connection and tag updates.",
+                        83,
+                    )
+                    self._start_processes(process_handler, held_prowlarr)
                 for index, original in enumerate(prowlarr_snapshots):
                     progress(
                         "prowlarr",
@@ -2288,7 +2776,7 @@ class InfiniDyskMigrationManager:
                         str(desired.get("process_name") or "")
                     )
                     self._retry(
-                        lambda original=original: _prowlarr_req(
+                        lambda original=original: _migration_prowlarr_req(
                             f"{original['host']}/api/v1/system/status",
                             original["api_key"],
                             "GET",
@@ -2330,6 +2818,14 @@ class InfiniDyskMigrationManager:
                     process_name = _replace_display_name(guard["process_name"])
                     adapter = build_adapter(guard["service_key"], process_name, logger)
                     adapter.restore_scan_guard(guard["snapshot"])
+
+                if held_producers:
+                    progress(
+                        "starting_producers",
+                        "Restarting linked request, search, and indexer producers after reference validation.",
+                        97,
+                    )
+                    self._start_processes(process_handler, held_producers)
 
                 progress("validation", "Running final namespace validation.", 98)
                 remaining = self._legacy_paths(CONFIG_MANAGER.config)
@@ -2385,6 +2881,8 @@ class InfiniDyskMigrationManager:
                     "message": "The complete InfiniDysk namespace migration finished successfully. Run normal Arr and media-server library scans to refresh availability.",
                 }
             except Exception as error:
+                running_set = set(running)
+                running = [name for name in old_process_names if name in running_set]
                 failure_detail = _safe_error_detail(error)
                 logger.error(
                     "InfiniDysk namespace cutover failed before rollback: %s",
@@ -2486,7 +2984,7 @@ class InfiniDyskMigrationManager:
                     try:
                         desired = self._desired_arr_snapshot(original)
                         self._retry(
-                            lambda original=original: _arr_req(
+                            lambda original=original: _migration_arr_req(
                                 _arr_url(
                                     original["host"],
                                     original["api_version"],
@@ -2511,7 +3009,7 @@ class InfiniDyskMigrationManager:
                     try:
                         desired = self._desired_prowlarr_snapshot(original)
                         self._retry(
-                            lambda original=original: _prowlarr_req(
+                            lambda original=original: _migration_prowlarr_req(
                                 f"{original['host']}/api/v1/system/status",
                                 original["api_key"],
                                 "GET",

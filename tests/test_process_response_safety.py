@@ -295,6 +295,41 @@ class MediaStormCredentialResponseTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(raised.exception.status_code, 400)
         self.assertIn("independent backup", raised.exception.detail)
 
+    async def test_infinidysk_playback_stop_requires_explicit_confirmation(self):
+        request = types.SimpleNamespace(
+            job_id="a" * 32,
+            confirmation="stop",
+        )
+
+        with self.assertRaises(process_router.HTTPException) as raised:
+            await process_router.stop_playback_for_infinidysk_migration(
+                request,
+                current_user=None,
+            )
+
+        self.assertEqual(raised.exception.status_code, 400)
+        self.assertIn("STOP ACTIVE PLAYBACK", raised.exception.detail)
+
+    async def test_infinidysk_playback_stop_forwards_confirmed_job(self):
+        request = types.SimpleNamespace(
+            job_id="a" * 32,
+            confirmation="STOP ACTIVE PLAYBACK",
+        )
+        job = {"job_id": request.job_id, "playback_stop_requested": True}
+
+        with patch.object(
+            process_router.INFINIDYSK_MIGRATION_MANAGER,
+            "request_playback_stop",
+            return_value=job,
+        ) as stop_playback:
+            result = await process_router.stop_playback_for_infinidysk_migration(
+                request,
+                current_user=None,
+            )
+
+        self.assertEqual({"job": job}, result)
+        stop_playback.assert_called_once_with(request.job_id)
+
     async def test_credential_response_is_no_store_and_capability_gated(self):
         with (
             patch.object(

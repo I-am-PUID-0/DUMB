@@ -321,16 +321,26 @@ def _arr_url(host: str, api_version: str, path: str) -> str:
     return _join(host, f"/api/{api_version}/{path.lstrip('/')}")
 
 
-def _get_lidarr_rootfolder_payload(host: str, token: str, path: str) -> Optional[dict]:
+def _get_lidarr_rootfolder_payload(
+    host: str, token: str, path: str, timeout: int = 10
+) -> Optional[dict]:
     quality_profiles = (
-        _arr_req(_arr_url(host, "v1", "qualityprofile"), token, "GET") or []
+        _arr_req(_arr_url(host, "v1", "qualityprofile"), token, "GET", timeout=timeout)
+        or []
     )
     meta_profiles = (
-        _arr_req(_arr_url(host, "v1", "metadataprofile"), token, "GET") or []
+        _arr_req(_arr_url(host, "v1", "metadataprofile"), token, "GET", timeout=timeout)
+        or []
     )
     if not meta_profiles:
         meta_profiles = (
-            _arr_req(_arr_url(host, "v1", "metadata/profile"), token, "GET") or []
+            _arr_req(
+                _arr_url(host, "v1", "metadata/profile"),
+                token,
+                "GET",
+                timeout=timeout,
+            )
+            or []
         )
     quality_id = next(
         (p.get("id") for p in quality_profiles if isinstance(p, dict) and p.get("id")),
