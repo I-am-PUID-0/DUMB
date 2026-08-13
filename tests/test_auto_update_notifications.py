@@ -660,15 +660,17 @@ class UpdateNotificationTests(unittest.TestCase):
     def test_latest_release_is_a_moving_update_target(self):
         updater = self._updater()
 
-        self.assertIsNone(
-            updater._get_update_block_reason(
-                {
-                    "release_version_enabled": True,
-                    "release_version": "latest",
-                },
-                "profilarr",
-            )
-        )
+        for release in ("latest", "", "   ", None):
+            with self.subTest(release=release):
+                self.assertIsNone(
+                    updater._get_update_block_reason(
+                        {
+                            "release_version_enabled": True,
+                            "release_version": release,
+                        },
+                        "infinidysk",
+                    )
+                )
         self.assertEqual(
             "release",
             updater._get_update_block_reason(
@@ -679,6 +681,41 @@ class UpdateNotificationTests(unittest.TestCase):
                 "profilarr",
             ),
         )
+
+    def test_blank_enabled_release_reports_latest_update_as_installable(self):
+        updater = self._updater()
+        config = {
+            "release_version_enabled": True,
+            "release_version": "",
+            "repo_owner": "infinidysk",
+            "repo_name": "infinidysk",
+        }
+
+        with patch("utils.auto_update.Versions") as versions:
+            versions.return_value.compare_versions.return_value = (
+                True,
+                {
+                    "current_version": "v1.0.0",
+                    "latest_version": "v1.1.0",
+                    "releases_behind": 1,
+                },
+            )
+            payload = updater._manual_check_generic_repo(
+                "InfiniDysk",
+                config,
+                "infinidysk",
+                None,
+                updater._get_update_block_reason(config, "infinidysk"),
+                1,
+                False,
+                24,
+                "04:00",
+                None,
+            )
+
+        self.assertEqual("update_available", payload["status"])
+        self.assertIsNone(payload["reason"])
+        self.assertEqual("v1.1.0", payload["available_version"])
 
     def test_only_digit_free_nzbdav_release_tags_are_moving_channels(self):
         for release in ("dev", "lts", "edge", "release-candidate"):

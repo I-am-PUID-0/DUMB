@@ -3,6 +3,7 @@ from json import load, dump, JSONDecodeError
 from jsonschema import validate, ValidationError
 from dotenv import load_dotenv, find_dotenv
 from collections import OrderedDict
+from utils.release_selection import normalize_release_selectors
 from utils.service_identity import INFINIDYSK_KEY, INFINIDYSK_LEGACY_KEY
 
 MODULE_FILE = globals().get(
@@ -123,10 +124,12 @@ class ConfigManager:
 
     def _canonicalize_runtime_config(self, config):
         mapped = self._map_infinidysk_identity(config, INFINIDYSK_KEY)
-        return self._map_infinidysk_tokens(mapped, INFINIDYSK_KEY)
+        mapped = self._map_infinidysk_tokens(mapped, INFINIDYSK_KEY)
+        return normalize_release_selectors(mapped)
 
     def _serialize_config_for_disk(self, config):
         serialized = copy.deepcopy(config)
+        normalize_release_selectors(serialized)
         if self._legacy_infinidysk_identity:
             serialized = self._map_infinidysk_tokens(serialized, INFINIDYSK_LEGACY_KEY)
             serialized = self._map_infinidysk_identity(

@@ -2,7 +2,10 @@ import importlib
 import json
 import sys
 import unittest
+from collections import OrderedDict
 from pathlib import Path
+
+from utils.release_selection import normalize_release_selectors
 
 
 def _load_draft7_validator():
@@ -57,6 +60,37 @@ class DumbConfigSchemaTests(unittest.TestCase):
 
         self.assertFalse(profilarr["release_version_enabled"])
         self.assertEqual("latest", profilarr["release_version"])
+
+    def test_blank_enabled_release_selectors_normalize_to_latest_recursively(self):
+        config = OrderedDict(
+            {
+                "infinidysk": {
+                    "release_version_enabled": True,
+                    "release_version": "   ",
+                },
+                "profilarr": {
+                    "instances": {
+                        "Default": {
+                            "release_version_enabled": True,
+                            "release_version": "",
+                        }
+                    }
+                },
+                "fixed": {
+                    "release_version_enabled": True,
+                    "release_version": "v1.2.3",
+                },
+            }
+        )
+
+        normalized = normalize_release_selectors(config)
+
+        self.assertEqual("latest", normalized["infinidysk"]["release_version"])
+        self.assertEqual(
+            "latest",
+            normalized["profilarr"]["instances"]["Default"]["release_version"],
+        )
+        self.assertEqual("v1.2.3", normalized["fixed"]["release_version"])
 
     def test_scheduled_updates_default_to_install_mode(self):
         self.assertEqual("install", self.config["dumb"]["frontend"]["auto_update_mode"])

@@ -109,9 +109,14 @@ class Update:
         if config.get("branch_enabled"):
             return "branch"
         if config.get("release_version_enabled"):
+            release = str(config.get("release_version") or "").strip().lower()
+            # Blank enabled selectors are a legacy/config-editor representation
+            # of the moving latest channel, not an immutable release pin.
+            if not release:
+                return None
             if self._is_nzbdav_named_release_channel(key, config):
                 return None
-            if str(config.get("release_version") or "").strip().lower() == "latest":
+            if release == "latest":
                 return None
             if not self._release_is_nightly_or_prerelease(config):
                 return "release"
