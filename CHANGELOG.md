@@ -1,5 +1,35 @@
 # Changelog
 
+## [2.20.0](https://github.com/I-am-PUID-0/DUMB/compare/2.19.0...2.20.0) (2026-08-14)
+
+
+### ✨ Features
+
+* **infinidysk:** add guarded opt-in NzbDAV migration ([c7e2d20](https://github.com/I-am-PUID-0/DUMB/commit/c7e2d20530614f000aab8afbf5af4921a68ee2e3))
+* **infinidysk:** harden namespace migration discovery and recovery ([963ff62](https://github.com/I-am-PUID-0/DUMB/commit/963ff62bde96070863e66a8055d41fbbcf8e642e))
+* **migration:** harden InfiniDysk namespace cutover quiescence ([4f066f8](https://github.com/I-am-PUID-0/DUMB/commit/4f066f85b014e29594badce3765b0ee7aa17936e))
+
+
+### 🐛 Bug Fixes
+
+* **ci:** tolerate Go Docker image publication lag ([be97f70](https://github.com/I-am-PUID-0/DUMB/commit/be97f707c992b222f39696f17492c6206255a2ff))
+* **infinidysk:** harden full namespace migration and rollback ([ca3a5f6](https://github.com/I-am-PUID-0/DUMB/commit/ca3a5f6e1a6ff44f3e877343ecf51cf14615617e))
+* **infinidysk:** harden Plex library migration timeouts ([91ba33b](https://github.com/I-am-PUID-0/DUMB/commit/91ba33ba5b4f34344d3d48af82fc8435f816eceb))
+* **mediastorm:** support amd64 jellyfin-ffmpeg OCI links ([#310](https://github.com/I-am-PUID-0/DUMB/issues/310)) ([403b6fc](https://github.com/I-am-PUID-0/DUMB/commit/403b6fc960ac7df2298c67c36505c89ce42ae217))
+* **migration:** harden InfiniDysk rollback and retry safety ([699afa1](https://github.com/I-am-PUID-0/DUMB/commit/699afa1af5378f82f4ad21cddf4eec1900e356a0))
+* **postgres:** harden config writes and migration stability ([a176ef3](https://github.com/I-am-PUID-0/DUMB/commit/a176ef380a8856250ed2098dfd4ed4001bc8ddff))
+* **updates:** normalize blank release selectors to latest ([4cdbf7e](https://github.com/I-am-PUID-0/DUMB/commit/4cdbf7e5223c67002c8834d4d8495570c60a6d3c))
+
+
+### 🤡 Other Changes
+
+* **deps:** update dependencies ([8eff664](https://github.com/I-am-PUID-0/DUMB/commit/8eff664484d894ddce31aea113f581f19921beb2))
+
+
+### 🛠️ Build System
+
+* **deps-dev:** bump setuptools from 83.0.0 to 84.0.0 ([#309](https://github.com/I-am-PUID-0/DUMB/issues/309)) ([f8fedef](https://github.com/I-am-PUID-0/DUMB/commit/f8fedefc66998818fa81283ed34be1672ea82abd))
+
 ## [2.19.0](https://github.com/I-am-PUID-0/DUMB/compare/2.18.0...2.19.0) (2026-08-11)
 
 
