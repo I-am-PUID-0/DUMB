@@ -6131,6 +6131,12 @@ validates every resulting item path before continuing,
 so a partial or incompatible bulk result still fails into the normal rollback
 path. The job reports completed/total counts for the current Arr and across all
 affected Arrs instead of holding one percentage for an entire large catalog.
+Plex identity, scan-guard, inventory, and library-path operations use an
+extended API response window because large servers can respond slowly during
+cutover. If a Plex library update times out after submission, DUMB does not
+blindly submit it again: it reconnects and accepts the change only when the
+library exposes the exact requested path set. An unverifiable result still
+fails into rollback.
 If a stage fails, DUMB stops the partially migrated stack, restores paths and
 saved files with their captured ownership and permissions, reapplies and
 validates the previous Arr/Prowlarr/media-library references, removes every Arr
