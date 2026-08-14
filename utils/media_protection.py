@@ -39,6 +39,10 @@ PLEX_LIBRARY_SETTING_IDS = (
     "scheduledLibraryUpdatesEnabled",
     "scheduledLibraryUpdateInterval",
 )
+PLEX_ACTIVITY_TIMEOUT_SECONDS = 8
+PLEX_LIBRARY_OPERATION_TIMEOUT_SECONDS = 120
+PLEX_LIBRARY_VERIFY_ATTEMPTS = 12
+PLEX_LIBRARY_VERIFY_DELAY_SECONDS = 5
 STATE_PATH = "/config/media-protection/state.json"
 
 
@@ -199,7 +203,7 @@ class MediaServerAdapter:
 
 
 class PlexAdapter(MediaServerAdapter):
-    def _connect(self):
+    def _connect(self, timeout: int = PLEX_ACTIVITY_TIMEOUT_SECONDS):
         from utils.plex_dbrepair import _plex_token, _plex_url
         from plexapi.server import PlexServer
 
@@ -207,7 +211,10 @@ class PlexAdapter(MediaServerAdapter):
         token = _plex_token(self.config, dumb)
         if not token:
             raise RuntimeError("Plex token is not configured")
-        return PlexServer(_plex_url(self.config, dumb), token, timeout=8)
+        return PlexServer(_plex_url(self.config, dumb), token, timeout=timeout)
+
+    def _connect_for_library_operation(self):
+        return self._connect(timeout=PLEX_LIBRARY_OPERATION_TIMEOUT_SECONDS)
 
     def activity(self) -> dict:
         try:
@@ -237,7 +244,7 @@ class PlexAdapter(MediaServerAdapter):
             }
 
     def server_identity(self) -> dict:
-        plex = self._connect()
+        plex = self._connect_for_library_operation()
         return {
             "name": str(getattr(plex, "friendlyName", "") or "Plex"),
             "machine_identifier": str(getattr(plex, "machineIdentifier", "") or ""),
@@ -273,7 +280,7 @@ class PlexAdapter(MediaServerAdapter):
         return self.library_settings()
 
     def enter_scan_guard(self) -> dict:
-        plex = self._connect()
+        plex = self._connect_for_library_operation()
         snapshot = {"settings": {}, "changed": []}
         for setting_id in (
             "autoEmptyTrash",
@@ -294,7 +301,7 @@ class PlexAdapter(MediaServerAdapter):
         return snapshot
 
     def restore_scan_guard(self, snapshot: dict) -> list[str]:
-        plex = self._connect()
+        plex = self._connect_for_library_operation()
         restored = []
         for setting_id in snapshot.get("changed", []):
             original = (snapshot.get("settings") or {}).get(setting_id)
@@ -307,7 +314,7 @@ class PlexAdapter(MediaServerAdapter):
         return restored
 
     def library_paths(self) -> list[dict]:
-        plex = self._connect()
+        plex = self._connect_for_library_operation()
         return [
             {
                 "id": str(section.key),
@@ -318,7 +325,7 @@ class PlexAdapter(MediaServerAdapter):
         ]
 
     def replace_library_paths(self, libraries: list[dict]) -> list[dict]:
-        plex = self._connect()
+        plex = self._connect_for_library_operation()
         sections = {str(section.key): section for section in plex.library.sections()}
         changed = []
         for desired in libraries or []:
@@ -334,11 +341,47 @@ class PlexAdapter(MediaServerAdapter):
                     f"Refusing to remove every path from Plex library {section.title}"
                 )
             if list(section.locations) != paths:
-                section.edit(location=paths)
+                try:
+                    section.edit(location=paths)
+                except requests.exceptions.Timeout as error:
+                    self.logger.warning(
+                        "Plex library %s update timed out; verifying whether Plex committed the requested paths",
+                        section.title,
+                    )
+                    if not self._wait_for_library_paths(section_id, paths):
+                        raise RuntimeError(
+                            f"Plex library {section.title} update timed out and the requested paths could not be verified"
+                        ) from error
                 changed.append(
                     {"id": section_id, "name": str(section.title), "paths": paths}
                 )
         return changed
+
+    def _wait_for_library_paths(self, section_id: str, paths: list[str]) -> bool:
+        """Confirm a timed-out Plex mutation without blindly submitting it again."""
+        for attempt in range(PLEX_LIBRARY_VERIFY_ATTEMPTS):
+            try:
+                plex = self._connect_for_library_operation()
+                section = next(
+                    (
+                        candidate
+                        for candidate in plex.library.sections()
+                        if str(candidate.key) == str(section_id)
+                    ),
+                    None,
+                )
+                if section is not None and list(section.locations) == paths:
+                    return True
+            except Exception as error:
+                self.logger.debug(
+                    "Plex library %s verification attempt %s failed: %s",
+                    section_id,
+                    attempt + 1,
+                    error,
+                )
+            if attempt + 1 < PLEX_LIBRARY_VERIFY_ATTEMPTS:
+                time.sleep(PLEX_LIBRARY_VERIFY_DELAY_SECONDS)
+        return False
 
 
 class MediaBrowserAdapter(MediaServerAdapter):

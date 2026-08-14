@@ -283,6 +283,82 @@ class MediaProtectionTests(unittest.TestCase):
             location=["/mnt/debrid/infinidysk-symlinks/movies"]
         )
 
+    def test_plex_library_operations_use_extended_timeout(self):
+        adapter = media_protection.PlexAdapter(
+            "plex", "Plex Media Server", {}, {}, self.logger
+        )
+        plex = Mock()
+        plex.library.sections.return_value = []
+
+        with patch.object(adapter, "_connect", return_value=plex) as connect:
+            adapter.library_paths()
+
+        connect.assert_called_once_with(
+            timeout=media_protection.PLEX_LIBRARY_OPERATION_TIMEOUT_SECONDS
+        )
+
+    def test_plex_library_timeout_is_accepted_after_exact_verification(self):
+        section = Mock()
+        section.key = "7"
+        section.title = "Movies"
+        section.locations = ["/mnt/debrid/nzbdav-symlinks/movies"]
+        section.edit.side_effect = media_protection.requests.exceptions.ReadTimeout(
+            "slow Plex response"
+        )
+        plex = Mock()
+        plex.library.sections.return_value = [section]
+        adapter = media_protection.PlexAdapter(
+            "plex", "Plex Media Server", {}, {}, self.logger
+        )
+
+        with (
+            patch.object(adapter, "_connect_for_library_operation", return_value=plex),
+            patch.object(
+                adapter, "_wait_for_library_paths", return_value=True
+            ) as verify,
+        ):
+            changed = adapter.replace_library_paths(
+                [
+                    {
+                        "id": "7",
+                        "name": "Movies",
+                        "paths": ["/mnt/debrid/infinidysk-symlinks/movies"],
+                    }
+                ]
+            )
+
+        self.assertEqual(1, len(changed))
+        verify.assert_called_once_with("7", ["/mnt/debrid/infinidysk-symlinks/movies"])
+
+    def test_plex_library_timeout_fails_when_exact_paths_cannot_be_verified(self):
+        section = Mock()
+        section.key = "7"
+        section.title = "Movies"
+        section.locations = ["/mnt/debrid/nzbdav-symlinks/movies"]
+        section.edit.side_effect = media_protection.requests.exceptions.ReadTimeout(
+            "slow Plex response"
+        )
+        plex = Mock()
+        plex.library.sections.return_value = [section]
+        adapter = media_protection.PlexAdapter(
+            "plex", "Plex Media Server", {}, {}, self.logger
+        )
+
+        with (
+            patch.object(adapter, "_connect_for_library_operation", return_value=plex),
+            patch.object(adapter, "_wait_for_library_paths", return_value=False),
+            self.assertRaisesRegex(RuntimeError, "could not be verified"),
+        ):
+            adapter.replace_library_paths(
+                [
+                    {
+                        "id": "7",
+                        "name": "Movies",
+                        "paths": ["/mnt/debrid/infinidysk-symlinks/movies"],
+                    }
+                ]
+            )
+
     def test_jellyfin_library_path_adds_destination_before_removing_source(self):
         adapter = media_protection.MediaBrowserAdapter(
             "jellyfin",
