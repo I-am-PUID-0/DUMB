@@ -382,6 +382,100 @@ class ConfigRouterHelperTests(unittest.TestCase):
         self.assertEqual(len(lines), 4)
         self.assertEqual(parsed, {"shared_buffers": "256MB", "max_connections": "100"})
 
+    def test_parse_postgresql_conf_decodes_quotes_and_ignores_inline_comments(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            path = Path(temp_dir, "postgresql.conf")
+            path.write_text(
+                "dynamic_shared_memory_type = posix\t# provider #1\n"
+                "log_timezone = 'Etc/UTC'\n"
+                "datestyle = 'iso, mdy'\n"
+                "custom_setting = 'value # retained' # actual comment\n"
+                "escaped_quote = 'operator''s value'\n"
+            )
+
+            _, parsed = config_router.parse_postgresql_conf(path)
+
+        self.assertEqual(parsed["dynamic_shared_memory_type"], "posix")
+        self.assertEqual(parsed["log_timezone"], "Etc/UTC")
+        self.assertEqual(parsed["datestyle"], "iso, mdy")
+        self.assertEqual(parsed["custom_setting"], "value # retained")
+        self.assertEqual(parsed["escaped_quote"], "operator's value")
+
+    def test_write_postgresql_conf_full_round_trip_is_byte_for_byte_lossless(self):
+        original = (
+            "# PostgreSQL configuration\r\n"
+            "port = 5432\r\n"
+            "dynamic_shared_memory_type = posix\t# provider default\r\n"
+            "log_timezone = 'Etc/UTC'\r\n"
+            "datestyle = 'iso, mdy'\r\n"
+            "lc_messages = 'C.UTF-8'\t# locale for errors\r\n"
+        )
+        with tempfile.TemporaryDirectory() as temp_dir:
+            path = Path(temp_dir, "postgresql.conf")
+            path.write_bytes(original.encode())
+            path.chmod(0o640)
+            _, parsed = config_router.parse_postgresql_conf(path)
+
+            config_router.write_postgresql_conf(path, parsed)
+
+            self.assertEqual(path.read_bytes(), original.encode())
+            self.assertEqual(path.stat().st_mode & 0o777, 0o640)
+
+    def test_write_postgresql_conf_changes_only_requested_values(self):
+        original = (
+            "# PostgreSQL configuration\n"
+            "max_wal_size = 1GB\t\t# upper WAL bound\n"
+            "min_wal_size = 80MB\n"
+            "log_timezone = 'Etc/UTC'\n"
+            "datestyle = 'iso, mdy'\n"
+        )
+        expected = (
+            "# PostgreSQL configuration\n"
+            "max_wal_size = 4GB\t\t# upper WAL bound\n"
+            "min_wal_size = 1GB\n"
+            "log_timezone = 'Etc/UTC'\n"
+            "datestyle = 'iso, mdy'\n"
+        )
+        with tempfile.TemporaryDirectory() as temp_dir:
+            path = Path(temp_dir, "postgresql.conf")
+            path.write_text(original)
+            _, parsed = config_router.parse_postgresql_conf(path)
+            parsed.update({"max_wal_size": "4GB", "min_wal_size": "1GB"})
+
+            config_router.write_postgresql_conf(path, parsed)
+
+            self.assertEqual(path.read_text(), expected)
+
+    def test_write_postgresql_conf_accepts_legacy_quoted_editor_values_once(self):
+        original = "log_timezone = 'Etc/UTC'\nmax_connections = 100\n"
+        with tempfile.TemporaryDirectory() as temp_dir:
+            path = Path(temp_dir, "postgresql.conf")
+            path.write_text(original)
+
+            config_router.write_postgresql_conf(
+                path,
+                {"log_timezone": "'Etc/UTC'", "max_connections": "'150'"},
+            )
+
+            self.assertEqual(
+                path.read_text(),
+                "log_timezone = 'Etc/UTC'\nmax_connections = 150\n",
+            )
+
+    def test_write_postgresql_conf_rejects_invalid_candidate_without_changes(self):
+        original = "log_timezone = 'Etc/UTC'\n"
+        with tempfile.TemporaryDirectory() as temp_dir:
+            path = Path(temp_dir, "postgresql.conf")
+            path.write_text(original)
+
+            with self.assertRaises(config_router.HTTPException) as raised:
+                config_router.write_postgresql_conf(
+                    path, "log_timezone = ''Etc/UTC''\n"
+                )
+
+            self.assertEqual(raised.exception.status_code, 400)
+            self.assertEqual(path.read_text(), original)
+
     def test_parse_ini_and_rclone_config_preserve_expected_option_behavior(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             ini_path = Path(temp_dir, "service.ini")

@@ -2943,10 +2943,12 @@ class InfiniDyskMigrationManager:
         deadline = time.monotonic() + QUIESCE_TIMEOUT_SECONDS
         last_message = None
         last_reported_at = 0.0
+        arr_api_errors: dict[str, str] = {}
 
         while True:
             pending = []
             arr_queue_pending = False
+            arr_api_pending = False
             managed_media_pending = False
             external_media_pending = False
             active_reads_pending = False
@@ -2981,16 +2983,27 @@ class InfiniDyskMigrationManager:
                         else len(records)
                     )
                 except Exception as error:
-                    raise InfiniDyskMigrationError(
-                        f"{process_name} queue could not be checked while quiescing: "
-                        f"{_safe_error_detail(error)}."
-                    ) from error
+                    arr_api_pending = True
+                    arr_api_errors[process_name] = _safe_error_detail(error)
+                    pending.append(f"{process_name}: queue API temporarily unavailable")
+                    continue
+                arr_api_errors.pop(process_name, None)
                 if queue_count:
                     arr_queue_pending = True
                     pending.append(f"{process_name}: {queue_count} queued")
                     continue
                 snapshot, blockers = self._arr_target_snapshot(target, process_handler)
                 if blockers or snapshot is None:
+                    transient_inventory_error = bool(snapshot is None) and all(
+                        "API inventory failed" in blocker for blocker in blockers
+                    )
+                    if transient_inventory_error:
+                        arr_api_pending = True
+                        arr_api_errors[process_name] = " ".join(blockers)[:500]
+                        pending.append(
+                            f"{process_name}: inventory API temporarily unavailable"
+                        )
+                        continue
                     raise InfiniDyskMigrationError(
                         blockers[0]
                         if blockers
@@ -3002,18 +3015,27 @@ class InfiniDyskMigrationManager:
                         f"{process_name}: queue changed while capturing its final inventory"
                     )
                     continue
-                final_queue = (
-                    _migration_arr_req(
-                        _arr_url(
-                            snapshot["host"],
-                            snapshot["api_version"],
-                            "queue?page=1&pageSize=1000&includeUnknownMovieItems=true&includeUnknownSeriesItems=true",
-                        ),
-                        snapshot["api_key"],
-                        "GET",
+                try:
+                    final_queue = (
+                        _migration_arr_req(
+                            _arr_url(
+                                snapshot["host"],
+                                snapshot["api_version"],
+                                "queue?page=1&pageSize=1000&includeUnknownMovieItems=true&includeUnknownSeriesItems=true",
+                            ),
+                            snapshot["api_key"],
+                            "GET",
+                        )
+                        or {}
                     )
-                    or {}
-                )
+                except Exception as error:
+                    arr_api_pending = True
+                    arr_api_errors[process_name] = _safe_error_detail(error)
+                    pending.append(
+                        f"{process_name}: final queue API temporarily unavailable"
+                    )
+                    continue
+                arr_api_errors.pop(process_name, None)
                 final_records = (
                     final_queue.get("records")
                     if isinstance(final_queue, dict)
@@ -3165,6 +3187,10 @@ class InfiniDyskMigrationManager:
                     instructions.append(
                         "Resolve failed or held Arr items while producers remain stopped."
                     )
+                if arr_api_pending:
+                    instructions.append(
+                        "Waiting for Arr APIs and their databases to recover."
+                    )
                 if managed_media_pending:
                     instructions.append("Wait for managed media playback to end.")
                 if external_media_pending:
@@ -3182,9 +3208,13 @@ class InfiniDyskMigrationManager:
                 last_message = summary
                 last_reported_at = now
             if now >= deadline:
+                api_detail = "; ".join(
+                    f"{name}: {detail}" for name, detail in arr_api_errors.items()
+                )
+                api_suffix = f" Last API errors: {api_detail}." if api_detail else ""
                 raise InfiniDyskMigrationError(
                     "Automatic quiescence timed out after one hour before any namespace paths were moved. "
-                    f"Remaining activity: {summary}."
+                    f"Remaining activity: {summary}.{api_suffix}"
                 )
             time.sleep(min(QUIESCE_POLL_SECONDS, max(0.0, deadline - now)))
 

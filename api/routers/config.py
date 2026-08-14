@@ -19,7 +19,7 @@ from utils.traefik_setup import (
 )
 from jsonschema import validate, ValidationError
 from ruamel.yaml import YAML
-import os, json, configparser, xmltodict, ast
+import os, json, configparser, xmltodict, ast, re, stat, tempfile
 
 
 class ConfigUpdateRequest(BaseModel):
@@ -440,23 +440,211 @@ def save_config_file(config_path, config_data, config_format, updates=None):
         raise HTTPException(status_code=500, detail=f"Failed to save config file: {e}")
 
 
+_POSTGRES_SETTING_KEY = re.compile(r"^[A-Za-z_][A-Za-z0-9_.]*$")
+_POSTGRES_BARE_VALUE = re.compile(r"^[A-Za-z0-9_.:+-]+$")
+
+
+def _split_postgresql_value_comment(value):
+    """Split a PostgreSQL value from an inline comment without unquoting it."""
+    quoted = False
+    index = 0
+    while index < len(value):
+        character = value[index]
+        if character == "'":
+            if quoted and index + 1 < len(value) and value[index + 1] == "'":
+                index += 2
+                continue
+            backslashes = 0
+            cursor = index - 1
+            while cursor >= 0 and value[cursor] == "\\":
+                backslashes += 1
+                cursor -= 1
+            if backslashes % 2 == 0:
+                quoted = not quoted
+        elif character == "#" and not quoted:
+            raw_value = value[:index].rstrip(" \t")
+            return raw_value, value[len(raw_value) :], quoted
+        index += 1
+
+    raw_value = value.rstrip(" \t")
+    return raw_value, value[len(raw_value) :], quoted
+
+
+def _parse_postgresql_setting_line(line):
+    newline = ""
+    body = line
+    if body.endswith("\r\n"):
+        body, newline = body[:-2], "\r\n"
+    elif body.endswith("\n"):
+        body, newline = body[:-1], "\n"
+
+    if not body.strip() or body.lstrip().startswith("#"):
+        return None
+
+    match = re.match(
+        r"^(?P<indent>[ \t]*)(?P<key>[A-Za-z_][A-Za-z0-9_.]*)(?P<tail>.*)$",
+        body,
+    )
+    if not match:
+        raise ValueError("invalid PostgreSQL setting name")
+
+    tail = match.group("tail")
+    separator_match = re.match(r"^[ \t]*=[ \t]*", tail)
+    if separator_match:
+        separator = separator_match.group(0)
+    else:
+        separator_match = re.match(r"^[ \t]+", tail)
+        if not separator_match:
+            raise ValueError(
+                f"PostgreSQL setting {match.group('key')} is missing a separator"
+            )
+        separator = separator_match.group(0)
+
+    raw_value, suffix, unterminated_quote = _split_postgresql_value_comment(
+        tail[len(separator) :]
+    )
+    if not raw_value:
+        raise ValueError(f"PostgreSQL setting {match.group('key')} has no value")
+    if unterminated_quote:
+        raise ValueError(
+            f"PostgreSQL setting {match.group('key')} has an unterminated quote"
+        )
+
+    return {
+        "indent": match.group("indent"),
+        "key": match.group("key"),
+        "separator": separator,
+        "raw_value": raw_value,
+        "suffix": suffix,
+        "newline": newline,
+    }
+
+
+def _decode_postgresql_value(raw_value):
+    value = raw_value.strip()
+    if not value.startswith("'"):
+        if "'" in value:
+            raise ValueError("quote must delimit the complete PostgreSQL value")
+        return value, False
+
+    decoded = []
+    index = 1
+    while index < len(value):
+        character = value[index]
+        if character == "'":
+            if index + 1 < len(value) and value[index + 1] == "'":
+                decoded.append("'")
+                index += 2
+                continue
+            if value[index + 1 :].strip():
+                raise ValueError("characters follow the closing PostgreSQL value quote")
+            return "".join(decoded), True
+        if character == "\\" and index + 1 < len(value) and value[index + 1] == "'":
+            decoded.extend((character, value[index + 1]))
+            index += 2
+            continue
+        decoded.append(character)
+        index += 1
+
+    raise ValueError("unterminated PostgreSQL value quote")
+
+
+def _normalize_postgresql_update_value(value):
+    if isinstance(value, bool):
+        return "on" if value else "off"
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        return str(value)
+    if not isinstance(value, str):
+        raise ValueError(f"unsupported PostgreSQL value type: {type(value).__name__}")
+    if "\x00" in value or "\n" in value or "\r" in value:
+        raise ValueError("PostgreSQL values cannot contain NUL or line breaks")
+
+    # Older DUMB APIs exposed the surrounding quotes as part of the editor
+    # value. Accept that stale-browser payload once without quoting it again.
+    submitted = value.strip()
+    if submitted.startswith("'"):
+        decoded, was_quoted = _decode_postgresql_value(submitted)
+        if was_quoted:
+            return decoded
+    return value
+
+
+def _format_postgresql_value(value, *, prefer_quoted=False):
+    if prefer_quoted or not _POSTGRES_BARE_VALUE.fullmatch(value):
+        return "'" + value.replace("'", "''") + "'"
+    return value
+
+
+def _validate_postgresql_conf_text(content):
+    for number, line in enumerate(content.splitlines(keepends=True), start=1):
+        try:
+            parsed = _parse_postgresql_setting_line(line)
+            if parsed:
+                _decode_postgresql_value(parsed["raw_value"])
+        except ValueError as error:
+            raise ValueError(
+                f"invalid PostgreSQL configuration on line {number}: {error}"
+            ) from error
+
+
+def _atomic_write_postgresql_conf(file_path, content):
+    target = os.path.realpath(os.fspath(file_path))
+    existing = os.stat(target, follow_symlinks=False)
+    directory = os.path.dirname(target)
+    descriptor, temporary = tempfile.mkstemp(
+        dir=directory, prefix=f".{os.path.basename(target)}.", suffix=".tmp"
+    )
+    try:
+        os.fchmod(descriptor, stat.S_IMODE(existing.st_mode))
+        temporary_stat = os.fstat(descriptor)
+        if (temporary_stat.st_uid, temporary_stat.st_gid) != (
+            existing.st_uid,
+            existing.st_gid,
+        ):
+            os.fchown(descriptor, existing.st_uid, existing.st_gid)
+        with os.fdopen(descriptor, "w", newline="") as file:
+            descriptor = -1
+            file.write(content)
+            file.flush()
+            os.fsync(file.fileno())
+        os.replace(temporary, target)
+        temporary = None
+        try:
+            directory_descriptor = os.open(directory, os.O_RDONLY)
+            try:
+                os.fsync(directory_descriptor)
+            finally:
+                os.close(directory_descriptor)
+        except OSError:
+            # Some network/FUSE filesystems do not support directory fsync.
+            # The file itself is already flushed and atomically replaced.
+            pass
+    finally:
+        if descriptor >= 0:
+            os.close(descriptor)
+        if temporary is not None:
+            try:
+                os.unlink(temporary)
+            except FileNotFoundError:
+                pass
+
+
 def parse_postgresql_conf(file_path):
     config = {}
     lines = []
-    with open(file_path, "r") as file:
-        for line in file:
-            stripped = line.strip()
+    with open(file_path, "r", newline="") as file:
+        for number, line in enumerate(file, start=1):
             lines.append(line)
-
-            if not stripped or stripped.startswith("#"):
-                continue
-
-            if "=" in stripped:
-                key, value = map(str.strip, stripped.split("=", 1))
-                config[key] = value
-            elif " " in stripped:
-                key, value = map(str.strip, stripped.split(None, 1))
-                config[key] = value
+            try:
+                parsed = _parse_postgresql_setting_line(line)
+                if parsed:
+                    config[parsed["key"]] = _decode_postgresql_value(
+                        parsed["raw_value"]
+                    )[0]
+            except ValueError as error:
+                raise ValueError(
+                    f"invalid PostgreSQL configuration on line {number}: {error}"
+                ) from error
     return lines, config
 
 
@@ -464,46 +652,61 @@ def write_postgresql_conf(file_path, updates):
     validate_file_path(file_path)
 
     try:
-        with open(file_path, "r") as file:
+        with open(file_path, "r", newline="") as file:
             lines = file.readlines()
 
         if isinstance(updates, str):
-            write_to_file(file_path, updates)
+            _validate_postgresql_conf_text(updates)
+            _atomic_write_postgresql_conf(file_path, updates)
             return
 
         elif isinstance(updates, dict):
-            for key, value in updates.items():
-                if isinstance(value, bool):
-                    formatted_value = "on" if value else "off"
-                elif isinstance(value, (int, float)):
-                    formatted_value = str(value)
-                elif isinstance(value, str):
-                    if not (
-                        value[-2:]
-                        in ["MB", "GB", "kB", "TB", "ms", "s", "min", "h", "d"]
-                        or value[-1:] == "B"
-                    ):
-                        formatted_value = f"'{value}'"
-                    else:
-                        formatted_value = value
-                else:
-                    raise ValueError(
-                        f"Unsupported value type: {type(value)} for key {key}"
-                    )
+            setting_lines = {}
+            for index, line in enumerate(lines):
+                parsed = _parse_postgresql_setting_line(line)
+                if parsed:
+                    # PostgreSQL applies the last active occurrence.
+                    setting_lines[parsed["key"]] = (index, parsed)
 
-                for i, line in enumerate(lines):
-                    if line.strip().startswith(f"{key} ="):
-                        lines[i] = f"{key} = {formatted_value}\n"
-                        break
+            for key, value in updates.items():
+                if not isinstance(key, str) or not _POSTGRES_SETTING_KEY.fullmatch(key):
+                    raise ValueError(f"invalid PostgreSQL setting name: {key!r}")
+                semantic_value = _normalize_postgresql_update_value(value)
+                current = setting_lines.get(key)
+                if current:
+                    index, parsed = current
+                    current_value, was_quoted = _decode_postgresql_value(
+                        parsed["raw_value"]
+                    )
+                    if semantic_value == current_value:
+                        continue
+                    formatted_value = _format_postgresql_value(
+                        semantic_value, prefer_quoted=was_quoted
+                    )
+                    lines[index] = (
+                        f"{parsed['indent']}{key}{parsed['separator']}"
+                        f"{formatted_value}{parsed['suffix']}{parsed['newline']}"
+                    )
                 else:
+                    if lines and not lines[-1].endswith(("\n", "\r")):
+                        lines[-1] += "\n"
+                    formatted_value = _format_postgresql_value(semantic_value)
                     lines.append(f"{key} = {formatted_value}\n")
 
-        write_to_file(file_path, lines)
+        content = "".join(lines)
+        _validate_postgresql_conf_text(content)
+        _atomic_write_postgresql_conf(file_path, content)
 
+    except HTTPException:
+        raise
+    except ValueError as error:
+        raise HTTPException(
+            status_code=400, detail=f"Invalid PostgreSQL configuration: {error}"
+        ) from None
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Failed to write PostgreSQL config: {e}"
-        )
+        ) from None
 
 
 def parse_rclone_config(file_path):

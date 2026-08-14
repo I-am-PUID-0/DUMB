@@ -990,10 +990,11 @@ class ProcessHandler:
                 policy = self._get_shutdown_policy(policy_name)
                 max_attempts = policy.get("max_attempts", 2)
                 wait_timeout = policy.get("wait_timeout", 10)
+                shutdown_signal = policy.get("signal", signal.SIGTERM)
                 self.logger.debug(f"Process {process_name} found: {process}")
                 if disable_restart:
                     self._set_restart_disabled(internal_name, True)
-                process_group = self._signal_process_group(process, signal.SIGTERM)
+                process_group = self._signal_process_group(process, shutdown_signal)
                 attempt = 0
                 terminated = False
                 while attempt < max_attempts:
@@ -1151,7 +1152,13 @@ class ProcessHandler:
         if key in ("plex", "jellyfin", "emby"):
             policy.update(max_attempts=6, wait_timeout=15)
         elif key in ("postgres",):
-            policy.update(max_attempts=6, wait_timeout=15)
+            # SIGTERM requests PostgreSQL's smart shutdown, which waits for
+            # every persistent client to disconnect. Managed Arr/Bazarr
+            # pools keep idle sessions open, so DUMB eventually escalates to
+            # SIGKILL and forces crash recovery. SIGINT is PostgreSQL's fast
+            # shutdown: it terminates sessions, rolls back active work, and
+            # performs a clean checkpoint before exiting.
+            policy.update(max_attempts=6, wait_timeout=15, signal=signal.SIGINT)
         elif key in ("rclone", "decypharr", "infinidysk", "altmount", "zurg"):
             policy.update(max_attempts=4, wait_timeout=12)
         elif key in ("bazarr",):

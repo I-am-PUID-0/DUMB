@@ -1,4 +1,5 @@
 import unittest
+import ast
 import os
 import tempfile
 from unittest.mock import Mock, call, patch
@@ -9,10 +10,45 @@ from utils import setup
 
 
 class BazarrSetupTests(unittest.TestCase):
+    def test_postgres_job_cleanup_patch_releases_thread_scoped_session(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            jobs_queue = os.path.join(temp_dir, "bazarr", "app", "jobs_queue.py")
+            os.makedirs(os.path.dirname(jobs_queue), exist_ok=True)
+            with open(jobs_queue, "w", encoding="utf-8") as handle:
+                handle.write(
+                    "import logging\n\n"
+                    "class JobQueue:\n"
+                    "    def run(self):\n"
+                    "        try:\n"
+                    "            return True\n"
+                    "        finally:\n"
+                    "            try:\n"
+                    "                # Send a complete event payload with status and progress_value\n"
+                    "                payload = {}\n"
+                    "            except Exception as e:\n"
+                    "                logging.exception(e)\n"
+                )
+
+            patched, error = setup._patch_bazarr_postgres_job_cleanup(temp_dir)
+            self.assertTrue(patched, error)
+            with open(jobs_queue, encoding="utf-8") as handle:
+                content = handle.read()
+
+            self.assertIn("from app.database import database", content)
+            self.assertIn("database.remove()", content)
+            self.assertEqual(content.count("database.remove()"), 1)
+            ast.parse(content)
+
+            patched, error = setup._patch_bazarr_postgres_job_cleanup(temp_dir)
+            self.assertTrue(patched, error)
+            with open(jobs_queue, encoding="utf-8") as handle:
+                self.assertEqual(handle.read().count("database.remove()"), 1)
+
     def test_configure_prepares_runtime_binary_and_data_directories(self):
         config = {
             "enabled": True,
             "process_name": "Bazarr",
+            "postgres_enabled": True,
             "port": 6767,
             "config_dir": "/opt/bazarr",
             "config_file": "/bazarr/data/config/config.yaml",
@@ -33,6 +69,9 @@ class BazarrSetupTests(unittest.TestCase):
             patch.object(
                 setup, "_ensure_bazarr_postgres_driver", return_value=(True, None)
             ),
+            patch.object(
+                setup, "_patch_bazarr_postgres_job_cleanup", return_value=(True, None)
+            ) as patch_cleanup,
             patch.object(
                 setup, "_sync_bazarr_port", return_value=(False, None)
             ) as sync_port,
@@ -70,6 +109,7 @@ class BazarrSetupTests(unittest.TestCase):
             ],
         )
         sync_port.assert_called_once_with("/bazarr/data/config/config.yaml", 6767)
+        patch_cleanup.assert_called_once_with("/opt/bazarr")
 
     def test_missing_postgres_driver_is_installed_from_bazarr_requirements(self):
         process_handler = Mock()

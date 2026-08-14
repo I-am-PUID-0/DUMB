@@ -3430,6 +3430,67 @@ def _ensure_bazarr_postgres_driver(process_handler, install_path: str):
     return True, None
 
 
+def _patch_bazarr_postgres_job_cleanup(
+    install_path: str,
+) -> tuple[bool, str | None]:
+    """Release Bazarr's thread-scoped PostgreSQL session after every queued job."""
+    source = Path(install_path) / "bazarr" / "app" / "jobs_queue.py"
+    try:
+        content = source.read_text(encoding="utf-8")
+    except OSError as exc:
+        return False, f"Failed reading Bazarr job queue at {source}: {exc}"
+
+    marker = "# DUMB: release the job thread's scoped database session."
+    if marker in content:
+        return True, None
+    if "database.remove()" in content or "database.close()" in content:
+        return True, None
+
+    needle = (
+        "        finally:\n"
+        "            try:\n"
+        "                # Send a complete event payload with status and progress_value\n"
+    )
+    replacement = (
+        "        finally:\n"
+        "            try:\n"
+        "                # DUMB: release the job thread's scoped database session.\n"
+        "                from app.database import database\n"
+        "                database.remove()\n"
+        "            except Exception as e:\n"
+        '                logging.exception(f"Exception raised while closing the job database session: {e}")\n'
+        "            try:\n"
+        "                # Send a complete event payload with status and progress_value\n"
+    )
+    if needle not in content:
+        return False, (
+            "Bazarr's job queue layout is not recognized and no per-job database "
+            "session cleanup was found."
+        )
+
+    temporary = source.with_name(f".{source.name}.dumb-{os.getpid()}.tmp")
+    try:
+        file_stat = source.stat()
+        temporary.write_text(content.replace(needle, replacement, 1), encoding="utf-8")
+        os.chmod(temporary, stat.S_IMODE(file_stat.st_mode))
+        temporary_stat = temporary.stat()
+        if (temporary_stat.st_uid, temporary_stat.st_gid) != (
+            file_stat.st_uid,
+            file_stat.st_gid,
+        ):
+            os.chown(temporary, file_stat.st_uid, file_stat.st_gid)
+        os.replace(temporary, source)
+    except OSError as exc:
+        try:
+            temporary.unlink(missing_ok=True)
+        except OSError:
+            pass
+        return False, f"Failed patching Bazarr PostgreSQL job cleanup: {exc}"
+
+    logger.info("Applied Bazarr PostgreSQL job-session cleanup patch.")
+    return True, None
+
+
 def _sync_bazarr_port(config_file: str, port: int) -> tuple[bool, str | None]:
     """Keep Bazarr's persisted port aligned with DUMB's managed port."""
     if not config_file or not os.path.isfile(config_file):
@@ -3540,6 +3601,13 @@ def setup_bazarr(
 
         if not os.path.isfile(bazarr_py_path):
             return False, f"Bazarr install did not create {bazarr_py_path}."
+
+        if service_postgres_enabled(config):
+            patched, patch_error = _patch_bazarr_postgres_job_cleanup(install_path)
+            if not patched:
+                logger.warning(
+                    "Bazarr PostgreSQL session cleanup skipped: %s", patch_error
+                )
 
         # Bazarr downloads its architecture-specific archive helper on first
         # start. Keep the application tree root-owned, but make that narrow

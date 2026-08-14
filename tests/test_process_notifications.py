@@ -138,6 +138,22 @@ class ProcessNotificationTests(unittest.TestCase):
 
         self.assertEqual({"max_attempts": 1, "wait_timeout": 10}, policy)
 
+    def test_postgres_shutdown_uses_fast_shutdown_signal(self):
+        handler = self._handler_with_process()
+        process = handler.process_names["Example"]
+        process.poll.return_value = 0
+        handler._signal_process_group = Mock(return_value=1234)
+        handler._process_group_alive = Mock(return_value=False)
+        handler._update_running_processes_file = Mock()
+
+        with patch(
+            "utils.processes.CONFIG_MANAGER.find_key_for_process",
+            return_value=("postgres", None),
+        ):
+            handler.stop_process("Example")
+
+        handler._signal_process_group.assert_called_once_with(process, signal.SIGINT)
+
     @patch("utils.processes.notify_event")
     def test_immediate_helper_failure_preserves_stderr_before_logging(
         self, notify_event

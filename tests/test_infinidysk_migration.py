@@ -433,6 +433,87 @@ class InfiniDyskMigrationTests(unittest.TestCase):
         self.assertEqual(0, refreshed["arr"][0]["queue_count"])
         self.assertEqual([], refreshed["pending_conditions"])
 
+    def test_quiescence_waits_for_transient_arr_queue_api_failure(self):
+        manager = InfiniDyskMigrationManager()
+        config = {
+            "infinidysk": {"enabled": True, "process_name": "NzbDAV"},
+            "radarr": {
+                "instances": {
+                    "NzbDAV": {
+                        "enabled": True,
+                        "core_service": "infinidysk",
+                        "process_name": "Radarr NzbDAV",
+                    }
+                }
+            },
+        }
+        running_names = {"NzbDAV", "Radarr NzbDAV"}
+
+        class Process:
+            def __init__(self, name):
+                self.name = name
+
+            def poll(self):
+                return None if self.name in running_names else 0
+
+        handler = MagicMock()
+        handler.process_names = {name: Process(name) for name in running_names}
+        handler._prefixed_name.side_effect = lambda value: value
+        handler.stop_process.side_effect = lambda name: running_names.discard(name)
+        original = {
+            "process_name": "Radarr NzbDAV",
+            "host": "http://127.0.0.1:7879",
+            "api_version": "v3",
+            "api_key": "secret",
+        }
+        final_snapshot = {
+            **original,
+            "service_key": "radarr",
+            "instance_name": "NzbDAV",
+            "item_endpoint": "movie",
+            "queue_count": 0,
+            "roots": [],
+            "items": [],
+            "clients": [],
+            "tags": [],
+        }
+        progress = MagicMock()
+
+        with (
+            patch(
+                "utils.infinidysk_migration._migration_arr_req",
+                side_effect=[
+                    RuntimeError("temporary PostgreSQL saturation"),
+                    {"totalRecords": 0, "records": []},
+                    {"totalRecords": 0, "records": []},
+                ],
+            ),
+            patch.object(
+                manager, "_arr_target_snapshot", return_value=(final_snapshot, [])
+            ),
+            patch.object(manager, "_infinidysk_active_reads", return_value=(0, None)),
+            patch("utils.infinidysk_migration.time.sleep", return_value=None),
+        ):
+            refreshed = manager._quiesce_for_cutover(
+                config,
+                {"arr": [original], "prowlarr": [], "media": []},
+                ["NzbDAV", "Radarr NzbDAV"],
+                handler,
+                MagicMock(),
+                progress,
+                [],
+                [],
+            )
+
+        self.assertEqual(0, refreshed["arr"][0]["queue_count"])
+        self.assertTrue(
+            any(
+                "Waiting for Arr APIs and their databases to recover"
+                in str(call.args[1])
+                for call in progress.call_args_list
+            )
+        )
+
     def test_quiescence_timeout_refuses_cutover_before_stopping_provider(self):
         manager = InfiniDyskMigrationManager()
         handler = MagicMock()
