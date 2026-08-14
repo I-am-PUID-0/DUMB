@@ -193,6 +193,10 @@ class MediaServerAdapter:
         """Replace library source paths with an exact previously inventoried set."""
         raise NotImplementedError
 
+    def server_identity(self) -> dict:
+        """Return stable server identity when the vendor API exposes one."""
+        return {}
+
 
 class PlexAdapter(MediaServerAdapter):
     def _connect(self):
@@ -231,6 +235,14 @@ class PlexAdapter(MediaServerAdapter):
                 "recording": None,
                 "reason": str(error),
             }
+
+    def server_identity(self) -> dict:
+        plex = self._connect()
+        return {
+            "name": str(getattr(plex, "friendlyName", "") or "Plex"),
+            "machine_identifier": str(getattr(plex, "machineIdentifier", "") or ""),
+            "version": str(getattr(plex, "version", "") or ""),
+        }
 
     def library_settings(self) -> dict:
         plex = self._connect()

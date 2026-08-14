@@ -33,7 +33,7 @@ from utils.nzbdav_settings import (
 from utils.prowlarr_settings import _prowlarr_req
 from utils.symlink_repair import backup_symlink_manifest, repair_symlinks
 
-STATE_VERSION = 2
+STATE_VERSION = 3
 DEFAULT_STATE_PATH = Path("/config/migrations/infinidysk.json")
 LEGACY_REPOSITORIES = {("nzbdav", "nzbdav"), ("nzbdav-dev", "nzbdav")}
 LEGACY_PATH_MARKERS = ("nzbdav",)
@@ -54,6 +54,12 @@ ARR_SERVICE_API = {
     "lidarr": ("v1", "artist"),
     "whisparr": ("v3", "series"),
 }
+ARR_EDITOR_API = {
+    "radarr": ("movie/editor", "movieIds"),
+    "sonarr": ("series/editor", "seriesIds"),
+    "lidarr": ("artist/editor", "artistIds"),
+    "whisparr": ("series/editor", "seriesIds"),
+}
 MEDIA_SERVICE_KEYS = ("plex", "jellyfin", "emby")
 INFINIDYSK_CORE_CONSUMER_KEYS = (
     "rclone",
@@ -67,6 +73,8 @@ INFINIDYSK_CORE_CONSUMER_KEYS = (
 )
 PREFLIGHT_TTL_SECONDS = 30 * 60
 ARR_INVENTORY_TIMEOUT_SECONDS = 120
+ARR_EDITOR_BATCH_SIZE = 500
+ARR_FALLBACK_PROGRESS_INTERVAL = 5
 QUIESCE_TIMEOUT_SECONDS = 60 * 60
 QUIESCE_POLL_SECONDS = 5
 ACTIVE_JOB_STATUSES = {"queued", "running", "rolling_back"}
@@ -255,6 +263,64 @@ class InfiniDyskMigrationManager:
         except (FileNotFoundError, json.JSONDecodeError, OSError):
             return {}
 
+    def _sidecar_path(self, suffix: str) -> Path:
+        return self.state_path.with_name(f"{self.state_path.stem}.{suffix}.json")
+
+    def _load_sidecar(self, suffix: str, legacy_key: str) -> dict:
+        path = self._sidecar_path(suffix)
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+            if isinstance(payload, dict):
+                return payload
+        except (FileNotFoundError, json.JSONDecodeError, OSError):
+            pass
+        state = self._load_state()
+        legacy = state.get(legacy_key)
+        if not isinstance(legacy, dict):
+            return {}
+        try:
+            self._compact_legacy_state(state)
+        except OSError:
+            # A read-only or temporarily unavailable state directory must not hide
+            # an otherwise readable legacy job/preflight record. The next read can
+            # retry the layout migration without changing the migration payload.
+            pass
+        return legacy
+
+    def _compact_legacy_state(self, state: dict) -> dict:
+        compact = copy.deepcopy(state)
+        changed = False
+        for legacy_key, suffix in (("preflight", "preflight"), ("job", "job")):
+            payload = compact.get(legacy_key)
+            if not isinstance(payload, dict):
+                continue
+            self._write_private_json(self._sidecar_path(suffix), payload)
+            compact.pop(legacy_key, None)
+            changed = True
+        if changed:
+            compact["state_version"] = STATE_VERSION
+            self._save_state(compact)
+        return compact
+
+    def _save_sidecar(self, suffix: str, legacy_key: str, payload: dict) -> None:
+        self._write_private_json(self._sidecar_path(suffix), payload)
+        # Older builds embedded the complete Arr/media inventory and the live job
+        # in one state file. Remove that legacy copy after the sidecar is durable so
+        # frequent progress polls/updates never parse or rewrite a huge inventory.
+        state = self._load_state()
+        if legacy_key in state:
+            state.pop(legacy_key, None)
+            self._save_state(state)
+
+    def _load_preflight(self) -> dict:
+        return self._load_sidecar("preflight", "preflight")
+
+    def _save_preflight(self, preflight: dict) -> None:
+        self._save_sidecar("preflight", "preflight", preflight)
+
+    def _load_job(self) -> dict:
+        return self._load_sidecar("job", "job")
+
     def _save_state(self, payload: dict) -> None:
         self.state_path.parent.mkdir(parents=True, exist_ok=True)
         fd, temp_path = tempfile.mkstemp(
@@ -277,9 +343,7 @@ class InfiniDyskMigrationManager:
     def _save_job(self, job: dict) -> None:
         with self._job_lock:
             job["updated_at"] = int(time.time())
-            state = self._load_state()
-            state["job"] = copy.deepcopy(job)
-            self._save_state(state)
+            self._save_sidecar("job", "job", copy.deepcopy(job))
 
     def _update_job(
         self,
@@ -291,7 +355,9 @@ class InfiniDyskMigrationManager:
         percent: int,
         result: dict | None = None,
         error: str | None = None,
+        detail: dict | None = None,
     ) -> None:
+        previous_stage = job.get("stage")
         if status:
             job["status"] = status
         event = {
@@ -300,9 +366,15 @@ class InfiniDyskMigrationManager:
             "message": message,
             "percent": max(0, min(100, int(percent))),
         }
+        if detail is not None:
+            event["detail"] = copy.deepcopy(detail)
         job["stage"] = stage
         job["message"] = message
         job["progress"] = event["percent"]
+        if detail is not None:
+            job["detail"] = copy.deepcopy(detail)
+        elif stage != previous_stage:
+            job.pop("detail", None)
         job["events"] = [*(job.get("events") or []), event][-100:]
         if result is not None:
             job["result"] = result
@@ -310,9 +382,25 @@ class InfiniDyskMigrationManager:
             job["error"] = error
         self._save_job(job)
 
+    @staticmethod
+    def _public_recovery(state: dict, fallback_error: object = None) -> dict:
+        status = str(state.get("status") or "")
+        return {
+            "cause": _safe_error_detail(
+                RuntimeError(str(state.get("last_error") or fallback_error or ""))
+            ),
+            "rollback_errors": [
+                _safe_error_detail(RuntimeError(str(item)))
+                for item in state.get("rollback_errors") or []
+            ],
+            "backup_bundle_path": str(state.get("backup_bundle_path") or ""),
+            "config_backup_path": str(state.get("config_backup_path") or ""),
+            "manual_restore_required": status == "rollback_attention_required",
+        }
+
     def get_job(self, job_id: str | None = None) -> dict | None:
         with self._job_lock:
-            job = self._load_state().get("job")
+            job = self._load_job()
             if not isinstance(job, dict):
                 return None
             if job_id and not secrets.compare_digest(
@@ -330,6 +418,18 @@ class InfiniDyskMigrationManager:
                 )
                 job["error"] = job["message"]
                 job["progress"] = int(job.get("progress") or 0)
+                self._save_job(job)
+            if job.get("status") in {
+                "failed_rolled_back",
+                "rollback_attention_required",
+            } and not ((job.get("result") or {}).get("recovery")):
+                state = self._load_state()
+                job["result"] = {
+                    "status": job.get("status"),
+                    "recovery": self._public_recovery(
+                        state, job.get("error") or job.get("message")
+                    ),
+                }
                 self._save_job(job)
             playback_override = self._playback_override
             if job.get("status") in ACTIVE_JOB_STATUSES and secrets.compare_digest(
@@ -382,7 +482,7 @@ class InfiniDyskMigrationManager:
                     "An InfiniDysk namespace migration is already active."
                 )
             state = self._load_state()
-            preflight = state.get("preflight") or {}
+            preflight = self._load_preflight()
             now = int(time.time())
             if not preflight_token or not secrets.compare_digest(
                 str(preflight.get("token") or ""), str(preflight_token)
@@ -471,12 +571,13 @@ class InfiniDyskMigrationManager:
                 process_handler,
                 logger,
                 job_id=job["job_id"],
-                progress_callback=lambda stage, message, percent, status="running": self._update_job(
+                progress_callback=lambda stage, message, percent, status="running", detail=None: self._update_job(
                     job,
                     status=status,
                     stage=stage,
                     message=message,
                     percent=percent,
+                    detail=detail,
                 ),
             )
             self._update_job(
@@ -496,6 +597,9 @@ class InfiniDyskMigrationManager:
                 in {"failed_rolled_back", "rollback_attention_required"}
                 else "failed"
             )
+            recovery = None
+            if status in {"failed_rolled_back", "rollback_attention_required"}:
+                recovery = self._public_recovery(state, error)
             self._update_job(
                 job,
                 status=status,
@@ -507,6 +611,11 @@ class InfiniDyskMigrationManager:
                     else int(job.get("progress") or 0)
                 ),
                 error=str(error),
+                result=(
+                    {"status": status, "recovery": recovery}
+                    if recovery is not None
+                    else None
+                ),
             )
         finally:
             self._reset_playback_override()
@@ -653,8 +762,8 @@ class InfiniDyskMigrationManager:
         return bool(process and getattr(process, "poll", lambda: None)() is None)
 
     @staticmethod
-    def _linked_instances(config: dict, keys: Iterable[str]) -> list[dict]:
-        linked = []
+    def _enabled_instances(config: dict, keys: Iterable[str]) -> list[dict]:
+        enabled = []
         for service_key in dict.fromkeys(keys):
             service = config.get(service_key)
             instances = service.get("instances") if isinstance(service, dict) else None
@@ -663,13 +772,7 @@ class InfiniDyskMigrationManager:
             for instance_name, instance in instances.items():
                 if not isinstance(instance, dict) or not instance.get("enabled"):
                     continue
-                linked_by_core = has_core_service(instance, "infinidysk")
-                linked_by_rclone_type = service_key == "rclone" and str(
-                    instance.get("key_type") or ""
-                ).strip().lower() in {"infinidysk", "nzbdav"}
-                if not (linked_by_core or linked_by_rclone_type):
-                    continue
-                linked.append(
+                enabled.append(
                     {
                         "service_key": service_key,
                         "instance_name": instance_name,
@@ -679,6 +782,21 @@ class InfiniDyskMigrationManager:
                         "config": instance,
                     }
                 )
+        return enabled
+
+    @staticmethod
+    def _linked_instances(config: dict, keys: Iterable[str]) -> list[dict]:
+        linked = []
+        for target in InfiniDyskMigrationManager._enabled_instances(config, keys):
+            service_key = target["service_key"]
+            instance = target["config"]
+            linked_by_core = has_core_service(instance, "infinidysk")
+            linked_by_rclone_type = service_key == "rclone" and str(
+                instance.get("key_type") or ""
+            ).strip().lower() in {"infinidysk", "nzbdav"}
+            if not (linked_by_core or linked_by_rclone_type):
+                continue
+            linked.append(target)
         return linked
 
     @staticmethod
@@ -935,19 +1053,65 @@ class InfiniDyskMigrationManager:
         )
 
     @staticmethod
-    def _arr_snapshot(config: dict, process_handler) -> tuple[list[dict], list[str]]:
+    def _arr_snapshot(
+        config: dict, process_handler
+    ) -> tuple[list[dict], list[str], list[dict]]:
         snapshots = []
         blockers = []
-        for target in InfiniDyskMigrationManager._linked_instances(
+        discovery = []
+        for target in InfiniDyskMigrationManager._enabled_instances(
             config, set(ARR_SERVICE_API)
         ):
+            configured_link = has_core_service(target["config"], "infinidysk")
             snapshot, target_blockers = InfiniDyskMigrationManager._arr_target_snapshot(
                 target, process_handler
             )
-            blockers.extend(target_blockers)
-            if snapshot is not None:
+            if snapshot is None:
+                blockers.extend(target_blockers)
+                discovery.append(
+                    {
+                        "service_key": target["service_key"],
+                        "instance_name": str(target["instance_name"]),
+                        "process_name": target["process_name"],
+                        "included": False,
+                        "reasons": [
+                            "Inventory failed, so DUMB could not determine whether this enabled Arr references the legacy namespace."
+                        ],
+                    }
+                )
+                continue
+
+            desired = InfiniDyskMigrationManager._desired_arr_snapshot(snapshot)
+            counts = InfiniDyskMigrationManager._arr_change_counts(snapshot, desired)
+            reasons = []
+            if configured_link:
+                reasons.append("Configured core_service linkage")
+            labels = {
+                "roots": "legacy root-folder reference(s)",
+                "items": "legacy item-path reference(s)",
+                "clients": "legacy download-client/category reference(s)",
+                "tags": "legacy Arr tag(s)",
+            }
+            reasons.extend(
+                f"{count} {labels[key]}" for key, count in counts.items() if count
+            )
+            included = bool(configured_link or any(counts.values()))
+            discovery.append(
+                {
+                    "service_key": target["service_key"],
+                    "instance_name": str(target["instance_name"]),
+                    "process_name": target["process_name"],
+                    "included": included,
+                    "reasons": reasons
+                    or [
+                        "No configured InfiniDysk linkage or live legacy path, category, or tag reference was found."
+                    ],
+                }
+            )
+            if included:
+                snapshot["discovery_reasons"] = reasons
                 snapshots.append(snapshot)
-        return snapshots, blockers
+        return snapshots, blockers, discovery
 
     @staticmethod
     def _prowlarr_snapshot(
@@ -1008,10 +1172,12 @@ class InfiniDyskMigrationManager:
     ) -> tuple[list[dict], list[str]]:
         snapshots = []
         blockers = []
+        configured_media = []
         for key in MEDIA_SERVICE_KEYS:
             service = config.get(key)
             if not isinstance(service, dict) or not service.get("enabled"):
                 continue
+            configured_media.append(key)
             process_name = str(service.get("process_name") or key.title())
             if not InfiniDyskMigrationManager._process_running(
                 process_handler, process_name
@@ -1040,8 +1206,50 @@ class InfiniDyskMigrationManager:
                     "process_name": process_name,
                     "libraries": libraries,
                     "activity": activity,
+                    "external_api_only": False,
                 }
             )
+
+        if not configured_media:
+            dumb = config.get("dumb") or {}
+            plex_address = str(dumb.get("plex_address") or "").strip()
+            plex_token = str(dumb.get("plex_token") or "").strip()
+            if plex_address and plex_token:
+                process_name = "External Plex"
+                adapter = build_adapter("plex", process_name, logger)
+                try:
+                    identity = adapter.server_identity()
+                    if not str(identity.get("machine_identifier") or ""):
+                        raise RuntimeError(
+                            "Plex did not return a stable machine identifier"
+                        )
+                    activity = adapter.activity()
+                    if activity.get("state") == "unknown":
+                        raise RuntimeError(
+                            activity.get("reason")
+                            or "Plex activity could not be verified"
+                        )
+                    libraries = adapter.library_paths()
+                except Exception as error:
+                    blockers.append(
+                        "External Plex connection failed. Verify dumb.plex_address and dumb.plex_token: "
+                        f"{_safe_error_detail(error)}."
+                    )
+                else:
+                    snapshots.append(
+                        {
+                            "service_key": "plex",
+                            "process_name": process_name,
+                            "libraries": libraries,
+                            "activity": activity,
+                            "identity": identity,
+                            "external_api_only": True,
+                        }
+                    )
+            elif plex_address or plex_token:
+                blockers.append(
+                    "External Plex discovery requires both dumb.plex_address and dumb.plex_token."
+                )
         return snapshots, blockers
 
     @staticmethod
@@ -1106,6 +1314,7 @@ class InfiniDyskMigrationManager:
             "arr_services": [
                 {
                     "process_name": item.get("process_name"),
+                    "discovery_reasons": list(item.get("discovery_reasons") or []),
                     "queue_count": item.get("queue_count", 0),
                     "root_changes": sum(
                         1
@@ -1119,6 +1328,12 @@ class InfiniDyskMigrationManager:
                         if _replace_namespace_text(str(record.get("path") or ""))
                         != str(record.get("path") or "")
                     ),
+                    "client_changes": sum(
+                        1
+                        for client in item.get("clients") or []
+                        if InfiniDyskMigrationManager._rewrite_external_value(client)
+                        != client
+                    ),
                     "tag_changes": sum(
                         1
                         for tag in item.get("tags") or []
@@ -1127,6 +1342,16 @@ class InfiniDyskMigrationManager:
                     ),
                 }
                 for item in preflight.get("arr") or []
+            ],
+            "arr_discovery": [
+                {
+                    "service_key": item.get("service_key"),
+                    "instance_name": item.get("instance_name"),
+                    "process_name": item.get("process_name"),
+                    "included": bool(item.get("included")),
+                    "reasons": list(item.get("reasons") or []),
+                }
+                for item in preflight.get("arr_discovery") or []
             ],
             "prowlarr_services": [
                 {
@@ -1160,6 +1385,9 @@ class InfiniDyskMigrationManager:
             "media_servers": [
                 {
                     "process_name": item.get("process_name"),
+                    "server_name": (item.get("identity") or {}).get("name"),
+                    "server_version": (item.get("identity") or {}).get("version"),
+                    "external_api_only": bool(item.get("external_api_only")),
                     "library_changes": sum(
                         1
                         for library in item.get("libraries") or []
@@ -1189,7 +1417,25 @@ class InfiniDyskMigrationManager:
             now = int(now or time.time())
             filesystem, blockers = self._namespace_filesystem_plan(config)
             linked_services = self._linked_service_inventory(config, process_handler)
-            arr, arr_blockers = self._arr_snapshot(config, process_handler)
+            arr, arr_blockers, arr_discovery = self._arr_snapshot(
+                config, process_handler
+            )
+            known_linked = {
+                str(item.get("process_name") or "") for item in linked_services
+            }
+            for item in arr_discovery:
+                process_name = str(item.get("process_name") or "")
+                if not item.get("included") or process_name in known_linked:
+                    continue
+                linked_services.append(
+                    {
+                        "service_key": item.get("service_key"),
+                        "instance_name": item.get("instance_name"),
+                        "process_name": process_name,
+                        "running": self._process_running(process_handler, process_name),
+                    }
+                )
+                known_linked.add(process_name)
             prowlarr, prowlarr_blockers = self._prowlarr_snapshot(
                 config, process_handler
             )
@@ -1210,13 +1456,22 @@ class InfiniDyskMigrationManager:
                 if int(item.get("queue_count") or 0) > 0
             ]
             pending_conditions.extend(
-                f"{item['process_name']} currently has media activity. DUMB will wait for it to become idle, guard scans, and then hold the server stopped."
+                (
+                    f"{item['process_name']} currently has media activity. DUMB will wait for it to become idle and guard Plex scans through the API; pause Autoscan and other external scan producers because DUMB cannot stop an external Plex process."
+                    if item.get("external_api_only")
+                    else f"{item['process_name']} currently has media activity. DUMB will wait for it to become idle, guard scans, and then hold the server stopped."
+                )
                 for item in media
                 if (item.get("activity") or {}).get("state") == "busy"
             )
             if active_reads:
+                external_plex = any(item.get("external_api_only") for item in media)
                 pending_conditions.append(
-                    f"InfiniDysk has {active_reads} active read(s). DUMB will wait for them to drain after stopping affected media servers."
+                    (
+                        f"InfiniDysk has {active_reads} active read(s). DUMB will wait for them to drain after guarding external Plex; pause Autoscan and other external readers because DUMB cannot stop them."
+                        if external_plex
+                        else f"InfiniDysk has {active_reads} active read(s). DUMB will wait for them to drain after stopping affected media servers."
+                    )
                 )
             preflight = {
                 "token": secrets.token_urlsafe(32),
@@ -1226,6 +1481,7 @@ class InfiniDyskMigrationManager:
                 "filesystem": filesystem,
                 "linked_services": linked_services,
                 "arr": arr,
+                "arr_discovery": arr_discovery,
                 "prowlarr": prowlarr,
                 "media": media,
                 "active_reads": active_reads,
@@ -1235,17 +1491,25 @@ class InfiniDyskMigrationManager:
                     "Historical snapshot filenames are retained; future snapshots use the InfiniDysk name.",
                     "The migration changes paths but does not start a media-library scan automatically.",
                     "At apply time DUMB automatically stops linked request/search producers first, waits up to one hour for Arr queues and playback to drain, and holds each safe service stopped through the cutover.",
+                    *(
+                        [
+                            "External Plex was inferred from dumb.plex_address and dumb.plex_token. DUMB can guard scans and migrate library paths through Plex's API, but it cannot stop the external Plex process or pause Autoscan."
+                        ]
+                        if any(item.get("external_api_only") for item in media)
+                        else []
+                    ),
                 ],
             }
             state = self._load_state()
+            state.pop("preflight", None)
             state.update(
                 {
                     "state_version": STATE_VERSION,
-                    "preflight": preflight,
                     "status": state.get("status") or "pending",
                 }
             )
             try:
+                self._save_preflight(preflight)
                 self._save_state(state)
             except OSError as exc:
                 raise InfiniDyskMigrationError(
@@ -1259,6 +1523,13 @@ class InfiniDyskMigrationManager:
             config = config if isinstance(config, dict) else runtime_config
             config = config if isinstance(config, dict) else {}
             state = self._load_state()
+            if any(isinstance(state.get(key), dict) for key in ("preflight", "job")):
+                try:
+                    state = self._compact_legacy_state(state)
+                except OSError:
+                    # Status remains available from the legacy file when a
+                    # read-only/transient storage condition prevents compaction.
+                    pass
             now = int(now or time.time())
             service = self._service_config(config)
             repo = (
@@ -1698,6 +1969,148 @@ class InfiniDyskMigrationManager:
         return desired
 
     @staticmethod
+    def _arr_change_counts(snapshot: dict, desired: dict) -> dict[str, int]:
+        counts = {}
+        for key in ("roots", "items", "clients", "tags"):
+            original = {
+                str(item.get("id")): item
+                for item in snapshot.get(key) or []
+                if item.get("id") is not None
+            }
+            counts[key] = sum(
+                1
+                for item in desired.get(key) or []
+                if item.get("id") is not None
+                and original.get(str(item.get("id"))) != item
+            )
+        return counts
+
+    @staticmethod
+    def _arr_item_root_destination(
+        original: dict,
+        target: dict,
+        root_mappings: list[tuple[str, str]],
+    ) -> str | None:
+        old_path = str(original.get("path") or "").rstrip("/")
+        new_path = str(target.get("path") or "").rstrip("/")
+        for old_root, new_root in root_mappings:
+            old_root = old_root.rstrip("/")
+            new_root = new_root.rstrip("/")
+            if old_path == old_root:
+                suffix = ""
+            elif old_path.startswith(f"{old_root}/"):
+                suffix = old_path[len(old_root) :]
+            else:
+                continue
+            if new_path == f"{new_root}{suffix}":
+                return new_root
+        return None
+
+    @staticmethod
+    def _update_arr_items(
+        snapshot: dict,
+        desired: dict,
+        progress_callback=None,
+    ) -> int:
+        host = snapshot["host"]
+        token = snapshot["api_key"]
+        api_version = snapshot["api_version"]
+        item_endpoint = snapshot["item_endpoint"]
+        service_key = snapshot["service_key"]
+        original_items = {
+            str(item.get("id")): item for item in snapshot.get("items") or []
+        }
+        changed = [
+            item
+            for item in desired.get("items") or []
+            if item.get("id") is not None
+            and original_items.get(str(item.get("id")), {}).get("path")
+            != item.get("path")
+        ]
+        if not changed:
+            return 0
+
+        original_roots = {
+            str(root.get("id")): root for root in snapshot.get("roots") or []
+        }
+        desired_roots = {
+            str(root.get("id")): root for root in desired.get("roots") or []
+        }
+        root_mappings = [
+            (
+                str(original_roots[root_id].get("path") or ""),
+                str(target.get("path") or ""),
+            )
+            for root_id, target in desired_roots.items()
+            if root_id in original_roots
+            and original_roots[root_id].get("path") != target.get("path")
+        ]
+        grouped: dict[str, list[dict]] = {}
+        exact_updates = []
+        for target in changed:
+            destination = InfiniDyskMigrationManager._arr_item_root_destination(
+                original_items.get(str(target.get("id"))) or {},
+                target,
+                root_mappings,
+            )
+            if destination:
+                grouped.setdefault(destination, []).append(target)
+            else:
+                exact_updates.append(target)
+
+        editor_endpoint, id_field = ARR_EDITOR_API[service_key]
+        completed = 0
+
+        def report(mode: str) -> None:
+            if callable(progress_callback):
+                progress_callback(completed, len(changed), mode)
+
+        for root_path, targets in grouped.items():
+            for offset in range(0, len(targets), ARR_EDITOR_BATCH_SIZE):
+                batch = targets[offset : offset + ARR_EDITOR_BATCH_SIZE]
+                payload = {
+                    id_field: [int(item["id"]) for item in batch],
+                    "rootFolderPath": root_path,
+                    "moveFiles": False,
+                }
+                try:
+                    _migration_arr_req(
+                        _arr_url(host, api_version, editor_endpoint),
+                        token,
+                        "PUT",
+                        payload,
+                    )
+                    completed += len(batch)
+                    report("bulk")
+                except urllib.error.HTTPError as error:
+                    if error.code not in {400, 404, 405, 409, 422}:
+                        raise
+                    # Older/custom Arr builds may not expose a compatible editor
+                    # resource. Preserve exact behavior by falling back only for
+                    # this bounded batch; final validation remains authoritative.
+                    exact_updates.extend(batch)
+
+        for target in exact_updates:
+            item_id = str(target.get("id") or "")
+            _migration_arr_req(
+                _arr_url(
+                    host,
+                    api_version,
+                    f"{item_endpoint}/{item_id}?moveFiles=false",
+                ),
+                token,
+                "PUT",
+                target,
+            )
+            completed += 1
+            if (
+                completed == len(changed)
+                or completed % ARR_FALLBACK_PROGRESS_INTERVAL == 0
+            ):
+                report("individual")
+        return completed
+
+    @staticmethod
     def _apply_prowlarr_snapshot(snapshot: dict, desired: dict) -> dict:
         host = snapshot["host"]
         token = snapshot["api_key"]
@@ -1782,11 +2195,14 @@ class InfiniDyskMigrationManager:
                 raise RuntimeError(f"Prowlarr tag did not persist for tag {tag_id}")
 
     @staticmethod
-    def _apply_arr_snapshot(snapshot: dict, desired: dict) -> dict:
+    def _apply_arr_snapshot(
+        snapshot: dict,
+        desired: dict,
+        progress_callback=None,
+    ) -> dict:
         host = snapshot["host"]
         token = snapshot["api_key"]
         api_version = snapshot["api_version"]
-        item_endpoint = snapshot["item_endpoint"]
         changed_roots = 0
         changed_items = 0
         changed_clients = 0
@@ -1839,25 +2255,11 @@ class InfiniDyskMigrationManager:
             changed_roots += 1
             current_root_paths.add(new_path)
 
-        original_items = {
-            str(item.get("id")): item for item in snapshot.get("items") or []
-        }
-        for target in desired.get("items") or []:
-            item_id = str(target.get("id") or "")
-            original = original_items.get(item_id) or {}
-            if not item_id or original.get("path") == target.get("path"):
-                continue
-            _migration_arr_req(
-                _arr_url(
-                    host,
-                    api_version,
-                    f"{item_endpoint}/{item_id}?moveFiles=false",
-                ),
-                token,
-                "PUT",
-                target,
-            )
-            changed_items += 1
+        changed_items = InfiniDyskMigrationManager._update_arr_items(
+            snapshot,
+            desired,
+            progress_callback=progress_callback,
+        )
 
         original_clients = {
             str(item.get("id")): item for item in snapshot.get("clients") or []
@@ -1931,7 +2333,24 @@ class InfiniDyskMigrationManager:
         adapter = build_adapter(
             snapshot["service_key"], snapshot["process_name"], logger
         )
+        InfiniDyskMigrationManager._verify_media_identity(
+            adapter, snapshot.get("identity") or {}
+        )
         return adapter.replace_library_paths(desired.get("libraries") or [])
+
+    @staticmethod
+    def _verify_media_identity(adapter, expected: dict) -> None:
+        expected_identifier = str(expected.get("machine_identifier") or "")
+        if not expected_identifier:
+            return
+        current = adapter.server_identity()
+        current_identifier = str(current.get("machine_identifier") or "")
+        if not current_identifier or not secrets.compare_digest(
+            expected_identifier, current_identifier
+        ):
+            raise RuntimeError(
+                "The connected Plex server identity changed after preflight; refusing to update library paths"
+            )
 
     @staticmethod
     def _retry(callback, attempts: int = 30, delay: float = 2.0):
@@ -2020,6 +2439,9 @@ class InfiniDyskMigrationManager:
     def _validate_media_snapshot(snapshot: dict, desired: dict, logger) -> None:
         adapter = build_adapter(
             snapshot["service_key"], desired["process_name"], logger
+        )
+        InfiniDyskMigrationManager._verify_media_identity(
+            adapter, snapshot.get("identity") or desired.get("identity") or {}
         )
         current = {
             str(item.get("id") or item.get("name")): item
@@ -2242,15 +2664,20 @@ class InfiniDyskMigrationManager:
             )
             running.extend(self._stop_processes(process_handler, producers))
 
-        arr_targets = self._linked_instances(config, set(ARR_SERVICE_API))
         arr_preflight = {
             str(item.get("process_name") or ""): item
             for item in preflight.get("arr") or []
         }
+        arr_targets = [
+            target
+            for target in self._enabled_instances(config, set(ARR_SERVICE_API))
+            if target["process_name"] in arr_preflight
+        ]
         media_targets = [
             {
                 "service_key": item["service_key"],
                 "process_name": item["process_name"],
+                "external_api_only": bool(item.get("external_api_only")),
             }
             for item in preflight.get("media") or []
         ]
@@ -2262,6 +2689,10 @@ class InfiniDyskMigrationManager:
 
         while True:
             pending = []
+            arr_queue_pending = False
+            managed_media_pending = False
+            external_media_pending = False
+            active_reads_pending = False
             for target in arr_targets:
                 process_name = target["process_name"]
                 if process_name in captured_arr:
@@ -2298,6 +2729,7 @@ class InfiniDyskMigrationManager:
                         f"{_safe_error_detail(error)}."
                     ) from error
                 if queue_count:
+                    arr_queue_pending = True
                     pending.append(f"{process_name}: {queue_count} queued")
                     continue
                 snapshot, blockers = self._arr_target_snapshot(target, process_handler)
@@ -2308,6 +2740,7 @@ class InfiniDyskMigrationManager:
                         else f"{process_name} could not be inventoried while quiescing."
                     )
                 if int(snapshot.get("queue_count") or 0):
+                    arr_queue_pending = True
                     pending.append(
                         f"{process_name}: queue changed while capturing its final inventory"
                     )
@@ -2335,6 +2768,7 @@ class InfiniDyskMigrationManager:
                     else len(final_records)
                 )
                 if final_count:
+                    arr_queue_pending = True
                     pending.append(
                         f"{process_name}: {final_count} queued after final inventory"
                     )
@@ -2355,9 +2789,28 @@ class InfiniDyskMigrationManager:
             busy_media_servers = []
             for target in media_targets:
                 process_name = target["process_name"]
-                if process_name in captured_media:
-                    continue
                 adapter = build_adapter(target["service_key"], process_name, logger)
+                external_api_only = bool(target.get("external_api_only"))
+                if process_name in captured_media:
+                    if not external_api_only:
+                        continue
+                    activity = adapter.activity()
+                    state = str(activity.get("state") or "unknown")
+                    if state == "unknown":
+                        raise InfiniDyskMigrationError(
+                            f"{process_name} activity could not be verified while quiescing: "
+                            f"{activity.get('reason') or 'unknown error'}."
+                        )
+                    if state != "idle":
+                        external_media_pending = True
+                        sessions = activity.get("active_sessions")
+                        suffix = (
+                            f" ({sessions} active session(s))"
+                            if sessions is not None
+                            else ""
+                        )
+                        pending.append(f"{process_name}: {state}{suffix}")
+                    continue
                 activity = adapter.activity()
                 state = str(activity.get("state") or "unknown")
                 if state == "unknown":
@@ -2366,7 +2819,7 @@ class InfiniDyskMigrationManager:
                         f"{activity.get('reason') or 'unknown error'}."
                     )
                 if state != "idle":
-                    if stop_active_playback:
+                    if stop_active_playback and not external_api_only:
                         libraries = adapter.library_paths()
                         guard = {
                             "service_key": target["service_key"],
@@ -2383,6 +2836,7 @@ class InfiniDyskMigrationManager:
                             "libraries": libraries,
                             "activity": activity,
                             "playback_interrupted": True,
+                            "external_api_only": False,
                         }
                         continue
                     sessions = activity.get("active_sessions")
@@ -2392,7 +2846,11 @@ class InfiniDyskMigrationManager:
                         else ""
                     )
                     pending.append(f"{process_name}: {state}{suffix}")
-                    busy_media_servers.append(process_name)
+                    if external_api_only:
+                        external_media_pending = True
+                    else:
+                        managed_media_pending = True
+                        busy_media_servers.append(process_name)
                     continue
                 libraries = adapter.library_paths()
                 guard = {
@@ -2401,12 +2859,24 @@ class InfiniDyskMigrationManager:
                     "snapshot": adapter.enter_scan_guard(),
                 }
                 scan_guards.append(guard)
-                running.extend(self._stop_processes(process_handler, [process_name]))
+                if not external_api_only:
+                    running.extend(
+                        self._stop_processes(process_handler, [process_name])
+                    )
                 captured_media[process_name] = {
                     "service_key": target["service_key"],
                     "process_name": process_name,
                     "libraries": libraries,
                     "activity": activity,
+                    "identity": next(
+                        (
+                            item.get("identity") or {}
+                            for item in preflight.get("media") or []
+                            if item.get("process_name") == process_name
+                        ),
+                        {},
+                    ),
+                    "external_api_only": external_api_only,
                 }
 
             if stop_active_playback:
@@ -2420,6 +2890,7 @@ class InfiniDyskMigrationManager:
             if active_error:
                 raise InfiniDyskMigrationError(active_error)
             if active_reads:
+                active_reads_pending = True
                 pending.append(f"InfiniDysk: {active_reads} active read(s)")
 
             if (
@@ -2432,10 +2903,23 @@ class InfiniDyskMigrationManager:
             now = time.monotonic()
             summary = "; ".join(pending) or "waiting for services to settle"
             if summary != last_message or now - last_reported_at >= 30:
+                instructions = []
+                if arr_queue_pending:
+                    instructions.append(
+                        "Resolve failed or held Arr items while producers remain stopped."
+                    )
+                if managed_media_pending:
+                    instructions.append("Wait for managed media playback to end.")
+                if external_media_pending:
+                    instructions.append(
+                        "Stop external Plex playback and pause Autoscan or other external scan producers; DUMB cannot stop that process."
+                    )
+                if active_reads_pending:
+                    instructions.append("Waiting for InfiniDysk active reads to close.")
                 progress(
                     "quiescing",
                     "Waiting for safe cutover conditions. "
-                    f"Resolve failed/held Arr items while producers remain stopped: {summary}.",
+                    f"{' '.join(instructions)} Remaining activity: {summary}.",
                     24,
                 )
                 last_message = summary
@@ -2449,7 +2933,7 @@ class InfiniDyskMigrationManager:
 
         progress(
             "quiescing",
-            "Queues and playback are drained; holding affected services stopped through the cutover.",
+            "Queues and playback are drained; holding managed services stopped and external media scan guards active through the cutover.",
             27,
         )
         running.extend(self._stop_processes(process_handler, old_process_names))
@@ -2545,13 +3029,19 @@ class InfiniDyskMigrationManager:
     ) -> dict:
         with self._lock:
 
-            def progress(stage: str, message: str, percent: int, status="running"):
+            def progress(
+                stage: str,
+                message: str,
+                percent: int,
+                status="running",
+                detail: dict | None = None,
+            ):
                 if callable(progress_callback):
-                    progress_callback(stage, message, percent, status)
+                    progress_callback(stage, message, percent, status, detail)
 
             progress("validating", "Validating the saved preflight.", 3)
             state = self._load_state()
-            preflight = state.get("preflight") or {}
+            preflight = self._load_preflight()
             now = int(time.time())
             if not preflight_token or not secrets.compare_digest(
                 str(preflight.get("token") or ""), str(preflight_token)
@@ -2591,7 +3081,7 @@ class InfiniDyskMigrationManager:
                 raise InfiniDyskMigrationError(
                     "Runtime conditions changed after preflight. Resolve the reported blockers and run it again."
                 )
-            preflight = self._load_state().get("preflight") or preflight
+            preflight = self._load_preflight() or preflight
 
             progress("backup", "Creating private rollback snapshots.", 14)
             backup_config = copy.deepcopy(config)
@@ -2731,15 +3221,39 @@ class InfiniDyskMigrationManager:
                 )
 
                 arr_snapshots = preflight.get("arr") or []
-                for index, original in enumerate(arr_snapshots):
-                    progress(
-                        "arr",
-                        f"Updating and verifying {original.get('process_name')} references.",
-                        72 + int(((index + 1) / max(1, len(arr_snapshots))) * 10),
-                    )
+                arr_work = []
+                for original in arr_snapshots:
                     desired = self._desired_arr_snapshot(original)
                     desired["process_name"] = _replace_display_name(
                         str(desired.get("process_name") or "")
+                    )
+                    counts = self._arr_change_counts(original, desired)
+                    arr_work.append((original, desired, counts))
+                arr_total = sum(sum(counts.values()) for _, _, counts in arr_work)
+                arr_completed = 0
+                for index, (original, desired, counts) in enumerate(arr_work):
+                    service_total = sum(counts.values())
+                    service_name = str(original.get("process_name") or "Arr")
+                    initial_percent = (
+                        82
+                        if not arr_total
+                        else 72 + int((arr_completed / arr_total) * 10)
+                    )
+                    progress(
+                        "arr",
+                        f"Preparing {service_name} reference updates (0/{service_total}).",
+                        initial_percent,
+                        detail={
+                            "kind": "arr_references",
+                            "process_name": service_name,
+                            "phase": "applying",
+                            "completed": 0,
+                            "total": service_total,
+                            "overall_completed": arr_completed,
+                            "overall_total": arr_total,
+                            "service_index": index + 1,
+                            "service_total": len(arr_work),
+                        },
                     )
                     self._retry(
                         lambda original=original: _migration_arr_req(
@@ -2752,8 +3266,78 @@ class InfiniDyskMigrationManager:
                             "GET",
                         )
                     )
-                    result = self._apply_arr_snapshot(original, desired)
+
+                    fixed_updates = counts["roots"]
+
+                    def arr_item_progress(
+                        completed_items: int,
+                        _total_items: int,
+                        mode: str,
+                        *,
+                        service_completed_base: int = fixed_updates,
+                        completed_before_service: int = arr_completed,
+                    ) -> None:
+                        service_completed = min(
+                            service_total,
+                            service_completed_base + completed_items,
+                        )
+                        overall_completed = min(
+                            arr_total,
+                            completed_before_service + service_completed,
+                        )
+                        percent = (
+                            82
+                            if not arr_total
+                            else 72 + int((overall_completed / arr_total) * 10)
+                        )
+                        progress(
+                            "arr",
+                            f"Updating {service_name} references ({service_completed}/{service_total}).",
+                            percent,
+                            detail={
+                                "kind": "arr_references",
+                                "process_name": service_name,
+                                "phase": "applying",
+                                "mode": mode,
+                                "completed": service_completed,
+                                "total": service_total,
+                                "overall_completed": overall_completed,
+                                "overall_total": arr_total,
+                                "service_index": index + 1,
+                                "service_total": len(arr_work),
+                            },
+                        )
+
+                    result = self._apply_arr_snapshot(
+                        original,
+                        desired,
+                        progress_callback=arr_item_progress,
+                    )
+                    progress(
+                        "arr",
+                        f"Validating {service_name} references ({service_total}/{service_total}).",
+                        (
+                            82
+                            if not arr_total
+                            else 72
+                            + int(((arr_completed + service_total) / arr_total) * 10)
+                        ),
+                        detail={
+                            "kind": "arr_references",
+                            "process_name": service_name,
+                            "phase": "validating",
+                            "completed": service_total,
+                            "total": service_total,
+                            "overall_completed": min(
+                                arr_total, arr_completed + service_total
+                            ),
+                            "overall_total": arr_total,
+                            "service_index": index + 1,
+                            "service_total": len(arr_work),
+                        },
+                    )
                     self._validate_arr_snapshot(original, desired)
+                    arr_completed += service_total
                     arr_changes.append(
                         {"process_name": desired["process_name"], **result}
                     )
@@ -2995,6 +3579,7 @@ class InfiniDyskMigrationManager:
                             )
                         )
                         self._apply_arr_snapshot(desired, original)
+                        self._validate_arr_snapshot(desired, original)
                     except Exception as rollback_error:
                         rollback_errors.append(
                             f"{original.get('process_name')} Arr paths: {rollback_error}"
@@ -3038,6 +3623,7 @@ class InfiniDyskMigrationManager:
                             ).library_paths()
                         )
                         self._apply_media_snapshot(desired, original, logger)
+                        self._validate_media_snapshot(desired, original, logger)
                     except Exception as rollback_error:
                         rollback_errors.append(
                             f"{original.get('process_name')} libraries: {rollback_error}"
@@ -3084,8 +3670,8 @@ class InfiniDyskMigrationManager:
                 )
                 if rollback_errors:
                     detail = (
-                        "The full namespace migration failed and rollback needs attention. "
-                        f"Restore from {backup_bundle}."
+                        "The full namespace migration failed. Rollback completed with "
+                        f"{len(rollback_errors)} issue(s); review the recovery details before restoring anything manually."
                     )
                 raise InfiniDyskMigrationError(detail) from error
 

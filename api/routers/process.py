@@ -5684,11 +5684,11 @@ async def preflight_infinidysk_namespace_migration(
 
 
 @process_router.get("/infinidysk-migration/job-status")
-def get_infinidysk_migration_job_status(
+async def get_infinidysk_migration_job_status(
     job_id: Optional[str] = Query(default=None, pattern=r"^[0-9a-f]{32}$"),
     current_user: str = Depends(get_optional_current_user),
 ):
-    job = INFINIDYSK_MIGRATION_MANAGER.get_job(job_id)
+    job = await run_in_threadpool(INFINIDYSK_MIGRATION_MANAGER.get_job, job_id)
     if job_id and not job:
         raise HTTPException(status_code=404, detail="Migration job not found.")
     return {"job": job}

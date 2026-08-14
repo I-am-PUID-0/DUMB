@@ -7,6 +7,7 @@ from pathlib import Path
 from unittest.mock import MagicMock, call, patch
 
 from utils.infinidysk_migration import (
+    ARR_EDITOR_BATCH_SIZE,
     ARR_INVENTORY_TIMEOUT_SECONDS,
     ARR_SERVICE_API,
     InfiniDyskMigrationError,
@@ -102,7 +103,7 @@ class InfiniDyskMigrationTests(unittest.TestCase):
                     manager, "_namespace_filesystem_plan", return_value=([], [])
                 ),
                 patch.object(manager, "_linked_service_inventory", return_value=[]),
-                patch.object(manager, "_arr_snapshot", return_value=(arr, [])),
+                patch.object(manager, "_arr_snapshot", return_value=(arr, [], [])),
                 patch.object(manager, "_prowlarr_snapshot", return_value=([], [])),
                 patch.object(manager, "_media_snapshot", return_value=(media, [])),
                 patch.object(
@@ -116,6 +117,194 @@ class InfiniDyskMigrationTests(unittest.TestCase):
         self.assertIn("3 queued", result["pending_conditions"][0])
         self.assertIn("media activity", result["pending_conditions"][1])
         self.assertIn("2 active read", result["pending_conditions"][2])
+
+    def test_arr_discovery_includes_live_legacy_references_without_core_link(self):
+        manager = InfiniDyskMigrationManager()
+        config = {
+            "sonarr": {
+                "instances": {
+                    "Anime": {
+                        "enabled": True,
+                        "process_name": "Sonarr Anime",
+                    },
+                    "Main": {
+                        "enabled": True,
+                        "process_name": "Sonarr Main",
+                    },
+                }
+            }
+        }
+
+        def snapshot(target, _handler):
+            legacy = target["instance_name"] == "Anime"
+            return (
+                {
+                    "service_key": "sonarr",
+                    "instance_name": target["instance_name"],
+                    "process_name": target["process_name"],
+                    "host": "http://127.0.0.1:8990",
+                    "api_version": "v3",
+                    "item_endpoint": "series",
+                    "api_key": "secret",
+                    "roots": [
+                        {
+                            "id": 1,
+                            "path": (
+                                "/mnt/debrid/nzbdav-symlinks/anime"
+                                if legacy
+                                else "/media/tv"
+                            ),
+                        }
+                    ],
+                    "items": [],
+                    "clients": [],
+                    "tags": [],
+                    "queue_count": 0,
+                },
+                [],
+            )
+
+        with patch.object(
+            InfiniDyskMigrationManager,
+            "_arr_target_snapshot",
+            side_effect=snapshot,
+        ):
+            snapshots, blockers, discovery = manager._arr_snapshot(config, MagicMock())
+
+        self.assertEqual([], blockers)
+        self.assertEqual(["Sonarr Anime"], [item["process_name"] for item in snapshots])
+        by_process = {item["process_name"]: item for item in discovery}
+        self.assertTrue(by_process["Sonarr Anime"]["included"])
+        self.assertIn(
+            "legacy root-folder reference",
+            " ".join(by_process["Sonarr Anime"]["reasons"]),
+        )
+        self.assertFalse(by_process["Sonarr Main"]["included"])
+
+    def test_media_snapshot_infers_external_plex_from_global_credentials(self):
+        manager = InfiniDyskMigrationManager()
+        adapter = MagicMock()
+        adapter.server_identity.return_value = {
+            "name": "Migration Plex",
+            "machine_identifier": "machine-1",
+            "version": "1.2.3",
+        }
+        adapter.activity.return_value = {"state": "idle", "active_sessions": 0}
+        adapter.library_paths.return_value = [
+            {
+                "id": "1",
+                "name": "Movies",
+                "paths": ["/mnt/debrid/nzbdav-symlinks/movies"],
+            }
+        ]
+
+        with patch(
+            "utils.infinidysk_migration.build_adapter", return_value=adapter
+        ) as build:
+            snapshots, blockers = manager._media_snapshot(
+                {
+                    "dumb": {
+                        "plex_address": "http://plex.example.invalid:32400",
+                        "plex_token": "secret",
+                    },
+                    "plex": {"enabled": False, "port": 32400},
+                    "jellyfin": {"enabled": False},
+                    "emby": {"enabled": False},
+                },
+                MagicMock(),
+                MagicMock(),
+            )
+
+        self.assertEqual([], blockers)
+        build.assert_called_once_with("plex", "External Plex", unittest.mock.ANY)
+        self.assertTrue(snapshots[0]["external_api_only"])
+        self.assertEqual("Migration Plex", snapshots[0]["identity"]["name"])
+
+    def test_external_plex_is_guarded_but_never_stopped_by_quiescence(self):
+        manager = InfiniDyskMigrationManager()
+        running_names = {"NzbDAV"}
+
+        class Process:
+            def __init__(self, name):
+                self.name = name
+
+            def poll(self):
+                return None if self.name in running_names else 0
+
+        handler = MagicMock()
+        handler.process_names = {"NzbDAV": Process("NzbDAV")}
+        handler._prefixed_name.side_effect = lambda value: value
+        handler.stop_process.side_effect = lambda name: running_names.discard(name)
+        adapter = MagicMock()
+        adapter.activity.return_value = {"state": "idle", "active_sessions": 0}
+        adapter.library_paths.return_value = [
+            {
+                "id": "1",
+                "name": "Movies",
+                "paths": ["/mnt/debrid/nzbdav-symlinks/movies"],
+            }
+        ]
+        adapter.enter_scan_guard.return_value = {"settings": {}}
+        stopped = []
+        scan_guards = []
+
+        with (
+            patch("utils.infinidysk_migration.build_adapter", return_value=adapter),
+            patch.object(manager, "_infinidysk_active_reads", return_value=(0, None)),
+        ):
+            refreshed = manager._quiesce_for_cutover(
+                {"infinidysk": {"enabled": True, "process_name": "NzbDAV"}},
+                {
+                    "arr": [],
+                    "prowlarr": [],
+                    "media": [
+                        {
+                            "service_key": "plex",
+                            "process_name": "External Plex",
+                            "external_api_only": True,
+                            "identity": {"machine_identifier": "machine-1"},
+                        }
+                    ],
+                },
+                ["NzbDAV", "External Plex"],
+                handler,
+                MagicMock(),
+                MagicMock(),
+                stopped,
+                scan_guards,
+            )
+
+        self.assertEqual(
+            ["NzbDAV"], [item.args[0] for item in handler.stop_process.call_args_list]
+        )
+        self.assertEqual(["NzbDAV"], stopped)
+        self.assertTrue(refreshed["media"][0]["external_api_only"])
+        self.assertEqual(
+            "machine-1", refreshed["media"][0]["identity"]["machine_identifier"]
+        )
+        self.assertEqual(1, len(scan_guards))
+
+    def test_external_plex_library_update_refuses_changed_server_identity(self):
+        adapter = MagicMock()
+        adapter.server_identity.return_value = {
+            "machine_identifier": "different-machine"
+        }
+
+        with patch("utils.infinidysk_migration.build_adapter", return_value=adapter):
+            with self.assertRaisesRegex(
+                RuntimeError, "server identity changed after preflight"
+            ):
+                InfiniDyskMigrationManager._apply_media_snapshot(
+                    {
+                        "service_key": "plex",
+                        "process_name": "External Plex",
+                        "identity": {"machine_identifier": "expected-machine"},
+                    },
+                    {"libraries": []},
+                    MagicMock(),
+                )
+
+        adapter.replace_library_paths.assert_not_called()
 
     def test_quiescence_stops_producer_then_latches_arr_before_provider(self):
         manager = InfiniDyskMigrationManager()
@@ -432,6 +621,163 @@ class InfiniDyskMigrationTests(unittest.TestCase):
                 "filesystem", [event["stage"] for event in persisted["events"]]
             )
 
+    def test_preflight_inventory_and_job_are_persisted_in_private_sidecars(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            state_path = Path(temp_dir) / "state.json"
+            manager = InfiniDyskMigrationManager(state_path)
+            manager._save_state(
+                {
+                    "status": "pending",
+                    "preflight": {"legacy": "x" * 1024},
+                    "job": {"status": "running"},
+                }
+            )
+            preflight = {
+                "token": "token",
+                "arr": [{"items": [{"id": 1, "path": "/example"}]}],
+            }
+            job = {
+                "job_id": "a" * 32,
+                "status": "completed",
+                "stage": "completed",
+                "progress": 100,
+            }
+
+            manager._save_preflight(preflight)
+            manager._save_job(job)
+
+            state = manager._load_state()
+            self.assertNotIn("preflight", state)
+            self.assertNotIn("job", state)
+            self.assertEqual(preflight, manager._load_preflight())
+            self.assertEqual("completed", manager.get_job(job["job_id"])["status"])
+            for sidecar in (
+                manager._sidecar_path("preflight"),
+                manager._sidecar_path("job"),
+            ):
+                self.assertEqual(0o600, sidecar.stat().st_mode & 0o777)
+
+    def test_legacy_embedded_job_is_compacted_on_first_read(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            state_path = Path(temp_dir) / "state.json"
+            manager = InfiniDyskMigrationManager(state_path)
+            manager._save_state(
+                {
+                    "state_version": 2,
+                    "preflight": {"inventory": "x" * 1024},
+                    "job": {
+                        "job_id": "b" * 32,
+                        "status": "completed",
+                        "stage": "completed",
+                        "progress": 100,
+                    },
+                }
+            )
+
+            job = manager.get_job()
+
+            self.assertEqual("completed", job["status"])
+            self.assertTrue(manager._sidecar_path("job").is_file())
+            self.assertTrue(manager._sidecar_path("preflight").is_file())
+            self.assertNotIn("job", manager._load_state())
+            self.assertNotIn("preflight", manager._load_state())
+
+    def test_job_sidecar_reads_do_not_load_main_migration_state(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            manager = InfiniDyskMigrationManager(Path(temp_dir) / "state.json")
+            manager._save_job(
+                {
+                    "job_id": "c" * 32,
+                    "status": "completed",
+                    "stage": "completed",
+                    "progress": 100,
+                }
+            )
+
+            with patch.object(
+                manager,
+                "_load_state",
+                side_effect=AssertionError("main state should not be parsed"),
+            ):
+                job = manager.get_job()
+
+            self.assertEqual("completed", job["status"])
+
+    def test_existing_rollback_attention_job_is_enriched_from_private_state(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            manager = InfiniDyskMigrationManager(Path(temp_dir) / "state.json")
+            manager._save_state(
+                {
+                    "status": "rollback_attention_required",
+                    "last_error": "Reference validation failed",
+                    "rollback_errors": ["Plex libraries: restore failed"],
+                    "backup_bundle_path": "/config/migrations/infinidysk-backups/example",
+                    "config_backup_path": "/config/migrations/infinidysk-backups/config.json",
+                }
+            )
+            manager._save_job(
+                {
+                    "job_id": "d" * 32,
+                    "status": "rollback_attention_required",
+                    "stage": "rollback_attention_required",
+                    "message": "Rollback needs attention.",
+                    "progress": 100,
+                }
+            )
+
+            job = manager.get_job()
+
+            recovery = job["result"]["recovery"]
+            self.assertTrue(recovery["manual_restore_required"])
+            self.assertEqual(
+                ["Plex libraries: restore failed"], recovery["rollback_errors"]
+            )
+            self.assertEqual(
+                "/config/migrations/infinidysk-backups/example",
+                recovery["backup_bundle_path"],
+            )
+
+    def test_arr_item_updates_use_bounded_bulk_editor_batches(self):
+        total = ARR_EDITOR_BATCH_SIZE + 1
+        snapshot = {
+            "service_key": "radarr",
+            "host": "http://127.0.0.1:7878",
+            "api_key": "secret",
+            "api_version": "v3",
+            "item_endpoint": "movie",
+            "roots": [{"id": 1, "path": "/mnt/debrid/nzbdav-symlinks/movies"}],
+            "items": [
+                {
+                    "id": item_id,
+                    "path": f"/mnt/debrid/nzbdav-symlinks/movies/Movie {item_id}",
+                }
+                for item_id in range(1, total + 1)
+            ],
+        }
+        desired = InfiniDyskMigrationManager._desired_arr_snapshot(snapshot)
+        requests = []
+        progress = []
+
+        def request(url, _token, method="GET", data=None):
+            requests.append((url, method, data))
+
+        with patch(
+            "utils.infinidysk_migration._migration_arr_req", side_effect=request
+        ):
+            changed = InfiniDyskMigrationManager._update_arr_items(
+                snapshot,
+                desired,
+                progress_callback=lambda completed, expected, mode: progress.append(
+                    (completed, expected, mode)
+                ),
+            )
+
+        self.assertEqual(total, changed)
+        self.assertEqual(2, len(requests))
+        self.assertTrue(all("movie/editor" in request[0] for request in requests))
+        self.assertEqual(ARR_EDITOR_BATCH_SIZE, len(requests[0][2]["movieIds"]))
+        self.assertEqual((total, total, "bulk"), progress[-1])
+
     def test_rolled_back_job_is_terminal_at_100_percent_with_cause(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             manager = InfiniDyskMigrationManager(Path(temp_dir) / "state.json")
@@ -462,6 +808,9 @@ class InfiniDyskMigrationTests(unittest.TestCase):
                     {
                         "status": "failed_rolled_back",
                         "last_error": "InfiniDysk failed to start",
+                        "rollback_errors": [],
+                        "backup_bundle_path": "/config/migrations/infinidysk-backups/example",
+                        "config_backup_path": "/config/migrations/infinidysk-backups/config.json",
                     }
                 )
                 manager._save_state(state)
@@ -485,6 +834,13 @@ class InfiniDyskMigrationTests(unittest.TestCase):
             self.assertEqual("failed_rolled_back", persisted["status"])
             self.assertEqual(100, persisted["progress"])
             self.assertIn("InfiniDysk failed to start", persisted["message"])
+            recovery = persisted["result"]["recovery"]
+            self.assertFalse(recovery["manual_restore_required"])
+            self.assertEqual([], recovery["rollback_errors"])
+            self.assertEqual(
+                "/config/migrations/infinidysk-backups/example",
+                recovery["backup_bundle_path"],
+            )
 
     def test_active_job_from_previous_process_is_marked_interrupted(self):
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -1094,7 +1450,7 @@ class InfiniDyskMigrationTests(unittest.TestCase):
             with (
                 patch("utils.infinidysk_migration.CONFIG_MANAGER", manager_config),
                 patch("utils.infinidysk_migration.NAMESPACE_PATH_MAPPINGS", mapping),
-                patch.object(manager, "_arr_snapshot", return_value=([], [])),
+                patch.object(manager, "_arr_snapshot", return_value=([], [], [])),
                 patch.object(manager, "_media_snapshot", return_value=([], [])),
                 patch.object(
                     manager, "_infinidysk_active_reads", return_value=(0, None)
@@ -1123,6 +1479,7 @@ class InfiniDyskMigrationTests(unittest.TestCase):
 
     def test_arr_paths_clients_and_roots_round_trip_through_full_migration(self):
         snapshot = {
+            "service_key": "radarr",
             "host": "http://127.0.0.1:7878",
             "api_key": "secret",
             "api_version": "v3",
@@ -1170,6 +1527,21 @@ class InfiniDyskMigrationTests(unittest.TestCase):
                 return None
             if endpoint == "movie" and method == "GET":
                 return copy_json(state["items"])
+            if endpoint == "movie/editor" and method == "PUT":
+                item_ids = set(data["movieIds"])
+                root = data["rootFolderPath"].rstrip("/")
+                state["items"] = [
+                    (
+                        {
+                            **item,
+                            "path": f"{root}/{Path(item['path']).name}",
+                        }
+                        if item["id"] in item_ids
+                        else item
+                    )
+                    for item in state["items"]
+                ]
+                return None
             if endpoint.startswith("movie/") and method == "PUT":
                 item_id = int(endpoint.split("/", 1)[1].split("?", 1)[0])
                 state["items"] = [
@@ -1311,7 +1683,7 @@ class InfiniDyskMigrationTests(unittest.TestCase):
             with (
                 patch("utils.infinidysk_migration.CONFIG_MANAGER", manager_config),
                 patch("utils.infinidysk_migration.NAMESPACE_PATH_MAPPINGS", mapping),
-                patch.object(manager, "_arr_snapshot", return_value=([], [])),
+                patch.object(manager, "_arr_snapshot", return_value=([], [], [])),
                 patch.object(manager, "_media_snapshot", return_value=([], [])),
                 patch.object(
                     manager, "_infinidysk_active_reads", return_value=(0, None)
@@ -1452,7 +1824,7 @@ class InfiniDyskMigrationTests(unittest.TestCase):
                     "utils.infinidysk_migration.NAMESPACE_PATH_MAPPINGS",
                     ((str(source), str(destination)),),
                 ),
-                patch.object(manager, "_arr_snapshot", return_value=([], [])),
+                patch.object(manager, "_arr_snapshot", return_value=([], [], [])),
                 patch.object(manager, "_media_snapshot", return_value=([], [])),
                 patch.object(
                     manager, "_infinidysk_active_reads", return_value=(0, None)
