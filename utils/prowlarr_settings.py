@@ -458,6 +458,7 @@ def _prowlarr_req(
             body = e.read().decode("utf-8")
         except Exception:
             body = ""
+        setattr(e, "body", body)
         if body:
             logger.warning("Prowlarr API error response from %s: %s", url, body)
         raise
@@ -692,7 +693,12 @@ def _get_prowlarr_tags(host: str, token: str) -> list[dict]:
     return []
 
 
-def _ensure_tag_ids(host: str, token: str, labels: list[str]) -> dict[str, int]:
+def _ensure_tag_ids(
+    host: str,
+    token: str,
+    labels: list[str],
+    aliases: Optional[dict[str, str]] = None,
+) -> dict[str, int]:
     tag_map = {}
     if not labels:
         return tag_map
@@ -702,6 +708,11 @@ def _ensure_tag_ids(host: str, token: str, labels: list[str]) -> dict[str, int]:
         tag_id = tag.get("id")
         if label and isinstance(tag_id, int):
             tag_map[label] = tag_id
+    for label, alias in (aliases or {}).items():
+        label_lc = str(label or "").strip().lower()
+        alias_lc = str(alias or "").strip().lower()
+        if label_lc and label_lc not in tag_map and alias_lc in tag_map:
+            tag_map[label_lc] = tag_map[alias_lc]
     for label in labels:
         label_lc = label.strip().lower()
         if not label_lc or label_lc in tag_map:
@@ -720,6 +731,28 @@ def _ensure_tag_ids(host: str, token: str, labels: list[str]) -> dict[str, int]:
             if isinstance(tag_id, int):
                 tag_map[label_lc] = tag_id
     return tag_map
+
+
+def _uses_legacy_infinidysk_namespace() -> bool:
+    checker = getattr(CONFIG_MANAGER, "uses_legacy_infinidysk_identity", None)
+    if callable(checker):
+        try:
+            if checker():
+                return True
+        except Exception:
+            pass
+    config = getattr(CONFIG_MANAGER, "config", None)
+    if not isinstance(config, dict):
+        return False
+    service = config.get("infinidysk") or config.get("nzbdav") or {}
+    if not isinstance(service, dict):
+        return False
+    paths = [
+        service.get("config_dir"),
+        service.get("log_file"),
+        *(service.get("symlink_backup_roots") or []),
+    ]
+    return any("nzbdav" in str(path or "").lower() for path in paths)
 
 
 def _find_existing_application(
@@ -1136,7 +1169,10 @@ def patch_prowlarr_apps() -> Tuple[bool, Optional[str]]:
         )
         if decypharr_enabled and "decypharr" not in needed_tags:
             needed_tags.append("decypharr")
-        tag_map = _ensure_tag_ids(host, token, needed_tags)
+        tag_aliases = (
+            {"infinidysk": "nzbdav"} if _uses_legacy_infinidysk_namespace() else None
+        )
+        tag_map = _ensure_tag_ids(host, token, needed_tags, aliases=tag_aliases)
         if decypharr_enabled:
             zilean_url = (
                 f"http://127.0.0.1:{zilean_port}"

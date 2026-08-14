@@ -19,16 +19,38 @@ STARTUP_TERMINAL_PHASES = {"ready", "degraded", "shutting_down"}
 def _immediate_exit_summary(stdout_output: str, stderr_output: str) -> str | None:
     """Select one redacted, bounded error line without returning a stack trace."""
 
-    for output in (stderr_output, stdout_output):
+    candidates = []
+    error_markers = (
+        "critical",
+        "error",
+        "exception",
+        "failed",
+        "failure",
+        "fatal",
+        "panic",
+        "permission denied",
+        "refused",
+        "unable to",
+    )
+    for source_priority, output in enumerate((stderr_output, stdout_output), start=1):
         for raw_line in str(output or "").splitlines():
             line = " ".join(raw_line.strip().split())
             lower = line.lower()
             if not line or lower == "traceback (most recent call last):":
                 continue
+            if lower.startswith("secure_cookies is unset;"):
+                # InfiniDysk emits this advisory on otherwise healthy HTTP
+                # starts. Never present it as the cause of a process exit.
+                continue
             if lower.startswith(("at ", "--- end of", 'file "')):
                 continue
-            return line[:500]
-    return None
+            marker_score = (
+                100 if any(marker in lower for marker in error_markers) else 0
+            )
+            candidates.append((marker_score + (3 - source_priority), line[:500]))
+    if not candidates:
+        return None
+    return max(enumerate(candidates), key=lambda item: (item[1][0], -item[0]))[1][1]
 
 
 class ProcessHandler:

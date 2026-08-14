@@ -10,6 +10,7 @@ import re
 import secrets
 import shutil
 import sqlite3
+import stat
 import subprocess
 import tempfile
 import threading
@@ -31,7 +32,11 @@ from utils.nzbdav_settings import (
     defer_nzbdav_runtime_integrations,
 )
 from utils.prowlarr_settings import _prowlarr_req
-from utils.symlink_repair import backup_symlink_manifest, repair_symlinks
+from utils.symlink_repair import (
+    backup_symlink_manifest,
+    repair_symlinks,
+    restore_symlink_manifest,
+)
 
 STATE_VERSION = 3
 DEFAULT_STATE_PATH = Path("/config/migrations/infinidysk.json")
@@ -74,6 +79,7 @@ INFINIDYSK_CORE_CONSUMER_KEYS = (
 PREFLIGHT_TTL_SECONDS = 30 * 60
 ARR_INVENTORY_TIMEOUT_SECONDS = 120
 ARR_EDITOR_BATCH_SIZE = 500
+ARR_EDITOR_SPLIT_MIN_BATCH_SIZE = 8
 ARR_FALLBACK_PROGRESS_INTERVAL = 5
 QUIESCE_TIMEOUT_SECONDS = 60 * 60
 QUIESCE_POLL_SECONDS = 5
@@ -153,10 +159,64 @@ def _config_fingerprint(config: dict) -> str:
 
 
 def _safe_error_detail(error: Exception) -> str:
-    detail = " ".join(
-        redact_sensitive_log_data(str(error or "Migration failed")).split()
-    )
+    detail = ""
+    if isinstance(error, urllib.error.HTTPError):
+        api_name = str(getattr(error, "migration_api_name", "HTTP API") or "HTTP API")
+        method = str(getattr(error, "migration_method", "") or "").upper()
+        endpoint = str(getattr(error, "migration_endpoint", "") or "")
+        response_detail = _http_error_response_detail(error)
+        operation = " ".join(part for part in (api_name, method, endpoint) if part)
+        detail = f"{operation} returned HTTP {error.code} {error.reason or ''}".strip()
+        if response_detail:
+            detail = f"{detail}: {response_detail}"
+    if not detail:
+        detail = str(error or "Migration failed")
+    detail = " ".join(redact_sensitive_log_data(detail).split())
     return (detail or error.__class__.__name__)[:500]
+
+
+def _http_error_response_detail(error: urllib.error.HTTPError) -> str:
+    """Return a bounded, redacted API error message without response internals."""
+
+    body = str(getattr(error, "body", "") or "").strip()
+    if not body:
+        return ""
+    try:
+        payload = json.loads(body)
+    except (TypeError, ValueError):
+        if body.startswith("<"):
+            return ""
+        return " ".join(body.split())[:300]
+    if isinstance(payload, dict):
+        values = []
+        for key in ("message", "errorMessage", "description", "title", "error"):
+            value = payload.get(key)
+            if isinstance(value, str) and value.strip():
+                values.append(value.strip())
+            elif isinstance(value, list):
+                values.extend(str(item).strip() for item in value if str(item).strip())
+        return "; ".join(dict.fromkeys(values))[:300]
+    if isinstance(payload, list):
+        return "; ".join(str(item).strip() for item in payload if str(item).strip())[
+            :300
+        ]
+    return str(payload)[:300]
+
+
+def _attach_http_error_context(
+    error: urllib.error.HTTPError,
+    *,
+    api_name: str,
+    method: str,
+    url: str,
+) -> None:
+    parsed = urllib.parse.urlsplit(url)
+    endpoint = urllib.parse.urlunsplit(
+        (parsed.scheme, parsed.netloc, parsed.path, "", "")
+    )
+    setattr(error, "migration_api_name", api_name)
+    setattr(error, "migration_method", method.upper())
+    setattr(error, "migration_endpoint", endpoint)
 
 
 def _migration_arr_req(
@@ -166,13 +226,17 @@ def _migration_arr_req(
     data: dict | None = None,
 ):
     """Use a catalog-sized timeout for every guarded Arr migration request."""
-    return _arr_req(
-        url,
-        key,
-        method,
-        data,
-        timeout=ARR_INVENTORY_TIMEOUT_SECONDS,
-    )
+    try:
+        return _arr_req(
+            url,
+            key,
+            method,
+            data,
+            timeout=ARR_INVENTORY_TIMEOUT_SECONDS,
+        )
+    except urllib.error.HTTPError as error:
+        _attach_http_error_context(error, api_name="Arr API", method=method, url=url)
+        raise
 
 
 def _migration_prowlarr_req(
@@ -181,13 +245,19 @@ def _migration_prowlarr_req(
     method: str = "GET",
     data: dict | None = None,
 ):
-    return _prowlarr_req(
-        url,
-        key,
-        method,
-        data,
-        timeout=ARR_INVENTORY_TIMEOUT_SECONDS,
-    )
+    try:
+        return _prowlarr_req(
+            url,
+            key,
+            method,
+            data,
+            timeout=ARR_INVENTORY_TIMEOUT_SECONDS,
+        )
+    except urllib.error.HTTPError as error:
+        _attach_http_error_context(
+            error, api_name="Prowlarr API", method=method, url=url
+        )
+        raise
 
 
 class InfiniDyskMigrationManager:
@@ -1153,18 +1223,57 @@ class InfiniDyskMigrationManager:
                     f"{process_name} API inventory failed: {_safe_error_detail(error)}."
                 )
                 continue
-            snapshots.append(
-                {
-                    "service_key": "prowlarr",
-                    "instance_name": str(instance_name),
-                    "process_name": process_name,
-                    "host": host,
-                    "api_key": token,
-                    "applications": applications,
-                    "tags": tags,
-                }
+            snapshot = {
+                "service_key": "prowlarr",
+                "instance_name": str(instance_name),
+                "process_name": process_name,
+                "host": host,
+                "api_key": token,
+                "applications": applications,
+                "tags": tags,
+            }
+            blockers.extend(
+                InfiniDyskMigrationManager._prowlarr_namespace_conflicts(snapshot)
             )
+            snapshots.append(snapshot)
         return snapshots, blockers
+
+    @staticmethod
+    def _prowlarr_namespace_conflicts(snapshot: dict) -> list[str]:
+        """Reject an ambiguous Prowlarr rename before any namespace paths move."""
+
+        desired = InfiniDyskMigrationManager._desired_prowlarr_snapshot(snapshot)
+        process_name = str(snapshot.get("process_name") or "Prowlarr")
+        conflicts = []
+        for key, field, label in (
+            ("tags", "label", "tag label"),
+            ("applications", "name", "application name"),
+        ):
+            original_records = snapshot.get(key) or []
+            desired_records = desired.get(key) or []
+            by_value: dict[str, list[tuple[dict, dict]]] = {}
+            for original, target in zip(original_records, desired_records):
+                value = str(target.get(field) or "").strip().casefold()
+                if value:
+                    by_value.setdefault(value, []).append((original, target))
+            for value, records in by_value.items():
+                if len(records) < 2 or not any(
+                    original.get(field) != target.get(field)
+                    for original, target in records
+                ):
+                    continue
+                record_ids = ", ".join(
+                    str(original.get("id"))
+                    for original, _target in records
+                    if original.get("id") is not None
+                )
+                conflicts.append(
+                    f"{process_name} already has multiple records that would use the "
+                    f"{label} '{value}' after migration"
+                    f"{f' (IDs {record_ids})' if record_ids else ''}. Resolve the "
+                    "legacy/canonical duplicate in Prowlarr, then run preflight again."
+                )
+        return conflicts
 
     @staticmethod
     def _media_snapshot(
@@ -1827,7 +1936,8 @@ class InfiniDyskMigrationManager:
             source = Path(source_value)
             if not source.is_file() or source.is_symlink():
                 continue
-            size = source.stat().st_size
+            source_stat = source.stat()
+            size = source_stat.st_size
             if size > 512 * 1024 * 1024:
                 raise InfiniDyskMigrationError(
                     f"Required configuration backup {source} is larger than 512 MiB. Back it up manually before retrying."
@@ -1844,6 +1954,9 @@ class InfiniDyskMigrationManager:
                     "source": source_value,
                     "backup": str(destination),
                     "size": size,
+                    "mode": stat.S_IMODE(source_stat.st_mode),
+                    "uid": source_stat.st_uid,
+                    "gid": source_stat.st_gid,
                 }
             )
         self._write_private_json(bundle / "files.json", {"files": manifest})
@@ -1903,10 +2016,111 @@ class InfiniDyskMigrationManager:
             try:
                 source = Path(str(item["backup"]))
                 destination = Path(str(item["source"]))
+                existing_stat = None
+                try:
+                    if destination.exists() and not destination.is_symlink():
+                        existing_stat = destination.stat()
+                except OSError:
+                    existing_stat = None
                 destination.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy2(source, destination)
+                mode = item.get("mode")
+                uid = item.get("uid")
+                gid = item.get("gid")
+                if mode is None and existing_stat is not None:
+                    mode = stat.S_IMODE(existing_stat.st_mode)
+                if uid is None and existing_stat is not None:
+                    uid = existing_stat.st_uid
+                if gid is None and existing_stat is not None:
+                    gid = existing_stat.st_gid
+                if uid is None:
+                    uid = int(CONFIG_MANAGER.get("puid") or os.getuid())
+                if gid is None:
+                    gid = int(CONFIG_MANAGER.get("pgid") or os.getgid())
+                if mode is not None:
+                    os.chmod(destination, int(mode))
+                os.chown(destination, int(uid), int(gid))
             except Exception as error:
                 errors.append(f"{item.get('source')}: {error}")
+        return errors
+
+    @staticmethod
+    def _restore_and_validate_symlink_manifest(bundle: Path) -> list[str]:
+        """Restore the exact captured link targets after namespace paths return."""
+
+        manifest_path = bundle / "symlinks-before.json"
+        if not manifest_path.is_file() or manifest_path.is_symlink():
+            expected = False
+            try:
+                preflight = json.loads(
+                    (bundle / "preflight.json").read_text(encoding="utf-8")
+                )
+                expected = any(
+                    "symlink" in Path(str(action.get("source") or "")).name.lower()
+                    for action in preflight.get("filesystem") or []
+                )
+            except (OSError, json.JSONDecodeError):
+                pass
+            if expected:
+                return ["captured symlink manifest is missing or unsafe"]
+            return []
+        try:
+            payload = json.loads(manifest_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as error:
+            return [f"symlink manifest: {error}"]
+
+        roots = [
+            str(root).strip()
+            for root in payload.get("roots") or []
+            if str(root).strip()
+        ]
+        missing_roots = [root for root in roots if not Path(root).is_dir()]
+        if missing_roots:
+            preview = ", ".join(missing_roots[:3])
+            suffix = "" if len(missing_roots) <= 3 else ", ..."
+            return [
+                "symlink manifest roots were not restored; refusing to create a "
+                f"split symlink tree: {preview}{suffix}"
+            ]
+
+        try:
+            report = restore_symlink_manifest(
+                str(manifest_path),
+                dry_run=False,
+                overwrite_existing=True,
+                restore_broken=True,
+            )
+        except Exception as error:
+            return [f"symlink manifest restore: {_safe_error_detail(error)}"]
+
+        errors = [
+            f"symlink restore {item.get('link_path')}: {item.get('error')}"
+            for item in report.get("errors") or []
+        ]
+        invalid_entries = int(report.get("skipped_invalid_entries") or 0)
+        if invalid_entries:
+            errors.append(
+                f"symlink manifest contained {invalid_entries} invalid entries"
+            )
+
+        mismatches = []
+        for entry in payload.get("entries") or []:
+            if not isinstance(entry, dict):
+                continue
+            link_path = str(entry.get("link_path") or "").strip()
+            expected_target = str(entry.get("target") or "").strip()
+            if not link_path or not expected_target:
+                continue
+            try:
+                if not os.path.islink(link_path):
+                    mismatches.append(f"{link_path} is not a symlink")
+                elif os.readlink(link_path) != expected_target:
+                    mismatches.append(f"{link_path} target did not restore")
+            except OSError as error:
+                mismatches.append(f"{link_path}: {error}")
+            if len(mismatches) >= 20:
+                break
+        errors.extend(f"symlink validation {item}" for item in mismatches)
         return errors
 
     @staticmethod
@@ -2065,30 +2279,46 @@ class InfiniDyskMigrationManager:
             if callable(progress_callback):
                 progress_callback(completed, len(changed), mode)
 
+        def apply_bulk(root_path: str, batch: list[dict]) -> None:
+            nonlocal completed
+            payload = {
+                id_field: [int(item["id"]) for item in batch],
+                "rootFolderPath": root_path,
+                "moveFiles": False,
+            }
+            try:
+                _migration_arr_req(
+                    _arr_url(host, api_version, editor_endpoint),
+                    token,
+                    "PUT",
+                    payload,
+                )
+                completed += len(batch)
+                report("bulk")
+            except urllib.error.HTTPError as error:
+                if error.code not in {400, 404, 405, 409, 422}:
+                    raise
+                if (
+                    error.code in {409, 422}
+                    and len(batch) > ARR_EDITOR_SPLIT_MIN_BATCH_SIZE
+                ):
+                    # Validation/conflict failures can be caused by one record in
+                    # an otherwise valid catalog-sized batch. Bisect only those
+                    # failures so one bad item does not degrade all 500 records to
+                    # slow individual writes. A small failing leaf still uses the
+                    # exact item endpoint and final validation remains authoritative.
+                    midpoint = len(batch) // 2
+                    apply_bulk(root_path, batch[:midpoint])
+                    apply_bulk(root_path, batch[midpoint:])
+                    return
+                # HTTP 400/404/405 normally means this Arr build has no compatible
+                # bulk editor. Avoid recursively probing every item in that case.
+                exact_updates.extend(batch)
+
         for root_path, targets in grouped.items():
             for offset in range(0, len(targets), ARR_EDITOR_BATCH_SIZE):
                 batch = targets[offset : offset + ARR_EDITOR_BATCH_SIZE]
-                payload = {
-                    id_field: [int(item["id"]) for item in batch],
-                    "rootFolderPath": root_path,
-                    "moveFiles": False,
-                }
-                try:
-                    _migration_arr_req(
-                        _arr_url(host, api_version, editor_endpoint),
-                        token,
-                        "PUT",
-                        payload,
-                    )
-                    completed += len(batch)
-                    report("bulk")
-                except urllib.error.HTTPError as error:
-                    if error.code not in {400, 404, 405, 409, 422}:
-                        raise
-                    # Older/custom Arr builds may not expose a compatible editor
-                    # resource. Preserve exact behavior by falling back only for
-                    # this bounded batch; final validation remains authoritative.
-                    exact_updates.extend(batch)
+                apply_bulk(root_path, batch)
 
         for target in exact_updates:
             item_id = str(target.get("id") or "")
@@ -2293,24 +2523,26 @@ class InfiniDyskMigrationManager:
             )
             changed_tags += 1
 
+        target_root_paths = {
+            str(root.get("path") or "")
+            for root in desired_roots.values()
+            if str(root.get("path") or "")
+        }
+        obsolete_root_paths = {
+            str(original.get("path") or "")
+            for root_id, original in original_roots.items()
+            if str(original.get("path") or "")
+            and str(original.get("path") or "")
+            != str((desired_roots.get(root_id) or {}).get("path") or "")
+            and str(original.get("path") or "") not in target_root_paths
+        }
         current_roots = (
             _migration_arr_req(_arr_url(host, api_version, "rootfolder"), token, "GET")
             or []
         )
-        for root_id, original in original_roots.items():
-            target = desired_roots.get(root_id) or {}
-            old_path = str(original.get("path") or "")
-            if old_path == target.get("path"):
-                continue
-            current = next(
-                (
-                    root
-                    for root in current_roots
-                    if str(root.get("path") or "") == old_path
-                ),
-                None,
-            )
-            if not current or not current.get("id"):
+        for current in current_roots:
+            current_path = str(current.get("path") or "")
+            if current_path not in obsolete_root_paths or not current.get("id"):
                 continue
             try:
                 _migration_arr_req(
@@ -2379,6 +2611,31 @@ class InfiniDyskMigrationManager:
             desired_path = str(root.get("path") or "")
             if desired_path and desired_path not in root_paths:
                 raise RuntimeError(f"Arr root path did not persist: {desired_path}")
+        desired_root_paths = {
+            str(root.get("path") or "")
+            for root in desired.get("roots") or []
+            if str(root.get("path") or "")
+        }
+        original_roots = {
+            str(root.get("id")): root for root in snapshot.get("roots") or []
+        }
+        desired_roots = {
+            str(root.get("id")): root for root in desired.get("roots") or []
+        }
+        obsolete_root_paths = {
+            str(original.get("path") or "")
+            for root_id, original in original_roots.items()
+            if str(original.get("path") or "")
+            and str(original.get("path") or "")
+            != str((desired_roots.get(root_id) or {}).get("path") or "")
+            and str(original.get("path") or "") not in desired_root_paths
+        }
+        stale_roots = sorted(obsolete_root_paths & root_paths)
+        if stale_roots:
+            raise RuntimeError(
+                "Arr obsolete root paths remain after migration: "
+                + ", ".join(stale_roots[:3])
+            )
         current_items = {
             str(item.get("id")): item
             for item in (
@@ -2959,7 +3216,9 @@ class InfiniDyskMigrationManager:
         *,
         force_setup: bool = True,
         defer_provider_integrations: bool = False,
-    ) -> None:
+        continue_on_error: bool = False,
+    ) -> list[str]:
+        errors = []
         for process_name in process_names:
             tracker_lock = getattr(process_handler, "setup_tracker_lock", None)
             tracker = getattr(process_handler, "setup_tracker", None)
@@ -2978,7 +3237,23 @@ class InfiniDyskMigrationManager:
             else:
                 result, error = process_handler.start_process(process_name)
             if not result:
-                raise RuntimeError(error or f"{process_name} failed to start")
+                detail = error or f"{process_name} failed to start"
+                if not continue_on_error:
+                    raise RuntimeError(detail)
+                errors.append(f"{process_name}: {detail}")
+        return errors
+
+    @staticmethod
+    def _start_prowlarr_for_migration(
+        process_handler, process_names: list[str]
+    ) -> None:
+        """Start captured Prowlarr runtimes without preemptive integration setup."""
+
+        InfiniDyskMigrationManager._start_processes(
+            process_handler,
+            process_names,
+            force_setup=False,
+        )
 
     @staticmethod
     def _renamed_processes(
@@ -3348,7 +3623,12 @@ class InfiniDyskMigrationManager:
                         "Restarting Prowlarr for guarded connection and tag updates.",
                         83,
                     )
-                    self._start_processes(process_handler, held_prowlarr)
+                    # The captured Prowlarr records are the migration authority.
+                    # Running normal setup here can create canonical applications
+                    # or tags before the guarded ID-preserving rename, producing a
+                    # duplicate-name HTTP 409. Start the existing runtime without
+                    # integration setup, then apply and validate the snapshot below.
+                    self._start_prowlarr_for_migration(process_handler, held_prowlarr)
                 for index, original in enumerate(prowlarr_snapshots):
                     progress(
                         "prowlarr",
@@ -3532,6 +3812,15 @@ class InfiniDyskMigrationManager:
                 )
                 rollback_errors.extend(self._rollback_namespace_paths(moved))
                 progress(
+                    "rollback_symlink_manifest",
+                    "Restoring and verifying the captured symlink catalog.",
+                    69,
+                    "rolling_back",
+                )
+                rollback_errors.extend(
+                    self._restore_and_validate_symlink_manifest(backup_bundle)
+                )
+                progress(
                     "rollback_files",
                     "Restoring captured application files.",
                     72,
@@ -3558,9 +3847,19 @@ class InfiniDyskMigrationManager:
                     "rolling_back",
                 )
                 try:
-                    self._start_processes(process_handler, running, force_setup=False)
+                    restart_errors = self._start_processes(
+                        process_handler,
+                        running,
+                        force_setup=False,
+                        continue_on_error=True,
+                    )
+                    rollback_errors.extend(
+                        f"start: {restart_error}" for restart_error in restart_errors
+                    )
                 except Exception as rollback_error:
-                    rollback_errors.append(f"start: {rollback_error}")
+                    rollback_errors.append(
+                        f"start recovery: {_safe_error_detail(rollback_error)}"
+                    )
                 progress(
                     "rollback_arr", "Restoring Arr references.", 90, "rolling_back"
                 )
@@ -3582,7 +3881,8 @@ class InfiniDyskMigrationManager:
                         self._validate_arr_snapshot(desired, original)
                     except Exception as rollback_error:
                         rollback_errors.append(
-                            f"{original.get('process_name')} Arr paths: {rollback_error}"
+                            f"{original.get('process_name')} Arr paths: "
+                            f"{_safe_error_detail(rollback_error)}"
                         )
                 progress(
                     "rollback_prowlarr",
@@ -3604,7 +3904,8 @@ class InfiniDyskMigrationManager:
                         self._validate_prowlarr_snapshot(desired, original)
                     except Exception as rollback_error:
                         rollback_errors.append(
-                            f"{original.get('process_name')} Prowlarr applications: {rollback_error}"
+                            f"{original.get('process_name')} Prowlarr applications: "
+                            f"{_safe_error_detail(rollback_error)}"
                         )
                 progress(
                     "rollback_media",
@@ -3626,7 +3927,8 @@ class InfiniDyskMigrationManager:
                         self._validate_media_snapshot(desired, original, logger)
                     except Exception as rollback_error:
                         rollback_errors.append(
-                            f"{original.get('process_name')} libraries: {rollback_error}"
+                            f"{original.get('process_name')} libraries: "
+                            f"{_safe_error_detail(rollback_error)}"
                         )
                 progress(
                     "rollback_scan_guards",

@@ -239,6 +239,44 @@ class ProwlarrWhisparrCategoryTests(unittest.TestCase):
 
 
 class ProwlarrPayloadHelperTests(unittest.TestCase):
+    def test_legacy_infinidysk_tag_alias_reuses_existing_nzbdav_tag(self):
+        requests = []
+
+        def fake_req(url, _token, method="GET", data=None):
+            requests.append((url, method, data))
+            if method == "GET":
+                return [{"id": 3, "label": "nzbdav"}]
+            raise AssertionError(
+                "A canonical tag must not be created during legacy use"
+            )
+
+        with mock.patch.object(
+            prowlarr_settings, "_prowlarr_req", side_effect=fake_req
+        ):
+            tag_map = prowlarr_settings._ensure_tag_ids(
+                "http://127.0.0.1:9696",
+                "token",
+                ["infinidysk"],
+                aliases={"infinidysk": "nzbdav"},
+            )
+
+        self.assertEqual(3, tag_map["infinidysk"])
+        self.assertTrue(all(request[1] == "GET" for request in requests))
+
+    def test_legacy_namespace_detection_uses_retained_paths(self):
+        manager = types.SimpleNamespace(
+            config={
+                "infinidysk": {
+                    "config_dir": "/nzbdav",
+                    "symlink_backup_roots": ["/mnt/debrid/nzbdav-symlinks"],
+                }
+            },
+            uses_legacy_infinidysk_identity=lambda: False,
+        )
+
+        with mock.patch.object(prowlarr_settings, "CONFIG_MANAGER", manager):
+            self.assertTrue(prowlarr_settings._uses_legacy_infinidysk_namespace())
+
     def test_build_fields_from_schema_overrides_existing_names_case_insensitively(self):
         fields = prowlarr_settings._build_fields_from_schema(
             {

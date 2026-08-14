@@ -3,6 +3,7 @@ import tempfile
 import threading
 import time
 import unittest
+import urllib.error
 from pathlib import Path
 from unittest.mock import MagicMock, call, patch
 
@@ -15,6 +16,7 @@ from utils.infinidysk_migration import (
     QUIESCE_TIMEOUT_SECONDS,
     _config_fingerprint,
     _migration_arr_req,
+    _safe_error_detail,
     _replace_namespace_text,
     _rewrite_config_namespace,
 )
@@ -77,6 +79,35 @@ class InfiniDyskMigrationTests(unittest.TestCase):
             None,
             timeout=ARR_INVENTORY_TIMEOUT_SECONDS,
         )
+
+    def test_migration_http_error_reports_sanitized_operation_and_response(self):
+        error = urllib.error.HTTPError(
+            "http://127.0.0.1:8990/api/v3/rootfolder/7?apiKey=secret",
+            409,
+            "Conflict",
+            {},
+            None,
+        )
+        error.body = json.dumps({"message": "Root folder is still in use"})
+
+        with (
+            patch("utils.infinidysk_migration._arr_req", side_effect=error),
+            self.assertRaises(urllib.error.HTTPError) as raised,
+        ):
+            _migration_arr_req(
+                error.url,
+                "secret",
+                "DELETE",
+            )
+
+        detail = _safe_error_detail(raised.exception)
+        self.assertEqual(
+            "Arr API DELETE http://127.0.0.1:8990/api/v3/rootfolder/7 "
+            "returned HTTP 409 Conflict: Root folder is still in use",
+            detail,
+        )
+        self.assertNotIn("apiKey", detail)
+        self.assertNotIn("secret", detail)
 
     def test_preflight_reports_transient_activity_without_blocking_job_start(self):
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -569,6 +600,42 @@ class InfiniDyskMigrationTests(unittest.TestCase):
         self.assertIn("NzbDAV Migration Lab", handler.setup_tracker)
         handler.start_process.assert_called_once_with("NzbDAV Migration Lab")
 
+    def test_rollback_restart_continues_after_one_service_fails(self):
+        handler = MagicMock()
+        handler.setup_tracker = set()
+        handler.setup_tracker_lock = threading.Lock()
+        handler.start_process.side_effect = [
+            (False, "InfiniDysk failed to stay running"),
+            (True, None),
+            (True, None),
+        ]
+        process_names = ["InfiniDysk", "Sonarr 1080p", "Prowlarr"]
+
+        errors = InfiniDyskMigrationManager._start_processes(
+            handler,
+            process_names,
+            force_setup=False,
+            continue_on_error=True,
+        )
+
+        self.assertEqual(["InfiniDysk: InfiniDysk failed to stay running"], errors)
+        self.assertEqual(
+            [call(name) for name in process_names],
+            handler.start_process.call_args_list,
+        )
+        self.assertEqual(set(process_names), handler.setup_tracker)
+
+    def test_guarded_prowlarr_restart_skips_preemptive_integration_setup(self):
+        handler = MagicMock()
+        handler.setup_tracker = set()
+        handler.setup_tracker_lock = threading.Lock()
+        handler.start_process.return_value = (True, None)
+
+        InfiniDyskMigrationManager._start_prowlarr_for_migration(handler, ["Prowlarr"])
+
+        self.assertIn("Prowlarr", handler.setup_tracker)
+        handler.start_process.assert_called_once_with("Prowlarr")
+
     def test_full_namespace_job_persists_progress_and_terminal_result(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             manager = InfiniDyskMigrationManager(Path(temp_dir) / "state.json")
@@ -737,6 +804,170 @@ class InfiniDyskMigrationTests(unittest.TestCase):
                 recovery["backup_bundle_path"],
             )
 
+    def test_namespace_backup_records_original_file_ownership_and_mode(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            config_dir = root / "nzbdav"
+            config_dir.mkdir()
+            database = config_dir / "db.sqlite"
+            database.write_text("database", encoding="utf-8")
+            database.chmod(0o640)
+            backup_path = root / "backups" / "config.json"
+            backup_path.parent.mkdir()
+            backup_path.write_text("{}", encoding="utf-8")
+            manager = InfiniDyskMigrationManager(root / "state.json")
+            config_manager = MagicMock()
+            config_manager.config = {
+                "infinidysk": {"enabled": True, "config_dir": str(config_dir)}
+            }
+
+            with (
+                patch("utils.infinidysk_migration.CONFIG_MANAGER", config_manager),
+                patch.object(manager, "_backup_config", return_value=backup_path),
+            ):
+                _config_backup, bundle = manager._create_namespace_backup({}, 123)
+
+            manifest = json.loads((bundle / "files.json").read_text(encoding="utf-8"))[
+                "files"
+            ]
+            database_record = next(
+                item for item in manifest if item["source"] == str(database)
+            )
+            database_stat = database.stat()
+            self.assertEqual(0o640, database_record["mode"])
+            self.assertEqual(database_stat.st_uid, database_record["uid"])
+            self.assertEqual(database_stat.st_gid, database_record["gid"])
+
+    def test_namespace_restore_reapplies_original_file_ownership_and_mode(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            bundle = root / "bundle"
+            bundle.mkdir()
+            backup = bundle / "db.sqlite"
+            backup.write_text("restored", encoding="utf-8")
+            backup.chmod(0o600)
+            destination = root / "nzbdav" / "db.sqlite"
+            destination.parent.mkdir()
+            destination.write_text("changed", encoding="utf-8")
+            InfiniDyskMigrationManager._write_private_json(
+                bundle / "files.json",
+                {
+                    "files": [
+                        {
+                            "source": str(destination),
+                            "backup": str(backup),
+                            "size": backup.stat().st_size,
+                            "mode": 0o640,
+                            "uid": 1234,
+                            "gid": 2345,
+                        }
+                    ]
+                },
+            )
+
+            with patch("utils.infinidysk_migration.os.chown") as chown:
+                errors = InfiniDyskMigrationManager._restore_backup_files(bundle)
+
+            self.assertEqual([], errors)
+            self.assertEqual("restored", destination.read_text(encoding="utf-8"))
+            self.assertEqual(0o640, destination.stat().st_mode & 0o777)
+            chown.assert_called_once_with(destination, 1234, 2345)
+
+    def test_namespace_rollback_restores_and_validates_exact_symlink_manifest(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            symlink_root = root / "nzbdav-symlinks"
+            symlink_root.mkdir()
+            first = symlink_root / "Movie One.mkv"
+            second = symlink_root / "Movie Two.mkv"
+            first.symlink_to("/mnt/debrid/nzbdav/movies/one.mkv")
+            second.symlink_to("../../nzbdav/movies/two.mkv")
+            bundle = root / "bundle"
+            bundle.mkdir()
+            InfiniDyskMigrationManager._write_private_json(
+                bundle / "symlinks-before.json",
+                {
+                    "manifest_type": "symlink_snapshot",
+                    "roots": [str(symlink_root)],
+                    "entries": [
+                        {
+                            "link_path": str(first),
+                            "target": "/mnt/debrid/nzbdav/movies/one.mkv",
+                        },
+                        {
+                            "link_path": str(second),
+                            "target": "../../nzbdav/movies/two.mkv",
+                        },
+                    ],
+                },
+            )
+            first.unlink()
+            first.symlink_to("/mnt/debrid/infinidysk/movies/one.mkv")
+            second.unlink()
+
+            errors = InfiniDyskMigrationManager._restore_and_validate_symlink_manifest(
+                bundle
+            )
+
+            self.assertEqual([], errors)
+            self.assertEqual(
+                "/mnt/debrid/nzbdav/movies/one.mkv", first.readlink().as_posix()
+            )
+            self.assertEqual(
+                "../../nzbdav/movies/two.mkv", second.readlink().as_posix()
+            )
+
+    def test_namespace_symlink_restore_refuses_to_create_missing_root(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            missing_root = root / "missing-nzbdav-symlinks"
+            link = missing_root / "Movie.mkv"
+            bundle = root / "bundle"
+            bundle.mkdir()
+            InfiniDyskMigrationManager._write_private_json(
+                bundle / "symlinks-before.json",
+                {
+                    "manifest_type": "symlink_snapshot",
+                    "roots": [str(missing_root)],
+                    "entries": [
+                        {
+                            "link_path": str(link),
+                            "target": "/mnt/debrid/nzbdav/movies/movie.mkv",
+                        }
+                    ],
+                },
+            )
+
+            errors = InfiniDyskMigrationManager._restore_and_validate_symlink_manifest(
+                bundle
+            )
+
+            self.assertEqual(1, len(errors))
+            self.assertIn("refusing to create a split symlink tree", errors[0])
+            self.assertFalse(missing_root.exists())
+
+    def test_namespace_symlink_restore_reports_missing_expected_manifest(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            bundle = Path(temp_dir) / "bundle"
+            bundle.mkdir()
+            InfiniDyskMigrationManager._write_private_json(
+                bundle / "preflight.json",
+                {
+                    "filesystem": [
+                        {
+                            "source": "/mnt/debrid/nzbdav-symlinks",
+                            "destination": "/mnt/debrid/infinidysk-symlinks",
+                        }
+                    ]
+                },
+            )
+
+            errors = InfiniDyskMigrationManager._restore_and_validate_symlink_manifest(
+                bundle
+            )
+
+            self.assertEqual(["captured symlink manifest is missing or unsafe"], errors)
+
     def test_arr_item_updates_use_bounded_bulk_editor_batches(self):
         total = ARR_EDITOR_BATCH_SIZE + 1
         snapshot = {
@@ -777,6 +1008,91 @@ class InfiniDyskMigrationTests(unittest.TestCase):
         self.assertTrue(all("movie/editor" in request[0] for request in requests))
         self.assertEqual(ARR_EDITOR_BATCH_SIZE, len(requests[0][2]["movieIds"]))
         self.assertEqual((total, total, "bulk"), progress[-1])
+
+    def test_arr_bulk_conflict_is_bisected_without_serializing_whole_batch(self):
+        total = ARR_EDITOR_BATCH_SIZE
+        conflicting_id = 377
+        snapshot = {
+            "service_key": "radarr",
+            "host": "http://127.0.0.1:7878",
+            "api_key": "secret",
+            "api_version": "v3",
+            "item_endpoint": "movie",
+            "roots": [{"id": 1, "path": "/mnt/debrid/nzbdav-symlinks/movies"}],
+            "items": [
+                {
+                    "id": item_id,
+                    "path": f"/mnt/debrid/nzbdav-symlinks/movies/Movie {item_id}",
+                }
+                for item_id in range(1, total + 1)
+            ],
+        }
+        desired = InfiniDyskMigrationManager._desired_arr_snapshot(snapshot)
+        bulk_requests = []
+        individual_requests = []
+
+        def request(url, _token, method="GET", data=None):
+            if "movie/editor" in url:
+                ids = data["movieIds"]
+                bulk_requests.append(ids)
+                if conflicting_id in ids:
+                    raise urllib.error.HTTPError(url, 409, "Conflict", {}, None)
+                return None
+            individual_requests.append(url)
+            return None
+
+        with patch(
+            "utils.infinidysk_migration._migration_arr_req", side_effect=request
+        ):
+            changed = InfiniDyskMigrationManager._update_arr_items(snapshot, desired)
+
+        self.assertEqual(total, changed)
+        self.assertLess(len(bulk_requests), 20)
+        self.assertLessEqual(len(individual_requests), 8)
+        self.assertTrue(
+            any(
+                url.endswith(f"movie/{conflicting_id}?moveFiles=false")
+                for url in individual_requests
+            )
+        )
+
+    def test_arr_unsupported_bulk_editor_falls_back_without_recursive_probes(self):
+        total = 20
+        snapshot = {
+            "service_key": "radarr",
+            "host": "http://127.0.0.1:7878",
+            "api_key": "secret",
+            "api_version": "v3",
+            "item_endpoint": "movie",
+            "roots": [{"id": 1, "path": "/mnt/debrid/nzbdav-symlinks/movies"}],
+            "items": [
+                {
+                    "id": item_id,
+                    "path": f"/mnt/debrid/nzbdav-symlinks/movies/Movie {item_id}",
+                }
+                for item_id in range(1, total + 1)
+            ],
+        }
+        desired = InfiniDyskMigrationManager._desired_arr_snapshot(snapshot)
+        bulk_requests = 0
+        individual_requests = 0
+
+        def request(url, _token, method="GET", data=None):
+            nonlocal bulk_requests, individual_requests
+            if "movie/editor" in url:
+                bulk_requests += 1
+                raise urllib.error.HTTPError(url, 404, "Not Found", {}, None)
+            individual_requests += 1
+            return None
+
+        with patch(
+            "utils.infinidysk_migration._migration_arr_req", side_effect=request
+        ):
+            changed = InfiniDyskMigrationManager._update_arr_items(snapshot, desired)
+
+        self.assertEqual(total, changed)
+        self.assertEqual(1, bulk_requests)
+        self.assertEqual(total, individual_requests)
 
     def test_rolled_back_job_is_terminal_at_100_percent_with_cause(self):
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -1580,6 +1896,12 @@ class InfiniDyskMigrationTests(unittest.TestCase):
             )
             self.assertEqual("InfiniDysk", state["clients"][0]["name"])
             self.assertEqual({"id": 3, "label": "InfiniDysk"}, state["tags"][0])
+            state["roots"].append(
+                {
+                    "id": 99,
+                    "path": "/mnt/debrid/infinidysk-symlinks/movies",
+                }
+            )
             manager._apply_arr_snapshot(migrated, snapshot)
             manager._validate_arr_snapshot(migrated, snapshot)
 
@@ -1650,6 +1972,28 @@ class InfiniDyskMigrationTests(unittest.TestCase):
 
         self.assertEqual("Radarr (NzbDAV)", state["applications"][0]["name"])
         self.assertEqual("nzbdav", state["tags"][0]["label"])
+
+    def test_prowlarr_preflight_blocks_legacy_canonical_name_collisions(self):
+        snapshot = {
+            "process_name": "Prowlarr Main",
+            "applications": [
+                {"id": 8, "name": "Radarr NzbDAV"},
+                {"id": 9, "name": "Radarr InfiniDysk"},
+            ],
+            "tags": [
+                {"id": 3, "label": "nzbdav"},
+                {"id": 10, "label": "infinidysk"},
+            ],
+        }
+
+        blockers = InfiniDyskMigrationManager._prowlarr_namespace_conflicts(snapshot)
+
+        self.assertEqual(2, len(blockers))
+        self.assertTrue(any("tag label 'infinidysk'" in item for item in blockers))
+        self.assertTrue(
+            any("application name 'radarr infinidysk'" in item for item in blockers)
+        )
+        self.assertTrue(all("run preflight again" in item for item in blockers))
 
     def test_full_namespace_failure_restores_paths_and_config(self):
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -1791,16 +2135,19 @@ class InfiniDyskMigrationTests(unittest.TestCase):
                 *,
                 force_setup=True,
                 defer_provider_integrations=False,
+                continue_on_error=False,
             ):
                 start_calls.append(
                     (
                         list(process_names),
                         force_setup,
                         defer_provider_integrations,
+                        continue_on_error,
                     )
                 )
                 if force_setup:
                     raise RuntimeError("simulated dependent restart failure")
+                return []
 
             def quiesce_all(
                 _config,
@@ -1859,9 +2206,9 @@ class InfiniDyskMigrationTests(unittest.TestCase):
                 name for name in expected_new if name not in producer_names
             ]
             self.assertEqual(
-                (expected_new_without_producers, True, True), start_calls[0]
+                (expected_new_without_producers, True, True, False), start_calls[0]
             )
-            self.assertEqual((expected_old, False, False), start_calls[-1])
+            self.assertEqual((expected_old, False, False, True), start_calls[-1])
             self.assertNotIn("Zurg Usenet", start_calls[0][0])
             self.assertNotIn("Zurg Usenet", start_calls[-1][0])
             self.assertEqual(original, manager_config.config)

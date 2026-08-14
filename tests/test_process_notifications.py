@@ -4,10 +4,26 @@ import tempfile
 import unittest
 from unittest.mock import Mock, call, patch
 
-from utils.processes import ProcessHandler
+from utils.processes import ProcessHandler, _immediate_exit_summary
 
 
 class ProcessNotificationTests(unittest.TestCase):
+    def test_immediate_exit_summary_prefers_fatal_line_over_earlier_warning(self):
+        summary = _immediate_exit_summary(
+            "Fatal: SQLite database is locked\n",
+            "SECURE_COOKIES is unset; session cookies will be sent over HTTP.\n",
+        )
+
+        self.assertEqual("Fatal: SQLite database is locked", summary)
+
+    def test_immediate_exit_summary_ignores_secure_cookie_advisory(self):
+        summary = _immediate_exit_summary(
+            "",
+            "SECURE_COOKIES is unset; session cookies will be sent over HTTP.\n",
+        )
+
+        self.assertIsNone(summary)
+
     def _handler_with_process(
         self, pid=1234, process_name="Example", managed_service=True
     ):
