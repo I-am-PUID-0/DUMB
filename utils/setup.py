@@ -830,6 +830,38 @@ def _nzbdav_prebuilt_runtime_ready(
         return False, f"InfiniDysk prebuilt runtime is not reusable: {error}"
 
 
+def _nzbdav_installed_runtime_ready(config: dict) -> tuple[bool, str | None]:
+    """Validate an installed InfiniDysk runtime without requiring its build marker."""
+
+    config_dir = str(config.get("config_dir") or "/infinidysk")
+    backend_output_dir = config.get("backend_output_dir") or os.path.join(
+        config_dir, "app"
+    )
+    runtime_ready, runtime_error = _validate_nzbdav_runtimeconfig(
+        os.path.join(backend_output_dir, "NzbWebDAV.runtimeconfig.json")
+    )
+    if not runtime_ready:
+        return False, runtime_error
+    backend_command, backend_error = _nzbdav_build_command(
+        backend_output_dir,
+        dotnet_dir=config_dir,
+        prefer_native=True,
+    )
+    if not backend_command:
+        return False, backend_error
+    frontend_dir = _find_nzbdav_frontend_dir(config_dir, config)
+    return _validate_nzbdav_frontend_runtime(frontend_dir)
+
+
+def _nzbdav_named_release_channel(config: dict) -> bool:
+    if not config.get("release_version_enabled"):
+        return False
+    release = str(config.get("release_version") or "").strip().lower()
+    if not release or release in {"latest", "nightly", "prerelease"}:
+        return False
+    return not any(character.isdigit() for character in release)
+
+
 def _resolve_nzbdav_release_selector(
     config: dict, requested_release: str | None
 ) -> tuple[str | None, str | None]:
@@ -1879,6 +1911,7 @@ def _setup_project_inner(
         logger.info(f"Setting up {process_name}...")
     try:
         bootstrap_installed = False
+        preserve_installed_nzbdav_runtime = False
         if install_phase:
             if (
                 not config.get("release_version_enabled")
@@ -1919,6 +1952,29 @@ def _setup_project_inner(
                 requested_lower in {"latest", "prerelease"}
                 or "nightly" in requested_lower
             )
+            if (
+                key == "infinidysk"
+                and not config.get("auto_update")
+                and _nzbdav_named_release_channel(config)
+            ):
+                runtime_ready, runtime_error = _nzbdav_installed_runtime_ready(config)
+                if runtime_ready:
+                    preserve_installed_nzbdav_runtime = True
+                    logger.info(
+                        "Keeping verified installed %s runtime because moving release "
+                        "channel %s has automatic updates disabled. Use a manual update "
+                        "to install the channel's current commit.",
+                        process_name,
+                        requested_version,
+                    )
+                else:
+                    logger.warning(
+                        "The installed %s runtime is not reusable (%s); attempting the "
+                        "configured moving release channel despite automatic updates "
+                        "being disabled.",
+                        process_name,
+                        runtime_error or "runtime validation failed",
+                    )
             source_managed_by_service_setup = key in {
                 "emby",
                 "profilarr",
@@ -1941,6 +1997,7 @@ def _setup_project_inner(
                     return False, error
             elif (
                 not bootstrap_installed
+                and not preserve_installed_nzbdav_runtime
                 and not source_managed_by_service_setup
                 and config.get("release_version_enabled")
                 and (not config.get("auto_update") or allow_release_with_auto_update)
@@ -2460,13 +2517,22 @@ def _setup_project_inner(
                 return False, error
 
         if key == "infinidysk":
-            success, error = setup_nzbdav(
-                process_handler,
-                install_only=install_phase and not configure_phase,
-                configure_only=configure_phase and not install_phase,
-            )
-            if not success:
-                return False, error
+            if (
+                install_phase
+                and not configure_phase
+                and preserve_installed_nzbdav_runtime
+            ):
+                logger.info(
+                    "InfiniDysk install phase retained the verified installed runtime."
+                )
+            else:
+                success, error = setup_nzbdav(
+                    process_handler,
+                    install_only=install_phase and not configure_phase,
+                    configure_only=configure_phase and not install_phase,
+                )
+                if not success:
+                    return False, error
 
         if key == "cli_debrid":
             utilities_dir = os.path.join(

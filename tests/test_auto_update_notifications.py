@@ -950,6 +950,7 @@ class UpdateNotificationTests(unittest.TestCase):
         config = {
             "release_version_enabled": True,
             "release_version": "dev",
+            "auto_update": True,
             "repo_owner": "infinidysk",
             "repo_name": "infinidysk",
         }
@@ -1708,6 +1709,7 @@ class UpdateNotificationTests(unittest.TestCase):
         config = {
             "release_version_enabled": True,
             "release_version": "dev",
+            "auto_update": True,
             "repo_owner": "infinidysk",
             "repo_name": "infinidysk",
         }
@@ -1724,6 +1726,13 @@ class UpdateNotificationTests(unittest.TestCase):
 
         versions.return_value.version_check.return_value = ("dev-aaaaaaaa", None)
         self.assertTrue(
+            updater._should_run_install_phase_for_preinstalled(
+                "InfiniDysk", "infinidysk", None, config
+            )
+        )
+
+        config["auto_update"] = False
+        self.assertFalse(
             updater._should_run_install_phase_for_preinstalled(
                 "InfiniDysk", "infinidysk", None, config
             )

@@ -1,4 +1,5 @@
 import json
+import sqlite3
 import tempfile
 import threading
 import time
@@ -149,6 +150,155 @@ class InfiniDyskMigrationTests(unittest.TestCase):
         self.assertIn("media activity", result["pending_conditions"][1])
         self.assertIn("2 active read", result["pending_conditions"][2])
 
+    def test_health_check_config_update_is_read_back_and_verified(self):
+        manager = InfiniDyskMigrationManager()
+        config = {
+            "infinidysk": {
+                "env": {"FRONTEND_BACKEND_API_KEY": "secret"},
+                "backend_port": 8080,
+            }
+        }
+        with patch.object(
+            InfiniDyskMigrationManager,
+            "_infinidysk_config_api_request",
+            side_effect=[
+                {"status": True},
+                {
+                    "configItems": [
+                        {
+                            "configName": "repair.enable",
+                            "configValue": "false",
+                            "environmentVariableName": None,
+                        }
+                    ]
+                },
+            ],
+        ) as request:
+            manager._set_infinidysk_config_item(config, "repair.enable", "false")
+
+        self.assertEqual(
+            [
+                call(config, "update-config", {"repair.enable": "false"}),
+                call(config, "get-config", {"config-keys": "repair.enable"}),
+            ],
+            request.call_args_list,
+        )
+
+    def test_health_check_scheduler_is_paused_and_exact_value_is_restored(self):
+        manager = InfiniDyskMigrationManager()
+        config = {
+            "infinidysk": {
+                "enabled": True,
+                "process_name": "NzbDAV",
+            }
+        }
+        process = MagicMock()
+        process.poll.return_value = None
+        handler = MagicMock()
+        handler.process_names = {"NzbDAV": process}
+        handler._prefixed_name.side_effect = lambda value: value
+
+        with (
+            patch.object(
+                InfiniDyskMigrationManager,
+                "_infinidysk_config_item",
+                return_value={
+                    "present": True,
+                    "value": "true",
+                    "environment_variable_name": "",
+                },
+            ),
+            patch.object(
+                InfiniDyskMigrationManager, "_set_infinidysk_config_item"
+            ) as update,
+        ):
+            guard = manager._capture_infinidysk_health_check_guard(config, handler)
+            manager._pause_infinidysk_health_checks(config, guard)
+            manager._restore_infinidysk_health_checks(config, handler, guard)
+
+        self.assertEqual(
+            [
+                call(config, "repair.enable", "false"),
+                call(config, "repair.enable", "true"),
+            ],
+            update.call_args_list,
+        )
+        self.assertTrue(guard["paused"])
+        self.assertTrue(guard["changed"])
+        self.assertTrue(guard["restored"])
+
+    def test_environment_managed_health_check_scheduler_blocks_safe_pause(self):
+        manager = InfiniDyskMigrationManager()
+        guard = {
+            "applicable": True,
+            "original_value": "true",
+            "environment_variable_name": "NZBDAV_CONFIG__REPAIR__ENABLE",
+        }
+
+        with (
+            patch.object(
+                InfiniDyskMigrationManager, "_set_infinidysk_config_item"
+            ) as update,
+            self.assertRaisesRegex(
+                InfiniDyskMigrationError,
+                "NZBDAV_CONFIG__REPAIR__ENABLE",
+            ),
+        ):
+            manager._pause_infinidysk_health_checks({}, guard)
+
+        update.assert_not_called()
+
+    def test_preflight_blocks_environment_managed_health_check_scheduler(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            manager = InfiniDyskMigrationManager(Path(temp_dir) / "state.json")
+            config_manager = MagicMock()
+            config_manager.config = {
+                "infinidysk": {
+                    "enabled": True,
+                    "process_name": "NzbDAV",
+                    "config_dir": "/nzbdav",
+                }
+            }
+            process = MagicMock()
+            process.poll.return_value = None
+            handler = MagicMock()
+            handler.process_names = {"NzbDAV": process}
+            handler._prefixed_name.side_effect = lambda value: value
+            with (
+                patch("utils.infinidysk_migration.CONFIG_MANAGER", config_manager),
+                patch.object(
+                    manager, "_legacy_paths", return_value=[{"value": "/nzbdav"}]
+                ),
+                patch.object(
+                    manager, "_namespace_filesystem_plan", return_value=([], [])
+                ),
+                patch.object(manager, "_linked_service_inventory", return_value=[]),
+                patch.object(manager, "_arr_snapshot", return_value=([], [], [])),
+                patch.object(manager, "_prowlarr_snapshot", return_value=([], [])),
+                patch.object(manager, "_media_snapshot", return_value=([], [])),
+                patch.object(
+                    manager, "_infinidysk_active_reads", return_value=(0, None)
+                ),
+                patch.object(
+                    manager,
+                    "_infinidysk_config_item",
+                    return_value={
+                        "present": True,
+                        "value": "true",
+                        "environment_variable_name": ("NZBDAV_CONFIG__REPAIR__ENABLE"),
+                    },
+                ),
+            ):
+                result = manager.preflight(handler, MagicMock())
+
+        self.assertFalse(result["ready"])
+        self.assertTrue(
+            any(
+                "NZBDAV_CONFIG__REPAIR__ENABLE" in blocker
+                for blocker in result["blockers"]
+            )
+        )
+
     def test_arr_discovery_includes_live_legacy_references_without_core_link(self):
         manager = InfiniDyskMigrationManager()
         config = {
@@ -211,6 +361,63 @@ class InfiniDyskMigrationTests(unittest.TestCase):
             " ".join(by_process["Sonarr Anime"]["reasons"]),
         )
         self.assertFalse(by_process["Sonarr Main"]["included"])
+
+    def test_radarr_inventory_captures_import_lists_and_collections(self):
+        manager = InfiniDyskMigrationManager()
+        target = {
+            "service_key": "radarr",
+            "instance_name": "InfiniDysk",
+            "process_name": "Radarr InfiniDysk",
+            "config": {
+                "port": 7878,
+                "config_file": "/radarr/infinidysk/config.xml",
+            },
+        }
+
+        def request(url, _token, method="GET", data=None):
+            self.assertEqual("GET", method)
+            self.assertIsNone(data)
+            endpoint = url.split("/api/v3/", 1)[1]
+            if endpoint.startswith("queue?"):
+                return {"totalRecords": 0, "records": []}
+            responses = {
+                "rootfolder": [],
+                "movie": [],
+                "downloadclient": [],
+                "importlist": [
+                    {
+                        "id": 4,
+                        "rootFolderPath": "/mnt/debrid/nzbdav-symlinks/movies",
+                    }
+                ],
+                "collection": [
+                    {
+                        "id": 5,
+                        "rootFolderPath": "/mnt/debrid/nzbdav-symlinks/movies",
+                    }
+                ],
+                "tag": [],
+            }
+            return responses[endpoint]
+
+        with (
+            patch.object(
+                InfiniDyskMigrationManager, "_process_running", return_value=True
+            ),
+            patch(
+                "utils.infinidysk_migration._parse_arr_api_key",
+                return_value="secret",
+            ),
+            patch(
+                "utils.infinidysk_migration._migration_arr_req",
+                side_effect=request,
+            ),
+        ):
+            snapshot, blockers = manager._arr_target_snapshot(target, MagicMock())
+
+        self.assertEqual([], blockers)
+        self.assertEqual(4, snapshot["import_lists"][0]["id"])
+        self.assertEqual(5, snapshot["collections"][0]["id"])
 
     def test_media_snapshot_infers_external_plex_from_global_credentials(self):
         manager = InfiniDyskMigrationManager()
@@ -1333,6 +1540,199 @@ class InfiniDyskMigrationTests(unittest.TestCase):
             self.assertEqual("legacy", source.read_text(encoding="utf-8"))
             self.assertTrue(destination.is_symlink())
 
+    def test_namespace_plan_preserves_nested_renames_after_parent_move(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            source_parent = root / "nzbdav-symlinks"
+            destination_parent = root / "infinidysk-symlinks"
+            source_child = source_parent / "radarr-nzbdav"
+            destination_child = destination_parent / "radarr-infinidysk"
+            source_child.mkdir(parents=True)
+            (source_child / "marker").write_text("content", encoding="utf-8")
+            config = {
+                "infinidysk": {
+                    "config_dir": str(root / "unrelated"),
+                    "symlink_backup_roots": [str(source_parent)],
+                },
+                "radarr": {
+                    "instances": {
+                        "NzbDAV": {
+                            "root_folder": str(source_child),
+                        }
+                    }
+                },
+            }
+
+            with patch(
+                "utils.infinidysk_migration.NAMESPACE_PATH_MAPPINGS",
+                ((str(source_parent), str(destination_parent)),),
+            ):
+                actions, blockers = (
+                    InfiniDyskMigrationManager._namespace_filesystem_plan(config)
+                )
+
+            self.assertEqual([], blockers)
+            self.assertEqual(
+                [
+                    (str(source_parent), str(destination_parent)),
+                    (
+                        str(destination_parent / "radarr-nzbdav"),
+                        str(destination_child),
+                    ),
+                ],
+                [(action["source"], action["destination"]) for action in actions],
+            )
+
+            moved = InfiniDyskMigrationManager._move_namespace_paths(actions)
+            InfiniDyskMigrationManager._validate_namespace_paths(moved)
+            self.assertFalse(source_parent.exists())
+            self.assertFalse((destination_parent / "radarr-nzbdav").exists())
+            self.assertEqual(
+                "content",
+                (destination_child / "marker").read_text(encoding="utf-8"),
+            )
+
+            self.assertEqual(
+                [], InfiniDyskMigrationManager._rollback_namespace_paths(moved)
+            )
+            self.assertEqual(
+                "content", (source_child / "marker").read_text(encoding="utf-8")
+            )
+            self.assertFalse(destination_parent.exists())
+
+    def test_database_migration_rewrites_virtual_category_records(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            config_dir = Path(temp_dir)
+            database = config_dir / "db.sqlite"
+            with sqlite3.connect(database) as connection:
+                connection.executescript("""
+                    CREATE TABLE ConfigItems (
+                        ConfigName TEXT PRIMARY KEY,
+                        ConfigValue TEXT
+                    );
+                    CREATE TABLE HistoryItems (
+                        Id INTEGER PRIMARY KEY,
+                        Category TEXT
+                    );
+                    CREATE TABLE QueueItems (
+                        Id INTEGER PRIMARY KEY,
+                        Category TEXT
+                    );
+                    CREATE TABLE DavItems (
+                        Id INTEGER PRIMARY KEY,
+                        Name TEXT,
+                        Path TEXT
+                    );
+                    """)
+                connection.execute(
+                    "INSERT INTO ConfigItems VALUES (?, ?)",
+                    ("category", "radarr-nzbdav"),
+                )
+                connection.executemany(
+                    "INSERT INTO HistoryItems VALUES (?, ?)",
+                    [(1, "radarr-nzbdav"), (2, "custom-category")],
+                )
+                connection.execute(
+                    "INSERT INTO QueueItems VALUES (?, ?)",
+                    (1, "sonarr-nzbdav"),
+                )
+                connection.execute(
+                    "INSERT INTO DavItems VALUES (?, ?, ?)",
+                    (
+                        1,
+                        "nzbdav-movies",
+                        "/content/radarr-nzbdav/Example Movie",
+                    ),
+                )
+
+            changed = InfiniDyskMigrationManager._migrate_infinidysk_database(
+                str(config_dir)
+            )
+
+            self.assertEqual(5, changed)
+            self.assertEqual(
+                0,
+                InfiniDyskMigrationManager._migrate_infinidysk_database(
+                    str(config_dir)
+                ),
+            )
+            with sqlite3.connect(database) as connection:
+                self.assertEqual(
+                    "radarr-infinidysk",
+                    connection.execute(
+                        "SELECT ConfigValue FROM ConfigItems WHERE ConfigName='category'"
+                    ).fetchone()[0],
+                )
+                self.assertEqual(
+                    [(1, "radarr-infinidysk"), (2, "custom-category")],
+                    connection.execute(
+                        "SELECT Id, Category FROM HistoryItems ORDER BY Id"
+                    ).fetchall(),
+                )
+                self.assertEqual(
+                    "sonarr-infinidysk",
+                    connection.execute(
+                        "SELECT Category FROM QueueItems WHERE Id=1"
+                    ).fetchone()[0],
+                )
+                self.assertEqual(
+                    ("infinidysk-movies", "/content/radarr-infinidysk/Example Movie"),
+                    connection.execute(
+                        "SELECT Name, Path FROM DavItems WHERE Id=1"
+                    ).fetchone(),
+                )
+
+    def test_namespace_validation_rejects_legacy_raw_symlink_targets(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            link = root / "example"
+            link.symlink_to("/mnt/debrid/nzbdav/content/example")
+
+            with self.assertRaisesRegex(RuntimeError, "1 legacy target"):
+                InfiniDyskMigrationManager._validate_symlink_targets([str(root)])
+
+            link.unlink()
+            link.symlink_to("/mnt/debrid/infinidysk/content/example")
+            InfiniDyskMigrationManager._validate_symlink_targets([str(root)])
+
+    def test_arr_and_media_filesystem_validation_requires_migrated_content(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            old_root = root / "nzbdav-symlinks" / "radarr-nzbdav"
+            new_root = root / "infinidysk-symlinks" / "radarr-infinidysk"
+            old_item = old_root / "Example"
+            new_item = new_root / "Example"
+            new_root.mkdir(parents=True)
+            arr_snapshot = {
+                "roots": [{"id": 1, "path": str(old_root)}],
+                "items": [{"id": 2, "path": str(old_item), "hasFile": True}],
+            }
+            arr_desired = {
+                "roots": [{"id": 1, "path": str(new_root)}],
+                "items": [{"id": 2, "path": str(new_item), "hasFile": True}],
+            }
+
+            with self.assertRaisesRegex(RuntimeError, "1 file-bearing item"):
+                InfiniDyskMigrationManager._validate_arr_filesystem(
+                    arr_snapshot, arr_desired
+                )
+            new_item.mkdir()
+            InfiniDyskMigrationManager._validate_arr_filesystem(
+                arr_snapshot, arr_desired
+            )
+
+            missing_library = root / "infinidysk-symlinks" / "missing"
+            media_snapshot = {"libraries": [{"id": 3, "paths": [str(old_root)]}]}
+            media_desired = {"libraries": [{"id": 3, "paths": [str(missing_library)]}]}
+            with self.assertRaisesRegex(RuntimeError, "media-library paths"):
+                InfiniDyskMigrationManager._validate_media_filesystem(
+                    media_snapshot, media_desired
+                )
+            missing_library.mkdir()
+            InfiniDyskMigrationManager._validate_media_filesystem(
+                media_snapshot, media_desired
+            )
+
     def test_namespace_rewrite_is_prefix_scoped_and_updates_managed_categories(self):
         self.assertEqual(
             "/mnt/debrid/infinidysk-symlinks/movies",
@@ -1836,6 +2236,14 @@ class InfiniDyskMigrationTests(unittest.TestCase):
             original_zurg = copy_json(config["zurg"])
             config_path.write_text(json.dumps({"nzbdav": config["infinidysk"]}))
             manager = InfiniDyskMigrationManager(root / "state.json")
+            manager._save_state(
+                {
+                    "status": "failed_rolled_back",
+                    "failed_at": 1,
+                    "last_error": "stale failure from an earlier attempt",
+                    "rollback_errors": ["stale rollback detail"],
+                }
+            )
             handler = MagicMock()
             handler.process_names = {}
             handler._prefixed_name.side_effect = lambda value: value
@@ -1873,6 +2281,19 @@ class InfiniDyskMigrationTests(unittest.TestCase):
             )
             self.assertEqual(original_zurg, manager_config.config["zurg"])
             manager_config.adopt_infinidysk_identity.assert_called_once_with()
+            health_guard = json.loads(
+                (
+                    Path(result["backup_bundle_path"])
+                    / "infinidysk-health-check-guard.json"
+                ).read_text(encoding="utf-8")
+            )
+            self.assertFalse(health_guard["applicable"])
+            self.assertTrue(health_guard["restored"])
+            completed_state = json.loads((root / "state.json").read_text())
+            self.assertEqual("completed", completed_state["status"])
+            self.assertNotIn("failed_at", completed_state)
+            self.assertNotIn("last_error", completed_state)
+            self.assertNotIn("rollback_errors", completed_state)
 
     def test_arr_paths_clients_and_roots_round_trip_through_full_migration(self):
         snapshot = {
@@ -1896,12 +2317,29 @@ class InfiniDyskMigrationTests(unittest.TestCase):
                     "fields": [{"name": "category", "value": "nzbdav-movies"}],
                 }
             ],
+            "import_lists": [
+                {
+                    "id": 4,
+                    "name": "NzbDAV Watchlist",
+                    "rootFolderPath": "/mnt/debrid/nzbdav-symlinks/movies",
+                    "fields": [{"name": "accessToken", "value": "secret"}],
+                }
+            ],
+            "collections": [
+                {
+                    "id": 5,
+                    "title": "NzbDAV Collection",
+                    "rootFolderPath": "/mnt/debrid/nzbdav-symlinks/movies",
+                }
+            ],
             "tags": [{"id": 3, "label": "NzbDAV"}],
         }
         state = {
             "roots": copy_json(snapshot["roots"]),
             "items": copy_json(snapshot["items"]),
             "clients": copy_json(snapshot["clients"]),
+            "import_lists": copy_json(snapshot["import_lists"]),
+            "collections": copy_json(snapshot["collections"]),
             "tags": copy_json(snapshot["tags"]),
             "next_root_id": 20,
         }
@@ -1955,6 +2393,28 @@ class InfiniDyskMigrationTests(unittest.TestCase):
                     for item in state["clients"]
                 ]
                 return data
+            if endpoint == "importlist" and method == "GET":
+                return copy_json(state["import_lists"])
+            if endpoint.startswith("importlist/") and method == "PUT":
+                import_list_id = int(endpoint.split("/", 1)[1].split("?", 1)[0])
+                state["import_lists"] = [
+                    copy_json(data) if item["id"] == import_list_id else item
+                    for item in state["import_lists"]
+                ]
+                return data
+            if endpoint == "collection" and method == "GET":
+                return copy_json(state["collections"])
+            if endpoint == "collection" and method == "PUT":
+                collection_ids = set(data["collectionIds"])
+                state["collections"] = [
+                    (
+                        {**item, "rootFolderPath": data["rootFolderPath"]}
+                        if item["id"] in collection_ids
+                        else item
+                    )
+                    for item in state["collections"]
+                ]
+                return None
             if endpoint == "tag" and method == "GET":
                 return copy_json(state["tags"])
             if endpoint.startswith("tag/") and method == "PUT":
@@ -1976,6 +2436,16 @@ class InfiniDyskMigrationTests(unittest.TestCase):
                 [root["path"] for root in state["roots"]],
             )
             self.assertEqual("InfiniDysk", state["clients"][0]["name"])
+            self.assertEqual(
+                "/mnt/debrid/infinidysk-symlinks/movies",
+                state["import_lists"][0]["rootFolderPath"],
+            )
+            self.assertEqual("NzbDAV Watchlist", state["import_lists"][0]["name"])
+            self.assertEqual(
+                "/mnt/debrid/infinidysk-symlinks/movies",
+                state["collections"][0]["rootFolderPath"],
+            )
+            self.assertEqual("NzbDAV Collection", state["collections"][0]["title"])
             self.assertEqual({"id": 3, "label": "InfiniDysk"}, state["tags"][0])
             state["roots"].append(
                 {
@@ -1991,6 +2461,14 @@ class InfiniDyskMigrationTests(unittest.TestCase):
             [root["path"] for root in state["roots"]],
         )
         self.assertEqual("NzbDAV", state["clients"][0]["name"])
+        self.assertEqual(
+            "/mnt/debrid/nzbdav-symlinks/movies",
+            state["import_lists"][0]["rootFolderPath"],
+        )
+        self.assertEqual(
+            "/mnt/debrid/nzbdav-symlinks/movies",
+            state["collections"][0]["rootFolderPath"],
+        )
         self.assertEqual({"id": 3, "label": "NzbDAV"}, state["tags"][0])
 
     def test_prowlarr_applications_and_tags_round_trip_through_full_migration(self):
@@ -2256,6 +2734,15 @@ class InfiniDyskMigrationTests(unittest.TestCase):
                 patch.object(manager, "_media_snapshot", return_value=([], [])),
                 patch.object(
                     manager, "_infinidysk_active_reads", return_value=(0, None)
+                ),
+                patch.object(
+                    InfiniDyskMigrationManager,
+                    "_infinidysk_config_item",
+                    return_value={
+                        "present": True,
+                        "value": "false",
+                        "environment_variable_name": "",
+                    },
                 ),
                 patch.object(manager, "_quiesce_for_cutover", side_effect=quiesce_all),
                 patch.object(manager, "_migrate_infinidysk_database", return_value=0),

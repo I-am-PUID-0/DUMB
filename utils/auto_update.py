@@ -2441,6 +2441,15 @@ class Update:
             requested_lower = requested_release.lower()
             if not requested_release:
                 return True
+            if (
+                self._is_nzbdav_named_release_channel(key, config)
+                and not config.get("auto_update")
+                and current_version
+            ):
+                # Preinstall already validated and retained the installed runtime.
+                # A moving named channel such as rc must advance only through an
+                # enabled automatic update or an explicit manual update action.
+                return False
             if key == "mediastorm":
                 try:
                     selector = mediastorm_install_selector(config)

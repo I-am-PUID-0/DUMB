@@ -212,6 +212,85 @@ class InfiniDyskSetupTests(unittest.TestCase):
             process_handler, config, "InfiniDysk", "infinidysk"
         )
 
+    def test_disabled_named_channel_keeps_verified_installed_runtime_on_startup(self):
+        config = {
+            "process_name": "InfiniDysk",
+            "config_dir": "/infinidysk",
+            "release_version_enabled": True,
+            "release_version": "rc",
+            "auto_update": False,
+            "branch_enabled": False,
+            "commit_sha": "",
+        }
+        config_manager = Mock()
+        config_manager.find_key_for_process.return_value = ("infinidysk", None)
+        config_manager.get_instance.return_value = config
+        process_handler = Mock()
+        process_handler.setup_tracker = set()
+        process_handler.setup_tracker_lock = threading.Lock()
+
+        with (
+            patch.object(setup, "CONFIG_MANAGER", config_manager),
+            patch.object(
+                setup,
+                "_nzbdav_installed_runtime_ready",
+                return_value=(True, None),
+            ),
+            patch.object(setup, "setup_release_version") as install_release,
+            patch.object(setup, "setup_nzbdav") as setup_runtime,
+        ):
+            success, error = setup._setup_project_inner(
+                process_handler,
+                "InfiniDysk",
+                install_phase=True,
+                configure_phase=False,
+            )
+
+        self.assertTrue(success, error)
+        install_release.assert_not_called()
+        setup_runtime.assert_not_called()
+
+    def test_disabled_named_channel_reinstalls_when_runtime_is_incomplete(self):
+        config = {
+            "process_name": "InfiniDysk",
+            "config_dir": "/infinidysk",
+            "release_version_enabled": True,
+            "release_version": "rc",
+            "auto_update": False,
+            "branch_enabled": False,
+            "commit_sha": "",
+        }
+        config_manager = Mock()
+        config_manager.find_key_for_process.return_value = ("infinidysk", None)
+        config_manager.get_instance.return_value = config
+        process_handler = Mock()
+        process_handler.setup_tracker = set()
+        process_handler.setup_tracker_lock = threading.Lock()
+
+        with (
+            patch.object(setup, "CONFIG_MANAGER", config_manager),
+            patch.object(
+                setup,
+                "_nzbdav_installed_runtime_ready",
+                return_value=(False, "frontend server missing"),
+            ),
+            patch.object(
+                setup, "setup_release_version", return_value=(True, None)
+            ) as install_release,
+            patch.object(setup, "setup_nzbdav", return_value=(True, None)),
+        ):
+            success, error = setup._setup_project_inner(
+                process_handler,
+                "InfiniDysk",
+                install_phase=True,
+                configure_phase=False,
+            )
+
+        self.assertTrue(success, error)
+        install_release.assert_called_once_with(
+            process_handler, config, "InfiniDysk", "infinidysk"
+        )
+
     def test_official_prerelease_selector_resolves_to_rc_channel(self):
         config = {
             "repo_owner": "infinidysk",

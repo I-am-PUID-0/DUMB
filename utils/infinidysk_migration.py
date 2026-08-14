@@ -83,6 +83,8 @@ ARR_EDITOR_SPLIT_MIN_BATCH_SIZE = 8
 ARR_FALLBACK_PROGRESS_INTERVAL = 5
 QUIESCE_TIMEOUT_SECONDS = 60 * 60
 QUIESCE_POLL_SECONDS = 5
+INFINIDYSK_CONFIG_API_TIMEOUT_SECONDS = 10
+INFINIDYSK_HEALTH_CHECK_KEY = "repair.enable"
 ACTIVE_JOB_STATUSES = {"queued", "running", "rolling_back"}
 NAMESPACE_PATH_MAPPINGS = (
     ("/mnt/debrid/nzbdav-symlinks", "/mnt/debrid/infinidysk-symlinks"),
@@ -955,16 +957,41 @@ class InfiniDyskMigrationManager:
         for source, destination in sorted(mappings, key=lambda item: len(item[0])):
             if source in seen_sources:
                 continue
-            if any(
-                source.startswith(f"{parent_source}/")
-                for parent_source, _ in unique_mappings
-            ):
-                continue
             seen_sources.add(source)
             unique_mappings.append((source, destination))
 
-        for source, destination in unique_mappings:
-            source_path = Path(source)
+        planned_mappings = []
+        for preflight_source, destination in unique_mappings:
+            parent_action = max(
+                (
+                    action
+                    for action in planned_mappings
+                    if preflight_source.startswith(f"{action['preflight_source']}/")
+                ),
+                key=lambda action: len(action["preflight_source"]),
+                default=None,
+            )
+            source = preflight_source
+            if parent_action:
+                source = (
+                    parent_action["destination"]
+                    + preflight_source[len(parent_action["preflight_source"]) :]
+                )
+            if source == destination:
+                continue
+            planned_mappings.append(
+                {
+                    "preflight_source": preflight_source,
+                    "source": source,
+                    "destination": destination,
+                }
+            )
+
+        for mapping in planned_mappings:
+            preflight_source = mapping["preflight_source"]
+            source = mapping["source"]
+            destination = mapping["destination"]
+            source_path = Path(preflight_source)
             destination_path = Path(destination)
             if not os.path.lexists(source_path):
                 continue
@@ -1015,6 +1042,7 @@ class InfiniDyskMigrationManager:
             actions.append(
                 {
                     "source": source,
+                    "preflight_source": preflight_source,
                     "destination": destination,
                     "source_type": source_type,
                     "destination_state": destination_state,
@@ -1088,6 +1116,22 @@ class InfiniDyskMigrationManager:
                 )
                 or []
             )
+            endpoint = "import lists"
+            import_lists = (
+                _migration_arr_req(
+                    _arr_url(host, api_version, "importlist"), token, "GET"
+                )
+                or []
+            )
+            collections = []
+            if key == "radarr":
+                endpoint = "collections"
+                collections = (
+                    _migration_arr_req(
+                        _arr_url(host, api_version, "collection"), token, "GET"
+                    )
+                    or []
+                )
             endpoint = "tags"
             tags = (
                 _migration_arr_req(_arr_url(host, api_version, "tag"), token, "GET")
@@ -1116,6 +1160,8 @@ class InfiniDyskMigrationManager:
                 "roots": roots,
                 "items": items,
                 "clients": clients,
+                "import_lists": import_lists,
+                "collections": collections,
                 "tags": tags,
                 "queue_count": total_records,
             },
@@ -1160,6 +1206,8 @@ class InfiniDyskMigrationManager:
                 "roots": "legacy root-folder reference(s)",
                 "items": "legacy item-path reference(s)",
                 "clients": "legacy download-client/category reference(s)",
+                "import_lists": "legacy import-list root reference(s)",
+                "collections": "legacy collection root reference(s)",
                 "tags": "legacy Arr tag(s)",
             }
             reasons.extend(
@@ -1362,6 +1410,202 @@ class InfiniDyskMigrationManager:
         return snapshots, blockers
 
     @staticmethod
+    def _infinidysk_api_access(config: dict) -> tuple[str, str]:
+        service = InfiniDyskMigrationManager._service_config(config)
+        api_key = str((service.get("env") or {}).get("FRONTEND_BACKEND_API_KEY") or "")
+        if not api_key:
+            try:
+                from utils import nzbdav_db
+
+                config_dir = str(service.get("config_dir") or "/infinidysk")
+                api_key = str(
+                    nzbdav_db.get_config_value("api.key", config_dir=config_dir) or ""
+                )
+            except Exception:
+                api_key = ""
+        if not api_key:
+            raise InfiniDyskMigrationError(
+                "InfiniDysk API access is unavailable because its API key could not be resolved."
+            )
+        port = int(service.get("backend_port") or 8080)
+        return f"http://127.0.0.1:{port}", api_key
+
+    @staticmethod
+    def _infinidysk_config_api_request(
+        config: dict,
+        endpoint: str,
+        form: dict[str, str],
+    ) -> dict:
+        base_url, api_key = InfiniDyskMigrationManager._infinidysk_api_access(config)
+        url = f"{base_url}/api/{endpoint.lstrip('/')}"
+        request = __import__(
+            "utils.url_security", fromlist=["safe_request"]
+        ).safe_request(
+            url,
+            data=urllib.parse.urlencode(form).encode("utf-8"),
+            headers={
+                "Accept": "application/json",
+                "Content-Type": "application/x-www-form-urlencoded",
+                "x-api-key": api_key,
+            },
+            method="POST",
+        )
+        try:
+            safe_urlopen = __import__(
+                "utils.url_security", fromlist=["safe_urlopen"]
+            ).safe_urlopen
+            with safe_urlopen(
+                request, timeout=INFINIDYSK_CONFIG_API_TIMEOUT_SECONDS
+            ) as response:
+                payload = json.loads(response.read(1024 * 1024).decode("utf-8"))
+        except urllib.error.HTTPError as error:
+            _attach_http_error_context(
+                error,
+                api_name="InfiniDysk API",
+                method="POST",
+                url=url,
+            )
+            raise
+        if not isinstance(payload, dict):
+            raise InfiniDyskMigrationError(
+                f"InfiniDysk {endpoint} returned an invalid response."
+            )
+        return payload
+
+    @classmethod
+    def _infinidysk_config_item(cls, config: dict, key: str) -> dict:
+        payload = cls._infinidysk_config_api_request(
+            config,
+            "get-config",
+            {"config-keys": key},
+        )
+        items = payload.get("configItems") or []
+        if not isinstance(items, list):
+            raise InfiniDyskMigrationError(
+                "InfiniDysk get-config returned an invalid configItems response."
+            )
+        for item in items:
+            if not isinstance(item, dict) or item.get("configName") != key:
+                continue
+            return {
+                "present": True,
+                "value": str(item.get("configValue") or ""),
+                "environment_variable_name": str(
+                    item.get("environmentVariableName") or ""
+                ),
+            }
+        return {"present": False, "value": None, "environment_variable_name": ""}
+
+    @classmethod
+    def _set_infinidysk_config_item(cls, config: dict, key: str, value: str) -> None:
+        payload = cls._infinidysk_config_api_request(
+            config,
+            "update-config",
+            {key: value},
+        )
+        if payload.get("status") is not True:
+            raise InfiniDyskMigrationError(
+                f"InfiniDysk did not confirm the {key} configuration update."
+            )
+        observed = cls._infinidysk_config_item(config, key)
+        if (
+            not observed.get("present")
+            or str(observed.get("value") or "").lower() != str(value).lower()
+        ):
+            raise InfiniDyskMigrationError(
+                f"InfiniDysk did not retain the requested {key} value."
+            )
+
+    @classmethod
+    def _capture_infinidysk_health_check_guard(
+        cls, config: dict, process_handler
+    ) -> dict:
+        service = cls._service_config(config)
+        process_name = str(service.get("process_name") or "InfiniDysk")
+        if not service.get("enabled") or not cls._process_running(
+            process_handler, process_name
+        ):
+            return {
+                "config_key": INFINIDYSK_HEALTH_CHECK_KEY,
+                "applicable": False,
+                "process_name": process_name,
+                "reason": "provider_not_running",
+                "paused": False,
+                "restored": True,
+            }
+        item = cls._infinidysk_config_item(config, INFINIDYSK_HEALTH_CHECK_KEY)
+        return {
+            "config_key": INFINIDYSK_HEALTH_CHECK_KEY,
+            "applicable": True,
+            "process_name": process_name,
+            "original_present": bool(item.get("present")),
+            "original_value": item.get("value"),
+            "environment_variable_name": item.get("environment_variable_name") or "",
+            "paused": False,
+            "changed": False,
+            "restored": False,
+        }
+
+    @classmethod
+    def _pause_infinidysk_health_checks(cls, config: dict, guard: dict) -> None:
+        if not guard.get("applicable"):
+            return
+        original_enabled = str(guard.get("original_value") or "false").strip().lower()
+        if original_enabled != "true":
+            guard.update({"paused": True, "changed": False, "restored": True})
+            return
+        environment_name = str(guard.get("environment_variable_name") or "").strip()
+        if environment_name:
+            raise InfiniDyskMigrationError(
+                "InfiniDysk scheduled health checks cannot be paused because repair.enable "
+                f"is managed by {environment_name}. Set it to false in the container environment, "
+                "restart InfiniDysk, and run the migration preflight again."
+            )
+        cls._set_infinidysk_config_item(config, INFINIDYSK_HEALTH_CHECK_KEY, "false")
+        guard.update({"paused": True, "changed": True, "restored": False})
+
+    @classmethod
+    def _restore_infinidysk_health_checks(
+        cls,
+        config: dict,
+        process_handler,
+        guard: dict,
+        *,
+        verify_offline: bool = False,
+    ) -> None:
+        if not guard.get("applicable") or guard.get("restored"):
+            return
+        if not guard.get("changed"):
+            guard["restored"] = True
+            return
+        service = cls._service_config(config)
+        process_name = str(service.get("process_name") or "InfiniDysk")
+        original_value = str(guard.get("original_value") or "false")
+        if cls._process_running(process_handler, process_name):
+            cls._set_infinidysk_config_item(
+                config,
+                INFINIDYSK_HEALTH_CHECK_KEY,
+                original_value,
+            )
+            guard["restored"] = True
+            return
+        if not verify_offline:
+            raise InfiniDyskMigrationError(
+                "InfiniDysk is not running, so its scheduled health-check setting could not be restored and verified."
+            )
+        from utils import nzbdav_db
+
+        config_dir = str(service.get("config_dir") or "/infinidysk")
+        observed = nzbdav_db.get_config_value(
+            INFINIDYSK_HEALTH_CHECK_KEY, config_dir=config_dir
+        )
+        if str(observed or "false").lower() != original_value.lower():
+            raise InfiniDyskMigrationError(
+                "The restored InfiniDysk database does not contain the original scheduled health-check setting."
+            )
+        guard["restored"] = True
+
+    @staticmethod
     def _infinidysk_active_reads(
         config: dict, process_handler
     ) -> tuple[int | None, str | None]:
@@ -1373,24 +1617,19 @@ class InfiniDyskMigrationManager:
             process_handler, process_name
         ):
             return 0, None
-        api_key = str((service.get("env") or {}).get("FRONTEND_BACKEND_API_KEY") or "")
-        if not api_key:
-            try:
-                from utils import nzbdav_db
-
-                api_key = str(nzbdav_db.get_config_value("api.key") or "")
-            except Exception:
-                api_key = ""
-        if not api_key:
+        try:
+            base_url, api_key = InfiniDyskMigrationManager._infinidysk_api_access(
+                config
+            )
+        except InfiniDyskMigrationError:
             return (
                 None,
                 "InfiniDysk active reads could not be checked because its API key is unavailable.",
             )
-        port = int(service.get("backend_port") or 8080)
         request = __import__(
             "utils.url_security", fromlist=["safe_request"]
         ).safe_request(
-            f"http://127.0.0.1:{port}/api/get-overview-stats?window=1h&sections=window,detail",
+            f"{base_url}/api/get-overview-stats?window=1h&sections=window,detail",
             headers={"Accept": "application/json", "x-api-key": api_key},
             method="GET",
         )
@@ -1442,6 +1681,22 @@ class InfiniDyskMigrationManager:
                         for client in item.get("clients") or []
                         if InfiniDyskMigrationManager._rewrite_external_value(client)
                         != client
+                    ),
+                    "import_list_changes": sum(
+                        1
+                        for import_list in item.get("import_lists") or []
+                        if _replace_namespace_text(
+                            str(import_list.get("rootFolderPath") or "")
+                        )
+                        != str(import_list.get("rootFolderPath") or "")
+                    ),
+                    "collection_changes": sum(
+                        1
+                        for collection in item.get("collections") or []
+                        if _replace_namespace_text(
+                            str(collection.get("rootFolderPath") or "")
+                        )
+                        != str(collection.get("rootFolderPath") or "")
                     ),
                     "tag_changes": sum(
                         1
@@ -1559,6 +1814,36 @@ class InfiniDyskMigrationManager:
             )
             if active_error:
                 blockers.append(active_error)
+            health_check_scheduler = None
+            process_name = str(service.get("process_name") or "InfiniDysk")
+            if service.get("enabled") and self._process_running(
+                process_handler, process_name
+            ):
+                try:
+                    health_check_scheduler = self._infinidysk_config_item(
+                        config, INFINIDYSK_HEALTH_CHECK_KEY
+                    )
+                except Exception as error:
+                    blockers.append(
+                        "InfiniDysk scheduled health-check state could not be inspected: "
+                        f"{_safe_error_detail(error)}."
+                    )
+                else:
+                    scheduler_enabled = (
+                        str(health_check_scheduler.get("value") or "false")
+                        .strip()
+                        .lower()
+                        == "true"
+                    )
+                    environment_name = str(
+                        health_check_scheduler.get("environment_variable_name") or ""
+                    ).strip()
+                    if scheduler_enabled and environment_name:
+                        blockers.append(
+                            "InfiniDysk scheduled health checks are enabled through "
+                            f"{environment_name}, so DUMB cannot pause them safely. Set that "
+                            "environment value to false, restart InfiniDysk, and run preflight again."
+                        )
             pending_conditions = [
                 f"{item['process_name']} has {int(item.get('queue_count') or 0)} queued item(s). DUMB will stop queue producers, wait for this queue to drain, and hold the Arr stopped once it is empty."
                 for item in arr
@@ -1594,12 +1879,14 @@ class InfiniDyskMigrationManager:
                 "prowlarr": prowlarr,
                 "media": media,
                 "active_reads": active_reads,
+                "health_check_scheduler": health_check_scheduler,
                 "blockers": blockers,
                 "pending_conditions": pending_conditions,
                 "warnings": [
                     "Historical snapshot filenames are retained; future snapshots use the InfiniDysk name.",
                     "The migration changes paths but does not start a media-library scan automatically.",
                     "At apply time DUMB automatically stops linked request/search producers first, waits up to one hour for Arr queues and playback to drain, and holds each safe service stopped through the cutover.",
+                    "DUMB temporarily pauses InfiniDysk's internal scheduled health checks before draining active reads and restores the exact prior setting after success or rollback.",
                     *(
                         [
                             "External Plex was inferred from dumb.plex_address and dumb.plex_token. DUMB can guard scans and migrate library paths through Plex's API, but it cannot stop the external Plex process or pause Autoscan."
@@ -1969,11 +2256,19 @@ class InfiniDyskMigrationManager:
             )
 
         symlink_roots = [
-            str(Path(str(action["source"])))
+            str(Path(str(action.get("preflight_source") or action.get("source") or "")))
             for action in preflight.get("filesystem") or []
-            if "symlink" in Path(str(action.get("source") or "")).name.lower()
-            and "nzbdav" in Path(str(action.get("source") or "")).name.lower()
-            and Path(str(action["source"])).is_dir()
+            if "symlink"
+            in Path(
+                str(action.get("preflight_source") or action.get("source") or "")
+            ).name.lower()
+            and "nzbdav"
+            in Path(
+                str(action.get("preflight_source") or action.get("source") or "")
+            ).name.lower()
+            and Path(
+                str(action.get("preflight_source") or action.get("source") or "")
+            ).is_dir()
         ]
         if symlink_roots:
 
@@ -2156,6 +2451,16 @@ class InfiniDyskMigrationManager:
         desired["clients"] = InfiniDyskMigrationManager._rewrite_external_value(
             desired.get("clients") or []
         )
+        for import_list in desired.get("import_lists") or []:
+            if isinstance(import_list.get("rootFolderPath"), str):
+                import_list["rootFolderPath"] = _replace_namespace_text(
+                    import_list["rootFolderPath"]
+                )
+        for collection in desired.get("collections") or []:
+            if isinstance(collection.get("rootFolderPath"), str):
+                collection["rootFolderPath"] = _replace_namespace_text(
+                    collection["rootFolderPath"]
+                )
         desired["tags"] = InfiniDyskMigrationManager._rewrite_external_value(
             desired.get("tags") or []
         )
@@ -2185,7 +2490,14 @@ class InfiniDyskMigrationManager:
     @staticmethod
     def _arr_change_counts(snapshot: dict, desired: dict) -> dict[str, int]:
         counts = {}
-        for key in ("roots", "items", "clients", "tags"):
+        for key in (
+            "roots",
+            "items",
+            "clients",
+            "import_lists",
+            "collections",
+            "tags",
+        ):
             original = {
                 str(item.get("id")): item
                 for item in snapshot.get(key) or []
@@ -2436,6 +2748,8 @@ class InfiniDyskMigrationManager:
         changed_roots = 0
         changed_items = 0
         changed_clients = 0
+        changed_import_lists = 0
+        changed_collections = 0
         changed_tags = 0
 
         original_roots = {
@@ -2507,6 +2821,59 @@ class InfiniDyskMigrationManager:
             )
             changed_clients += 1
 
+        original_import_lists = {
+            str(item.get("id")): item for item in snapshot.get("import_lists") or []
+        }
+        for target in desired.get("import_lists") or []:
+            import_list_id = str(target.get("id") or "")
+            original = original_import_lists.get(import_list_id) or {}
+            if not import_list_id or original == target:
+                continue
+            # Existing provider credentials and list settings are retained exactly.
+            # forceSave prevents unrelated upstream list-connectivity validation from
+            # blocking this guarded root-only namespace rewrite.
+            _migration_arr_req(
+                _arr_url(
+                    host,
+                    api_version,
+                    f"importlist/{import_list_id}?forceSave=true",
+                ),
+                token,
+                "PUT",
+                target,
+            )
+            changed_import_lists += 1
+
+        original_collections = {
+            str(item.get("id")): item for item in snapshot.get("collections") or []
+        }
+        collections_by_root: dict[str, list[int]] = {}
+        for target in desired.get("collections") or []:
+            collection_id = str(target.get("id") or "")
+            original = original_collections.get(collection_id) or {}
+            root_path = str(target.get("rootFolderPath") or "")
+            if (
+                not collection_id
+                or original == target
+                or not root_path
+                or snapshot.get("service_key") != "radarr"
+            ):
+                continue
+            collections_by_root.setdefault(root_path, []).append(int(collection_id))
+        for root_path, collection_ids in collections_by_root.items():
+            for offset in range(0, len(collection_ids), ARR_EDITOR_BATCH_SIZE):
+                batch = collection_ids[offset : offset + ARR_EDITOR_BATCH_SIZE]
+                _migration_arr_req(
+                    _arr_url(host, api_version, "collection"),
+                    token,
+                    "PUT",
+                    {
+                        "collectionIds": batch,
+                        "rootFolderPath": root_path,
+                    },
+                )
+                changed_collections += len(batch)
+
         original_tags = {
             str(item.get("id")): item for item in snapshot.get("tags") or []
         }
@@ -2557,6 +2924,8 @@ class InfiniDyskMigrationManager:
             "roots": changed_roots,
             "items": changed_items,
             "clients": changed_clients,
+            "import_lists": changed_import_lists,
+            "collections": changed_collections,
             "tags": changed_tags,
         }
 
@@ -2680,6 +3049,44 @@ class InfiniDyskMigrationManager:
                     raise RuntimeError(
                         f"Arr download-client field {field_name} did not persist for client {client_id}"
                     )
+        current_import_lists = {
+            str(item.get("id")): item
+            for item in (
+                _migration_arr_req(
+                    _arr_url(host, api_version, "importlist"), token, "GET"
+                )
+                or []
+            )
+        }
+        for import_list in desired.get("import_lists") or []:
+            import_list_id = str(import_list.get("id") or "")
+            current = current_import_lists.get(import_list_id) or {}
+            if import_list_id and current.get("rootFolderPath") != import_list.get(
+                "rootFolderPath"
+            ):
+                raise RuntimeError(
+                    f"Arr import-list root did not persist for import list {import_list_id}"
+                )
+        if snapshot.get("service_key") == "radarr":
+            current_collections = {
+                str(item.get("id")): item
+                for item in (
+                    _migration_arr_req(
+                        _arr_url(host, api_version, "collection"), token, "GET"
+                    )
+                    or []
+                )
+            }
+            for collection in desired.get("collections") or []:
+                collection_id = str(collection.get("id") or "")
+                current = current_collections.get(collection_id) or {}
+                if collection_id and current.get("rootFolderPath") != collection.get(
+                    "rootFolderPath"
+                ):
+                    raise RuntimeError(
+                        "Arr collection root did not persist for collection "
+                        f"{collection_id}"
+                    )
         current_tags = {
             str(item.get("id")): item
             for item in (
@@ -2691,6 +3098,87 @@ class InfiniDyskMigrationManager:
             tag_id = str(tag.get("id") or "")
             if tag_id and current_tags.get(tag_id) != tag:
                 raise RuntimeError(f"Arr tag did not persist for tag {tag_id}")
+
+    @staticmethod
+    def _arr_item_has_files(item: dict) -> bool:
+        if item.get("hasFile") is True:
+            return True
+        statistics = item.get("statistics") or {}
+        if not isinstance(statistics, dict):
+            return False
+        for key in ("episodeFileCount", "movieFileCount", "trackFileCount"):
+            try:
+                if int(statistics.get(key) or 0) > 0:
+                    return True
+            except (TypeError, ValueError):
+                continue
+        return False
+
+    @staticmethod
+    def _validate_arr_filesystem(snapshot: dict, desired: dict) -> None:
+        original_roots = {
+            str(item.get("id")): item for item in snapshot.get("roots") or []
+        }
+        missing_roots = []
+        for root in desired.get("roots") or []:
+            root_id = str(root.get("id") or "")
+            original_path = str((original_roots.get(root_id) or {}).get("path") or "")
+            desired_path = str(root.get("path") or "")
+            if (
+                desired_path
+                and desired_path != original_path
+                and not os.path.isdir(desired_path)
+            ):
+                missing_roots.append(desired_path)
+        if missing_roots:
+            raise RuntimeError(
+                "Arr canonical root paths are unavailable after migration: "
+                + ", ".join(missing_roots[:3])
+            )
+
+        original_items = {
+            str(item.get("id")): item for item in snapshot.get("items") or []
+        }
+        missing_items = 0
+        for item in desired.get("items") or []:
+            item_id = str(item.get("id") or "")
+            original = original_items.get(item_id) or {}
+            original_path = str(original.get("path") or "")
+            desired_path = str(item.get("path") or "")
+            if (
+                desired_path
+                and desired_path != original_path
+                and InfiniDyskMigrationManager._arr_item_has_files(original)
+                and not os.path.isdir(desired_path)
+            ):
+                missing_items += 1
+        if missing_items:
+            raise RuntimeError(
+                f"Arr canonical item paths are unavailable for {missing_items} file-bearing item(s)"
+            )
+
+        missing_reference_roots = set()
+        for key in ("import_lists", "collections"):
+            original_records = {
+                str(item.get("id")): item for item in snapshot.get(key) or []
+            }
+            for item in desired.get(key) or []:
+                item_id = str(item.get("id") or "")
+                original_path = str(
+                    (original_records.get(item_id) or {}).get("rootFolderPath") or ""
+                )
+                desired_path = str(item.get("rootFolderPath") or "")
+                if (
+                    desired_path
+                    and desired_path != original_path
+                    and not os.path.isdir(desired_path)
+                ):
+                    missing_reference_roots.add(desired_path)
+        if missing_reference_roots:
+            raise RuntimeError(
+                "Arr canonical list/collection roots are unavailable after migration: "
+                + ", ".join(sorted(missing_reference_roots)[:3])
+            )
 
     @staticmethod
     def _validate_media_snapshot(snapshot: dict, desired: dict, logger) -> None:
@@ -2712,31 +3200,134 @@ class InfiniDyskMigrationManager:
                 )
 
     @staticmethod
+    def _validate_media_filesystem(snapshot: dict, desired: dict) -> None:
+        original = {
+            str(item.get("id") or item.get("name")): item
+            for item in snapshot.get("libraries") or []
+        }
+        missing = []
+        for library in desired.get("libraries") or []:
+            key = str(library.get("id") or library.get("name"))
+            original_paths = list((original.get(key) or {}).get("paths") or [])
+            for index, desired_path in enumerate(library.get("paths") or []):
+                original_path = (
+                    str(original_paths[index]) if index < len(original_paths) else ""
+                )
+                desired_path = str(desired_path or "")
+                if (
+                    desired_path
+                    and desired_path != original_path
+                    and not os.path.isdir(desired_path)
+                ):
+                    missing.append(desired_path)
+        if missing:
+            raise RuntimeError(
+                "Canonical media-library paths are unavailable after migration: "
+                + ", ".join(missing[:3])
+            )
+
+    @staticmethod
     def _migrate_infinidysk_database(config_dir: str) -> int:
         database = Path(config_dir) / "db.sqlite"
         if not database.is_file():
             return 0
         changed = 0
         with sqlite3.connect(database) as connection:
-            table = connection.execute(
-                "SELECT 1 FROM sqlite_master WHERE type='table' AND name='ConfigItems'"
-            ).fetchone()
-            if not table:
-                return 0
-            rows = connection.execute(
-                "SELECT ConfigName, ConfigValue FROM ConfigItems"
-            ).fetchall()
-            for name, value in rows:
-                if not isinstance(value, str):
+            tables = {
+                str(row[0])
+                for row in connection.execute(
+                    "SELECT name FROM sqlite_master WHERE type='table'"
+                ).fetchall()
+            }
+            if "ConfigItems" in tables:
+                rows = connection.execute(
+                    "SELECT ConfigName, ConfigValue FROM ConfigItems"
+                ).fetchall()
+                for name, value in rows:
+                    if not isinstance(value, str):
+                        continue
+                    rewritten = InfiniDyskMigrationManager._rewrite_external_value(
+                        value
+                    )
+                    if rewritten == value:
+                        continue
+                    connection.execute(
+                        "UPDATE ConfigItems SET ConfigValue=? WHERE ConfigName=?",
+                        (rewritten, name),
+                    )
+                    changed += 1
+
+            # InfiniDysk materializes /content and completed-symlinks category
+            # directories from these SQLite records. They are virtual FUSE
+            # paths, so attempting to rename them through the mounted provider
+            # is unreliable and can leave stale directory-cache state. Rewrite
+            # the fixed, schema-verified fields while the provider is stopped;
+            # the captured database file provides the rollback boundary.
+            virtual_path_fields = (
+                ("HistoryItems", "Category"),
+                ("QueueItems", "Category"),
+                ("DavItems", "Path"),
+                ("DavItems", "Name"),
+            )
+            migrated_fields = []
+            for table_name, column_name in virtual_path_fields:
+                if table_name not in tables:
                     continue
-                rewritten = InfiniDyskMigrationManager._rewrite_external_value(value)
-                if rewritten == value:
+                columns = {
+                    str(row[1])
+                    for row in connection.execute(
+                        f'PRAGMA table_info("{table_name}")'
+                    ).fetchall()
+                }
+                if "Id" not in columns or column_name not in columns:
                     continue
-                connection.execute(
-                    "UPDATE ConfigItems SET ConfigValue=? WHERE ConfigName=?",
-                    (rewritten, name),
+                migrated_fields.append((table_name, column_name))
+                cursor = connection.execute(
+                    f'SELECT "Id", "{column_name}" FROM "{table_name}" '
+                    f'WHERE lower(CAST("{column_name}" AS TEXT)) LIKE ?',
+                    ("%nzbdav%",),
                 )
-                changed += 1
+                while True:
+                    batch = cursor.fetchmany(1000)
+                    if not batch:
+                        break
+                    updates = []
+                    for record_id, value in batch:
+                        if not isinstance(value, str):
+                            continue
+                        rewritten = _replace_namespace_text(value)
+                        if rewritten == value and _contains_legacy_name(value):
+                            rewritten = _replace_legacy_token(value)
+                        if rewritten != value:
+                            updates.append((rewritten, record_id))
+                    if not updates:
+                        continue
+                    connection.executemany(
+                        f'UPDATE "{table_name}" SET "{column_name}"=? WHERE "Id"=?',
+                        updates,
+                    )
+                    changed += len(updates)
+
+            validation_fields = list(migrated_fields)
+            if "ConfigItems" in tables:
+                validation_fields.append(("ConfigItems", "ConfigValue"))
+            residuals = []
+            for table_name, column_name in validation_fields:
+                count = int(
+                    connection.execute(
+                        f'SELECT COUNT(*) FROM "{table_name}" '
+                        f'WHERE lower(CAST("{column_name}" AS TEXT)) LIKE ?',
+                        ("%nzbdav%",),
+                    ).fetchone()[0]
+                    or 0
+                )
+                if count:
+                    residuals.append(f"{table_name}.{column_name}: {count}")
+            if residuals:
+                raise RuntimeError(
+                    "InfiniDysk database still contains legacy namespace records: "
+                    + ", ".join(residuals)
+                )
             connection.commit()
         return changed
 
@@ -2796,6 +3387,60 @@ class InfiniDyskMigrationManager:
             )
             raise NamespaceMoveError(str(error), rollback_errors) from error
         return moved
+
+    @staticmethod
+    def _validate_namespace_paths(actions: list[dict]) -> None:
+        for action in actions:
+            source = Path(str(action.get("source") or ""))
+            destination = Path(str(action.get("destination") or ""))
+            if os.path.lexists(source):
+                raise RuntimeError(
+                    f"Legacy namespace path remains after migration: {source}"
+                )
+            if not os.path.lexists(destination):
+                raise RuntimeError(
+                    f"Canonical namespace path is missing after migration: {destination}"
+                )
+            expected_type = str(action.get("source_type") or "")
+            type_matches = {
+                "symlink": destination.is_symlink(),
+                "directory": destination.is_dir() and not destination.is_symlink(),
+                "file": destination.is_file() and not destination.is_symlink(),
+            }
+            if expected_type and not type_matches.get(expected_type, False):
+                raise RuntimeError(
+                    f"Canonical namespace path changed type after migration: {destination}"
+                )
+
+    @staticmethod
+    def _validate_symlink_targets(roots: list[str]) -> None:
+        pending = [Path(root) for root in roots]
+        legacy_targets = 0
+        while pending:
+            current = pending.pop()
+            try:
+                entries = list(os.scandir(current))
+            except OSError as error:
+                raise RuntimeError(
+                    f"Could not validate canonical symlink root {current}: {error}"
+                ) from error
+            for entry in entries:
+                path = Path(entry.path)
+                try:
+                    if entry.is_symlink():
+                        if "nzbdav" in os.readlink(path).lower():
+                            legacy_targets += 1
+                        continue
+                    if entry.is_dir(follow_symlinks=False):
+                        pending.append(path)
+                except OSError as error:
+                    raise RuntimeError(
+                        f"Could not validate migrated symlink entry: {error}"
+                    ) from error
+        if legacy_targets:
+            raise RuntimeError(
+                f"Canonical symlink roots retain {legacy_targets} legacy target(s)"
+            )
 
     @staticmethod
     def _rollback_namespace_paths(actions: list[dict]) -> list[str]:
@@ -3414,7 +4059,22 @@ class InfiniDyskMigrationManager:
             arr_changes = []
             prowlarr_changes = []
             media_changes = []
+            health_check_guard = {}
+            health_check_guard_path = (
+                backup_bundle / "infinidysk-health-check-guard.json"
+            )
             try:
+                progress(
+                    "quiescing_health_checks",
+                    "Pausing InfiniDysk scheduled health checks before draining active reads.",
+                    20,
+                )
+                health_check_guard = self._capture_infinidysk_health_check_guard(
+                    config, process_handler
+                )
+                self._write_private_json(health_check_guard_path, health_check_guard)
+                self._pause_infinidysk_health_checks(config, health_check_guard)
+                self._write_private_json(health_check_guard_path, health_check_guard)
                 preflight = self._quiesce_for_cutover(
                     config,
                     preflight,
@@ -3486,6 +4146,8 @@ class InfiniDyskMigrationManager:
                     manifest_path = backup_bundle / "symlink-rewrites.json"
                     if manifest_path.exists():
                         os.chmod(manifest_path, 0o600)
+                self._validate_namespace_paths(moved)
+                self._validate_symlink_targets(symlink_roots)
 
                 progress("database", "Updating InfiniDysk configuration records.", 62)
                 database_changes = self._migrate_infinidysk_database(
@@ -3642,6 +4304,7 @@ class InfiniDyskMigrationManager:
                         },
                     )
                     self._validate_arr_snapshot(original, desired)
+                    self._validate_arr_filesystem(original, desired)
                     arr_completed += service_total
                     arr_changes.append(
                         {"process_name": desired["process_name"], **result}
@@ -3701,6 +4364,7 @@ class InfiniDyskMigrationManager:
                     )
                     changes = self._apply_media_snapshot(original, desired, logger)
                     self._validate_media_snapshot(original, desired, logger)
+                    self._validate_media_filesystem(original, desired)
                     media_changes.append(
                         {
                             "process_name": desired["process_name"],
@@ -3712,6 +4376,18 @@ class InfiniDyskMigrationManager:
                     process_name = _replace_display_name(guard["process_name"])
                     adapter = build_adapter(guard["service_key"], process_name, logger)
                     adapter.restore_scan_guard(guard["snapshot"])
+
+                progress(
+                    "health_checks",
+                    "Restoring the original InfiniDysk scheduled health-check setting.",
+                    96,
+                )
+                self._restore_infinidysk_health_checks(
+                    CONFIG_MANAGER.config,
+                    process_handler,
+                    health_check_guard,
+                )
+                self._write_private_json(health_check_guard_path, health_check_guard)
 
                 if held_producers:
                     progress(
@@ -3756,6 +4432,12 @@ class InfiniDyskMigrationManager:
                         "backup_bundle_path": str(backup_bundle),
                     }
                 )
+                for stale_failure_key in (
+                    "failed_at",
+                    "last_error",
+                    "rollback_errors",
+                ):
+                    state.pop(stale_failure_key, None)
                 self._save_state(state)
                 return {
                     "status": "completed",
@@ -3789,6 +4471,29 @@ class InfiniDyskMigrationManager:
                     "rolling_back",
                 )
                 rollback_errors = list(getattr(error, "rollback_errors", []) or [])
+                if health_check_guard.get("changed") and not health_check_guard.get(
+                    "restored"
+                ):
+                    try:
+                        current_config = CONFIG_MANAGER.config
+                        current_service = self._service_config(current_config)
+                        current_name = str(
+                            current_service.get("process_name") or "InfiniDysk"
+                        )
+                        if self._process_running(process_handler, current_name):
+                            self._restore_infinidysk_health_checks(
+                                current_config,
+                                process_handler,
+                                health_check_guard,
+                            )
+                            self._write_private_json(
+                                health_check_guard_path, health_check_guard
+                            )
+                    except Exception as rollback_error:
+                        rollback_errors.append(
+                            "InfiniDysk health-check setting before rollback: "
+                            f"{_safe_error_detail(rollback_error)}"
+                        )
                 progress(
                     "rollback_stop",
                     "Stopping partially migrated services.",
@@ -3797,6 +4502,17 @@ class InfiniDyskMigrationManager:
                 )
                 try:
                     new_names = [renamed_processes.get(name, name) for name in running]
+                    current_service = self._service_config(CONFIG_MANAGER.config)
+                    current_provider_name = str(
+                        current_service.get("process_name") or "InfiniDysk"
+                    )
+                    if (
+                        self._process_running(process_handler, current_provider_name)
+                        and current_provider_name not in new_names
+                    ):
+                        new_names.append(current_provider_name)
+                        if original_service_name not in running:
+                            running.append(original_service_name)
                     self._stop_processes(process_handler, new_names)
                 except Exception as rollback_error:
                     rollback_errors.append(f"stop: {rollback_error}")
@@ -3890,6 +4606,24 @@ class InfiniDyskMigrationManager:
                     rollback_errors.append(
                         f"start recovery: {_safe_error_detail(rollback_error)}"
                     )
+                if health_check_guard.get("changed") and not health_check_guard.get(
+                    "restored"
+                ):
+                    try:
+                        self._restore_infinidysk_health_checks(
+                            backup_config,
+                            process_handler,
+                            health_check_guard,
+                            verify_offline=True,
+                        )
+                        self._write_private_json(
+                            health_check_guard_path, health_check_guard
+                        )
+                    except Exception as rollback_error:
+                        rollback_errors.append(
+                            "InfiniDysk health-check setting: "
+                            f"{_safe_error_detail(rollback_error)}"
+                        )
                 progress(
                     "rollback_arr", "Restoring Arr references.", 90, "rolling_back"
                 )
