@@ -3748,6 +3748,7 @@ def setup_decypharr(install_only: bool = False, configure_only: bool = False):
                 "debridlink": "Debrid Link",
                 "debrid link": "Debrid Link",
                 "torbox": "Torbox",
+                "premiumize": "Premiumize",
                 "usenet": "Usenet",
             }
             key = normalized.lower()
@@ -4069,19 +4070,25 @@ def setup_decypharr(install_only: bool = False, configure_only: bool = False):
             _ensure_decypharr_dfs_cache_dir(decypharr_config_file)
         if install_only:
             logger.info("Decypharr install phase: skipping runtime config patch.")
-        elif os.path.exists(decypharr_config_file) and (
-            configure_only or _decypharr_config_mount_out_of_sync(decypharr_config_file)
+        elif decypharr_config_file and (
+            configure_only
+            or not os.path.exists(decypharr_config_file)
+            or _decypharr_config_mount_out_of_sync(decypharr_config_file)
         ):
             from utils.decypharr_settings import patch_decypharr_config
 
-            patched, error = patch_decypharr_config()
+            patched, error = patch_decypharr_config(
+                create_if_missing=True,
+                configure_integrations=False,
+            )
             if error:
-                logger.warning(
-                    "Decypharr config patch during setup reported: %s", error
+                return (
+                    False,
+                    f"Failed to prepare Decypharr config before startup: {error}",
                 )
             elif patched:
                 logger.info(
-                    "Patched Decypharr config during setup to match current mount settings."
+                    "Prepared Decypharr config before startup to match DUMB onboarding settings."
                 )
 
         ownership_ok, ownership_error = _normalize_decypharr_runtime_ownership(

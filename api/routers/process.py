@@ -813,7 +813,13 @@ Documentation: https://dumbarr.com/services/optional/cloudflared""",
 CORE_SERVICE_DEBRID_PROVIDERS = {
     "riven_backend": ["RealDebrid"],
     "cli_debrid": ["RealDebrid"],
-    "decypharr": ["RealDebrid", "AllDebrid", "Debrid Link", "TorBox"],
+    "decypharr": [
+        "RealDebrid",
+        "AllDebrid",
+        "Debrid Link",
+        "TorBox",
+        "Premiumize",
+    ],
 }
 
 SERVICE_OPTION_DESCRIPTIONS = {
@@ -4597,7 +4603,7 @@ def _run_startup(request: UnifiedStartRequest, updater, api_state, logger):
                         api_keys_map[svc_name_lc] = svc_key
                         api_keys_updated = True
                         logger.debug(
-                            f"Set Decypharr API key for {svc_name_lc}: {svc_key[:4]}..."
+                            "Set Decypharr API key for provider %s", svc_name_lc
                         )
                 if api_keys_updated:
                     CONFIG_MANAGER.save_config()

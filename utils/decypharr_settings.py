@@ -1,10 +1,11 @@
 from utils.global_logger import logger
 from utils.config_loader import CONFIG_MANAGER
 from utils.core_services import get_core_services, has_core_service
+from utils.private_files import atomic_write_private_text
 from utils.url_security import safe_request, safe_urlopen
 from utils.versions import Versions
 from collections import OrderedDict
-import os, json, time, threading
+import os, json, re, time, threading
 import defusedxml.ElementTree as ET
 import urllib.request
 import urllib.error
@@ -797,12 +798,77 @@ def _shutdown_requested() -> bool:
     return bool(getattr(handler, "shutting_down", False))
 
 
+_CURRENT_DECYPHARR_CONFIG_MIN_VERSION = (2, 0, 0)
+
+
+def _decypharr_version_tuple(value: str | None) -> tuple[int, ...] | None:
+    text = str(value or "").strip()
+    if not text:
+        return None
+    parts = re.findall(r"\d+", text.lstrip("vV"))
+    if not parts:
+        return None
+    return tuple(int(part) for part in parts)
+
+
+def _uses_current_decypharr_config_schema(
+    config_data: dict, decypharr_config: dict
+) -> tuple[bool, str]:
+    """Resolve the schema from the installed/configured Decypharr source."""
+
+    if isinstance(config_data.get("mount"), dict):
+        return True, "existing mount block"
+
+    if (
+        decypharr_config.get("branch_enabled")
+        or str(decypharr_config.get("commit_sha") or "").strip()
+    ):
+        return True, "source build"
+
+    candidates: list[tuple[str, str]] = []
+    if decypharr_config.get("release_version_enabled"):
+        candidates.append(
+            ("configured release", decypharr_config.get("release_version") or "")
+        )
+
+    config_dir = decypharr_config.get("config_dir") or "/decypharr"
+    marker_path = os.path.join(config_dir, "version.txt")
+    try:
+        with open(marker_path, "r", encoding="utf-8") as handle:
+            candidates.append(("installed version", handle.read().strip()))
+    except OSError:
+        pass
+
+    for source, candidate in candidates:
+        parsed = _decypharr_version_tuple(candidate)
+        if parsed is None:
+            continue
+        return parsed >= _CURRENT_DECYPHARR_CONFIG_MIN_VERSION, f"{source} {candidate}"
+
+    try:
+        repo_owner = decypharr_config.get("repo_owner", "sirrobot01")
+        repo_name = decypharr_config.get("repo_name", "decypharr")
+        supported, latest_release, _ = Versions().is_latest_release_gt(
+            repo_owner, repo_name, "v2.0.0"
+        )
+        if latest_release:
+            return supported, f"latest release {latest_release}"
+    except Exception as error:
+        logger.debug("Decypharr release schema check failed: %s", error)
+
+    # Existing legacy installations without a trustworthy version marker stay
+    # on the compatibility layout. Fresh installs write version.txt first.
+    return False, "legacy fallback"
+
+
 # ---------------------------------------------------------------------------
 # Main patch entrypoint
 # ---------------------------------------------------------------------------
 
 
-def patch_decypharr_config():
+def patch_decypharr_config(
+    *, create_if_missing: bool = False, configure_integrations: bool = True
+):
     if _shutdown_requested():
         return False, "Shutdown requested"
     config_path = CONFIG_MANAGER.get("decypharr", {}).get(
@@ -810,8 +876,21 @@ def patch_decypharr_config():
     )
 
     if not os.path.exists(config_path):
-        logger.warning(f"Decypharr config file not found at {config_path}")
-        return False, "Config file not found, skipping patching."
+        if create_if_missing:
+            if os.path.lexists(config_path):
+                return False, "Config path exists but is not a regular file."
+            atomic_write_private_text(config_path, "{}\n")
+            logger.info(
+                "Created Decypharr config scaffold at %s before first start",
+                config_path,
+            )
+        else:
+            logger.warning(f"Decypharr config file not found at {config_path}")
+            return False, "Config file not found, skipping patching."
+
+    if not os.path.isfile(config_path) or os.path.islink(config_path):
+        logger.warning("Decypharr config path is not a regular file: %s", config_path)
+        return False, "Config path must be a regular file."
 
     try:
         with open(config_path, "r") as file:
@@ -823,53 +902,26 @@ def patch_decypharr_config():
         desired_port = str(decypharr_config.get("port", 8282))
         user_id = CONFIG_MANAGER.get("puid")
         group_id = CONFIG_MANAGER.get("pgid")
-        branch_name = (decypharr_config.get("branch") or "").strip().lower()
-        beta_enabled = branch_name == "beta" and decypharr_config.get(
-            "branch_enabled", False
+        current_schema, schema_source = _uses_current_decypharr_config_schema(
+            config_data, decypharr_config
         )
-        versions = Versions()
-        supports_stable_features = False
-        latest_release = None
-        try:
-            repo_owner = decypharr_config.get("repo_owner", "sirrobot01")
-            repo_name = decypharr_config.get("repo_name", "decypharr")
-            supports_stable_features, latest_release, _ = versions.is_latest_release_gt(
-                repo_owner, repo_name, "v1.1.6"
-            )
-        except Exception as e:
-            logger.debug("Decypharr release check failed: %s", e)
-        features_enabled = beta_enabled or not supports_stable_features
         mount_type = (decypharr_config.get("mount_type") or "").strip().lower()
-        if features_enabled and not mount_type:
+        if current_schema and not mount_type:
             mount_type = "dfs"
-        if not mount_type and not features_enabled:
+        if not mount_type and not current_schema:
             # Legacy default when mount_type is unset
             mount_type = "rclone"
         mount_path = (
             decypharr_config.get("mount_path") or "/mnt/debrid/decypharr"
         ).strip()
         logger.info(
-            "Decypharr config patch: path=%s beta=%s stable=%s latest=%s mount_type=%s mount_path=%s",
+            "Decypharr config patch: path=%s schema=%s source=%s mount_type=%s mount_path=%s",
             config_path,
-            beta_enabled,
-            supports_stable_features,
-            latest_release or "unknown",
+            "current" if current_schema else "legacy",
+            schema_source,
             mount_type or "(empty)",
             mount_path,
         )
-        if features_enabled:
-            cfg_updated = False
-            if not decypharr_config.get("branch_enabled"):
-                decypharr_config["branch_enabled"] = True
-                cfg_updated = True
-            if (decypharr_config.get("branch") or "").strip() != "beta":
-                decypharr_config["branch"] = "beta"
-                cfg_updated = True
-            if decypharr_config.get("release_version_enabled"):
-                decypharr_config["release_version_enabled"] = False
-                cfg_updated = True
-            if cfg_updated:
-                CONFIG_MANAGER.save_config()
 
         # Embedded rclone toggle + api_keys map (provider -> api_key)
         use_embedded = mount_type == "rclone"
@@ -976,7 +1028,7 @@ def patch_decypharr_config():
 
         # Legacy-style top-level rclone block (stable/non-feature configs only).
         # Feature configs should use mount.rclone and avoid rewriting top-level rclone.
-        if use_embedded and not features_enabled:
+        if use_embedded and not current_schema:
             embedded_rc = config_data.get("rclone", {})
             merged_rc = {**default_embedded_rclone, **(embedded_rc or {})}
             if embedded_rc != merged_rc:
@@ -987,7 +1039,7 @@ def patch_decypharr_config():
                 updated = True
 
         # Feature mount config (DFS / rclone / external)
-        if features_enabled:
+        if current_schema:
             if "mount" in config_data:
                 logger.info(
                     "Decypharr config patch: mount key present (type=%s keys=%s)",
@@ -1077,7 +1129,7 @@ def patch_decypharr_config():
                 "Default Decypharr config detected. Patching extended settings..."
             )
 
-            if features_enabled:
+            if current_schema:
                 config_data["debrids"] = []
                 for name_lc, api_key in api_keys_map.items():
                     config_data["debrids"].append(
@@ -1154,7 +1206,7 @@ def patch_decypharr_config():
             updated = True
 
         # Feature mode: synchronize/merge debrids[] from api_keys_map (idempotent)
-        if features_enabled:
+        if current_schema:
             if not isinstance(config_data.get("debrids"), list):
                 config_data["debrids"] = []
 
@@ -1260,7 +1312,7 @@ def patch_decypharr_config():
                     if d.get("use_webdav") is not True:
                         d["use_webdav"] = True
                         changed = True
-                    if not beta_enabled and d.get("rc_url") != "http://127.0.0.1:5572":
+                    if d.get("rc_url") != "http://127.0.0.1:5572":
                         d["rc_url"] = "http://127.0.0.1:5572"
                         changed = True
 
@@ -1369,6 +1421,8 @@ def patch_decypharr_config():
         root_paths = []
         try:
             arrs = desired_arrs or []
+            if not configure_integrations:
+                arrs = []
             for entry in arrs:
                 name_label = entry.get("name") or ""
                 svc, _, instance_name = name_label.partition(":")
@@ -1441,12 +1495,14 @@ def patch_decypharr_config():
         # ---- Ensure download client 'decypharr' on each Arr ----
         try:
             arrs = desired_arrs or []
+            if not configure_integrations:
+                arrs = []
             decypharr_port = int(decypharr_config.get("port", 8282))
             usenet_enabled = _has_usenet_providers(config_data)
             api_token = _read_decypharr_api_token(
                 decypharr_config.get("config_dir", "/decypharr")
             )
-            if not _wait_for_decypharr(
+            if arrs and not _wait_for_decypharr(
                 "127.0.0.1", decypharr_port, timeout_s=10, interval_s=1.0
             ):
                 logger.warning(
@@ -1530,7 +1586,7 @@ def patch_decypharr_config():
         final_config["port"] = config_data.get("port", "8282")
         final_config["log_level"] = config_data.get("log_level", "INFO")
 
-        if features_enabled:
+        if current_schema:
             # Ensure a mount block is always present for feature configs
             mount_block = config_data.get("mount") or {}
             if not mount_block:
@@ -1613,15 +1669,17 @@ def patch_decypharr_config():
 
         # ----- Preserve any extra keys Decypharr/user added -----
         known_keys = set(final_config.keys())
-        skip_keys = {"rclone", "qbittorrent", "sabnzbd"} if features_enabled else set()
+        skip_keys = {"rclone", "qbittorrent", "sabnzbd"} if current_schema else set()
         for k, v in config_data.items():
             if k not in known_keys and k not in skip_keys:
                 final_config[k] = v
 
         # Persist if changed
         if updated or final_config != config_data:
-            with open(config_path, "w") as file:
-                json.dump(final_config, file, indent=4)
+            atomic_write_private_text(
+                config_path,
+                json.dumps(final_config, indent=4) + "\n",
+            )
             logger.info("Decypharr config.json patched with extended settings")
             updated = True
         else:
@@ -1639,7 +1697,7 @@ def patch_decypharr_config():
                     "mount_path", default_embedded_rclone["mount_path"]
                 )
             )
-        if features_enabled:
+        if current_schema:
             mount_cfg = config_data.get("mount") or {}
             if mount_cfg.get("mount_path"):
                 required_dirs.append(mount_cfg.get("mount_path"))

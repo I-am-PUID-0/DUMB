@@ -1,6 +1,10 @@
+import json
 import sys
+import tempfile
 import types
 import unittest
+from pathlib import Path
+from unittest import mock
 
 _STUBBED_MODULES = [
     "utils.global_logger",
@@ -21,6 +25,9 @@ class _Logger:
         pass
 
     def warning(self, *args, **kwargs):
+        pass
+
+    def error(self, *args, **kwargs):
         pass
 
 
@@ -75,6 +82,87 @@ for module_name, previous_module in _PREVIOUS_MODULES.items():
 
 
 class DecypharrSettingsTests(unittest.TestCase):
+    def test_legacy_release_marker_keeps_legacy_config_schema(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            config_dir = Path(temp_dir)
+            (config_dir / "version.txt").write_text("v1.1.6\n", encoding="utf-8")
+
+            current_schema, source = (
+                decypharr_settings._uses_current_decypharr_config_schema(
+                    {},
+                    {
+                        "config_dir": str(config_dir),
+                        "release_version_enabled": False,
+                        "branch_enabled": False,
+                        "commit_sha": "",
+                    },
+                )
+            )
+
+            self.assertFalse(current_schema)
+            self.assertEqual(source, "installed version v1.1.6")
+
+    def test_fresh_current_release_configures_premiumize_before_first_start(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            config_dir = Path(temp_dir)
+            config_path = config_dir / "config.json"
+            (config_dir / "version.txt").write_text("v2.5\n", encoding="utf-8")
+            decypharr_config = {
+                "config_dir": str(config_dir),
+                "config_file": str(config_path),
+                "repo_owner": "sirrobot01",
+                "repo_name": "decypharr",
+                "release_version_enabled": False,
+                "branch_enabled": False,
+                "commit_sha": "",
+                "mount_type": "dfs",
+                "mount_path": "/mnt/debrid/decypharr",
+                "api_keys": {"Premiumize": "test-premiumize-key"},
+                "log_level": "INFO",
+                "port": 8282,
+            }
+
+            class _ConfigManager:
+                def get(self, key, default=None):
+                    values = {
+                        "decypharr": decypharr_config,
+                        "rclone": {"instances": {}},
+                        "puid": None,
+                        "pgid": None,
+                    }
+                    return values.get(key, default if default is not None else {})
+
+            original_config_manager = decypharr_settings.CONFIG_MANAGER
+            original_shutdown_requested = decypharr_settings._shutdown_requested
+            try:
+                decypharr_settings.CONFIG_MANAGER = _ConfigManager()
+                decypharr_settings._shutdown_requested = lambda: False
+                with mock.patch.object(decypharr_settings.os, "makedirs"):
+                    updated, error = decypharr_settings.patch_decypharr_config(
+                        create_if_missing=True,
+                        configure_integrations=False,
+                    )
+            finally:
+                decypharr_settings.CONFIG_MANAGER = original_config_manager
+                decypharr_settings._shutdown_requested = original_shutdown_requested
+
+            self.assertTrue(updated)
+            self.assertIsNone(error)
+            rendered = json.loads(config_path.read_text(encoding="utf-8"))
+            self.assertEqual(
+                rendered["download_folder"], "/mnt/debrid/decypharr_downloads"
+            )
+            self.assertEqual(rendered["mount"]["type"], "dfs")
+            self.assertEqual(rendered["mount"]["mount_path"], "/mnt/debrid/decypharr")
+            self.assertEqual(len(rendered["debrids"]), 1)
+            self.assertEqual(rendered["debrids"][0]["provider"], "premiumize")
+            self.assertEqual(rendered["debrids"][0]["api_key"], "test-premiumize-key")
+            self.assertNotIn("qbittorrent", rendered)
+            self.assertNotIn("sabnzbd", rendered)
+            self.assertFalse(decypharr_config["branch_enabled"])
+            self.assertFalse(decypharr_config["release_version_enabled"])
+            self.assertEqual(config_path.stat().st_mode & 0o777, 0o600)
+
     def test_combined_root_requires_decypharr_plus_companion_workflow(self):
         self.assertFalse(_uses_combined_root(["decypharr"]))
         self.assertFalse(_uses_combined_root(["infinidysk", "altmount"]))
