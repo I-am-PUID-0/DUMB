@@ -2,6 +2,7 @@ import os
 import posixpath
 import re
 import shutil
+import struct
 import subprocess
 import tarfile
 import tempfile
@@ -51,6 +52,36 @@ _SOURCE_DIRECTORIES = {
     "usr/lib/jellyfin-ffmpeg": "lib/jellyfin-ffmpeg",
 }
 
+# The jellyfin-ffmpeg binaries also link against codec and support libraries
+# that the image installs as system libraries under /usr/lib/<multiarch>
+# (mp3lame, opus, vorbis, theora, x264/x265, bluray, OpenCL, and their
+# transitive dependencies). Those packages are not guaranteed on the DUMB
+# host, so every entry under that multiarch tree is staged into
+# lib/.system-libs during layer application. Once all layers are applied,
+# _resolve_runtime_libraries() reads the DT_NEEDED graph of the extracted
+# ffmpeg/ffprobe and carries exactly the missing libraries into the bundle
+# directory where LD_LIBRARY_PATH already points, then discards the staging
+# area. This keeps the runtime self-contained and stays correct when
+# upstream images bump SONAMEs or change the codec set.
+_SYSTEM_LIB_STAGING_DIR = "lib/.system-libs"
+
+# Libraries every glibc-based DUMB host guarantees; the runtime never needs
+# to carry them. If a future image requires anything else from the host,
+# the install fails loudly listing the missing libraries.
+_CORE_HOST_LIBRARIES = frozenset(
+    {
+        "libc.so.6",
+        "libm.so.6",
+        "libpthread.so.0",
+        "libdl.so.2",
+        "librt.so.1",
+        "ld-linux-x86-64.so.2",
+        "ld-linux-aarch64.so.1",
+        "libgcc_s.so.1",
+        "libstdc++.so.6",
+    }
+)
+
 
 class MediaStormInstallError(RuntimeError):
     pass
@@ -75,6 +106,12 @@ def _mapped_path(source_path: str) -> str | None:
         prefix = f"{source_dir}/"
         if source_path.startswith(prefix):
             return f"{target_dir}/{source_path[len(prefix):]}"
+    parent, _, name = source_path.rpartition("/")
+    if parent.startswith("usr/lib/") and parent.endswith("-linux-gnu"):
+        # System libraries of the image's base distribution are staged
+        # separately and pruned after the runtime library closure resolves
+        # which ones ffmpeg/ffprobe actually need.
+        return f"{_SYSTEM_LIB_STAGING_DIR}/{name}"
     return None
 
 
@@ -341,6 +378,207 @@ def mediastorm_runtime_matches_selection(
     return installed_selector.lower() == str(selector or "").strip().lower()
 
 
+def _elf_dynamic_info(path: Path) -> tuple[bytes | None, list[tuple[int, int]]]:
+    """Return (strtab bytes, dynamic entries) of an ELF file.
+
+    Only the ELF header, section header table, dynamic section and its string
+    table are read (bounded pread calls), so probing large libraries is cheap.
+    Non-ELF or malformed input yields (None, []).
+    """
+    try:
+        with path.open("rb") as handle:
+            header = handle.read(64)
+            if len(header) < 64 or header[:4] != b"\x7fELF":
+                return None, []
+            is64 = header[4] == 2
+            endian = "<" if header[5] == 1 else ">"
+            if is64:
+                shoff = struct.unpack_from(endian + "Q", header, 40)[0]
+                shentsize = struct.unpack_from(endian + "H", header, 58)[0]
+                shnum = struct.unpack_from(endian + "H", header, 60)[0]
+                entry_size = 16
+            else:
+                shoff = struct.unpack_from(endian + "I", header, 32)[0]
+                shentsize = struct.unpack_from(endian + "H", header, 46)[0]
+                shnum = struct.unpack_from(endian + "H", header, 48)[0]
+                entry_size = 8
+            handle.seek(shoff)
+            table = handle.read(shentsize * shnum)
+    except OSError:
+        return None, []
+    if shentsize < 40 or shnum == 0:
+        return None, []
+    sections = []
+    for index in range(shnum):
+        offset = index * shentsize
+        block = table[offset : offset + shentsize]
+        if len(block) < shentsize:
+            return None, []
+        sh_type = struct.unpack_from(endian + "I", block, 4)[0]
+        if is64:
+            sh_offset = struct.unpack_from(endian + "Q", block, 24)[0]
+            sh_size = struct.unpack_from(endian + "Q", block, 32)[0]
+            sh_link = struct.unpack_from(endian + "I", block, 40)[0]
+        else:
+            sh_offset = struct.unpack_from(endian + "I", block, 16)[0]
+            sh_size = struct.unpack_from(endian + "I", block, 20)[0]
+            sh_link = struct.unpack_from(endian + "I", block, 24)[0]
+        sections.append((sh_type, sh_offset, sh_size, sh_link))
+
+    strtab_section = None
+    dynamic_section = None
+    for sh_type, sh_offset, sh_size, sh_link in sections:
+        if sh_type == 6:  # SHT_DYNAMIC
+            dynamic_section = (sh_offset, sh_size)
+        elif sh_type == 11:  # SHT_DYNSYM: sh_link points at the string table
+            strtab_section = sections[sh_link][1:3]
+    if strtab_section is None or dynamic_section is None:
+        return None, []
+    strtab_offset, strtab_size = strtab_section
+    try:
+        with path.open("rb") as handle:
+            handle.seek(strtab_offset)
+            strtab = handle.read(strtab_size)
+            handle.seek(dynamic_section[0])
+            dynamic_data = handle.read(dynamic_section[1])
+    except OSError:
+        return None, []
+    entries = []
+    for offset in range(0, len(dynamic_data) - entry_size + 1, entry_size):
+        d_tag, d_val = struct.unpack_from(
+            endian + ("qQ" if is64 else "iI"), dynamic_data, offset
+        )
+        entries.append((d_tag, d_val))
+        if d_tag == 0:
+            break
+    return strtab, entries
+
+
+def _elf_string(entries: list[tuple[int, int]], strtab: bytes, tag: int) -> list[str]:
+    values = []
+    for d_tag, d_val in entries:
+        if d_tag == tag:
+            end = strtab.find(b"\x00", d_val)
+            if d_val < len(strtab) and end != -1:
+                values.append(strtab[d_val:end].decode("utf-8", "replace"))
+        elif d_tag == 0:
+            break
+    return values
+
+
+def _elf_needed_libraries(path: Path) -> list[str]:
+    strtab, entries = _elf_dynamic_info(path)
+    if strtab is None:
+        return []
+    return _elf_string(entries, strtab, 1)  # DT_NEEDED
+
+
+def _elf_soname(path: Path) -> str | None:
+    strtab, entries = _elf_dynamic_info(path)
+    if strtab is None:
+        return None
+    values = _elf_string(entries, strtab, 14)  # DT_SONAME
+    return values[0] if values else None
+
+
+def _runtime_missing_libraries(runtime: Path) -> list[str]:
+    """Libraries the staged runtime links against that it cannot provide.
+
+    Walks the DT_NEEDED graph of bin/ffmpeg and bin/ffprobe over the staged
+    bundle directory, the staged system-library area and the core libraries
+    every glibc host provides. Returns the sonames that remain unresolved.
+    """
+    bundle_dir = runtime / "lib" / "jellyfin-ffmpeg" / "lib"
+    staging_dir = runtime / _SYSTEM_LIB_STAGING_DIR
+    by_soname: dict[str, Path] = {}
+    if bundle_dir.is_dir():
+        for candidate in bundle_dir.iterdir():
+            if candidate.is_file():
+                if candidate.is_symlink():
+                    by_soname.setdefault(candidate.name, candidate)
+                else:
+                    by_soname.setdefault(
+                        _elf_soname(candidate) or candidate.name, candidate
+                    )
+    queue = []
+    for seed in (runtime / "bin" / "ffmpeg", runtime / "bin" / "ffprobe"):
+        if seed.is_file():
+            queue.extend(_elf_needed_libraries(seed))
+    missing = []
+    seen = set()
+    while queue:
+        soname = queue.pop()
+        if soname in seen:
+            continue
+        seen.add(soname)
+        if soname in by_soname:
+            queue.extend(_elf_needed_libraries(by_soname[soname]))
+            continue
+        if soname in _CORE_HOST_LIBRARIES:
+            continue
+        staged = staging_dir / soname
+        if staged.is_file() or staged.is_symlink():
+            resolved = staged.resolve()
+            if resolved.is_file():
+                queue.extend(_elf_needed_libraries(resolved))
+                continue
+        missing.append(soname)
+    return missing
+
+
+def _resolve_runtime_libraries(runtime: Path) -> list[str]:
+    """Carry the system libraries ffmpeg/ffprobe need into the bundle dir.
+
+    Copies each unresolved library from the staged system-library area into
+    lib/jellyfin-ffmpeg/lib (where LD_LIBRARY_PATH points), then discards the
+    staging area. Returns the sonames that could not be resolved; callers
+    should treat any entry as a hard install failure.
+    """
+    staging_dir = runtime / _SYSTEM_LIB_STAGING_DIR
+    bundle_dir = runtime / "lib" / "jellyfin-ffmpeg" / "lib"
+    by_soname: dict[str, Path] = {}
+    if bundle_dir.is_dir():
+        for candidate in bundle_dir.iterdir():
+            if candidate.is_file():
+                if candidate.is_symlink():
+                    by_soname.setdefault(candidate.name, candidate)
+                else:
+                    by_soname.setdefault(
+                        _elf_soname(candidate) or candidate.name, candidate
+                    )
+    queue = []
+    for seed in (runtime / "bin" / "ffmpeg", runtime / "bin" / "ffprobe"):
+        if seed.is_file():
+            queue.extend(_elf_needed_libraries(seed))
+    missing = []
+    seen = set()
+    while queue:
+        soname = queue.pop()
+        if soname in seen:
+            continue
+        seen.add(soname)
+        if soname in by_soname:
+            queue.extend(_elf_needed_libraries(by_soname[soname]))
+            continue
+        if soname in _CORE_HOST_LIBRARIES:
+            continue
+        staged = staging_dir / soname
+        if staging_dir.is_dir() and (staged.is_file() or staged.is_symlink()):
+            resolved = staged.resolve()
+            if resolved.is_file():
+                destination = bundle_dir / soname
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                if destination.exists() or destination.is_symlink():
+                    _remove_existing(destination)
+                shutil.copy2(resolved, destination)
+                queue.extend(_elf_needed_libraries(resolved))
+                continue
+        missing.append(soname)
+    if staging_dir.is_dir():
+        _remove_existing(staging_dir)
+    return missing
+
+
 def mediastorm_runtime_ready(runtime_dir: str | Path) -> bool:
     runtime = Path(runtime_dir)
     required = (
@@ -353,7 +591,13 @@ def mediastorm_runtime_ready(runtime_dir: str | Path) -> bool:
         runtime / "bin" / "yt-dlp",
         runtime / "bin" / "deno",
     )
-    return all(path.is_file() for path in required)
+    if not all(path.is_file() for path in required):
+        return False
+    # The runtime is only usable when every library ffmpeg/ffprobe link
+    # against resolves inside the staged runtime (or is a core glibc
+    # library). Runtimes staged before the codec libraries were carried
+    # fail this check and are reinstalled by the update manager.
+    return not _runtime_missing_libraries(runtime)
 
 
 def mediastorm_target_status(
@@ -520,6 +764,14 @@ def install_mediastorm_runtime(
                 raise MediaStormInstallError(str(exc)) from exc
             finally:
                 layer_path.unlink(missing_ok=True)
+
+        missing_libraries = _resolve_runtime_libraries(staged_runtime)
+        if missing_libraries:
+            raise MediaStormInstallError(
+                "Downloaded mediastorm OCI runtime links against system "
+                "libraries that are neither bundled nor available on this "
+                "host: " + ", ".join(sorted(set(missing_libraries)))
+            )
 
         upstream_version_path = staged_runtime / "app-version.txt"
         try:

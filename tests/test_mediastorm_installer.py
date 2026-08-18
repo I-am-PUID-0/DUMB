@@ -64,6 +64,89 @@ def _write_mixed_layer(
             archive.addfile(info)
 
 
+def _minimal_elf_bytes(needed: list[str]) -> bytes:
+    """Build a minimal ELF64 dynamic executable with the given DT_NEEDED
+    entries, so the installer's runtime library closure sees real deps."""
+    import struct
+
+    dynstr = b"\x00" + b"\x00".join(name.encode() for name in needed) + b"\x00"
+    str_offsets = {}
+    cursor = 1
+    for name in needed:
+        str_offsets[name] = cursor
+        cursor += len(name) + 1
+    dynstr_off = 64 + 56
+    dyn_entries = [(1, str_offsets[name]) for name in needed]
+    dyn_entries.append((5, 0x400000 + dynstr_off))  # DT_STRTAB
+    dyn_entries.append((10, len(dynstr)))  # DT_STRSZ
+    dyn_entries.append((0, 0))  # DT_NULL
+    dynamic_off = dynstr_off + len(dynstr)
+    dynamic = b"".join(struct.pack("<qQ", tag, value) for tag, value in dyn_entries)
+    shoff = dynamic_off + len(dynamic)
+    total = shoff + 5 * 64
+
+    e_ident = b"\x7fELF" + bytes([2, 1, 1]) + bytes(9)
+    ehdr = struct.pack(
+        "<16sHHIQQQIHHHHHH",
+        e_ident,
+        2,  # ET_EXEC
+        62,  # EM_X86_64
+        1,
+        0x400000,
+        64,
+        shoff,
+        0,
+        64,
+        56,
+        1,
+        64,
+        5,
+        0,
+    )
+    phdr = struct.pack(
+        "<IIQQQQQQ",
+        1,  # PT_LOAD
+        5,  # PF_R | PF_X
+        0,
+        0x400000,
+        0x400000,
+        total,
+        total,
+        0x1000,
+    )
+
+    def shdr(name, sh_type, offset, size, link=0, addralign=1):
+        return struct.pack(
+            "<IIQQQQIIQQ",
+            name,
+            sh_type,
+            0,
+            0,
+            offset,
+            size,
+            link,
+            0,
+            addralign,
+            0,
+        )
+
+    shstr_off = total - 64
+    sections = b"".join(
+        [
+            bytes(64),  # null section
+            shdr(0, 3, dynstr_off, len(dynstr), addralign=1),  # .dynstr
+            shdr(0, 6, dynamic_off, len(dynamic), link=1, addralign=8),  # .dynamic
+            shdr(0, 11, shstr_off, 0, link=1, addralign=8),  # .dynsym
+            shdr(0, 3, shstr_off, 1, addralign=1),  # shstrtab placeholder
+        ]
+    )
+    return ehdr + phdr + dynstr + dynamic + sections
+
+
+def _write_minimal_elf(path: Path, needed: list[str]) -> None:
+    path.write_bytes(_minimal_elf_bytes(needed))
+
+
 class _FakeOCIClient:
     def __init__(self, layers, missing_references=None, index_digest=None):
         self.layers = layers
@@ -205,6 +288,152 @@ class MediaStormInstallerTests(unittest.TestCase):
                 b"ffmpeg-binary",
             )
 
+    def test_stages_system_libraries_for_runtime_resolution(self):
+        # The jellyfin-ffmpeg layout links ffmpeg/ffprobe against codec and
+        # support libraries the image installs as system libraries under
+        # /usr/lib/<multiarch>. Every entry there is staged separately so the
+        # runtime library closure can carry exactly what is needed; entries
+        # outside the multiarch tree stay unmapped.
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            layer = root / "layer.tar.gz"
+            output = root / "output"
+            _write_mixed_layer(
+                layer,
+                directories=("usr/lib/x86_64-linux-gnu/",),
+                files={
+                    "usr/lib/x86_64-linux-gnu/libmp3lame.so.0.0.0": (
+                        b"lame",
+                        0o644,
+                    ),
+                    "usr/lib/x86_64-linux-gnu/libx264.so.164": (b"x264", 0o644),
+                    "usr/lib/x86_64-linux-gnu/libvorbis.so.0.4.9": (
+                        b"vorbis",
+                        0o644,
+                    ),
+                    "usr/lib/x86_64-linux-gnu/libc.so.6": (b"libc", 0o644),
+                    "usr/lib/something-else/libunrelated.so.1": (b"nope", 0o644),
+                },
+                symlinks={
+                    "usr/lib/x86_64-linux-gnu/libmp3lame.so.0": ("libmp3lame.so.0.0.0"),
+                    "usr/lib/x86_64-linux-gnu/libvorbis.so.0": ("libvorbis.so.0.4.9"),
+                },
+            )
+
+            apply_mediastorm_layer(layer, output)
+
+            staging = output / "lib" / ".system-libs"
+            self.assertEqual((staging / "libmp3lame.so.0.0.0").read_bytes(), b"lame")
+            self.assertTrue((staging / "libmp3lame.so.0").is_symlink())
+            self.assertEqual(
+                os.readlink(staging / "libmp3lame.so.0"),
+                "libmp3lame.so.0.0.0",
+            )
+            self.assertEqual((staging / "libx264.so.164").read_bytes(), b"x264")
+            self.assertEqual(
+                os.readlink(staging / "libvorbis.so.0"),
+                "libvorbis.so.0.4.9",
+            )
+            self.assertEqual((staging / "libc.so.6").read_bytes(), b"libc")
+            self.assertFalse((staging / "libunrelated.so.1").exists())
+
+    def test_runtime_ready_requires_resolvable_library_closure(self):
+        def write_runtime(root, with_codec_lib):
+            runtime = root / "runtime"
+            for relative in (
+                "mediastorm",
+                "web/index.html",
+                "iroh/iroh-direct-spike",
+                "python-venv/bin/python3",
+                "bin/ffprobe",
+                "bin/yt-dlp",
+                "bin/deno",
+            ):
+                path = runtime / relative
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(relative, encoding="utf-8")
+            bundle = runtime / "lib" / "jellyfin-ffmpeg"
+            bundle.mkdir(parents=True, exist_ok=True)
+            (bundle / "ffmpeg").write_bytes(
+                _minimal_elf_bytes(["libavcodec.so.61", "libmp3lame.so.0"])
+            )
+            (runtime / "bin" / "ffmpeg").unlink(missing_ok=True)
+            (runtime / "bin" / "ffmpeg").symlink_to("../lib/jellyfin-ffmpeg/ffmpeg")
+            (bundle / "lib").mkdir(exist_ok=True)
+            (bundle / "lib" / "libavcodec.so.61").write_bytes(_minimal_elf_bytes([]))
+            if with_codec_lib:
+                (bundle / "lib" / "libmp3lame.so.0").write_bytes(_minimal_elf_bytes([]))
+            return runtime
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            # Jellyfin layout without the codec libraries cannot run ffmpeg.
+            self.assertFalse(mediastorm_runtime_ready(write_runtime(root, False)))
+            self.assertTrue(mediastorm_runtime_ready(write_runtime(root, True)))
+
+        # Static-binary layouts (arm64 images) never need the bundle libs.
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            runtime = root / "runtime"
+            for relative in (
+                "mediastorm",
+                "web/index.html",
+                "iroh/iroh-direct-spike",
+                "python-venv/bin/python3",
+                "bin/ffmpeg",
+                "bin/ffprobe",
+                "bin/yt-dlp",
+                "bin/deno",
+            ):
+                path = runtime / relative
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(relative, encoding="utf-8")
+            self.assertTrue(mediastorm_runtime_ready(runtime))
+
+    def test_install_fails_when_runtime_needs_unknown_system_library(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            layer = root / "layer.tar.gz"
+            files = {
+                "app/mediastorm": (b"server", 0o755),
+                "opt/strmr-web/index.html": (b"web", 0o644),
+                "opt/iroh/iroh-direct-spike": (b"iroh", 0o755),
+                "app/version.txt": (b"1.5.0\n20260811\n", 0o644),
+                "parse_title.py": (b"", 0o644),
+                "parse_title_batch.py": (b"", 0o644),
+                "search_subtitles.py": (b"", 0o644),
+                "download_subtitle.py": (b"", 0o644),
+                "detect_credits.py": (b"", 0o644),
+                "usr/local/bin/ffmpeg": (
+                    _minimal_elf_bytes(["libmystery.so.1"]),
+                    0o755,
+                ),
+                "usr/local/bin/ffprobe": (_minimal_elf_bytes([]), 0o755),
+                "usr/local/bin/yt-dlp": (b"yt-dlp", 0o755),
+                "usr/local/bin/deno": (b"deno", 0o755),
+            }
+            _write_mixed_layer(layer, files=files)
+
+            def fake_python_environment(runtime):
+                python = runtime / "python-venv" / "bin" / "python3"
+                python.parent.mkdir(parents=True)
+                python.write_text("python", encoding="utf-8")
+
+            config = {
+                "config_dir": str(root / "mediastorm"),
+            }
+            with patch(
+                "utils.mediastorm_installer._build_python_environment",
+                side_effect=fake_python_environment,
+            ):
+                with self.assertRaises(MediaStormInstallError) as raised:
+                    install_mediastorm_runtime(
+                        config,
+                        "latest",
+                        client=_FakeOCIClient([layer]),
+                    )
+            self.assertIn("libmystery.so.1", str(raised.exception))
+
     def test_installs_amd64_runtime_with_jellyfin_ffmpeg_links(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
@@ -219,10 +448,18 @@ class MediaStormInstallerTests(unittest.TestCase):
                 "search_subtitles.py": (b"", 0o644),
                 "download_subtitle.py": (b"", 0o644),
                 "detect_credits.py": (b"", 0o644),
-                "usr/lib/jellyfin-ffmpeg/ffmpeg": (b"ffmpeg-binary", 0o755),
-                "usr/lib/jellyfin-ffmpeg/ffprobe": (b"ffprobe-binary", 0o755),
+                "usr/lib/jellyfin-ffmpeg/ffmpeg": (
+                    _minimal_elf_bytes(["libmp3lame.so.0", "libx264.so.164"]),
+                    0o755,
+                ),
+                "usr/lib/jellyfin-ffmpeg/ffprobe": (_minimal_elf_bytes([]), 0o755),
                 "usr/local/bin/yt-dlp": (b"yt-dlp", 0o755),
                 "usr/local/bin/deno": (b"deno", 0o755),
+                "usr/lib/x86_64-linux-gnu/libmp3lame.so.0.0.0": (
+                    b"lame",
+                    0o644,
+                ),
+                "usr/lib/x86_64-linux-gnu/libx264.so.164": (b"x264", 0o644),
             }
             _write_mixed_layer(
                 layer,
@@ -231,6 +468,7 @@ class MediaStormInstallerTests(unittest.TestCase):
                     "root/mediastorm": "/app/mediastorm",
                     "usr/local/bin/ffmpeg": "/usr/lib/jellyfin-ffmpeg/ffmpeg",
                     "usr/local/bin/ffprobe": "/usr/lib/jellyfin-ffmpeg/ffprobe",
+                    "usr/lib/x86_64-linux-gnu/libmp3lame.so.0": ("libmp3lame.so.0.0.0"),
                 },
             )
 
@@ -260,13 +498,19 @@ class MediaStormInstallerTests(unittest.TestCase):
                 "../lib/jellyfin-ffmpeg/ffmpeg",
             )
             self.assertEqual(
-                (runtime / "bin" / "ffmpeg").resolve().read_bytes(),
-                b"ffmpeg-binary",
+                (runtime / "bin" / "ffmpeg").resolve().read_bytes()[:4],
+                b"\x7fELF",
             )
             self.assertEqual(
-                (runtime / "lib" / "jellyfin-ffmpeg" / "ffprobe").read_bytes(),
-                b"ffprobe-binary",
+                (runtime / "lib" / "jellyfin-ffmpeg" / "ffprobe").read_bytes()[:4],
+                b"\x7fELF",
             )
+            # The codec libraries ffmpeg links against were carried into the
+            # bundle directory and the staging area was pruned.
+            bundle_lib = runtime / "lib" / "jellyfin-ffmpeg" / "lib"
+            self.assertEqual((bundle_lib / "libmp3lame.so.0").read_bytes(), b"lame")
+            self.assertEqual((bundle_lib / "libx264.so.164").read_bytes(), b"x264")
+            self.assertFalse((runtime / "lib" / ".system-libs").exists())
 
     def test_installs_verified_runtime_atomically(self):
         with tempfile.TemporaryDirectory() as temp_dir:
