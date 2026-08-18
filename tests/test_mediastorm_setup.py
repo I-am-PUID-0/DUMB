@@ -6,6 +6,8 @@ from unittest.mock import Mock, patch
 
 from utils import setup
 
+from tests.test_mediastorm_installer import _minimal_elf_bytes
+
 
 class MediaStormSetupTests(unittest.TestCase):
     def _runtime_tree(self, root: Path) -> None:
@@ -21,8 +23,12 @@ class MediaStormSetupTests(unittest.TestCase):
         (root / "python-venv" / "bin" / "python3").write_text(
             "python", encoding="utf-8"
         )
-        for binary_name in ("ffmpeg", "ffprobe", "yt-dlp", "deno"):
+        for binary_name in ("yt-dlp", "deno"):
             (root / "bin" / binary_name).write_text("binary", encoding="utf-8")
+        # ffmpeg/ffprobe must look like real ELF binaries: the runtime
+        # readiness check rejects unparseable seeds.
+        for binary_name in ("ffmpeg", "ffprobe"):
+            (root / "bin" / binary_name).write_bytes(_minimal_elf_bytes([]))
         for script_name in (
             "parse_title.py",
             "parse_title_batch.py",

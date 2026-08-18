@@ -378,6 +378,49 @@ def mediastorm_runtime_matches_selection(
     return installed_selector.lower() == str(selector or "").strip().lower()
 
 
+# Bounds for the ELF section header table parse: real files carry only a
+# handful of sections, so cap the count and the table size before reading
+# malformed or hostile inputs.
+_MAX_ELF_SECTIONS = 4096
+_MAX_ELF_SECTION_TABLE_BYTES = 1 << 20
+
+
+def _elf_header_layout(path: Path) -> tuple[bool, str, int, int, int] | None:
+    """Validate an ELF header and return its section table layout.
+
+    Returns (is64, endian, shoff, shentsize, shnum) for structurally valid
+    ELF files, or None for non-ELF, truncated or malformed input. The
+    section entry size must cover the sh_link read (offset 40 in the 64-bit
+    layout; 32-bit files keep their standard 40-byte minimum), and the
+    section count and table size are bounded before any allocation.
+    """
+    try:
+        with path.open("rb") as handle:
+            header = handle.read(64)
+            if len(header) < 64 or header[:4] != b"\x7fELF":
+                return None
+            is64 = header[4] == 2
+            endian = "<" if header[5] == 1 else ">"
+            if is64:
+                shoff = struct.unpack_from(endian + "Q", header, 40)[0]
+                shentsize = struct.unpack_from(endian + "H", header, 58)[0]
+                shnum = struct.unpack_from(endian + "H", header, 60)[0]
+            else:
+                shoff = struct.unpack_from(endian + "I", header, 32)[0]
+                shentsize = struct.unpack_from(endian + "H", header, 46)[0]
+                shnum = struct.unpack_from(endian + "H", header, 48)[0]
+    except OSError:
+        return None
+    if (
+        shnum == 0
+        or shnum > _MAX_ELF_SECTIONS
+        or shentsize < (44 if is64 else 40)
+        or shentsize * shnum > _MAX_ELF_SECTION_TABLE_BYTES
+    ):
+        return None
+    return is64, endian, shoff, shentsize, shnum
+
+
 def _elf_dynamic_info(path: Path) -> tuple[bytes | None, list[tuple[int, int]]]:
     """Return (strtab bytes, dynamic entries) of an ELF file.
 
@@ -385,28 +428,16 @@ def _elf_dynamic_info(path: Path) -> tuple[bytes | None, list[tuple[int, int]]]:
     table are read (bounded pread calls), so probing large libraries is cheap.
     Non-ELF or malformed input yields (None, []).
     """
+    layout = _elf_header_layout(path)
+    if layout is None:
+        return None, []
+    is64, endian, shoff, shentsize, shnum = layout
+    entry_size = 16 if is64 else 8
     try:
         with path.open("rb") as handle:
-            header = handle.read(64)
-            if len(header) < 64 or header[:4] != b"\x7fELF":
-                return None, []
-            is64 = header[4] == 2
-            endian = "<" if header[5] == 1 else ">"
-            if is64:
-                shoff = struct.unpack_from(endian + "Q", header, 40)[0]
-                shentsize = struct.unpack_from(endian + "H", header, 58)[0]
-                shnum = struct.unpack_from(endian + "H", header, 60)[0]
-                entry_size = 16
-            else:
-                shoff = struct.unpack_from(endian + "I", header, 32)[0]
-                shentsize = struct.unpack_from(endian + "H", header, 46)[0]
-                shnum = struct.unpack_from(endian + "H", header, 48)[0]
-                entry_size = 8
             handle.seek(shoff)
             table = handle.read(shentsize * shnum)
     except OSError:
-        return None, []
-    if shentsize < 40 or shnum == 0:
         return None, []
     sections = []
     for index in range(shnum):
@@ -431,6 +462,8 @@ def _elf_dynamic_info(path: Path) -> tuple[bytes | None, list[tuple[int, int]]]:
         if sh_type == 6:  # SHT_DYNAMIC
             dynamic_section = (sh_offset, sh_size)
         elif sh_type == 11:  # SHT_DYNSYM: sh_link points at the string table
+            if sh_link >= len(sections):
+                return None, []
             strtab_section = sections[sh_link][1:3]
     if strtab_section is None or dynamic_section is None:
         return None, []
@@ -454,6 +487,26 @@ def _elf_dynamic_info(path: Path) -> tuple[bytes | None, list[tuple[int, int]]]:
     return strtab, entries
 
 
+def _elf_is_parseable(path: Path) -> bool:
+    """True when the file is a structurally complete ELF.
+
+    mediastorm_runtime_ready() uses this to reject runtimes whose
+    ffmpeg/ffprobe binaries are truncated or corrupt, while static binaries
+    (valid ELF files without a dynamic section) still pass.
+    """
+    layout = _elf_header_layout(path)
+    if layout is None:
+        return False
+    _is64, _endian, shoff, shentsize, shnum = layout
+    try:
+        with path.open("rb") as handle:
+            handle.seek(shoff)
+            table = handle.read(shentsize * shnum)
+    except OSError:
+        return False
+    return len(table) >= shentsize * shnum
+
+
 def _elf_string(entries: list[tuple[int, int]], strtab: bytes, tag: int) -> list[str]:
     values = []
     for d_tag, d_val in entries:
@@ -466,19 +519,88 @@ def _elf_string(entries: list[tuple[int, int]], strtab: bytes, tag: int) -> list
     return values
 
 
-def _elf_needed_libraries(path: Path) -> list[str]:
+def _elf_dynamic_metadata(path: Path) -> tuple[list[str], str | None]:
+    """Return (DT_NEEDED libraries, DT_SONAME) of an ELF file.
+
+    Both values come from a single _elf_dynamic_info() parse, so callers
+    that need the dependency closure and the soname (bundle indexing,
+    closure walking) never parse the same file twice. Files without
+    dynamic information yield ([], None).
+    """
     strtab, entries = _elf_dynamic_info(path)
     if strtab is None:
-        return []
-    return _elf_string(entries, strtab, 1)  # DT_NEEDED
+        return [], None
+    needed = _elf_string(entries, strtab, 1)  # DT_NEEDED
+    sonames = _elf_string(entries, strtab, 14)  # DT_SONAME
+    return needed, (sonames[0] if sonames else None)
 
 
-def _elf_soname(path: Path) -> str | None:
-    strtab, entries = _elf_dynamic_info(path)
-    if strtab is None:
-        return None
-    values = _elf_string(entries, strtab, 14)  # DT_SONAME
-    return values[0] if values else None
+def _walk_runtime_closure(runtime: Path, *, copy_missing: bool) -> list[str]:
+    """Walk the DT_NEEDED graph of bin/ffmpeg and bin/ffprobe.
+
+    Libraries are resolved against the staged bundle directory, the staged
+    system-library area and the core libraries every glibc host provides;
+    the sonames that remain unresolved are returned. When copy_missing is
+    set, each unresolved library found in the staging area is first copied
+    into the bundle directory (where LD_LIBRARY_PATH points); otherwise
+    the walk stays read-only. Staging-directory cleanup is left to the
+    caller.
+    """
+    bundle_dir = runtime / "lib" / "jellyfin-ffmpeg" / "lib"
+    staging_dir = runtime / _SYSTEM_LIB_STAGING_DIR
+    dynamic_cache: dict[Path, tuple[list[str], str | None]] = {}
+
+    def dynamic_metadata(path: Path) -> tuple[list[str], str | None]:
+        resolved = path.resolve()
+        if resolved not in dynamic_cache:
+            dynamic_cache[resolved] = _elf_dynamic_metadata(resolved)
+        return dynamic_cache[resolved]
+
+    # Index the bundle by the soname each file declares and by its file
+    # name, so a dependency spelled either way (DT_NEEDED normally uses the
+    # SONAME, but libraries without one are referenced by filename) resolves
+    # to the same candidate. Symlinks are indexed by name only.
+    by_soname: dict[str, Path] = {}
+    if bundle_dir.is_dir():
+        for candidate in bundle_dir.iterdir():
+            if candidate.is_file():
+                if candidate.is_symlink():
+                    by_soname.setdefault(candidate.name, candidate)
+                else:
+                    _, soname = dynamic_metadata(candidate)
+                    by_soname.setdefault(candidate.name, candidate)
+                    if soname:
+                        by_soname.setdefault(soname, candidate)
+    queue = []
+    for seed in (runtime / "bin" / "ffmpeg", runtime / "bin" / "ffprobe"):
+        if seed.is_file():
+            queue.extend(dynamic_metadata(seed)[0])
+    missing = []
+    seen = set()
+    while queue:
+        soname = queue.pop()
+        if soname in seen:
+            continue
+        seen.add(soname)
+        if soname in by_soname:
+            queue.extend(dynamic_metadata(by_soname[soname])[0])
+            continue
+        if soname in _CORE_HOST_LIBRARIES:
+            continue
+        staged = staging_dir / soname
+        if staging_dir.is_dir() and (staged.is_file() or staged.is_symlink()):
+            resolved = staged.resolve()
+            if resolved.is_file():
+                if copy_missing:
+                    destination = bundle_dir / soname
+                    destination.parent.mkdir(parents=True, exist_ok=True)
+                    if destination.exists() or destination.is_symlink():
+                        _remove_existing(destination)
+                    shutil.copy2(resolved, destination)
+                queue.extend(dynamic_metadata(resolved)[0])
+                continue
+        missing.append(soname)
+    return missing
 
 
 def _runtime_missing_libraries(runtime: Path) -> list[str]:
@@ -488,42 +610,7 @@ def _runtime_missing_libraries(runtime: Path) -> list[str]:
     bundle directory, the staged system-library area and the core libraries
     every glibc host provides. Returns the sonames that remain unresolved.
     """
-    bundle_dir = runtime / "lib" / "jellyfin-ffmpeg" / "lib"
-    staging_dir = runtime / _SYSTEM_LIB_STAGING_DIR
-    by_soname: dict[str, Path] = {}
-    if bundle_dir.is_dir():
-        for candidate in bundle_dir.iterdir():
-            if candidate.is_file():
-                if candidate.is_symlink():
-                    by_soname.setdefault(candidate.name, candidate)
-                else:
-                    by_soname.setdefault(
-                        _elf_soname(candidate) or candidate.name, candidate
-                    )
-    queue = []
-    for seed in (runtime / "bin" / "ffmpeg", runtime / "bin" / "ffprobe"):
-        if seed.is_file():
-            queue.extend(_elf_needed_libraries(seed))
-    missing = []
-    seen = set()
-    while queue:
-        soname = queue.pop()
-        if soname in seen:
-            continue
-        seen.add(soname)
-        if soname in by_soname:
-            queue.extend(_elf_needed_libraries(by_soname[soname]))
-            continue
-        if soname in _CORE_HOST_LIBRARIES:
-            continue
-        staged = staging_dir / soname
-        if staged.is_file() or staged.is_symlink():
-            resolved = staged.resolve()
-            if resolved.is_file():
-                queue.extend(_elf_needed_libraries(resolved))
-                continue
-        missing.append(soname)
-    return missing
+    return _walk_runtime_closure(runtime, copy_missing=False)
 
 
 def _resolve_runtime_libraries(runtime: Path) -> list[str]:
@@ -534,49 +621,42 @@ def _resolve_runtime_libraries(runtime: Path) -> list[str]:
     staging area. Returns the sonames that could not be resolved; callers
     should treat any entry as a hard install failure.
     """
+    missing = _walk_runtime_closure(runtime, copy_missing=True)
     staging_dir = runtime / _SYSTEM_LIB_STAGING_DIR
-    bundle_dir = runtime / "lib" / "jellyfin-ffmpeg" / "lib"
-    by_soname: dict[str, Path] = {}
-    if bundle_dir.is_dir():
-        for candidate in bundle_dir.iterdir():
-            if candidate.is_file():
-                if candidate.is_symlink():
-                    by_soname.setdefault(candidate.name, candidate)
-                else:
-                    by_soname.setdefault(
-                        _elf_soname(candidate) or candidate.name, candidate
-                    )
-    queue = []
-    for seed in (runtime / "bin" / "ffmpeg", runtime / "bin" / "ffprobe"):
-        if seed.is_file():
-            queue.extend(_elf_needed_libraries(seed))
-    missing = []
-    seen = set()
-    while queue:
-        soname = queue.pop()
-        if soname in seen:
-            continue
-        seen.add(soname)
-        if soname in by_soname:
-            queue.extend(_elf_needed_libraries(by_soname[soname]))
-            continue
-        if soname in _CORE_HOST_LIBRARIES:
-            continue
-        staged = staging_dir / soname
-        if staging_dir.is_dir() and (staged.is_file() or staged.is_symlink()):
-            resolved = staged.resolve()
-            if resolved.is_file():
-                destination = bundle_dir / soname
-                destination.parent.mkdir(parents=True, exist_ok=True)
-                if destination.exists() or destination.is_symlink():
-                    _remove_existing(destination)
-                shutil.copy2(resolved, destination)
-                queue.extend(_elf_needed_libraries(resolved))
-                continue
-        missing.append(soname)
     if staging_dir.is_dir():
         _remove_existing(staging_dir)
     return missing
+
+
+# The sonames the host dynamic loader can satisfy (from `ldconfig -p`),
+# probed once on first use. None means "not probed yet".
+_HOST_LOADER_LIBRARIES: frozenset[str] | None = None
+
+
+def _host_loader_provides(soname: str) -> bool:
+    """True when the host dynamic loader can satisfy the soname.
+
+    Consults `ldconfig -p` (the loader cache the dynamic linker uses) once
+    and remembers the result. Hosts without ldconfig, or where the query
+    fails, are treated as providing nothing, so an unknown environment
+    never masks a missing library.
+    """
+    global _HOST_LOADER_LIBRARIES
+    if _HOST_LOADER_LIBRARIES is None:
+        names = []
+        try:
+            result = subprocess.run(
+                ["ldconfig", "-p"], capture_output=True, text=True, timeout=10
+            )
+        except (OSError, subprocess.TimeoutExpired):
+            pass
+        else:
+            if result.returncode == 0:
+                for line in result.stdout.splitlines():
+                    if " => " in line:
+                        names.append(line.split()[0])
+        _HOST_LOADER_LIBRARIES = frozenset(names)
+    return soname in _HOST_LOADER_LIBRARIES
 
 
 def mediastorm_runtime_ready(runtime_dir: str | Path) -> bool:
@@ -593,11 +673,28 @@ def mediastorm_runtime_ready(runtime_dir: str | Path) -> bool:
     )
     if not all(path.is_file() for path in required):
         return False
+    # A truncated or corrupt ffmpeg/ffprobe cannot be validated and would
+    # not run; treat the runtime as not ready instead of assuming an
+    # empty dependency closure.
+    for seed in (runtime / "bin" / "ffmpeg", runtime / "bin" / "ffprobe"):
+        if not _elf_is_parseable(seed):
+            logger.warning("mediastorm runtime binary is not a parseable ELF: %s", seed)
+            return False
     # The runtime is only usable when every library ffmpeg/ffprobe link
-    # against resolves inside the staged runtime (or is a core glibc
-    # library). Runtimes staged before the codec libraries were carried
-    # fail this check and are reinstalled by the update manager.
-    return not _runtime_missing_libraries(runtime)
+    # against resolves inside the staged runtime, is a core glibc library,
+    # or is provided by the host loader. Runtimes staged before the codec
+    # libraries were carried fail this check and are reinstalled by the
+    # update manager.
+    missing = _runtime_missing_libraries(runtime)
+    unresolved = [name for name in missing if not _host_loader_provides(name)]
+    if unresolved:
+        logger.warning(
+            "mediastorm runtime is missing libraries the host loader "
+            "cannot provide: %s",
+            ", ".join(sorted(unresolved)),
+        )
+        return False
+    return True
 
 
 def mediastorm_target_status(

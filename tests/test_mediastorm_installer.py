@@ -1,5 +1,6 @@
 import io
 import os
+import struct
 import tarfile
 import tempfile
 import unittest
@@ -66,9 +67,13 @@ def _write_mixed_layer(
 
 def _minimal_elf_bytes(needed: list[str]) -> bytes:
     """Build a minimal ELF64 dynamic executable with the given DT_NEEDED
-    entries, so the installer's runtime library closure sees real deps."""
-    import struct
+    entries, so the installer's runtime library closure sees real deps.
 
+    The fixture is shaped for _elf_dynamic_info(): the zero-sized SHT_DYNSYM
+    and the placeholder linked string table are intentional, because the
+    parser resolves the dynamic string table through SHT_DYNSYM.sh_link.
+    Do not rely on changing e_shstrndx alone; the parser never reads it.
+    """
     dynstr = b"\x00" + b"\x00".join(name.encode() for name in needed) + b"\x00"
     str_offsets = {}
     cursor = 1
@@ -141,10 +146,6 @@ def _minimal_elf_bytes(needed: list[str]) -> bytes:
         ]
     )
     return ehdr + phdr + dynstr + dynamic + sections
-
-
-def _write_minimal_elf(path: Path, needed: list[str]) -> None:
-    path.write_bytes(_minimal_elf_bytes(needed))
 
 
 class _FakeOCIClient:
@@ -338,38 +339,64 @@ class MediaStormInstallerTests(unittest.TestCase):
             self.assertFalse((staging / "libunrelated.so.1").exists())
 
     def test_runtime_ready_requires_resolvable_library_closure(self):
-        def write_runtime(root, with_codec_lib):
+        def write_runtime(root, with_codec_lib=False, malformed_ffmpeg=False):
             runtime = root / "runtime"
             for relative in (
                 "mediastorm",
                 "web/index.html",
                 "iroh/iroh-direct-spike",
                 "python-venv/bin/python3",
-                "bin/ffprobe",
                 "bin/yt-dlp",
                 "bin/deno",
             ):
                 path = runtime / relative
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_text(relative, encoding="utf-8")
+            (runtime / "bin" / "ffprobe").write_bytes(_minimal_elf_bytes([]))
             bundle = runtime / "lib" / "jellyfin-ffmpeg"
             bundle.mkdir(parents=True, exist_ok=True)
-            (bundle / "ffmpeg").write_bytes(
-                _minimal_elf_bytes(["libavcodec.so.61", "libmp3lame.so.0"])
-            )
+            if malformed_ffmpeg:
+                # Truncated ELF: the header claims a section table the file
+                # does not contain. ready() must reject it without raising.
+                elf = _minimal_elf_bytes(["libmediastorm-test-codec.so.0"])
+                (bundle / "ffmpeg").write_bytes(elf[: len(elf) // 2])
+            else:
+                (bundle / "ffmpeg").write_bytes(
+                    _minimal_elf_bytes(
+                        ["libavcodec.so.61", "libmediastorm-test-codec.so.0"]
+                    )
+                )
             (runtime / "bin" / "ffmpeg").unlink(missing_ok=True)
             (runtime / "bin" / "ffmpeg").symlink_to("../lib/jellyfin-ffmpeg/ffmpeg")
             (bundle / "lib").mkdir(exist_ok=True)
             (bundle / "lib" / "libavcodec.so.61").write_bytes(_minimal_elf_bytes([]))
             if with_codec_lib:
-                (bundle / "lib" / "libmp3lame.so.0").write_bytes(_minimal_elf_bytes([]))
+                (bundle / "lib" / "libmediastorm-test-codec.so.0").write_bytes(
+                    _minimal_elf_bytes([])
+                )
             return runtime
 
+        # Jellyfin layout without the codec libraries cannot run ffmpeg.
+        # Each case gets its own root so the write_runtime invocations are
+        # isolated from each other.
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
-            # Jellyfin layout without the codec libraries cannot run ffmpeg.
-            self.assertFalse(mediastorm_runtime_ready(write_runtime(root, False)))
-            self.assertTrue(mediastorm_runtime_ready(write_runtime(root, True)))
+            self.assertFalse(
+                mediastorm_runtime_ready(write_runtime(root, with_codec_lib=False))
+            )
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            self.assertTrue(
+                mediastorm_runtime_ready(write_runtime(root, with_codec_lib=True))
+            )
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            # A truncated ffmpeg ELF must not raise and is not ready.
+            self.assertFalse(
+                mediastorm_runtime_ready(
+                    write_runtime(root, with_codec_lib=True, malformed_ffmpeg=True)
+                )
+            )
 
         # Static-binary layouts (arm64 images) never need the bundle libs.
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -387,7 +414,10 @@ class MediaStormInstallerTests(unittest.TestCase):
             ):
                 path = runtime / relative
                 path.parent.mkdir(parents=True, exist_ok=True)
-                path.write_text(relative, encoding="utf-8")
+                if relative in ("bin/ffmpeg", "bin/ffprobe"):
+                    path.write_bytes(_minimal_elf_bytes([]))
+                else:
+                    path.write_text(relative, encoding="utf-8")
             self.assertTrue(mediastorm_runtime_ready(runtime))
 
     def test_install_fails_when_runtime_needs_unknown_system_library(self):
@@ -456,10 +486,14 @@ class MediaStormInstallerTests(unittest.TestCase):
                 "usr/local/bin/yt-dlp": (b"yt-dlp", 0o755),
                 "usr/local/bin/deno": (b"deno", 0o755),
                 "usr/lib/x86_64-linux-gnu/libmp3lame.so.0.0.0": (
-                    b"lame",
+                    _minimal_elf_bytes(["libvorbis.so.0"]),
                     0o644,
                 ),
                 "usr/lib/x86_64-linux-gnu/libx264.so.164": (b"x264", 0o644),
+                "usr/lib/x86_64-linux-gnu/libvorbis.so.0.4.9": (
+                    _minimal_elf_bytes([]),
+                    0o644,
+                ),
             }
             _write_mixed_layer(
                 layer,
@@ -469,6 +503,7 @@ class MediaStormInstallerTests(unittest.TestCase):
                     "usr/local/bin/ffmpeg": "/usr/lib/jellyfin-ffmpeg/ffmpeg",
                     "usr/local/bin/ffprobe": "/usr/lib/jellyfin-ffmpeg/ffprobe",
                     "usr/lib/x86_64-linux-gnu/libmp3lame.so.0": ("libmp3lame.so.0.0.0"),
+                    "usr/lib/x86_64-linux-gnu/libvorbis.so.0": ("libvorbis.so.0.4.9"),
                 },
             )
 
@@ -508,7 +543,14 @@ class MediaStormInstallerTests(unittest.TestCase):
             # The codec libraries ffmpeg links against were carried into the
             # bundle directory and the staging area was pruned.
             bundle_lib = runtime / "lib" / "jellyfin-ffmpeg" / "lib"
-            self.assertEqual((bundle_lib / "libmp3lame.so.0").read_bytes(), b"lame")
+            self.assertEqual(
+                (bundle_lib / "libmp3lame.so.0").read_bytes(),
+                _minimal_elf_bytes(["libvorbis.so.0"]),
+            )
+            self.assertEqual(
+                (bundle_lib / "libvorbis.so.0").read_bytes(),
+                _minimal_elf_bytes([]),
+            )
             self.assertEqual((bundle_lib / "libx264.so.164").read_bytes(), b"x264")
             self.assertFalse((runtime / "lib" / ".system-libs").exists())
 
@@ -527,7 +569,9 @@ class MediaStormInstallerTests(unittest.TestCase):
                 "download_subtitle.py": (b"", 0o644),
                 "detect_credits.py": (b"", 0o644),
             }
-            for binary in ("ffmpeg", "ffprobe", "yt-dlp", "deno"):
+            for binary in ("ffmpeg", "ffprobe"):
+                entries[f"usr/local/bin/{binary}"] = (_minimal_elf_bytes([]), 0o755)
+            for binary in ("yt-dlp", "deno"):
                 entries[f"usr/local/bin/{binary}"] = (b"binary", 0o755)
             _write_layer(layer, entries)
 
@@ -582,7 +626,9 @@ class MediaStormInstallerTests(unittest.TestCase):
                 "opt/iroh/iroh-direct-spike": (b"iroh", 0o755),
                 "app/version.txt": (b"1.5.0\n20260807\n", 0o644),
             }
-            for binary in ("ffmpeg", "ffprobe", "yt-dlp", "deno"):
+            for binary in ("ffmpeg", "ffprobe"):
+                entries[f"usr/local/bin/{binary}"] = (_minimal_elf_bytes([]), 0o755)
+            for binary in ("yt-dlp", "deno"):
                 entries[f"usr/local/bin/{binary}"] = (b"binary", 0o755)
             _write_layer(layer, entries)
 
@@ -620,7 +666,10 @@ class MediaStormInstallerTests(unittest.TestCase):
             ):
                 target = runtime / relative
                 target.parent.mkdir(parents=True, exist_ok=True)
-                target.write_text("runtime", encoding="utf-8")
+                if relative in ("bin/ffmpeg", "bin/ffprobe"):
+                    target.write_bytes(_minimal_elf_bytes([]))
+                else:
+                    target.write_text("runtime", encoding="utf-8")
             (runtime / "version.txt").write_text("v1.5.0-20260806\n", encoding="utf-8")
             (runtime / "install-selector.txt").write_text("latest\n", encoding="utf-8")
             old_digest = "sha256:" + "c" * 64
@@ -652,7 +701,9 @@ class MediaStormInstallerTests(unittest.TestCase):
                 "opt/iroh/iroh-direct-spike": (b"iroh", 0o755),
                 "app/version.txt": (b"1.5.0\n20260711\n", 0o644),
             }
-            for binary in ("ffmpeg", "ffprobe", "yt-dlp", "deno"):
+            for binary in ("ffmpeg", "ffprobe"):
+                entries[f"usr/local/bin/{binary}"] = (_minimal_elf_bytes([]), 0o755)
+            for binary in ("yt-dlp", "deno"):
                 entries[f"usr/local/bin/{binary}"] = (b"binary", 0o755)
             _write_layer(layer, entries)
 
@@ -699,7 +750,9 @@ class MediaStormInstallerTests(unittest.TestCase):
                 "opt/iroh/iroh-direct-spike": (b"iroh", 0o755),
                 "app/version.txt": (b"1.5.0\n20260711\n", 0o644),
             }
-            for binary in ("ffmpeg", "ffprobe", "yt-dlp", "deno"):
+            for binary in ("ffmpeg", "ffprobe"):
+                entries[f"usr/local/bin/{binary}"] = (_minimal_elf_bytes([]), 0o755)
+            for binary in ("yt-dlp", "deno"):
                 entries[f"usr/local/bin/{binary}"] = (b"binary", 0o755)
             _write_layer(layer, entries)
 
@@ -741,7 +794,9 @@ class MediaStormInstallerTests(unittest.TestCase):
                 "opt/iroh/iroh-direct-spike": (b"iroh", 0o755),
                 "app/version.txt": (b"1.5.0\n20260806\n", 0o644),
             }
-            for binary in ("ffmpeg", "ffprobe", "yt-dlp", "deno"):
+            for binary in ("ffmpeg", "ffprobe"):
+                entries[f"usr/local/bin/{binary}"] = (_minimal_elf_bytes([]), 0o755)
+            for binary in ("yt-dlp", "deno"):
                 entries[f"usr/local/bin/{binary}"] = (b"binary", 0o755)
             _write_layer(layer, entries)
 
