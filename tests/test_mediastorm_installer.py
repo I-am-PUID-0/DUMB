@@ -9,6 +9,7 @@ from unittest.mock import patch
 
 from utils.mediastorm_installer import (
     MediaStormInstallError,
+    _elf_header_layout,
     _mediastorm_install_request,
     apply_mediastorm_layer,
     install_mediastorm_runtime,
@@ -147,6 +148,44 @@ def _minimal_elf_bytes(needed: list[str]) -> bytes:
         ]
     )
     return ehdr + phdr + dynstr + dynamic + sections
+
+
+def _sectionless_elf_bytes() -> bytes:
+    """Build a minimal ELF64 executable without a section header table.
+
+    e_shoff == 0 with e_shnum == 0 marks an absent section table, which is
+    valid for static binaries. Identification fields stay standard.
+    """
+    e_ident = b"\x7fELF" + bytes([2, 1, 1]) + bytes(9)
+    ehdr = struct.pack(
+        "<16sHHIQQQIHHHHHH",
+        e_ident,
+        2,  # ET_EXEC
+        62,  # EM_X86_64
+        1,
+        0x400000,
+        64,
+        0,  # e_shoff: no section header table
+        0,
+        0,  # e_shentsize
+        0,  # e_shnum
+        0,
+        0,
+        0,
+        0,
+    )
+    phdr = struct.pack(
+        "<IIQQQQQQ",
+        1,  # PT_LOAD
+        5,  # PF_R | PF_X
+        0,
+        0x400000,
+        0x400000,
+        len(ehdr) + 56,
+        len(ehdr) + 56,
+        0x1000,
+    )
+    return ehdr + phdr
 
 
 class _FakeOCIClient:
@@ -338,6 +377,27 @@ class MediaStormInstallerTests(unittest.TestCase):
             )
             self.assertEqual((staging / "libc.so.6").read_bytes(), b"libc")
             self.assertFalse((staging / "libunrelated.so.1").exists())
+
+    def test_rejects_unknown_elf_identification_fields(self):
+        # EI_CLASS/EI_DATA outside their known values must be rejected even
+        # on sectionless files, while valid sectionless ELFs keep their
+        # layout and remain usable as static binaries.
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            for klass, data in ((0, 1), (3, 1), (1, 0), (2, 3)):
+                with self.subTest(klass=klass, data=data):
+                    content = bytearray(_sectionless_elf_bytes())
+                    content[4] = klass
+                    content[5] = data
+                    path = root / f"bad-{klass}-{data}.bin"
+                    path.write_bytes(bytes(content))
+                    self.assertIsNone(_elf_header_layout(path))
+            valid = root / "sectionless.bin"
+            valid.write_bytes(_sectionless_elf_bytes())
+            is64, endian, shoff, shentsize, shnum = _elf_header_layout(valid)
+            self.assertTrue(is64)
+            self.assertEqual(endian, "<")
+            self.assertEqual((shoff, shentsize, shnum), (0, 0, 0))
 
     def test_runtime_ready_requires_resolvable_library_closure(self):
         def write_runtime(root, with_codec_lib=False, malformed_ffmpeg=False):

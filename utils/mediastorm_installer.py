@@ -393,18 +393,22 @@ def _elf_header_layout(path: Path) -> tuple[bool, str, int, int, int] | None:
     """Validate an ELF header and return its section table layout.
 
     Returns (is64, endian, shoff, shentsize, shnum) for structurally valid
-    ELF files, or None for non-ELF, truncated or malformed input. A missing
-    section table (e_shoff == 0 with e_shnum == 0) is accepted as valid for
-    static binaries; ELF header validation stays independent of program- and
-    section-header presence. When a table is present, the section entry size
-    must cover the sh_link read (offset 40 in the 64-bit layout; 32-bit files
-    keep their standard 40-byte minimum), and the section count and table
-    size are bounded before any allocation.
+    ELF files, or None for non-ELF, truncated or malformed input. EI_CLASS
+    must be 1 (32-bit) or 2 (64-bit) and EI_DATA 1 (little-endian) or 2
+    (big-endian); a missing section table (e_shoff == 0 with e_shnum == 0)
+    is accepted as valid for static binaries, and ELF header validation
+    stays independent of program- and section-header presence. When a table
+    is present, the section entry size must cover the sh_link read (offset
+    40 in the 64-bit layout; 32-bit files keep their standard 40-byte
+    minimum), and the section count and table size are bounded before any
+    allocation.
     """
     try:
         with path.open("rb") as handle:
             header = handle.read(64)
             if len(header) < 64 or header[:4] != b"\x7fELF":
+                return None
+            if header[4] not in (1, 2) or header[5] not in (1, 2):
                 return None
             is64 = header[4] == 2
             endian = "<" if header[5] == 1 else ">"
