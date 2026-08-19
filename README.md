@@ -63,7 +63,7 @@
 
 ## 📜 Description
 
-**Distributed Unlimited Media Bridge (DUMB)** is an All-In-One (AIO) Docker image for building and operating a complete automated media stack from one container. It brings together Debrid and Usenet workflows, Arr automation, media servers, request/watchlist tools, service management, logs, metrics, notifications, updates, and embedded service UIs behind a guided setup experience.
+**Distributed Unlimited Media Bridge (DUMB)** is an All-In-One (AIO) platform for building and operating a complete automated media stack. It brings together Debrid and Usenet workflows, Arr automation, media servers, request/watchlist tools, service management, logs, metrics, notifications, updates, and embedded service UIs behind a guided setup experience. The maintained container image remains the normal deployment, while the Proxmox Community Scripts integration installs the same controller and managed services natively in an LXC.
 
 DUMB is designed to reduce the glue work that usually comes with multi-service media deployments. You can choose the services that fit your workflow, let DUMB wire the required dependencies, manage them from the DUMB dashboard, and optionally expose selected UIs or public routes through the bundled Traefik access layer.
 
@@ -114,7 +114,7 @@ license files are also retained in their standard locations inside the image.
 
 ## 🌟 Features
 
-DUMB provides a guided, single-container control plane for configurable media
+DUMB provides a guided, single-deployment control plane for configurable media
 stacks, including:
 
 - Debrid and Usenet workflows, Arr automation, media servers, and request tools
@@ -133,6 +133,14 @@ capability, configuration, and settings reference.
 ## 🐳 Docker Hub
 
 A prebuilt image is hosted on [Docker Hub](https://hub.docker.com/r/iampuid0/dumb).
+
+## 🖥️ Proxmox LXC
+
+The Community Scripts helper installs DUMB and its managed services directly in
+a Debian LXC without Docker. See the
+[Proxmox deployment guide](https://dumbarr.com/deployment/proxmox/) for the
+recommended all-in-one topology, native paths, updates, backups, and the
+additional considerations for Plex or Arr applications in other LXCs.
 
 ## 🏷️ GitHub Container Registry
 

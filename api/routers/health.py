@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException
 import subprocess
 import sys
+from utils.runtime_paths import healthcheck_script
 
 health_router = APIRouter()
 _HEALTHCHECK_TIMEOUT_SECONDS = 8
@@ -16,7 +17,7 @@ def _sanitize_health_output(details: str) -> str:
 async def health_check():
     try:
         result = subprocess.run(
-            [sys.executable, "/healthcheck.py"],
+            [sys.executable, healthcheck_script()],
             capture_output=True,
             text=True,
             timeout=_HEALTHCHECK_TIMEOUT_SECONDS,

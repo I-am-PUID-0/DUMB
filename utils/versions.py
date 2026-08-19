@@ -1,6 +1,7 @@
 from utils.global_logger import logger
 from utils.download import Downloader
 from utils.config_loader import CONFIG_MANAGER
+from utils.runtime_paths import pyproject_file
 import os, subprocess, json, re, requests, shlex, urllib.parse, ast
 
 PROFILARR_LEGACY_RELEASE_VERSION = "v1.1.4"
@@ -235,7 +236,7 @@ class Versions:
                 env_version = (os.environ.get("DUMB_VERSION") or "").strip()
                 if env_version:
                     return env_version, None
-                version_path = "/pyproject.toml"
+                version_path = pyproject_file()
                 is_file = True
             elif key == "dumb_frontend":
                 version_path = "/dumb/frontend/package.json"

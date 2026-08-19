@@ -1695,6 +1695,10 @@ def additional_setup(process_handler, process_name, config, key):
 def _needs_riven_bootstrap(key, config_dir):
     if not config_dir:
         return False
+    if key == "dumb_frontend":
+        return not os.path.isfile(
+            os.path.join(config_dir, ".output", "server", "index.mjs")
+        )
     if key == "maintainerr":
         return not os.path.isfile(os.path.join(config_dir, "package.json"))
     if key == "riven_backend":

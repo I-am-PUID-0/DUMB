@@ -3,6 +3,7 @@ from json import load
 from utils.config_loader import CONFIG_MANAGER
 from utils.project_metadata import get_project_version
 from utils.notifications import notify_event
+from utils.runtime_paths import pyproject_file
 
 
 class APIState:
@@ -142,7 +143,7 @@ class APIState:
             return env_version
 
         candidates = (
-            "/pyproject.toml",
+            pyproject_file(),
             os.path.join(os.getcwd(), "pyproject.toml"),
             "/workspace/pyproject.toml",
         )

@@ -20,6 +20,7 @@ from utils.service_postgres import configure_service_postgres_runtime
 from utils.postgres import stop_existing_postgres_for_data_directory
 from utils.metrics_postgres import ensure_metrics_postgres_config
 from utils.port_probe import is_port_available as _is_port_available
+from utils.runtime_paths import healthcheck_script
 from concurrent.futures import ThreadPoolExecutor, wait, FIRST_COMPLETED
 import subprocess, threading, time, os, json, urllib.parse, sys
 
@@ -259,7 +260,7 @@ def start_configured_process(config_obj, updater, key_name, exit_on_error=True):
 
 
 def _healthcheck_command():
-    return [sys.executable, "/healthcheck.py"]
+    return [sys.executable, healthcheck_script()]
 
 
 def _run_healthcheck_once():

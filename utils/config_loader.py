@@ -4,14 +4,11 @@ from jsonschema import validate, ValidationError
 from dotenv import load_dotenv, find_dotenv
 from collections import OrderedDict
 from utils.release_selection import normalize_release_selectors
+from utils.runtime_paths import default_config_file, default_schema_file
 from utils.service_identity import INFINIDYSK_KEY, INFINIDYSK_LEGACY_KEY
 
-MODULE_FILE = globals().get(
-    "__file__", os.path.join(os.getcwd(), "utils", "config_loader.py")
-)
-REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(MODULE_FILE), ".."))
-DEFAULT_CONFIG_PATH = os.path.join(REPO_ROOT, "utils", "dumb_config.json")
-DEFAULT_SCHEMA_PATH = os.path.join(REPO_ROOT, "utils", "dumb_config_schema.json")
+DEFAULT_CONFIG_PATH = default_config_file()
+DEFAULT_SCHEMA_PATH = default_schema_file()
 
 
 def _resolve_existing_path(primary_path, fallback_path):
@@ -24,11 +21,9 @@ class ConfigManager:
     def __init__(
         self,
         file_path="/config/dumb_config.json",
-        schema_path="/utils/dumb_config_schema.json",
+        schema_path=None,
     ):
-        default_config_path = _resolve_existing_path(
-            "/utils/dumb_config.json", DEFAULT_CONFIG_PATH
-        )
+        default_config_path = DEFAULT_CONFIG_PATH
         schema_path = _resolve_existing_path(schema_path, DEFAULT_SCHEMA_PATH)
 
         if not os.path.exists(file_path):

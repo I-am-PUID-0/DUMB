@@ -60,7 +60,7 @@ from utils.runtime_logging import (
     get_runtime_log_level_state,
     set_runtime_debug_logging,
 )
-import json, copy, time, glob, re, os, threading, fnmatch
+import json, copy, time, re, os, threading, fnmatch
 
 
 class ServiceRequest(BaseModel):
@@ -4361,7 +4361,7 @@ def _run_startup(request: UnifiedStartRequest, updater, api_state, logger):
     _seed_used_ports(config, used_ports, logger)
 
     # Load template for creating new instances if needed
-    with open("/utils/dumb_config.json") as f:
+    with open(CONFIG_MANAGER.default_config_path) as f:
         template_config = json.load(f)
 
     #
@@ -5230,15 +5230,10 @@ def _run_startup(request: UnifiedStartRequest, updater, api_state, logger):
 async def get_core_services(
     logger=Depends(get_logger), current_user: str = Depends(get_optional_current_user)
 ):
-    config_paths = glob.glob("/utils/*_config.json")
-    if not config_paths:
-        logger.error("No template config file found in /utils")
+    template_path = CONFIG_MANAGER.default_config_path
+    if not os.path.isfile(template_path):
+        logger.error("DUMB template config file is unavailable")
         raise HTTPException(status_code=500, detail="Template config file not found")
-    if len(config_paths) > 1:
-        logger.warning(
-            "Multiple template config files found, using first: %s", config_paths
-        )
-    template_path = config_paths[0]
     with open(template_path) as f:
         default_conf = json.load(f)
 
@@ -5377,15 +5372,10 @@ async def get_optional_services(
     )
     picked = set(optional_services)
 
-    config_paths = glob.glob("/utils/*_config.json")
-    if not config_paths:
-        logger.error("No template config file found in /utils")
+    template_path = CONFIG_MANAGER.default_config_path
+    if not os.path.isfile(template_path):
+        logger.error("DUMB template config file is unavailable")
         raise HTTPException(status_code=500, detail="Template config file not found")
-    if len(config_paths) > 1:
-        logger.warning(
-            "Multiple template config files found, using first: %s", config_paths
-        )
-    template_path = config_paths[0]
     with open(template_path) as f:
         default_conf = json.load(f)
 

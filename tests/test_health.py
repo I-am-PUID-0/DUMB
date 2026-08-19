@@ -19,7 +19,7 @@ class HealthRouterTests(unittest.TestCase):
         run.assert_called_once()
         called_args, called_kwargs = run.call_args
         self.assertEqual(called_args[0][0], health_router.sys.executable)
-        self.assertEqual(called_args[0][1], "/healthcheck.py")
+        self.assertEqual(called_args[0][1], health_router.healthcheck_script())
         self.assertTrue(called_kwargs["capture_output"])
         self.assertTrue(called_kwargs["text"])
         self.assertEqual(called_kwargs["timeout"], 8)
@@ -57,7 +57,11 @@ class HealthRouterTests(unittest.TestCase):
             health_router.subprocess,
             "run",
             side_effect=health_router.subprocess.TimeoutExpired(
-                cmd=[health_router.sys.executable, "/healthcheck.py"], timeout=8
+                cmd=[
+                    health_router.sys.executable,
+                    health_router.healthcheck_script(),
+                ],
+                timeout=8,
             ),
         ):
             with self.assertRaises(HTTPException) as exc:

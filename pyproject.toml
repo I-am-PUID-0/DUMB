@@ -1,7 +1,7 @@
 [project]
 name = "DUMB"
 version = "2.20.0"
-description = "Distributed Unlimited Media Bridge (DUMB) is an all-in-one Docker platform for Debrid and Usenet media automation, Arr apps, and media servers."
+description = "Distributed Unlimited Media Bridge (DUMB) is an all-in-one platform for Debrid and Usenet media automation, Arr apps, and media servers."
 readme = "README.md"
 requires-python = ">=3.11,<4.0"
 dynamic = ["dependencies"]
