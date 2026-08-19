@@ -68,7 +68,7 @@ def _write_mixed_layer(
             archive.addfile(info)
 
 
-def _minimal_elf_bytes(needed: list[str]) -> bytes:
+def _minimal_elf_bytes(needed: list[str], bad_strtab: bool = False) -> bytes:
     """Build a minimal ELF64 dynamic executable with the given DT_NEEDED
     entries, so the installer's runtime library closure sees real deps.
 
@@ -77,6 +77,9 @@ def _minimal_elf_bytes(needed: list[str]) -> bytes:
     parser resolves the dynamic string table through SHT_DYNAMIC.sh_link
     (which points at the same .dynstr section).
     Do not rely on changing e_shstrndx alone; the parser never reads it.
+    With bad_strtab=True the .dynstr section header claims offsets past the
+    end of the file while the ELF header stays valid, for rejection-path
+    tests.
     """
     dynstr = b"\x00" + b"\x00".join(name.encode() for name in needed) + b"\x00"
     str_offsets = {}
@@ -140,10 +143,16 @@ def _minimal_elf_bytes(needed: list[str]) -> bytes:
         )
 
     shstr_off = total - 64
+    if bad_strtab:
+        dynstr_shoff = total + 0x1000
+        dynstr_shsize = 0x1000
+    else:
+        dynstr_shoff = dynstr_off
+        dynstr_shsize = len(dynstr)
     sections = b"".join(
         [
             bytes(64),  # null section
-            shdr(0, 3, dynstr_off, len(dynstr), addralign=1),  # .dynstr
+            shdr(0, 3, dynstr_shoff, dynstr_shsize, addralign=1),  # .dynstr
             shdr(0, 6, dynamic_off, len(dynamic), link=1, addralign=8),  # .dynamic
             shdr(0, 11, shstr_off, 0, link=1, addralign=8),  # .dynsym
             shdr(0, 3, shstr_off, 1, addralign=1),  # shstrtab placeholder
@@ -428,9 +437,7 @@ class MediaStormInstallerTests(unittest.TestCase):
             outside = root / "outside.so"
             outside.write_bytes(_minimal_elf_bytes([]))
             (staging / "libescape-absolute.so.1").symlink_to(outside)
-            (staging / "libescape-traversal.so.1").symlink_to(
-                "../../../outside.so"
-            )
+            (staging / "libescape-traversal.so.1").symlink_to("../../../outside.so")
             (staging / "libloop.so.1").symlink_to("libloop.so.1")
 
             missing = _runtime_missing_libraries(runtime)
@@ -459,6 +466,85 @@ class MediaStormInstallerTests(unittest.TestCase):
             self.assertFalse((bundle / "libescape-traversal.so.1").exists())
             self.assertTrue(outside.exists())
             self.assertFalse(staging.exists())
+
+    def test_runtime_closure_rejects_invalid_dynamic_metadata(self):
+        # Files with malformed or out-of-bounds dynamic metadata must be
+        # rejected rather than trusted as dependency-free: a corrupt staged
+        # library is not copied and a corrupt bundled library is not
+        # indexed, so both stay unresolved.
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            runtime = root / "runtime"
+            (runtime / "bin").mkdir(parents=True)
+            staging = runtime / "lib" / ".system-libs"
+            staging.mkdir(parents=True)
+            bundle = runtime / "lib" / "jellyfin-ffmpeg" / "lib"
+            bundle.mkdir(parents=True)
+            (runtime / "bin" / "ffmpeg").write_bytes(
+                _minimal_elf_bytes(["libbroken-staged.so.1", "libbroken-bundled.so.1"])
+            )
+            (runtime / "bin" / "ffprobe").write_bytes(_minimal_elf_bytes([]))
+            (staging / "libbroken-staged.so.1").write_bytes(
+                _minimal_elf_bytes([], bad_strtab=True)
+            )
+            (bundle / "libbroken-bundled.so.1").write_bytes(
+                _minimal_elf_bytes([], bad_strtab=True)
+            )
+
+            expected = ["libbroken-bundled.so.1", "libbroken-staged.so.1"]
+            self.assertEqual(sorted(_runtime_missing_libraries(runtime)), expected)
+            self.assertEqual(sorted(_resolve_runtime_libraries(runtime)), expected)
+            self.assertFalse((bundle / "libbroken-staged.so.1").exists())
+
+    def test_runtime_ready_rejects_out_of_bounds_dynamic_strtab(self):
+        # A valid ELF header with an out-of-bounds dynamic string table
+        # makes the binary unverifiable, so ready() must reject it; a truly
+        # sectionless static binary keeps passing.
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            runtime = root / "runtime"
+            for relative in (
+                "mediastorm",
+                "web/index.html",
+                "iroh/iroh-direct-spike",
+                "python-venv/bin/python3",
+                "bin/ffmpeg",
+                "bin/ffprobe",
+                "bin/yt-dlp",
+                "bin/deno",
+            ):
+                path = runtime / relative
+                path.parent.mkdir(parents=True, exist_ok=True)
+                if relative == "bin/ffmpeg":
+                    path.write_bytes(
+                        _minimal_elf_bytes(["libavcodec.so.61"], bad_strtab=True)
+                    )
+                elif relative == "bin/ffprobe":
+                    path.write_bytes(_minimal_elf_bytes([]))
+                else:
+                    path.write_text(relative, encoding="utf-8")
+            self.assertFalse(mediastorm_runtime_ready(runtime))
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            runtime = root / "runtime"
+            for relative in (
+                "mediastorm",
+                "web/index.html",
+                "iroh/iroh-direct-spike",
+                "python-venv/bin/python3",
+                "bin/ffmpeg",
+                "bin/ffprobe",
+                "bin/yt-dlp",
+                "bin/deno",
+            ):
+                path = runtime / relative
+                path.parent.mkdir(parents=True, exist_ok=True)
+                if relative in ("bin/ffmpeg", "bin/ffprobe"):
+                    path.write_bytes(_sectionless_elf_bytes())
+                else:
+                    path.write_text(relative, encoding="utf-8")
+            self.assertTrue(mediastorm_runtime_ready(runtime))
 
     def test_runtime_ready_requires_resolvable_library_closure(self):
         def write_runtime(root, with_codec_lib=False, malformed_ffmpeg=False):
@@ -611,7 +697,10 @@ class MediaStormInstallerTests(unittest.TestCase):
                     _minimal_elf_bytes(["libvorbis.so.0"]),
                     0o644,
                 ),
-                "usr/lib/x86_64-linux-gnu/libx264.so.164": (b"x264", 0o644),
+                "usr/lib/x86_64-linux-gnu/libx264.so.164": (
+                    _minimal_elf_bytes([]),
+                    0o644,
+                ),
                 "usr/lib/x86_64-linux-gnu/libvorbis.so.0.4.9": (
                     _minimal_elf_bytes([]),
                     0o644,
@@ -673,7 +762,10 @@ class MediaStormInstallerTests(unittest.TestCase):
                 (bundle_lib / "libvorbis.so.0").read_bytes(),
                 _minimal_elf_bytes([]),
             )
-            self.assertEqual((bundle_lib / "libx264.so.164").read_bytes(), b"x264")
+            self.assertEqual(
+                (bundle_lib / "libx264.so.164").read_bytes(),
+                _minimal_elf_bytes([]),
+            )
             self.assertFalse((runtime / "lib" / ".system-libs").exists())
 
     def test_installs_verified_runtime_atomically(self):
