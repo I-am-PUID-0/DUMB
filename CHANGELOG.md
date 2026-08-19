@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.21.1](https://github.com/I-am-PUID-0/DUMB/compare/2.21.0...2.21.1) (2026-08-19)
+
+
+### 🐛 Bug Fixes
+
+* **process:** surface optional service startup failures ([e1f7945](https://github.com/I-am-PUID-0/DUMB/commit/e1f7945d1389f28131b994fe63dd07e43f7b0b66))
+
 ## [2.21.0](https://github.com/I-am-PUID-0/DUMB/compare/2.20.0...2.21.0) (2026-08-19)
 
 
