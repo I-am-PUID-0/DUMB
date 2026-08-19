@@ -170,20 +170,20 @@ def _sectionless_elf_bytes() -> bytes:
     e_ident = b"\x7fELF" + bytes([2, 1, 1]) + bytes(9)
     ehdr = struct.pack(
         "<16sHHIQQQIHHHHHH",
-        e_ident,
-        2,  # ET_EXEC
-        62,  # EM_X86_64
-        1,
-        0x400000,
-        64,
+        e_ident,  # e_ident
+        2,  # e_type: ET_EXEC
+        62,  # e_machine: EM_X86_64
+        1,  # e_version
+        0x400000,  # e_entry
+        64,  # e_phoff: program headers immediately after the header
         0,  # e_shoff: no section header table
-        0,
-        0,  # e_shentsize
-        0,  # e_shnum
-        0,
-        0,
-        0,
-        0,
+        0,  # e_flags
+        64,  # e_ehsize: ELF header size
+        56,  # e_phentsize: program header entry size
+        1,  # e_phnum: one program header
+        0,  # e_shentsize: no sections
+        0,  # e_shnum: no sections
+        0,  # e_shstrndx: no section name string table
     )
     phdr = struct.pack(
         "<IIQQQQQQ",
