@@ -2,6 +2,7 @@ import os
 import posixpath
 import re
 import shutil
+import struct
 import subprocess
 import tarfile
 import tempfile
@@ -51,6 +52,36 @@ _SOURCE_DIRECTORIES = {
     "usr/lib/jellyfin-ffmpeg": "lib/jellyfin-ffmpeg",
 }
 
+# The jellyfin-ffmpeg binaries also link against codec and support libraries
+# that the image installs as system libraries under /usr/lib/<multiarch>
+# (mp3lame, opus, vorbis, theora, x264/x265, bluray, OpenCL, and their
+# transitive dependencies). Those packages are not guaranteed on the DUMB
+# host, so every entry under that multiarch tree is staged into
+# lib/.system-libs during layer application. Once all layers are applied,
+# _resolve_runtime_libraries() reads the DT_NEEDED graph of the extracted
+# ffmpeg/ffprobe and carries exactly the missing libraries into the bundle
+# directory where LD_LIBRARY_PATH already points, then discards the staging
+# area. This keeps the runtime self-contained and stays correct when
+# upstream images bump SONAMEs or change the codec set.
+_SYSTEM_LIB_STAGING_DIR = "lib/.system-libs"
+
+# Libraries every glibc-based DUMB host guarantees; the runtime never needs
+# to carry them. If a future image requires anything else from the host,
+# the install fails loudly listing the missing libraries.
+_CORE_HOST_LIBRARIES = frozenset(
+    {
+        "libc.so.6",
+        "libm.so.6",
+        "libpthread.so.0",
+        "libdl.so.2",
+        "librt.so.1",
+        "ld-linux-x86-64.so.2",
+        "ld-linux-aarch64.so.1",
+        "libgcc_s.so.1",
+        "libstdc++.so.6",
+    }
+)
+
 
 class MediaStormInstallError(RuntimeError):
     pass
@@ -75,6 +106,12 @@ def _mapped_path(source_path: str) -> str | None:
         prefix = f"{source_dir}/"
         if source_path.startswith(prefix):
             return f"{target_dir}/{source_path[len(prefix):]}"
+    parent, _, name = source_path.rpartition("/")
+    if parent.startswith("usr/lib/") and parent.endswith("-linux-gnu"):
+        # System libraries of the image's base distribution are staged
+        # separately and pruned after the runtime library closure resolves
+        # which ones ffmpeg/ffprobe actually need.
+        return f"{_SYSTEM_LIB_STAGING_DIR}/{name}"
     return None
 
 
@@ -341,6 +378,352 @@ def mediastorm_runtime_matches_selection(
     return installed_selector.lower() == str(selector or "").strip().lower()
 
 
+# Bounds for the ELF section header table parse: real files carry only a
+# handful of sections, so cap the count and the table size before reading
+# malformed or hostile inputs.
+_MAX_ELF_SECTIONS = 4096
+_MAX_ELF_SECTION_TABLE_BYTES = 1 << 20
+# Individual reads of the dynamic section and its string table are capped
+# too (real files carry only a few KB there), so corrupt section sizes can
+# never trigger excessive allocation.
+_MAX_ELF_DYNAMIC_READ_BYTES = 1 << 20
+
+
+def _elf_header_layout(path: Path) -> tuple[bool, str, int, int, int] | None:
+    """Validate an ELF header and return its section table layout.
+
+    Returns (is64, endian, shoff, shentsize, shnum) for structurally valid
+    ELF files, or None for non-ELF, truncated or malformed input. EI_CLASS
+    must be 1 (32-bit) or 2 (64-bit) and EI_DATA 1 (little-endian) or 2
+    (big-endian); a missing section table (e_shoff == 0 with e_shnum == 0)
+    is accepted as valid for static binaries, and ELF header validation
+    stays independent of program- and section-header presence. When a table
+    is present, the section entry size must cover the sh_link read (offset
+    40 in the 64-bit layout; 32-bit files keep their standard 40-byte
+    minimum), and the section count and table size are bounded before any
+    allocation.
+    """
+    try:
+        with path.open("rb") as handle:
+            header = handle.read(64)
+            if len(header) < 64 or header[:4] != b"\x7fELF":
+                return None
+            if header[4] not in (1, 2) or header[5] not in (1, 2):
+                return None
+            is64 = header[4] == 2
+            endian = "<" if header[5] == 1 else ">"
+            if is64:
+                shoff = struct.unpack_from(endian + "Q", header, 40)[0]
+                shentsize = struct.unpack_from(endian + "H", header, 58)[0]
+                shnum = struct.unpack_from(endian + "H", header, 60)[0]
+            else:
+                shoff = struct.unpack_from(endian + "I", header, 32)[0]
+                shentsize = struct.unpack_from(endian + "H", header, 46)[0]
+                shnum = struct.unpack_from(endian + "H", header, 48)[0]
+    except OSError:
+        return None
+    if shoff == 0 and shnum == 0:
+        # No section header table at all: valid for static binaries. The
+        # dynamic-metadata callers treat this as "no sections" and report
+        # no DT_NEEDED entries, so such files stay usable.
+        return is64, endian, shoff, shentsize, shnum
+    if (
+        shnum == 0
+        or shnum > _MAX_ELF_SECTIONS
+        or shentsize < (44 if is64 else 40)
+        or shentsize * shnum > _MAX_ELF_SECTION_TABLE_BYTES
+    ):
+        return None
+    return is64, endian, shoff, shentsize, shnum
+
+
+def _elf_dynamic_info(
+    path: Path,
+) -> tuple[bytes | None, list[tuple[int, int]], bool]:
+    """Return (strtab bytes, dynamic entries, invalid flag) of an ELF file.
+
+    Only the ELF header, section header table, dynamic section and its string
+    table are read (offset/size validated against the file length and capped),
+    so probing large libraries is cheap. invalid=True means the file is not a
+    parseable ELF or its dynamic metadata is malformed/out of bounds;
+    invalid=False with strtab=None means the file is a valid ELF without a
+    dynamic section (static binary).
+    """
+    layout = _elf_header_layout(path)
+    if layout is None:
+        return None, [], True
+    is64, endian, shoff, shentsize, shnum = layout
+    entry_size = 16 if is64 else 8
+    try:
+        with path.open("rb") as handle:
+            handle.seek(shoff)
+            table = handle.read(shentsize * shnum)
+    except OSError:
+        return None, [], True
+    sections = []
+    for index in range(shnum):
+        offset = index * shentsize
+        block = table[offset : offset + shentsize]
+        if len(block) < shentsize:
+            return None, [], True
+        sh_type = struct.unpack_from(endian + "I", block, 4)[0]
+        if is64:
+            sh_offset = struct.unpack_from(endian + "Q", block, 24)[0]
+            sh_size = struct.unpack_from(endian + "Q", block, 32)[0]
+            sh_link = struct.unpack_from(endian + "I", block, 40)[0]
+        else:
+            sh_offset = struct.unpack_from(endian + "I", block, 16)[0]
+            sh_size = struct.unpack_from(endian + "I", block, 20)[0]
+            sh_link = struct.unpack_from(endian + "I", block, 24)[0]
+        sections.append((sh_type, sh_offset, sh_size, sh_link))
+
+    # DT_NEEDED strings resolve against the string table the SHT_DYNAMIC
+    # section links to (sh_link), so derive strtab from that link instead
+    # of SHT_DYNSYM's.
+    dynamic_section = None
+    dynamic_sh_link = None
+    for sh_type, sh_offset, sh_size, sh_link in sections:
+        if sh_type == 6:  # SHT_DYNAMIC: sh_link points at its string table
+            dynamic_section = (sh_offset, sh_size)
+            dynamic_sh_link = sh_link
+    if dynamic_section is None:
+        # Valid ELF without dynamic information: a static binary.
+        return None, [], False
+    if dynamic_sh_link >= len(sections):
+        return None, [], True
+    strtab_section = sections[dynamic_sh_link][1:3]
+    strtab_offset, strtab_size = strtab_section
+    dynamic_offset, dynamic_size = dynamic_section
+    try:
+        with path.open("rb") as handle:
+            handle.seek(0, os.SEEK_END)
+            file_size = handle.tell()
+            # Validate every offset/size against the real file length and
+            # cap the reads, so corrupt section headers cannot force huge
+            # allocations; invalid or oversized sections are rejected as
+            # invalid dynamic metadata.
+            if not (
+                strtab_offset + strtab_size <= file_size
+                and strtab_size <= _MAX_ELF_DYNAMIC_READ_BYTES
+                and dynamic_offset + dynamic_size <= file_size
+                and dynamic_size <= _MAX_ELF_DYNAMIC_READ_BYTES
+            ):
+                return None, [], True
+            handle.seek(strtab_offset)
+            strtab = handle.read(strtab_size)
+            handle.seek(dynamic_offset)
+            dynamic_data = handle.read(dynamic_size)
+    except OSError:
+        return None, [], True
+    entries = []
+    for offset in range(0, len(dynamic_data) - entry_size + 1, entry_size):
+        d_tag, d_val = struct.unpack_from(
+            endian + ("qQ" if is64 else "iI"), dynamic_data, offset
+        )
+        entries.append((d_tag, d_val))
+        if d_tag == 0:
+            break
+    return strtab, entries, False
+
+
+def _elf_string(entries: list[tuple[int, int]], strtab: bytes, tag: int) -> list[str]:
+    values = []
+    for d_tag, d_val in entries:
+        if d_tag == tag:
+            end = strtab.find(b"\x00", d_val)
+            if d_val < len(strtab) and end != -1:
+                values.append(strtab[d_val:end].decode("utf-8", "replace"))
+        elif d_tag == 0:
+            break
+    return values
+
+
+def _elf_dynamic_metadata(path: Path) -> tuple[list[str] | None, str | None]:
+    """Return (DT_NEEDED libraries, DT_SONAME) of an ELF file.
+
+    Both values come from a single _elf_dynamic_info() parse, so callers
+    that need the dependency closure and the soname (bundle indexing,
+    closure walking) never parse the same file twice. Files without
+    dynamic information, including valid static binaries, yield ([], None);
+    malformed or out-of-bounds dynamic metadata yields (None, None) so
+    callers can reject the file instead of assuming an empty closure.
+    """
+    strtab, entries, invalid = _elf_dynamic_info(path)
+    if invalid:
+        return None, None
+    if strtab is None:
+        return [], None
+    needed = _elf_string(entries, strtab, 1)  # DT_NEEDED
+    sonames = _elf_string(entries, strtab, 14)  # DT_SONAME
+    return needed, (sonames[0] if sonames else None)
+
+
+def _is_leaf_library_name(name: str) -> bool:
+    """True when the name is a plain leaf library name.
+
+    Absolute paths, path components and traversal names must never be used
+    to construct paths into the staged library areas, so dependency names
+    parsed from ELF metadata pass this guard before any filesystem access.
+    """
+    return (
+        bool(name) and "/" not in name and "\\" not in name and name not in (".", "..")
+    )
+
+
+def _walk_runtime_closure(runtime: Path, *, copy_missing: bool) -> list[str]:
+    """Walk the DT_NEEDED graph of bin/ffmpeg and bin/ffprobe.
+
+    Libraries are resolved against the staged bundle directory, the staged
+    system-library area and the core libraries every glibc host provides;
+    the sonames that remain unresolved are returned. Files whose dynamic
+    metadata is malformed or out of bounds are rejected instead of trusted:
+    bundle candidates are not indexed and staged candidates are left
+    unresolved. When copy_missing is set, each unresolved library found in
+    the staging area is first copied into the bundle directory (where
+    LD_LIBRARY_PATH points); otherwise the walk stays read-only.
+    Staging-directory cleanup is left to the caller.
+    """
+    bundle_dir = runtime / "lib" / "jellyfin-ffmpeg" / "lib"
+    staging_dir = runtime / _SYSTEM_LIB_STAGING_DIR
+    staging_root = staging_dir.resolve()
+    dynamic_cache: dict[Path, tuple[list[str] | None, str | None]] = {}
+
+    def dynamic_metadata(path: Path) -> tuple[list[str] | None, str | None]:
+        resolved = path.resolve()
+        if resolved not in dynamic_cache:
+            dynamic_cache[resolved] = _elf_dynamic_metadata(resolved)
+        return dynamic_cache[resolved]
+
+    # Index the bundle by the soname each file declares and by its file
+    # name, so a dependency spelled either way (DT_NEEDED normally uses the
+    # SONAME, but libraries without one are referenced by filename) resolves
+    # to the same candidate. Symlinks are indexed by name only.
+    by_soname: dict[str, Path] = {}
+    if bundle_dir.is_dir():
+        for candidate in bundle_dir.iterdir():
+            if candidate.is_file():
+                if candidate.is_symlink():
+                    by_soname.setdefault(candidate.name, candidate)
+                else:
+                    needed, soname = dynamic_metadata(candidate)
+                    if needed is None:
+                        # Reject files whose dynamic metadata cannot be
+                        # parsed instead of indexing them.
+                        continue
+                    by_soname.setdefault(candidate.name, candidate)
+                    if soname:
+                        by_soname.setdefault(soname, candidate)
+    queue = []
+    for seed in (runtime / "bin" / "ffmpeg", runtime / "bin" / "ffprobe"):
+        if seed.is_file():
+            needed, _soname = dynamic_metadata(seed)
+            if needed is not None:
+                queue.extend(needed)
+    missing = []
+    seen = set()
+    while queue:
+        soname = queue.pop()
+        if soname in seen:
+            continue
+        seen.add(soname)
+        if not _is_leaf_library_name(soname):
+            missing.append(soname)
+            continue
+        if soname in by_soname:
+            needed, _soname = dynamic_metadata(by_soname[soname])
+            if needed is None:
+                missing.append(soname)
+            else:
+                queue.extend(needed)
+            continue
+        if soname in _CORE_HOST_LIBRARIES:
+            continue
+        staged = staging_dir / soname
+        if staging_dir.is_dir() and (staged.is_file() or staged.is_symlink()):
+            try:
+                resolved = staged.resolve()
+            except (OSError, RuntimeError):
+                resolved = None
+            # Constrain symlink targets to the staging root: a staged link
+            # may only point at a file inside lib/.system-libs, never at an
+            # absolute or traversal target elsewhere.
+            if (
+                resolved is not None
+                and resolved.is_file()
+                and resolved.is_relative_to(staging_root)
+            ):
+                needed, _soname = dynamic_metadata(resolved)
+                if needed is None:
+                    missing.append(soname)
+                    continue
+                if copy_missing:
+                    destination = bundle_dir / soname
+                    destination.parent.mkdir(parents=True, exist_ok=True)
+                    if destination.exists() or destination.is_symlink():
+                        _remove_existing(destination)
+                    shutil.copy2(resolved, destination)
+                queue.extend(needed)
+                continue
+        missing.append(soname)
+    return missing
+
+
+def _runtime_missing_libraries(runtime: Path) -> list[str]:
+    """Libraries the staged runtime links against that it cannot provide.
+
+    Walks the DT_NEEDED graph of bin/ffmpeg and bin/ffprobe over the staged
+    bundle directory, the staged system-library area and the core libraries
+    every glibc host provides. Returns the sonames that remain unresolved.
+    """
+    return _walk_runtime_closure(runtime, copy_missing=False)
+
+
+def _resolve_runtime_libraries(runtime: Path) -> list[str]:
+    """Carry the system libraries ffmpeg/ffprobe need into the bundle dir.
+
+    Copies each unresolved library from the staged system-library area into
+    lib/jellyfin-ffmpeg/lib (where LD_LIBRARY_PATH points), then discards the
+    staging area. Returns the sonames that could not be resolved; callers
+    should treat any entry as a hard install failure.
+    """
+    missing = _walk_runtime_closure(runtime, copy_missing=True)
+    staging_dir = runtime / _SYSTEM_LIB_STAGING_DIR
+    if staging_dir.is_dir():
+        _remove_existing(staging_dir)
+    return missing
+
+
+# The sonames the host dynamic loader can satisfy (from `ldconfig -p`),
+# probed once on first use. None means "not probed yet".
+_HOST_LOADER_LIBRARIES: frozenset[str] | None = None
+
+
+def _host_loader_provides(soname: str) -> bool:
+    """True when the host dynamic loader can satisfy the soname.
+
+    Consults `ldconfig -p` (the loader cache the dynamic linker uses) once
+    and remembers the result. Hosts without ldconfig, or where the query
+    fails, are treated as providing nothing, so an unknown environment
+    never masks a missing library.
+    """
+    global _HOST_LOADER_LIBRARIES
+    if _HOST_LOADER_LIBRARIES is None:
+        names = []
+        try:
+            result = subprocess.run(
+                ["ldconfig", "-p"], capture_output=True, text=True, timeout=10
+            )
+        except (OSError, subprocess.TimeoutExpired):
+            pass
+        else:
+            if result.returncode == 0:
+                for line in result.stdout.splitlines():
+                    if " => " in line:
+                        names.append(line.split()[0])
+        _HOST_LOADER_LIBRARIES = frozenset(names)
+    return soname in _HOST_LOADER_LIBRARIES
+
+
 def mediastorm_runtime_ready(runtime_dir: str | Path) -> bool:
     runtime = Path(runtime_dir)
     required = (
@@ -353,7 +736,34 @@ def mediastorm_runtime_ready(runtime_dir: str | Path) -> bool:
         runtime / "bin" / "yt-dlp",
         runtime / "bin" / "deno",
     )
-    return all(path.is_file() for path in required)
+    if not all(path.is_file() for path in required):
+        return False
+    # A truncated, corrupt or out-of-bounds-dynamic ffmpeg/ffprobe cannot
+    # be validated and would not run; treat the runtime as not ready
+    # instead of assuming an empty dependency closure. Valid static
+    # binaries (no dynamic section) still pass.
+    for seed in (runtime / "bin" / "ffmpeg", runtime / "bin" / "ffprobe"):
+        needed, _soname = _elf_dynamic_metadata(seed)
+        if needed is None:
+            logger.warning(
+                "mediastorm runtime binary has invalid dynamic metadata: %s", seed
+            )
+            return False
+    # The runtime is only usable when every library ffmpeg/ffprobe link
+    # against resolves inside the staged runtime, is a core glibc library,
+    # or is provided by the host loader. Runtimes staged before the codec
+    # libraries were carried fail this check and are reinstalled by the
+    # update manager.
+    missing = _runtime_missing_libraries(runtime)
+    unresolved = [name for name in missing if not _host_loader_provides(name)]
+    if unresolved:
+        logger.warning(
+            "mediastorm runtime is missing libraries the host loader "
+            "cannot provide: %s",
+            ", ".join(sorted(unresolved)),
+        )
+        return False
+    return True
 
 
 def mediastorm_target_status(
@@ -520,6 +930,14 @@ def install_mediastorm_runtime(
                 raise MediaStormInstallError(str(exc)) from exc
             finally:
                 layer_path.unlink(missing_ok=True)
+
+        missing_libraries = _resolve_runtime_libraries(staged_runtime)
+        if missing_libraries:
+            raise MediaStormInstallError(
+                "Downloaded mediastorm OCI runtime links against system "
+                "libraries that are neither bundled nor available on this "
+                "host: " + ", ".join(sorted(set(missing_libraries)))
+            )
 
         upstream_version_path = staged_runtime / "app-version.txt"
         try:
