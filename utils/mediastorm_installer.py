@@ -389,10 +389,13 @@ def _elf_header_layout(path: Path) -> tuple[bool, str, int, int, int] | None:
     """Validate an ELF header and return its section table layout.
 
     Returns (is64, endian, shoff, shentsize, shnum) for structurally valid
-    ELF files, or None for non-ELF, truncated or malformed input. The
-    section entry size must cover the sh_link read (offset 40 in the 64-bit
-    layout; 32-bit files keep their standard 40-byte minimum), and the
-    section count and table size are bounded before any allocation.
+    ELF files, or None for non-ELF, truncated or malformed input. A missing
+    section table (e_shoff == 0 with e_shnum == 0) is accepted as valid for
+    static binaries; ELF header validation stays independent of program- and
+    section-header presence. When a table is present, the section entry size
+    must cover the sh_link read (offset 40 in the 64-bit layout; 32-bit files
+    keep their standard 40-byte minimum), and the section count and table
+    size are bounded before any allocation.
     """
     try:
         with path.open("rb") as handle:
@@ -411,6 +414,11 @@ def _elf_header_layout(path: Path) -> tuple[bool, str, int, int, int] | None:
                 shnum = struct.unpack_from(endian + "H", header, 48)[0]
     except OSError:
         return None
+    if shoff == 0 and shnum == 0:
+        # No section header table at all: valid for static binaries. The
+        # dynamic-metadata callers treat this as "no sections" and report
+        # no DT_NEEDED entries, so such files stay usable.
+        return is64, endian, shoff, shentsize, shnum
     if (
         shnum == 0
         or shnum > _MAX_ELF_SECTIONS
