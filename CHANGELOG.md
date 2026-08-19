@@ -1,5 +1,19 @@
 # Changelog
 
+## [2.21.0](https://github.com/I-am-PUID-0/DUMB/compare/2.20.0...2.21.0) (2026-08-19)
+
+
+### ✨ Features
+
+* **decypharr:** add Premiumize and honor DUMB onboarding ([e3ae0de](https://github.com/I-am-PUID-0/DUMB/commit/e3ae0dec9271a60b07970304fe43339cdd690646)), closes [#316](https://github.com/I-am-PUID-0/DUMB/issues/316)
+* **runtime:** support relocatable native installations ([e1c64dc](https://github.com/I-am-PUID-0/DUMB/commit/e1c64dc05612abe66f18ff15fc0bba21cae96749)), closes [#312](https://github.com/I-am-PUID-0/DUMB/issues/312)
+
+
+### 🐛 Bug Fixes
+
+* **infinidysk:** return null when no migration job exists ([1f8727a](https://github.com/I-am-PUID-0/DUMB/commit/1f8727a67ca2af42ef4121661b11c2866b0d41c1))
+* **mediastorm:** ffmpeg/probe linking issue ([#318](https://github.com/I-am-PUID-0/DUMB/issues/318)) ([f281202](https://github.com/I-am-PUID-0/DUMB/commit/f28120294853ccb4ba0c3c8567bfb56cb3728e02))
+
 ## [2.20.0](https://github.com/I-am-PUID-0/DUMB/compare/2.19.0...2.20.0) (2026-08-14)
 
 
