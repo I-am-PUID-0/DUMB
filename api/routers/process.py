@@ -4279,11 +4279,12 @@ def _start_optional_service(
                 allow_in_use_for_owner=is_running,
             )
             logger.info(f"Starting optional service: {proc}")
-            if not wait_for_process_running(api_state, proc):
-                updater.auto_update(
-                    proc, enable_update=inst_cfg.get("auto_update", False)
-                )
-                wait_for_process_running(api_state, proc)
+            _ensure_optional_process_running(
+                proc,
+                inst_cfg.get("auto_update", False),
+                updater,
+                api_state,
+            )
         return
 
     if not opt_cfg.get("enabled"):
@@ -4317,9 +4318,30 @@ def _start_optional_service(
         )
 
     logger.info(f"Starting optional service: {proc}")
-    if not wait_for_process_running(api_state, proc):
-        updater.auto_update(proc, enable_update=opt_cfg.get("auto_update", False))
-        wait_for_process_running(api_state, proc)
+    _ensure_optional_process_running(
+        proc,
+        opt_cfg.get("auto_update", False),
+        updater,
+        api_state,
+    )
+
+
+def _ensure_optional_process_running(
+    process_name: str,
+    auto_update_enabled: bool,
+    updater,
+    api_state,
+) -> None:
+    if wait_for_process_running(api_state, process_name):
+        return
+
+    process, error = updater.auto_update(
+        process_name,
+        enable_update=auto_update_enabled,
+    )
+    if not process or not wait_for_process_running(api_state, process_name):
+        detail = f"{process_name} failed to start. {error or ''}".strip()
+        raise HTTPException(status_code=500, detail=detail)
 
 
 @process_router.post("/start-core-service")

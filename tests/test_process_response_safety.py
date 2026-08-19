@@ -3,7 +3,7 @@ import sys
 import threading
 import types
 import unittest
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 
 def _install_process_router_stubs():
@@ -162,6 +162,54 @@ class ProcessResponseSanitizerTests(unittest.TestCase):
 
         self.assertIsInstance(response["items"], str)
         self.assertEqual(response["error"], "Internal error")
+
+
+class OptionalProcessStartupTests(unittest.TestCase):
+    def test_optional_start_rejects_process_that_never_becomes_ready(self):
+        updater = MagicMock()
+        updater.auto_update.return_value = (object(), "readiness probe failed")
+
+        with (
+            patch.object(
+                process_router,
+                "wait_for_process_running",
+                side_effect=(False, False),
+            ),
+            self.assertRaises(process_router.HTTPException) as raised,
+        ):
+            process_router._ensure_optional_process_running(
+                "pgAdmin4",
+                False,
+                updater,
+                object(),
+            )
+
+        self.assertEqual(raised.exception.status_code, 500)
+        self.assertEqual(
+            raised.exception.detail,
+            "pgAdmin4 failed to start. readiness probe failed",
+        )
+        updater.auto_update.assert_called_once_with(
+            "pgAdmin4",
+            enable_update=False,
+        )
+
+    def test_optional_start_skips_update_when_already_running(self):
+        updater = MagicMock()
+
+        with patch.object(
+            process_router,
+            "wait_for_process_running",
+            return_value=True,
+        ):
+            process_router._ensure_optional_process_running(
+                "Bazarr",
+                True,
+                updater,
+                object(),
+            )
+
+        updater.auto_update.assert_not_called()
 
 
 class MediaStormCredentialResponseTests(unittest.IsolatedAsyncioTestCase):
