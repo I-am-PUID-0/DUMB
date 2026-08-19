@@ -5520,12 +5520,10 @@ promoted into <code>community-scripts/ProxmoxVE</code>, the production command w
 <li>DUMB plus its required runtimes installed directly on the guest OS.</li>
 </ul>
 <p>Use <strong>Advanced Settings</strong> when a large stack, source builds, the install cache,
-or a media server needs more resources. The amd64 path has completed the native
-acceptance tests. The arm64 path is implemented but remains marked unverified
-by Community Scripts until it passes the same clean Proxmox VE install, reboot,
-FUSE, backup, restore, and update tests. An interactive arm64 run can opt into
-testing; unattended arm64 installation remains blocked until that validation is
-complete.</p>
+or a media server needs more resources. Both amd64 and arm64 have completed the
+native acceptance tests with DUMB 2.21.0: clean Proxmox VE installation,
+controller update and rollback, reboot, FUSE namespace isolation, and stopped
+backup/restore.</p>
 <p>When installation finishes, open:</p>
 <div class="highlight"><pre><span></span><code>http://&lt;DUMB-LXC-IP&gt;:3005
 </code></pre></div>
