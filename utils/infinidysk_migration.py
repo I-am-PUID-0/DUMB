@@ -473,7 +473,7 @@ class InfiniDyskMigrationManager:
     def get_job(self, job_id: str | None = None) -> dict | None:
         with self._job_lock:
             job = self._load_job()
-            if not isinstance(job, dict):
+            if not isinstance(job, dict) or not job:
                 return None
             if job_id and not secrets.compare_digest(
                 str(job.get("job_id") or ""), str(job_id)

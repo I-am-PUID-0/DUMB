@@ -310,6 +310,18 @@ class MediaStormCredentialResponseTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(raised.exception.status_code, 400)
         self.assertIn("STOP ACTIVE PLAYBACK", raised.exception.detail)
 
+    async def test_infinidysk_job_status_normalizes_an_empty_job_to_null(self):
+        with patch.object(
+            process_router.INFINIDYSK_MIGRATION_MANAGER,
+            "get_job",
+            return_value={},
+        ):
+            result = await process_router.get_infinidysk_migration_job_status(
+                job_id=None, current_user=None
+            )
+
+        self.assertEqual({"job": None}, result)
+
     async def test_infinidysk_playback_stop_forwards_confirmed_job(self):
         request = types.SimpleNamespace(
             job_id="a" * 32,

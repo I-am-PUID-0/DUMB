@@ -5685,6 +5685,8 @@ async def get_infinidysk_migration_job_status(
     current_user: str = Depends(get_optional_current_user),
 ):
     job = await run_in_threadpool(INFINIDYSK_MIGRATION_MANAGER.get_job, job_id)
+    if not isinstance(job, dict) or not job:
+        job = None
     if job_id and not job:
         raise HTTPException(status_code=404, detail="Migration job not found.")
     return {"job": job}

@@ -1012,6 +1012,16 @@ class InfiniDyskMigrationTests(unittest.TestCase):
             ):
                 self.assertEqual(0o600, sidecar.stat().st_mode & 0o777)
 
+    def test_missing_or_empty_job_is_not_returned_as_a_migration(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            manager = InfiniDyskMigrationManager(Path(temp_dir) / "state.json")
+
+            self.assertIsNone(manager.get_job())
+
+            manager._write_private_json(manager._sidecar_path("job"), {})
+
+            self.assertIsNone(manager.get_job())
+
     def test_legacy_embedded_job_is_compacted_on_first_read(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             state_path = Path(temp_dir) / "state.json"
