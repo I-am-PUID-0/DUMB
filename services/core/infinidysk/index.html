@@ -6405,6 +6405,9 @@ If you manage permissions manually, review these settings after integration.</p>
 <strong>InfiniDysk</strong> process name, <code>INFINIDYSK_*</code> configuration prefix,
 <code>/infinidysk</code> runtime root, <code>/mnt/debrid/infinidysk</code> mount, and
 <code>/mnt/debrid/infinidysk-symlinks</code> library root.</p>
+<p>Because that namespace is already canonical, a fresh installation is not
+migration-eligible and the dashboard does not show <strong>Review migration</strong>. The
+migration job API returns <code>null</code> until an actual guarded namespace job exists.</p>
 <p>Existing installations are not silently moved. DUMB accepts the legacy
 <code>nzbdav</code> key, dependency tokens, paths, and <code>NZBDAV_*</code> variables, normalizes
 them in memory, and continues writing the legacy identity back to disk until

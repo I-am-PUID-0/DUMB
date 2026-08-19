@@ -8148,6 +8148,8 @@ stage events, and the terminal result or safe error text. Arr stages also expose
 a <code>detail</code> object with the current process, phase, completed/total reference
 counts, and all-Arr completed/total counts. Active statuses are
 <code>queued</code>, <code>running</code>, and <code>rolling_back</code>.</p>
+<p>When no migration job exists, the response is <code>{"job": null}</code>. An empty object
+is not a job and must not be used to infer that migration controls are needed.</p>
 <p>A rolled-back terminal result includes a sanitized <code>result.recovery</code> object with
 the cutover cause, component-scoped <code>rollback_errors</code>, retained backup/config
 paths, and <code>manual_restore_required</code>. This is recovery guidance, not an instruction

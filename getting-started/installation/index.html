@@ -6,7 +6,7 @@
   
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="description" content="Prepare Docker, storage, credentials, networking, and system requirements before installing the DUMB media automation platform.">
+  <meta name="description" content="Prepare storage, credentials, networking, and system requirements before installing DUMB with Docker or the native Proxmox LXC helper.">
   
     <meta name="author" content="DUMB Team">
   
@@ -110,7 +110,7 @@
     <meta property="og:locale" content="en_US">
     <meta property="og:site_name" content="DUMB — Distributed Unlimited Media Bridge">
     <meta property="og:title" content="Installation">
-    <meta property="og:description" content="Prepare Docker, storage, credentials, networking, and system requirements before installing the DUMB media automation platform.">
+    <meta property="og:description" content="Prepare storage, credentials, networking, and system requirements before installing DUMB with Docker or the native Proxmox LXC helper.">
     <meta property="og:url" content="https://dumbarr.com/getting-started/installation/">
     <meta property="og:image" content="https://dumbarr.com/assets/images/DUMB.png">
     <meta property="og:image:secure_url" content="https://dumbarr.com/assets/images/DUMB.png">
@@ -120,7 +120,7 @@
     <meta property="og:image:alt" content="Distributed Unlimited Media Bridge ecosystem and architecture overview">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="Installation">
-    <meta name="twitter:description" content="Prepare Docker, storage, credentials, networking, and system requirements before installing the DUMB media automation platform.">
+    <meta name="twitter:description" content="Prepare storage, credentials, networking, and system requirements before installing DUMB with Docker or the native Proxmox LXC helper.">
     <meta name="twitter:image" content="https://dumbarr.com/assets/images/DUMB.png">
     <meta name="twitter:image:alt" content="Distributed Unlimited Media Bridge ecosystem and architecture overview">
     
@@ -5316,7 +5316,7 @@
 <hr />
 <h2 id="system-requirements">System Requirements<a class="headerlink" href="#system-requirements" title="Permanent link">#</a></h2>
 <ul>
-<li><strong>Docker or Docker-compatible environment</strong></li>
+<li><strong>Docker or a supported native Proxmox LXC</strong></li>
 <li>Linux system (WSL on Windows when using <code>rshared</code>)</li>
 <li>A practical minimum of 2 vCPU and 2 GB RAM for a small stack; source builds, PostgreSQL, media servers, and larger service selections need more</li>
 <li>SSD-backed persistent storage is strongly recommended</li>
@@ -5324,7 +5324,7 @@
 <div class="admonition warning">
 <p class="admonition-title">Docker Desktop</p>
 <p>Docker Desktop cannot support DUMB workflows that require <code>rshared</code> mount propagation.</p>
-<p>Docker Desktop does not support the <a href="https://docs.docker.com/storage/bind-mounts/#configure-bind-propagation">mount propagation</a> required for rclone mounts.</p>
+<p>Docker Desktop does not support the <a href="https://docs.docker.com/storage/bind-mounts/#configure-bind-propagation">mount propagation</a> required to expose DUMB-created rclone/FUSE submounts to external host containers.</p>
 <p><img alt="image" src="../../assets/images/docker_desktop.png" /></p>
 <p>See the <a href="https://dumbarr.com/deployment/wsl">deployment options</a> to run DUMB on Windows through WSL2.</p>
 </div>
@@ -5363,7 +5363,8 @@
 <p>See <a href="../../features/configuration/#integration-tokens-credentials">Configuration → Integration Tokens</a></p>
 <hr />
 <h2 id="required-directories">Required Directories<a class="headerlink" href="#required-directories" title="Permanent link">#</a></h2>
-<p>The maintained Compose layout uses four host mounts:</p>
+<p>The maintained Compose layout uses four host mounts. In a native Proxmox LXC,
+these are direct guest paths rather than Docker bind mounts.</p>
 <table>
 <thead>
 <tr>
@@ -5395,9 +5396,12 @@
 <p>Current deployments normally persist those paths through <code>/data</code>. Separate direct mounts such as <code>/postgres_data</code> or <code>/plex</code> are legacy/advanced layouts and can prevent DUMB from creating its managed data symlinks. Keep them only when intentionally migrating an existing deployment and verify the service-specific guide.</p>
 </div>
 <div class="admonition important">
-<p class="admonition-title">/mnt/debrid:rshared</p>
-<p>The <code>:rshared</code> must be included in order to support <a href="https://docs.docker.com/storage/bind-mounts/#configure-bind-propagation">mount propagation</a> for rclone to the host when exposing the raw debrid files/links to an external container; e.g., the arrs or a media server.</p>
-<p><code>:rshared</code> is not required when all consumers remain inside the DUMB container, when no FUSE/rclone submount is used, or when the selected workflow does not need mount propagation. The requirement is based on mount behavior—not on Decypharr alone.</p>
+<p class="admonition-title">Mount propagation is optional</p>
+<p>Use a normal <code>/mnt/debrid</code> bind when all consumers remain inside DUMB. Add
+<code>:rshared</code> only when a prepared Linux host mount must receive DUMB-created
+FUSE/rclone submounts for an external Arr or media-server container. The
+requirement is based on topology—not on Decypharr or rclone alone. Follow
+the selected platform guide before enabling propagation.</p>
 </div>
 <hr />
 <h2 id="preparation-checklist">Preparation Checklist<a class="headerlink" href="#preparation-checklist" title="Permanent link">#</a></h2>
@@ -5419,7 +5423,7 @@
 </ul>
 </li>
 <li>
-<p>Run the container and access the web UI at the configured port</p>
+<p>Start the deployment and access the web UI at the configured port</p>
 </li>
 <li>View real-time or service logs to verify service health</li>
 </ul>

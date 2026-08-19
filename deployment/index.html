@@ -6,7 +6,7 @@
   
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="description" content="Compare supported ways to deploy DUMB with Docker, Portainer, Unraid, TrueNAS, Proxmox, Synology, QNAP, Dockge, or WSL2.">
+  <meta name="description" content="Compare supported ways to deploy DUMB with Docker, a native Proxmox LXC, Portainer, Unraid, TrueNAS, Synology, QNAP, Dockge, or WSL2.">
   
     <meta name="author" content="DUMB Team">
   
@@ -110,7 +110,7 @@
     <meta property="og:locale" content="en_US">
     <meta property="og:site_name" content="DUMB — Distributed Unlimited Media Bridge">
     <meta property="og:title" content="Deployment">
-    <meta property="og:description" content="Compare supported ways to deploy DUMB with Docker, Portainer, Unraid, TrueNAS, Proxmox, Synology, QNAP, Dockge, or WSL2.">
+    <meta property="og:description" content="Compare supported ways to deploy DUMB with Docker, a native Proxmox LXC, Portainer, Unraid, TrueNAS, Synology, QNAP, Dockge, or WSL2.">
     <meta property="og:url" content="https://dumbarr.com/deployment/">
     <meta property="og:image" content="https://dumbarr.com/assets/images/DUMB.png">
     <meta property="og:image:secure_url" content="https://dumbarr.com/assets/images/DUMB.png">
@@ -120,7 +120,7 @@
     <meta property="og:image:alt" content="Distributed Unlimited Media Bridge ecosystem and architecture overview">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="Deployment">
-    <meta name="twitter:description" content="Compare supported ways to deploy DUMB with Docker, Portainer, Unraid, TrueNAS, Proxmox, Synology, QNAP, Dockge, or WSL2.">
+    <meta name="twitter:description" content="Compare supported ways to deploy DUMB with Docker, a native Proxmox LXC, Portainer, Unraid, TrueNAS, Synology, QNAP, Dockge, or WSL2.">
     <meta name="twitter:image" content="https://dumbarr.com/assets/images/DUMB.png">
     <meta name="twitter:image:alt" content="Distributed Unlimited Media Bridge ecosystem and architecture overview">
     
@@ -5196,7 +5196,10 @@
 
 
 <h1 id="deployment-overview">Deployment Overview<a class="headerlink" href="#deployment-overview" title="Permanent link">#</a></h1>
-<p>DUMB can be deployed across a variety of platforms and environments. Whether you're using <strong>Docker</strong>, <strong>Portainer</strong>, <strong>Unraid</strong>, <strong>WSL2</strong>, or other systems like <strong>TrueNAS</strong>, <strong>Synology</strong>, or <strong>QNAP</strong>, this section will guide you through the available options to get DUMB up and running.</p>
+<p>DUMB can be deployed across a variety of platforms and environments. Most
+platforms use the maintained Docker image. Proxmox can instead use the
+<a href="proxmox/">native LXC helper</a>, which installs DUMB and its managed services
+directly in a Debian guest without Docker.</p>
 <p>All deployment methods provide access to the same integrated services and configurations, with slight differences in how the container is started and managed.</p>
 <div class="admonition tip">
 <p class="admonition-title">Platform-Specific Instructions</p>
@@ -5205,7 +5208,7 @@
 <hr />
 <h2 id="system-requirements">System Requirements<a class="headerlink" href="#system-requirements" title="Permanent link">#</a></h2>
 <ul>
-<li><strong>Docker or Docker-compatible environment</strong></li>
+<li><strong>Docker or a supported native Proxmox LXC</strong></li>
 <li>Linux system (WSL on Windows when using <code>rshared</code>)</li>
 <li>A practical minimum of 2 vCPU and 2 GB RAM for a small stack; larger stacks and source builds need more</li>
 <li>SSD-backed persistent storage is strongly recommended</li>
@@ -5213,7 +5216,7 @@
 <div class="admonition warning">
 <p class="admonition-title">Docker Desktop</p>
 <p>Docker Desktop cannot support DUMB workflows that require <code>rshared</code> mount propagation.</p>
-<p>Docker Desktop does not support the <a href="https://docs.docker.com/storage/bind-mounts/#configure-bind-propagation">mount propagation</a> required for rclone mounts.</p>
+<p>Docker Desktop does not support the <a href="https://docs.docker.com/storage/bind-mounts/#configure-bind-propagation">mount propagation</a> required to expose DUMB-created rclone/FUSE submounts to external host containers.</p>
 <p><img alt="image" src="../assets/images/docker_desktop.png" /></p>
 <p>See the <a href="https://dumbarr.com/deployment/wsl">deployment options</a> to run DUMB on Windows through WSL2.</p>
 </div>
@@ -5252,7 +5255,8 @@
 <p>See <a href="../features/configuration/#integration-tokens-credentials">Configuration → Integration Tokens</a></p>
 <hr />
 <h2 id="required-directories">Required Directories<a class="headerlink" href="#required-directories" title="Permanent link">#</a></h2>
-<p>The maintained Compose file uses these persistent mounts:</p>
+<p>The maintained Compose file uses these persistent mounts. Native Proxmox LXC
+deployments use the same absolute paths directly inside the guest.</p>
 <table>
 <thead>
 <tr>
@@ -5284,9 +5288,13 @@
 <p>Paths such as <code>/plex</code>, <code>/postgres_data</code>, <code>/zurg/RD</code>, and <code>/altmount</code> are still the paths services use inside the container, but DUMB maps them into subdirectories of the mounted <code>/data</code> tree. Do not add a separate bind mount for each one unless you are deliberately retaining a legacy/advanced layout.</p>
 </div>
 <div class="admonition important">
-<p class="admonition-title">/mnt/debrid:rshared</p>
-<p>The <code>:rshared</code> must be included in order to support <a href="https://docs.docker.com/storage/bind-mounts/#configure-bind-propagation">mount propagation</a> for rclone to the host when exposing the raw debrid files/links to an external container; e.g., the arrs or a media server.</p>
-<p><code>:rshared</code> is unnecessary when consumers remain internal or the selected workflow does not create a propagated FUSE/rclone submount.</p>
+<p class="admonition-title">Choose mount propagation deliberately</p>
+<p>Keep the <code>/mnt/debrid</code> bind private when the Arr applications and media
+server run inside DUMB. Add <code>:rshared</code> only when a prepared Linux host mount
+must receive DUMB-created FUSE/rclone submounts for external consumers. The
+host path must already support shared propagation; adding the Compose suffix
+alone is not sufficient. See the platform guide, especially
+<a href="proxmox/">Proxmox</a>, before enabling it.</p>
 </div>
 <hr />
 <div class="admonition note">
@@ -5302,8 +5310,10 @@
 <span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">./config:/config</span>
 <span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">./log:/log</span>
 <span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">./data:/data</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">./mnt/debrid:/mnt/debrid:rshared</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">./mnt/debrid:/mnt/debrid</span>
 </code></pre></div>
+<p>For a deliberately configured external-consumer topology, the final line
+becomes <code>./mnt/debrid:/mnt/debrid:rshared</code>.</p>
 </div>
 <p>For more about configuring services, see the <a href="../features/configuration/">Configuration</a> page.</p>
 <hr />

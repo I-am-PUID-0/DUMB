@@ -5878,7 +5878,7 @@ changed or cleared.</p>
 <li>Mock Qbittorrent API for Sonarr, Radarr, Lidarr, etc.</li>
 <li>Full-featured UI for managing torrents</li>
 <li>Proxy filtering for un-cached Debrid torrents</li>
-<li>Multiple Debrid service support (Real Debrid, Torbox, Debrid Link, All Debrid)</li>
+<li>Multiple Debrid service support (Real Debrid, Torbox, Debrid Link, All Debrid, Premiumize)</li>
 <li>WebDAV server per Debrid provider for mounting remote files</li>
 <li>DFS mount mode for Decypharr-managed streaming paths (stable in Decypharr 2.0+)</li>
 <li>Native Usenet support through Decypharr's Sabnzbd-compatible endpoint (stable in Decypharr 2.0+)</li>
@@ -5888,6 +5888,7 @@ changed or cleared.</p>
 <h2 id="integration-with-dumb">Integration with DUMB<a class="headerlink" href="#integration-with-dumb" title="Permanent link">#</a></h2>
 <p>When Decypharr starts, DUMB performs several automation steps:</p>
 <ul>
+<li>Writes the selected Debrid provider, API key, download folder, and mount settings to the current Decypharr config schema before the first process launch</li>
 <li>Syncs Arr instance details into <code>config.json</code></li>
 <li>Ensures <code>/mnt/debrid/decypharr_symlinks/&lt;instance&gt;</code> roots exist</li>
 <li>Updates Arr permissions and root folders</li>
@@ -5896,6 +5897,7 @@ changed or cleared.</p>
 <li>Uses per-instance category labels when creating Arr download client entries</li>
 <li>Adds a Sabnzbd-style download client named <code>decypharr-usenet</code> when Decypharr Usenet providers are configured</li>
 </ul>
+<p>When Decypharr is installed through DUMB onboarding, this pre-start configuration satisfies Decypharr's own first-run checks. You should land in the normal Decypharr UI instead of being asked to repeat its standalone setup wizard. The Decypharr wizard remains useful for installations managed outside DUMB.</p>
 <h3 id="symlink-repair-and-migration">Symlink repair and migration<a class="headerlink" href="#symlink-repair-and-migration" title="Permanent link">#</a></h3>
 <p>For the complete DUMB symlink guide (UI option behavior, root scope, backup/restore, schedule, retention, and migration playbooks), see <a href="../../../features/symlinks/">Symlink Operations</a>.</p>
 <p>If mount layouts change (for example provider-path changes between Decypharr modes), use
@@ -6115,6 +6117,7 @@ If you manage permissions manually, review these settings after integration.</p>
 <li><a href="https://www.torbox.net">Torbox</a></li>
 <li><a href="https://debrid-link.fr">Debrid Link</a></li>
 <li><a href="https://alldebrid.com">All Debrid</a></li>
+<li><a href="https://www.premiumize.me">Premiumize</a></li>
 </ul>
 <hr />
 <h2 id="resources">Resources<a class="headerlink" href="#resources" title="Permanent link">#</a></h2>

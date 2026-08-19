@@ -5859,6 +5859,10 @@ quiesce automatically after the job starts. Preflight also verifies that
 InfiniDysk's internal <code>repair.enable</code> health-check scheduler can be inspected
 and temporarily paused; an enabled environment-managed value is a blocker
 because the running API cannot safely override it.</p>
+<p>Canonical fresh InfiniDysk installations do not receive this notice or a
+manual migration action. The frontend requires both backend migration
+eligibility and a valid persisted job record before it exposes the related
+controls; a missing job is reported as <code>null</code>.</p>
 <p>The preflight expands <strong>Arr migration discovery</strong> to show every enabled Arr as
 included or excluded with its reason. DUMB uses both configured <code>core_service</code>
 metadata and live legacy item/root, import-list, Radarr collection,
