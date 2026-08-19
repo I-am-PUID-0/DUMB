@@ -11,6 +11,8 @@ from utils.mediastorm_installer import (
     MediaStormInstallError,
     _elf_header_layout,
     _mediastorm_install_request,
+    _resolve_runtime_libraries,
+    _runtime_missing_libraries,
     apply_mediastorm_layer,
     install_mediastorm_runtime,
     mediastorm_app_version_text,
@@ -398,6 +400,65 @@ class MediaStormInstallerTests(unittest.TestCase):
             self.assertTrue(is64)
             self.assertEqual(endian, "<")
             self.assertEqual((shoff, shentsize, shnum), (0, 0, 0))
+
+    def test_staged_library_symlinks_must_resolve_inside_staging(self):
+        # Staged links may only target files inside lib/.system-libs.
+        # Absolute and traversal targets are rejected as unresolved and are
+        # never copied, while in-staging targets keep resolving.
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            runtime = root / "runtime"
+            (runtime / "bin").mkdir(parents=True)
+            staging = runtime / "lib" / ".system-libs"
+            staging.mkdir(parents=True)
+            bundle = runtime / "lib" / "jellyfin-ffmpeg" / "lib"
+            bundle.mkdir(parents=True)
+            (runtime / "bin" / "ffmpeg").write_bytes(
+                _minimal_elf_bytes(
+                    [
+                        "libgood.so.1",
+                        "libescape-absolute.so.1",
+                        "libescape-traversal.so.1",
+                        "libloop.so.1",
+                    ]
+                )
+            )
+            (runtime / "bin" / "ffprobe").write_bytes(_minimal_elf_bytes([]))
+            (staging / "libgood.so.1").write_bytes(_minimal_elf_bytes([]))
+            outside = root / "outside.so"
+            outside.write_bytes(_minimal_elf_bytes([]))
+            (staging / "libescape-absolute.so.1").symlink_to(outside)
+            (staging / "libescape-traversal.so.1").symlink_to(
+                "../../../outside.so"
+            )
+            (staging / "libloop.so.1").symlink_to("libloop.so.1")
+
+            missing = _runtime_missing_libraries(runtime)
+            self.assertEqual(
+                sorted(missing),
+                [
+                    "libescape-absolute.so.1",
+                    "libescape-traversal.so.1",
+                    "libloop.so.1",
+                ],
+            )
+
+            missing = _resolve_runtime_libraries(runtime)
+            self.assertEqual(
+                sorted(missing),
+                [
+                    "libescape-absolute.so.1",
+                    "libescape-traversal.so.1",
+                    "libloop.so.1",
+                ],
+            )
+            self.assertEqual(
+                (bundle / "libgood.so.1").read_bytes(), _minimal_elf_bytes([])
+            )
+            self.assertFalse((bundle / "libescape-absolute.so.1").exists())
+            self.assertFalse((bundle / "libescape-traversal.so.1").exists())
+            self.assertTrue(outside.exists())
+            self.assertFalse(staging.exists())
 
     def test_runtime_ready_requires_resolvable_library_closure(self):
         def write_runtime(root, with_codec_lib=False, malformed_ffmpeg=False):

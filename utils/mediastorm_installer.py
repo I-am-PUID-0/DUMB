@@ -594,6 +594,7 @@ def _walk_runtime_closure(runtime: Path, *, copy_missing: bool) -> list[str]:
     """
     bundle_dir = runtime / "lib" / "jellyfin-ffmpeg" / "lib"
     staging_dir = runtime / _SYSTEM_LIB_STAGING_DIR
+    staging_root = staging_dir.resolve()
     dynamic_cache: dict[Path, tuple[list[str], str | None]] = {}
 
     def dynamic_metadata(path: Path) -> tuple[list[str], str | None]:
@@ -638,8 +639,18 @@ def _walk_runtime_closure(runtime: Path, *, copy_missing: bool) -> list[str]:
             continue
         staged = staging_dir / soname
         if staging_dir.is_dir() and (staged.is_file() or staged.is_symlink()):
-            resolved = staged.resolve()
-            if resolved.is_file():
+            try:
+                resolved = staged.resolve()
+            except (OSError, RuntimeError):
+                resolved = None
+            # Constrain symlink targets to the staging root: a staged link
+            # may only point at a file inside lib/.system-libs, never at an
+            # absolute or traversal target elsewhere.
+            if (
+                resolved is not None
+                and resolved.is_file()
+                and resolved.is_relative_to(staging_root)
+            ):
                 if copy_missing:
                     destination = bundle_dir / soname
                     destination.parent.mkdir(parents=True, exist_ok=True)
