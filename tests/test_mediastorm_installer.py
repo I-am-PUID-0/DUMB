@@ -71,7 +71,8 @@ def _minimal_elf_bytes(needed: list[str]) -> bytes:
 
     The fixture is shaped for _elf_dynamic_info(): the zero-sized SHT_DYNSYM
     and the placeholder linked string table are intentional, because the
-    parser resolves the dynamic string table through SHT_DYNSYM.sh_link.
+    parser resolves the dynamic string table through SHT_DYNAMIC.sh_link
+    (which points at the same .dynstr section).
     Do not rely on changing e_shstrndx alone; the parser never reads it.
     """
     dynstr = b"\x00" + b"\x00".join(name.encode() for name in needed) + b"\x00"

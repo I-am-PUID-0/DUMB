@@ -464,17 +464,20 @@ def _elf_dynamic_info(path: Path) -> tuple[bytes | None, list[tuple[int, int]]]:
             sh_link = struct.unpack_from(endian + "I", block, 24)[0]
         sections.append((sh_type, sh_offset, sh_size, sh_link))
 
-    strtab_section = None
+    # DT_NEEDED strings resolve against the string table the SHT_DYNAMIC
+    # section links to (sh_link), so derive strtab from that link instead
+    # of SHT_DYNSYM's.
     dynamic_section = None
+    dynamic_sh_link = None
     for sh_type, sh_offset, sh_size, sh_link in sections:
-        if sh_type == 6:  # SHT_DYNAMIC
+        if sh_type == 6:  # SHT_DYNAMIC: sh_link points at its string table
             dynamic_section = (sh_offset, sh_size)
-        elif sh_type == 11:  # SHT_DYNSYM: sh_link points at the string table
-            if sh_link >= len(sections):
-                return None, []
-            strtab_section = sections[sh_link][1:3]
-    if strtab_section is None or dynamic_section is None:
+            dynamic_sh_link = sh_link
+    if dynamic_section is None:
         return None, []
+    if dynamic_sh_link >= len(sections):
+        return None, []
+    strtab_section = sections[dynamic_sh_link][1:3]
     strtab_offset, strtab_size = strtab_section
     try:
         with path.open("rb") as handle:
