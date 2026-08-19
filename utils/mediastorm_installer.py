@@ -565,6 +565,18 @@ def _elf_dynamic_metadata(path: Path) -> tuple[list[str], str | None]:
     return needed, (sonames[0] if sonames else None)
 
 
+def _is_leaf_library_name(name: str) -> bool:
+    """True when the name is a plain leaf library name.
+
+    Absolute paths, path components and traversal names must never be used
+    to construct paths into the staged library areas, so dependency names
+    parsed from ELF metadata pass this guard before any filesystem access.
+    """
+    return (
+        bool(name) and "/" not in name and "\\" not in name and name not in (".", "..")
+    )
+
+
 def _walk_runtime_closure(runtime: Path, *, copy_missing: bool) -> list[str]:
     """Walk the DT_NEEDED graph of bin/ffmpeg and bin/ffprobe.
 
@@ -612,6 +624,9 @@ def _walk_runtime_closure(runtime: Path, *, copy_missing: bool) -> list[str]:
         if soname in seen:
             continue
         seen.add(soname)
+        if not _is_leaf_library_name(soname):
+            missing.append(soname)
+            continue
         if soname in by_soname:
             queue.extend(dynamic_metadata(by_soname[soname])[0])
             continue
