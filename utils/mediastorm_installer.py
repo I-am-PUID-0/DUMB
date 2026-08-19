@@ -383,6 +383,10 @@ def mediastorm_runtime_matches_selection(
 # malformed or hostile inputs.
 _MAX_ELF_SECTIONS = 4096
 _MAX_ELF_SECTION_TABLE_BYTES = 1 << 20
+# Individual reads of the dynamic section and its string table are capped
+# too (real files carry only a few KB there), so corrupt section sizes can
+# never trigger excessive allocation.
+_MAX_ELF_DYNAMIC_READ_BYTES = 1 << 20
 
 
 def _elf_header_layout(path: Path) -> tuple[bool, str, int, int, int] | None:
@@ -433,8 +437,9 @@ def _elf_dynamic_info(path: Path) -> tuple[bytes | None, list[tuple[int, int]]]:
     """Return (strtab bytes, dynamic entries) of an ELF file.
 
     Only the ELF header, section header table, dynamic section and its string
-    table are read (bounded pread calls), so probing large libraries is cheap.
-    Non-ELF or malformed input yields (None, []).
+    table are read (offset/size validated against the file length and capped),
+    so probing large libraries is cheap. Non-ELF or malformed input yields
+    (None, []).
     """
     layout = _elf_header_layout(path)
     if layout is None:
@@ -479,12 +484,26 @@ def _elf_dynamic_info(path: Path) -> tuple[bytes | None, list[tuple[int, int]]]:
         return None, []
     strtab_section = sections[dynamic_sh_link][1:3]
     strtab_offset, strtab_size = strtab_section
+    dynamic_offset, dynamic_size = dynamic_section
     try:
         with path.open("rb") as handle:
+            handle.seek(0, os.SEEK_END)
+            file_size = handle.tell()
+            # Validate every offset/size against the real file length and
+            # cap the reads, so corrupt section headers cannot force huge
+            # allocations; invalid or oversized sections simply yield no
+            # dynamic metadata.
+            if not (
+                strtab_offset + strtab_size <= file_size
+                and strtab_size <= _MAX_ELF_DYNAMIC_READ_BYTES
+                and dynamic_offset + dynamic_size <= file_size
+                and dynamic_size <= _MAX_ELF_DYNAMIC_READ_BYTES
+            ):
+                return None, []
             handle.seek(strtab_offset)
             strtab = handle.read(strtab_size)
-            handle.seek(dynamic_section[0])
-            dynamic_data = handle.read(dynamic_section[1])
+            handle.seek(dynamic_offset)
+            dynamic_data = handle.read(dynamic_size)
     except OSError:
         return None, []
     entries = []
