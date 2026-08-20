@@ -1,9 +1,11 @@
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import Mock, patch
 
 import yaml
 
+from api.routers import process as process_router
 from utils.service_postgres import (
     apply_service_postgres_config,
     configure_service_postgres_runtime,
@@ -124,6 +126,54 @@ class ServicePostgresTests(unittest.TestCase):
 
             self.assertFalse(changed)
             self.assertFalse(config_file.exists())
+
+    def test_optional_pulsarr_starts_postgres_before_pulsarr(self):
+        pulsarr = {
+            "enabled": True,
+            "process_name": "Pulsarr",
+            "port": 3003,
+            "auto_update": False,
+            "postgres_enabled": False,
+        }
+        updater = Mock()
+        api_state = Mock()
+        api_state.get_status.return_value = "stopped"
+        logger = Mock()
+        order = Mock()
+
+        with (
+            patch.object(process_router, "_reserve_config_port"),
+            patch.object(
+                process_router,
+                "ensure_arr_postgres_dependency_running",
+                side_effect=order.ensure_postgres,
+            ) as ensure_postgres,
+            patch.object(
+                process_router,
+                "_ensure_optional_process_running",
+                side_effect=order.start_pulsarr,
+            ) as start_pulsarr,
+        ):
+            process_router._start_optional_service(
+                opt_key="pulsarr",
+                opt_cfg=pulsarr,
+                merged_options={"postgres_enabled": True},
+                used_ports={},
+                updater=updater,
+                api_state=api_state,
+                logger=logger,
+                template_config={},
+            )
+
+        self.assertTrue(pulsarr["postgres_enabled"])
+        ensure_postgres.assert_called_once_with(
+            "pulsarr", pulsarr, updater, api_state, logger
+        )
+        start_pulsarr.assert_called_once_with("Pulsarr", False, updater, api_state)
+        self.assertEqual(
+            [entry[0] for entry in order.mock_calls],
+            ["ensure_postgres", "start_pulsarr"],
+        )
 
 
 if __name__ == "__main__":

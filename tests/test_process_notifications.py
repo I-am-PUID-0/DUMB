@@ -24,6 +24,20 @@ class ProcessNotificationTests(unittest.TestCase):
 
         self.assertIsNone(summary)
 
+    def test_immediate_exit_summary_skips_embedded_source_code_frames(self):
+        summary = _immediate_exit_summary(
+            "",
+            "\n".join(
+                (
+                    "Error running migrations: 300 | fieldType = reader.string(1);",
+                    'PostgresError: database "pulsarr" does not exist',
+                    'severity: "FATAL"',
+                )
+            ),
+        )
+
+        self.assertEqual('PostgresError: database "pulsarr" does not exist', summary)
+
     def _handler_with_process(
         self, pid=1234, process_name="Example", managed_service=True
     ):

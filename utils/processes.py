@@ -44,6 +44,9 @@ def _immediate_exit_summary(stdout_output: str, stderr_output: str) -> str | Non
                 continue
             if lower.startswith(("at ", "--- end of", 'file "')):
                 continue
+            code_frame_prefix = line.split("|", 1)[0].rsplit(":", 1)[-1].strip()
+            if "|" in line and code_frame_prefix.isdigit():
+                continue
             marker_score = (
                 100 if any(marker in lower for marker in error_markers) else 0
             )

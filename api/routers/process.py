@@ -4253,6 +4253,9 @@ def _start_optional_service(
                 CONFIG_MANAGER.save_config()
 
             apply_service_options(inst_cfg, merged_options, logger)
+            ensure_arr_postgres_dependency_running(
+                opt_key, inst_cfg, updater, api_state, logger
+            )
             proc = inst_cfg.get("process_name")
             if not proc:
                 raise HTTPException(
@@ -4292,6 +4295,7 @@ def _start_optional_service(
         CONFIG_MANAGER.save_config()
 
     apply_service_options(opt_cfg, merged_options, logger)
+    ensure_arr_postgres_dependency_running(opt_key, opt_cfg, updater, api_state, logger)
     proc = opt_cfg.get("process_name")
     is_running = api_state.get_status(proc) == "running" if proc else False
     _reserve_config_port(
