@@ -6,31 +6,31 @@
   
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="description" content="Learn about PostgreSQL FAQ in DUMB, the Distributed Unlimited Media Bridge platform for Debrid, Usenet, Arr apps, and media server automation.">
+  <meta name="description" content="Deploy AIOStreams in DUMB, publish its Stremio endpoint over HTTPS, and connect Prowlarr, Zilean, InfiniDysk, or AltMount.">
   
     <meta name="author" content="DUMB Team">
   
   
-    <link rel="canonical" href="https://dumbarr.com/faq/postgres/">
+    <link rel="canonical" href="https://dumbarr.com/services/optional/aiostreams/">
   
   
-    <link rel="prev" href="../plex/">
+    <link rel="prev" href="../mediastorm/">
   
   
-    <link rel="next" href="../rclone/">
+    <link rel="next" href="../traefik-proxy-admin/">
   
   
     
   
   
-  <link rel="icon" href="../../assets/images/favicon.ico">
+  <link rel="icon" href="../../../assets/images/favicon.ico">
   <meta name="generator" content="zensical-0.0.15">
 
     
   
     
       
-        <title>PostgreSQL FAQ - Distributed Unlimited Media Bridge</title>
+        <title>AIOStreams - Distributed Unlimited Media Bridge</title>
       
     
   
@@ -39,12 +39,12 @@
       
         
       
-      <link rel="stylesheet" href="../../assets/stylesheets/modern/main.f1b6466b.min.css">
+      <link rel="stylesheet" href="../../../assets/stylesheets/modern/main.f1b6466b.min.css">
       
         
           
         
-        <link rel="stylesheet" href="../../assets/stylesheets/modern/palette.dfe2e883.min.css">
+        <link rel="stylesheet" href="../../../assets/stylesheets/modern/palette.dfe2e883.min.css">
       
       
   
@@ -92,9 +92,9 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/css/main.css">
+      <link rel="stylesheet" href="../../../assets/css/main.css">
     
-    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,a=__md_scope)=>JSON.parse(t.getItem(a.pathname+"."+e)),__md_set=(e,t,a=localStorage,_=__md_scope)=>{try{a.setItem(_.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    <script>__md_scope=new URL("../../..",location),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,a=__md_scope)=>JSON.parse(t.getItem(a.pathname+"."+e)),__md_set=(e,t,a=localStorage,_=__md_scope)=>{try{a.setItem(_.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
     
       
 
@@ -109,9 +109,9 @@
     <meta property="og:type" content="website">
     <meta property="og:locale" content="en_US">
     <meta property="og:site_name" content="DUMB — Distributed Unlimited Media Bridge">
-    <meta property="og:title" content="PostgreSQL FAQ">
-    <meta property="og:description" content="Learn about PostgreSQL FAQ in DUMB, the Distributed Unlimited Media Bridge platform for Debrid, Usenet, Arr apps, and media server automation.">
-    <meta property="og:url" content="https://dumbarr.com/faq/postgres/">
+    <meta property="og:title" content="AIOStreams">
+    <meta property="og:description" content="Deploy AIOStreams in DUMB, publish its Stremio endpoint over HTTPS, and connect Prowlarr, Zilean, InfiniDysk, or AltMount.">
+    <meta property="og:url" content="https://dumbarr.com/services/optional/aiostreams/">
     <meta property="og:image" content="https://dumbarr.com/assets/images/DUMB.png">
     <meta property="og:image:secure_url" content="https://dumbarr.com/assets/images/DUMB.png">
     <meta property="og:image:type" content="image/png">
@@ -119,8 +119,8 @@
     <meta property="og:image:height" content="1024">
     <meta property="og:image:alt" content="Distributed Unlimited Media Bridge ecosystem and architecture overview">
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="PostgreSQL FAQ">
-    <meta name="twitter:description" content="Learn about PostgreSQL FAQ in DUMB, the Distributed Unlimited Media Bridge platform for Debrid, Usenet, Arr apps, and media server automation.">
+    <meta name="twitter:title" content="AIOStreams">
+    <meta name="twitter:description" content="Deploy AIOStreams in DUMB, publish its Stremio endpoint over HTTPS, and connect Prowlarr, Zilean, InfiniDysk, or AltMount.">
     <meta name="twitter:image" content="https://dumbarr.com/assets/images/DUMB.png">
     <meta name="twitter:image:alt" content="Distributed Unlimited Media Bridge ecosystem and architecture overview">
     
@@ -140,16 +140,24 @@
           {
             "@type": "ListItem",
             "position": 2,
-            "name": "FAQ",
-            "item": "https://dumbarr.com/faq/general/"
+            "name": "Services",
+            "item": "https://dumbarr.com/services/"
           }
           
           ,
           {
             "@type": "ListItem",
             "position": 3,
-            "name": "PostgreSQL FAQ",
-            "item": "https://dumbarr.com/faq/postgres/"
+            "name": "Optional",
+            "item": "https://dumbarr.com/services/optional/"
+          }
+          
+          ,
+          {
+            "@type": "ListItem",
+            "position": 4,
+            "name": "AIOStreams",
+            "item": "https://dumbarr.com/services/optional/aiostreams/"
           }
         ]
       }
@@ -176,7 +184,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#postgresql-faq" class="md-skip">
+        <a href="#aiostreams" class="md-skip">
           Skip to content
         </a>
       
@@ -201,9 +209,9 @@
 
 <header class="md-header" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="../.." title="Distributed Unlimited Media Bridge" class="md-header__button md-logo" aria-label="Distributed Unlimited Media Bridge" data-md-component="logo">
+    <a href="../../.." title="Distributed Unlimited Media Bridge" class="md-header__button md-logo" aria-label="Distributed Unlimited Media Bridge" data-md-component="logo">
       
-  <img src="../../assets/images/logo.png" alt="logo">
+  <img src="../../../assets/images/logo.png" alt="logo">
 
     </a>
     <label class="md-header__button md-icon" for="__drawer">
@@ -220,7 +228,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              PostgreSQL FAQ
+              AIOStreams
             
           </span>
         </div>
@@ -314,7 +322,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../.." class="md-tabs__link">
+      <a href="../../.." class="md-tabs__link">
         
   
   Home
@@ -332,7 +340,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../getting-started/" class="md-tabs__link">
+        <a href="../../../getting-started/" class="md-tabs__link">
           
   
   Getting Started
@@ -351,7 +359,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../features/" class="md-tabs__link">
+        <a href="../../../features/" class="md-tabs__link">
           
   
   Features
@@ -370,7 +378,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../frontend/" class="md-tabs__link">
+        <a href="../../../frontend/" class="md-tabs__link">
           
   
   Frontend
@@ -389,7 +397,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../architecture/" class="md-tabs__link">
+        <a href="../../../architecture/" class="md-tabs__link">
           
   
   Architecture
@@ -404,11 +412,13 @@
   
   
   
+    
+  
   
     
     
-      <li class="md-tabs__item">
-        <a href="../../services/" class="md-tabs__link">
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../../" class="md-tabs__link">
           
   
   Services
@@ -427,7 +437,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../deployment/" class="md-tabs__link">
+        <a href="../../../deployment/" class="md-tabs__link">
           
   
   Deployment
@@ -446,7 +456,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../api/" class="md-tabs__link">
+        <a href="../../../api/" class="md-tabs__link">
           
   
   API
@@ -465,7 +475,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../reference/" class="md-tabs__link">
+        <a href="../../../reference/" class="md-tabs__link">
           
   
   Reference
@@ -480,13 +490,11 @@
   
   
   
-    
-  
   
     
     
-      <li class="md-tabs__item md-tabs__item--active">
-        <a href="../general/" class="md-tabs__link">
+      <li class="md-tabs__item">
+        <a href="../../../faq/general/" class="md-tabs__link">
           
   
   FAQ
@@ -503,7 +511,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../../changelog/" class="md-tabs__link">
+      <a href="../../../changelog/" class="md-tabs__link">
         
   
   Changelog
@@ -519,7 +527,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../../contributing/" class="md-tabs__link">
+      <a href="../../../contributing/" class="md-tabs__link">
         
   
   Contributing
@@ -535,7 +543,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../../about/" class="md-tabs__link">
+      <a href="../../../about/" class="md-tabs__link">
         
   
   About
@@ -567,9 +575,9 @@
 
 <nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="../.." title="Distributed Unlimited Media Bridge" class="md-nav__button md-logo" aria-label="Distributed Unlimited Media Bridge" data-md-component="logo">
+    <a href="../../.." title="Distributed Unlimited Media Bridge" class="md-nav__button md-logo" aria-label="Distributed Unlimited Media Bridge" data-md-component="logo">
       
-  <img src="../../assets/images/logo.png" alt="logo">
+  <img src="../../../assets/images/logo.png" alt="logo">
 
     </a>
     Distributed Unlimited Media Bridge
@@ -596,7 +604,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../.." class="md-nav__link">
+      <a href="../../.." class="md-nav__link">
         
   
   
@@ -652,7 +660,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../getting-started/" class="md-nav__link ">
+            <a href="../../../getting-started/" class="md-nav__link ">
               
   
   
@@ -698,7 +706,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../getting-started/installation/" class="md-nav__link">
+      <a href="../../../getting-started/installation/" class="md-nav__link">
         
   
   
@@ -796,7 +804,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../features/" class="md-nav__link ">
+            <a href="../../../features/" class="md-nav__link ">
               
   
   
@@ -842,7 +850,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/configuration/" class="md-nav__link">
+      <a href="../../../features/configuration/" class="md-nav__link">
         
   
   
@@ -872,7 +880,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/usage/" class="md-nav__link">
+      <a href="../../../features/usage/" class="md-nav__link">
         
   
   
@@ -902,7 +910,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/service-reset/" class="md-nav__link">
+      <a href="../../../features/service-reset/" class="md-nav__link">
         
   
   
@@ -932,7 +940,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/authentication/" class="md-nav__link">
+      <a href="../../../features/authentication/" class="md-nav__link">
         
   
   
@@ -962,7 +970,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/auto-restart/" class="md-nav__link">
+      <a href="../../../features/auto-restart/" class="md-nav__link">
         
   
   
@@ -992,7 +1000,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/startup-lifecycle/" class="md-nav__link">
+      <a href="../../../features/startup-lifecycle/" class="md-nav__link">
         
   
   
@@ -1022,7 +1030,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/auto-update/" class="md-nav__link">
+      <a href="../../../features/auto-update/" class="md-nav__link">
         
   
   
@@ -1052,7 +1060,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/install-cache/" class="md-nav__link">
+      <a href="../../../features/install-cache/" class="md-nav__link">
         
   
   
@@ -1082,7 +1090,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/media-library-protection/" class="md-nav__link">
+      <a href="../../../features/media-library-protection/" class="md-nav__link">
         
   
   
@@ -1112,7 +1120,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/arr-postgres-migration/" class="md-nav__link">
+      <a href="../../../features/arr-postgres-migration/" class="md-nav__link">
         
   
   
@@ -1142,7 +1150,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/symlinks/" class="md-nav__link">
+      <a href="../../../features/symlinks/" class="md-nav__link">
         
   
   
@@ -1172,7 +1180,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/seerr-sync/" class="md-nav__link">
+      <a href="../../../features/seerr-sync/" class="md-nav__link">
         
   
   
@@ -1202,7 +1210,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/ffprobe-monitor/" class="md-nav__link">
+      <a href="../../../features/ffprobe-monitor/" class="md-nav__link">
         
   
   
@@ -1232,7 +1240,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/metrics/" class="md-nav__link">
+      <a href="../../../features/metrics/" class="md-nav__link">
         
   
   
@@ -1262,7 +1270,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/rclone-optimizer/" class="md-nav__link">
+      <a href="../../../features/rclone-optimizer/" class="md-nav__link">
         
   
   
@@ -1292,7 +1300,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/notifications/" class="md-nav__link">
+      <a href="../../../features/notifications/" class="md-nav__link">
         
   
   
@@ -1322,7 +1330,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/ai-assistant/" class="md-nav__link">
+      <a href="../../../features/ai-assistant/" class="md-nav__link">
         
   
   
@@ -1352,7 +1360,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/embedded-ui/" class="md-nav__link">
+      <a href="../../../features/embedded-ui/" class="md-nav__link">
         
   
   
@@ -1424,7 +1432,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../frontend/" class="md-nav__link ">
+            <a href="../../../frontend/" class="md-nav__link ">
               
   
   
@@ -1470,7 +1478,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../frontend/dashboard/" class="md-nav__link">
+      <a href="../../../frontend/dashboard/" class="md-nav__link">
         
   
   
@@ -1500,7 +1508,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../frontend/onboarding/" class="md-nav__link">
+      <a href="../../../frontend/onboarding/" class="md-nav__link">
         
   
   
@@ -1530,7 +1538,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../frontend/settings/" class="md-nav__link">
+      <a href="../../../frontend/settings/" class="md-nav__link">
         
   
   
@@ -1560,7 +1568,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../frontend/service-pages/" class="md-nav__link">
+      <a href="../../../frontend/service-pages/" class="md-nav__link">
         
   
   
@@ -1590,7 +1598,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../frontend/metrics/" class="md-nav__link">
+      <a href="../../../frontend/metrics/" class="md-nav__link">
         
   
   
@@ -1658,7 +1666,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../architecture/" class="md-nav__link ">
+            <a href="../../../architecture/" class="md-nav__link ">
               
   
   
@@ -1704,7 +1712,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../architecture/backend/" class="md-nav__link">
+      <a href="../../../architecture/backend/" class="md-nav__link">
         
   
   
@@ -1734,7 +1742,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../architecture/frontend/" class="md-nav__link">
+      <a href="../../../architecture/frontend/" class="md-nav__link">
         
   
   
@@ -1764,7 +1772,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../architecture/traefik/" class="md-nav__link">
+      <a href="../../../architecture/traefik/" class="md-nav__link">
         
   
   
@@ -1798,6 +1806,8 @@
       
   
   
+    
+  
   
   
     
@@ -1819,22 +1829,23 @@
     
     
       
+        
+        
+      
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
       
         
         
-          
-        
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" checked>
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../services/" class="md-nav__link ">
+            <a href="../../" class="md-nav__link ">
               
   
   
@@ -1854,13 +1865,13 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_6" id="__nav_6_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_6" id="__nav_6_label" tabindex="">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_6">
             <span class="md-nav__icon md-icon"></span>
             
@@ -1896,10 +1907,13 @@
       
       
         
+          
+          
+        
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
       
         
         
@@ -1909,7 +1923,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../services/dumb/" class="md-nav__link ">
+            <a href="../../dumb/" class="md-nav__link ">
               
   
   
@@ -1929,7 +1943,7 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_6_2" id="__nav_6_2_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_6_2" id="__nav_6_2_label" tabindex="">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
@@ -1955,7 +1969,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/dumb/api/" class="md-nav__link">
+      <a href="../../dumb/api/" class="md-nav__link">
         
   
   
@@ -1985,7 +1999,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/dumb/dumb-frontend/" class="md-nav__link">
+      <a href="../../dumb/dumb-frontend/" class="md-nav__link">
         
   
   
@@ -2069,10 +2083,13 @@
       
       
         
+          
+          
+        
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
       
         
         
@@ -2082,7 +2099,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../services/core/" class="md-nav__link ">
+            <a href="../../core/" class="md-nav__link ">
               
   
   
@@ -2102,7 +2119,7 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_6_3" id="__nav_6_3_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_6_3" id="__nav_6_3_label" tabindex="">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
@@ -2128,7 +2145,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/core/cli-debrid/" class="md-nav__link">
+      <a href="../../core/cli-debrid/" class="md-nav__link">
         
   
   
@@ -2158,7 +2175,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/core/decypharr/" class="md-nav__link">
+      <a href="../../core/decypharr/" class="md-nav__link">
         
   
   
@@ -2188,7 +2205,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/core/infinidysk/" class="md-nav__link">
+      <a href="../../core/infinidysk/" class="md-nav__link">
         
   
   
@@ -2218,7 +2235,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/core/nzbdav/" class="md-nav__link">
+      <a href="../../core/nzbdav/" class="md-nav__link">
         
   
   
@@ -2248,7 +2265,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/core/altmount/" class="md-nav__link">
+      <a href="../../core/altmount/" class="md-nav__link">
         
   
   
@@ -2278,7 +2295,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/core/plex-media-server/" class="md-nav__link">
+      <a href="../../core/plex-media-server/" class="md-nav__link">
         
   
   
@@ -2308,7 +2325,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/core/jellyfin/" class="md-nav__link">
+      <a href="../../core/jellyfin/" class="md-nav__link">
         
   
   
@@ -2338,7 +2355,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/core/emby/" class="md-nav__link">
+      <a href="../../core/emby/" class="md-nav__link">
         
   
   
@@ -2368,7 +2385,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/core/seerr/" class="md-nav__link">
+      <a href="../../core/seerr/" class="md-nav__link">
         
   
   
@@ -2398,7 +2415,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/core/riven-backend/" class="md-nav__link">
+      <a href="../../core/riven-backend/" class="md-nav__link">
         
   
   
@@ -2428,7 +2445,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/core/sonarr/" class="md-nav__link">
+      <a href="../../core/sonarr/" class="md-nav__link">
         
   
   
@@ -2458,7 +2475,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/core/radarr/" class="md-nav__link">
+      <a href="../../core/radarr/" class="md-nav__link">
         
   
   
@@ -2488,7 +2505,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/core/lidarr/" class="md-nav__link">
+      <a href="../../core/lidarr/" class="md-nav__link">
         
   
   
@@ -2518,7 +2535,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/core/prowlarr/" class="md-nav__link">
+      <a href="../../core/prowlarr/" class="md-nav__link">
         
   
   
@@ -2548,7 +2565,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/core/whisparr/" class="md-nav__link">
+      <a href="../../core/whisparr/" class="md-nav__link">
         
   
   
@@ -2578,7 +2595,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/core/neutarr/" class="md-nav__link">
+      <a href="../../core/neutarr/" class="md-nav__link">
         
   
   
@@ -2608,7 +2625,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/core/profilarr/" class="md-nav__link">
+      <a href="../../core/profilarr/" class="md-nav__link">
         
   
   
@@ -2668,10 +2685,13 @@
       
       
         
+          
+          
+        
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
       
         
         
@@ -2681,7 +2701,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../services/dependent/" class="md-nav__link ">
+            <a href="../../dependent/" class="md-nav__link ">
               
   
   
@@ -2701,7 +2721,7 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_6_4" id="__nav_6_4_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_6_4" id="__nav_6_4_label" tabindex="">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
@@ -2727,7 +2747,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/dependent/cli-battery/" class="md-nav__link">
+      <a href="../../dependent/cli-battery/" class="md-nav__link">
         
   
   
@@ -2757,7 +2777,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/dependent/phalanx-db/" class="md-nav__link">
+      <a href="../../dependent/phalanx-db/" class="md-nav__link">
         
   
   
@@ -2787,7 +2807,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/dependent/postgres/" class="md-nav__link">
+      <a href="../../dependent/postgres/" class="md-nav__link">
         
   
   
@@ -2817,7 +2837,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/dependent/rclone/" class="md-nav__link">
+      <a href="../../dependent/rclone/" class="md-nav__link">
         
   
   
@@ -2847,7 +2867,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/dependent/zurg/" class="md-nav__link">
+      <a href="../../dependent/zurg/" class="md-nav__link">
         
   
   
@@ -2882,6 +2902,8 @@
                 
   
   
+    
+  
   
   
     
@@ -2921,20 +2943,21 @@
       
       
         
-      
-    
-    
-    <li class="md-nav__item md-nav__item--nested">
-      
-        
-        
+          
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6_5" >
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_5" checked>
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../services/optional/" class="md-nav__link ">
+            <a href="../" class="md-nav__link ">
               
   
   
@@ -2954,13 +2977,13 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_6_5" id="__nav_6_5_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_6_5" id="__nav_6_5_label" tabindex="">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_5_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_5_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_6_5">
             <span class="md-nav__icon md-icon"></span>
             
@@ -2980,7 +3003,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/optional/pgadmin/" class="md-nav__link">
+      <a href="../pgadmin/" class="md-nav__link">
         
   
   
@@ -3010,7 +3033,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/optional/riven-frontend/" class="md-nav__link">
+      <a href="../riven-frontend/" class="md-nav__link">
         
   
   
@@ -3040,7 +3063,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/optional/tautulli/" class="md-nav__link">
+      <a href="../tautulli/" class="md-nav__link">
         
   
   
@@ -3070,7 +3093,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/optional/bazarr/" class="md-nav__link">
+      <a href="../bazarr/" class="md-nav__link">
         
   
   
@@ -3100,7 +3123,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/optional/pulsarr/" class="md-nav__link">
+      <a href="../pulsarr/" class="md-nav__link">
         
   
   
@@ -3130,7 +3153,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/optional/maintainerr/" class="md-nav__link">
+      <a href="../maintainerr/" class="md-nav__link">
         
   
   
@@ -3160,7 +3183,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/optional/mediastorm/" class="md-nav__link">
+      <a href="../mediastorm/" class="md-nav__link">
         
   
   
@@ -3187,10 +3210,39 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../../services/optional/aiostreams/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-clapperboard" viewBox="0 0 24 24"><path d="M20.2 6 3 11l-.9-2.4c-.3-1.1.3-2.2 1.3-2.5l13.5-4c1.1-.3 2.2.3 2.5 1.3ZM6.2 5.3l3.1 3.9M12.4 3.4l3.1 4M3 11h18v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    AIOStreams
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -3208,6 +3260,137 @@
   
 
       </a>
+      
+        
+
+
+<nav class="md-nav md-nav--secondary" aria-label="On this page">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      On this page
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#what-dumb-manages" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What DUMB manages
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#before-you-enable-it" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Before you enable it
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#bootstrap-settings-versus-dashboard-settings" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Bootstrap settings versus dashboard settings
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#first-start" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        First start
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#publish-aiostreams-for-stremio" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Publish AIOStreams for Stremio
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#connect-dumb-services" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Connect DUMB services
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#authentication-and-secrets" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Authentication and secrets
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#backups-and-recovery" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Backups and recovery
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Troubleshooting
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#related-links" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Related links
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -3220,7 +3403,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/optional/traefik-proxy-admin/" class="md-nav__link">
+      <a href="../traefik-proxy-admin/" class="md-nav__link">
         
   
   
@@ -3250,7 +3433,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/optional/authelia/" class="md-nav__link">
+      <a href="../authelia/" class="md-nav__link">
         
   
   
@@ -3280,7 +3463,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/optional/cloudflared/" class="md-nav__link">
+      <a href="../cloudflared/" class="md-nav__link">
         
   
   
@@ -3310,7 +3493,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../services/optional/zilean/" class="md-nav__link">
+      <a href="../zilean/" class="md-nav__link">
         
   
   
@@ -3400,7 +3583,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../deployment/" class="md-nav__link ">
+            <a href="../../../deployment/" class="md-nav__link ">
               
   
   
@@ -3446,7 +3629,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../deployment/docker/" class="md-nav__link">
+      <a href="../../../deployment/docker/" class="md-nav__link">
         
   
   
@@ -3476,7 +3659,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../deployment/networking/" class="md-nav__link">
+      <a href="../../../deployment/networking/" class="md-nav__link">
         
   
   
@@ -3506,7 +3689,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../deployment/portainer/" class="md-nav__link">
+      <a href="../../../deployment/portainer/" class="md-nav__link">
         
   
   
@@ -3536,7 +3719,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../deployment/unraid/" class="md-nav__link">
+      <a href="../../../deployment/unraid/" class="md-nav__link">
         
   
   
@@ -3566,7 +3749,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../deployment/wsl/" class="md-nav__link">
+      <a href="../../../deployment/wsl/" class="md-nav__link">
         
   
   
@@ -3596,7 +3779,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../deployment/proxmox/" class="md-nav__link">
+      <a href="../../../deployment/proxmox/" class="md-nav__link">
         
   
   
@@ -3626,7 +3809,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../deployment/synology/" class="md-nav__link">
+      <a href="../../../deployment/synology/" class="md-nav__link">
         
   
   
@@ -3656,7 +3839,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../deployment/qnap/" class="md-nav__link">
+      <a href="../../../deployment/qnap/" class="md-nav__link">
         
   
   
@@ -3686,7 +3869,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../deployment/truenas/" class="md-nav__link">
+      <a href="../../../deployment/truenas/" class="md-nav__link">
         
   
   
@@ -3716,7 +3899,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../deployment/dockge/" class="md-nav__link">
+      <a href="../../../deployment/dockge/" class="md-nav__link">
         
   
   
@@ -3802,7 +3985,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../api/" class="md-nav__link ">
+            <a href="../../../api/" class="md-nav__link ">
               
   
   
@@ -3848,7 +4031,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/auth/" class="md-nav__link">
+      <a href="../../../api/auth/" class="md-nav__link">
         
   
   
@@ -3878,7 +4061,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/health/" class="md-nav__link">
+      <a href="../../../api/health/" class="md-nav__link">
         
   
   
@@ -3908,7 +4091,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/process/" class="md-nav__link">
+      <a href="../../../api/process/" class="md-nav__link">
         
   
   
@@ -3938,7 +4121,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/config/" class="md-nav__link">
+      <a href="../../../api/config/" class="md-nav__link">
         
   
   
@@ -3968,7 +4151,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/logs/" class="md-nav__link">
+      <a href="../../../api/logs/" class="md-nav__link">
         
   
   
@@ -3998,7 +4181,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/metrics/" class="md-nav__link">
+      <a href="../../../api/metrics/" class="md-nav__link">
         
   
   
@@ -4028,7 +4211,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/media-library-protection/" class="md-nav__link">
+      <a href="../../../api/media-library-protection/" class="md-nav__link">
         
   
   
@@ -4058,7 +4241,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/notifications/" class="md-nav__link">
+      <a href="../../../api/notifications/" class="md-nav__link">
         
   
   
@@ -4088,7 +4271,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/ai/" class="md-nav__link">
+      <a href="../../../api/ai/" class="md-nav__link">
         
   
   
@@ -4118,7 +4301,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/seerr-sync/" class="md-nav__link">
+      <a href="../../../api/seerr-sync/" class="md-nav__link">
         
   
   
@@ -4148,7 +4331,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/websocket/" class="md-nav__link">
+      <a href="../../../api/websocket/" class="md-nav__link">
         
   
   
@@ -4178,7 +4361,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/websocket_logs/" class="md-nav__link">
+      <a href="../../../api/websocket_logs/" class="md-nav__link">
         
   
   
@@ -4250,7 +4433,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../reference/" class="md-nav__link ">
+            <a href="../../../reference/" class="md-nav__link ">
               
   
   
@@ -4296,7 +4479,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../reference/ports/" class="md-nav__link">
+      <a href="../../../reference/ports/" class="md-nav__link">
         
   
   
@@ -4326,7 +4509,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../reference/environment-variables/" class="md-nav__link">
+      <a href="../../../reference/environment-variables/" class="md-nav__link">
         
   
   
@@ -4356,7 +4539,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../reference/config-schema/" class="md-nav__link">
+      <a href="../../../reference/config-schema/" class="md-nav__link">
         
   
   
@@ -4386,7 +4569,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../reference/instances/" class="md-nav__link">
+      <a href="../../../reference/instances/" class="md-nav__link">
         
   
   
@@ -4416,7 +4599,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../reference/core-service/" class="md-nav__link">
+      <a href="../../../reference/core-service/" class="md-nav__link">
         
   
   
@@ -4450,10 +4633,8 @@
       
   
   
-    
   
   
-  
     
     
       
@@ -4491,22 +4672,21 @@
     
     
       
-        
-        
-      
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
-        
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_10" checked>
         
           
-          <label class="md-nav__link" for="__nav_10" id="__nav_10_label" tabindex="">
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_10" >
+        
+          
+          <label class="md-nav__link" for="__nav_10" id="__nav_10_label" tabindex="0">
             
   
   
@@ -4524,7 +4704,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_10_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_10_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_10">
             <span class="md-nav__icon md-icon"></span>
             
@@ -4542,7 +4722,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../general/" class="md-nav__link">
+      <a href="../../../faq/general/" class="md-nav__link">
         
   
   
@@ -4572,7 +4752,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../authentication/" class="md-nav__link">
+      <a href="../../../faq/authentication/" class="md-nav__link">
         
   
   
@@ -4602,7 +4782,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../cli-debrid/" class="md-nav__link">
+      <a href="../../../faq/cli-debrid/" class="md-nav__link">
         
   
   
@@ -4632,7 +4812,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../decypharr/" class="md-nav__link">
+      <a href="../../../faq/decypharr/" class="md-nav__link">
         
   
   
@@ -4662,7 +4842,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../dumb/" class="md-nav__link">
+      <a href="../../../faq/dumb/" class="md-nav__link">
         
   
   
@@ -4692,7 +4872,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../neutarr/" class="md-nav__link">
+      <a href="../../../faq/neutarr/" class="md-nav__link">
         
   
   
@@ -4722,7 +4902,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../pgadmin/" class="md-nav__link">
+      <a href="../../../faq/pgadmin/" class="md-nav__link">
         
   
   
@@ -4752,7 +4932,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../plex/" class="md-nav__link">
+      <a href="../../../faq/plex/" class="md-nav__link">
         
   
   
@@ -4779,39 +4959,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-database" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14a9 3 0 0 0 18 0V5"/><path d="M3 12a9 3 0 0 0 18 0"/></svg>
-  
-  <span class="md-ellipsis">
-    
-  
-    PostgreSQL
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../../../faq/postgres/" class="md-nav__link">
         
   
   
@@ -4829,104 +4980,6 @@
   
 
       </a>
-      
-        
-
-
-<nav class="md-nav md-nav--secondary" aria-label="On this page">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      On this page
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#how-postgresql-is-used-in-dumb" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        How PostgreSQL is used in DUMB
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#what-happens-if-i-delete-the-database" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        What happens if I delete the database?
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#can-i-reset-the-database-intentionally" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Can I reset the database intentionally?
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#what-are-the-default-credentials" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        What are the default credentials?
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#can-i-connect-to-postgresql-externally" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Can I connect to PostgreSQL externally?
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#is-it-safe-to-run-queries-against-the-databases" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Is it safe to run queries against the databases?
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#related-pages" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Related Pages
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -4939,7 +4992,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../rclone/" class="md-nav__link">
+      <a href="../../../faq/rclone/" class="md-nav__link">
         
   
   
@@ -4969,7 +5022,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../riven/" class="md-nav__link">
+      <a href="../../../faq/riven/" class="md-nav__link">
         
   
   
@@ -4999,7 +5052,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../seerr/" class="md-nav__link">
+      <a href="../../../faq/seerr/" class="md-nav__link">
         
   
   
@@ -5029,7 +5082,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../tautulli/" class="md-nav__link">
+      <a href="../../../faq/tautulli/" class="md-nav__link">
         
   
   
@@ -5059,7 +5112,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../zilean/" class="md-nav__link">
+      <a href="../../../faq/zilean/" class="md-nav__link">
         
   
   
@@ -5089,7 +5142,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../zurg/" class="md-nav__link">
+      <a href="../../../faq/zurg/" class="md-nav__link">
         
   
   
@@ -5126,7 +5179,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../changelog/" class="md-nav__link">
+      <a href="../../../changelog/" class="md-nav__link">
         
   
   
@@ -5153,7 +5206,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../contributing/" class="md-nav__link">
+      <a href="../../../contributing/" class="md-nav__link">
         
   
   
@@ -5182,7 +5235,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../about/" class="md-nav__link">
+      <a href="../../../about/" class="md-nav__link">
         
   
   
@@ -5232,10 +5285,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#how-postgresql-is-used-in-dumb" class="md-nav__link">
+  <a href="#what-dumb-manages" class="md-nav__link">
     <span class="md-ellipsis">
       
-        How PostgreSQL is used in DUMB
+        What DUMB manages
       
     </span>
   </a>
@@ -5243,10 +5296,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#what-happens-if-i-delete-the-database" class="md-nav__link">
+  <a href="#before-you-enable-it" class="md-nav__link">
     <span class="md-ellipsis">
       
-        What happens if I delete the database?
+        Before you enable it
       
     </span>
   </a>
@@ -5254,10 +5307,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#can-i-reset-the-database-intentionally" class="md-nav__link">
+  <a href="#bootstrap-settings-versus-dashboard-settings" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Can I reset the database intentionally?
+        Bootstrap settings versus dashboard settings
       
     </span>
   </a>
@@ -5265,10 +5318,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#what-are-the-default-credentials" class="md-nav__link">
+  <a href="#first-start" class="md-nav__link">
     <span class="md-ellipsis">
       
-        What are the default credentials?
+        First start
       
     </span>
   </a>
@@ -5276,10 +5329,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#can-i-connect-to-postgresql-externally" class="md-nav__link">
+  <a href="#publish-aiostreams-for-stremio" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Can I connect to PostgreSQL externally?
+        Publish AIOStreams for Stremio
       
     </span>
   </a>
@@ -5287,10 +5340,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#is-it-safe-to-run-queries-against-the-databases" class="md-nav__link">
+  <a href="#connect-dumb-services" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Is it safe to run queries against the databases?
+        Connect DUMB services
       
     </span>
   </a>
@@ -5298,10 +5351,43 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#related-pages" class="md-nav__link">
+  <a href="#authentication-and-secrets" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Related Pages
+        Authentication and secrets
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#backups-and-recovery" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Backups and recovery
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Troubleshooting
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#related-links" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Related links
       
     </span>
   </a>
@@ -5333,7 +5419,7 @@
   
   
     <li class="md-path__item">
-      <a href="../.." class="md-path__link">
+      <a href="../../.." class="md-path__link">
         
   <span class="md-ellipsis">
     Home
@@ -5351,10 +5437,28 @@
     
     
       <li class="md-path__item">
-        <a href="../general/" class="md-path__link">
+        <a href="../../" class="md-path__link">
           
   <span class="md-ellipsis">
-    FAQ
+    Services
+  </span>
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+    
+    
+      <li class="md-path__item">
+        <a href="../" class="md-path__link">
+          
+  <span class="md-ellipsis">
+    Optional
   </span>
 
         </a>
@@ -5371,7 +5475,7 @@
                 
                   
   
-    <a href="https://github.com/I-am-PUID-0/DUMB_docs/edit/master/docs/faq/postgres.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+    <a href="https://github.com/I-am-PUID-0/DUMB_docs/edit/master/docs/services/optional/aiostreams.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
       
       <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-file-pen" viewBox="0 0 24 24"><path d="M12.659 22H18a2 2 0 0 0 2-2V8a2.4 2.4 0 0 0-.706-1.706l-3.588-3.588A2.4 2.4 0 0 0 14 2H6a2 2 0 0 0-2 2v9.34"/><path d="M14 2v5a1 1 0 0 0 1 1h5M10.378 12.622a1 1 0 0 1 3 3.003L8.36 20.637a2 2 0 0 1-.854.506l-2.867.837a.5.5 0 0 1-.62-.62l.836-2.869a2 2 0 0 1 .506-.853z"/></svg>
     </a>
@@ -5380,111 +5484,326 @@
     
       
     
-    <a href="https://github.com/I-am-PUID-0/DUMB_docs/raw/master/docs/faq/postgres.md" title="View source of this page" class="md-content__button md-icon">
+    <a href="https://github.com/I-am-PUID-0/DUMB_docs/raw/master/docs/services/optional/aiostreams.md" title="View source of this page" class="md-content__button md-icon">
       
       <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-file-code-2" viewBox="0 0 24 24"><path d="M4 12.15V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.706.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2h-3.35"/><path d="M14 2v5a1 1 0 0 0 1 1h5M5 16l-3 3 3 3M9 22l3-3-3-3"/></svg>
     </a>
   
 
 
-<h1 id="postgresql-faq">PostgreSQL FAQ<a class="headerlink" href="#postgresql-faq" title="Permanent link">&para;</a></h1>
-<p>Below are common questions and explanations related to <strong>PostgreSQL</strong>, which is the primary database engine used by DUMB.</p>
+<h1 id="aiostreams">AIOStreams<a class="headerlink" href="#aiostreams" title="Permanent link">&para;</a></h1>
+<p>AIOStreams combines Stremio addons, search sources, Debrid services, and Usenet playback services into one configurable Stremio addon. DUMB manages the AIOStreams runtime and lifecycle; you choose the addons, indexers, and playback services from the AIOStreams dashboard.</p>
 <hr />
-<h2 id="how-postgresql-is-used-in-dumb">How PostgreSQL is used in DUMB<a class="headerlink" href="#how-postgresql-is-used-in-dumb" title="Permanent link">&para;</a></h2>
-<p>PostgreSQL stores persistent data for services that require it and for optional SQLite-to-PostgreSQL cutovers. Current integrations include:</p>
-<ul>
-<li><strong>Riven Backend</strong>, <strong>Zilean</strong>, <strong>Traefik Proxy Admin</strong>, and <strong>mediastorm</strong></li>
-<li>Optional PostgreSQL modes for <strong>Sonarr, Radarr, Lidarr, Prowlarr, Whisparr, Bazarr, Pulsarr, Seerr, and AltMount</strong> after a guarded migration</li>
-<li>Optional DUMB Metrics history storage</li>
-<li><strong>pgAdmin</strong>'s own database when pgAdmin is enabled</li>
-</ul>
-<p>Each service has its <strong>own database</strong>, created automatically when DUMB starts:</p>
+<h2 id="what-dumb-manages">What DUMB manages<a class="headerlink" href="#what-dumb-manages" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
-<th>Service</th>
-<th>Database Name</th>
+<th>Property</th>
+<th>DUMB default</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>Riven</td>
-<td><code>riven</code></td>
+<td>Service key</td>
+<td><code>aiostreams</code></td>
 </tr>
 <tr>
-<td>Zilean</td>
-<td><code>zilean</code></td>
+<td>Process name</td>
+<td><code>AIOStreams</code></td>
 </tr>
 <tr>
-<td>pgAdmin (optional)</td>
-<td><code>pgadmin</code></td>
+<td>Port</td>
+<td><code>3006</code></td>
 </tr>
 <tr>
-<td>Traefik Proxy Admin</td>
-<td><code>traefik_proxy_admin</code></td>
+<td>Configuration root</td>
+<td><code>/aiostreams</code></td>
 </tr>
 <tr>
-<td>mediastorm</td>
-<td><code>mediastorm</code></td>
+<td>Persistent data</td>
+<td><code>/aiostreams/data</code></td>
 </tr>
 <tr>
-<td>Metrics history (optional default)</td>
-<td><code>dumb_metrics</code></td>
+<td>Extracted runtime</td>
+<td><code>/aiostreams/runtime</code></td>
+</tr>
+<tr>
+<td>Log</td>
+<td><code>/log/aiostreams.log</code></td>
+</tr>
+<tr>
+<td>Health endpoint</td>
+<td><code>/api/v1/health</code></td>
+</tr>
+<tr>
+<td>Database</td>
+<td>SQLite at <code>./data/db.sqlite</code></td>
 </tr>
 </tbody>
 </table>
-<p>Additional databases are registered from service configuration. PostgreSQL's internal data directory defaults to <code>/postgres_data</code>; the maintained Compose layout persists it at <code>/data/postgres</code> through DUMB's managed data mapping.</p>
-<hr />
-<h2 id="what-happens-if-i-delete-the-database">What happens if I delete the database?<a class="headerlink" href="#what-happens-if-i-delete-the-database" title="Permanent link">&para;</a></h2>
-<p>If <code>/data/postgres</code> (or a directly mounted legacy <code>/postgres_data</code>) is deleted, <strong>every database in that cluster is lost</strong>.</p>
-<p>This includes:</p>
-<ul>
-<li>Application data and settings for PostgreSQL-backed services</li>
-<li>Migrated Arr-family databases</li>
-<li>PostgreSQL Metrics history</li>
-<li>pgAdmin state stored in its database</li>
-</ul>
-<p>Services may create empty schemas on their next launch, but this does not reconstruct the deleted application data.</p>
-<div class="admonition warning">
-<p class="admonition-title">A directory copy is not a complete running-database backup strategy</p>
-<p>Schedule logical <code>pg_dump</code> backups for every important database and test restores. Also protect the mounted <code>/data</code> tree while the stack is stopped or with a PostgreSQL-aware physical-backup process.</p>
-<p>Follow the <a href="../pgadmin/#example-scheduled-backups-with-pgagent">scheduled pg_dump backups with pgAdmin and pgAgent</a> example, including its retention and restore-test steps.</p>
+<p>DUMB downloads <code>ghcr.io/viren070/aiostreams</code> for the host architecture, verifies the selected OCI manifest and layers, and extracts the required runtime. Both <code>amd64</code> and <code>arm64</code> are supported. A separate Docker container, Docker socket, Node installation, and local source build are not required; DUMB supplies its managed Node 24 runtime.</p>
+<p>DUMB can follow the latest stable image or install an exact stable tag. AIOStreams does not expose DUMB branch or commit-SHA source selection.</p>
+<div class="admonition note">
+<p class="admonition-title">Persistent paths</p>
+<p>DUMB replaces <code>/aiostreams/runtime</code> during a successful update but preserves <code>/aiostreams/data</code>. The SQLite database, runtime settings, configuration records, and disk-backed caches therefore survive normal service updates.</p>
 </div>
 <hr />
-<h2 id="can-i-reset-the-database-intentionally">Can I reset the database intentionally?<a class="headerlink" href="#can-i-reset-the-database-intentionally" title="Permanent link">&para;</a></h2>
-<p>Yes, but deleting the whole cluster resets every PostgreSQL-backed service. For a disposable installation, stop DUMB and remove <code>/data/postgres</code> (or your explicitly mounted <code>/postgres_data</code>) only after confirming the exact path and preserving any required backups.</p>
-<p>Alternatively, use <strong>pgAdmin 4</strong> (if enabled) to drop individual databases manually.</p>
-<blockquote>
-<p>See the <a href="../../services/dependent/postgres/#useful-commands">PostgreSQL Useful Commands</a> section.</p>
-<p>Alternatively, see the <a href="../pgadmin/#drop-a-database-or-create-a-manual-backup-in-pgadmin">pgAdmin FAQ</a> section.</p>
-</blockquote>
-<hr />
-<h2 id="what-are-the-default-credentials">What are the default credentials?<a class="headerlink" href="#what-are-the-default-credentials" title="Permanent link">&para;</a></h2>
+<h2 id="before-you-enable-it">Before you enable it<a class="headerlink" href="#before-you-enable-it" title="Permanent link">&para;</a></h2>
+<p>Prepare the pieces that match your intended workflow:</p>
 <ul>
-<li><strong>Username</strong>: <code>DUMB</code></li>
-<li><strong>Password</strong>: <code>postgres</code></li>
-<li><strong>Port</strong>: <code>5432</code></li>
-<li>These values can be customized in the <code>postgres</code> section of <code>dumb_config.json</code>.</li>
+<li>A stable public DNS name and trusted HTTPS route for remote Stremio clients, such as <code>https://aiostreams.example.com</code>.</li>
+<li>Enough persistent space for <code>/aiostreams/data</code>. AIOStreams can cache Usenet segments, grabbed NZBs, and torrent metadata there.</li>
+<li>API keys or login details for the search and playback services you intend to use.</li>
+<li>Outbound access from DUMB to GHCR for the first install and later updates.</li>
 </ul>
+<p>You do <strong>not</strong> need every related DUMB service. For example, a Debrid-only setup can use AIOStreams without InfiniDysk or AltMount, while a Usenet setup can use either AIOStreams' native engine or one of those external playback services.</p>
 <hr />
-<h2 id="can-i-connect-to-postgresql-externally">Can I connect to PostgreSQL externally?<a class="headerlink" href="#can-i-connect-to-postgresql-externally" title="Permanent link">&para;</a></h2>
-<p>Yes — by default, PostgreSQL binds to <code>127.0.0.1</code>. If you want to connect from an external app (like DBeaver or pgAdmin on your host machine), you'll need to:</p>
+<h2 id="bootstrap-settings-versus-dashboard-settings">Bootstrap settings versus dashboard settings<a class="headerlink" href="#bootstrap-settings-versus-dashboard-settings" title="Permanent link">&para;</a></h2>
+<p>AIOStreams separates its configuration into two groups:</p>
 <ol>
-<li>Change <code>host</code> in the <code>postgres</code> section of <code>dumb_config.json</code> to <code>0.0.0.0</code></li>
-<li>Add a port binding (e.g., <code>5432:5432</code>) to your container</li>
-<li>Optionally secure with a firewall or password change</li>
+<li><strong>Bootstrap settings</strong> must exist before AIOStreams can open its database. DUMB supplies the port, database URI, base URL, dashboard administrator credentials, data paths, and encryption secret.</li>
+<li><strong>Runtime settings</strong> are stored in the AIOStreams database and should normally be edited from the AIOStreams dashboard.</li>
 </ol>
-<hr />
-<h2 id="is-it-safe-to-run-queries-against-the-databases">Is it safe to run queries against the databases?<a class="headerlink" href="#is-it-safe-to-run-queries-against-the-databases" title="Permanent link">&para;</a></h2>
-<p>Yes — but with caution. Direct queries using tools like pgAdmin or psql can be useful for debugging or data inspection, but changes may break app logic unless you know what you're doing.</p>
-<p>When in doubt, make a backup first!</p>
-<hr />
-<h2 id="related-pages">Related Pages<a class="headerlink" href="#related-pages" title="Permanent link">&para;</a></h2>
+<p>DUMB intentionally avoids setting ordinary runtime options through environment variables. Upstream treats an environment-provided runtime value as operator-locked, which makes the corresponding dashboard field read-only.</p>
+<p>The default DUMB service block is:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">&quot;aiostreams&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;process_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;AIOStreams&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;release_version_enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;release_version&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;latest&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;base_url&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;http://localhost:3006&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;auth_username&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;admin&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;auth_password&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;secret_key&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;database_uri&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;sqlite://./data/db.sqlite&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;suppress_logging&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;log_level&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;INFO&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;port&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">3006</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;auto_update&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;auto_update_mode&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;install&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;auto_update_interval&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">24</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;auto_update_start_time&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;04:00&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;command&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="s2">&quot;node&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="s2">&quot;/aiostreams/runtime/packages/server/dist/server.js&quot;</span>
+<span class="w">  </span><span class="p">],</span>
+<span class="w">  </span><span class="nt">&quot;config_dir&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/aiostreams&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;log_file&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/log/aiostreams.log&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;env&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;NODE_ENV&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;production&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;LD_PRELOAD&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/aiostreams/runtime/lib/libmimalloc.so.2&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;HOME&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/aiostreams/data&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;XDG_CACHE_HOME&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/aiostreams/data/cache&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;DISK_CACHE_DIR&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/aiostreams/data/cache&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;SYSTEM_LIFECYCLE_ENABLED&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;false&quot;</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>DUMB fills and persists <code>secret_key</code> when it is blank. The template <code>http://localhost:3006</code> base URL is local-only bootstrap behavior; setup keeps its port synchronized while the value remains default-like. Onboarding exposes <code>base_url</code>, <code>auth_username</code>, and <code>auth_password</code>; use the service configuration editor for the advanced <code>database_uri</code> override.</p>
+<p><code>release_version_enabled: false</code> follows the official stable <code>latest</code> OCI tag. When enabled, <code>release_version</code> accepts <code>latest</code> or an exact stable semantic tag such as <code>v2.33.2</code>; moving branches, arbitrary tags, and commit SHAs are rejected. DUMB injects <code>PORT</code>, <code>BASE_URL</code>, <code>INTERNAL_URL</code>, <code>SECRET_KEY</code>, <code>DATABASE_URI</code>, <code>AIOSTREAMS_AUTH</code>, and <code>AIOSTREAMS_AUTH_PERMISSIONS</code> from the top-level settings at setup time. Keep ordinary AIOStreams runtime preferences in its dashboard instead of duplicating them under <code>env</code>.</p>
+<h3 id="base_url"><code>BASE_URL</code><a class="headerlink" href="#base_url" title="Permanent link">&para;</a></h3>
+<p>DUMB's <code>aiostreams.base_url</code> is the public base URL AIOStreams uses when it generates manifest, genre, and stream URLs.</p>
 <ul>
-<li><a href="../../services/optional/pgadmin/">pgAdmin Service Guide</a></li>
-<li><a href="../../services/core/riven-backend/">Riven Backend</a></li>
-<li><a href="../../services/optional/zilean/">Zilean</a></li>
-<li><a href="../../features/configuration/">DUMB Configuration</a></li>
+<li>Local-only evaluation can use the generated local value.</li>
+<li>Remote Stremio use requires a stable, browser-reachable HTTPS base URL. A dedicated root hostname such as <code>https://aiostreams.example.com</code> is the normal and recommended deployment.</li>
+<li>Upstream-supported path-prefix deployments may use the configured public prefix when the reverse proxy routes it consistently.</li>
+<li>Do not use DUMB's embedded <code>/ui/aiostreams</code> address as <code>BASE_URL</code>.</li>
+<li>Do not append <code>/stremio/configure</code>, a query string, or a fragment to the base URL.</li>
+</ul>
+<p>After changing <code>base_url</code>, restart AIOStreams and save/install the Stremio configuration again so its generated URLs use the new base URL.</p>
+<h3 id="dashboard-administrator-credentials">Dashboard administrator credentials<a class="headerlink" href="#dashboard-administrator-credentials" title="Permanent link">&para;</a></h3>
+<p>Set <code>auth_username</code> and <code>auth_password</code> during onboarding. The password must contain 12–256 characters and cannot contain commas or leading/trailing whitespace. DUMB maps this pair to AIOStreams' bootstrap authentication and grants the account the explicit <code>admin</code> permission, which includes Dashboard, configuration creation, Proxy, Service, and SABnzbd access.</p>
+<p>The AIOStreams landing and Configure pages can remain public while the Dashboard requires this login. Enable AIOStreams' <strong>Auth Required</strong> runtime setting from the Dashboard if configuration creation should require authentication too.</p>
+<p>Changing either top-level credential requires an AIOStreams restart. Advanced operators can leave <code>auth_password</code> blank and manage a multi-user <code>AIOSTREAMS_AUTH</code> plus <code>AIOSTREAMS_AUTH_PERMISSIONS</code> configuration directly under <code>aiostreams.env</code>; DUMB preserves that explicit environment configuration.</p>
+<h3 id="secret_key"><code>SECRET_KEY</code><a class="headerlink" href="#secret_key" title="Permanent link">&para;</a></h3>
+<p>DUMB generates and persists a cryptographically random 64-character hexadecimal <code>SECRET_KEY</code>. AIOStreams uses it to encrypt stored configurations.</p>
+<div class="admonition danger">
+<p class="admonition-title">Never rotate or delete the generated secret</p>
+<p>Changing <code>SECRET_KEY</code> after first use makes existing encrypted AIOStreams configurations unreadable. Include DUMB's runtime configuration in every AIOStreams backup, keep it private, and restore the same value during disaster recovery.</p>
+</div>
+<h3 id="database-selection">Database selection<a class="headerlink" href="#database-selection" title="Permanent link">&para;</a></h3>
+<p>SQLite is the default and is appropriate for a normal single-instance DUMB deployment. Its effective database file is retained under <code>/aiostreams/data</code>.</p>
+<p>PostgreSQL is an advanced first-deployment choice in the initial DUMB integration:</p>
+<ul>
+<li>DUMB does not expose an <code>aiostreams.postgres_enabled</code> toggle.</li>
+<li>DUMB does not create, migrate, rehearse, or roll back an AIOStreams PostgreSQL database.</li>
+<li>Provision the database and credentials first, then set a complete <code>aiostreams.database_uri</code>, for example <code>postgres://user:password@127.0.0.1:5432/aiostreams</code>.</li>
+<li>If credentials contain reserved URL characters, percent-encode them in the URI.</li>
+</ul>
+<p>Choose the database before storing configurations. Pointing an existing SQLite installation at a blank PostgreSQL database starts with an empty AIOStreams store; it does not copy the SQLite data. AIOStreams applies its own schema migrations to whichever database it opens, but that is not a SQLite-to-PostgreSQL data migration.</p>
+<p>See <a href="../../dependent/postgres/">PostgreSQL</a> for database backup and restore guidance.</p>
+<hr />
+<h2 id="first-start">First start<a class="headerlink" href="#first-start" title="Permanent link">&para;</a></h2>
+<ol>
+<li>Enable AIOStreams during onboarding or from its service configuration.</li>
+<li>Set the dashboard administrator username and a strong password.</li>
+<li>Set <code>base_url</code> to the final public HTTPS base URL when remote Stremio clients will use the addon.</li>
+<li>Start AIOStreams. The first install extracts and validates the official OCI runtime before launch.</li>
+<li>Open the embedded service tab, select <strong>Dashboard</strong>, and sign in with the administrator credentials from step 2.</li>
+<li>Configure the search addons and playback services you need.</li>
+<li>Use <strong>Save &amp; Install</strong> in AIOStreams and install the generated addon in Stremio.</li>
+</ol>
+<p>Always use the port saved in DUMB's current service configuration. DUMB may move <code>3006</code> to another free port if an enabled service or host listener already uses it.</p>
+<hr />
+<h2 id="publish-aiostreams-for-stremio">Publish AIOStreams for Stremio<a class="headerlink" href="#publish-aiostreams-for-stremio" title="Permanent link">&para;</a></h2>
+<p>The embedded service tab is an operator convenience. A remote Stremio client must be able to reach the manifest and stream URLs generated from <code>BASE_URL</code> directly.</p>
+<p>For a DUMB-managed reverse-proxy path:</p>
+<ol>
+<li>Create a dedicated hostname in <a href="../traefik-proxy-admin/">Traefik Proxy Admin</a>, such as <code>aiostreams.example.com</code>.</li>
+<li>Point it to <code>127.0.0.1</code> and AIOStreams' <strong>saved</strong> DUMB port, normally <code>3006</code>.</li>
+<li>Provide trusted public HTTPS, either through Traefik's own certificate flow or <a href="../cloudflared/">Cloudflared</a>.</li>
+<li>Set <code>aiostreams.base_url</code> to the exact public base URL and restart AIOStreams.</li>
+<li>Open <code>https://aiostreams.example.com/stremio/configure</code>, save the configuration, and install it in Stremio.</li>
+</ol>
+<p>When Cloudflare Tunnel terminates public TLS, leave TPA's <strong>Certificate Resolver</strong> blank for this route. Configure the tunnel origin as <code>https://localhost:18080</code> with <strong>No TLS Verify</strong> enabled, as described in the Cloudflared guide.</p>
+<div class="admonition warning">
+<p class="admonition-title">Do not put an interactive login in front of the whole addon host</p>
+<p>Stremio fetches manifests, catalogs, and streams without completing a browser SSO or ForwardAuth redirect. A whole-host Authelia, TPA SSO, or Cloudflare Access challenge can therefore break the addon even when the configure page works in a browser.</p>
+<p>Use AIOStreams' own operator/configuration controls and treat an installed manifest URL as a bearer secret. Only use an external access layer when you have deliberately exempted every Stremio-facing route required by your configuration.</p>
+</div>
+<hr />
+<h2 id="connect-dumb-services">Connect DUMB services<a class="headerlink" href="#connect-dumb-services" title="Permanent link">&para;</a></h2>
+<p>Use direct loopback URLs for services in the same DUMB container. Do not enter a DUMB embedded <code>/ui/&lt;service&gt;</code> URL. Because DUMB can resolve port conflicts dynamically, verify each service's saved port before copying the example.</p>
+<h3 id="prowlarr">Prowlarr<a class="headerlink" href="#prowlarr" title="Permanent link">&para;</a></h3>
+<p>Prowlarr can supply both torrent and Usenet search results to AIOStreams.</p>
+<ol>
+<li>In Prowlarr, copy the API key from <strong>Settings → General</strong>.</li>
+<li>In the AIOStreams dashboard, open the built-in Prowlarr settings.</li>
+<li>Set the URL to <code>http://127.0.0.1:9696</code>, replacing <code>9696</code> with the saved Prowlarr instance port.</li>
+<li>Enter the API key and select the indexers AIOStreams may query.</li>
+<li>On <code>/stremio/configure</code>, add the built-in <strong>Prowlarr</strong> addon to the configuration and select compatible playback services.</li>
+</ol>
+<p>Prowlarr redirects NZB grabs instead of proxying them. Review each indexer's rules if search and grab traffic can leave through different public IP addresses. Co-hosting Prowlarr, AIOStreams, and the Usenet playback service inside DUMB normally gives them the same outbound address, but network-level proxies can change that.</p>
+<h3 id="zilean">Zilean<a class="headerlink" href="#zilean" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Enable and start DUMB's Zilean service.</li>
+<li>In AIOStreams' built-in Zilean settings, use <code>http://127.0.0.1:8182</code>, replacing <code>8182</code> with the saved Zilean port.</li>
+<li>Add the built-in <strong>Zilean</strong> addon on <code>/stremio/configure</code>.</li>
+<li>Select a compatible Debrid playback service for the results.</li>
+</ol>
+<p>Zilean supplies cached Debrid Media Manager hash-list results. It does not turn those results into InfiniDysk or AltMount Usenet playback.</p>
+<h3 id="infinidysk">InfiniDysk<a class="headerlink" href="#infinidysk" title="Permanent link">&para;</a></h3>
+<p>AIOStreams currently labels this service <strong>NzbDAV</strong>. Select <strong>NzbDAV</strong> in AIOStreams when connecting DUMB's canonical <strong>InfiniDysk</strong> service.</p>
+<ol>
+<li>Complete InfiniDysk's provider setup.</li>
+<li>Copy the SABnzbd API key and configure dedicated WebDAV credentials in InfiniDysk.</li>
+<li>On AIOStreams' <strong>Services</strong> page, add <strong>NzbDAV</strong>.</li>
+<li>Set <strong>URL</strong> to InfiniDysk's direct local frontend/API address, normally <code>http://127.0.0.1:3000</code>. Use its saved port when DUMB reassigned it.</li>
+<li>Enter the SABnzbd API key, WebDAV username, and WebDAV password.</li>
+<li>Choose one player-facing route:<ul>
+<li><strong>AIOStreams proxy, recommended:</strong> Leave <strong>Public URL</strong> blank and provide an AIOStreams auth credential (<code>username:password</code>) whose user has <strong>Proxy</strong> permission.</li>
+<li><strong>Direct:</strong> Set <strong>Public URL</strong> to a separately published, trusted HTTPS InfiniDysk origin.</li>
+</ul>
+</li>
+</ol>
+<p>The local URL is for AIOStreams-to-InfiniDysk API traffic. The public URL, when set, is sent to the player. Never put a loopback or DUMB embedded UI address in <strong>Public URL</strong>.</p>
+<h3 id="altmount">AltMount<a class="headerlink" href="#altmount" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Complete AltMount's administrator, NNTP provider, WebDAV, and SABnzbd-compatible API setup.</li>
+<li>In AltMount, confirm the SAB API is enabled and copy the API key plus WebDAV credentials.</li>
+<li>On AIOStreams' <strong>Services</strong> page, add <strong>AltMount</strong>.</li>
+<li>Set <strong>URL</strong> to <code>http://127.0.0.1:8088</code>, replacing <code>8088</code> with AltMount's saved DUMB port.</li>
+<li>Enter the API key and WebDAV credentials.</li>
+<li>Leave <strong>Public URL</strong> blank and provide an AIOStreams auth credential (<code>username:password</code>) whose user has <strong>Proxy</strong> permission, or intentionally publish AltMount at its own trusted HTTPS origin and enter that direct URL.</li>
+</ol>
+<p>AIOStreams uses AltMount's SABnzbd-compatible API and WebDAV stream surface. This integration is independent of whether AltMount uses FUSE, embedded rclone, external rclone, or no mount for its Arr workflow.</p>
+<h3 id="aiostreams-native-usenet-engine">AIOStreams native Usenet engine<a class="headerlink" href="#aiostreams-native-usenet-engine" title="Permanent link">&para;</a></h3>
+<p>InfiniDysk and AltMount are optional for AIOStreams. To stream directly through AIOStreams instead:</p>
+<ol>
+<li>Configure NNTP providers in the AIOStreams dashboard's Usenet settings.</li>
+<li>Add indexers through Prowlarr, Newznab, or another supported built-in addon.</li>
+<li>Add <strong>AIOStreams</strong> as the playback service on <code>/stremio/configure</code>.</li>
+<li>Supply an AIOStreams auth credential (<code>username:password</code>) whose user has <strong>Service</strong> permission.</li>
+</ol>
+<p>The native engine uses the AIOStreams host for both search-related proxying and NNTP streaming, and stores bounded disk cache data beneath <code>/aiostreams/data</code> by default. Respect provider connection limits when other DUMB services use the same NNTP account.</p>
+<hr />
+<h2 id="authentication-and-secrets">Authentication and secrets<a class="headerlink" href="#authentication-and-secrets" title="Permanent link">&para;</a></h2>
+<p>AIOStreams' configure page is public by default, but its Dashboard requires operator authentication. For a shared or internet-reachable deployment:</p>
+<ul>
+<li>Use strong onboarding-managed administrator credentials; DUMB translates them into <code>AIOSTREAMS_AUTH</code> and an explicit <code>admin</code> permission entry.</li>
+<li>Enable AIOStreams' <strong>Auth Required</strong> runtime setting when configuration creation should require a login.</li>
+<li>Keep the generated configuration access key stable. Rotating it invalidates existing configurations until they are saved again.</li>
+<li>For advanced multi-user configurations, give each additional AIOStreams auth credential (<code>username:password</code>) only the permission its user needs, such as <strong>Proxy</strong> for proxied InfiniDysk/AltMount streams or <strong>Service</strong> for the native Usenet engine.</li>
+<li>Keep sensitive logging disabled and do not post manifest URLs, AIOStreams auth credentials, provider credentials, or exported configs containing credentials in support logs.</li>
+</ul>
+<p>The installed Stremio manifest URL grants access to that saved configuration. Treat it like an API token even when the dashboard itself requires login.</p>
+<p>An AIOStreams auth credential is the <code>username:password</code> pair defined in <code>AIOSTREAMS_AUTH</code>; it is not the saved Stremio manifest URL or configuration password. The onboarding-managed administrator has all permissions. Advanced operators can define narrower additional users directly in the environment. Follow the upstream environment-variable guide for the current authentication and permission syntax.</p>
+<hr />
+<h2 id="backups-and-recovery">Backups and recovery<a class="headerlink" href="#backups-and-recovery" title="Permanent link">&para;</a></h2>
+<p>Back up AIOStreams before upgrades, database changes, or secret/configuration edits.</p>
+<h3 id="sqlite-deployment">SQLite deployment<a class="headerlink" href="#sqlite-deployment" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Stop AIOStreams, or use a SQLite-consistent online backup method.</li>
+<li>Back up all of <code>/aiostreams/data</code>, not only <code>db.sqlite</code>.</li>
+<li>Back up <code>/config/dumb_config.json</code> and its DUMB-managed backup so the generated <code>SECRET_KEY</code>, <code>base_url</code>, selected version, and advanced bootstrap values are recoverable.</li>
+<li>Store a copy outside the DUMB container and outside the host filesystem that holds the live service.</li>
+<li>Test restoring the data and the <strong>same</strong> secret into a disposable environment.</li>
+</ol>
+<h3 id="postgresql-deployment">PostgreSQL deployment<a class="headerlink" href="#postgresql-deployment" title="Permanent link">&para;</a></h3>
+<p>Back up <code>/config/dumb_config.json</code> and <code>/aiostreams/data</code>, then create and test a logical PostgreSQL dump of the AIOStreams database. The data-directory copy does not contain PostgreSQL records.</p>
+<p>AIOStreams also offers a per-configuration export under <strong>Save &amp; Install → Backups</strong>. Use <strong>Exclude Credentials</strong> before sharing an export. That JSON is useful for rebuilding one user's addon configuration, but it does not replace the instance database, DUMB bootstrap configuration, or <code>SECRET_KEY</code> backup.</p>
+<hr />
+<h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Symptom</th>
+<th>Check</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>AIOStreams does not start</td>
+<td>Confirm the log does not report a missing/invalid 64-hex secret, database connection failure, unsupported image architecture, or failed OCI verification.</td>
+</tr>
+<tr>
+<td>Configure opens but Dashboard rejects login</td>
+<td>Use the <code>aiostreams.auth_username</code> and <code>aiostreams.auth_password</code> values saved during onboarding, then restart AIOStreams after changing either value. The Configure page is public unless <strong>Auth Required</strong> is enabled.</td>
+</tr>
+<tr>
+<td>Configure page works locally but Stremio cannot install</td>
+<td><code>base_url</code> must be the exact trusted public HTTPS base URL (including any configured prefix), not a loopback, raw container port, <code>/ui/aiostreams</code> URL, configure route, query, or fragment.</td>
+</tr>
+<tr>
+<td>Addon installed before <code>base_url</code> changed still fails</td>
+<td>Restart AIOStreams, reopen <code>/stremio/configure</code>, and save/install the configuration again.</td>
+</tr>
+<tr>
+<td>Prowlarr or Zilean test fails</td>
+<td>Use <code>127.0.0.1</code> with the service's saved DUMB port and confirm its API key when required.</td>
+</tr>
+<tr>
+<td>InfiniDysk or AltMount returns an unreachable stream URL</td>
+<td>Leave <strong>Public URL</strong> blank and configure an AIOStreams auth credential (<code>username:password</code>) whose user has <strong>Proxy</strong> permission, or set it to a separate trusted HTTPS origin reachable by the player.</td>
+</tr>
+<tr>
+<td>Existing configs fail after restore</td>
+<td>Restore the original <code>SECRET_KEY</code>; a newly generated value cannot decrypt them.</td>
+</tr>
+<tr>
+<td>Switching <code>aiostreams.database_uri</code> shows an empty installation</td>
+<td>Selecting another database does not migrate data. Restore the former URI/database or perform an operator-managed migration from a verified backup.</td>
+</tr>
+<tr>
+<td>Public browser route works but playback redirects to login</td>
+<td>Remove the interactive whole-host auth middleware or design explicit Stremio-route exemptions.</td>
+</tr>
+</tbody>
+</table>
+<p>Check <code>/api/v1/health</code> on the direct service listener when distinguishing AIOStreams health from DNS, TLS, or reverse-proxy problems.</p>
+<hr />
+<h2 id="related-links">Related links<a class="headerlink" href="#related-links" title="Permanent link">&para;</a></h2>
+<ul>
+<li><a href="https://github.com/Viren070/AIOStreams">AIOStreams repository</a></li>
+<li><a href="https://docs.aiostreams.viren070.me/">AIOStreams documentation</a></li>
+<li><a href="https://docs.aiostreams.viren070.me/configuration/environment-variables">AIOStreams environment variables</a></li>
+<li><a href="https://docs.aiostreams.viren070.me/guides/usenet">AIOStreams Usenet guide</a></li>
+<li><a href="../../core/prowlarr/">Prowlarr</a></li>
+<li><a href="../zilean/">Zilean</a></li>
+<li><a href="../../core/infinidysk/">InfiniDysk</a></li>
+<li><a href="../../core/altmount/">AltMount</a></li>
+<li><a href="../traefik-proxy-admin/">Traefik Proxy Admin</a></li>
+<li><a href="../cloudflared/">Cloudflared</a></li>
 </ul>
 
 
@@ -5526,7 +5845,7 @@
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../plex/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Plex">
+          <a href="../mediastorm/" class="md-footer__link md-footer__link--prev" aria-label="Previous: mediastorm">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-arrow-left" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7M19 12H5"/></svg>
@@ -5536,20 +5855,20 @@
                 Previous
               </span>
               <div class="md-ellipsis">
-                Plex
+                mediastorm
               </div>
             </div>
           </a>
         
         
           
-          <a href="../rclone/" class="md-footer__link md-footer__link--next" aria-label="Next: rclone">
+          <a href="../traefik-proxy-admin/" class="md-footer__link md-footer__link--next" aria-label="Next: Traefik Proxy Admin">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                rclone
+                Traefik Proxy Admin
               </div>
             </div>
             <div class="md-footer__button md-icon">
@@ -5622,16 +5941,16 @@
       
       
       
-      <script id="__config" type="application/json">{"annotate":null,"base":"../..","features":["navigation.instant","navigation.instant.progress","navigation.expand","navigation.tabs","navigation.path","navigation.indexes","navigation.top","navigation.footer","navigation.sections","navigation.tracking","toc.follow","search.suggest","search.highlight","search.share","content.action.edit","content.action.view","content.code.copy","content.code.annotate"],"search":"../../assets/javascripts/workers/search.e2d2d235.min.js","tags":null,"translations":{"clipboard.copied":"Copied to clipboard","clipboard.copy":"Copy to clipboard","search.result.more.one":"1 more on this page","search.result.more.other":"# more on this page","search.result.none":"No matching documents","search.result.one":"1 matching document","search.result.other":"# matching documents","search.result.placeholder":"Type to start searching","search.result.term.missing":"Missing","select.version":"Select version"},"version":null}</script>
+      <script id="__config" type="application/json">{"annotate":null,"base":"../../..","features":["navigation.instant","navigation.instant.progress","navigation.expand","navigation.tabs","navigation.path","navigation.indexes","navigation.top","navigation.footer","navigation.sections","navigation.tracking","toc.follow","search.suggest","search.highlight","search.share","content.action.edit","content.action.view","content.code.copy","content.code.annotate"],"search":"../../../assets/javascripts/workers/search.e2d2d235.min.js","tags":null,"translations":{"clipboard.copied":"Copied to clipboard","clipboard.copy":"Copy to clipboard","search.result.more.one":"1 more on this page","search.result.more.other":"# more on this page","search.result.none":"No matching documents","search.result.one":"1 matching document","search.result.other":"# matching documents","search.result.placeholder":"Type to start searching","search.result.term.missing":"Missing","select.version":"Select version"},"version":null}</script>
     
     
-      <script src="../../assets/javascripts/bundle.00c35305.min.js"></script>
+      <script src="../../../assets/javascripts/bundle.00c35305.min.js"></script>
       
         <script src="https://cdn.jsdelivr.net/npm/medium-zoom@1.1.0/dist/medium-zoom.min.js"></script>
       
-        <script src="../../assets/js/zoom.js"></script>
+        <script src="../../../assets/js/zoom.js"></script>
       
-        <script src="../../assets/js/github-meta.js"></script>
+        <script src="../../../assets/js/github-meta.js"></script>
       
     
   </body>

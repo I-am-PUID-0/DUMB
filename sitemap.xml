@@ -205,6 +205,9 @@
         <loc>https://dumbarr.com/services/optional/mediastorm/</loc>
       </url>
       <url>
+        <loc>https://dumbarr.com/services/optional/aiostreams/</loc>
+      </url>
+      <url>
         <loc>https://dumbarr.com/services/optional/traefik-proxy-admin/</loc>
       </url>
       <url>

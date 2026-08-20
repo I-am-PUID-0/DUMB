@@ -2935,6 +2935,8 @@
       
         
       
+        
+      
     
     
     
@@ -3211,6 +3213,36 @@
   
   
     <li class="md-nav__item">
+      <a href="../aiostreams/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-clapperboard" viewBox="0 0 24 24"><path d="M20.2 6 3 11l-.9-2.4c-.3-1.1.3-2.2 1.3-2.5l13.5-4c1.1-.3 2.2.3 2.5 1.3ZM6.2 5.3l3.1 3.9M12.4 3.4l3.1 4M3 11h18v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    AIOStreams
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../traefik-proxy-admin/" class="md-nav__link">
         
   
@@ -3370,27 +3402,10 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Configuration Settings in dumb_config.json">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#configuration-key-descriptions" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Configuration Key Descriptions
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
 </li>
       
         <li class="md-nav__item">
-  <a href="#commit--branch--version-targeting" class="md-nav__link">
+  <a href="#commit-branch-version-targeting" class="md-nav__link">
     <span class="md-ellipsis">
       
         Commit / Branch / Version Targeting
@@ -3405,6 +3420,17 @@
     <span class="md-ellipsis">
       
         Tips
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#aiostreams-integration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        AIOStreams integration
       
     </span>
   </a>
@@ -5206,27 +5232,10 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Configuration Settings in dumb_config.json">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#configuration-key-descriptions" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Configuration Key Descriptions
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
 </li>
       
         <li class="md-nav__item">
-  <a href="#commit--branch--version-targeting" class="md-nav__link">
+  <a href="#commit-branch-version-targeting" class="md-nav__link">
     <span class="md-ellipsis">
       
         Commit / Branch / Version Targeting
@@ -5241,6 +5250,17 @@
     <span class="md-ellipsis">
       
         Tips
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#aiostreams-integration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        AIOStreams integration
       
     </span>
   </a>
@@ -5359,7 +5379,7 @@
 
 <p>Zilean is a service that enables users to search for content sourced by <a href="https://github.com/debridmediamanager/">Debrid Media Manager</a> and shared by others. It can be configured as a Torznab indexer in various content applications, allowing seamless integration and content discovery. Additionally, Zilean can scrape data from a running Zurg instance and other Zilean instances. </p>
 <hr />
-<h2 id="configuration-settings-in-dumb_configjson">Configuration Settings in <code>dumb_config.json</code><a class="headerlink" href="#configuration-settings-in-dumb_configjson" title="Permanent link">#</a></h2>
+<h2 id="configuration-settings-in-dumb_configjson">Configuration Settings in <code>dumb_config.json</code><a class="headerlink" href="#configuration-settings-in-dumb_configjson" title="Permanent link">&para;</a></h2>
 <p>Below is a sample configuration for Zilean within the <code>dumb_config.json</code> file:</p>
 <div class="highlight"><pre><span></span><code><span class="nt">&quot;zilean&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
@@ -5403,7 +5423,7 @@
 <span class="w">  </span><span class="p">}</span>
 <span class="p">},</span>
 </code></pre></div>
-<h3 id="configuration-key-descriptions">Configuration Key Descriptions<a class="headerlink" href="#configuration-key-descriptions" title="Permanent link">#</a></h3>
+<h3 id="configuration-key-descriptions">Configuration Key Descriptions<a class="headerlink" href="#configuration-key-descriptions" title="Permanent link">&para;</a></h3>
 <ul>
 <li><strong><code>enabled</code></strong>: Whether to start the Zilean service.</li>
 <li><strong><code>process_name</code></strong>: Used in logs and process tracking.</li>
@@ -5437,7 +5457,7 @@
 <li><strong><code>Zilean__Database__ConnectionString</code></strong>: Connection string for PostgreSQL.</li>
 </ul>
 <hr />
-<h2 id="commit--branch--version-targeting">Commit / Branch / Version Targeting<a class="headerlink" href="#commit--branch--version-targeting" title="Permanent link">#</a></h2>
+<h2 id="commit-branch-version-targeting">Commit / Branch / Version Targeting<a class="headerlink" href="#commit-branch-version-targeting" title="Permanent link">&para;</a></h2>
 <p>You can control which source revision of Zilean is deployed by setting:</p>
 <ul>
 <li><code>commit_sha</code> to a full 40-character SHA for an immutable source pin</li>
@@ -5447,7 +5467,7 @@
 <p>The exact commit overrides release and branch selection. Automatic updates stay
 disabled while the pin is present.</p>
 <hr />
-<h2 id="tips">Tips<a class="headerlink" href="#tips" title="Permanent link">#</a></h2>
+<h2 id="tips">Tips<a class="headerlink" href="#tips" title="Permanent link">&para;</a></h2>
 <ul>
 <li>The first-time run of Zilean can take a long time; see the <a href="../../../faq/zilean/#why-is-zilean-spamming-my-logs">Zilean FAQ</a> for more info.</li>
 <li>Runtime Zilean rebuilds use an on-demand managed .NET 10 SDK. See the <a href="../../../faq/zilean/#why-does-dotnet-restore-say-that-no-net-sdks-were-found">Zilean SDK troubleshooting guide</a> if restore reports exit code <code>145</code> or no installed SDK.</li>
@@ -5456,7 +5476,17 @@ disabled while the pin is present.</p>
 <li>Use the <code>clear_on_update</code> and <code>exclude_dirs</code> settings to preserve persistent data.</li>
 </ul>
 <hr />
-<h2 id="resources">Resources<a class="headerlink" href="#resources" title="Permanent link">#</a></h2>
+<h2 id="aiostreams-integration">AIOStreams integration<a class="headerlink" href="#aiostreams-integration" title="Permanent link">&para;</a></h2>
+<p><a href="../aiostreams/">AIOStreams</a> can use the local Zilean API as a built-in Debrid search source:</p>
+<ol>
+<li>Start Zilean and confirm it is healthy.</li>
+<li>In AIOStreams' built-in Zilean settings, enter <code>http://127.0.0.1:8182</code>, replacing <code>8182</code> with Zilean's saved DUMB port.</li>
+<li>Add the built-in Zilean addon on <code>/stremio/configure</code>.</li>
+<li>Select a compatible Debrid playback service for its results.</li>
+</ol>
+<p>Zilean supplies cached Debrid Media Manager hash-list results. It is not a Usenet playback service and does not route results through InfiniDysk or AltMount.</p>
+<hr />
+<h2 id="resources">Resources<a class="headerlink" href="#resources" title="Permanent link">&para;</a></h2>
 <ul>
 <li><a href="https://github.com/iPromKnight/zilean">Zilean GitHub Repository</a></li>
 </ul>
