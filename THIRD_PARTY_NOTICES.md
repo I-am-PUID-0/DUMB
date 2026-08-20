@@ -55,6 +55,20 @@ components and transitive dependencies.
 
 ---
 
+## AIOStreams
+
+- Project: <https://github.com/Viren070/AIOStreams>
+- Upstream license declarations: the repository `LICENSE` file and official
+  OCI image label identify GNU General Public License version 3, while the root
+  `package.json` currently declares MIT.
+- Maintainer review: upstream should clarify this metadata conflict; DUMB does
+  not choose or invent replacement terms.
+- Note: DUMB installs the complete `/app` runtime from the official
+  multi-architecture OCI image. The upstream license file is retained at
+  `/aiostreams/runtime/LICENSE`, alongside the bundled production dependencies.
+
+---
+
 ## Apprise
 
 - Project: <https://github.com/caronc/apprise>

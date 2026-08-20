@@ -89,6 +89,7 @@ PERSISTENT_DATA_NAMES = {
     "profilarr": "profilarr",
     "pulsarr": "pulsarr",
     "maintainerr": "maintainerr",
+    "aiostreams": "aiostreams",
     "mediastorm": "mediastorm",
     "altmount": "altmount",
 }

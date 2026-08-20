@@ -47,6 +47,41 @@ class LoggerRedactionTests(unittest.TestCase):
             "password: [REDACTED] apiKey=[REDACTED] secret=[REDACTED] token=[REDACTED]",
         )
 
+    def test_redacts_secret_key_variants(self):
+        line = (
+            "SECRET_KEY=first secret-key: second "
+            '"secret key": "third" /config?secret_key=fourth'
+        )
+
+        self.assertEqual(
+            redact_sensitive_log_data(line),
+            "SECRET_KEY=[REDACTED] secret-key: [REDACTED] "
+            '"secret key": "[REDACTED]" /config?secret_key=[REDACTED]',
+        )
+
+    def test_redacts_aiostreams_auth_credentials(self):
+        lines = "\n".join(
+            [
+                "AIOSTREAMS_AUTH=admin:correct-horse-battery-staple",
+                "AIOSTREAMS_AUTH_PERMISSIONS=admin=admin",
+                "Overriding 'auth_password' = 'correct-horse-battery-staple' in service config",
+            ]
+        )
+
+        redacted = redact_sensitive_log_data(lines)
+
+        self.assertNotIn("correct-horse-battery-staple", redacted)
+        self.assertEqual(
+            "\n".join(
+                [
+                    "AIOSTREAMS_AUTH=[REDACTED]",
+                    "AIOSTREAMS_AUTH_PERMISSIONS=[REDACTED]",
+                    "Overriding 'auth_password' = '[REDACTED]' in service config",
+                ]
+            ),
+            redacted,
+        )
+
     def test_redacts_mediastorm_generated_credentials(self):
         webdav_line = "WebDAV credentials: novastream / generated-password"
         homepage_line = "Homepage API key: generated-api-key"

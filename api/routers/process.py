@@ -327,6 +327,7 @@ NON_CORE_HARD_DEPENDENCIES = {
 }
 DOCUMENTED_INTEGRATION_LINKS = {
     "seerr": ["sonarr", "radarr"],
+    "aiostreams": ["zilean", "prowlarr", "infinidysk", "altmount"],
 }
 
 STATIC_URLS_BY_KEY = {
@@ -351,6 +352,7 @@ STATIC_URLS_BY_KEY = {
     "profilarr": "https://github.com/Dictionarry-Hub/profilarr",
     "pulsarr": "https://github.com/jamcalli/Pulsarr",
     "maintainerr": "https://github.com/Maintainerr/Maintainerr",
+    "aiostreams": "https://github.com/Viren070/AIOStreams",
     "mediastorm": "https://github.com/godver3/mediastorm",
     "altmount": "https://github.com/javi11/altmount",
     "traefik": "https://traefik.io/",
@@ -388,6 +390,7 @@ SPONSORSHIP_URLS_BY_KEY = {
     "profilarr": "https://github.com/sponsors/Dictionarry-Hub",
     "pulsarr": "https://ko-fi.com/jamcalli",
     "maintainerr": "https://opencollective.com/maintainerr",
+    "aiostreams": "https://github.com/sponsors/Viren070",
     "mediastorm": "https://github.com/sponsors/godver3",
     "infinidysk": "https://buymeacoffee.com/hoivikaj",
     "traefik": "https://github.com/sponsors/traefik",
@@ -427,6 +430,7 @@ DEFAULT_SERVICE_PORTS = {
     "profilarr": 6868,
     "pulsarr": 3003,
     "maintainerr": 6246,
+    "aiostreams": 3006,
     "mediastorm": 7777,
     "altmount": 8088,
     "traefik_proxy_admin": 3004,
@@ -536,6 +540,7 @@ CORE_SERVICE_NAMES = {
     "neutarr": "NeutArr",
     "profilarr": "Profilarr",
     "maintainerr": "Maintainerr",
+    "aiostreams": "AIOStreams",
     "mediastorm": "mediastorm",
     "bazarr": "Bazarr",
     "tautulli": "Tautulli",
@@ -698,6 +703,7 @@ OPTIONAL_POST_CORE = [
     "riven_frontend",
     "bazarr",
     "maintainerr",
+    "aiostreams",
     "mediastorm",
     "cloudflared",
 ]
@@ -711,6 +717,7 @@ OPTIONAL_SERVICES = {
     "bazarr": "Bazarr",
     "pulsarr": "Pulsarr",
     "maintainerr": "Maintainerr",
+    "aiostreams": "AIOStreams",
     "mediastorm": "mediastorm",
     "traefik_proxy_admin": "Traefik Proxy Admin",
     "authelia": "Authelia",
@@ -775,6 +782,14 @@ Maintainerr
 - Can unmonitor or delete Arr media, clear Seerr requests, and remove files after a configurable delay.
 
 Documentation: https://dumbarr.com/services/optional/maintainerr""",
+    "aiostreams": """\
+AIOStreams
+- Self-hosted Stremio addon manager and stream aggregator for debrid and Usenet sources.
+- Supports built-in Usenet plus InfiniDysk and AltMount service credentials.
+- Integrates with Zilean and Prowlarr and can combine many Stremio addons.
+- Requires a stable public HTTPS Base URL for installation on non-local Stremio clients.
+
+Documentation: https://dumbarr.com/services/optional/aiostreams""",
     "mediastorm": """\
 mediastorm
 - Fully self-hosted streaming server for Debrid, Torrent, and Usenet sources.
@@ -864,6 +879,9 @@ SERVICE_OPTION_DESCRIPTIONS = {
     "pinned_version": "The specific binary release version to deploy, or latest.",
     "tunnel_token": "Cloudflare Tunnel token used by cloudflared to connect this DUMB instance to Cloudflare.",
     "public_url": "Public HTTPS URL for the Authelia portal, such as https://auth.example.com.",
+    "base_url": "Browser-facing AIOStreams URL. Use public HTTPS for remote Stremio clients; changing it requires reinstalling generated addon URLs.",
+    "auth_username": "AIOStreams dashboard administrator username. DUMB grants this account the AIOStreams admin permission.",
+    "auth_password": "AIOStreams dashboard administrator password. Use at least 12 characters; changing it requires an AIOStreams restart.",
     "cookie_domain": "Cookie domain Authelia protects, such as example.com.",
     "default_redirection_url": "Optional HTTPS destination used after visiting Authelia directly.",
     "authorization_policy": "Default Authelia policy for protected routes: one_factor or two_factor.",
@@ -5453,6 +5471,15 @@ async def get_optional_services(
                     "mediastorm OCI version: latest, a release tag such as 1.5.0, "
                     "a GitHub release such as v1.5.0-20260711, a full commit SHA, "
                     "or a sha256 digest."
+                )
+        if key == "aiostreams":
+            if "release_version_enabled" in svc_opt_desc:
+                svc_opt_desc["release_version_enabled"] = (
+                    "Pin AIOStreams to an official stable OCI release instead of following latest."
+                )
+            if "release_version" in svc_opt_desc:
+                svc_opt_desc["release_version"] = (
+                    "Official AIOStreams OCI target: latest or a stable tag such as v2.33.2."
                 )
         instance_opt_desc: Dict[str, Dict[str, str]] = {}
         if supports_instances:

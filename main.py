@@ -1022,6 +1022,7 @@ def main():
             "bazarr",
             "pulsarr",
             "maintainerr",
+            "aiostreams",
             "mediastorm",
             "cloudflared",
         ]

@@ -66,6 +66,35 @@ class ServiceHealthMonitorTests(unittest.TestCase):
         self.assertEqual(url, "http://127.0.0.1:7777/health")
 
     @patch("utils.service_health.requests.request")
+    def test_aiostreams_uses_database_aware_health_endpoint(self, request):
+        request.return_value = FakeResponse(
+            body=json.dumps({"success": True}),
+            content_type="application/json",
+        )
+
+        result = self.monitor.check(
+            "aiostreams", "AIOStreams", {"port": 3006}, process_identity=123
+        )
+
+        self.assertEqual(result["status"], "healthy")
+        self.assertTrue(result["healthy"])
+        self.assertEqual(result["details"]["endpoint"], "/api/v1/health")
+        _, url = request.call_args.args
+        self.assertEqual(url, "http://127.0.0.1:3006/api/v1/health")
+
+    @patch("utils.service_health.requests.request")
+    def test_aiostreams_unexpected_health_payload_is_degraded(self, request):
+        request.return_value = FakeResponse(
+            body=json.dumps({"status": "ok"}),
+            content_type="application/json",
+        )
+
+        result = self.monitor.check("aiostreams", "AIOStreams", {"port": 3006})
+
+        self.assertEqual(result["status"], "degraded")
+        self.assertEqual(result["details"]["validation"], "missing success")
+
+    @patch("utils.service_health.requests.request")
     def test_nzbdav_migration_response_is_starting_not_unhealthy(self, request):
         request.return_value = FakeResponse(
             status_code=503,

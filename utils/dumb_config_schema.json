@@ -4646,6 +4646,114 @@
         "env"
       ]
     },
+    "aiostreams": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "process_name": {
+          "type": "string"
+        },
+        "release_version_enabled": {
+          "type": "boolean"
+        },
+        "release_version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^(?:latest|v?\\d+\\.\\d+\\.\\d+)$"
+        },
+        "base_url": {
+          "type": "string",
+          "minLength": 1
+        },
+        "auth_username": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[^,:=|\\r\\n]+$"
+        },
+        "auth_password": {
+          "type": "string",
+          "maxLength": 256
+        },
+        "secret_key": {
+          "type": "string",
+          "pattern": "^$|^[0-9a-fA-F]{64}$"
+        },
+        "database_uri": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^(?:sqlite|postgres|postgresql)://"
+        },
+        "suppress_logging": {
+          "type": "boolean"
+        },
+        "log_level": {
+          "type": "string"
+        },
+        "port": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535
+        },
+        "auto_update": {
+          "type": "boolean"
+        },
+        "auto_update_mode": {
+          "type": "string",
+          "enum": [
+            "install",
+            "check_only"
+          ]
+        },
+        "auto_update_interval": {
+          "type": "number"
+        },
+        "auto_update_start_time": {
+          "type": "string",
+          "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+        },
+        "command": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "config_dir": {
+          "type": "string"
+        },
+        "log_file": {
+          "type": "string"
+        },
+        "env": {
+          "type": "object"
+        }
+      },
+      "required": [
+        "enabled",
+        "process_name",
+        "release_version_enabled",
+        "release_version",
+        "base_url",
+        "auth_username",
+        "auth_password",
+        "secret_key",
+        "database_uri",
+        "suppress_logging",
+        "log_level",
+        "port",
+        "auto_update",
+        "auto_update_mode",
+        "auto_update_interval",
+        "auto_update_start_time",
+        "command",
+        "config_dir",
+        "log_file",
+        "env"
+      ]
+    },
     "mediastorm": {
       "type": "object",
       "properties": {
@@ -5283,6 +5391,7 @@
     "bazarr",
     "pulsarr",
     "maintainerr",
+    "aiostreams",
     "mediastorm",
     "altmount",
     "neutarr",

@@ -36,6 +36,14 @@ from utils.mediastorm_installer import (
     mediastorm_runtime_ready,
     mediastorm_runtime_matches_selection,
 )
+from utils.aiostreams_installer import (
+    AIOSTREAMS_OCI_REPOSITORY,
+    AIOStreamsInstallError,
+    aiostreams_install_selector,
+    aiostreams_runtime_matches_selection,
+    aiostreams_runtime_ready,
+    install_aiostreams_runtime,
+)
 from pathlib import Path
 import defusedxml.ElementTree as ET
 import yaml
@@ -1152,6 +1160,23 @@ def setup_release_version(process_handler, config, process_name, key):
         )
         return True, None
 
+    if key == "aiostreams":
+        try:
+            result = install_aiostreams_runtime(config)
+        except AIOStreamsInstallError as exc:
+            return False, str(exc)
+        success, error = chown_recursive(result["runtime_dir"], user_id, group_id)
+        if not success:
+            return False, error
+        logger.info(
+            "Installed AIOStreams %s from OCI image %s:%s@%s.",
+            result["version"],
+            AIOSTREAMS_OCI_REPOSITORY,
+            result["oci_reference"],
+            result["image_digest"],
+        )
+        return True, None
+
     if key in [
         "bazarr",
         "sonarr",
@@ -1982,6 +2007,7 @@ def _setup_project_inner(
             source_managed_by_service_setup = key in {
                 "emby",
                 "profilarr",
+                "aiostreams",
                 "sonarr",
                 "radarr",
                 "lidarr",
@@ -2435,6 +2461,14 @@ def _setup_project_inner(
                 return False, error
         if key == "mediastorm":
             success, error = setup_mediastorm(
+                process_handler,
+                install_only=install_phase and not configure_phase,
+                configure_only=configure_phase and not install_phase,
+            )
+            if not success:
+                return False, error
+        if key == "aiostreams":
+            success, error = setup_aiostreams(
                 process_handler,
                 install_only=install_phase and not configure_phase,
                 configure_only=configure_phase and not install_phase,
@@ -7595,6 +7629,228 @@ def _ensure_mediastorm_app_version(
         os.path.join(config_dir, "version.txt"),
         replace_file=True,
     )
+
+
+def _normalize_aiostreams_base_url(value: str, port: int) -> str:
+    raw_value = str(value or "").strip()
+    if not raw_value:
+        raw_value = f"http://localhost:{port}"
+    try:
+        parsed = urllib.parse.urlsplit(raw_value)
+        parsed.port
+    except ValueError as exc:
+        raise AIOStreamsInstallError("AIOStreams base_url is not a valid URL.") from exc
+    if (
+        parsed.scheme not in {"http", "https"}
+        or not parsed.hostname
+        or parsed.username
+        or parsed.password
+        or parsed.query
+        or parsed.fragment
+    ):
+        raise AIOStreamsInstallError(
+            "AIOStreams base_url must be an HTTP(S) URL without credentials, "
+            "a query string, or a fragment."
+        )
+
+    normalized_host = parsed.hostname.casefold()
+    local_host = normalized_host in {"localhost", "127.0.0.1", "::1"} or (
+        normalized_host.endswith(".localhost")
+    )
+    if parsed.scheme != "https" and not local_host:
+        raise AIOStreamsInstallError(
+            "AIOStreams base_url must use HTTPS unless it points to localhost."
+        )
+    local_root = parsed.path in {"", "/"}
+    if local_host and local_root:
+        host = parsed.hostname
+        if ":" in host and not host.startswith("["):
+            host = f"[{host}]"
+        return f"{parsed.scheme}://{host}:{port}"
+    return raw_value.rstrip("/")
+
+
+def _validate_aiostreams_database_uri(value: str) -> str:
+    database_uri = str(value or "").strip()
+    if not database_uri:
+        database_uri = "sqlite://./data/db.sqlite"
+    if not re.match(r"^(?:sqlite|postgres|postgresql)://", database_uri, re.I):
+        raise AIOStreamsInstallError(
+            "AIOStreams database_uri must use sqlite://, postgres://, or "
+            "postgresql://."
+        )
+    return database_uri
+
+
+def _validate_aiostreams_auth(config: dict) -> tuple[str | None, str | None]:
+    env = config.get("env") if isinstance(config.get("env"), dict) else {}
+    existing_auth = str(env.get("AIOSTREAMS_AUTH") or "").strip()
+    username = str(config.get("auth_username") or "").strip()
+    password = str(config.get("auth_password") or "")
+
+    # Preserve advanced multi-user configurations that operators manage directly
+    # in env. The guided top-level fields become authoritative once a password is
+    # supplied.
+    if not password and existing_auth:
+        return None, None
+    if not username or not password:
+        raise AIOStreamsInstallError(
+            "AIOStreams auth_username and auth_password are required for dashboard login."
+        )
+    if len(username) > 128 or any(char in username for char in ",:=|\r\n"):
+        raise AIOStreamsInstallError(
+            "AIOStreams auth_username must be 1-128 characters and cannot contain "
+            "commas, colons, equals signs, pipes, or line breaks."
+        )
+    if password != password.strip():
+        raise AIOStreamsInstallError(
+            "AIOStreams auth_password cannot begin or end with whitespace."
+        )
+    if len(password) < 12 or len(password) > 256:
+        raise AIOStreamsInstallError(
+            "AIOStreams auth_password must be between 12 and 256 characters."
+        )
+    if "," in password or "\r" in password or "\n" in password:
+        raise AIOStreamsInstallError(
+            "AIOStreams auth_password cannot contain commas or line breaks."
+        )
+    return username, password
+
+
+def setup_aiostreams(
+    process_handler,
+    install_only: bool = False,
+    configure_only: bool = False,
+):
+    del process_handler
+    config = CONFIG_MANAGER.get("aiostreams")
+    if not config:
+        return False, "AIOStreams configuration not found."
+    if not config.get("enabled"):
+        logger.debug("Skipping disabled AIOStreams service.")
+        return True, None
+    if install_only and configure_only:
+        return False, "Invalid AIOStreams setup phase."
+
+    config_dir = config.get("config_dir") or "/aiostreams"
+    runtime_dir = os.path.join(config_dir, "runtime")
+    try:
+        selector = aiostreams_install_selector(config)
+    except AIOStreamsInstallError as exc:
+        return False, str(exc)
+
+    runtime_matches = aiostreams_runtime_matches_selection(runtime_dir, selector)
+    if install_only:
+        if not aiostreams_runtime_ready(runtime_dir) or not runtime_matches:
+            try:
+                result = install_aiostreams_runtime(config)
+            except AIOStreamsInstallError as exc:
+                return False, str(exc)
+            success, error = chown_recursive(result["runtime_dir"], user_id, group_id)
+            if not success:
+                return False, error
+            logger.info(
+                "Installed AIOStreams %s from OCI image %s:%s@%s.",
+                result["version"],
+                AIOSTREAMS_OCI_REPOSITORY,
+                result["oci_reference"],
+                result["image_digest"],
+            )
+        else:
+            logger.info(
+                "AIOStreams runtime already matches configured OCI selector %s.",
+                selector,
+            )
+        return True, None
+
+    if not aiostreams_runtime_ready(runtime_dir) or not runtime_matches:
+        return (
+            False,
+            "AIOStreams runtime is missing or does not match the selected release; "
+            "run the install phase before configuration.",
+        )
+
+    try:
+        port = int(config.get("port") or 3006)
+        if port < 1 or port > 65535:
+            raise ValueError
+    except (TypeError, ValueError):
+        return False, "AIOStreams port must be between 1 and 65535."
+
+    secret_key = str(config.get("secret_key") or "").strip()
+    generated_secret = False
+    if not secret_key:
+        secret_key = secrets.token_hex(32)
+        config["secret_key"] = secret_key
+        generated_secret = True
+    elif not re.fullmatch(r"[A-Fa-f0-9]{64}", secret_key):
+        return (
+            False,
+            "AIOStreams secret_key must be exactly 64 hexadecimal characters. "
+            "Do not rotate it after configurations have been saved.",
+        )
+
+    try:
+        base_url = _normalize_aiostreams_base_url(config.get("base_url"), port)
+        database_uri = _validate_aiostreams_database_uri(config.get("database_uri"))
+        auth_username, auth_password = _validate_aiostreams_auth(config)
+    except AIOStreamsInstallError as exc:
+        return False, str(exc)
+
+    persisted_changed = generated_secret
+    if config.get("base_url") != base_url:
+        config["base_url"] = base_url
+        persisted_changed = True
+    if config.get("database_uri") != database_uri:
+        config["database_uri"] = database_uri
+        persisted_changed = True
+    if auth_username is not None and config.get("auth_username") != auth_username:
+        config["auth_username"] = auth_username
+        persisted_changed = True
+    if persisted_changed:
+        try:
+            CONFIG_MANAGER.save_config(config.get("process_name") or "AIOStreams")
+        except Exception as exc:
+            return False, f"Failed to persist AIOStreams bootstrap settings: {exc}"
+        if generated_secret:
+            logger.info("Generated and persisted the AIOStreams encryption key.")
+
+    data_dir = os.path.join(config_dir, "data")
+    cache_dir = os.path.join(data_dir, "cache")
+    try:
+        os.makedirs(cache_dir, exist_ok=True)
+    except OSError as exc:
+        return False, f"Failed to create AIOStreams data directories: {exc}"
+    chown_single(config_dir, user_id, group_id)
+    success, error = chown_recursive(data_dir, user_id, group_id)
+    if not success:
+        return False, error
+
+    env = config.setdefault("env", {})
+    env.update(
+        {
+            "NODE_ENV": "production",
+            "PORT": str(port),
+            "BASE_URL": base_url,
+            "INTERNAL_URL": f"http://127.0.0.1:{port}",
+            "SECRET_KEY": secret_key,
+            "DATABASE_URI": database_uri,
+            "HOME": data_dir,
+            "XDG_CACHE_HOME": cache_dir,
+            "DISK_CACHE_DIR": cache_dir,
+            "LD_PRELOAD": os.path.join(runtime_dir, "lib", "libmimalloc.so.2"),
+            "SYSTEM_LIFECYCLE_ENABLED": "false",
+        }
+    )
+    if auth_username is not None and auth_password is not None:
+        env["AIOSTREAMS_AUTH"] = f"{auth_username}:{auth_password}"
+        env["AIOSTREAMS_AUTH_PERMISSIONS"] = f"{auth_username}=admin"
+    config["command"] = [
+        "node",
+        os.path.join(runtime_dir, "packages", "server", "dist", "server.js"),
+    ]
+    logger.info("AIOStreams setup complete.")
+    return True, None
 
 
 def setup_mediastorm(

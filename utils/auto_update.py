@@ -19,6 +19,14 @@ from utils.mediastorm_installer import (
     mediastorm_runtime_matches_selection,
     mediastorm_target_status,
 )
+from utils.aiostreams_installer import (
+    AIOSTREAMS_OCI_REFERENCE,
+    AIOStreamsInstallError,
+    aiostreams_install_selector,
+    aiostreams_runtime_matches_selection,
+    aiostreams_runtime_ready,
+    aiostreams_target_status,
+)
 from utils.wait_for_url import wait_for_urls
 from utils.install_cache import INSTALL_CACHE
 from utils.transactional_install import RuntimeRollbackSnapshot
@@ -75,6 +83,8 @@ class Update:
         return f"{release}-{sha[:8]}", None
 
     def supports_manual_update(self, key, config):
+        if key == "aiostreams":
+            return True
         if key in {
             "plex",
             "jellyfin",
@@ -593,6 +603,17 @@ class Update:
                 start_time,
                 next_check_at,
             )
+        if key == "aiostreams":
+            return self._manual_check_aiostreams(
+                process_name,
+                config,
+                block_reason,
+                checked_at,
+                auto_update_enabled,
+                interval_hours,
+                start_time,
+                next_check_at,
+            )
         if key in [
             "sonarr",
             "radarr",
@@ -724,6 +745,74 @@ class Update:
             status = "blocked"
             message = "Configured OCI target is ready to install"
 
+        payload = {
+            "status": status,
+            "reason": block_reason,
+            "message": message,
+            "current_version": current_version,
+            "available_version": available_version,
+            "checked_at": checked_at,
+            "auto_update_enabled": (False if block_reason else auto_update_enabled),
+            "auto_update_interval": interval_hours,
+            "auto_update_start_time": start_time,
+            "next_check_at": None if block_reason else next_check_at,
+        }
+        if block_reason:
+            payload.update(
+                {
+                    "configured_target_kind": "release",
+                    "configured_target_installed": installed,
+                }
+            )
+        return payload
+
+    def _manual_check_aiostreams(
+        self,
+        process_name,
+        config,
+        block_reason,
+        checked_at,
+        auto_update_enabled,
+        interval_hours,
+        start_time,
+        next_check_at,
+    ):
+        try:
+            target = aiostreams_target_status(config)
+        except AIOStreamsInstallError as error:
+            return {
+                "status": "error",
+                "reason": "oci_check_failed",
+                "message": str(error),
+                "checked_at": checked_at,
+                "auto_update_enabled": auto_update_enabled,
+                "auto_update_interval": interval_hours,
+                "auto_update_start_time": start_time,
+                "next_check_at": next_check_at,
+            }
+
+        selector = target["selector"]
+        installed = target["installed"]
+        current_version = target["current_version"] or "unknown"
+        digest_label = target["available_digest"].removeprefix("sha256:")[:12]
+        available_version = (
+            current_version
+            if installed
+            else (
+                f"latest@{digest_label}"
+                if selector == AIOSTREAMS_OCI_REFERENCE
+                else selector
+            )
+        )
+        status = "no_update" if installed else "update_available"
+        message = (
+            "No OCI image updates available"
+            if installed
+            else "OCI image update available"
+        )
+        if block_reason and not installed:
+            status = "blocked"
+            message = "Configured OCI target is ready to install"
         payload = {
             "status": status,
             "reason": block_reason,
@@ -2459,6 +2548,18 @@ class Update:
                     config.get("config_dir", "/mediastorm"), "runtime"
                 )
                 return not mediastorm_runtime_matches_selection(runtime_dir, selector)
+            if key == "aiostreams":
+                try:
+                    selector = aiostreams_install_selector(config)
+                except AIOStreamsInstallError:
+                    return True
+                runtime_dir = os.path.join(
+                    config.get("config_dir", "/aiostreams"), "runtime"
+                )
+                return not (
+                    aiostreams_runtime_ready(runtime_dir)
+                    and aiostreams_runtime_matches_selection(runtime_dir, selector)
+                )
             if (
                 requested_lower in {"latest", "prerelease"}
                 or "nightly" in requested_lower
@@ -2877,6 +2978,10 @@ class Update:
             return self.update_check_mediastorm(
                 process_name, config, key, instance_name
             )
+        if key == "aiostreams":
+            return self.update_check_aiostreams(
+                process_name, config, key, instance_name
+            )
         if key in [
             "sonarr",
             "radarr",
@@ -3195,6 +3300,54 @@ class Update:
                 False,
                 f"Failed to update {process_name} from OCI latest: {error}",
             )
+        success, error = setup_project(self.process_handler, process_name)
+        if not success:
+            return False, f"Failed to complete setup for {process_name}: {error}"
+
+        process, start_error = self.start_process(
+            process_name, config, key, instance_name
+        )
+        if not process:
+            return False, f"Failed to start {process_name}: {start_error}"
+        installed_version, _ = Versions().version_check(
+            process_name, instance_name, key
+        )
+        installed_label = installed_version or f"OCI latest digest {digest_label}"
+        return True, f"Updated {process_name} to {installed_label}."
+
+    def update_check_aiostreams(self, process_name, config, key, instance_name):
+        try:
+            target = aiostreams_target_status(config)
+        except AIOStreamsInstallError as error:
+            return False, f"Failed to check AIOStreams OCI updates: {error}"
+
+        selector = target["selector"]
+        if selector != AIOSTREAMS_OCI_REFERENCE:
+            return False, (
+                f"No updates available for {process_name}: configured OCI target "
+                f"{selector} does not move automatically."
+            )
+        if target["installed"]:
+            return False, f"No updates available for {process_name}."
+
+        current_version = target["current_version"] or "unknown"
+        digest_label = target["available_digest"].removeprefix("sha256:")[:12]
+        self.logger.info(
+            "Updating %s from %s to OCI latest digest %s.",
+            process_name,
+            current_version,
+            digest_label,
+        )
+        if process_name in self.process_handler.process_names:
+            self.stop_process(process_name)
+        with self.process_handler.setup_tracker_lock:
+            self.process_handler.setup_tracker.discard(process_name)
+
+        success, error = setup_release_version(
+            self.process_handler, config, process_name, key
+        )
+        if not success:
+            return False, f"Failed to update {process_name} from OCI latest: {error}"
         success, error = setup_project(self.process_handler, process_name)
         if not success:
             return False, f"Failed to complete setup for {process_name}: {error}"
@@ -3546,6 +3699,7 @@ class Update:
                 ".dotnet-sdk",
             ],
             "maintainerr": ["data"],
+            "aiostreams": ["data"],
             "tautulli": ["data"],
             "seerr": ["config"],
             "pulsarr": ["data"],

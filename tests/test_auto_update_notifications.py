@@ -1738,6 +1738,42 @@ class UpdateNotificationTests(unittest.TestCase):
             )
         )
 
+    @patch("utils.auto_update.Versions")
+    def test_preinstalled_aiostreams_requires_complete_runtime(self, versions):
+        updater = self._updater()
+        config = {
+            "release_version_enabled": True,
+            "release_version": "v2.33.2",
+            "config_dir": "/aiostreams",
+        }
+        versions.return_value.version_check.return_value = ("2.33.2", None)
+
+        with (
+            patch(
+                "utils.auto_update.aiostreams_runtime_matches_selection",
+                return_value=True,
+            ),
+            patch("utils.auto_update.aiostreams_runtime_ready", return_value=False),
+        ):
+            self.assertTrue(
+                updater._should_run_install_phase_for_preinstalled(
+                    "AIOStreams", "aiostreams", None, config
+                )
+            )
+
+        with (
+            patch(
+                "utils.auto_update.aiostreams_runtime_matches_selection",
+                return_value=True,
+            ),
+            patch("utils.auto_update.aiostreams_runtime_ready", return_value=True),
+        ):
+            self.assertFalse(
+                updater._should_run_install_phase_for_preinstalled(
+                    "AIOStreams", "aiostreams", None, config
+                )
+            )
+
     @patch("api.api_state.notify_event")
     def test_update_available_notifies_only_for_new_state_or_version(
         self, notify_event

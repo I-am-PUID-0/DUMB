@@ -35,6 +35,7 @@ SQLITE_SERVICE_KEYS = {
     "emby",
     "jellyfin",
     "maintainerr",
+    "aiostreams",
     "infinidysk",
     "plex",
     "profilarr",
@@ -444,6 +445,19 @@ class DatabaseHealthCollector:
             env = service.get("env") or {}
             data_dir = str(env.get("DATA_DIR") or os.path.join(config_dir, "data"))
             return [("main", os.path.join(data_dir, "maintainerr.sqlite"))]
+        if key == "aiostreams":
+            database_uri = str(
+                service.get("database_uri")
+                or (service.get("env") or {}).get("DATABASE_URI")
+                or "sqlite://./data/db.sqlite"
+            ).strip()
+            _scheme, separator, path = database_uri.partition("://")
+            if not separator:
+                return []
+            path = unquote(path)
+            if not os.path.isabs(path):
+                path = os.path.normpath(os.path.join(config_dir, path))
+            return [("main", path)]
         if key == "seerr":
             env = service.get("env") or {}
             data_dir = str(
@@ -1118,6 +1132,17 @@ def _provider_for_service(key: str, service: dict[str, Any]) -> str:
             if str(env.get("dbType") or "sqlite").strip().lower() == "postgres"
             else "sqlite"
         )
+    if key == "aiostreams":
+        database_uri = str(
+            service.get("database_uri")
+            or (service.get("env") or {}).get("DATABASE_URI")
+            or "sqlite://./data/db.sqlite"
+        ).strip()
+        return (
+            "postgresql"
+            if database_uri.casefold().startswith(("postgres://", "postgresql://"))
+            else "sqlite"
+        )
     if key == "seerr":
         env = service.get("env") or {}
         return (
@@ -1171,6 +1196,9 @@ def _service_postgres_connection(key, service, config):
             "password": env.get("dbPassword"),
             "database": env.get("dbName") or "pulsarr",
         }
+    if key == "aiostreams":
+        dsn = str(service.get("database_uri") or env.get("DATABASE_URI") or "").strip()
+        return {"dsn": dsn, "database": _dsn_database(dsn) or "aiostreams"}
     if key == "seerr":
         return {
             "host": env.get("DB_HOST") or env.get("DB_SOCKET_PATH") or "127.0.0.1",

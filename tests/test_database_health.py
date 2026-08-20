@@ -438,6 +438,34 @@ class DatabaseHealthCollectorTests(unittest.TestCase):
             [("main", "/profilarr/default/config/data/profilarr.db")],
         )
 
+    def test_aiostreams_defaults_to_persistent_sqlite_database(self):
+        collector = DatabaseHealthCollector()
+        candidate = collector._candidate(
+            "aiostreams",
+            {
+                "config_dir": "/aiostreams",
+                "database_uri": "sqlite://./data/db.sqlite",
+            },
+            None,
+        )
+
+        self.assertEqual(candidate["provider"], "sqlite")
+        self.assertEqual(
+            collector._sqlite_paths(candidate),
+            [("main", "/aiostreams/data/db.sqlite")],
+        )
+
+    def test_aiostreams_detects_explicit_postgres_uri(self):
+        collector = DatabaseHealthCollector()
+        dsn = "postgres://user:secret@db.example:5432/aiostreams_prod"
+        candidate = collector._candidate("aiostreams", {"database_uri": dsn}, None)
+
+        specs = collector._postgres_specs(candidate, {})
+
+        self.assertEqual(candidate["provider"], "postgresql")
+        self.assertEqual(specs[0]["name"], "aiostreams_prod")
+        self.assertEqual(specs[0]["connection"]["dsn"], dsn)
+
     def test_altmount_detects_postgres_dsn_from_application_config(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             config_path = Path(temp_dir) / "config.yaml"
@@ -564,6 +592,7 @@ class DatabaseHealthCollectorTests(unittest.TestCase):
             SUPPORTED_SERVICE_KEYS,
             {
                 "altmount",
+                "aiostreams",
                 "authelia",
                 "bazarr",
                 "cli_battery",

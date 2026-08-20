@@ -40,6 +40,7 @@ UI_SERVICE_DEFS = [
     {"name": "profilarr", "config_key": "profilarr"},
     {"name": "pulsarr", "config_key": "pulsarr"},
     {"name": "maintainerr", "config_key": "maintainerr"},
+    {"name": "aiostreams", "config_key": "aiostreams"},
     {"name": "mediastorm", "config_key": "mediastorm", "path": "/admin"},
     {"name": "authelia", "config_key": "authelia"},
     {"name": "altmount", "config_key": "altmount"},

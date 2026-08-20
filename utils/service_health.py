@@ -98,6 +98,9 @@ HTTP_PROBES = {
         "/api/health",
     ),
     "authelia": HttpProbe("Authelia health", "/api/health"),
+    "aiostreams": HttpProbe(
+        "AIOStreams health", "/api/v1/health", required_json_key="success"
+    ),
     "mediastorm": HttpProbe("mediastorm health", "/health"),
 }
 

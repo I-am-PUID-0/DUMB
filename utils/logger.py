@@ -6,6 +6,14 @@ from colorlog import ColoredFormatter
 SENSITIVE_LOG_REDACTIONS = [
     (
         re.compile(
+            r"(\bAIOSTREAMS_AUTH(?:_PERMISSIONS)?\s*[:=]\s*)"
+            r"(?!\[REDACTED\])[^\r\n]+",
+            re.IGNORECASE,
+        ),
+        r"\1[REDACTED]",
+    ),
+    (
+        re.compile(
             r"(\bWebDAV\s+credentials\s*:\s*[^/\r\n]*?/\s*)" r"(?!\[REDACTED\])\S+",
             re.IGNORECASE,
         ),
@@ -47,8 +55,8 @@ SENSITIVE_LOG_REDACTIONS = [
     (
         re.compile(
             r"([?&](?:api[_-]?key|apikey|auth[_-]?token|access[_-]?token|"
-            r"refresh[_-]?token|id[_-]?token|x-plex-token|password|passwd|"
-            r"secret|client[_-]?secret|token|code)=)"
+            r"refresh[_-]?token|id[_-]?token|x-plex-token|auth[_-]?password|password|passwd|"
+            r"secret[_-]?key|secret|client[_-]?secret|token|code)=)"
             r"(?!\[REDACTED\])[^&#\s]+",
             re.IGNORECASE,
         ),
@@ -56,8 +64,8 @@ SENSITIVE_LOG_REDACTIONS = [
     ),
     (
         re.compile(
-            r"((?<![\w-])['\"]?(?:api[ _-]?key|apikey|password|passwd|"
-            r"secret|client[ _-]?secret|auth[ _-]?token|access[ _-]?token|"
+            r"((?<![\w-])['\"]?(?:api[ _-]?key|apikey|auth[ _-]?password|password|passwd|"
+            r"secret[ _-]?key|secret|client[ _-]?secret|auth[ _-]?token|access[ _-]?token|"
             r"refresh[ _-]?token|sentry[ _-]?key|token)['\"]?\s*[:=]\s*"
             r"['\"]?)(?!\[REDACTED\])[^,'\"\]\s}]+",
             re.IGNORECASE,

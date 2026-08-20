@@ -810,6 +810,38 @@
       "UV_USE_IO_URING": "0"
     }
   },
+  "aiostreams": {
+    "enabled": false,
+    "process_name": "AIOStreams",
+    "release_version_enabled": false,
+    "release_version": "latest",
+    "base_url": "http://localhost:3006",
+    "auth_username": "admin",
+    "auth_password": "",
+    "secret_key": "",
+    "database_uri": "sqlite://./data/db.sqlite",
+    "suppress_logging": false,
+    "log_level": "INFO",
+    "port": 3006,
+    "auto_update": false,
+    "auto_update_mode": "install",
+    "auto_update_interval": 24,
+    "auto_update_start_time": "04:00",
+    "command": [
+      "node",
+      "/aiostreams/runtime/packages/server/dist/server.js"
+    ],
+    "config_dir": "/aiostreams",
+    "log_file": "/log/aiostreams.log",
+    "env": {
+      "NODE_ENV": "production",
+      "HOME": "/aiostreams/data",
+      "XDG_CACHE_HOME": "/aiostreams/data/cache",
+      "DISK_CACHE_DIR": "/aiostreams/data/cache",
+      "LD_PRELOAD": "/aiostreams/runtime/lib/libmimalloc.so.2",
+      "SYSTEM_LIFECYCLE_ENABLED": "false"
+    }
+  },
   "mediastorm": {
     "enabled": false,
     "process_name": "mediastorm",

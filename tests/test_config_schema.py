@@ -61,6 +61,37 @@ class DumbConfigSchemaTests(unittest.TestCase):
         self.assertFalse(profilarr["release_version_enabled"])
         self.assertEqual("latest", profilarr["release_version"])
 
+    def test_aiostreams_defaults_to_verified_oci_latest_with_sqlite(self):
+        aiostreams = self.config["aiostreams"]
+        schema = self.schema["properties"]["aiostreams"]["properties"]
+
+        self.assertFalse(aiostreams["enabled"])
+        self.assertFalse(aiostreams["release_version_enabled"])
+        self.assertEqual("latest", aiostreams["release_version"])
+        self.assertEqual("http://localhost:3006", aiostreams["base_url"])
+        self.assertEqual("admin", aiostreams["auth_username"])
+        self.assertEqual("", aiostreams["auth_password"])
+        self.assertEqual("", aiostreams["secret_key"])
+        self.assertEqual("sqlite://./data/db.sqlite", aiostreams["database_uri"])
+        self.assertEqual(3006, aiostreams["port"])
+        self.assertNotIn("branch_enabled", aiostreams)
+        self.assertNotIn("commit_sha", aiostreams)
+        self.assertEqual("^$|^[0-9a-fA-F]{64}$", schema["secret_key"]["pattern"])
+
+    def test_aiostreams_schema_rejects_nonstable_oci_selectors(self):
+        invalid_config = json.loads(json.dumps(self.config))
+        invalid_config["aiostreams"]["release_version_enabled"] = True
+        invalid_config["aiostreams"]["release_version"] = "nightly"
+
+        errors = list(Draft7Validator(self.schema).iter_errors(invalid_config))
+
+        self.assertTrue(
+            any(
+                list(error.path) == ["aiostreams", "release_version"]
+                for error in errors
+            )
+        )
+
     def test_blank_enabled_release_selectors_normalize_to_latest_recursively(self):
         config = OrderedDict(
             {

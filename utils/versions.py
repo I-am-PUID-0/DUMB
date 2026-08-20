@@ -305,6 +305,16 @@ class Versions:
                     "version.txt",
                 )
                 is_file = True
+            elif key == "aiostreams":
+                config = CONFIG_MANAGER.get_instance(instance_name, key)
+                if not config:
+                    raise ValueError(f"Configuration for {process_name} not found.")
+                version_path = os.path.join(
+                    config.get("config_dir", "/aiostreams"),
+                    "runtime",
+                    "version.txt",
+                )
+                is_file = True
             elif key == "altmount":
                 config = CONFIG_MANAGER.get_instance(instance_name, key)
                 if not config:
@@ -569,6 +579,7 @@ class Versions:
                             or key == "pulsarr"
                             or key == "maintainerr"
                             or key == "mediastorm"
+                            or key == "aiostreams"
                             or key == "altmount"
                             or key == "traefik_proxy_admin"
                             or key == "authelia"
