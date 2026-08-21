@@ -45,7 +45,9 @@ from utils.aiostreams_installer import (
     install_aiostreams_runtime,
 )
 from pathlib import Path
+import ast
 import defusedxml.ElementTree as ET
+import symtable
 import yaml
 import os, shutil, random, subprocess, re, glob, secrets, shlex, time, urllib.parse, base64, threading, sys, hashlib, json, requests, copy, platform, tempfile, zipfile, contextvars, stat
 
@@ -68,6 +70,23 @@ _NZBDAV_INSTALL_STATE = ".dumb_infinidysk_install.json"
 _NZBDAV_LEGACY_INSTALL_STATE = ".dumb_nzbdav_install.json"
 _NZBDAV_INSTALL_STATE_FORMAT = 1
 _SQLITE_FILE_RE = re.compile(r"(?i).+\.(?:db|sqlite|sqlite3)(?:-(?:wal|shm|journal))?$")
+_CLI_DEBRID_IMPORT_MODULE = "database.database_reading"
+_CLI_DEBRID_SOURCE_SCAN_LIMIT = 5000
+_CLI_DEBRID_SOURCE_FILE_LIMIT = 4 * 1024 * 1024
+_CLI_DEBRID_SOURCE_SKIP_DIRS = frozenset(
+    {
+        ".git",
+        ".mypy_cache",
+        ".pytest_cache",
+        "__pycache__",
+        "data",
+        "node_modules",
+        "venv",
+    }
+)
+_PERSISTENT_INFERENCE_SOURCE_DIRS = {
+    "cli_debrid": frozenset({"database"}),
+}
 _NZBDAV_SERVICE_PROVIDER = json.dumps(
     {
         "name": "DUMB",
@@ -587,8 +606,115 @@ def _record_nzbdav_source_install(
     )
 
 
+def _validate_cli_debrid_source(source_root: str) -> tuple[bool, str | None]:
+    """Validate CLI Debrid's source-only import contract without executing it."""
+
+    root = Path(source_root)
+    required_paths = (
+        root / "main.py",
+        root / "database" / "__init__.py",
+        root / "database" / "database_reading.py",
+    )
+    missing_paths = [
+        str(path.relative_to(root)) for path in required_paths if not path.is_file()
+    ]
+    if missing_paths:
+        return (
+            False,
+            "CLI Debrid source validation failed: missing required file(s): "
+            + ", ".join(sorted(missing_paths)),
+        )
+
+    parsed_sources: list[tuple[Path, ast.AST]] = []
+    database_source = None
+    database_path = root / "database" / "database_reading.py"
+    scanned = 0
+    try:
+        for current_root, directories, filenames in os.walk(
+            root, topdown=True, followlinks=False
+        ):
+            directories[:] = sorted(
+                directory
+                for directory in directories
+                if directory not in _CLI_DEBRID_SOURCE_SKIP_DIRS
+            )
+            for filename in sorted(filenames):
+                if not filename.endswith(".py"):
+                    continue
+                scanned += 1
+                if scanned > _CLI_DEBRID_SOURCE_SCAN_LIMIT:
+                    return (
+                        False,
+                        "CLI Debrid source validation failed: source file limit exceeded.",
+                    )
+                path = Path(current_root, filename)
+                if path.stat().st_size > _CLI_DEBRID_SOURCE_FILE_LIMIT:
+                    return (
+                        False,
+                        "CLI Debrid source validation failed: Python source file is too "
+                        f"large: {path.relative_to(root)}.",
+                    )
+                source = path.read_text(encoding="utf-8-sig")
+                try:
+                    tree = ast.parse(source, filename=str(path))
+                except SyntaxError as error:
+                    location = f" line {error.lineno}" if error.lineno else ""
+                    return (
+                        False,
+                        "CLI Debrid source validation failed: invalid Python syntax in "
+                        f"{path.relative_to(root)}{location}: {error.msg}.",
+                    )
+                parsed_sources.append((path, tree))
+                if path == database_path:
+                    database_source = source
+    except OSError as error:
+        return (
+            False,
+            f"CLI Debrid source validation failed while reading source: {error}",
+        )
+
+    if database_source is None:
+        return (
+            False,
+            "CLI Debrid source validation failed: database module was not scanned.",
+        )
+
+    try:
+        table = symtable.symtable(database_source, str(database_path), "exec")
+    except (SyntaxError, ValueError) as error:
+        return False, f"CLI Debrid source validation failed: {error}"
+    exported_names = {
+        symbol.get_name()
+        for symbol in table.get_symbols()
+        if symbol.is_assigned() or symbol.is_imported() or symbol.is_namespace()
+    }
+
+    unresolved: list[tuple[str, str]] = []
+    for path, tree in parsed_sources:
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.ImportFrom):
+                continue
+            if node.level or node.module != _CLI_DEBRID_IMPORT_MODULE:
+                continue
+            for alias in node.names:
+                if alias.name != "*" and alias.name not in exported_names:
+                    unresolved.append((str(path.relative_to(root)), alias.name))
+
+    if unresolved:
+        locations = ", ".join(
+            f"{path} -> {name}" for path, name in sorted(set(unresolved))
+        )
+        return (
+            False,
+            "CLI Debrid source validation failed: unresolved imports from "
+            f"{_CLI_DEBRID_IMPORT_MODULE}: {locations}.",
+        )
+
+    return True, None
+
+
 def _update_persistent_excludes(
-    config: dict, target_dir: str, extra_paths=None
+    config: dict, target_dir: str, extra_paths=None, *, service_key: str | None = None
 ) -> list[str]:
     """Return update exclusions with service-owned persistent state guarded."""
 
@@ -644,7 +770,12 @@ def _update_persistent_excludes(
     # These directory names conventionally contain application-owned state,
     # not replaceable source/runtime output. Existing service defaults still
     # provide more specific exclusions where their layout requires them.
+    inferred_source_dirs = _PERSISTENT_INFERENCE_SOURCE_DIRS.get(
+        str(service_key or "").lower(), frozenset()
+    )
     for directory_name in ("data", "db", "database", "databases"):
+        if directory_name in inferred_source_dirs:
+            continue
         candidate = target / directory_name
         if candidate.exists() or candidate.is_symlink():
             protect(candidate)
@@ -1250,7 +1381,7 @@ def setup_release_version(process_handler, config, process_name, key):
         )
         nzbdav_prebuilt_error = prebuilt_error or "unknown archive error"
 
-    exclude_dirs = _update_persistent_excludes(config, target_dir)
+    exclude_dirs = _update_persistent_excludes(config, target_dir, service_key=key)
     if config.get("clear_on_update"):
         success, error = clear_directory(target_dir, exclude_dirs)
         if not success:
@@ -1274,6 +1405,7 @@ def setup_release_version(process_handler, config, process_name, key):
         target_dir=target_dir,
         zip_folder_name=None,
         exclude_dirs=exclude_dirs,
+        staging_validator=_validate_cli_debrid_source if key == "cli_debrid" else None,
     )
     if not success:
         return False, f"Failed to download release: {error}"
@@ -1450,7 +1582,8 @@ def setup_branch_version(process_handler, config, process_name, key):
                 os.path.join(target_dir, "package.json")
             ) and os.path.isfile(os.path.join(target_dir, ".next", "BUILD_ID"))
         if service_key == "cli_debrid":
-            return os.path.isfile(os.path.join(target_dir, "main.py"))
+            valid, _ = _validate_cli_debrid_source(target_dir)
+            return valid
         if service_key == "phalanx_db":
             return os.path.isfile(os.path.join(target_dir, "package.json"))
         if service_key == "tautulli":
@@ -1571,7 +1704,10 @@ def setup_branch_version(process_handler, config, process_name, key):
                     os.path.join(target_dir, ".dumb_frontend_build_fingerprint"),
                 ]
         exclude_dirs = _update_persistent_excludes(
-            config, target_dir, additional_preserve_paths
+            config,
+            target_dir,
+            additional_preserve_paths,
+            service_key=key,
         )
         if config.get("clear_on_update"):
             success, error = clear_directory(target_dir, exclude_dirs)
@@ -1592,6 +1728,9 @@ def setup_branch_version(process_handler, config, process_name, key):
             target_dir,
             zip_folder_name=zip_folder_name,
             exclude_dirs=exclude_dirs,
+            staging_validator=(
+                _validate_cli_debrid_source if key == "cli_debrid" else None
+            ),
         )
         if not success:
             return False, f"Failed to download source archive: {error}"
@@ -1683,6 +1822,11 @@ def setup_branch_version(process_handler, config, process_name, key):
 
 
 def additional_setup(process_handler, process_name, config, key):
+    if key == "cli_debrid":
+        success, error = _validate_cli_debrid_source(config["config_dir"])
+        if not success:
+            return False, error
+
     if key == "riven_frontend":
         success, error = vite_modifications(config["config_dir"])
         if not success:
@@ -1942,6 +2086,19 @@ def _setup_project_inner(
         bootstrap_installed = False
         preserve_installed_nzbdav_runtime = False
         if install_phase:
+            cli_debrid_source_valid = True
+            cli_debrid_source_error = None
+            if key == "cli_debrid":
+                cli_debrid_source_valid, cli_debrid_source_error = (
+                    _validate_cli_debrid_source(config.get("config_dir", "/cli_debrid"))
+                )
+                if not cli_debrid_source_valid:
+                    logger.warning(
+                        "The installed CLI Debrid source is incomplete or internally "
+                        "inconsistent (%s); forcing a clean configured-source reinstall.",
+                        cli_debrid_source_error,
+                    )
+
             if (
                 not config.get("release_version_enabled")
                 and not config.get("branch_enabled")
@@ -1974,6 +2131,47 @@ def _setup_project_inner(
             commit_sha, commit_error = _normalize_commit_sha(config.get("commit_sha"))
             if commit_error:
                 return False, commit_error
+
+            if (
+                key == "cli_debrid"
+                and not cli_debrid_source_valid
+                and not commit_sha
+                and not config.get("release_version_enabled")
+                and not config.get("branch_enabled")
+            ):
+                current_version, _ = versions.version_check(
+                    process_name, instance_name, key
+                )
+                current_version = str(current_version or "").strip()
+                if re.fullmatch(
+                    r"v?\d+(?:\.\d+)+(?:[-+][0-9A-Za-z.-]+)?", current_version
+                ):
+                    repair_release = (
+                        current_version
+                        if current_version.lower().startswith("v")
+                        else f"v{current_version}"
+                    )
+                else:
+                    repair_release = "latest"
+                original_release_version = config.get("release_version")
+                config["release_version"] = repair_release
+                logger.warning(
+                    "Repairing CLI Debrid from release %s while retaining the saved "
+                    "source-selection settings.",
+                    repair_release,
+                )
+                try:
+                    success, error = setup_release_version(
+                        process_handler, config, process_name, key
+                    )
+                finally:
+                    if original_release_version is None:
+                        config.pop("release_version", None)
+                    else:
+                        config["release_version"] = original_release_version
+                if not success:
+                    return False, error
+                bootstrap_installed = True
 
             requested_version = config.get("release_version")
             requested_lower = (requested_version or "").lower()
@@ -2030,7 +2228,11 @@ def _setup_project_inner(
                 and not preserve_installed_nzbdav_runtime
                 and not source_managed_by_service_setup
                 and config.get("release_version_enabled")
-                and (not config.get("auto_update") or allow_release_with_auto_update)
+                and (
+                    not config.get("auto_update")
+                    or allow_release_with_auto_update
+                    or (key == "cli_debrid" and not cli_debrid_source_valid)
+                )
             ):
                 repo_owner = config.get("repo_owner")
                 repo_name = config.get("repo_name")
@@ -2060,7 +2262,7 @@ def _setup_project_inner(
                             current_version, _ = versions.version_check(
                                 process_name, instance_name, key
                             )
-                            if current_version:
+                            if current_version and cli_debrid_source_valid:
                                 logger.warning(
                                     "Could not check the configured %s channel for %s "
                                     "(%s). Keeping the installed runtime %s.",
@@ -2072,8 +2274,8 @@ def _setup_project_inner(
                             else:
                                 logger.warning(
                                     "Could not compare the configured %s channel for %s "
-                                    "(%s). No installed runtime was found; attempting "
-                                    "the configured install directly.",
+                                    "(%s). No reusable installed runtime was found; "
+                                    "attempting the configured install directly.",
                                     requested_version,
                                     process_name,
                                     comparison_error,
@@ -2083,10 +2285,18 @@ def _setup_project_inner(
                                 )
                                 if not success:
                                     return False, error
-                        elif update_needed:
-                            logger.info(
-                                f"Update needed for {process_name}: {update_info['latest_version']}, but using the requested version: {requested_version}"
-                            )
+                        elif update_needed or not cli_debrid_source_valid:
+                            if update_needed:
+                                logger.info(
+                                    f"Update needed for {process_name}: {update_info['latest_version']}, but using the requested version: {requested_version}"
+                                )
+                            else:
+                                logger.warning(
+                                    "Reinstalling the current %s channel for %s because "
+                                    "the installed source failed validation.",
+                                    requested_version,
+                                    process_name,
+                                )
                             success, error = setup_release_version(
                                 process_handler, config, process_name, key
                             )
@@ -2108,6 +2318,8 @@ def _setup_project_inner(
                             )
                             current_version = "0.0.0"
                         release_matches = current_version == requested_version
+                        if key == "cli_debrid" and not cli_debrid_source_valid:
+                            release_matches = False
                         if key == "mediastorm":
                             try:
                                 selector = mediastorm_install_selector(config)
@@ -2657,6 +2869,13 @@ def _setup_project_inner(
                         )
                         if not success:
                             return False, error
+
+        if configure_phase and key == "cli_debrid":
+            success, error = _validate_cli_debrid_source(
+                config.get("config_dir", "/cli_debrid")
+            )
+            if not success:
+                return False, error
 
         if configure_phase:
             with process_handler.setup_tracker_lock:

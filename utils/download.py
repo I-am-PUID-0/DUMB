@@ -108,6 +108,7 @@ class Downloader:
         target_dir,
         zip_folder_name=None,
         exclude_dirs=None,
+        staging_validator=None,
     ):
         try:
             logger.info(
@@ -260,6 +261,7 @@ class Downloader:
                 zip_folder_name,
                 headers=headers,
                 exclude_dirs=exclude_dirs,
+                staging_validator=staging_validator,
             )
             if not success:
                 logger.error(
@@ -929,6 +931,7 @@ class Downloader:
         headers=None,
         exclude_dirs=None,
         expected_sha256=None,
+        staging_validator=None,
     ):
         staging_dir = None
         try:
@@ -1138,6 +1141,14 @@ class Downloader:
                                 z.open(file_info, "r") as src,
                             ):
                                 shutil.copyfileobj(src, dst)
+                    if staging_validator is not None:
+                        valid, validation_error = staging_validator(staging_dir)
+                        if not valid:
+                            return (
+                                False,
+                                "Staged archive validation failed: "
+                                f"{validation_error or 'unknown validation error'}",
+                            )
                     success, error = self._merge_staging_transactionally(
                         staging_dir, target_dir
                     )
@@ -1158,6 +1169,14 @@ class Downloader:
                         zip_folder_name,
                         normalized_excludes,
                     )
+                    if staging_validator is not None:
+                        valid, validation_error = staging_validator(staging_dir)
+                        if not valid:
+                            return (
+                                False,
+                                "Staged archive validation failed: "
+                                f"{validation_error or 'unknown validation error'}",
+                            )
                     success, error = self._merge_staging_transactionally(
                         staging_dir, target_dir
                     )

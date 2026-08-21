@@ -868,6 +868,48 @@ class DownloaderHelperTests(unittest.TestCase):
             self.assertIn("no eligible files", error)
             self.assertEqual(existing.read_text(encoding="utf-8"), "working")
 
+    def test_staging_validator_rejection_leaves_live_target_unchanged(self):
+        zip_buffer = io.BytesIO()
+        with zipfile.ZipFile(zip_buffer, "w") as archive:
+            archive.writestr("owner-repo-abc/runtime.txt", "candidate")
+        response = FakeResponse(
+            200,
+            {"Content-Disposition": "attachment; filename=app.zip"},
+            zip_buffer.getvalue(),
+        )
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            target = Path(temp_dir) / "target"
+            target.mkdir()
+            existing = target / "runtime.txt"
+            existing.write_text("working", encoding="utf-8")
+            validated_paths = []
+
+            def reject_candidate(staging_dir):
+                staging = Path(staging_dir)
+                validated_paths.append(staging)
+                self.assertEqual(
+                    "candidate",
+                    (staging / "runtime.txt").read_text(encoding="utf-8"),
+                )
+                return False, "source import mismatch"
+
+            with patch.object(
+                self.downloader, "fetch_with_retries", return_value=response
+            ):
+                success, error = self.downloader.download_and_extract(
+                    "https://example.test/app.zip",
+                    str(target),
+                    zip_folder_name="owner-repo*",
+                    staging_validator=reject_candidate,
+                )
+
+            self.assertFalse(success)
+            self.assertIn("source import mismatch", error)
+            self.assertEqual("working", existing.read_text(encoding="utf-8"))
+            self.assertEqual(1, len(validated_paths))
+            self.assertFalse(validated_paths[0].exists())
+
     def test_symlinked_install_stages_and_backs_up_on_resolved_filesystem(self):
         zip_buffer = io.BytesIO()
         with zipfile.ZipFile(zip_buffer, "w") as archive:
