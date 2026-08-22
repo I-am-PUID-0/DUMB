@@ -2,6 +2,7 @@ import io
 import os
 import signal
 import tempfile
+import threading
 import unittest
 from unittest.mock import Mock, call, patch
 
@@ -9,6 +10,43 @@ from utils.processes import ProcessHandler, _immediate_exit_summary
 
 
 class ProcessNotificationTests(unittest.TestCase):
+    def test_start_process_releases_admission_lock_before_dependency_waits(self):
+        handler = object.__new__(ProcessHandler)
+        handler.init_attributes(Mock())
+        contender_result = []
+
+        def admitted(*_args, **_kwargs):
+            from utils.infinidysk_migration_admission import (
+                INFINIDYSK_MIGRATION_ADMISSION_LOCK,
+            )
+
+            def contend_for_lock():
+                acquired = INFINIDYSK_MIGRATION_ADMISSION_LOCK.acquire(timeout=0.5)
+                contender_result.append(acquired)
+                if acquired:
+                    INFINIDYSK_MIGRATION_ADMISSION_LOCK.release()
+
+            contender = threading.Thread(target=contend_for_lock)
+            contender.start()
+            contender.join(timeout=1)
+            return True, None
+
+        handler._start_process_admitted = Mock(side_effect=admitted)
+        with (
+            patch(
+                "utils.processes.CONFIG_MANAGER.find_key_for_process",
+                return_value=("plex", None),
+            ),
+            patch(
+                "utils.infinidysk_migration_admission.infinidysk_recovery_blocks_service",
+                return_value=None,
+            ),
+        ):
+            result = handler.start_process("Plex Media Server")
+
+        self.assertEqual((True, None), result)
+        self.assertEqual([True], contender_result)
+
     def test_immediate_exit_summary_prefers_fatal_line_over_earlier_warning(self):
         summary = _immediate_exit_summary(
             "Fatal: SQLite database is locked\n",

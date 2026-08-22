@@ -349,7 +349,13 @@ class ProcessHandler:
         suppress_logging=False,
         env=None,
     ):
-        """Start a process while serializing against migration admission."""
+        """Start a process after a short migration-admission check.
+
+        The owning API/update/startup operation keeps its external-mutation
+        reservation for the complete lifecycle. Holding the shared RLock while
+        this method waits for mounts or URLs would deadlock the provider process
+        that must satisfy that dependency.
+        """
 
         from utils.infinidysk_migration_admission import (
             INFINIDYSK_MIGRATION_ADMISSION_LOCK,
@@ -369,14 +375,14 @@ class ProcessHandler:
                         process_name,
                     )
                     return False, blocker
-            return self._start_process_admitted(
-                process_name,
-                config_dir=config_dir,
-                command=command,
-                instance_name=instance_name,
-                suppress_logging=suppress_logging,
-                env=env,
-            )
+        return self._start_process_admitted(
+            process_name,
+            config_dir=config_dir,
+            command=command,
+            instance_name=instance_name,
+            suppress_logging=suppress_logging,
+            env=env,
+        )
 
     def _start_process_admitted(
         self,

@@ -1628,6 +1628,58 @@ class UpdateNotificationTests(unittest.TestCase):
         self.assertEqual(result, (None, "recovery attention required"))
         updater._auto_update_admitted.assert_not_called()
 
+    def test_startup_update_releases_admission_lock_before_service_waits(self):
+        updater = self._updater()
+        contender_result = []
+
+        def admitted(*_args):
+            from utils.infinidysk_migration_admission import (
+                INFINIDYSK_MIGRATION_ADMISSION_LOCK,
+            )
+
+            def contend_for_lock():
+                acquired = INFINIDYSK_MIGRATION_ADMISSION_LOCK.acquire(timeout=0.5)
+                contender_result.append(acquired)
+                if acquired:
+                    INFINIDYSK_MIGRATION_ADMISSION_LOCK.release()
+
+            contender = threading.Thread(target=contend_for_lock)
+            contender.start()
+            contender.join(timeout=1)
+            return True, None
+
+        updater._auto_update_admitted = Mock(side_effect=admitted)
+        with (
+            patch(
+                "utils.auto_update.CONFIG_MANAGER.find_key_for_process",
+                return_value=("plex", None),
+            ),
+            patch(
+                "utils.infinidysk_migration_admission.infinidysk_recovery_blocks_service",
+                return_value=None,
+            ),
+            patch(
+                "utils.infinidysk_migration_admission.infinidysk_namespace_migration_active",
+                return_value=False,
+            ),
+            patch(
+                "utils.infinidysk_migration_admission.infinidysk_namespace_pre_mutation_interrupted",
+                return_value=False,
+            ),
+            patch(
+                "utils.infinidysk_migration_admission.infinidysk_namespace_recovery_pending",
+                return_value=False,
+            ),
+            patch(
+                "utils.infinidysk_migration_admission.infinidysk_postgres_migration_active",
+                return_value=False,
+            ),
+        ):
+            result = updater.auto_update("Plex Media Server", enable_update=False)
+
+        self.assertEqual((True, None), result)
+        self.assertEqual([True], contender_result)
+
     def test_pre_mutation_interruption_still_blocks_manual_and_scheduled_updates(self):
         updater = self._updater()
         updater._manual_update_install_once_admitted = Mock()

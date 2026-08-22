@@ -797,6 +797,51 @@ class ArrPostgresMigrationTests(unittest.TestCase):
             self.assertEqual(ACTIVE_NAMESPACE_MIGRATION_BLOCKER, str(raised.exception))
             self.assertFalse(postgres_manager.jobs_dir.exists())
 
+    def test_infinidysk_database_job_refuses_active_service_mutation(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            postgres_manager = ArrPostgresMigrationManager(Path(temp_dir) / "postgres")
+            namespace_manager = InfiniDyskMigrationManager(
+                Path(temp_dir) / "namespace" / "infinidysk.json"
+            )
+            config_manager = MagicMock()
+            config_manager.find_key_for_process.return_value = (
+                "infinidysk",
+                None,
+            )
+            with (
+                patch(
+                    "utils.infinidysk_migration.INFINIDYSK_MIGRATION_MANAGER",
+                    namespace_manager,
+                ),
+                patch(
+                    "utils.arr_postgres_migration.infinidysk_external_mutation_active",
+                    return_value=True,
+                ),
+                patch(
+                    "utils.arr_postgres_migration.build_arr_postgres_preflight"
+                ) as preflight,
+                self.assertRaisesRegex(
+                    ArrPostgresMigrationError,
+                    "Another DUMB operation is changing",
+                ),
+            ):
+                postgres_manager.create_job(
+                    config_manager=config_manager,
+                    process_handler=MagicMock(),
+                    api_state=MagicMock(),
+                    logger=MagicMock(),
+                    process_name="InfiniDysk",
+                    mode="rehearsal",
+                    include_logs=False,
+                    confirmation="MIGRATE InfiniDysk",
+                    acknowledge_unsupported=True,
+                    acknowledge_backup=True,
+                    acknowledge_target_reset=True,
+                )
+
+            preflight.assert_not_called()
+            self.assertFalse(postgres_manager.jobs_dir.exists())
+
     def test_linked_arr_database_job_also_refuses_active_namespace_job(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)

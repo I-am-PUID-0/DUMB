@@ -35,7 +35,9 @@ from psycopg2.extras import execute_values
 from utils.arr_postgres import apply_arr_postgres_config, arr_postgres_database_names
 from utils.infinidysk_migration_admission import (
     ACTIVE_NAMESPACE_MIGRATION_BLOCKER,
+    EXTERNAL_MUTATION_BLOCKER,
     INFINIDYSK_MIGRATION_ADMISSION_LOCK,
+    infinidysk_external_mutation_active,
     infinidysk_namespace_migration_active,
 )
 from utils.postgres import initialize_postgres_databases
@@ -3621,6 +3623,8 @@ class ArrPostgresMigrationManager:
 
             if INFINIDYSK_MIGRATION_MANAGER.has_blocking_job():
                 raise ArrPostgresMigrationError(ACTIVE_NAMESPACE_MIGRATION_BLOCKER)
+            if service_key == "infinidysk" and infinidysk_external_mutation_active():
+                raise ArrPostgresMigrationError(EXTERNAL_MUTATION_BLOCKER)
             if service_key == "infinidysk" and self.has_active_infinidysk_job():
                 raise ArrPostgresMigrationError(
                     "An InfiniDysk PostgreSQL migration is active or has an unused "

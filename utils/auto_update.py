@@ -2693,8 +2693,11 @@ class Update:
             INFINIDYSK_MIGRATION_ADMISSION_LOCK,
             infinidysk_namespace_pre_mutation_interrupted,
             infinidysk_recovery_blocks_service,
+            release_infinidysk_external_mutation,
+            reserve_infinidysk_external_mutation,
         )
 
+        mutation_token = None
         with INFINIDYSK_MIGRATION_ADMISSION_LOCK:
             key, _ = CONFIG_MANAGER.find_key_for_process(process_name)
             blocker = infinidysk_recovery_blocks_service(key, process_name)
@@ -2717,9 +2720,20 @@ class Update:
                 # safely replaces the interrupted job.
                 enable_update = False
                 force_update_check = False
+            else:
+                # Register this long-running lifecycle operation while holding the
+                # short admission lock, then release the lock before setup can wait
+                # for another managed service. Namespace migration admission checks
+                # this reservation without serializing parallel service startup.
+                mutation_token = reserve_infinidysk_external_mutation(
+                    f"service startup/update: {process_name}"
+                )
+        try:
             return self._auto_update_admitted(
                 process_name, enable_update, force_update_check
             )
+        finally:
+            release_infinidysk_external_mutation(mutation_token)
 
     def _auto_update_admitted(
         self, process_name, enable_update, force_update_check: bool = False
