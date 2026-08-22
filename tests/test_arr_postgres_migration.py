@@ -7,6 +7,7 @@ import tempfile
 import threading
 import unittest
 import uuid
+from datetime import datetime
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import ANY, MagicMock, Mock, call, patch
@@ -28,6 +29,7 @@ from utils.arr_postgres_migration import (
     _backup_sqlite,
     _converted_import_batches,
     _convert_value,
+    _digest_rows,
     _clear_infinidysk_rollback_authorization,
     _infinidysk_namespace_migration_resolved,
     _infinidysk_postgres_source_selection,
@@ -1041,6 +1043,31 @@ class ArrPostgresMigrationTests(unittest.TestCase):
                 _validate_full_row_digests(source, target, ["Items"])
         finally:
             source.close()
+
+    def test_timestamp_digest_matches_postgres_microsecond_rounding(self):
+        source_rows = [
+            ("2025-12-29 09:12:47.2158351",),
+            ("2025-12-29 09:13:43.9553597",),
+            ("2025-12-29 09:14:43.9999999",),
+        ]
+        postgres_rows = [
+            (datetime(2025, 12, 29, 9, 12, 47, 215835),),
+            (datetime(2025, 12, 29, 9, 13, 43, 955360),),
+            (datetime(2025, 12, 29, 9, 14, 44),),
+        ]
+
+        source_digest = _digest_rows(
+            source_rows,
+            ["timestamp without time zone"],
+            source_values=True,
+        )
+        postgres_digest = _digest_rows(
+            postgres_rows,
+            ["timestamp without time zone"],
+            source_values=False,
+        )
+
+        self.assertEqual(source_digest, postgres_digest)
 
     def test_infinidysk_schema_helper_uses_isolated_loopback_migration_mode(self):
         process_handler = Mock()

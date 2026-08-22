@@ -23,7 +23,7 @@ import threading
 import time
 import uuid
 from collections import deque
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Callable
 
@@ -199,6 +199,11 @@ INFINIDYSK_TRANSIENT_TABLES = tuple(sorted(INFINIDYSK_TRANSIENT_SCHEMA_OBJECTS))
 INFINIDYSK_IMPORT_BATCH_BYTES = 4 * 1024 * 1024
 INFINIDYSK_FULL_ROW_DIGEST_ITERSIZE = 16
 INFINIDYSK_PRIMARY_KEY_DIGEST_ITERSIZE = 1000
+_POSTGRES_TIMESTAMP_FRACTION_RE = re.compile(
+    r"^(?P<prefix>.+[T ]\d{2}:\d{2}:\d{2})"
+    r"(?:\.(?P<fraction>\d+))?"
+    r"(?P<suffix>[Zz]|[+-]\d{2}(?::?\d{2})?)?$"
+)
 MAX_MIGRATION_JOB_BYTES = 2 * 1024 * 1024
 
 SUPPORTED_SERVICES = {
@@ -2212,10 +2217,26 @@ def _normalize_digest_value(value: Any, data_type: str) -> Any:
         converted = _convert_value(value, normalized_type)
         if isinstance(converted, str):
             candidate = converted.strip()
-            if candidate.endswith(("Z", "z")):
-                candidate = f"{candidate[:-1]}+00:00"
             try:
-                converted = datetime.fromisoformat(candidate)
+                timestamp_match = _POSTGRES_TIMESTAMP_FRACTION_RE.fullmatch(candidate)
+                fraction = (
+                    timestamp_match.group("fraction") if timestamp_match else None
+                )
+                if timestamp_match and fraction and len(fraction) > 6:
+                    suffix = timestamp_match.group("suffix") or ""
+                    if suffix in {"Z", "z"}:
+                        suffix = "+00:00"
+                    converted = datetime.fromisoformat(
+                        f"{timestamp_match.group('prefix')}{suffix}"
+                    )
+                    microseconds = int(fraction[:6])
+                    if fraction[6] >= "5":
+                        microseconds += 1
+                    converted += timedelta(microseconds=microseconds)
+                else:
+                    if candidate.endswith(("Z", "z")):
+                        candidate = f"{candidate[:-1]}+00:00"
+                    converted = datetime.fromisoformat(candidate)
             except ValueError as error:
                 raise ArrPostgresMigrationError(
                     "A SQLite timestamp could not be normalized for validation."
