@@ -167,6 +167,22 @@ class MediaProtectionTests(unittest.TestCase):
         self.assertEqual(self.handler.stopped, [])
         self.assertEqual(self.adapter.guarded, 0)
 
+    def test_namespace_migration_defers_all_new_protection_incidents(self):
+        with patch.object(
+            media_protection,
+            "infinidysk_namespace_migration_active",
+            return_value=True,
+        ):
+            planned = self.manager.begin_planned("CLI Debrid", "restart", "stop_now")
+            unexpected = self.manager.begin_unplanned("CLI Debrid", "crashed")
+
+        self.assertEqual("deferred", planned["status"])
+        self.assertTrue(planned["preflight"]["migration_blocked"])
+        self.assertIsNone(unexpected)
+        self.assertEqual({}, self.manager.incidents)
+        self.assertEqual([], self.handler.stopped)
+        self.assertEqual(0, self.adapter.guarded)
+
     def test_keep_running_override_guards_scans_without_stopping_plex(self):
         self.adapter.state = "busy"
         result = self.manager.begin_planned("CLI Debrid", "restart", "keep_running")
@@ -248,6 +264,31 @@ class MediaProtectionTests(unittest.TestCase):
 
         self.manager._recover(result["token"])
         self.assertEqual(self.notify_event.call_count, 1)
+
+    def test_namespace_migration_holds_recovery_and_idle_stop_mutations(self):
+        result = self.manager.begin_planned("CLI Debrid", "restart", "safe")
+        self.manager.complete_planned(result["token"], success=True)
+        incident = self.manager.incidents[result["token"]]
+        state = incident["media_servers"][0]
+        state["stopped_by_dumb"] = False
+        self.handler.started.clear()
+        self.handler.start_process("Plex Media Server")
+        self.handler.started.clear()
+
+        with patch.object(
+            media_protection,
+            "infinidysk_namespace_migration_active",
+            return_value=True,
+        ):
+            recovered = self.manager._recover(result["token"])
+            stopped = self.manager._stop_idle_media_if_admitted(result["token"], state)
+
+        self.assertFalse(recovered)
+        self.assertFalse(stopped)
+        self.assertEqual("waiting_for_recovery", incident["status"])
+        self.assertTrue(self.manager.has_blocking_incident())
+        self.assertEqual([], self.handler.started)
+        self.assertEqual(0, self.adapter.restored)
 
     def test_plex_library_paths_are_replaced_as_one_exact_set(self):
         section = Mock()

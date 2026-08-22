@@ -9,6 +9,7 @@ import pwd
 import subprocess
 import shutil
 import secrets
+import stat
 
 user_id = config.get("puid")
 group_id = config.get("pgid")
@@ -27,6 +28,7 @@ NETWORK_FILESYSTEM_TYPES = {
     "sshfs",
 }
 NETWORK_FILESYSTEM_WORKER_LIMIT = 16
+CONTROLLER_OWNED_CONFIG_ENTRIES = frozenset({"arr-postgres-migration"})
 
 
 def _available_cpu_count():
@@ -166,15 +168,83 @@ def chown_recursive(directory, user_id, group_id):
         return False, f"Error changing ownership of '{directory}': {e}"
 
 
-def chown_startup_directory(directory, user_id, group_id):
+def _repair_controller_owned_tree(directory, owner_uid, owner_gid):
+    """Restore one fixed private controller tree without following links."""
+
+    try:
+        root_stat = os.lstat(directory)
+        if stat.S_ISLNK(root_stat.st_mode) or not stat.S_ISDIR(root_stat.st_mode):
+            return (
+                False,
+                f"Controller-owned path '{directory}' is not a real directory.",
+            )
+        root_device = root_stat.st_dev
+        pending = [directory]
+        checked = 0
+        repaired = 0
+        while pending:
+            current = pending.pop()
+            current_stat = os.lstat(current)
+            if (
+                stat.S_ISLNK(current_stat.st_mode)
+                or current_stat.st_dev != root_device
+                or (current != directory and os.path.ismount(current))
+            ):
+                return (
+                    False,
+                    f"Controller-owned tree '{directory}' contains an unsafe link or mount.",
+                )
+            if stat.S_ISDIR(current_stat.st_mode):
+                with os.scandir(current) as entries:
+                    pending.extend(entry.path for entry in entries)
+            elif not stat.S_ISREG(current_stat.st_mode):
+                return (
+                    False,
+                    f"Controller-owned tree '{directory}' contains an unsupported entry.",
+                )
+            if (current_stat.st_uid, current_stat.st_gid) != (owner_uid, owner_gid):
+                os.chown(current, owner_uid, owner_gid, follow_symlinks=False)
+                repaired += 1
+            checked += 1
+        logger.debug(
+            "Controller ownership check for %s checked %s entries and repaired %s.",
+            directory,
+            checked,
+            repaired,
+        )
+        return True, None
+    except Exception as error:
+        return False, f"Error repairing controller ownership of '{directory}': {error}"
+
+
+def chown_startup_directory(
+    directory,
+    user_id,
+    group_id,
+    *,
+    controller_owned_entries=(),
+    controller_uid=None,
+    controller_gid=None,
+):
     """Repair mismatched top-level ownership without walking healthy subtrees."""
     try:
         os.makedirs(directory, exist_ok=True)
         chown_single(directory, user_id, group_id)
+        controller_owned_entries = frozenset(controller_owned_entries or ())
+        controller_uid = os.geteuid() if controller_uid is None else controller_uid
+        controller_gid = os.getegid() if controller_gid is None else controller_gid
         repaired = []
         skipped = 0
         with os.scandir(directory) as entries:
             for entry in entries:
+                if entry.name in controller_owned_entries:
+                    success, error = _repair_controller_owned_tree(
+                        entry.path, controller_uid, controller_gid
+                    )
+                    if not success:
+                        return False, error
+                    skipped += 1
+                    continue
                 try:
                     stat_info = entry.stat(follow_symlinks=False)
                 except FileNotFoundError:
@@ -447,7 +517,16 @@ def create_system_user(username="DUMB"):
                 group_id,
             )
         chown_recursive(log_dir, user_id, group_id)
-        chown_startup_directory(config_dir, user_id, group_id)
+        config_ownership_ok, config_ownership_error = chown_startup_directory(
+            config_dir,
+            user_id,
+            group_id,
+            controller_owned_entries=CONTROLLER_OWNED_CONFIG_ENTRIES,
+            controller_uid=os.geteuid(),
+            controller_gid=os.getegid(),
+        )
+        if not config_ownership_ok:
+            logger.warning("%s", config_ownership_error)
         chown_recursive(riven_dir, user_id, group_id)
         chown_recursive(home_dir, user_id, group_id)
         chown_recursive(zilean_dir, user_id, group_id)

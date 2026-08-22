@@ -6,6 +6,11 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from utils.dependencies import get_optional_current_user, get_rclone_optimizer_manager
 from utils.rclone_optimizer import RcloneOptimizerError, RcloneOptimizerManager
+from utils.infinidysk_migration_admission import (
+    InfiniDyskMigrationAdmissionError,
+    release_infinidysk_external_mutation,
+    reserve_infinidysk_external_mutation,
+)
 
 rclone_optimizer_router = APIRouter(prefix="/rclone-optimizer")
 
@@ -130,10 +135,16 @@ async def apply_recommendation(
     manager: RcloneOptimizerManager = Depends(get_rclone_optimizer_manager),
     current_user: str = Depends(get_optional_current_user),
 ):
+    mutation_token = None
     try:
+        mutation_token = reserve_infinidysk_external_mutation("rclone optimizer apply")
         return {"job": await run_in_threadpool(manager.apply, request.job_id)}
+    except InfiniDyskMigrationAdmissionError as error:
+        raise HTTPException(status_code=409, detail=str(error)) from None
     except RcloneOptimizerError as error:
         raise _bad_request(error) from None
+    finally:
+        release_infinidysk_external_mutation(mutation_token)
 
 
 @rclone_optimizer_router.post("/rollback")
@@ -142,7 +153,15 @@ async def rollback_recommendation(
     manager: RcloneOptimizerManager = Depends(get_rclone_optimizer_manager),
     current_user: str = Depends(get_optional_current_user),
 ):
+    mutation_token = None
     try:
+        mutation_token = reserve_infinidysk_external_mutation(
+            "rclone optimizer rollback"
+        )
         return {"job": await run_in_threadpool(manager.rollback, request.job_id)}
+    except InfiniDyskMigrationAdmissionError as error:
+        raise HTTPException(status_code=409, detail=str(error)) from None
     except RcloneOptimizerError as error:
         raise _bad_request(error) from None
+    finally:
+        release_infinidysk_external_mutation(mutation_token)

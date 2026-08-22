@@ -66,10 +66,12 @@ def _install_process_router_stubs():
     setup = types.ModuleType("utils.setup")
     setup.COMMIT_PIN_SERVICE_KEYS = set()
     setup.ensure_managed_postgres_database = lambda *args, **kwargs: None
+    setup.read_nzbdav_install_info = lambda *args, **kwargs: {}
     setup.setup_project = lambda *args, **kwargs: None
     sys.modules["utils.setup"] = setup
 
     core_services = types.ModuleType("utils.core_services")
+    core_services.get_core_services = lambda *args, **kwargs: []
     core_services.has_core_service = lambda *args, **kwargs: False
     sys.modules["utils.core_services"] = core_services
 

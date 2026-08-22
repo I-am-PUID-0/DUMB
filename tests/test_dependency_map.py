@@ -118,6 +118,7 @@ class ConditionalDependencyMapTests(unittest.TestCase):
         deps = self._build(
             {
                 "bazarr": {"enabled": True, "postgres_enabled": True},
+                "infinidysk": {"enabled": True, "postgres_enabled": True},
                 "pulsarr": {"enabled": True, "postgres_enabled": False},
                 "altmount": {"enabled": False, "postgres_enabled": True},
                 "seerr": {
@@ -130,6 +131,7 @@ class ConditionalDependencyMapTests(unittest.TestCase):
         )
 
         self.assertEqual(deps["bazarr"], {"postgres"})
+        self.assertEqual(deps["infinidysk"], {"postgres"})
         self.assertEqual(deps["seerr"], {"postgres"})
         self.assertNotIn("postgres", deps.get("pulsarr", set()))
         self.assertNotIn("postgres", deps.get("altmount", set()))

@@ -341,6 +341,13 @@ class DatabaseHealthCollector:
             result["databases"] = self._collect_postgres_databases(
                 candidate, config, enhanced=mode == "enhanced"
             )
+            if candidate["config_key"] == "infinidysk":
+                result["databases"].extend(
+                    self._collect_sqlite_file(role, path, enhanced=mode == "enhanced")
+                    for role, path in _infinidysk_auxiliary_sqlite_paths(
+                        candidate["service_config"]
+                    )
+                )
         elif candidate["provider"] == "sqlite":
             paths = self._sqlite_paths(candidate)
             result["databases"] = [
@@ -385,12 +392,10 @@ class DatabaseHealthCollector:
                 ("logs", os.path.join(config_dir, "logs.db")),
             ]
         if key == "infinidysk":
-            env = service.get("env") or {}
-            base = str(env.get("CONFIG_PATH") or config_dir or "/infinidysk")
-            return [
-                ("main", os.path.join(base, "db.sqlite")),
-                ("metrics", os.path.join(base, "metrics.sqlite")),
-            ]
+            base = _infinidysk_config_path(service)
+            return [("main", os.path.join(base, "db.sqlite"))] + list(
+                _infinidysk_auxiliary_sqlite_paths(service)
+            )
         if key == "bazarr":
             candidates = [
                 "/bazarr/data/db/bazarr.db",
@@ -1125,6 +1130,14 @@ def _provider_for_service(key: str, service: dict[str, Any]) -> str:
             or str(env.get("POSTGRES_ENABLED") or "false").strip().lower() == "true"
             else "sqlite"
         )
+    if key == "infinidysk":
+        env = service.get("env") or {}
+        provider = str(env.get("DATABASE_PROVIDER") or "").strip().lower()
+        return (
+            "postgresql"
+            if service.get("postgres_enabled") is True or provider == "postgres"
+            else "sqlite"
+        )
     if key == "pulsarr":
         env = service.get("env") or {}
         return (
@@ -1175,8 +1188,21 @@ def _altmount_database_config(service: dict[str, Any]) -> dict[str, Any]:
 
 
 def _service_postgres_connection(key, service, config):
-    del config
     env = service.get("env") or {}
+    if key == "infinidysk":
+        parsed = _parse_ado_net_connection_string(
+            str(env.get("DATABASE_CONNECTION_STRING") or "")
+        )
+        postgres = config.get("postgres") or {}
+        return {
+            "host": parsed.get("host") or postgres.get("host") or "127.0.0.1",
+            "port": parsed.get("port") or postgres.get("port") or 5432,
+            "user": parsed.get("user") or postgres.get("user"),
+            "password": parsed.get("password") or postgres.get("password"),
+            "database": parsed.get("database")
+            or service.get("postgres_database")
+            or "infinidysk",
+        }
     if key == "bazarr":
         return {
             "host": env.get("POSTGRES_HOST") or "127.0.0.1",
@@ -1221,6 +1247,75 @@ def _dsn_database(dsn: str) -> str | None:
         return database or None
     except (TypeError, ValueError):
         return None
+
+
+def _parse_ado_net_connection_string(value: str) -> dict[str, str]:
+    """Parse the bounded ADO.NET fields used by InfiniDysk's Npgsql setup."""
+
+    segments: list[str] = []
+    current: list[str] = []
+    quote_character: str | None = None
+    index = 0
+    while index < len(value):
+        character = value[index]
+        if quote_character:
+            if character == quote_character:
+                if index + 1 < len(value) and value[index + 1] == quote_character:
+                    current.append(character)
+                    index += 2
+                    continue
+                quote_character = None
+            else:
+                current.append(character)
+        elif character in {'"', "'"}:
+            quote_character = character
+        elif character == ";":
+            segments.append("".join(current))
+            current = []
+        else:
+            current.append(character)
+        index += 1
+    segments.append("".join(current))
+
+    aliases = {
+        "host": "host",
+        "server": "host",
+        "data source": "host",
+        "port": "port",
+        "database": "database",
+        "initial catalog": "database",
+        "username": "user",
+        "user id": "user",
+        "userid": "user",
+        "user": "user",
+        "password": "password",
+        "pwd": "password",
+    }
+    parsed: dict[str, str] = {}
+    for segment in segments:
+        name, separator, raw_value = segment.partition("=")
+        if not separator:
+            continue
+        canonical = aliases.get(name.strip().lower())
+        if canonical:
+            parsed[canonical] = raw_value.strip()
+    return parsed
+
+
+def _infinidysk_config_path(service: dict[str, Any]) -> str:
+    env = service.get("env") or {}
+    return str(env.get("CONFIG_PATH") or service.get("config_dir") or "/infinidysk")
+
+
+def _infinidysk_auxiliary_sqlite_paths(
+    service: dict[str, Any],
+) -> tuple[tuple[str, str], ...]:
+    base = _infinidysk_config_path(service)
+    return (
+        ("metrics", os.path.join(base, "metrics.sqlite")),
+        ("warden", os.path.join(base, "warden.db")),
+        ("usenet migration", os.path.join(base, "usenet-migration.db")),
+    )
 
 
 def _uses_local_postgres(connection: dict[str, Any] | None) -> bool:

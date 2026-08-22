@@ -135,6 +135,54 @@ def _parse_entrypoint_port(address: str, fallback: int) -> int:
         return fallback
 
 
+def _entrypoint_address_with_port(address: object, port: int) -> str:
+    value = str(address or "").strip()
+    match = re.search(r":\d+$", value)
+    if match:
+        return f"{value[: match.start()]}:{port}"
+    return f":{port}"
+
+
+def synchronize_traefik_web_port(config: dict) -> tuple[int, bool]:
+    """Keep the generic service port and Traefik web entrypoint aligned."""
+    entrypoints = config.get("entrypoints")
+    if not isinstance(entrypoints, dict):
+        entrypoints = {}
+        config["entrypoints"] = entrypoints
+    web = entrypoints.get("web")
+    if not isinstance(web, dict):
+        web = {}
+        entrypoints["web"] = web
+
+    configured_port = config.get("port")
+    if not isinstance(configured_port, int) or configured_port <= 0:
+        configured_port = _parse_entrypoint_port(web.get("address", ":18080"), 18080)
+
+    expected_address = _entrypoint_address_with_port(
+        web.get("address", ":18080"), configured_port
+    )
+    changed = (
+        config.get("port") != configured_port or web.get("address") != expected_address
+    )
+    config["port"] = configured_port
+    web["address"] = expected_address
+    return configured_port, changed
+
+
+def get_traefik_proxy_url(config: dict) -> str:
+    """Return the in-container URL consumers should use for Traefik's web entrypoint."""
+    port, _ = synchronize_traefik_web_port(config)
+    address = str(
+        config.get("entrypoints", {}).get("web", {}).get("address", "")
+    ).strip()
+    host = address.rsplit(":", 1)[0].strip("[]") if ":" in address else ""
+    if host.casefold() in {"", "*", "0.0.0.0", "::"}:
+        host = "127.0.0.1"
+    elif ":" in host:
+        host = f"[{host}]"
+    return f"http://{host}:{port}"
+
+
 def _prepare_entrypoints(configured: object) -> Dict[str, Any]:
     """Return static entrypoints with the minimum Nuxt/Vite path compatibility."""
     entrypoints = (
@@ -213,7 +261,13 @@ def _resolve_ui_service(service_def: Dict[str, Any]) -> List[Dict[str, Any]]:
         traefik_cfg = config.get("traefik", {})
         entrypoints = traefik_cfg.get("entrypoints", {})
         web_address = entrypoints.get("web", {}).get("address", ":18080")
-        web_port = _parse_entrypoint_port(web_address, fallback=18080)
+        configured_port = traefik_cfg.get("port")
+        fallback = configured_port if isinstance(configured_port, int) else 18080
+        web_port = (
+            configured_port
+            if isinstance(configured_port, int) and configured_port > 0
+            else _parse_entrypoint_port(web_address, fallback=fallback)
+        )
         return [
             {
                 "name": service_def["name"],
@@ -722,9 +776,12 @@ def _setup_traefik_locked(
 
     logger.info("Setting up Traefik configuration in %s", config_dir)
 
+    web_port, port_config_changed = synchronize_traefik_web_port(traefik_config)
+    if port_config_changed:
+        CONFIG_MANAGER.save_config(traefik_config.get("process_name", "Traefik"))
     entrypoints = _prepare_entrypoints(traefik_config.get("entrypoints"))
     web_address = entrypoints.get("web", {}).get("address", ":18080")
-    web_port = _parse_entrypoint_port(web_address, fallback=18080)
+    web_port = _parse_entrypoint_port(web_address, fallback=web_port)
     entrypoints["traefik"] = {"address": f":{web_port + 1}"}
 
     log_dir = "/log"

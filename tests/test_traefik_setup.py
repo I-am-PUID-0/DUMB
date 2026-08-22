@@ -73,6 +73,62 @@ class TraefikSetupHelperTests(unittest.TestCase):
         self.assertEqual(traefik_setup._parse_entrypoint_port("web", 80), 80)
         self.assertEqual(traefik_setup._parse_entrypoint_port(":bad", 80), 80)
 
+    def test_synchronize_web_port_updates_entrypoint_after_port_reservation(self):
+        config = {
+            "port": 18082,
+            "entrypoints": {
+                "web": {
+                    "address": ":18080",
+                    "http": {"encodedCharacters": {"allowEncodedSlash": False}},
+                }
+            },
+        }
+
+        port, changed = traefik_setup.synchronize_traefik_web_port(config)
+
+        self.assertEqual(port, 18082)
+        self.assertTrue(changed)
+        self.assertEqual(config["entrypoints"]["web"]["address"], ":18082")
+        self.assertFalse(
+            config["entrypoints"]["web"]["http"]["encodedCharacters"][
+                "allowEncodedSlash"
+            ]
+        )
+
+    def test_synchronize_web_port_preserves_bound_host(self):
+        config = {
+            "port": 19090,
+            "entrypoints": {"web": {"address": "127.0.0.1:18080"}},
+        }
+
+        port, changed = traefik_setup.synchronize_traefik_web_port(config)
+
+        self.assertEqual(port, 19090)
+        self.assertTrue(changed)
+        self.assertEqual(config["entrypoints"]["web"]["address"], "127.0.0.1:19090")
+
+    def test_proxy_url_uses_reassigned_web_port_and_loopback_for_wildcard(self):
+        config = {
+            "port": 18082,
+            "entrypoints": {"web": {"address": ":18080"}},
+        }
+
+        result = traefik_setup.get_traefik_proxy_url(config)
+
+        self.assertEqual(result, "http://127.0.0.1:18082")
+        self.assertEqual(config["entrypoints"]["web"]["address"], ":18082")
+
+    def test_proxy_url_preserves_explicit_ipv6_bind_host(self):
+        config = {
+            "port": 19090,
+            "entrypoints": {"web": {"address": "[::1]:19090"}},
+        }
+
+        self.assertEqual(
+            traefik_setup.get_traefik_proxy_url(config),
+            "http://[::1]:19090",
+        )
+
     def test_prepare_entrypoints_allows_only_encoded_slashes_by_default(self):
         configured = {"web": {"address": ":18080"}}
 

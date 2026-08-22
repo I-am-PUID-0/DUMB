@@ -44,10 +44,20 @@ from utils.mediastorm_credentials import (
 from utils.arr_postgres_migration import (
     SUPPORTED_SERVICES as POSTGRES_MIGRATION_SERVICES,
 )
+from utils.infinidysk_migration_admission import (
+    INFINIDYSK_MIGRATION_ADMISSION_LOCK,
+    InfiniDyskMigrationAdmissionError,
+    assert_infinidysk_external_mutation_reserved,
+    infinidysk_namespace_migration_active,
+    infinidysk_postgres_migration_active,
+    release_infinidysk_external_mutation,
+    reserve_infinidysk_external_mutation,
+)
 from utils.port_probe import is_port_available as _is_port_available
 from utils.versions import Versions
 from utils.install_cache import INSTALL_CACHE
 from utils.infinidysk_migration import (
+    CLEANUP_CONFIRMATION,
     INFINIDYSK_MIGRATION_MANAGER,
     InfiniDyskMigrationError,
 )
@@ -131,6 +141,18 @@ class InfiniDyskMigrationApplyRequest(BaseModel):
 class InfiniDyskMigrationPlaybackStopRequest(BaseModel):
     job_id: str = Field(pattern=r"^[0-9a-f]{32}$")
     confirmation: str
+    model_config = ConfigDict(extra="forbid")
+
+
+class InfiniDyskMigrationCleanupRequest(BaseModel):
+    preview_token: str = Field(
+        min_length=131,
+        max_length=160,
+        pattern=r"^[0-9]{1,12}\.[0-9a-f]{64}\.[0-9a-f]{64}$",
+    )
+    confirmation: str = Field(max_length=100)
+    acknowledge_validation: bool = Field(default=False, strict=True)
+    acknowledge_rollback_loss: bool = Field(default=False, strict=True)
     model_config = ConfigDict(extra="forbid")
 
 
@@ -870,7 +892,11 @@ SERVICE_OPTION_DESCRIPTIONS = {
     "mount_path": "Mount path used by services that expose or manage a filesystem mount.",
     "use_neutarr": "If true, auto-configures NeutArr for this Arr instance.",
     "use_profilarr": "If true, auto-configures Profilarr for this Arr instance.",
-    "postgres_enabled": "Use DUMB PostgreSQL for this service. Use the guided migration tool before enabling it on an existing SQLite installation.",
+    "postgres_enabled": (
+        "Use DUMB PostgreSQL for this service. Existing SQLite data must use the "
+        "guided migration tool when one is offered; direct provider switching does "
+        "not migrate data."
+    ),
     "postgres_database": "Optional PostgreSQL database name. Leave blank for DUMB's service or per-instance default.",
     "postgres_main_db": "Optional PostgreSQL main database name. Leave blank for DUMB's per-instance default.",
     "postgres_log_db": "Optional PostgreSQL log database name. Leave blank for DUMB's per-instance default.",
@@ -2070,6 +2096,34 @@ def dependency_graph(
         raise
 
 
+def _run_migration_lifecycle_admitted(
+    process_name: str,
+    action: str,
+    callback,
+):
+    """Serialize mutable lifecycle actions against both InfiniDysk migrations."""
+
+    with INFINIDYSK_MIGRATION_ADMISSION_LOCK:
+        try:
+            service_key, _ = CONFIG_MANAGER.find_key_for_process(process_name)
+        except Exception:
+            service_key = None
+        namespace_blocked = infinidysk_namespace_migration_active()
+        postgres_blocked = (
+            service_key in {"infinidysk", "postgres"}
+            and infinidysk_postgres_migration_active()
+        )
+        if namespace_blocked or postgres_blocked:
+            raise HTTPException(
+                status_code=409,
+                detail=(
+                    f"Cannot {action} {process_name} while an InfiniDysk database "
+                    "or namespace migration is active or awaiting recovery."
+                ),
+            )
+        return callback()
+
+
 @process_router.post("/start-service")
 async def start_service(
     request: ServiceRequest,
@@ -2210,7 +2264,12 @@ async def start_service(
                 detail=f"Unable to start the service '{process_name}'. Please check the logs for more details.",
             )
 
-    return await run_in_threadpool(start)
+    return await run_in_threadpool(
+        _run_migration_lifecycle_admitted,
+        request.process_name,
+        "start",
+        start,
+    )
 
 
 @process_router.post("/stop-service")
@@ -2273,7 +2332,12 @@ async def stop_service(
                 )
             api_state.shutdown_in_progress.remove(process_name)
 
-    return await run_in_threadpool(stop)
+    return await run_in_threadpool(
+        _run_migration_lifecycle_admitted,
+        request.process_name,
+        "stop",
+        stop,
+    )
 
 
 @process_router.post("/restart-service")
@@ -2422,7 +2486,12 @@ async def restart_service(
                 success=api_state.get_status(process_name) == "running",
             )
 
-    return await run_in_threadpool(restart)
+    return await run_in_threadpool(
+        _run_migration_lifecycle_admitted,
+        request.process_name,
+        "restart",
+        restart,
+    )
 
 
 @process_router.get("/service-reset/preview")
@@ -2474,7 +2543,14 @@ async def reset_or_remove_service(
             )
 
     try:
-        result = await run_in_threadpool(run_reset)
+        result = await run_in_threadpool(
+            _run_migration_lifecycle_admitted,
+            request.process_name,
+            request.action,
+            run_reset,
+        )
+    except HTTPException:
+        raise
     except ServiceResetError as error:
         raise HTTPException(status_code=400, detail=str(error)) from None
     except Exception:
@@ -2782,11 +2858,15 @@ async def update_install(
         raise HTTPException(status_code=500, detail="Updater not available")
 
     payload = await run_in_threadpool(
-        updater.manual_update_install,
+        _run_migration_lifecycle_admitted,
         request.process_name,
-        bool(request.allow_override),
-        request.target,
-        request.protection_override,
+        "update",
+        lambda: updater.manual_update_install(
+            request.process_name,
+            bool(request.allow_override),
+            request.target,
+            request.protection_override,
+        ),
     )
     record_diagnostic_event(
         "update_install",
@@ -3122,7 +3202,10 @@ async def symlink_repair(
             detail="Provide at least one rewrite rule, root migration, or preset.",
         )
 
+    mutation_token = None
     try:
+        if not request.dry_run:
+            mutation_token = reserve_infinidysk_external_mutation("symlink repair")
         report = await run_in_threadpool(
             repair_symlinks,
             request.roots,
@@ -3136,8 +3219,12 @@ async def symlink_repair(
             bool(request.copy_instead_of_move),
         )
         return report
+    except InfiniDyskMigrationAdmissionError as e:
+        raise HTTPException(status_code=409, detail=str(e)) from None
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Symlink repair failed: {e}")
+    finally:
+        release_infinidysk_external_mutation(mutation_token)
 
 
 @process_router.post("/symlink-repair-async")
@@ -3167,22 +3254,33 @@ async def symlink_repair_async(
             detail="Provide at least one rewrite rule, root migration, or preset.",
         )
 
-    process_name = str(request.process_name or "symlink-repair").strip()
-    job_payload = api_state.create_symlink_job(
-        process_name=process_name,
-        operation="symlink_repair",
-        metadata={
-            "dry_run": bool(request.dry_run),
-            "include_broken": bool(request.include_broken),
-            "backup_path": request.backup_path,
-            "presets": request.presets or [],
-            "rewrite_rules": rules_payload,
-            "root_migrations": root_migrations_payload,
-            "overwrite_existing": bool(request.overwrite_existing),
-            "copy_instead_of_move": bool(request.copy_instead_of_move),
-            "roots": request.roots or [],
-        },
-    )
+    mutation_token = None
+    try:
+        if not request.dry_run:
+            mutation_token = reserve_infinidysk_external_mutation(
+                "asynchronous symlink repair"
+            )
+        process_name = str(request.process_name or "symlink-repair").strip()
+        job_payload = api_state.create_symlink_job(
+            process_name=process_name,
+            operation="symlink_repair",
+            metadata={
+                "dry_run": bool(request.dry_run),
+                "include_broken": bool(request.include_broken),
+                "backup_path": request.backup_path,
+                "presets": request.presets or [],
+                "rewrite_rules": rules_payload,
+                "root_migrations": root_migrations_payload,
+                "overwrite_existing": bool(request.overwrite_existing),
+                "copy_instead_of_move": bool(request.copy_instead_of_move),
+                "roots": request.roots or [],
+            },
+        )
+    except InfiniDyskMigrationAdmissionError as error:
+        raise HTTPException(status_code=409, detail=str(error)) from None
+    except Exception:
+        release_infinidysk_external_mutation(mutation_token)
+        raise
     job_id = job_payload["job_id"]
 
     def run_job():
@@ -3203,6 +3301,8 @@ async def symlink_repair_async(
             },
         )
         try:
+            if mutation_token:
+                assert_infinidysk_external_mutation_reserved(mutation_token)
 
             def progress_callback(payload):
                 api_state.update_symlink_job(
@@ -3242,6 +3342,8 @@ async def symlink_repair_async(
                     "error": {"message": str(e)},
                 },
             )
+        finally:
+            release_infinidysk_external_mutation(mutation_token)
 
     thread = threading.Thread(target=run_job, daemon=True)
     thread.start()
@@ -3400,7 +3502,12 @@ async def symlink_manifest_restore(
 ):
     from utils.symlink_repair import restore_symlink_manifest
 
+    mutation_token = None
     try:
+        if not request.dry_run:
+            mutation_token = reserve_infinidysk_external_mutation(
+                "symlink manifest restore"
+            )
         report = await run_in_threadpool(
             restore_symlink_manifest,
             request.manifest_path,
@@ -3409,10 +3516,14 @@ async def symlink_manifest_restore(
             bool(request.restore_broken),
         )
         return report
+    except InfiniDyskMigrationAdmissionError as e:
+        raise HTTPException(status_code=409, detail=str(e)) from None
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Symlink manifest restore failed: {e}"
         )
+    finally:
+        release_infinidysk_external_mutation(mutation_token)
 
 
 @process_router.get("/symlink-manifest/compare")
@@ -3457,19 +3568,30 @@ async def symlink_manifest_restore_async(
     if not api_state:
         raise HTTPException(status_code=500, detail="API state unavailable")
 
-    process_name = str(
-        request.process_name or request.manifest_path or "symlink-manifest"
-    ).strip()
-    job_payload = api_state.create_symlink_job(
-        process_name=process_name,
-        operation="symlink_manifest_restore",
-        metadata={
-            "manifest_path": request.manifest_path,
-            "dry_run": bool(request.dry_run),
-            "overwrite_existing": bool(request.overwrite_existing),
-            "restore_broken": bool(request.restore_broken),
-        },
-    )
+    mutation_token = None
+    try:
+        if not request.dry_run:
+            mutation_token = reserve_infinidysk_external_mutation(
+                "asynchronous symlink manifest restore"
+            )
+        process_name = str(
+            request.process_name or request.manifest_path or "symlink-manifest"
+        ).strip()
+        job_payload = api_state.create_symlink_job(
+            process_name=process_name,
+            operation="symlink_manifest_restore",
+            metadata={
+                "manifest_path": request.manifest_path,
+                "dry_run": bool(request.dry_run),
+                "overwrite_existing": bool(request.overwrite_existing),
+                "restore_broken": bool(request.restore_broken),
+            },
+        )
+    except InfiniDyskMigrationAdmissionError as error:
+        raise HTTPException(status_code=409, detail=str(error)) from None
+    except Exception:
+        release_infinidysk_external_mutation(mutation_token)
+        raise
     job_id = job_payload["job_id"]
 
     def run_job():
@@ -3488,6 +3610,8 @@ async def symlink_manifest_restore_async(
             },
         )
         try:
+            if mutation_token:
+                assert_infinidysk_external_mutation_reserved(mutation_token)
 
             def progress_callback(payload):
                 api_state.update_symlink_job(
@@ -3522,6 +3646,8 @@ async def symlink_manifest_restore_async(
                     "error": {"message": str(e)},
                 },
             )
+        finally:
+            release_infinidysk_external_mutation(mutation_token)
 
     thread = threading.Thread(target=run_job, daemon=True)
     thread.start()
@@ -3570,7 +3696,10 @@ def ensure_arr_postgres_dependency_running(
     if service_key in arr_keys:
         config_changed = configure_arr_postgres_runtime(CONFIG_MANAGER)
     else:
-        config_changed = configure_service_postgres_runtime(CONFIG_MANAGER)
+        config_changed = configure_service_postgres_runtime(
+            CONFIG_MANAGER,
+            allow_offline_authorization=True,
+        )
     if config_changed:
         CONFIG_MANAGER.save_config()
 
@@ -3611,7 +3740,87 @@ def ensure_arr_postgres_dependency_running(
         )
 
 
-def apply_service_options(config_block, options: dict, logger):
+def _validate_infinidysk_service_options(
+    config_block: dict, options: dict, *, service_key: str
+) -> None:
+    """Validate an InfiniDysk onboarding candidate before mutating shared config."""
+
+    if service_key != "infinidysk":
+        return
+    candidate = copy.deepcopy(config_block)
+    candidate.update(
+        {key: value for key, value in options.items() if value is not None}
+    )
+    from utils.service_postgres import validate_infinidysk_postgres_candidate_update
+
+    postgres_config = CONFIG_MANAGER.config.get("postgres", {}) or {}
+    safe, error = validate_infinidysk_postgres_candidate_update(
+        config_block,
+        candidate,
+        postgres_config,
+        postgres_config,
+    )
+    if not safe:
+        raise HTTPException(status_code=400, detail=error)
+
+
+def _validate_postgres_service_options(config_block: dict, options: dict) -> None:
+    """Protect InfiniDysk's active/completed target binding from PG edits."""
+
+    candidate = copy.deepcopy(config_block)
+    candidate.update(
+        {key: value for key, value in options.items() if value is not None}
+    )
+    from utils.service_postgres import validate_infinidysk_postgres_candidate_update
+
+    infinidysk_config = CONFIG_MANAGER.config.get("infinidysk", {}) or {}
+    if not isinstance(infinidysk_config, dict):
+        return
+    safe, error = validate_infinidysk_postgres_candidate_update(
+        infinidysk_config,
+        infinidysk_config,
+        config_block,
+        candidate,
+    )
+    if not safe:
+        raise HTTPException(status_code=400, detail=error)
+
+
+def apply_service_options(
+    config_block, options: dict, logger, *, service_key: str | None = None
+):
+    if service_key in {"infinidysk", "postgres"}:
+        with INFINIDYSK_MIGRATION_ADMISSION_LOCK:
+            if (
+                infinidysk_postgres_migration_active()
+                or infinidysk_namespace_migration_active()
+            ):
+                raise HTTPException(
+                    status_code=409,
+                    detail=(
+                        "InfiniDysk or PostgreSQL configuration cannot change while "
+                        "a guarded database or namespace migration job is active."
+                    ),
+                )
+            if service_key == "infinidysk":
+                _validate_infinidysk_service_options(
+                    config_block, options, service_key=service_key
+                )
+            else:
+                _validate_postgres_service_options(config_block, options)
+            updated = False
+            for key, value in options.items():
+                if value is None:
+                    continue
+                if config_block.get(key) != value:
+                    logger.debug(
+                        f"Overriding '{key}' = '{value}' in service config for {config_block.get('process_name', 'Unknown Process')}"
+                    )
+                    config_block[key] = value
+                    updated = True
+            if updated:
+                CONFIG_MANAGER.save_config()
+            return
     updated = False
     for key, value in options.items():
         if value is None:
@@ -4270,7 +4479,7 @@ def _start_optional_service(
                 inst_cfg["enabled"] = True
                 CONFIG_MANAGER.save_config()
 
-            apply_service_options(inst_cfg, merged_options, logger)
+            apply_service_options(inst_cfg, merged_options, logger, service_key=opt_key)
             ensure_arr_postgres_dependency_running(
                 opt_key, inst_cfg, updater, api_state, logger
             )
@@ -4308,11 +4517,14 @@ def _start_optional_service(
             )
         return
 
-    if not opt_cfg.get("enabled"):
-        opt_cfg["enabled"] = True
-        CONFIG_MANAGER.save_config()
-
-    apply_service_options(opt_cfg, merged_options, logger)
+    if opt_key == "infinidysk":
+        infini_options = {**merged_options, "enabled": True}
+        apply_service_options(opt_cfg, infini_options, logger, service_key="infinidysk")
+    else:
+        if not opt_cfg.get("enabled"):
+            opt_cfg["enabled"] = True
+            CONFIG_MANAGER.save_config()
+        apply_service_options(opt_cfg, merged_options, logger, service_key=opt_key)
     ensure_arr_postgres_dependency_running(opt_key, opt_cfg, updater, api_state, logger)
     proc = opt_cfg.get("process_name")
     is_running = api_state.get_status(proc) == "running" if proc else False
@@ -4378,7 +4590,83 @@ async def start_core_services(
     return outcome
 
 
+_POSTGRES_REQUIRED_OPTIONALS = {
+    "zilean",
+    "pgadmin",
+    "mediastorm",
+    "traefik_proxy_admin",
+    "authelia",
+}
+
+
+def _resolve_startup_service(name: str) -> tuple[str | None, str | None]:
+    """Resolve canonical keys while preserving exact customized process names."""
+
+    supplied = str(name or "").strip()
+    identifier = normalize_identifier(supplied)
+    config = CONFIG_MANAGER.config
+    if identifier in config:
+        return identifier, None
+    for candidate in dict.fromkeys((supplied, identifier)):
+        if not candidate:
+            continue
+        try:
+            service_key, instance_name = CONFIG_MANAGER.find_key_for_process(candidate)
+        except Exception:
+            continue
+        if service_key:
+            return service_key, instance_name
+    return None, None
+
+
+def _startup_requires_migration_admission(request: UnifiedStartRequest) -> bool:
+    """Resolve requests capable of mutating InfiniDysk or PostgreSQL."""
+
+    raw_services = (
+        [request.core_services]
+        if isinstance(request.core_services, CoreServiceConfig)
+        else (request.core_services or [])
+    )
+    for service in raw_services:
+        identifier = normalize_identifier(service.name)
+        if identifier in {"infinidysk", "postgres"}:
+            return True
+        service_key, _ = _resolve_startup_service(service.name)
+        if service_key in ({"postgres"} | set(POSTGRES_MIGRATION_SERVICES)):
+            return True
+    selected_optionals = {
+        normalize_identifier(service).lower()
+        for service in (request.optional_services or [])
+    }
+    return bool(
+        selected_optionals
+        & (
+            {"postgres"}
+            | set(POSTGRES_MIGRATION_SERVICES)
+            | _POSTGRES_REQUIRED_OPTIONALS
+        )
+    )
+
+
 def _run_startup(request: UnifiedStartRequest, updater, api_state, logger):
+    postgres_sensitive = _startup_requires_migration_admission(request)
+    with INFINIDYSK_MIGRATION_ADMISSION_LOCK:
+        namespace_blocked = infinidysk_namespace_migration_active()
+        postgres_blocked = postgres_sensitive and infinidysk_postgres_migration_active()
+        if namespace_blocked or postgres_blocked:
+            raise HTTPException(
+                status_code=409,
+                detail=(
+                    "Onboarding cannot change configuration while an InfiniDysk "
+                    "namespace migration is active or awaiting recovery. InfiniDysk "
+                    "and PostgreSQL onboarding is also frozen during its guarded "
+                    "database migration."
+                ),
+            )
+        return _run_startup_admitted(request, updater, api_state, logger)
+
+
+def _run_startup_admitted(request: UnifiedStartRequest, updater, api_state, logger):
     priority_services = []
     remaining_services = []
     for svc in (
@@ -4401,6 +4689,49 @@ def _run_startup(request: UnifiedStartRequest, updater, api_state, logger):
 
     # Work in-place on the “single source of truth”
     config = CONFIG_MANAGER.config
+    with INFINIDYSK_MIGRATION_ADMISSION_LOCK:
+        if (
+            infinidysk_postgres_migration_active()
+            or infinidysk_namespace_migration_active()
+        ) and (
+            "infinidysk" in optional_services
+            or any(
+                _resolve_startup_service(service.name)[0] == "infinidysk"
+                for service in priority_services + core_services
+            )
+        ):
+            raise HTTPException(
+                status_code=409,
+                detail=(
+                    "InfiniDysk onboarding cannot change configuration while a "
+                    "guarded database or namespace migration job is active."
+                ),
+            )
+        for service in priority_services + core_services:
+            service_key, instance_name = _resolve_startup_service(service.name)
+            if service_key == "infinidysk":
+                service_options = service.service_options or {}
+                effective_options = dict(service_options.get(service_key, {}) or {})
+                if instance_name:
+                    effective_options.update(
+                        service_options.get(instance_name, {}) or {}
+                    )
+                effective_options["enabled"] = True
+                _validate_infinidysk_service_options(
+                    config[service_key],
+                    effective_options,
+                    service_key=service_key,
+                )
+        if "infinidysk" in optional_services:
+            effective_options = dict(
+                optional_service_options.get("infinidysk", {}) or {}
+            )
+            effective_options["enabled"] = True
+            _validate_infinidysk_service_options(
+                config["infinidysk"],
+                effective_options,
+                service_key="infinidysk",
+            )
     used_ports: dict[int, str] = {}
     _seed_used_ports(config, used_ports, logger)
 
@@ -4422,6 +4753,7 @@ def _run_startup(request: UnifiedStartRequest, updater, api_state, logger):
                 cfg,
                 service.service_options.get(ident, {}),
                 logger,
+                service_key=ident,
             )
             proc_name = cfg["process_name"]
             is_running = api_state.get_status(proc_name) == "running"
@@ -4447,14 +4779,7 @@ def _run_startup(request: UnifiedStartRequest, updater, api_state, logger):
     #
     # 2) Pre-start “must-have” services (e.g. Postgres)
     #
-    postgres_required_optionals = {
-        "zilean",
-        "pgadmin",
-        "mediastorm",
-        "traefik_proxy_admin",
-        "authelia",
-    }
-    selected_postgres_optionals = set(optional_services) & postgres_required_optionals
+    selected_postgres_optionals = set(optional_services) & _POSTGRES_REQUIRED_OPTIONALS
     if selected_postgres_optionals:
         pg = config["postgres"]
         if not pg.get("enabled"):
@@ -4559,11 +4884,7 @@ def _run_startup(request: UnifiedStartRequest, updater, api_state, logger):
         try:
             # Resolve config_key
             supplied = core_service.name
-            ident = normalize_identifier(supplied)
-            if ident in config:
-                config_key, instance_name = ident, None
-            else:
-                config_key, instance_name = CONFIG_MANAGER.find_key_for_process(ident)
+            config_key, instance_name = _resolve_startup_service(supplied)
             if config_key is None:
                 raise HTTPException(404, f"Process '{supplied}' not found")
 
@@ -4733,6 +5054,7 @@ def _run_startup(request: UnifiedStartRequest, updater, api_state, logger):
                                 inst_cfg,
                                 core_service.service_options.get(inst, {}),
                                 logger,
+                                service_key=dep,
                             )
                             if (
                                 dep == "zurg"
@@ -4853,6 +5175,7 @@ def _run_startup(request: UnifiedStartRequest, updater, api_state, logger):
                                 instances[instance_key],
                                 core_service.service_options.get(dep, {}),
                                 logger,
+                                service_key=dep,
                             )
 
                         # start/update this instance
@@ -4881,6 +5204,7 @@ def _run_startup(request: UnifiedStartRequest, updater, api_state, logger):
                             dep_cfg,
                             core_service.service_options.get(dep, {}),
                             logger,
+                            service_key=dep,
                         )
                         dep_proc = dep_cfg.get("process_name")
                         if not dep_proc:
@@ -4904,7 +5228,7 @@ def _run_startup(request: UnifiedStartRequest, updater, api_state, logger):
             #
             core_cfg = config[config_key]
             is_instance_core = isinstance(core_cfg, dict) and "instances" in core_cfg
-            if not is_instance_core:
+            if not is_instance_core and config_key != "infinidysk":
                 if not core_cfg.get("enabled"):
                     core_cfg["enabled"] = True
                     CONFIG_MANAGER.save_config()
@@ -5040,7 +5364,9 @@ def _run_startup(request: UnifiedStartRequest, updater, api_state, logger):
                             ].items():
                                 inst_opts.setdefault(k, v)
 
-                    apply_service_options(inst_cfg, inst_opts, logger)
+                    apply_service_options(
+                        inst_cfg, inst_opts, logger, service_key=config_key
+                    )
                     ensure_arr_postgres_dependency_running(
                         config_key, inst_cfg, updater, api_state, logger
                     )
@@ -5082,8 +5408,16 @@ def _run_startup(request: UnifiedStartRequest, updater, api_state, logger):
 
             else:
                 # singleton case
+                service_options = dict(
+                    core_service.service_options.get(config_key, {}) or {}
+                )
+                if config_key == "infinidysk":
+                    service_options["enabled"] = True
                 apply_service_options(
-                    core_cfg, core_service.service_options.get(config_key, {}), logger
+                    core_cfg,
+                    service_options,
+                    logger,
+                    service_key=config_key,
                 )
                 ensure_arr_postgres_dependency_running(
                     config_key, core_cfg, updater, api_state, logger
@@ -5673,6 +6007,7 @@ async def get_capabilities(current_user: str = Depends(get_optional_current_user
         "infinidysk_full_namespace_migration": True,
         "infinidysk_migration_jobs": True,
         "infinidysk_migration_playback_override": True,
+        "infinidysk_migration_cleanup": True,
         "rclone_optimizer": True,
         "rclone_optimizer_infinidysk": True,
         "rclone_optimizer_nzbdav": True,
@@ -5697,6 +6032,48 @@ async def get_infinidysk_migration_status(
     current_user: str = Depends(get_optional_current_user),
 ):
     return await run_in_threadpool(INFINIDYSK_MIGRATION_MANAGER.status)
+
+
+@process_router.get("/infinidysk-migration/cleanup-preview")
+async def preview_infinidysk_migration_cleanup(
+    current_user: str = Depends(get_optional_current_user),
+):
+    try:
+        return await run_in_threadpool(INFINIDYSK_MIGRATION_MANAGER.cleanup_preview)
+    except InfiniDyskMigrationError as error:
+        raise HTTPException(status_code=409, detail=str(error)) from None
+
+
+@process_router.post("/infinidysk-migration/cleanup")
+async def cleanup_infinidysk_migration(
+    request: InfiniDyskMigrationCleanupRequest,
+    current_user: str = Depends(get_optional_current_user),
+):
+    if request.confirmation != CLEANUP_CONFIRMATION:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Enter {CLEANUP_CONFIRMATION} to confirm cleanup.",
+        )
+    if request.acknowledge_validation is not True:
+        raise HTTPException(
+            status_code=400,
+            detail="Confirm that service health, playback, seeking, and library results were validated after migration.",
+        )
+    if request.acknowledge_rollback_loss is not True:
+        raise HTTPException(
+            status_code=400,
+            detail="Confirm the irreversible loss of DUMB migration history and rollback bundles.",
+        )
+    try:
+        return await run_in_threadpool(
+            INFINIDYSK_MIGRATION_MANAGER.cleanup,
+            request.preview_token,
+            request.confirmation,
+            request.acknowledge_validation,
+            request.acknowledge_rollback_loss,
+        )
+    except InfiniDyskMigrationError as error:
+        raise HTTPException(status_code=409, detail=str(error)) from None
 
 
 @process_router.post("/infinidysk-migration/remind-later")
@@ -5822,19 +6199,21 @@ async def apply_infinidysk_migration(
             raise HTTPException(status_code=409, detail=str(error)) from None
 
     def guarded_apply():
-        update_lock = getattr(updater, "updating", None)
-        acquired = update_lock is None or update_lock.acquire(blocking=False)
-        if not acquired:
-            raise InfiniDyskMigrationError(
-                "A service update is already active. Retry the migration after it finishes."
-            )
-        try:
-            return INFINIDYSK_MIGRATION_MANAGER.apply_brand_cutover(
-                request.rename_attached_services
-            )
-        finally:
-            if update_lock is not None:
-                update_lock.release()
+        with INFINIDYSK_MIGRATION_ADMISSION_LOCK:
+            update_lock = getattr(updater, "updating", None)
+            acquired = update_lock is None or update_lock.acquire(blocking=False)
+            if not acquired:
+                raise InfiniDyskMigrationError(
+                    "A service update is already active. Retry the migration after it finishes."
+                )
+            try:
+                return INFINIDYSK_MIGRATION_MANAGER.apply_brand_cutover(
+                    request.rename_attached_services,
+                    process_handler,
+                )
+            finally:
+                if update_lock is not None:
+                    update_lock.release()
 
     try:
         return await run_in_threadpool(guarded_apply)

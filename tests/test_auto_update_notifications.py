@@ -1526,6 +1526,147 @@ class UpdateNotificationTests(unittest.TestCase):
         self.assertIn("pinned to commit bbbbbbbbbbbb", message)
         versions.assert_not_called()
 
+    def test_infini_manual_update_is_blocked_during_database_migration(self):
+        updater = self._updater()
+        updater._manual_update_install_once_admitted = Mock()
+        config_manager = Mock()
+        config_manager.find_key_for_process.return_value = ("infinidysk", None)
+
+        with (
+            patch("utils.auto_update.CONFIG_MANAGER", config_manager),
+            patch(
+                "utils.infinidysk_migration_admission.infinidysk_namespace_migration_active",
+                return_value=False,
+            ),
+            patch(
+                "utils.infinidysk_migration_admission.infinidysk_postgres_migration_active",
+                return_value=True,
+            ),
+        ):
+            payload = updater.manual_update_install("InfiniDysk")
+
+        self.assertEqual(payload["status"], "blocked")
+        self.assertEqual(payload["reason"], "infinidysk_migration_active")
+        updater._manual_update_install_once_admitted.assert_not_called()
+
+    def test_scheduled_update_is_blocked_during_namespace_migration(self):
+        updater = self._updater()
+        updater._scheduled_update_check_admitted = Mock()
+
+        with (
+            patch(
+                "utils.infinidysk_migration_admission.infinidysk_namespace_migration_active",
+                return_value=True,
+            ),
+            patch(
+                "utils.infinidysk_migration_admission.infinidysk_postgres_migration_active",
+                return_value=False,
+            ),
+        ):
+            payload = updater.scheduled_update_check(
+                "Sonarr TV",
+                {"auto_update": True},
+                "sonarr",
+                "TV",
+            )
+
+        self.assertEqual(payload["status"], "blocked")
+        updater._scheduled_update_check_admitted.assert_not_called()
+
+    def test_cold_boot_allows_only_pre_mutation_namespace_interruption(self):
+        updater = self._updater()
+        updater._auto_update_admitted = Mock(return_value=(True, None))
+
+        with (
+            patch(
+                "utils.auto_update.CONFIG_MANAGER.find_key_for_process",
+                return_value=("infinidysk", None),
+            ),
+            patch(
+                "utils.infinidysk_migration_admission.infinidysk_recovery_blocks_service",
+                return_value=None,
+            ),
+            patch(
+                "utils.infinidysk_migration_admission.infinidysk_namespace_migration_active",
+                return_value=True,
+            ),
+            patch(
+                "utils.infinidysk_migration_admission.infinidysk_namespace_pre_mutation_interrupted",
+                return_value=True,
+            ),
+            patch(
+                "utils.infinidysk_migration_admission.infinidysk_namespace_recovery_pending",
+                return_value=False,
+            ),
+            patch(
+                "utils.infinidysk_migration_admission.infinidysk_postgres_migration_active",
+                return_value=False,
+            ),
+        ):
+            result = updater.auto_update(
+                "InfiniDysk", enable_update=True, force_update_check=True
+            )
+
+        self.assertEqual(result, (True, None))
+        updater._auto_update_admitted.assert_called_once_with(
+            "InfiniDysk", False, False
+        )
+
+        updater._auto_update_admitted.reset_mock()
+        with (
+            patch(
+                "utils.auto_update.CONFIG_MANAGER.find_key_for_process",
+                return_value=("infinidysk", None),
+            ),
+            patch(
+                "utils.infinidysk_migration_admission.infinidysk_recovery_blocks_service",
+                return_value="recovery attention required",
+            ),
+        ):
+            result = updater.auto_update("InfiniDysk", enable_update=False)
+
+        self.assertEqual(result, (None, "recovery attention required"))
+        updater._auto_update_admitted.assert_not_called()
+
+    def test_pre_mutation_interruption_still_blocks_manual_and_scheduled_updates(self):
+        updater = self._updater()
+        updater._manual_update_install_once_admitted = Mock()
+        updater._scheduled_update_check_admitted = Mock()
+        config_manager = Mock()
+        config_manager.find_key_for_process.return_value = ("infinidysk", None)
+
+        with (
+            patch("utils.auto_update.CONFIG_MANAGER", config_manager),
+            patch(
+                "utils.infinidysk_migration_admission.infinidysk_namespace_migration_active",
+                return_value=True,
+            ),
+            patch(
+                "utils.infinidysk_migration_admission.infinidysk_namespace_pre_mutation_interrupted",
+                return_value=True,
+            ),
+            patch(
+                "utils.infinidysk_migration_admission.infinidysk_namespace_recovery_pending",
+                return_value=False,
+            ),
+            patch(
+                "utils.infinidysk_migration_admission.infinidysk_postgres_migration_active",
+                return_value=False,
+            ),
+        ):
+            manual = updater._manual_update_install_once("InfiniDysk")
+            scheduled = updater.scheduled_update_check(
+                "InfiniDysk",
+                {"auto_update": True},
+                "infinidysk",
+                None,
+            )
+
+        self.assertEqual(manual["status"], "blocked")
+        self.assertEqual(scheduled["status"], "blocked")
+        updater._manual_update_install_once_admitted.assert_not_called()
+        updater._scheduled_update_check_admitted.assert_not_called()
+
     def test_manual_latest_install_preserves_commit_saved_while_running(self):
         updater = self._updater()
         commit_sha = "c" * 40

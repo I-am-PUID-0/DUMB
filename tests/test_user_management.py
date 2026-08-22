@@ -184,6 +184,49 @@ class UserManagementSecurityTests(unittest.TestCase):
             self.assertTrue(success, error)
             recursive.assert_not_called()
 
+    def test_startup_ownership_repairs_controller_owned_entry_separately(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            protected = os.path.join(temp_dir, "arr-postgres-migration")
+            os.makedirs(protected)
+            stat_info = os.stat(temp_dir)
+
+            with (
+                patch.object(
+                    user_management,
+                    "_repair_controller_owned_tree",
+                    return_value=(True, None),
+                ) as controller_repair,
+                patch.object(user_management, "chown_recursive") as managed_repair,
+            ):
+                success, error = user_management.chown_startup_directory(
+                    temp_dir,
+                    stat_info.st_uid,
+                    stat_info.st_gid,
+                    controller_owned_entries={"arr-postgres-migration"},
+                    controller_uid=stat_info.st_uid,
+                    controller_gid=stat_info.st_gid,
+                )
+
+            self.assertTrue(success, error)
+            controller_repair.assert_called_once_with(
+                protected, stat_info.st_uid, stat_info.st_gid
+            )
+            managed_repair.assert_not_called()
+
+    def test_controller_owned_tree_rejects_symlink(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            protected = os.path.join(temp_dir, "arr-postgres-migration")
+            os.makedirs(protected)
+            os.symlink(temp_dir, os.path.join(protected, "unsafe"))
+            stat_info = os.stat(temp_dir)
+
+            success, error = user_management._repair_controller_owned_tree(
+                protected, stat_info.st_uid, stat_info.st_gid
+            )
+
+            self.assertFalse(success)
+            self.assertIn("unsafe link or mount", error)
+
 
 if __name__ == "__main__":
     unittest.main()

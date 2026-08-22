@@ -20,6 +20,11 @@ from typing import Any
 import requests
 
 from utils.config_loader import CONFIG_MANAGER
+from utils.infinidysk_migration_admission import (
+    ACTIVE_NAMESPACE_MIGRATION_BLOCKER,
+    INFINIDYSK_MIGRATION_ADMISSION_LOCK,
+    infinidysk_namespace_migration_active,
+)
 from utils.notifications import notify_event
 from utils.private_files import atomic_write_private_text
 
@@ -644,6 +649,15 @@ class MediaProtectionManager:
             json.dumps(payload, indent=2, sort_keys=True) + "\n",
         )
 
+    def has_blocking_incident(self) -> bool:
+        """Return whether a retained incident can still mutate media lifecycle state."""
+
+        with self.lock:
+            return any(
+                incident.get("status") != "recovered"
+                for incident in self.incidents.values()
+            )
+
     def _is_running(self, process_name: str) -> bool:
         target = _normalize_name(process_name)
         for info in list(self.process_handler.processes.values()):
@@ -762,6 +776,28 @@ class MediaProtectionManager:
     def begin_planned(
         self, process_name: str, action: str, override: str | None = None
     ) -> dict:
+        with INFINIDYSK_MIGRATION_ADMISSION_LOCK:
+            if infinidysk_namespace_migration_active():
+                return {
+                    "status": "deferred",
+                    "token": None,
+                    "preflight": {
+                        "protected": False,
+                        "process_name": process_name,
+                        "action": action,
+                        "blocked": True,
+                        "busy": False,
+                        "unknown": False,
+                        "media_servers": [],
+                        "migration_blocked": True,
+                        "blocker": ACTIVE_NAMESPACE_MIGRATION_BLOCKER,
+                    },
+                }
+            return self._begin_planned_admitted(process_name, action, override)
+
+    def _begin_planned_admitted(
+        self, process_name: str, action: str, override: str | None = None
+    ) -> dict:
         override = str(override or "safe").strip().lower()
         if override not in {"safe", "keep_running", "stop_now"}:
             override = "safe"
@@ -828,6 +864,12 @@ class MediaProtectionManager:
         return {"status": "protected", "token": token, "preflight": preflight}
 
     def begin_unplanned(self, process_name: str, reason: str):
+        with INFINIDYSK_MIGRATION_ADMISSION_LOCK:
+            if infinidysk_namespace_migration_active():
+                return None
+            return self._begin_unplanned_admitted(process_name, reason)
+
+    def _begin_unplanned_admitted(self, process_name: str, reason: str):
         target = _normalize_name(process_name)
         with self.lock:
             for token, incident in self.incidents.items():
@@ -947,6 +989,13 @@ class MediaProtectionManager:
         return True
 
     def _recover(self, token: str):
+        with INFINIDYSK_MIGRATION_ADMISSION_LOCK:
+            if infinidysk_namespace_migration_active():
+                return False
+            self._recover_admitted(token)
+            return True
+
+    def _recover_admitted(self, token: str):
         with self.lock:
             incident = self.incidents.get(token)
             if not incident:
@@ -1002,6 +1051,46 @@ class MediaProtectionManager:
                 service_name=incident.get("target_process"),
             )
 
+    def _stop_idle_media_if_admitted(self, token: str, state: dict) -> bool:
+        """Stop one idle guarded server without racing namespace ownership."""
+
+        with INFINIDYSK_MIGRATION_ADMISSION_LOCK:
+            if infinidysk_namespace_migration_active():
+                return False
+            process_name = state.get("process_name")
+            with self.lock:
+                current = self.incidents.get(token)
+                current_state = next(
+                    (
+                        item
+                        for item in (current or {}).get("media_servers", [])
+                        if item.get("process_name") == process_name
+                    ),
+                    None,
+                )
+                if not current_state or current_state.get("stopped_by_dumb"):
+                    return False
+            if not self._is_running(process_name):
+                return False
+            policy = protection_policy(process_name)
+            if not policy.get("stop_when_idle_on_outage", True):
+                return False
+            activity = build_adapter(
+                state.get("key"), process_name, self.logger
+            ).activity()
+            if activity.get("state") != "idle":
+                return False
+            self.process_handler.stop_process(process_name)
+            with self.lock:
+                current = self.incidents.get(token)
+                if not current:
+                    return False
+                for current_state in current.get("media_servers", []):
+                    if current_state.get("process_name") == process_name:
+                        current_state["stopped_by_dumb"] = True
+                self._save()
+            return True
+
     def _monitor(self):
         stable_since: dict[str, float] = {}
         while not self._stop_event.is_set():
@@ -1055,29 +1144,7 @@ class MediaProtectionManager:
                 # users have naturally finished, if that policy remains enabled.
                 if incident.get("kind") == "unexpected":
                     for state in incident.get("media_servers", []):
-                        if state.get("stopped_by_dumb") or not self._is_running(
-                            state.get("process_name")
-                        ):
-                            continue
-                        policy = protection_policy(state.get("process_name"))
-                        if not policy.get("stop_when_idle_on_outage", True):
-                            continue
-                        activity = build_adapter(
-                            state.get("key"), state.get("process_name"), self.logger
-                        ).activity()
-                        if activity.get("state") == "idle":
-                            self.process_handler.stop_process(state.get("process_name"))
-                            with self.lock:
-                                current = self.incidents.get(token)
-                                if current:
-                                    for current_state in current.get(
-                                        "media_servers", []
-                                    ):
-                                        if current_state.get(
-                                            "process_name"
-                                        ) == state.get("process_name"):
-                                            current_state["stopped_by_dumb"] = True
-                                    self._save()
+                        self._stop_idle_media_if_admitted(token, state)
 
                 if self._ready_for_recovery(incident):
                     stable_since[token] = stable_since.get(token) or time.monotonic()

@@ -349,6 +349,44 @@ class ProcessHandler:
         suppress_logging=False,
         env=None,
     ):
+        """Start a process while serializing against migration admission."""
+
+        from utils.infinidysk_migration_admission import (
+            INFINIDYSK_MIGRATION_ADMISSION_LOCK,
+            infinidysk_recovery_blocks_service,
+        )
+
+        with INFINIDYSK_MIGRATION_ADMISSION_LOCK:
+            try:
+                service_key, _ = CONFIG_MANAGER.find_key_for_process(process_name)
+            except Exception:
+                service_key = None
+            if service_key:
+                blocker = infinidysk_recovery_blocks_service(service_key, process_name)
+                if blocker:
+                    self.logger.warning(
+                        "Start blocked for %s while migration recovery is pending.",
+                        process_name,
+                    )
+                    return False, blocker
+            return self._start_process_admitted(
+                process_name,
+                config_dir=config_dir,
+                command=command,
+                instance_name=instance_name,
+                suppress_logging=suppress_logging,
+                env=env,
+            )
+
+    def _start_process_admitted(
+        self,
+        process_name,
+        config_dir=None,
+        command=None,
+        instance_name=None,
+        suppress_logging=False,
+        env=None,
+    ):
         requested_env = dict(env) if isinstance(env, dict) else None
         internal_name = self._prefixed_name(process_name)
         self._set_restart_disabled(internal_name, False)
@@ -568,6 +606,86 @@ class ProcessHandler:
                             f"Failed to patch Jellyfin system.xml port: {e}"
                         )
 
+            if key == "infinidysk" and isinstance(config_for_wait, dict):
+                from utils.service_postgres import (
+                    infinidysk_postgres_runtime_floor,
+                    service_postgres_enabled,
+                    validate_infinidysk_postgres_fresh_install,
+                    validate_infinidysk_postgres_installed_version,
+                    validate_infinidysk_postgres_source_selection,
+                )
+
+                persisted_config = (
+                    config if isinstance(config, dict) else config_for_wait
+                )
+                launch_config = dict(persisted_config)
+                launch_env = dict(env or {})
+                launch_config.update(
+                    {
+                        "command": list(command),
+                        "config_dir": config_dir,
+                        "env": launch_env,
+                    }
+                )
+                provider = (
+                    str(launch_env.get("DATABASE_PROVIDER") or "").strip().lower()
+                )
+                postgres_selected = service_postgres_enabled(
+                    launch_config
+                ) or provider in {
+                    "postgres",
+                    "postgresql",
+                }
+                if postgres_selected:
+                    minimum_commit = infinidysk_postgres_runtime_floor(launch_config)
+                    if minimum_commit:
+                        source_safe, source_error = (
+                            validate_infinidysk_postgres_source_selection(
+                                launch_config,
+                                minimum_commit=minimum_commit,
+                            )
+                        )
+                    else:
+                        source_safe, source_error = (
+                            validate_infinidysk_postgres_source_selection(launch_config)
+                        )
+                    if not source_safe:
+                        return False, source_error
+                    installed_config_dir = (
+                        launch_config.get("config_dir") or "/infinidysk"
+                    )
+                    if minimum_commit:
+                        runtime_safe, runtime_error = (
+                            validate_infinidysk_postgres_installed_version(
+                                installed_config_dir,
+                                minimum_commit=minimum_commit,
+                            )
+                        )
+                    else:
+                        runtime_safe, runtime_error = (
+                            validate_infinidysk_postgres_installed_version(
+                                installed_config_dir
+                            )
+                        )
+                    if not runtime_safe:
+                        return False, runtime_error
+                    postgres_config = CONFIG_MANAGER.get("postgres", {}) or {}
+                    effective_config_path = (
+                        launch_env.get("CONFIG_PATH")
+                        or launch_config.get("config_dir")
+                        or "/infinidysk"
+                    )
+                    binding_safe, binding_error = (
+                        validate_infinidysk_postgres_fresh_install(
+                            effective_config_path,
+                            True,
+                            service=launch_config,
+                            postgres_config=postgres_config,
+                        )
+                    )
+                    if not binding_safe:
+                        return False, binding_error
+
             process_env = os.environ.copy()
             if env is not None:
                 process_env.update(env)
@@ -588,6 +706,7 @@ class ProcessHandler:
                 "PostgreSQL_init",
                 "pnpm_install",
                 "pnpm_build",
+                "pnpm_build_server",
                 "profilarr_deno_install",
                 "profilarr_v2_build",
                 "profilarr_v2_compile",
@@ -842,12 +961,20 @@ class ProcessHandler:
         return True, None
 
     def reap_zombies(self, signum, frame):
-        while True:
+        # Only reap children launched and tracked by ProcessHandler.  Other
+        # helpers (for example pg_isready during startup stabilization) are
+        # owned by subprocess.run()/Popen() callers elsewhere in DUMB.  A
+        # process-wide waitpid(-1) steals those children from their owners,
+        # produces misleading "Unknown" reaper logs, and can turn a completed
+        # readiness probe into ChildProcessError for the waiting caller.
+        for tracked_pid in list(self.processes):
             try:
-                pid, _ = os.waitpid(-1, os.WNOHANG)
+                pid, _ = os.waitpid(tracked_pid, os.WNOHANG)
                 if pid == 0:
-                    break
-                process_info = self.processes.pop(pid, {"description": "Unknown"})
+                    continue
+                process_info = self.processes.pop(pid, None)
+                if process_info is None:
+                    continue
                 process_name = process_info.get("name")
                 internal_name = process_info.get("internal_name", process_name)
                 process_obj = process_info.get("process_obj")
@@ -888,7 +1015,7 @@ class ProcessHandler:
                         )
                     self._maybe_schedule_restart(process_name, reason)
             except ChildProcessError:
-                break
+                continue
 
     def wait(self, process_name):
         if self.shutting_down:
@@ -1615,12 +1742,48 @@ class ProcessHandler:
                 return (time.time() - grace_started_at) >= grace_period
         return True
 
+    @staticmethod
+    def _migration_blocks_auto_restart(process_name):
+        """Fail closed when a migration owns the affected service lifecycle."""
+
+        from utils.infinidysk_migration_admission import (
+            INFINIDYSK_MIGRATION_ADMISSION_LOCK,
+            infinidysk_namespace_migration_active,
+            infinidysk_postgres_migration_active,
+        )
+
+        with INFINIDYSK_MIGRATION_ADMISSION_LOCK:
+            if infinidysk_namespace_migration_active():
+                return True
+            try:
+                service_key, _ = CONFIG_MANAGER.find_key_for_process(process_name)
+            except Exception:
+                service_key = None
+            if not service_key:
+                normalized = str(process_name or "").replace(" ", "").lower()
+                if normalized in {"infinidysk", "postgres", "postgresql"}:
+                    service_key = (
+                        "postgres" if normalized != "infinidysk" else normalized
+                    )
+            return service_key in {"infinidysk", "postgres"} and bool(
+                infinidysk_postgres_migration_active()
+            )
+
+    def _clear_pending_restart(self, process_name):
+        with self.auto_restart_lock:
+            state = self._get_restart_state(process_name)
+            state["pending"] = False
+            state["next_restart_time"] = None
+
     def _maybe_schedule_restart(self, process_name, reason):
         if (
             self.shutting_down
             or not self.is_startup_complete()
             or self._is_restart_disabled(process_name)
         ):
+            return
+        if self._migration_blocks_auto_restart(process_name):
+            self._clear_pending_restart(process_name)
             return
         policy = self._get_service_restart_policy(process_name)
         if not policy:
@@ -1660,40 +1823,49 @@ class ProcessHandler:
         def do_restart():
             if delay:
                 time.sleep(delay)
-            if self.shutting_down or self._is_restart_disabled(process_name):
+            from utils.infinidysk_migration_admission import (
+                INFINIDYSK_MIGRATION_ADMISSION_LOCK,
+            )
+
+            # The final ownership check and complete lifecycle attempt are one
+            # admission transaction. A migration cannot be admitted between
+            # this check and the replacement process start.
+            with INFINIDYSK_MIGRATION_ADMISSION_LOCK:
+                if (
+                    self.shutting_down
+                    or self._is_restart_disabled(process_name)
+                    or self._migration_blocks_auto_restart(process_name)
+                ):
+                    self._clear_pending_restart(process_name)
+                    return
+                if process_name in self.process_names:
+                    self.stop_process(process_name, disable_restart=False)
+
+                with self.auto_restart_lock:
+                    state = self._get_restart_state(process_name)
+                    state["restart_attempts"] += 1
+                    state["recent_attempts"].append(time.time())
+
+                notify_event(
+                    "service.auto_restart.attempt",
+                    "warning",
+                    f"Auto-restarting {process_name}",
+                    f"DUMB is attempting to restart the service after: {reason}",
+                    service_name=process_name,
+                )
+
+                success, error = self.start_process(process_name)
                 with self.auto_restart_lock:
                     state = self._get_restart_state(process_name)
                     state["pending"] = False
                     state["next_restart_time"] = None
-                return
-            if process_name in self.process_names:
-                self.stop_process(process_name, disable_restart=False)
-
-            with self.auto_restart_lock:
-                state = self._get_restart_state(process_name)
-                state["restart_attempts"] += 1
-                state["recent_attempts"].append(time.time())
-
-            notify_event(
-                "service.auto_restart.attempt",
-                "warning",
-                f"Auto-restarting {process_name}",
-                f"DUMB is attempting to restart the service after: {reason}",
-                service_name=process_name,
-            )
-
-            success, error = self.start_process(process_name)
-            with self.auto_restart_lock:
-                state = self._get_restart_state(process_name)
-                state["pending"] = False
-                state["next_restart_time"] = None
-                if success:
-                    state["awaiting_recovery"] = True
-                    state["readiness_state"] = "starting"
-                    state["ready_at"] = None
-                else:
-                    state["restart_failures"] += 1
-                    state["last_failure_reason"] = error
+                    if success:
+                        state["awaiting_recovery"] = True
+                        state["readiness_state"] = "starting"
+                        state["ready_at"] = None
+                    else:
+                        state["restart_failures"] += 1
+                        state["last_failure_reason"] = error
             if success:
                 self.logger.warning(
                     "Auto-restart launched %s after failure; waiting for health verification.",

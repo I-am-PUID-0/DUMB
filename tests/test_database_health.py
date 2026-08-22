@@ -539,6 +539,20 @@ class DatabaseHealthCollectorTests(unittest.TestCase):
                 "bazarr_prod",
             ),
             (
+                "infinidysk",
+                {
+                    "env": {
+                        "DATABASE_PROVIDER": "postgres",
+                        "DATABASE_CONNECTION_STRING": (
+                            'Host="db.example";Port="5544";'
+                            'Database="infinidysk_prod";Username="dumb";'
+                            'Password="secret;value"'
+                        ),
+                    }
+                },
+                "infinidysk_prod",
+            ),
+            (
                 "pulsarr",
                 {
                     "env": {
@@ -568,6 +582,61 @@ class DatabaseHealthCollectorTests(unittest.TestCase):
                 specs = collector._postgres_specs(candidate, {})
                 self.assertEqual(candidate["provider"], "postgresql")
                 self.assertEqual(specs[0]["name"], expected_database)
+
+    def test_infinidysk_npgsql_connection_fields_are_parsed_for_health_probe(self):
+        collector = DatabaseHealthCollector()
+        service = {
+            "env": {
+                "DATABASE_PROVIDER": "postgres",
+                "DATABASE_CONNECTION_STRING": (
+                    'Host="db;primary";Port="5544";Database="media";'
+                    'Username="dumb";Password="secret;with""quote"'
+                ),
+            }
+        }
+
+        candidate = collector._candidate("infinidysk", service, None)
+        connection = collector._postgres_specs(candidate, {})[0]["connection"]
+
+        self.assertEqual(connection["host"], "db;primary")
+        self.assertEqual(connection["port"], "5544")
+        self.assertEqual(connection["database"], "media")
+        self.assertEqual(connection["user"], "dumb")
+        self.assertEqual(connection["password"], 'secret;with"quote')
+
+    def test_infinidysk_postgres_health_keeps_auxiliary_sqlite_stores(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            for filename in ("metrics.sqlite", "warden.db", "usenet-migration.db"):
+                Path(temp_dir, filename).touch()
+            log_path = Path(temp_dir) / "infinidysk.log"
+            log_path.touch()
+            collector = DatabaseHealthCollector()
+            config = _config(
+                temp_dir,
+                str(log_path),
+                service_settings={
+                    "postgres_enabled": True,
+                    "postgres_database": "infinidysk",
+                    "env": {
+                        "DATABASE_PROVIDER": "postgres",
+                        "DATABASE_CONNECTION_STRING": (
+                            'Host="127.0.0.1";Port="5432";'
+                            'Database="infinidysk";Username="DUMB";'
+                            'Password="postgres"'
+                        ),
+                    },
+                },
+            )
+
+            service = collector.snapshot(config)["services"][0]
+
+        self.assertEqual(service["provider"], "postgresql")
+        self.assertEqual(
+            [database["role"] for database in service["databases"]],
+            ["main", "metrics", "warden", "usenet migration"],
+        )
+        self.assertEqual(service["databases"][0]["name"], "infinidysk")
+        self.assertTrue(all(item["exists"] for item in service["databases"][1:]))
 
     def test_mediastorm_uses_managed_postgres_database(self):
         collector = DatabaseHealthCollector()

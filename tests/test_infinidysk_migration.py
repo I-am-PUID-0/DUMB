@@ -1,19 +1,24 @@
 import json
+import os
 import sqlite3
 import tempfile
 import threading
 import time
 import unittest
 import urllib.error
+import uuid
 from pathlib import Path
 from unittest.mock import MagicMock, call, patch
 
 from utils.infinidysk_migration import (
+    ACTIVE_POSTGRES_MIGRATION_BLOCKER,
     ARR_EDITOR_BATCH_SIZE,
     ARR_INVENTORY_TIMEOUT_SECONDS,
     ARR_SERVICE_API,
     InfiniDyskMigrationError,
     InfiniDyskMigrationManager,
+    MEDIA_PROTECTION_NAMESPACE_BLOCKER,
+    POSTGRES_NAMESPACE_ORDERING_BLOCKER,
     QUIESCE_TIMEOUT_SECONDS,
     _config_fingerprint,
     _migration_arr_req,
@@ -21,6 +26,7 @@ from utils.infinidysk_migration import (
     _replace_namespace_text,
     _rewrite_config_namespace,
 )
+from utils.arr_postgres_migration import ArrPostgresMigrationManager
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -298,6 +304,151 @@ class InfiniDyskMigrationTests(unittest.TestCase):
                 for blocker in result["blockers"]
             )
         )
+
+    def test_preflight_blocks_postgresql_backed_infinidysk(self):
+        postgres_variants = (
+            {"postgres_enabled": True},
+            {"env": {"DATABASE_PROVIDER": "PostgreSQL"}},
+        )
+        for service_update in postgres_variants:
+            with self.subTest(service_update=service_update):
+                with tempfile.TemporaryDirectory() as temp_dir:
+                    manager = InfiniDyskMigrationManager(Path(temp_dir) / "state.json")
+                    config = legacy_config()
+                    config["infinidysk"].update(service_update)
+                    config_manager = MagicMock()
+                    config_manager.config = config
+                    with (
+                        patch(
+                            "utils.infinidysk_migration.CONFIG_MANAGER",
+                            config_manager,
+                        ),
+                        patch.object(
+                            manager,
+                            "_namespace_filesystem_plan",
+                            return_value=([], []),
+                        ),
+                        patch.object(
+                            manager, "_linked_service_inventory", return_value=[]
+                        ),
+                        patch.object(
+                            manager, "_arr_snapshot", return_value=([], [], [])
+                        ),
+                        patch.object(
+                            manager, "_prowlarr_snapshot", return_value=([], [])
+                        ),
+                        patch.object(manager, "_media_snapshot", return_value=([], [])),
+                        patch.object(
+                            manager,
+                            "_infinidysk_active_reads",
+                            return_value=(0, None),
+                        ),
+                    ):
+                        result = manager.preflight(None, MagicMock())
+
+                self.assertFalse(result["ready"])
+                self.assertIn(POSTGRES_NAMESPACE_ORDERING_BLOCKER, result["blockers"])
+
+    def test_preflight_blocks_active_media_protection_incident(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            manager = InfiniDyskMigrationManager(Path(temp_dir) / "state.json")
+            config_manager = MagicMock()
+            config_manager.config = legacy_config()
+            protection = MagicMock()
+            protection.has_blocking_incident.return_value = True
+            handler = MagicMock()
+            handler.media_protection_manager = protection
+            with (
+                patch("utils.infinidysk_migration.CONFIG_MANAGER", config_manager),
+                patch.object(
+                    manager, "_namespace_filesystem_plan", return_value=([], [])
+                ),
+                patch.object(manager, "_linked_service_inventory", return_value=[]),
+                patch.object(manager, "_arr_snapshot", return_value=([], [], [])),
+                patch.object(manager, "_prowlarr_snapshot", return_value=([], [])),
+                patch.object(manager, "_media_snapshot", return_value=([], [])),
+                patch.object(
+                    manager, "_infinidysk_active_reads", return_value=(0, None)
+                ),
+                patch.object(manager, "_process_running", return_value=False),
+            ):
+                result = manager.preflight(handler, MagicMock())
+
+        self.assertFalse(result["ready"])
+        self.assertIn(MEDIA_PROTECTION_NAMESPACE_BLOCKER, result["blockers"])
+
+    def test_status_disables_both_namespace_modes_when_postgresql_backed(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            manager = InfiniDyskMigrationManager(Path(temp_dir) / "state.json")
+            config = legacy_config()
+            config["infinidysk"]["postgres_enabled"] = True
+            status = manager.status(config, now=1_000)
+
+        self.assertEqual([POSTGRES_NAMESPACE_ORDERING_BLOCKER], status["blockers"])
+        self.assertEqual(
+            {"retain_legacy_namespace": False, "full_namespace": False},
+            {item["id"]: item["available"] for item in status["modes"]},
+        )
+        self.assertTrue(
+            all(
+                item["unavailable_reason"] == POSTGRES_NAMESPACE_ORDERING_BLOCKER
+                for item in status["modes"]
+            )
+        )
+
+    def test_namespace_preflight_and_both_applies_refuse_active_postgres_job(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            manager = InfiniDyskMigrationManager(root / "namespace.json")
+            postgres_manager = ArrPostgresMigrationManager(root / "postgres")
+            postgres_manager._create_job(
+                uuid.UUID(hex="b" * 32),
+                {
+                    "job_id": "b" * 32,
+                    "service_key": "infinidysk",
+                    "process_name": "NzbDAV",
+                    "status": "running",
+                    "worker_pid": os.getpid(),
+                    "worker_id": postgres_manager._worker_id,
+                },
+            )
+            config = legacy_config()
+            config_manager = MagicMock()
+            config_manager.config = config
+            with (
+                patch("utils.infinidysk_migration.CONFIG_MANAGER", config_manager),
+                patch(
+                    "utils.arr_postgres_migration.POSTGRES_MIGRATION_MANAGER",
+                    postgres_manager,
+                ),
+                patch.object(
+                    manager, "_namespace_filesystem_plan", return_value=([], [])
+                ),
+                patch.object(manager, "_linked_service_inventory", return_value=[]),
+                patch.object(manager, "_arr_snapshot", return_value=([], [], [])),
+                patch.object(manager, "_prowlarr_snapshot", return_value=([], [])),
+                patch.object(manager, "_media_snapshot", return_value=([], [])),
+                patch.object(
+                    manager, "_infinidysk_active_reads", return_value=(0, None)
+                ),
+            ):
+                result = manager.preflight(None, MagicMock())
+                with self.assertRaisesRegex(
+                    InfiniDyskMigrationError,
+                    "SQLite-to-PostgreSQL migration job is active",
+                ):
+                    manager.apply_brand_cutover()
+                with self.assertRaisesRegex(
+                    InfiniDyskMigrationError,
+                    "SQLite-to-PostgreSQL migration job is active",
+                ):
+                    manager.apply_full_namespace(
+                        "unused", True, MagicMock(), MagicMock()
+                    )
+
+            self.assertFalse(result["ready"])
+            self.assertIn(ACTIVE_POSTGRES_MIGRATION_BLOCKER, result["blockers"])
+            config_manager.save_config.assert_not_called()
 
     def test_arr_discovery_includes_live_legacy_references_without_core_link(self):
         manager = InfiniDyskMigrationManager()
@@ -1465,20 +1616,211 @@ class InfiniDyskMigrationTests(unittest.TestCase):
                     "job": {
                         "job_id": "a" * 32,
                         "status": "running",
-                        "stage": "filesystem",
-                        "message": "Moving paths.",
-                        "progress": 38,
+                        "stage": "preflight",
+                        "message": "Repeating live safety checks.",
+                        "progress": 8,
                         "events": [],
                         "worker_id": "previous-process-worker",
                     }
                 }
             )
 
-            restored = InfiniDyskMigrationManager(state_path).get_job()
+            restarted = InfiniDyskMigrationManager(state_path)
+            restored = restarted.get_job()
 
             self.assertEqual("interrupted", restored["status"])
-            self.assertEqual(38, restored["progress"])
+            self.assertEqual("interrupted", restored["stage"])
+            self.assertEqual("preflight", restored["interrupted_from_stage"])
+            self.assertEqual(8, restored["progress"])
             self.assertIn("restarted", restored["message"])
+            self.assertTrue(restarted.has_blocking_job())
+            self.assertTrue(restarted.has_pre_mutation_interrupted_job())
+            self.assertFalse(restarted.has_recovery_pending_job())
+            config = {"infinidysk": {"enabled": True}}
+            config_manager = MagicMock()
+            config_manager.config = config
+            restarted._save_preflight(
+                {
+                    "token": "stale-preflight-token",
+                    "created_at_ns": restored["interrupted_at_ns"],
+                    "expires_at": int(time.time()) + 300,
+                    "blockers": [],
+                    "config_fingerprint": _config_fingerprint(config),
+                }
+            )
+            with (
+                patch("utils.infinidysk_migration.CONFIG_MANAGER", config_manager),
+                patch.object(
+                    restarted,
+                    "_ensure_postgres_migration_inactive",
+                ),
+                self.assertRaisesRegex(
+                    InfiniDyskMigrationError,
+                    "fresh namespace preflight",
+                ),
+            ):
+                restarted.start_full_namespace_job(
+                    "stale-preflight-token",
+                    True,
+                    MagicMock(),
+                    MagicMock(),
+                    MagicMock(),
+                )
+
+            restarted._save_preflight(
+                {
+                    "token": "fresh-preflight-token",
+                    "created_at_ns": restored["interrupted_at_ns"] + 1,
+                    "expires_at": int(time.time()) + 300,
+                    "blockers": [],
+                    "config_fingerprint": _config_fingerprint(config),
+                }
+            )
+            updater = MagicMock()
+            updater.updating = threading.Lock()
+            with (
+                patch("utils.infinidysk_migration.CONFIG_MANAGER", config_manager),
+                patch.object(
+                    restarted,
+                    "_ensure_postgres_migration_inactive",
+                ),
+                patch.object(restarted, "apply_full_namespace", return_value={}),
+            ):
+                replacement = restarted.start_full_namespace_job(
+                    "fresh-preflight-token",
+                    True,
+                    MagicMock(),
+                    MagicMock(),
+                    updater,
+                )
+                restarted._active_job_thread.join(timeout=3)
+
+            self.assertNotEqual(restored["job_id"], replacement["job_id"])
+            self.assertEqual("completed", restarted.get_job()["status"])
+
+    def test_interrupted_recovery_boot_is_limited_to_pre_mutation_stages(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            manager = InfiniDyskMigrationManager(Path(temp_dir) / "state.json")
+            for stage in ("queued", "validating", "preflight", "backup"):
+                with self.subTest(stage=stage):
+                    manager._save_job(
+                        {
+                            "job_id": "c" * 32,
+                            "status": "interrupted",
+                            "stage": "interrupted",
+                            "interrupted_from_stage": stage,
+                            "events": [],
+                            "worker_id": manager._worker_id,
+                        }
+                    )
+                    self.assertTrue(manager.has_pre_mutation_interrupted_job())
+                    self.assertFalse(manager.has_recovery_pending_job())
+
+            for stage in (
+                "quiescing_health_checks",
+                "quiescing",
+                "filesystem",
+                "configuration",
+                "",
+            ):
+                with self.subTest(stage=stage):
+                    manager._save_job(
+                        {
+                            "job_id": "d" * 32,
+                            "status": "interrupted",
+                            "stage": "interrupted",
+                            "interrupted_from_stage": stage,
+                            "events": [],
+                            "worker_id": manager._worker_id,
+                        }
+                    )
+                    self.assertFalse(manager.has_pre_mutation_interrupted_job())
+                    self.assertTrue(manager.has_recovery_pending_job())
+
+    def test_post_guard_interruption_cannot_be_replaced_by_a_fresh_preflight(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            state_path = Path(temp_dir) / "state.json"
+            config = {"infinidysk": {"enabled": True}}
+            config_manager = MagicMock()
+            config_manager.config = config
+
+            for original_stage in ("quiescing_health_checks", "quiescing"):
+                with self.subTest(original_stage=original_stage):
+                    manager = InfiniDyskMigrationManager(state_path)
+                    manager._save_job(
+                        {
+                            "job_id": "e" * 32,
+                            "status": "running",
+                            "stage": original_stage,
+                            "message": "Changing application guards.",
+                            "progress": 20,
+                            "events": [],
+                            "worker_id": "previous-process-worker",
+                        }
+                    )
+                    restarted = InfiniDyskMigrationManager(state_path)
+                    restored = restarted.get_job()
+                    self.assertEqual(original_stage, restored["interrupted_from_stage"])
+                    self.assertTrue(restarted.has_recovery_pending_job())
+                    restarted._save_preflight(
+                        {
+                            "token": "fresh-preflight-token",
+                            "created_at_ns": restored["interrupted_at_ns"] + 1,
+                            "expires_at": int(time.time()) + 300,
+                            "blockers": [],
+                            "config_fingerprint": _config_fingerprint(config),
+                        }
+                    )
+                    with (
+                        patch(
+                            "utils.infinidysk_migration.CONFIG_MANAGER",
+                            config_manager,
+                        ),
+                        patch.object(
+                            restarted,
+                            "_ensure_postgres_migration_inactive",
+                        ),
+                        self.assertRaisesRegex(
+                            InfiniDyskMigrationError,
+                            "may have changed application or filesystem state",
+                        ),
+                    ):
+                        restarted.start_full_namespace_job(
+                            "fresh-preflight-token",
+                            True,
+                            MagicMock(),
+                            MagicMock(),
+                            MagicMock(),
+                        )
+
+    def test_rollback_attention_namespace_job_cannot_be_replaced(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            manager = InfiniDyskMigrationManager(Path(temp_dir) / "state.json")
+            manager._save_job(
+                {
+                    "job_id": "b" * 32,
+                    "status": "rollback_attention_required",
+                    "stage": "rollback_attention_required",
+                    "message": "Manual restore required.",
+                    "progress": 100,
+                    "events": [],
+                    "worker_id": manager._worker_id,
+                }
+            )
+            with (
+                patch.object(manager, "_ensure_postgres_migration_inactive"),
+                self.assertRaisesRegex(
+                    InfiniDyskMigrationError,
+                    "recovery review",
+                ),
+            ):
+                manager.start_full_namespace_job(
+                    "fresh-preflight-token",
+                    True,
+                    MagicMock(),
+                    MagicMock(),
+                    MagicMock(),
+                )
 
     def test_partial_stop_failure_restarts_services_already_stopped(self):
         states = {"Provider": True, "Consumer": True}
@@ -2163,6 +2505,590 @@ class InfiniDyskMigrationTests(unittest.TestCase):
             self.assertEqual("compatibility_completed", snoozed["status"])
             self.assertFalse(snoozed["notice_due"])
 
+    def test_compatibility_cutover_refuses_postgresql_before_backup_or_save(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            manager = InfiniDyskMigrationManager(Path(temp_dir) / "state.json")
+            config = legacy_config()
+            config["infinidysk"]["env"] = {"DATABASE_PROVIDER": "postgres"}
+            config_manager = MagicMock()
+            config_manager.config = config
+            with (
+                patch("utils.infinidysk_migration.CONFIG_MANAGER", config_manager),
+                patch.object(manager, "_backup_config") as backup,
+                self.assertRaisesRegex(
+                    InfiniDyskMigrationError,
+                    "namespace migration is unavailable.*PostgreSQL",
+                ),
+            ):
+                manager.apply_brand_cutover(rename_attached_services=True)
+
+            backup.assert_not_called()
+            config_manager.adopt_infinidysk_identity.assert_not_called()
+            config_manager.save_config.assert_not_called()
+
+    def test_compatibility_cutover_refuses_namespace_recovery_states(self):
+        for status in ("interrupted", "rollback_attention_required"):
+            with self.subTest(status=status), tempfile.TemporaryDirectory() as temp_dir:
+                manager = InfiniDyskMigrationManager(Path(temp_dir) / "state.json")
+                manager._save_job(
+                    {
+                        "job_id": "a" * 32,
+                        "status": status,
+                        "stage": status,
+                        "events": [],
+                        "worker_id": manager._worker_id,
+                    }
+                )
+                config_manager = MagicMock()
+                config_manager.config = legacy_config()
+                with (
+                    patch(
+                        "utils.infinidysk_migration.CONFIG_MANAGER",
+                        config_manager,
+                    ),
+                    patch.object(manager, "_ensure_postgres_migration_inactive"),
+                    patch.object(manager, "_backup_config") as backup,
+                    self.assertRaisesRegex(
+                        InfiniDyskMigrationError,
+                        "active or needs recovery review",
+                    ),
+                ):
+                    manager.apply_brand_cutover()
+
+                backup.assert_not_called()
+                config_manager.save_config.assert_not_called()
+
+    def test_compatibility_cutover_refuses_active_media_protection_incident(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            manager = InfiniDyskMigrationManager(Path(temp_dir) / "state.json")
+            config_manager = MagicMock()
+            config_manager.config = legacy_config()
+            protection = MagicMock()
+            protection.has_blocking_incident.return_value = True
+            handler = MagicMock()
+            handler.media_protection_manager = protection
+            with (
+                patch("utils.infinidysk_migration.CONFIG_MANAGER", config_manager),
+                patch.object(manager, "_ensure_postgres_migration_inactive"),
+                patch.object(manager, "_backup_config") as backup,
+                self.assertRaisesRegex(
+                    InfiniDyskMigrationError,
+                    "Media Library Protection",
+                ),
+            ):
+                manager.apply_brand_cutover(process_handler=handler)
+
+            backup.assert_not_called()
+            config_manager.save_config.assert_not_called()
+
+    def test_completed_full_migration_cleanup_removes_only_owned_artifacts(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            manager = InfiniDyskMigrationManager(root / "infinidysk.json")
+            outside_file = root / "operator-backup.json"
+            outside_file.write_text("keep", encoding="utf-8")
+            manager._save_state(
+                {
+                    "state_version": 3,
+                    "status": "completed",
+                    "selected_mode": "full_namespace",
+                    "completed_at": 900,
+                    "config_backup_path": str(outside_file),
+                    "backup_bundle_path": str(root / "operator-backups"),
+                }
+            )
+            manager._save_preflight({"token": "secret", "api_key": "private"})
+            manager._save_job(
+                {
+                    "job_id": "a" * 32,
+                    "status": "completed",
+                    "stage": "completed",
+                    "progress": 100,
+                    "events": [{"message": "complete"}],
+                }
+            )
+            backup_root = root / "infinidysk-backups"
+            bundle = backup_root / "namespace-900-1"
+            files = bundle / "files"
+            files.mkdir(parents=True)
+            (backup_root / "dumb_config-before-cutover-900-1.json").write_text(
+                "{}", encoding="utf-8"
+            )
+            (files / "database.sqlite").write_bytes(b"database")
+            unrelated_migration = root / "postgres-migration.json"
+            unrelated_migration.write_text("keep", encoding="utf-8")
+            arr_postgres_migration = root / "arr-postgres-migration"
+            arr_postgres_migration.mkdir()
+            (arr_postgres_migration / "job.json").write_text("keep", encoding="utf-8")
+            snapshots = root / "symlink-repair" / "snapshots"
+            snapshots.mkdir(parents=True)
+            (snapshots / "latest.json").write_text("keep", encoding="utf-8")
+            config = {
+                "infinidysk": {
+                    "enabled": True,
+                    "process_name": "InfiniDysk",
+                    "repo_owner": "infinidysk",
+                    "repo_name": "infinidysk",
+                    "config_dir": "/infinidysk",
+                }
+            }
+            config_manager = MagicMock()
+            config_manager.config = config
+            config_manager.uses_legacy_infinidysk_identity.return_value = False
+
+            with patch("utils.infinidysk_migration.CONFIG_MANAGER", config_manager):
+                preview = manager.cleanup_preview(now=1_000)
+                result = manager.cleanup(
+                    preview["preview_token"],
+                    "REMOVE INFINIDYSK MIGRATION DATA",
+                    True,
+                    True,
+                    now=1_001,
+                )
+                status = manager.status(config, now=1_002)
+
+            self.assertTrue(preview["available"])
+            self.assertTrue(preview["rollback_artifacts_available"])
+            self.assertGreaterEqual(preview["deletion"]["files"], 4)
+            self.assertIn("Job history", preview["deletion"]["categories"])
+            self.assertNotIn(temp_dir, json.dumps(preview))
+            self.assertEqual("completed", result["status"])
+            self.assertFalse(result["rollback_artifacts_available"])
+            self.assertFalse(backup_root.exists())
+            self.assertFalse(manager._sidecar_path("preflight").exists())
+            self.assertFalse(manager._sidecar_path("job").exists())
+            self.assertTrue(unrelated_migration.is_file())
+            self.assertTrue((arr_postgres_migration / "job.json").is_file())
+            self.assertTrue((snapshots / "latest.json").is_file())
+            self.assertTrue(outside_file.is_file())
+            self.assertEqual(
+                {
+                    "state_version": 4,
+                    "status": "completed",
+                    "selected_mode": "full_namespace",
+                    "cleanup_finalized": True,
+                    "cleanup_finalized_at": 1_001,
+                },
+                manager._load_state(),
+            )
+            self.assertEqual(0o600, manager.state_path.stat().st_mode & 0o777)
+            self.assertIsNone(manager.get_job())
+            self.assertTrue(status["cleanup_finalized"])
+            self.assertFalse(status["cleanup_available"])
+            self.assertFalse(status["rollback_artifacts_available"])
+            self.assertFalse(status["notice_due"])
+
+    def test_namespace_cleanup_preserves_postgres_authorization_in_production_layout(
+        self,
+    ):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            config_root = Path(temp_dir) / "config"
+            manager = InfiniDyskMigrationManager(
+                config_root / "migrations" / "infinidysk.json"
+            )
+            manager._save_state(
+                {
+                    "state_version": 4,
+                    "status": "completed",
+                    "selected_mode": "full_namespace",
+                    "completed_at": 900,
+                }
+            )
+
+            authorization_dir = (
+                config_root / "arr-postgres-migration" / "authorizations"
+            )
+            authorization_dir.mkdir(parents=True, mode=0o700)
+            authorization = authorization_dir / "infinidysk.json"
+            authorization_bytes = b'{"format":"dumb-infinidysk-postgres-cutover"}'
+            authorization.write_bytes(authorization_bytes)
+            authorization.chmod(0o600)
+
+            config = {
+                "infinidysk": {
+                    "enabled": True,
+                    "process_name": "InfiniDysk",
+                    "repo_owner": "infinidysk",
+                    "repo_name": "infinidysk",
+                    "config_dir": "/infinidysk",
+                    "postgres_enabled": True,
+                    "env": {"DATABASE_PROVIDER": "postgres"},
+                }
+            }
+            config_manager = MagicMock()
+            config_manager.config = config
+            config_manager.uses_legacy_infinidysk_identity.return_value = False
+
+            with patch("utils.infinidysk_migration.CONFIG_MANAGER", config_manager):
+                preview = manager.cleanup_preview(now=1_000)
+                result = manager.cleanup(
+                    preview["preview_token"],
+                    "REMOVE INFINIDYSK MIGRATION DATA",
+                    True,
+                    True,
+                    now=1_001,
+                )
+
+            self.assertEqual("completed", result["status"])
+            self.assertTrue(result["cleanup_finalized"])
+            self.assertTrue(authorization.is_file())
+            self.assertEqual(authorization_bytes, authorization.read_bytes())
+            self.assertEqual(0o600, authorization.stat().st_mode & 0o777)
+
+    def test_compatibility_cleanup_keeps_notice_dismissed_with_legacy_paths(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            manager = InfiniDyskMigrationManager(root / "infinidysk.json")
+            manager._save_state(
+                {
+                    "status": "completed",
+                    "selected_mode": "retain_legacy_namespace",
+                    "completed_at": 900,
+                }
+            )
+            backup_root = root / "infinidysk-backups"
+            backup_root.mkdir()
+            (backup_root / "dumb_config-before-cutover-900-1.json").write_text(
+                "{}", encoding="utf-8"
+            )
+            config = {
+                "infinidysk": {
+                    "enabled": True,
+                    "process_name": "InfiniDysk",
+                    "repo_owner": "infinidysk",
+                    "repo_name": "infinidysk",
+                    "config_dir": "/nzbdav",
+                    "symlink_backup_roots": ["/mnt/debrid/nzbdav-symlinks"],
+                }
+            }
+            config_manager = MagicMock()
+            config_manager.config = config
+            config_manager.uses_legacy_infinidysk_identity.return_value = False
+
+            with patch("utils.infinidysk_migration.CONFIG_MANAGER", config_manager):
+                before = manager.status(config, now=1_000)
+                preview = manager.cleanup_preview(now=1_000)
+                result = manager.cleanup(
+                    preview["preview_token"],
+                    "REMOVE INFINIDYSK MIGRATION DATA",
+                    True,
+                    True,
+                    now=1_001,
+                )
+                after = manager.status(config, now=1_002)
+                repeated = manager.cleanup(
+                    preview["preview_token"],
+                    "REMOVE INFINIDYSK MIGRATION DATA",
+                    True,
+                    True,
+                    now=1_003,
+                )
+
+            self.assertEqual("compatibility_completed", before["status"])
+            self.assertTrue(before["notice_due"])
+            self.assertEqual("completed", result["status"])
+            self.assertEqual("compatibility_completed", after["status"])
+            self.assertTrue(after["cleanup_finalized"])
+            self.assertFalse(after["notice_due"])
+            self.assertEqual("already_completed", repeated["status"])
+            self.assertEqual([], repeated["deleted"]["categories"])
+
+    def test_cleanup_preview_token_is_bound_to_artifact_plan(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            manager = InfiniDyskMigrationManager(root / "infinidysk.json")
+            manager._save_state(
+                {"status": "completed", "selected_mode": "full_namespace"}
+            )
+            backup_root = root / "infinidysk-backups"
+            backup_root.mkdir()
+            (backup_root / "first.json").write_text("one", encoding="utf-8")
+            config_manager = MagicMock()
+            config_manager.config = {
+                "infinidysk": {
+                    "process_name": "InfiniDysk",
+                    "repo_owner": "infinidysk",
+                    "repo_name": "infinidysk",
+                    "config_dir": "/infinidysk",
+                }
+            }
+            config_manager.uses_legacy_infinidysk_identity.return_value = False
+
+            with patch("utils.infinidysk_migration.CONFIG_MANAGER", config_manager):
+                preview = manager.cleanup_preview(now=1_000)
+                with self.assertRaisesRegex(
+                    InfiniDyskMigrationError, "preview expired"
+                ):
+                    manager.cleanup(
+                        preview["preview_token"],
+                        "REMOVE INFINIDYSK MIGRATION DATA",
+                        True,
+                        True,
+                        now=1_301,
+                    )
+                (backup_root / "second.json").write_text("two", encoding="utf-8")
+                with self.assertRaisesRegex(
+                    InfiniDyskMigrationError, "changed after preview"
+                ):
+                    manager.cleanup(
+                        preview["preview_token"],
+                        "REMOVE INFINIDYSK MIGRATION DATA",
+                        True,
+                        True,
+                        now=1_001,
+                    )
+
+            self.assertTrue(backup_root.is_dir())
+            self.assertFalse(manager._load_state().get("cleanup_finalized", False))
+
+    def test_cleanup_manager_requires_confirmation_and_acknowledgements(self):
+        manager = InfiniDyskMigrationManager()
+        invalid = (
+            ("remove", True, True, "REMOVE INFINIDYSK"),
+            (" REMOVE INFINIDYSK MIGRATION DATA", True, True, "REMOVE INFINIDYSK"),
+            ("REMOVE INFINIDYSK MIGRATION DATA", False, True, "health"),
+            ("REMOVE INFINIDYSK MIGRATION DATA", True, False, "irreversible"),
+            ("REMOVE INFINIDYSK MIGRATION DATA", 1, True, "health"),
+        )
+        for confirmation, validation, rollback_loss, detail in invalid:
+            with (
+                self.subTest(detail=detail),
+                self.assertRaisesRegex(InfiniDyskMigrationError, detail),
+            ):
+                manager.cleanup(
+                    "preview-token",
+                    confirmation,
+                    validation,
+                    rollback_loss,
+                )
+
+    def test_cleanup_refuses_a_concurrent_reserved_api_mutation(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            manager = InfiniDyskMigrationManager(Path(temp_dir) / "state.json")
+            manager._save_state(
+                {"status": "completed", "selected_mode": "full_namespace"}
+            )
+            config_manager = MagicMock()
+            config_manager.config = {
+                "infinidysk": {
+                    "process_name": "InfiniDysk",
+                    "repo_owner": "infinidysk",
+                    "repo_name": "infinidysk",
+                    "config_dir": "/infinidysk",
+                }
+            }
+            config_manager.uses_legacy_infinidysk_identity.return_value = False
+
+            with patch("utils.infinidysk_migration.CONFIG_MANAGER", config_manager):
+                preview = manager.cleanup_preview(now=1_000)
+                with (
+                    patch(
+                        "utils.infinidysk_migration.infinidysk_external_mutation_active",
+                        return_value=True,
+                    ),
+                    self.assertRaisesRegex(
+                        InfiniDyskMigrationError,
+                        "Another DUMB operation",
+                    ),
+                ):
+                    manager.cleanup(
+                        preview["preview_token"],
+                        "REMOVE INFINIDYSK MIGRATION DATA",
+                        True,
+                        True,
+                        now=1_001,
+                    )
+
+            self.assertFalse(manager._load_state().get("cleanup_finalized", False))
+
+    def test_cleanup_rejects_unsafe_job_states_and_configuration_regression(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            manager = InfiniDyskMigrationManager(root / "infinidysk.json")
+            manager._save_state(
+                {"status": "completed", "selected_mode": "full_namespace"}
+            )
+            config_manager = MagicMock()
+            config_manager.config = {
+                "infinidysk": {
+                    "process_name": "InfiniDysk",
+                    "repo_owner": "infinidysk",
+                    "repo_name": "infinidysk",
+                    "config_dir": "/infinidysk",
+                }
+            }
+            config_manager.uses_legacy_infinidysk_identity.return_value = False
+
+            with patch("utils.infinidysk_migration.CONFIG_MANAGER", config_manager):
+                for job_status in (
+                    "queued",
+                    "running",
+                    "rolling_back",
+                    "failed",
+                    "failed_rolled_back",
+                    "interrupted",
+                    "rollback_attention_required",
+                ):
+                    with self.subTest(job_status=job_status):
+                        manager._write_private_json(
+                            manager._sidecar_path("job"),
+                            {"job_id": "b" * 32, "status": job_status},
+                        )
+                        with self.assertRaises(InfiniDyskMigrationError):
+                            manager.cleanup_preview(now=1_000)
+                        self.assertFalse(
+                            manager.status(config_manager.config, now=1_000)[
+                                "cleanup_available"
+                            ]
+                        )
+
+                manager._sidecar_path("job").unlink()
+                config_manager.config["infinidysk"]["config_dir"] = "/nzbdav"
+                with self.assertRaisesRegex(InfiniDyskMigrationError, "still matches"):
+                    manager.cleanup_preview(now=1_000)
+
+    def test_cleanup_rejects_present_but_unverifiable_job_sidecars(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            manager = InfiniDyskMigrationManager(root / "infinidysk.json")
+            manager._save_state(
+                {"status": "completed", "selected_mode": "full_namespace"}
+            )
+            config_manager = MagicMock()
+            config_manager.config = {
+                "infinidysk": {
+                    "process_name": "InfiniDysk",
+                    "repo_owner": "infinidysk",
+                    "repo_name": "infinidysk",
+                    "config_dir": "/infinidysk",
+                }
+            }
+            config_manager.uses_legacy_infinidysk_identity.return_value = False
+            sidecar = manager._sidecar_path("job")
+
+            with patch("utils.infinidysk_migration.CONFIG_MANAGER", config_manager):
+                for contents, label in (("{", "invalid JSON"), ("{}", "empty object")):
+                    with self.subTest(label=label):
+                        sidecar.write_text(contents, encoding="utf-8")
+                        sidecar.chmod(0o600)
+                        with self.assertRaisesRegex(
+                            InfiniDyskMigrationError, "cannot be verified safely"
+                        ):
+                            manager.cleanup_preview(now=1_000)
+                        self.assertFalse(
+                            manager.status(config_manager.config, now=1_000)[
+                                "cleanup_available"
+                            ]
+                        )
+
+                sidecar.write_text(
+                    json.dumps({"job_id": "d" * 32, "status": "completed"}),
+                    encoding="utf-8",
+                )
+                sidecar.chmod(0o600)
+                real_open = os.open
+
+                def refuse_job_open(path, flags, *args, **kwargs):
+                    if Path(path) == sidecar:
+                        raise PermissionError("denied")
+                    return real_open(path, flags, *args, **kwargs)
+
+                with (
+                    patch(
+                        "utils.infinidysk_migration.os.open",
+                        side_effect=refuse_job_open,
+                    ),
+                    self.assertRaisesRegex(
+                        InfiniDyskMigrationError, "cannot be verified safely"
+                    ),
+                ):
+                    manager.cleanup_preview(now=1_000)
+
+            self.assertTrue(sidecar.is_file())
+            self.assertFalse(manager._load_state().get("cleanup_finalized", False))
+
+    def test_cleanup_rejects_symlinks_special_files_and_nested_mounts(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            manager = InfiniDyskMigrationManager(root / "infinidysk.json")
+            manager._save_state(
+                {"status": "completed", "selected_mode": "full_namespace"}
+            )
+            config_manager = MagicMock()
+            config_manager.config = {
+                "infinidysk": {
+                    "process_name": "InfiniDysk",
+                    "repo_owner": "infinidysk",
+                    "repo_name": "infinidysk",
+                    "config_dir": "/infinidysk",
+                }
+            }
+            config_manager.uses_legacy_infinidysk_identity.return_value = False
+            outside = root / "outside"
+            outside.mkdir()
+            (outside / "keep.json").write_text("keep", encoding="utf-8")
+            backup_root = root / "infinidysk-backups"
+            backup_root.symlink_to(outside, target_is_directory=True)
+
+            with patch("utils.infinidysk_migration.CONFIG_MANAGER", config_manager):
+                with self.assertRaisesRegex(InfiniDyskMigrationError, "symlink"):
+                    manager.cleanup_preview(now=1_000)
+
+                backup_root.unlink()
+                backup_root.mkdir()
+                fifo = backup_root / "special"
+                os.mkfifo(fifo)
+                with self.assertRaisesRegex(InfiniDyskMigrationError, "special file"):
+                    manager.cleanup_preview(now=1_000)
+
+                fifo.unlink()
+                nested = backup_root / "nested"
+                nested.mkdir()
+                real_ismount = os.path.ismount
+
+                def fake_ismount(path):
+                    return Path(path) == nested or real_ismount(path)
+
+                with (
+                    patch(
+                        "utils.infinidysk_migration.os.path.ismount",
+                        side_effect=fake_ismount,
+                    ),
+                    self.assertRaisesRegex(InfiniDyskMigrationError, "nested mount"),
+                ):
+                    manager.cleanup_preview(now=1_000)
+
+            self.assertTrue((outside / "keep.json").is_file())
+
+    def test_cleanup_preview_does_not_compact_legacy_embedded_state(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            manager = InfiniDyskMigrationManager(Path(temp_dir) / "infinidysk.json")
+            original = {
+                "status": "completed",
+                "selected_mode": "full_namespace",
+                "preflight": {"api_key": "private"},
+                "job": {"job_id": "c" * 32, "status": "completed"},
+            }
+            manager._save_state(original)
+            config_manager = MagicMock()
+            config_manager.config = {
+                "infinidysk": {
+                    "process_name": "InfiniDysk",
+                    "repo_owner": "infinidysk",
+                    "repo_name": "infinidysk",
+                    "config_dir": "/infinidysk",
+                }
+            }
+            config_manager.uses_legacy_infinidysk_identity.return_value = False
+
+            with patch("utils.infinidysk_migration.CONFIG_MANAGER", config_manager):
+                preview = manager.cleanup_preview(now=1_000)
+
+            self.assertTrue(preview["available"])
+            self.assertEqual(original, manager._load_state())
+            self.assertFalse(manager._sidecar_path("preflight").exists())
+            self.assertFalse(manager._sidecar_path("job").exists())
+
     def test_restoring_legacy_identity_makes_a_completed_notice_due_again(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             manager = InfiniDyskMigrationManager(Path(temp_dir) / "state.json")
@@ -2201,6 +3127,36 @@ class InfiniDyskMigrationTests(unittest.TestCase):
                 manager_config.uses_legacy_infinidysk_identity.return_value = False
                 with self.assertRaisesRegex(RuntimeError, "No legacy NzbDAV"):
                     manager.apply_brand_cutover()
+
+    def test_full_namespace_apply_refuses_postgresql_before_backup(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            manager = InfiniDyskMigrationManager(Path(temp_dir) / "state.json")
+            config = legacy_config()
+            config["infinidysk"]["postgres_enabled"] = True
+            token = "preflight-token"
+            manager._save_preflight(
+                {
+                    "token": token,
+                    "expires_at": int(time.time()) + 300,
+                    "blockers": [],
+                    "config_fingerprint": _config_fingerprint(config),
+                }
+            )
+            config_manager = MagicMock()
+            config_manager.config = config
+            with (
+                patch("utils.infinidysk_migration.CONFIG_MANAGER", config_manager),
+                patch.object(manager, "_create_namespace_backup") as backup,
+                self.assertRaisesRegex(
+                    InfiniDyskMigrationError,
+                    "namespace migration is unavailable.*PostgreSQL",
+                ),
+            ):
+                manager.apply_full_namespace(token, True, MagicMock(), MagicMock())
+
+            backup.assert_not_called()
+            config_manager.adopt_infinidysk_identity.assert_not_called()
+            config_manager.save_config.assert_not_called()
 
     def test_full_namespace_preflight_and_apply_move_paths_atomically(self):
         with tempfile.TemporaryDirectory() as temp_dir:

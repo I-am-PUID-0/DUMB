@@ -1,4 +1,5 @@
 import io
+import os
 import signal
 import tempfile
 import unittest
@@ -63,7 +64,7 @@ class ProcessNotificationTests(unittest.TestCase):
         handler = self._handler_with_process()
         handler._intentional_stop_pids.add(1234)
 
-        with patch("utils.processes.os.waitpid", side_effect=[(1234, 0), (0, 0)]):
+        with patch("utils.processes.os.waitpid", return_value=(1234, 0)):
             handler.reap_zombies(None, None)
 
         notify_event.assert_not_called()
@@ -74,7 +75,7 @@ class ProcessNotificationTests(unittest.TestCase):
     def test_unplanned_exit_still_reports_and_considers_restart(self, notify_event):
         handler = self._handler_with_process()
 
-        with patch("utils.processes.os.waitpid", side_effect=[(1234, 0), (0, 0)]):
+        with patch("utils.processes.os.waitpid", return_value=(1234, 0)):
             handler.reap_zombies(None, None)
 
         notify_event.assert_called_once()
@@ -88,11 +89,22 @@ class ProcessNotificationTests(unittest.TestCase):
         )
         handler.processes[1234]["process_obj"].returncode = 0
 
-        with patch("utils.processes.os.waitpid", side_effect=[(1234, 0), (0, 0)]):
+        with patch("utils.processes.os.waitpid", return_value=(1234, 0)):
             handler.reap_zombies(None, None)
 
         notify_event.assert_not_called()
         handler._maybe_schedule_restart.assert_not_called()
+
+    @patch("utils.processes.notify_event")
+    def test_reaper_does_not_harvest_untracked_helper_children(self, notify_event):
+        handler = self._handler_with_process()
+
+        with patch("utils.processes.os.waitpid", return_value=(0, 0)) as waitpid:
+            handler.reap_zombies(None, None)
+
+        waitpid.assert_called_once_with(1234, os.WNOHANG)
+        notify_event.assert_not_called()
+        self.assertIn(1234, handler.processes)
 
     def test_managed_shutdown_signals_the_complete_process_group(self):
         process = Mock(pid=1234)
@@ -208,7 +220,7 @@ class ProcessNotificationTests(unittest.TestCase):
         notify_event.assert_called_once()
 
     @patch("utils.processes.notify_event")
-    def test_maintainerr_yarn_helpers_retain_controller_identity(self, notify_event):
+    def test_installer_build_helpers_retain_controller_identity(self, notify_event):
         def config_get(key, default=None):
             if key in {"puid", "pgid"}:
                 return 1000
@@ -217,6 +229,7 @@ class ProcessNotificationTests(unittest.TestCase):
             return default
 
         for process_name in (
+            "pnpm_build_server",
             "maintainerr_yarn_install",
             "maintainerr_yarn_build",
             "maintainerr_yarn_focus",
@@ -310,6 +323,157 @@ class ProcessNotificationTests(unittest.TestCase):
         self.assertNotIn("Example", handler.process_names)
         subprocess_logger.assert_not_called()
         notify_event.assert_called_once()
+
+    def test_postgres_infinidysk_launch_revalidates_runtime_after_setup_tracker(self):
+        handler = object.__new__(ProcessHandler)
+        handler.init_attributes(Mock())
+        handler.setup_tracker.add("InfiniDysk")
+        config = {
+            "process_name": "InfiniDysk",
+            "config_dir": "/infinidysk",
+            "repo_owner": "infinidysk",
+            "repo_name": "infinidysk",
+            "postgres_enabled": True,
+            "command": ["/infinidysk/app/NzbWebDAV"],
+            "env": {"DATABASE_PROVIDER": "postgres"},
+        }
+
+        with (
+            patch(
+                "utils.processes.CONFIG_MANAGER.find_key_for_process",
+                return_value=("infinidysk", None),
+            ),
+            patch("utils.processes.CONFIG_MANAGER.get_instance", return_value=config),
+            patch(
+                "utils.service_postgres.validate_infinidysk_postgres_source_selection",
+                return_value=(True, None),
+            ) as validate_source,
+            patch(
+                "utils.service_postgres.validate_infinidysk_postgres_installed_version",
+                return_value=(False, "installed runtime is below v1.2.0"),
+            ) as validate_runtime,
+            patch(
+                "utils.service_postgres.validate_infinidysk_postgres_fresh_install",
+                return_value=(True, None),
+            ) as validate_binding,
+            patch("utils.processes.subprocess.Popen") as popen,
+        ):
+            success, error = handler._start_process_admitted("InfiniDysk")
+
+        self.assertFalse(success)
+        self.assertIn("below v1.2.0", error)
+        validate_source.assert_called_once()
+        validate_runtime.assert_called_once_with("/infinidysk")
+        validate_binding.assert_not_called()
+        popen.assert_not_called()
+
+    def test_postgres_infinidysk_launch_refuses_missing_cutover_binding_with_custom_config_path(
+        self,
+    ):
+        handler = object.__new__(ProcessHandler)
+        handler.init_attributes(Mock())
+        handler.setup_tracker.add("InfiniDysk")
+        config = {
+            "process_name": "InfiniDysk",
+            "config_dir": "/infinidysk",
+            "repo_owner": "infinidysk",
+            "repo_name": "infinidysk",
+            "postgres_enabled": True,
+            "command": ["/infinidysk/app/NzbWebDAV"],
+            "env": {
+                "CONFIG_PATH": "/custom/infinidysk-state",
+                "DATABASE_PROVIDER": "postgres",
+            },
+        }
+
+        with (
+            patch(
+                "utils.processes.CONFIG_MANAGER.find_key_for_process",
+                return_value=("infinidysk", None),
+            ),
+            patch("utils.processes.CONFIG_MANAGER.get_instance", return_value=config),
+            patch(
+                "utils.processes.CONFIG_MANAGER.get",
+                return_value={"host": "127.0.0.1"},
+            ),
+            patch(
+                "utils.service_postgres.validate_infinidysk_postgres_source_selection",
+                return_value=(True, None),
+            ),
+            patch(
+                "utils.service_postgres.validate_infinidysk_postgres_installed_version",
+                return_value=(True, None),
+            ),
+            patch(
+                "utils.service_postgres.validate_infinidysk_postgres_fresh_install",
+                return_value=(False, "guarded cutover authorization is missing"),
+            ) as validate_binding,
+            patch("utils.processes.subprocess.Popen") as popen,
+        ):
+            success, error = handler._start_process_admitted("InfiniDysk")
+
+        self.assertFalse(success)
+        self.assertIn("authorization is missing", error)
+        validate_binding.assert_called_once()
+        self.assertEqual(validate_binding.call_args.args[0], "/custom/infinidysk-state")
+        popen.assert_not_called()
+
+    def test_postgres_infinidysk_launch_validates_explicit_command_and_working_directory(
+        self,
+    ):
+        handler = object.__new__(ProcessHandler)
+        handler.init_attributes(Mock())
+        handler.setup_tracker.add("InfiniDysk")
+        config = {
+            "process_name": "InfiniDysk",
+            "config_dir": "/infinidysk",
+            "repo_owner": "infinidysk",
+            "repo_name": "infinidysk",
+            "postgres_enabled": True,
+            "command": ["/infinidysk/app/NzbWebDAV"],
+            "env": {
+                "CONFIG_PATH": "/infinidysk",
+                "DATABASE_PROVIDER": "postgres",
+            },
+        }
+
+        with (
+            patch(
+                "utils.processes.CONFIG_MANAGER.find_key_for_process",
+                return_value=("infinidysk", None),
+            ),
+            patch("utils.processes.CONFIG_MANAGER.get_instance", return_value=config),
+            patch(
+                "utils.processes.CONFIG_MANAGER.get",
+                return_value={"host": "127.0.0.1"},
+            ),
+            patch(
+                "utils.service_postgres.validate_infinidysk_postgres_source_selection",
+                return_value=(True, None),
+            ),
+            patch(
+                "utils.service_postgres.validate_infinidysk_postgres_installed_version",
+                return_value=(True, None),
+            ),
+            patch(
+                "utils.service_postgres.validate_infinidysk_postgres_fresh_install",
+                return_value=(False, "launch configuration does not match"),
+            ) as validate_binding,
+            patch("utils.processes.subprocess.Popen") as popen,
+        ):
+            success, error = handler._start_process_admitted(
+                "InfiniDysk",
+                config_dir="/stale/infinidysk",
+                command=["/stale/infinidysk/NzbWebDAV"],
+                env=config["env"],
+            )
+
+        self.assertFalse(success)
+        self.assertIn("does not match", error)
+        validated_service = validate_binding.call_args.kwargs["service"]
+        self.assertEqual(validated_service["command"], ["/stale/infinidysk/NzbWebDAV"])
+        self.assertEqual(validated_service["config_dir"], "/stale/infinidysk")
+        popen.assert_not_called()
 
     def test_clean_immediate_helper_exit_remains_successful(self):
         handler = object.__new__(ProcessHandler)
@@ -434,6 +598,76 @@ class ProcessNotificationTests(unittest.TestCase):
         handler._maybe_schedule_restart("Example", "not ready")
 
         handler._get_service_restart_policy.assert_not_called()
+
+    def test_migrations_block_auto_restart_for_owned_services(self):
+        handler = object.__new__(ProcessHandler)
+        handler.init_attributes(Mock())
+        cases = (
+            (True, False, ("sonarr", "TV"), "Sonarr TV", True),
+            (False, True, ("infinidysk", None), "InfiniDysk", True),
+            (False, True, ("sonarr", "TV"), "Sonarr TV", False),
+        )
+        for (
+            namespace_active,
+            postgres_active,
+            resolved,
+            process_name,
+            expected,
+        ) in cases:
+            with (
+                self.subTest(
+                    namespace_active=namespace_active,
+                    postgres_active=postgres_active,
+                    process_name=process_name,
+                ),
+                patch(
+                    "utils.infinidysk_migration_admission.infinidysk_namespace_migration_active",
+                    return_value=namespace_active,
+                ),
+                patch(
+                    "utils.infinidysk_migration_admission.infinidysk_postgres_migration_active",
+                    return_value=postgres_active,
+                ),
+                patch(
+                    "utils.processes.CONFIG_MANAGER.find_key_for_process",
+                    return_value=resolved,
+                ),
+            ):
+                self.assertEqual(
+                    expected,
+                    handler._migration_blocks_auto_restart(process_name),
+                )
+
+    def test_pending_auto_restart_rechecks_migration_before_spawning(self):
+        handler = object.__new__(ProcessHandler)
+        handler.init_attributes(Mock())
+        handler.startup_complete_event.set()
+        handler._is_restart_disabled = Mock(return_value=False)
+        handler._get_service_restart_policy = Mock(
+            return_value={
+                "enabled": True,
+                "max_restarts": 3,
+                "window_seconds": 300,
+                "backoff_seconds": [0],
+            }
+        )
+        handler._migration_blocks_auto_restart = Mock(side_effect=[False, True])
+        handler.start_process = Mock(return_value=(True, None))
+
+        class ImmediateThread:
+            def __init__(self, target, **_kwargs):
+                self.target = target
+
+            def start(self):
+                self.target()
+
+        with patch("utils.processes.threading.Thread", ImmediateThread):
+            handler._maybe_schedule_restart("InfiniDysk", "unexpected exit")
+
+        handler.start_process.assert_not_called()
+        state = handler._get_restart_state("InfiniDysk")
+        self.assertFalse(state["pending"])
+        self.assertIsNone(state["next_restart_time"])
 
     def test_auto_restart_uses_service_specific_grace_period(self):
         handler = object.__new__(ProcessHandler)

@@ -28,6 +28,14 @@ class ServicePostgresTests(unittest.TestCase):
             "seerr_family_4k",
         )
 
+    def test_blank_infinidysk_database_name_uses_service_default(self):
+        self.assertEqual(
+            service_postgres_database_name(
+                "infinidysk", None, {"postgres_database": "  "}
+            ),
+            "infinidysk",
+        )
+
     def test_runtime_reenables_an_existing_database_entry(self):
         class Config:
             def __init__(self):
@@ -82,6 +90,145 @@ class ServicePostgresTests(unittest.TestCase):
         self.assertEqual(pulsarr["env"]["dbName"], "pulsarr")
         self.assertEqual(seerr["env"]["DB_TYPE"], "postgres")
         self.assertEqual(seerr["env"]["DB_NAME"], "seerr_family")
+
+    def test_infinidysk_uses_npgsql_environment_and_restores_sqlite(self):
+        service = {"env": {}}
+        postgres = {
+            **self.postgres,
+            "password": 'secret;with"quote',
+        }
+
+        apply_service_postgres_config(
+            "infinidysk", service, postgres, "infinidysk", enabled=True
+        )
+
+        self.assertEqual(service["env"]["DATABASE_PROVIDER"], "postgres")
+        self.assertEqual(
+            service["env"]["DATABASE_CONNECTION_STRING"],
+            'Host="127.0.0.1";Port="5432";Database="infinidysk";'
+            'Username="DUMB user";Password="secret;with""quote"',
+        )
+
+        apply_service_postgres_config(
+            "infinidysk", service, postgres, "infinidysk", enabled=False
+        )
+        self.assertEqual(service["env"]["DATABASE_PROVIDER"], "sqlite")
+        self.assertNotIn("DATABASE_CONNECTION_STRING", service["env"])
+
+    def test_runtime_registers_infinidysk_database_and_environment(self):
+        class Config:
+            def __init__(self, config_dir):
+                self.config = {
+                    "infinidysk": {
+                        "enabled": True,
+                        "postgres_enabled": True,
+                        "postgres_database": "",
+                        "process_name": "InfiniDysk",
+                        "config_dir": config_dir,
+                        "env": {},
+                    },
+                    "postgres": {"enabled": False, "databases": []},
+                }
+
+            def get(self, key, default=None):
+                return self.config.get(key, default)
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            config = Config(temp_dir)
+
+            self.assertTrue(configure_service_postgres_runtime(config))
+        self.assertTrue(config.config["postgres"]["enabled"])
+        self.assertEqual(
+            config.config["postgres"]["databases"],
+            [{"name": "infinidysk", "enabled": True}],
+        )
+        self.assertEqual(
+            config.config["infinidysk"]["env"]["DATABASE_PROVIDER"], "postgres"
+        )
+        self.assertIn(
+            'Database="infinidysk"',
+            config.config["infinidysk"]["env"]["DATABASE_CONNECTION_STRING"],
+        )
+
+    def test_early_runtime_sync_accepts_static_cutover_authorization(self):
+        class Config:
+            def __init__(self):
+                self.config = {
+                    "infinidysk": {
+                        "enabled": True,
+                        "postgres_enabled": True,
+                        "process_name": "InfiniDysk",
+                        "config_dir": "/infinidysk",
+                        "env": {},
+                    },
+                    "postgres": {"enabled": True, "databases": []},
+                }
+
+            def get(self, key, default=None):
+                return self.config.get(key, default)
+
+        config = Config()
+        with patch(
+            "utils.service_postgres.validate_infinidysk_postgres_fresh_install",
+            return_value=(True, None),
+        ) as validate:
+            self.assertTrue(
+                configure_service_postgres_runtime(
+                    config,
+                    allow_offline_authorization=True,
+                )
+            )
+
+        validate.assert_called_once_with(
+            "/infinidysk",
+            True,
+            service=config.config["infinidysk"],
+            postgres_config=config.config["postgres"],
+            allow_offline_authorization=True,
+        )
+
+    def test_existing_infinidysk_sqlite_is_skipped_while_other_services_configure(
+        self,
+    ):
+        class Config:
+            def __init__(self, config_dir):
+                self.config = {
+                    "infinidysk": {
+                        "enabled": True,
+                        "postgres_enabled": True,
+                        "process_name": "InfiniDysk",
+                        "config_dir": config_dir,
+                        "env": {"EXISTING_VALUE": "preserved"},
+                    },
+                    "bazarr": {
+                        "enabled": True,
+                        "postgres_enabled": True,
+                        "process_name": "Bazarr",
+                        "env": {},
+                    },
+                    "postgres": {"enabled": False, "databases": []},
+                }
+
+            def get(self, key, default=None):
+                return self.config.get(key, default)
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            Path(temp_dir, "db.sqlite").write_bytes(b"existing application data")
+            config = Config(temp_dir)
+
+            self.assertTrue(configure_service_postgres_runtime(config))
+
+        self.assertTrue(config.config["infinidysk"]["postgres_enabled"])
+        self.assertEqual(
+            config.config["infinidysk"]["env"],
+            {"EXISTING_VALUE": "preserved"},
+        )
+        self.assertTrue(config.config["postgres"]["enabled"])
+        self.assertEqual(
+            config.config["postgres"]["databases"],
+            [{"name": "bazarr", "enabled": True}],
+        )
+        self.assertEqual(config.config["bazarr"]["env"]["POSTGRES_ENABLED"], "true")
 
     def test_altmount_writes_postgres_dsn_and_restores_sqlite(self):
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -143,6 +290,7 @@ class ServicePostgresTests(unittest.TestCase):
 
         with (
             patch.object(process_router, "_reserve_config_port"),
+            patch.object(process_router.CONFIG_MANAGER, "save_config", create=True),
             patch.object(
                 process_router,
                 "ensure_arr_postgres_dependency_running",

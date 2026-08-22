@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.routing import APIRoute, APIWebSocketRoute
 from scalar_fastapi import get_scalar_api_reference
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from contextlib import asynccontextmanager
 from uvicorn.config import Config
 from uvicorn.server import Server
@@ -38,6 +38,28 @@ from utils.project_metadata import get_project_version
 import threading
 
 _DEFAULT_ALLOWED_ORIGINS = ["http://localhost", "http://localhost:8000"]
+_UNSAFE_HTTP_METHODS = frozenset({"POST", "PUT", "PATCH", "DELETE"})
+_MIGRATION_OWNED_API_PREFIXES = (
+    "/process/infinidysk-migration/",
+    "/process/postgres-migration/",
+    "/process/arr-postgres-migration/",
+)
+
+
+def _requires_namespace_mutation_reservation(method: str, path: str) -> bool:
+    """Return whether an API request can overlap namespace-owned state."""
+
+    normalized_method = str(method or "").upper()
+    normalized_path = str(path or "")
+    if normalized_method not in _UNSAFE_HTTP_METHODS:
+        return False
+    if normalized_path == "/auth" or normalized_path.startswith("/auth/"):
+        # Authentication remains available so the operator can inspect and
+        # recover a blocked migration through the DUMB control plane.
+        return False
+    return not any(
+        normalized_path.startswith(prefix) for prefix in _MIGRATION_OWNED_API_PREFIXES
+    )
 
 
 @asynccontextmanager
@@ -110,6 +132,43 @@ def create_app() -> FastAPI:
     app.dependency_overrides[get_media_protection_manager] = (
         get_media_protection_manager
     )
+
+    @app.middleware("http")
+    async def namespace_mutation_admission(request, call_next):
+        """Serialize unsafe API work with full InfiniDysk namespace jobs.
+
+        The reservation is recorded only while holding the short shared RLock,
+        then remains as an opaque token while the async request runs. This
+        avoids holding a thread-owned RLock across ``await`` while still making
+        namespace admission bidirectionally atomic with every API mutation.
+        """
+
+        if not _requires_namespace_mutation_reservation(
+            request.method, request.url.path
+        ):
+            return await call_next(request)
+
+        from utils.infinidysk_migration_admission import (
+            ACTIVE_NAMESPACE_MIGRATION_BLOCKER,
+            InfiniDyskMigrationAdmissionError,
+            release_infinidysk_external_mutation,
+            reserve_infinidysk_external_mutation,
+        )
+
+        reservation = None
+        try:
+            reservation = reserve_infinidysk_external_mutation(
+                f"API {request.method} {request.url.path}"
+            )
+        except InfiniDyskMigrationAdmissionError:
+            return JSONResponse(
+                status_code=409,
+                content={"detail": ACTIVE_NAMESPACE_MIGRATION_BLOCKER},
+            )
+        try:
+            return await call_next(request)
+        finally:
+            release_infinidysk_external_mutation(reservation)
 
     app.include_router(auth_router, prefix="/auth", tags=["Authentication"])
     app.include_router(process_router, prefix="/process", tags=["Process Management"])

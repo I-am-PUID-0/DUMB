@@ -9,7 +9,10 @@ from utils.auto_update import Update
 from utils.dependencies import initialize_dependencies
 from utils.core_services import get_core_services, has_core_service
 from utils.dependency_map import build_conditional_dependency_map
-from utils.startup import run_grouped_preinstall, start_control_plane_before_preinstall
+from utils.startup import (
+    run_migration_aware_preinstall,
+    start_control_plane_before_preinstall,
+)
 from utils.notifications import notify_event
 from utils.plex_dbrepair import start_plex_dbrepair_worker
 from utils.ffprobe_monitor import start_ffprobe_monitor
@@ -21,6 +24,7 @@ from utils.postgres import stop_existing_postgres_for_data_directory
 from utils.metrics_postgres import ensure_metrics_postgres_config
 from utils.port_probe import is_port_available as _is_port_available
 from utils.runtime_paths import healthcheck_script
+from utils.traefik_setup import synchronize_traefik_web_port
 from concurrent.futures import ThreadPoolExecutor, wait, FIRST_COMPLETED
 import subprocess, threading, time, os, json, urllib.parse, sys
 
@@ -113,6 +117,51 @@ def _reserve_config_port(
     return changed
 
 
+def _reserve_traefik_ports(cfg: dict, used_ports: dict[int, str]) -> bool:
+    desired, synchronized = synchronize_traefik_web_port(cfg)
+    web_owner = "traefik:port"
+    dashboard_owner = "traefik:dashboard"
+
+    # The seed pass records the configured web port. Remove that self-claim so
+    # the paired allocator can move both entrypoints together when either the
+    # web or dashboard port is occupied.
+    if used_ports.get(desired) == web_owner:
+        used_ports.pop(desired, None)
+
+    candidate = desired
+    while candidate < 65535:
+        dashboard = candidate + 1
+        web_claim = used_ports.get(candidate)
+        dashboard_claim = used_ports.get(dashboard)
+        if (
+            web_claim not in {None, web_owner}
+            or dashboard_claim not in {None, dashboard_owner}
+            or not _is_port_available(candidate)
+            or not _is_port_available(dashboard)
+        ):
+            candidate += 1
+            continue
+        break
+    else:
+        raise RuntimeError("No consecutive ports are available for Traefik.")
+
+    if candidate != desired:
+        logger.info(
+            "Traefik ports %s/%s are unavailable; assigning %s/%s.",
+            desired,
+            desired + 1,
+            candidate,
+            candidate + 1,
+        )
+        cfg["port"] = candidate
+        _, synchronized_after_move = synchronize_traefik_web_port(cfg)
+        synchronized |= synchronized_after_move
+
+    used_ports[candidate] = web_owner
+    used_ports[candidate + 1] = dashboard_owner
+    return synchronized or candidate != desired
+
+
 def _seed_used_ports(config_obj: dict, used_ports: dict[int, str]) -> None:
     if not isinstance(config_obj, dict):
         return
@@ -188,6 +237,9 @@ def _apply_global_port_reservations(config_manager) -> None:
             continue
 
         if cfg.get("enabled"):
+            if key == "traefik":
+                changed |= _reserve_traefik_ports(cfg, used_ports)
+                continue
             if key == "infinidysk":
                 changed |= _reserve_config_port(
                     cfg,
@@ -774,8 +826,10 @@ def _preinstall_enabled_services(process_handler, config_manager) -> dict[str, s
             process_handler.preinstalled_processes.add(name)
             logger.info("Preinstall done: %s", name)
 
-    failures = run_grouped_preinstall(targets, _run_preinstall)
+    failures, skipped_reason = run_migration_aware_preinstall(targets, _run_preinstall)
     process_handler.preinstall_failures = dict(failures)
+    if skipped_reason:
+        logger.warning(skipped_reason)
     for name, error in failures.items():
         logger.error("Pre-install failed for %s: %s", name, error)
 
@@ -948,7 +1002,7 @@ def main():
     _apply_waits_to_service(config, "seerr", _build_media_wait_entries(config))
     if configure_arr_postgres_runtime(config):
         config.save_config()
-    if configure_service_postgres_runtime(config):
+    if configure_service_postgres_runtime(config, allow_offline_authorization=True):
         config.save_config()
     try:
         process_handler.set_startup_phase("preinstalling")

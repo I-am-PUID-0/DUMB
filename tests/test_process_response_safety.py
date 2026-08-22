@@ -1,8 +1,10 @@
 import json
 import sys
+import tempfile
 import threading
 import types
 import unittest
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 
@@ -165,6 +167,15 @@ class ProcessResponseSanitizerTests(unittest.TestCase):
 
 
 class OptionalProcessStartupTests(unittest.TestCase):
+    def setUp(self):
+        for helper in (
+            "infinidysk_postgres_migration_active",
+            "infinidysk_namespace_migration_active",
+        ):
+            active_patch = patch.object(process_router, helper, return_value=False)
+            active_patch.start()
+            self.addCleanup(active_patch.stop)
+
     def test_optional_start_rejects_process_that_never_becomes_ready(self):
         updater = MagicMock()
         updater.auto_update.return_value = (object(), "readiness probe failed")
@@ -210,6 +221,339 @@ class OptionalProcessStartupTests(unittest.TestCase):
             )
 
         updater.auto_update.assert_not_called()
+
+    def test_custom_named_infinidysk_onboarding_rejects_postgres_before_mutation(
+        self,
+    ):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            Path(temp_dir, "db.sqlite").write_bytes(b"existing sqlite")
+            service = {
+                "enabled": False,
+                "process_name": "Custom InfiniDysk",
+                "postgres_enabled": False,
+                "postgres_database": "infinidysk",
+                "config_dir": temp_dir,
+                "env": {
+                    "CONFIG_PATH": temp_dir,
+                    "DATABASE_PROVIDER": "sqlite",
+                },
+            }
+            config_manager = types.SimpleNamespace(
+                config={
+                    "infinidysk": service,
+                    "postgres": {
+                        "host": "127.0.0.1",
+                        "port": 5432,
+                        "user": "DUMB",
+                        "password": "postgres",
+                        "config_dir": "/postgres_data",
+                    },
+                },
+                find_key_for_process=lambda name: (
+                    ("infinidysk", None)
+                    if name == "Custom InfiniDysk"
+                    else (None, None)
+                ),
+                save_config=MagicMock(),
+            )
+            request = types.SimpleNamespace(
+                core_services=[
+                    types.SimpleNamespace(
+                        name="Custom InfiniDysk",
+                        service_options={"infinidysk": {"postgres_enabled": True}},
+                    )
+                ],
+                optional_services=[],
+                optional_service_options={},
+            )
+            updater = MagicMock()
+
+            with (
+                patch.object(process_router, "CONFIG_MANAGER", config_manager),
+                patch.object(
+                    process_router,
+                    "infinidysk_postgres_migration_active",
+                    return_value=False,
+                ),
+                self.assertRaises(process_router.HTTPException) as raised,
+            ):
+                process_router._run_startup(
+                    request,
+                    updater,
+                    MagicMock(),
+                    MagicMock(),
+                )
+
+            self.assertEqual(raised.exception.status_code, 400)
+            self.assertFalse(service["enabled"])
+            self.assertFalse(service["postgres_enabled"])
+            config_manager.save_config.assert_not_called()
+            updater.auto_update.assert_not_called()
+
+    def test_infinidysk_onboarding_holds_admission_through_startup(self):
+        service = {"process_name": "Custom Disk"}
+        config_manager = types.SimpleNamespace(
+            config={"infinidysk": service},
+            find_key_for_process=lambda name: (
+                ("infinidysk", None) if name == "Custom Disk" else (None, None)
+            ),
+        )
+        request = types.SimpleNamespace(
+            core_services=[types.SimpleNamespace(name="Custom Disk")],
+            optional_services=[],
+            optional_service_options={},
+        )
+        entered = threading.Event()
+        release = threading.Event()
+        errors = []
+
+        def admitted(*_args, **_kwargs):
+            entered.set()
+            release.wait(timeout=2)
+            return {"status": "complete"}
+
+        def run_startup():
+            try:
+                process_router._run_startup(
+                    request,
+                    MagicMock(),
+                    MagicMock(),
+                    MagicMock(),
+                )
+            except Exception as error:  # pragma: no cover - assertion below
+                errors.append(error)
+
+        with (
+            patch.object(process_router, "CONFIG_MANAGER", config_manager),
+            patch.object(
+                process_router,
+                "_run_startup_admitted",
+                side_effect=admitted,
+            ),
+        ):
+            worker = threading.Thread(target=run_startup)
+            worker.start()
+            try:
+                self.assertTrue(entered.wait(timeout=1))
+                acquired = process_router.INFINIDYSK_MIGRATION_ADMISSION_LOCK.acquire(
+                    blocking=False
+                )
+                if acquired:
+                    process_router.INFINIDYSK_MIGRATION_ADMISSION_LOCK.release()
+                self.assertFalse(acquired)
+            finally:
+                release.set()
+                worker.join(timeout=2)
+
+        self.assertFalse(worker.is_alive())
+        self.assertEqual(errors, [])
+
+    def test_postgres_optional_onboarding_is_blocked_by_each_active_job(self):
+        request = types.SimpleNamespace(
+            core_services=[],
+            optional_services=["pgadmin"],
+            optional_service_options={},
+        )
+        for active_helper in (
+            "infinidysk_postgres_migration_active",
+            "infinidysk_namespace_migration_active",
+        ):
+            with self.subTest(active_helper=active_helper):
+                config_manager = types.SimpleNamespace(
+                    config={"postgres": {"enabled": False}},
+                    save_config=MagicMock(),
+                )
+                with (
+                    patch.object(process_router, "CONFIG_MANAGER", config_manager),
+                    patch.object(process_router, active_helper, return_value=True),
+                    patch.object(process_router, "_run_startup_admitted") as admitted,
+                    self.assertRaises(process_router.HTTPException) as raised,
+                ):
+                    process_router._run_startup(
+                        request,
+                        MagicMock(),
+                        MagicMock(),
+                        MagicMock(),
+                    )
+
+                self.assertEqual(raised.exception.status_code, 409)
+                self.assertFalse(config_manager.config["postgres"]["enabled"])
+                config_manager.save_config.assert_not_called()
+                admitted.assert_not_called()
+
+    def test_namespace_migration_blocks_unrelated_onboarding_before_mutation(self):
+        request = types.SimpleNamespace(
+            core_services=[types.SimpleNamespace(name="Plex")],
+            optional_services=[],
+            optional_service_options={},
+        )
+        config_manager = types.SimpleNamespace(
+            config={"plex": {"enabled": False}},
+            save_config=MagicMock(),
+            find_key_for_process=MagicMock(return_value=("plex", None)),
+        )
+        with (
+            patch.object(process_router, "CONFIG_MANAGER", config_manager),
+            patch.object(
+                process_router,
+                "infinidysk_namespace_migration_active",
+                return_value=True,
+            ),
+            patch.object(process_router, "_run_startup_admitted") as admitted,
+            self.assertRaises(process_router.HTTPException) as raised,
+        ):
+            process_router._run_startup(
+                request,
+                MagicMock(),
+                MagicMock(),
+                MagicMock(),
+            )
+
+        self.assertEqual(raised.exception.status_code, 409)
+        self.assertFalse(config_manager.config["plex"]["enabled"])
+        config_manager.save_config.assert_not_called()
+        admitted.assert_not_called()
+
+    def test_postgres_core_and_dependent_optional_require_admission(self):
+        postgres_request = types.SimpleNamespace(
+            core_services=[types.SimpleNamespace(name="PostgreSQL")],
+            optional_services=[],
+        )
+        optional_request = types.SimpleNamespace(
+            core_services=[],
+            optional_services=["pgadmin"],
+        )
+
+        self.assertTrue(
+            process_router._startup_requires_migration_admission(postgres_request)
+        )
+        self.assertTrue(
+            process_router._startup_requires_migration_admission(optional_request)
+        )
+
+    def test_postgres_service_options_are_blocked_by_each_active_job(self):
+        for active_helper in (
+            "infinidysk_postgres_migration_active",
+            "infinidysk_namespace_migration_active",
+        ):
+            with self.subTest(active_helper=active_helper):
+                postgres = {"process_name": "PostgreSQL", "password": "old"}
+                config_manager = types.SimpleNamespace(
+                    config={"infinidysk": {}, "postgres": postgres},
+                    save_config=MagicMock(),
+                )
+                with (
+                    patch.object(process_router, "CONFIG_MANAGER", config_manager),
+                    patch.object(process_router, active_helper, return_value=True),
+                    self.assertRaises(process_router.HTTPException) as raised,
+                ):
+                    process_router.apply_service_options(
+                        postgres,
+                        {"password": "new"},
+                        MagicMock(),
+                        service_key="postgres",
+                    )
+
+                self.assertEqual(raised.exception.status_code, 409)
+                self.assertEqual(postgres["password"], "old")
+                config_manager.save_config.assert_not_called()
+
+    def test_lifecycle_admission_blocks_before_any_mutation(self):
+        callback = MagicMock(return_value={"status": "unexpected"})
+        config_manager = types.SimpleNamespace(
+            find_key_for_process=MagicMock(return_value=("infinidysk", None))
+        )
+        with (
+            patch.object(process_router, "CONFIG_MANAGER", config_manager),
+            patch.object(
+                process_router,
+                "infinidysk_postgres_migration_active",
+                return_value=True,
+            ),
+            patch.object(
+                process_router,
+                "infinidysk_namespace_migration_active",
+                return_value=False,
+            ),
+            self.assertRaises(process_router.HTTPException) as raised,
+        ):
+            process_router._run_migration_lifecycle_admitted(
+                "InfiniDysk", "restart", callback
+            )
+
+        self.assertEqual(raised.exception.status_code, 409)
+        callback.assert_not_called()
+
+        config_manager.find_key_for_process.return_value = ("sonarr", "TV")
+        with (
+            patch.object(process_router, "CONFIG_MANAGER", config_manager),
+            patch.object(
+                process_router,
+                "infinidysk_postgres_migration_active",
+                return_value=False,
+            ),
+            patch.object(
+                process_router,
+                "infinidysk_namespace_migration_active",
+                return_value=True,
+            ),
+            self.assertRaises(process_router.HTTPException),
+        ):
+            process_router._run_migration_lifecycle_admitted(
+                "Sonarr TV", "reset", callback
+            )
+
+        callback.assert_not_called()
+
+    def test_postgres_service_options_validate_before_mutation(self):
+        postgres = {
+            "process_name": "PostgreSQL",
+            "password": "old",
+            "config_dir": "/postgres_data",
+        }
+        config_manager = types.SimpleNamespace(
+            config={"infinidysk": {}, "postgres": postgres},
+            save_config=MagicMock(),
+        )
+        with (
+            patch.object(process_router, "CONFIG_MANAGER", config_manager),
+            patch.object(
+                process_router,
+                "_validate_postgres_service_options",
+                side_effect=process_router.HTTPException(
+                    status_code=400, detail="target binding changed"
+                ),
+            ),
+            self.assertRaises(process_router.HTTPException) as raised,
+        ):
+            process_router.apply_service_options(
+                postgres,
+                {"config_dir": "/other-cluster"},
+                MagicMock(),
+                service_key="postgres",
+            )
+
+        self.assertEqual(raised.exception.status_code, 400)
+        self.assertEqual(postgres["config_dir"], "/postgres_data")
+        config_manager.save_config.assert_not_called()
+
+        with (
+            patch.object(process_router, "CONFIG_MANAGER", config_manager),
+            patch.object(
+                process_router,
+                "_validate_postgres_service_options",
+                return_value=None,
+            ),
+        ):
+            process_router.apply_service_options(
+                postgres,
+                {"password": "rotated"},
+                MagicMock(),
+                service_key="postgres",
+            )
+
+        self.assertEqual(postgres["password"], "rotated")
+        config_manager.save_config.assert_called_once_with()
 
 
 class MediaStormCredentialResponseTests(unittest.IsolatedAsyncioTestCase):
@@ -343,6 +687,77 @@ class MediaStormCredentialResponseTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(raised.exception.status_code, 400)
         self.assertIn("independent backup", raised.exception.detail)
 
+    async def test_compatibility_cutover_takes_admission_before_update_lock(self):
+        events = []
+
+        class AdmissionLock:
+            def __enter__(self):
+                events.append("admission_enter")
+                return self
+
+            def __exit__(self, *_args):
+                events.append("admission_exit")
+
+        class UpdateLock:
+            def acquire(self, blocking=False):
+                self.assert_admitted = events[-1] == "admission_enter"
+                events.append("update_acquire")
+                return True
+
+            def release(self):
+                events.append("update_release")
+
+        request = types.SimpleNamespace(
+            mode="retain_legacy_namespace",
+            rename_attached_services=True,
+            confirmation="MIGRATE TO INFINIDYSK",
+            preflight_token=None,
+            acknowledge_downtime=False,
+            acknowledge_library_scan=False,
+            acknowledge_rollback_limits=False,
+            acknowledge_external_backup=True,
+        )
+        update_lock = UpdateLock()
+
+        def apply(*_args):
+            events.append("apply")
+            return {"status": "completed"}
+
+        with (
+            patch.object(
+                process_router,
+                "INFINIDYSK_MIGRATION_ADMISSION_LOCK",
+                AdmissionLock(),
+            ),
+            patch.object(
+                process_router.INFINIDYSK_MIGRATION_MANAGER,
+                "apply_brand_cutover",
+                side_effect=apply,
+            ),
+        ):
+            result = await process_router.apply_infinidysk_migration(
+                request,
+                process_handler=types.SimpleNamespace(
+                    get_startup_status=lambda: {"phase": "ready"}
+                ),
+                updater=types.SimpleNamespace(updating=update_lock),
+                logger=types.SimpleNamespace(),
+                current_user=None,
+            )
+
+        self.assertTrue(update_lock.assert_admitted)
+        self.assertEqual(
+            [
+                "admission_enter",
+                "update_acquire",
+                "apply",
+                "update_release",
+                "admission_exit",
+            ],
+            events,
+        )
+        self.assertEqual("completed", result["status"])
+
     async def test_infinidysk_playback_stop_requires_explicit_confirmation(self):
         request = types.SimpleNamespace(
             job_id="a" * 32,
@@ -369,6 +784,115 @@ class MediaStormCredentialResponseTests(unittest.IsolatedAsyncioTestCase):
             )
 
         self.assertEqual({"job": None}, result)
+
+    async def test_infinidysk_cleanup_preview_forwards_manager_response(self):
+        preview = {
+            "available": True,
+            "preview_token": "preview-token",
+            "deletion": {
+                "files": 2,
+                "directories": 1,
+                "bytes": 10,
+                "categories": ["Migration state details"],
+            },
+        }
+        with patch.object(
+            process_router.INFINIDYSK_MIGRATION_MANAGER,
+            "cleanup_preview",
+            return_value=preview,
+        ) as cleanup_preview:
+            result = await process_router.preview_infinidysk_migration_cleanup(
+                current_user=None
+            )
+
+        self.assertEqual(preview, result)
+        cleanup_preview.assert_called_once_with()
+
+    async def test_infinidysk_cleanup_requires_exact_confirmation_and_acknowledgements(
+        self,
+    ):
+        base = {
+            "preview_token": "preview-token",
+            "confirmation": "REMOVE INFINIDYSK MIGRATION DATA",
+            "acknowledge_validation": True,
+            "acknowledge_rollback_loss": True,
+        }
+        invalid_requests = (
+            ({**base, "confirmation": "remove"}, "REMOVE INFINIDYSK"),
+            (
+                {**base, "confirmation": " REMOVE INFINIDYSK MIGRATION DATA"},
+                "REMOVE INFINIDYSK",
+            ),
+            ({**base, "acknowledge_validation": False}, "health"),
+            ({**base, "acknowledge_validation": 1}, "health"),
+            ({**base, "acknowledge_rollback_loss": False}, "irreversible"),
+        )
+        for values, detail in invalid_requests:
+            with self.subTest(detail=detail):
+                with self.assertRaises(process_router.HTTPException) as raised:
+                    await process_router.cleanup_infinidysk_migration(
+                        types.SimpleNamespace(**values), current_user=None
+                    )
+                self.assertEqual(400, raised.exception.status_code)
+                self.assertIn(detail, raised.exception.detail)
+
+    async def test_infinidysk_cleanup_forwards_verified_preview_token(self):
+        request = types.SimpleNamespace(
+            preview_token="preview-token",
+            confirmation="REMOVE INFINIDYSK MIGRATION DATA",
+            acknowledge_validation=True,
+            acknowledge_rollback_loss=True,
+        )
+        cleaned = {
+            "status": "completed",
+            "cleanup_finalized": True,
+            "deleted": {
+                "files": 2,
+                "directories": 1,
+                "bytes": 10,
+                "categories": ["Job history"],
+            },
+        }
+        with patch.object(
+            process_router.INFINIDYSK_MIGRATION_MANAGER,
+            "cleanup",
+            return_value=cleaned,
+        ) as cleanup:
+            result = await process_router.cleanup_infinidysk_migration(
+                request, current_user=None
+            )
+
+        self.assertEqual(cleaned, result)
+        cleanup.assert_called_once_with(
+            "preview-token",
+            "REMOVE INFINIDYSK MIGRATION DATA",
+            True,
+            True,
+        )
+
+    async def test_infinidysk_cleanup_conflict_is_safe(self):
+        request = types.SimpleNamespace(
+            preview_token="preview-token",
+            confirmation="REMOVE INFINIDYSK MIGRATION DATA",
+            acknowledge_validation=True,
+            acknowledge_rollback_loss=True,
+        )
+        with (
+            patch.object(
+                process_router.INFINIDYSK_MIGRATION_MANAGER,
+                "cleanup",
+                side_effect=process_router.InfiniDyskMigrationError(
+                    "Run the cleanup preview again."
+                ),
+            ),
+            self.assertRaises(process_router.HTTPException) as raised,
+        ):
+            await process_router.cleanup_infinidysk_migration(
+                request, current_user=None
+            )
+
+        self.assertEqual(409, raised.exception.status_code)
+        self.assertEqual("Run the cleanup preview again.", raised.exception.detail)
 
     async def test_infinidysk_playback_stop_forwards_confirmed_job(self):
         request = types.SimpleNamespace(
@@ -426,6 +950,7 @@ class MediaStormCredentialResponseTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(capabilities["service_reset"])
         self.assertTrue(capabilities["runtime_api_log_level"])
         self.assertTrue(capabilities["nzbdav_install_info"])
+        self.assertTrue(capabilities["infinidysk_migration_cleanup"])
 
     async def test_missing_credential_does_not_return_a_password(self):
         with (

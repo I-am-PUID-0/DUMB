@@ -9,6 +9,11 @@ from utils.dependencies import (
     get_optional_current_user,
 )
 from utils.config_loader import CONFIG_MANAGER, find_service_config
+from utils.infinidysk_migration_admission import (
+    INFINIDYSK_MIGRATION_ADMISSION_LOCK,
+    infinidysk_namespace_migration_active,
+    infinidysk_postgres_migration_active,
+)
 from utils.ai_diagnostics import record_config_change
 from utils.traefik_setup import (
     ensure_ui_services_config,
@@ -839,6 +844,26 @@ def find_schema(schema, path_parts):
     return schema_section
 
 
+def _reject_infinidysk_postgres_reversal(
+    current_service: dict,
+    candidate_service: dict,
+    current_postgres_config: dict,
+    candidate_postgres_config: dict | None = None,
+) -> None:
+    """Reject API edits that would break PostgreSQL data or cutover evidence."""
+
+    from utils.service_postgres import validate_infinidysk_postgres_candidate_update
+
+    safe, error = validate_infinidysk_postgres_candidate_update(
+        current_service,
+        candidate_service,
+        current_postgres_config,
+        candidate_postgres_config,
+    )
+    if not safe:
+        raise HTTPException(status_code=400, detail=error)
+
+
 @config_router.get("/")
 async def get_config(
     process_name: Optional[str] = Query(
@@ -919,22 +944,71 @@ async def update_config(
             "symlink_backup_retention_count",
             "symlink_backup_roots",
         }
-        for key, value in updates.items():
-            if (
-                key in service_config
-                or key in allowed_schema_keys
-                or key in allowed_dynamic_keys
-            ):
-                service_config[key] = value
-            else:
-                logger.error(f"Invalid configuration key for {process_name}: {key}")
+        config_key, _ = CONFIG_MANAGER.find_key_for_process(process_name)
+        guarded_service = config_key in {"infinidysk", "postgres"}
+        with INFINIDYSK_MIGRATION_ADMISSION_LOCK:
+            namespace_blocked = infinidysk_namespace_migration_active()
+            postgres_blocked = (
+                guarded_service and infinidysk_postgres_migration_active()
+            )
+            if namespace_blocked or postgres_blocked:
                 raise HTTPException(
-                    status_code=400, detail=f"Invalid configuration key: {key}"
+                    status_code=409,
+                    detail=(
+                        "Configuration cannot change while an InfiniDysk namespace "
+                        "migration is active or awaiting recovery. InfiniDysk and "
+                        "PostgreSQL configuration is also frozen during its guarded "
+                        "database migration."
+                    ),
                 )
+            if config_key == "infinidysk":
+                _reject_infinidysk_postgres_reversal(
+                    service_config,
+                    merged,
+                    CONFIG_MANAGER.config.get("postgres", {}) or {},
+                )
+            elif config_key == "postgres":
+                current_infinidysk = CONFIG_MANAGER.config.get("infinidysk", {}) or {}
+                if isinstance(current_infinidysk, dict):
+                    _reject_infinidysk_postgres_reversal(
+                        current_infinidysk,
+                        current_infinidysk,
+                        service_config,
+                        merged,
+                    )
+            for key, value in updates.items():
+                if (
+                    key in service_config
+                    or key in allowed_schema_keys
+                    or key in allowed_dynamic_keys
+                ):
+                    service_config[key] = value
+                else:
+                    logger.error(f"Invalid configuration key for {process_name}: {key}")
+                    raise HTTPException(
+                        status_code=400, detail=f"Invalid configuration key: {key}"
+                    )
+
+            if persist:
+                logger.info(f"Persisting updated config for service '{process_name}'")
+                CONFIG_MANAGER.save_config(process_name=process_name)
+                if config_key == "infinidysk":
+                    try:
+                        from utils.nzbdav_settings import patch_nzbdav_config
+
+                        patched, err = patch_nzbdav_config()
+                        if not patched and err:
+                            logger.warning(
+                                "InfiniDysk auto-sync after config update failed: %s",
+                                err,
+                            )
+                    except Exception as exc:
+                        logger.warning(
+                            "InfiniDysk auto-sync after config update skipped: %s",
+                            exc,
+                        )
 
         if persist:
-            logger.info(f"Persisting updated config for service '{process_name}'")
-            CONFIG_MANAGER.save_config(process_name=process_name)
             record_config_change(
                 before_service_config,
                 service_config,
@@ -945,13 +1019,7 @@ async def update_config(
             )
             try:
                 config_key, _ = CONFIG_MANAGER.find_key_for_process(process_name)
-                if config_key in (
-                    "infinidysk",
-                    "sonarr",
-                    "radarr",
-                    "lidarr",
-                    "whisparr",
-                ):
+                if config_key in ("sonarr", "radarr", "lidarr", "whisparr"):
                     from utils.nzbdav_settings import patch_nzbdav_config
 
                     patched, err = patch_nzbdav_config()
@@ -1012,10 +1080,50 @@ async def update_config(
             detail=f"Validation error in global update at '{loc}': {detail}",
         )
 
-    _deep_merge_dict(CONFIG_MANAGER.config, updates)
-    _normalize_legacy_global_config(CONFIG_MANAGER.config)
+    infinidysk_updates = updates.get("infinidysk")
+    guarded_update = isinstance(infinidysk_updates, dict) or "postgres" in updates
+    with INFINIDYSK_MIGRATION_ADMISSION_LOCK:
+        namespace_blocked = infinidysk_namespace_migration_active()
+        postgres_blocked = guarded_update and infinidysk_postgres_migration_active()
+        if namespace_blocked or postgres_blocked:
+            raise HTTPException(
+                status_code=409,
+                detail=(
+                    "Configuration cannot change while an InfiniDysk namespace "
+                    "migration is active or awaiting recovery. InfiniDysk and "
+                    "PostgreSQL configuration is also frozen during its guarded "
+                    "database migration."
+                ),
+            )
+        if guarded_update:
+            current_infinidysk = CONFIG_MANAGER.config.get("infinidysk", {}) or {}
+            candidate_infinidysk = merged_config.get("infinidysk", {}) or {}
+            if isinstance(current_infinidysk, dict) and isinstance(
+                candidate_infinidysk, dict
+            ):
+                _reject_infinidysk_postgres_reversal(
+                    current_infinidysk,
+                    candidate_infinidysk,
+                    CONFIG_MANAGER.config.get("postgres", {}) or {},
+                    merged_config.get("postgres", {}) or {},
+                )
 
-    CONFIG_MANAGER.save_config()
+        _deep_merge_dict(CONFIG_MANAGER.config, updates)
+        _normalize_legacy_global_config(CONFIG_MANAGER.config)
+        CONFIG_MANAGER.save_config()
+        if isinstance(infinidysk_updates, dict):
+            try:
+                from utils.nzbdav_settings import patch_nzbdav_config
+
+                patched, err = patch_nzbdav_config()
+                if not patched and err:
+                    logger.warning(
+                        "InfiniDysk auto-sync after config update failed: %s", err
+                    )
+            except Exception as exc:
+                logger.warning(
+                    "InfiniDysk auto-sync after config update skipped: %s", exc
+                )
     record_config_change(
         before_global_config,
         CONFIG_MANAGER.config,
@@ -1026,8 +1134,8 @@ async def update_config(
     )
     try:
         touched_keys = set(updates.keys())
-        if touched_keys.intersection(
-            {"infinidysk", "sonarr", "radarr", "lidarr", "whisparr"}
+        if not isinstance(infinidysk_updates, dict) and touched_keys.intersection(
+            {"sonarr", "radarr", "lidarr", "whisparr"}
         ):
             from utils.nzbdav_settings import patch_nzbdav_config
 
@@ -1106,20 +1214,37 @@ async def handle_service_config(
     if not config_path.exists():
         raise HTTPException(status_code=404, detail="Config file not found.")
 
-    raw_config, config_data, config_format = load_config_file(config_path)
-    before_service_file = copy.deepcopy(config_data)
-
     if updates:
-        try:
-            save_config_file(config_path, config_data, config_format, updates)
-        except HTTPException:
-            logger.error("Failed to validate service config update.")
-            raise
-        except Exception as e:
-            logger.error(f"Failed to save config file: {e}")
-            raise HTTPException(
-                status_code=500, detail=f"Failed to save config file: {e}"
+        config_key = str(service_path or "").split(".", 1)[0].strip().lower()
+        guarded_service = config_key in {"infinidysk", "postgres"}
+        with INFINIDYSK_MIGRATION_ADMISSION_LOCK:
+            namespace_blocked = infinidysk_namespace_migration_active()
+            postgres_blocked = (
+                guarded_service and infinidysk_postgres_migration_active()
             )
+            if namespace_blocked or postgres_blocked:
+                raise HTTPException(
+                    status_code=409,
+                    detail=(
+                        "Service configuration files cannot change while an "
+                        "InfiniDysk namespace migration is active or awaiting "
+                        "recovery. InfiniDysk and PostgreSQL application "
+                        "configuration is also frozen during its guarded "
+                        "database migration."
+                    ),
+                )
+            raw_config, config_data, config_format = load_config_file(config_path)
+            before_service_file = copy.deepcopy(config_data)
+            try:
+                save_config_file(config_path, config_data, config_format, updates)
+            except HTTPException:
+                logger.error("Failed to validate service config update.")
+                raise
+            except Exception as e:
+                logger.error(f"Failed to save config file: {e}")
+                raise HTTPException(
+                    status_code=500, detail=f"Failed to save config file: {e}"
+                )
 
         logger.info(f"Config for {service_name} updated successfully.")
         try:
@@ -1140,6 +1265,7 @@ async def handle_service_config(
             "service_path": service_path,
         }
 
+    raw_config, config_data, config_format = load_config_file(config_path)
     logger.info(f"Config for {service_name} retrieved successfully.")
     return {
         "service": service_name,

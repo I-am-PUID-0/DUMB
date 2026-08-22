@@ -8,6 +8,38 @@ from utils import setup
 
 
 class DumbFrontendBootstrapTests(unittest.TestCase):
+    def test_frontend_proxy_environment_tracks_configured_traefik_port(self):
+        dumb_config = {
+            "frontend": {
+                "host": "0.0.0.0",
+                "port": 3005,
+                "env": {
+                    "DMB_TRAEFIK_URL": "http://127.0.0.1:18080",
+                    "DUMB_TRAEFIK_URL": "http://127.0.0.1:18080",
+                },
+            },
+            "api_service": {"host": "127.0.0.1", "port": 8000},
+        }
+        traefik_config = {
+            "port": 18082,
+            "entrypoints": {"web": {"address": ":18082"}},
+        }
+
+        def get_config(key, default=None):
+            if key == "dumb":
+                return dumb_config
+            if key == "traefik":
+                return traefik_config
+            return default
+
+        with patch.object(setup.CONFIG_MANAGER, "get", side_effect=get_config):
+            success, error = setup.dumb_frontend_setup()
+
+        self.assertTrue(success, error)
+        frontend_env = dumb_config["frontend"]["env"]
+        self.assertEqual(frontend_env["DMB_TRAEFIK_URL"], "http://127.0.0.1:18082")
+        self.assertEqual(frontend_env["DUMB_TRAEFIK_URL"], "http://127.0.0.1:18082")
+
     def test_frontend_requires_runnable_output(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)

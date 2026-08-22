@@ -237,6 +237,48 @@ class SetupDotnetTests(unittest.TestCase):
                 restore_env["DOTNET_CLI_HOME"], str(Path(temp_dir, ".dotnet"))
             )
 
+    def test_infinidysk_publish_disables_upstream_analyzers_only(self):
+        class PublishHandler:
+            def __init__(self):
+                self.calls = []
+                self.returncode = None
+                self.stderr = ""
+                self.stdout = ""
+
+            def start_process(self, name, config_dir, command, env=None):
+                self.calls.append((name, config_dir, command, env.copy()))
+                return True, None
+
+            def wait(self, _name):
+                self.returncode = 0
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            project_path = Path(temp_dir, "NzbWebDAV.csproj")
+            project_path.write_text(
+                "<Project><PropertyGroup>"
+                "<TargetFramework>net10.0</TargetFramework>"
+                "</PropertyGroup></Project>",
+                encoding="utf-8",
+            )
+            handler = PublishHandler()
+
+            with patch.object(setup, "_dotnet_sdk_major", return_value=10):
+                success, error = setup.setup_dotnet_environment(
+                    handler,
+                    "infinidysk",
+                    temp_dir,
+                    project_paths=[str(project_path)],
+                    restore_project_path=str(project_path),
+                )
+
+        self.assertTrue(success, error)
+        publish_command = next(
+            call[2] for call in handler.calls if call[0] == "dotnet_publish"
+        )
+        self.assertIn("/p:RunAnalyzers=false", publish_command)
+        self.assertIn("/p:EnableNETAnalyzers=false", publish_command)
+        self.assertNotIn("/p:NoBuild=true", publish_command)
+
     def test_sdk_installer_uses_absolute_bash_path(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             env = {"PATH": "/managed-sdk"}

@@ -163,3 +163,31 @@ def run_grouped_preinstall(
         for future in as_completed(futures):
             failures.update(future.result())
     return failures
+
+
+def run_migration_aware_preinstall(
+    targets: list[tuple[str, str]],
+    install_target: Callable[[str, str], None],
+    max_workers: int | None = None,
+) -> tuple[dict[str, str], str | None]:
+    """Skip runtime-changing preinstall during a safe legacy-topology recovery boot."""
+
+    try:
+        from utils.infinidysk_migration_admission import (
+            infinidysk_namespace_pre_mutation_interrupted,
+        )
+
+        recovery_boot = infinidysk_namespace_pre_mutation_interrupted()
+    except Exception:
+        return (
+            {},
+            "InfiniDysk namespace recovery state could not be inspected; "
+            "service preinstall was skipped.",
+        )
+    if recovery_boot:
+        return (
+            {},
+            "An interrupted pre-mutation InfiniDysk namespace job is restoring "
+            "the already-installed legacy topology; service preinstall was skipped.",
+        )
+    return run_grouped_preinstall(targets, install_target, max_workers), None

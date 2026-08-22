@@ -484,6 +484,8 @@
     "log_level": "INFO",
     "frontend_port": 3000,
     "backend_port": 8080,
+    "postgres_enabled": false,
+    "postgres_database": "infinidysk",
     "auto_update": false,
     "auto_update_mode": "install",
     "auto_update_interval": 24,

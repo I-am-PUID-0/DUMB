@@ -9,6 +9,7 @@ from unittest.mock import patch
 from utils.startup import (
     frontend_start_readiness,
     run_grouped_preinstall,
+    run_migration_aware_preinstall,
     run_parallel_preinstall,
     start_control_plane_before_preinstall,
 )
@@ -163,6 +164,38 @@ class FrontendStartupTests(unittest.TestCase):
 
         self.assertEqual(failures, {})
         worker_count.assert_called_once_with(10)
+
+    def test_pre_mutation_namespace_recovery_skips_runtime_preinstall(self):
+        attempted = []
+        with patch(
+            "utils.infinidysk_migration_admission."
+            "infinidysk_namespace_pre_mutation_interrupted",
+            return_value=True,
+        ):
+            failures, skipped_reason = run_migration_aware_preinstall(
+                [("infinidysk", "InfiniDysk"), ("sonarr", "Sonarr")],
+                lambda key, name: attempted.append((key, name)),
+            )
+
+        self.assertEqual(failures, {})
+        self.assertEqual(attempted, [])
+        self.assertIn("already-installed legacy topology", skipped_reason)
+
+    def test_normal_boot_still_runs_grouped_preinstall(self):
+        attempted = []
+        with patch(
+            "utils.infinidysk_migration_admission."
+            "infinidysk_namespace_pre_mutation_interrupted",
+            return_value=False,
+        ):
+            failures, skipped_reason = run_migration_aware_preinstall(
+                [("infinidysk", "InfiniDysk")],
+                lambda key, name: attempted.append((key, name)),
+            )
+
+        self.assertEqual(failures, {})
+        self.assertIsNone(skipped_reason)
+        self.assertEqual(attempted, [("infinidysk", "InfiniDysk")])
 
 
 if __name__ == "__main__":

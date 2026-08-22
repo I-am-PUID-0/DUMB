@@ -1455,6 +1455,35 @@ class Update:
         target=None,
         protection_override=None,
     ):
+        from utils.infinidysk_migration_admission import (
+            INFINIDYSK_MIGRATION_ADMISSION_LOCK,
+        )
+
+        with INFINIDYSK_MIGRATION_ADMISSION_LOCK:
+            key, _ = CONFIG_MANAGER.find_key_for_process(process_name)
+            blocker = self._infinidysk_migration_update_blocker(key)
+            if blocker:
+                payload = {
+                    "status": "blocked",
+                    "reason": "infinidysk_migration_active",
+                    "message": blocker,
+                }
+                self._safe_record_update_status(process_name, payload)
+                return payload
+            return self._manual_update_install_once_admitted(
+                process_name,
+                allow_override=allow_override,
+                target=target,
+                protection_override=protection_override,
+            )
+
+    def _manual_update_install_once_admitted(
+        self,
+        process_name,
+        allow_override=False,
+        target=None,
+        protection_override=None,
+    ):
         key, instance_name = CONFIG_MANAGER.find_key_for_process(process_name)
         config = CONFIG_MANAGER.get_instance(instance_name, key) if key else None
         requested_target = str(target or "").strip().lower()
@@ -2628,6 +2657,14 @@ class Update:
         update_status = self.scheduled_update_check(
             process_name, latest_config, key, instance_name
         )
+        if isinstance(update_status, dict) and update_status.get("status") == "blocked":
+            update_status = {
+                **update_status,
+                "auto_update_enabled": True,
+                "next_check_at": next_due_at,
+            }
+            self._safe_record_update_status(process_name, update_status)
+            return
         schedule_status = {
             "status": "scheduled",
             "auto_update_enabled": True,
@@ -2648,6 +2685,43 @@ class Update:
         self._safe_record_update_status(process_name, schedule_status)
 
     def auto_update(
+        self, process_name, enable_update, force_update_check: bool = False
+    ):
+        """Run boot/update setup atomically with migration admission."""
+
+        from utils.infinidysk_migration_admission import (
+            INFINIDYSK_MIGRATION_ADMISSION_LOCK,
+            infinidysk_namespace_pre_mutation_interrupted,
+            infinidysk_recovery_blocks_service,
+        )
+
+        with INFINIDYSK_MIGRATION_ADMISSION_LOCK:
+            key, _ = CONFIG_MANAGER.find_key_for_process(process_name)
+            blocker = infinidysk_recovery_blocks_service(key, process_name)
+            if blocker:
+                self.logger.warning(
+                    "Startup/update blocked for %s while migration recovery is pending.",
+                    process_name,
+                )
+                return None, blocker
+            pre_mutation_recovery = infinidysk_namespace_pre_mutation_interrupted()
+            active_blocker = self._infinidysk_migration_update_blocker(
+                key,
+                allow_pre_mutation_cold_boot=True,
+            )
+            if active_blocker:
+                return None, active_blocker
+            if pre_mutation_recovery:
+                # Restore only the already-installed legacy topology. Moving source
+                # checks/installs remain blocked until a fresh migration preflight
+                # safely replaces the interrupted job.
+                enable_update = False
+                force_update_check = False
+            return self._auto_update_admitted(
+                process_name, enable_update, force_update_check
+            )
+
+    def _auto_update_admitted(
         self, process_name, enable_update, force_update_check: bool = False
     ):
         key, instance_name = CONFIG_MANAGER.find_key_for_process(process_name)
@@ -2844,7 +2918,61 @@ class Update:
 
             return True, error
 
+    @staticmethod
+    def _infinidysk_migration_update_blocker(
+        key, *, allow_pre_mutation_cold_boot: bool = False
+    ):
+        """Return a safe reason while the shared admission lock is held."""
+
+        from utils.infinidysk_migration_admission import (
+            ACTIVE_NAMESPACE_MIGRATION_BLOCKER,
+            ACTIVE_POSTGRES_MIGRATION_BLOCKER,
+            infinidysk_namespace_migration_active,
+            infinidysk_namespace_pre_mutation_interrupted,
+            infinidysk_namespace_recovery_pending,
+            infinidysk_postgres_migration_active,
+        )
+
+        if infinidysk_namespace_migration_active():
+            if (
+                allow_pre_mutation_cold_boot
+                and infinidysk_namespace_pre_mutation_interrupted()
+            ):
+                # Cold boot may restore the unchanged legacy topology so the
+                # operator can run a fresh live preflight. Config/manual
+                # lifecycle and new migration admission remain blocked.
+                return None
+            if key in {"dumb", "dumb_frontend", "traefik"} and (
+                infinidysk_namespace_recovery_pending()
+            ):
+                return None
+            return ACTIVE_NAMESPACE_MIGRATION_BLOCKER
+        if key in {"infinidysk", "postgres"} and infinidysk_postgres_migration_active():
+            return ACTIVE_POSTGRES_MIGRATION_BLOCKER
+        return None
+
     def scheduled_update_check(self, process_name, config, key, instance_name):
+        from utils.infinidysk_migration_admission import (
+            INFINIDYSK_MIGRATION_ADMISSION_LOCK,
+        )
+
+        with INFINIDYSK_MIGRATION_ADMISSION_LOCK:
+            blocker = self._infinidysk_migration_update_blocker(key)
+            if blocker:
+                payload = {
+                    "status": "blocked",
+                    "reason": "infinidysk_migration_active",
+                    "message": blocker,
+                }
+                self._safe_record_update_status(process_name, payload)
+                return payload
+            return self._scheduled_update_check_admitted(
+                process_name, config, key, instance_name
+            )
+
+    def _scheduled_update_check_admitted(
+        self, process_name, config, key, instance_name
+    ):
         try:
             update_status = self._manual_update_check_internal(
                 process_name, config, key, instance_name

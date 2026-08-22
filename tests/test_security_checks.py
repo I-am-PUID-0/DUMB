@@ -102,6 +102,29 @@ class APICorsSecurityTests(unittest.TestCase):
         )
         self.assertTrue(options["allow_credentials"])
 
+    def test_namespace_admission_covers_every_ordinary_api_mutation(self):
+        requires_reservation = api_service._requires_namespace_mutation_reservation
+
+        for method, path in (
+            ("POST", "/config/service-config"),
+            ("PUT", "/notifications/settings"),
+            ("PATCH", "/ai/settings"),
+            ("DELETE", "/process/reset-service"),
+            ("POST", "/integrations/authelia/bootstrap"),
+        ):
+            with self.subTest(method=method, path=path):
+                self.assertTrue(requires_reservation(method, path))
+
+        for method, path in (
+            ("GET", "/config"),
+            ("POST", "/auth/login"),
+            ("POST", "/process/infinidysk-migration/apply"),
+            ("POST", "/process/postgres-migration/start"),
+            ("POST", "/process/arr-postgres-migration/rollback"),
+        ):
+            with self.subTest(method=method, path=path):
+                self.assertFalse(requires_reservation(method, path))
+
         options = self._build_cors_middleware_options(
             ["https://a.test", "https://a.test", "https://b.test"]
         )

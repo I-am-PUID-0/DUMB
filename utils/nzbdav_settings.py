@@ -190,6 +190,102 @@ def _join(host: str, path: str) -> str:
     return f"{host.rstrip('/')}/{path.lstrip('/')}"
 
 
+def _uses_postgres_database(config: Optional[dict] = None) -> bool:
+    config = (
+        config if isinstance(config, dict) else (CONFIG_MANAGER.get("infinidysk") or {})
+    )
+    env = config.get("env") or {}
+    return (
+        config.get("postgres_enabled") is True
+        or str(env.get("DATABASE_PROVIDER") or "").strip().lower() == "postgres"
+    )
+
+
+def _infinidysk_api_key(config: dict) -> str:
+    env = config.get("env") or {}
+    api_key = str(env.get("FRONTEND_BACKEND_API_KEY") or "").strip()
+    if api_key or _uses_postgres_database(config):
+        return api_key
+    try:
+        return str(nzbdav_db.get_config_value("api.key") or "").strip()
+    except FileNotFoundError:
+        return ""
+
+
+def _infinidysk_config_api_request(
+    config: dict, endpoint: str, fields: list[tuple[str, str]]
+) -> tuple[Optional[dict], Optional[str]]:
+    api_key = _infinidysk_api_key(config)
+    if not api_key:
+        return None, "InfiniDysk frontend/backend API key is unavailable."
+    backend_port = int(config.get("backend_port") or 8080)
+    request = safe_request(
+        f"http://127.0.0.1:{backend_port}/{endpoint.lstrip('/')}",
+        data=urllib.parse.urlencode(fields).encode("utf-8"),
+        headers={
+            "Content-Type": "application/x-www-form-urlencoded",
+            "x-api-key": api_key,
+        },
+        method="POST",
+    )
+    try:
+        with safe_urlopen(request, timeout=5) as response:
+            payload = json.loads(response.read().decode("utf-8") or "{}")
+            if 200 <= response.status < 300:
+                return payload if isinstance(payload, dict) else {}, None
+            return (
+                None,
+                f"InfiniDysk configuration API returned HTTP {response.status}.",
+            )
+    except urllib.error.HTTPError as error:
+        return None, f"InfiniDysk configuration API returned HTTP {error.code}."
+    except (urllib.error.URLError, TimeoutError, OSError, ValueError, TypeError):
+        return None, "InfiniDysk configuration API is not available yet."
+
+
+def _read_nzbdav_config_values(
+    keys: tuple[str, ...], config: dict
+) -> tuple[Optional[dict[str, str]], Optional[str]]:
+    if not _uses_postgres_database(config):
+        try:
+            return {key: nzbdav_db.get_config_value(key) or "" for key in keys}, None
+        except FileNotFoundError as error:
+            return None, str(error)
+
+    payload, error = _infinidysk_config_api_request(
+        config, "/api/get-config", [("config-keys", key) for key in keys]
+    )
+    if payload is None:
+        return None, error
+    items = payload.get("configItems") or payload.get("ConfigItems") or []
+    values = {key: "" for key in keys}
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        name = item.get("configName") or item.get("ConfigName")
+        value = item.get("configValue") or item.get("ConfigValue")
+        if name in values and value is not None:
+            values[name] = str(value)
+    return values, None
+
+
+def _write_nzbdav_config_values(
+    updates: dict[str, str], config: dict
+) -> tuple[bool, Optional[str]]:
+    if not updates:
+        return True, None
+    if _uses_postgres_database(config):
+        payload, error = _infinidysk_config_api_request(
+            config, "/api/update-config", list(updates.items())
+        )
+        return payload is not None, error
+    for key, value in updates.items():
+        ok, error = nzbdav_db.set_config_value(key, value)
+        if not ok:
+            return False, error
+    return True, None
+
+
 def sync_nzbdav_rclone_rc(
     host: str,
     previous_managed_host: Optional[str] = None,
@@ -197,10 +293,10 @@ def sync_nzbdav_rclone_rc(
     password: Optional[str] = None,
 ) -> Tuple[bool, Optional[str]]:
     keys = ("rclone.rc-enabled", "rclone.host", "rclone.user", "rclone.pass")
-    try:
-        current = {key: nzbdav_db.get_config_value(key) or "" for key in keys}
-    except FileNotFoundError as exc:
-        return False, str(exc)
+    nzbdav_config = CONFIG_MANAGER.get("infinidysk") or {}
+    current, error = _read_nzbdav_config_values(keys, nzbdav_config)
+    if current is None:
+        return False, error
 
     updates = {}
     if not current["rclone.host"]:
@@ -221,36 +317,22 @@ def sync_nzbdav_rclone_rc(
     if not updates:
         return True, None
 
-    nzbdav_config = CONFIG_MANAGER.get("infinidysk") or {}
-    env_config = nzbdav_config.get("env", {}) or {}
-    api_key = env_config.get("FRONTEND_BACKEND_API_KEY") or nzbdav_db.get_config_value(
-        "api.key"
+    payload, api_error = _infinidysk_config_api_request(
+        nzbdav_config, "/api/update-config", list(updates.items())
     )
-    backend_port = int(nzbdav_config.get("backend_port") or 8080)
-    if api_key:
-        request = safe_request(
-            f"http://127.0.0.1:{backend_port}/api/update-config",
-            data=urllib.parse.urlencode(updates).encode("utf-8"),
-            headers={
-                "Content-Type": "application/x-www-form-urlencoded",
-                "x-api-key": api_key,
-            },
-            method="POST",
-        )
-        try:
-            with safe_urlopen(request, timeout=5) as response:
-                if 200 <= response.status < 300:
-                    logger.info("Configured InfiniDysk to use rclone RC at %s.", host)
-                    return True, None
-        except (urllib.error.URLError, TimeoutError, OSError):
-            logger.debug(
-                "InfiniDysk API unavailable while configuring rclone RC; updating its database directly."
-            )
+    if payload is not None:
+        logger.info("Configured InfiniDysk to use rclone RC at %s.", host)
+        return True, None
+    if _uses_postgres_database(nzbdav_config):
+        return False, api_error
+    logger.debug(
+        "InfiniDysk API unavailable in SQLite mode while configuring rclone RC; "
+        "updating its SQLite configuration directly."
+    )
 
-    for key, value in updates.items():
-        ok, error = nzbdav_db.set_config_value(key, value)
-        if not ok:
-            return False, error
+    ok, error = _write_nzbdav_config_values(updates, nzbdav_config)
+    if not ok:
+        return False, error
     logger.info("Seeded InfiniDysk rclone RC settings at %s.", host)
     return True, None
 
@@ -743,6 +825,32 @@ def _merge_instances(existing: list[dict], auto_list: list[dict]) -> list[dict]:
 
 
 def patch_nzbdav_config():
+    """Synchronize managed InfiniDysk settings outside destructive job windows."""
+
+    from utils.infinidysk_migration_admission import (
+        INFINIDYSK_MIGRATION_ADMISSION_LOCK,
+        infinidysk_namespace_migration_active,
+        infinidysk_postgres_migration_active,
+    )
+    from utils.service_postgres import infinidysk_postgres_migration_authorized
+
+    migration_owned = bool(
+        getattr(_NZBDAV_PATCH_CONTEXT, "defer_runtime_integrations", False)
+        or infinidysk_postgres_migration_authorized()
+    )
+    with INFINIDYSK_MIGRATION_ADMISSION_LOCK:
+        if not migration_owned and (
+            infinidysk_postgres_migration_active()
+            or infinidysk_namespace_migration_active()
+        ):
+            return False, (
+                "InfiniDysk configuration synchronization was deferred because a "
+                "guarded migration job is active."
+            )
+        return _patch_nzbdav_config_admitted()
+
+
+def _patch_nzbdav_config_admitted():
     config = CONFIG_MANAGER.get("infinidysk") or {}
     download_client_name = (
         "NzbDAV"
@@ -752,14 +860,7 @@ def patch_nzbdav_config():
     standalone_symlink_root = _infinidysk_symlink_root(config)
     standalone_mount_root = _infinidysk_mount_root(config)
     backend_port = int(config.get("backend_port") or 8080)
-    env_cfg = config.get("env", {}) if isinstance(config, dict) else {}
-
-    try:
-        nzbdav_api_key = nzbdav_db.get_config_value("api.key")
-        if not nzbdav_api_key:
-            nzbdav_api_key = env_cfg.get("FRONTEND_BACKEND_API_KEY") or ""
-    except FileNotFoundError as e:
-        return False, str(e)
+    nzbdav_api_key = _infinidysk_api_key(config)
 
     radarr_entries, sonarr_entries, lidarr_entries, whisparr_entries = (
         _collect_arr_entries()
@@ -812,10 +913,19 @@ def patch_nzbdav_config():
         except Exception as e:
             logger.warning("Failed to ensure InfiniDysk symlink roots: %s", e)
 
-    try:
-        existing = nzbdav_db.get_config_value("arr.instances")
-    except FileNotFoundError as e:
-        return False, str(e)
+    config_values, config_error = _read_nzbdav_config_values(
+        ("arr.instances", "api.categories", "rclone.mount-dir"), config
+    )
+    if config_values is None:
+        if _uses_postgres_database(config):
+            logger.info(
+                "InfiniDysk PostgreSQL configuration API is not ready; deferring managed settings: %s",
+                config_error,
+            )
+            _schedule_nzbdav_retry()
+            return False, None
+        return False, config_error
+    existing = config_values["arr.instances"]
     try:
         existing_obj = json.loads(existing) if existing else {}
     except Exception:
@@ -844,44 +954,36 @@ def patch_nzbdav_config():
     }
     new_value = json.dumps(new_obj, separators=(",", ":"), sort_keys=True)
 
-    updated = False
+    updates = {}
     if new_value != (existing or ""):
-        ok, err = nzbdav_db.set_config_value("arr.instances", new_value)
-        if not ok:
-            return False, err
-        updated = True
-        logger.info("Updated InfiniDysk arr.instances configuration.")
+        updates["arr.instances"] = new_value
 
-    try:
-        current_categories = nzbdav_db.get_config_value("api.categories") or ""
-        category_set = {
-            item.strip().lower()
-            for item in current_categories.split(",")
-            if item.strip()
-        }
-        category_set.update({"movies", "tv", "music", "whisparr"})
-        for entry in (
-            radarr_entries + sonarr_entries + lidarr_entries + whisparr_entries
-        ):
-            cat = (entry.get("Category") or "").strip().lower()
-            if cat:
-                category_set.add(cat)
-        desired_categories = ",".join(sorted(category_set))
-        if desired_categories and desired_categories != current_categories:
-            ok, err = nzbdav_db.set_config_value("api.categories", desired_categories)
-            if not ok:
-                return False, err
-            updated = True
-            logger.info("Updated InfiniDysk api.categories to %s", desired_categories)
-    except FileNotFoundError as e:
-        return False, str(e)
+    current_categories = config_values["api.categories"]
+    category_set = {
+        item.strip().lower() for item in current_categories.split(",") if item.strip()
+    }
+    category_set.update({"movies", "tv", "music", "whisparr"})
+    for entry in radarr_entries + sonarr_entries + lidarr_entries + whisparr_entries:
+        cat = (entry.get("Category") or "").strip().lower()
+        if cat:
+            category_set.add(cat)
+    desired_categories = ",".join(sorted(category_set))
+    if desired_categories and desired_categories != current_categories:
+        updates["api.categories"] = desired_categories
 
-    rclone_mount_dir = nzbdav_db.get_config_value("rclone.mount-dir")
+    rclone_mount_dir = config_values["rclone.mount-dir"]
     if not rclone_mount_dir:
-        ok, err = nzbdav_db.set_config_value("rclone.mount-dir", standalone_mount_root)
-        if not ok:
-            return updated, err
-        updated = True
+        updates["rclone.mount-dir"] = standalone_mount_root
+
+    ok, err = _write_nzbdav_config_values(updates, config)
+    if not ok:
+        return False, err
+    updated = bool(updates)
+    if "arr.instances" in updates:
+        logger.info("Updated InfiniDysk arr.instances configuration.")
+    if "api.categories" in updates:
+        logger.info("Updated InfiniDysk api.categories to %s", desired_categories)
+    if "rclone.mount-dir" in updates:
         logger.info("Set InfiniDysk rclone.mount-dir to %s.", standalone_mount_root)
 
     if getattr(_NZBDAV_PATCH_CONTEXT, "defer_runtime_integrations", False):

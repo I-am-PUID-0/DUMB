@@ -11,6 +11,43 @@ from utils import nzbdav_settings, setup
 
 
 class InfiniDyskSetupTests(unittest.TestCase):
+    def test_postgres_install_only_refuses_a_ready_v11_runtime(self):
+        config = {
+            "process_name": "InfiniDysk",
+            "config_dir": "/infinidysk",
+            "repo_owner": "infinidysk",
+            "repo_name": "infinidysk",
+            "release_version_enabled": False,
+            "release_version": "latest",
+            "postgres_enabled": True,
+            "env": {"DATABASE_PROVIDER": "postgres"},
+        }
+
+        with (
+            patch.object(
+                setup.CONFIG_MANAGER,
+                "get",
+                side_effect=lambda key, default=None: (
+                    config if key == "infinidysk" else (default or {})
+                ),
+            ),
+            patch.object(
+                setup, "_nzbdav_installed_runtime_ready", return_value=(True, None)
+            ),
+            patch.object(
+                setup,
+                "validate_infinidysk_postgres_installed_version",
+                return_value=(False, "installed runtime is below v1.2.0"),
+            ) as validate_runtime,
+            patch.object(setup, "chown_single") as chown,
+        ):
+            success, error = setup.setup_nzbdav(Mock(), install_only=True)
+
+        self.assertFalse(success)
+        self.assertIn("below v1.2.0", error)
+        validate_runtime.assert_called_once_with("/infinidysk")
+        chown.assert_not_called()
+
     def test_namespace_paths_default_to_infinidysk_for_new_configs(self):
         config = {"config_dir": "/infinidysk"}
         self.assertEqual(
@@ -35,6 +72,97 @@ class InfiniDyskSetupTests(unittest.TestCase):
             "/mnt/debrid/nzbdav",
             nzbdav_settings._infinidysk_mount_root(config),
         )
+
+    def test_postgres_refuses_an_existing_sqlite_main_database(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            Path(temp_dir, "db.sqlite").write_bytes(b"existing application data")
+
+            safe, error = setup._validate_infinidysk_postgres_fresh_install(
+                temp_dir, True
+            )
+
+        self.assertFalse(safe)
+        self.assertIn("supported only for fresh installations", error)
+        self.assertIn("db.sqlite", error)
+
+    def test_postgres_allows_existing_auxiliary_sqlite_stores(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            for filename in ("metrics.sqlite", "warden.db", "usenet-migration.db"):
+                Path(temp_dir, filename).write_bytes(b"auxiliary state")
+
+            safe, error = setup._validate_infinidysk_postgres_fresh_install(
+                temp_dir, True
+            )
+
+        self.assertTrue(safe, error)
+        self.assertIsNone(error)
+
+    def test_rejected_postgres_switch_does_not_mutate_runtime_environment(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            Path(temp_dir, "db.sqlite").write_bytes(b"existing application data")
+            config = {
+                "process_name": "InfiniDysk",
+                "config_dir": temp_dir,
+                "repo_owner": "infinidysk",
+                "repo_name": "infinidysk",
+                "postgres_enabled": True,
+                "env": {"CONFIG_PATH": temp_dir},
+            }
+            config_manager = Mock()
+            config_manager.get.side_effect = lambda key, default=None: (
+                config if key == "infinidysk" else default
+            )
+
+            with (
+                patch.object(setup, "CONFIG_MANAGER", config_manager),
+                patch.object(setup, "chown_single"),
+                patch.object(setup, "_chown_recursive_if_needed"),
+                patch.object(setup, "apply_service_postgres_config") as apply_config,
+            ):
+                success, error = setup.setup_nzbdav(Mock())
+
+        self.assertFalse(success)
+        self.assertIn("supported only for fresh installations", error)
+        apply_config.assert_not_called()
+        self.assertNotIn("DATABASE_PROVIDER", config["env"])
+        self.assertNotIn("DATABASE_CONNECTION_STRING", config["env"])
+
+    def test_postgres_start_rejects_installed_v11_before_environment_mutation(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            Path(temp_dir, "version.txt").write_text(
+                "v1.1.9-deadbeef", encoding="utf-8"
+            )
+            config = {
+                "process_name": "InfiniDysk",
+                "config_dir": temp_dir,
+                "postgres_enabled": True,
+                "release_version_enabled": False,
+                "release_version": "latest",
+                "env": {"CONFIG_PATH": temp_dir},
+            }
+            config_manager = Mock()
+            config_manager.get.side_effect = lambda key, default=None: (
+                config if key == "infinidysk" else default
+            )
+
+            with (
+                patch.object(setup, "CONFIG_MANAGER", config_manager),
+                patch.object(
+                    setup,
+                    "_nzbdav_installed_runtime_ready",
+                    return_value=(True, None),
+                ),
+                patch.object(setup, "chown_single") as chown,
+                patch.object(setup, "apply_service_postgres_config") as apply_config,
+            ):
+                success, error = setup.setup_nzbdav(Mock())
+
+        self.assertFalse(success)
+        self.assertIn("v1.2.0-or-newer", error)
+        chown.assert_not_called()
+        apply_config.assert_not_called()
+        self.assertNotIn("DATABASE_PROVIDER", config["env"])
+        self.assertNotIn("DATABASE_CONNECTION_STRING", config["env"])
 
     def test_guarded_migration_defers_live_arr_calls_but_persists_provider_config(
         self,
@@ -99,6 +227,125 @@ class InfiniDyskSetupTests(unittest.TestCase):
             [item.args for item in setter.call_args_list],
         )
 
+    def test_config_patch_refuses_external_sync_during_active_migration(self):
+        with (
+            patch(
+                "utils.infinidysk_migration_admission.infinidysk_postgres_migration_active",
+                return_value=True,
+            ),
+            patch(
+                "utils.infinidysk_migration_admission.infinidysk_namespace_migration_active",
+                return_value=False,
+            ),
+            patch.object(nzbdav_settings, "_patch_nzbdav_config_admitted") as admitted,
+        ):
+            updated, error = nzbdav_settings.patch_nzbdav_config()
+
+        self.assertFalse(updated)
+        self.assertIn("guarded migration job is active", error)
+        admitted.assert_not_called()
+
+    def test_namespace_owned_config_patch_is_admitted_by_narrow_context(self):
+        with (
+            patch(
+                "utils.infinidysk_migration_admission.infinidysk_postgres_migration_active",
+                return_value=False,
+            ),
+            patch(
+                "utils.infinidysk_migration_admission.infinidysk_namespace_migration_active",
+                return_value=True,
+            ),
+            patch.object(
+                nzbdav_settings,
+                "_patch_nzbdav_config_admitted",
+                return_value=(True, None),
+            ) as admitted,
+        ):
+            with nzbdav_settings.defer_nzbdav_runtime_integrations():
+                updated, error = nzbdav_settings.patch_nzbdav_config()
+
+        self.assertTrue(updated)
+        self.assertIsNone(error)
+        admitted.assert_called_once_with()
+
+    def test_postgres_config_patch_uses_api_without_opening_main_sqlite(self):
+        config = {
+            "process_name": "InfiniDysk",
+            "config_dir": "/infinidysk",
+            "backend_port": 8080,
+            "postgres_enabled": True,
+            "env": {
+                "DATABASE_PROVIDER": "postgres",
+                "FRONTEND_BACKEND_API_KEY": "provider-key",
+            },
+        }
+        config_manager = Mock()
+        config_manager.get.side_effect = lambda key, default=None: (
+            config if key == "infinidysk" else default
+        )
+        api_calls = [
+            (
+                {
+                    "configItems": [
+                        {"configName": "arr.instances", "configValue": "{}"},
+                        {"configName": "api.categories", "configValue": ""},
+                        {"configName": "rclone.mount-dir", "configValue": ""},
+                    ]
+                },
+                None,
+            ),
+            ({"status": True}, None),
+        ]
+
+        with (
+            patch.object(nzbdav_settings, "CONFIG_MANAGER", config_manager),
+            patch.object(
+                nzbdav_settings,
+                "_collect_arr_entries",
+                return_value=(
+                    [
+                        {
+                            "Host": "http://127.0.0.1:7878",
+                            "ApiKey": "arr-key",
+                            "Category": "movies",
+                            "Instance": "Movies",
+                        }
+                    ],
+                    [],
+                    [],
+                    [],
+                ),
+            ),
+            patch.object(nzbdav_settings, "_instance_core_services", return_value=[]),
+            patch.object(nzbdav_settings, "_ensure_symlink_roots"),
+            patch.object(
+                nzbdav_settings,
+                "_infinidysk_config_api_request",
+                side_effect=api_calls,
+            ) as api_request,
+            patch.object(
+                nzbdav_settings.nzbdav_db,
+                "get_config_value",
+                side_effect=AssertionError("PostgreSQL mode must not read db.sqlite"),
+            ),
+            patch.object(
+                nzbdav_settings.nzbdav_db,
+                "set_config_value",
+                side_effect=AssertionError("PostgreSQL mode must not write db.sqlite"),
+            ),
+        ):
+            with nzbdav_settings.defer_nzbdav_runtime_integrations():
+                updated, error = nzbdav_settings.patch_nzbdav_config()
+
+        self.assertTrue(updated)
+        self.assertIsNone(error)
+        self.assertEqual(api_request.call_count, 2)
+        self.assertEqual(api_request.call_args_list[0].args[1], "/api/get-config")
+        self.assertEqual(api_request.call_args_list[1].args[1], "/api/update-config")
+        updates = dict(api_request.call_args_list[1].args[2])
+        self.assertEqual(updates["rclone.mount-dir"], "/mnt/debrid/infinidysk")
+        self.assertEqual(updates["api.categories"], "movies,music,tv,whisparr")
+
     @staticmethod
     def _write_nzbdav_source(root: Path) -> None:
         backend = root / "backend"
@@ -122,6 +369,83 @@ class InfiniDyskSetupTests(unittest.TestCase):
             encoding="utf-8",
         )
         (output / "System.IO.Hashing.dll").write_text(hashing_version, encoding="utf-8")
+
+    def test_source_patch_adds_missing_system_io_hashing_reference(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            backend = root / "backend"
+            par2 = backend / "Par2Recovery"
+            reed_solomon = par2 / "ReedSolomon"
+            reed_solomon.mkdir(parents=True)
+            project_path = backend / "NzbWebDAV.csproj"
+            project_path.write_bytes(
+                b"\xef\xbb\xbf"
+                b"<Project>\n  <ItemGroup>\n"
+                b'      <PackageReference Include="MemoryPack" />\n'
+                b"  </ItemGroup>\n</Project>\n"
+            )
+            (root / "Directory.Packages.props").write_text(
+                '<Project><ItemGroup><PackageVersion Include="System.IO.Hashing" '
+                'Version="10.0.11" /></ItemGroup></Project>',
+                encoding="utf-8",
+            )
+            (par2 / "Par2TestEncoder.cs").write_text(
+                "using System.IO.Hashing;\n", encoding="utf-8"
+            )
+            (reed_solomon / "Par2Reconstructor.cs").write_text(
+                "using System.IO.Hashing;\n", encoding="utf-8"
+            )
+
+            self.assertTrue(
+                setup._nzbdav_system_io_hashing_reference_patch_needed(project_path)
+            )
+            patched, error = setup._patch_nzbdav_system_io_hashing_reference(
+                project_path
+            )
+            patched_again, second_error = (
+                setup._patch_nzbdav_system_io_hashing_reference(project_path)
+            )
+
+            self.assertTrue(patched, error)
+            self.assertTrue(patched_again, second_error)
+            project_bytes = project_path.read_bytes()
+            self.assertTrue(project_bytes.startswith(b"\xef\xbb\xbf"))
+            project_contents = project_bytes.decode("utf-8-sig")
+            self.assertEqual(
+                1,
+                project_contents.count('PackageReference Include="System.IO.Hashing"'),
+            )
+            self.assertFalse(
+                setup._nzbdav_system_io_hashing_reference_patch_needed(project_path)
+            )
+
+    def test_source_patch_refuses_unversioned_system_io_hashing_dependency(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            backend = root / "backend"
+            par2 = backend / "Par2Recovery"
+            par2.mkdir(parents=True)
+            project_path = backend / "NzbWebDAV.csproj"
+            original = (
+                "<Project><ItemGroup>\n"
+                '      <PackageReference Include="MemoryPack" />\n'
+                "</ItemGroup></Project>"
+            )
+            project_path.write_text(original, encoding="utf-8")
+            (root / "Directory.Packages.props").write_text(
+                "<Project><ItemGroup /></Project>", encoding="utf-8"
+            )
+            (par2 / "Par2TestEncoder.cs").write_text(
+                "using System.IO.Hashing;\n", encoding="utf-8"
+            )
+
+            patched, error = setup._patch_nzbdav_system_io_hashing_reference(
+                project_path
+            )
+
+            self.assertFalse(patched)
+            self.assertIn("refusing to guess", error)
+            self.assertEqual(original, project_path.read_text(encoding="utf-8"))
 
     def test_configure_exposes_release_version_without_internal_commit_suffix(self):
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -313,6 +637,221 @@ class InfiniDyskSetupTests(unittest.TestCase):
         resolve_ref.assert_called_once_with("infinidysk", "infinidysk", "rc")
         latest.assert_not_called()
 
+    def test_postgres_fixed_v11_release_is_rejected_before_filesystem_mutation(self):
+        config = {
+            "process_name": "InfiniDysk",
+            "config_dir": "/infinidysk",
+            "release_version_enabled": True,
+            "release_version": "v1.1.0",
+            "postgres_enabled": True,
+            "repo_owner": "infinidysk",
+            "repo_name": "infinidysk",
+        }
+        with patch.object(setup.os, "makedirs") as make_dirs:
+            success, error = setup.setup_release_version(
+                Mock(), config, "InfiniDysk", "infinidysk"
+            )
+
+        self.assertFalse(success)
+        self.assertIn("v1.2.0-or-newer", error)
+        make_dirs.assert_not_called()
+
+    def test_postgres_latest_resolving_below_v12_is_rejected_before_install(self):
+        config = {
+            "process_name": "InfiniDysk",
+            "config_dir": "/infinidysk",
+            "release_version_enabled": True,
+            "release_version": "latest",
+            "postgres_enabled": True,
+            "repo_owner": "infinidysk",
+            "repo_name": "infinidysk",
+        }
+        with (
+            patch.object(
+                setup.downloader,
+                "get_latest_release",
+                return_value=("v1.1.9", None),
+            ),
+            patch.object(setup.os, "makedirs") as make_dirs,
+            patch.object(setup.downloader, "get_ref_commit_sha") as resolve_commit,
+        ):
+            success, error = setup.setup_release_version(
+                Mock(), config, "InfiniDysk", "infinidysk"
+            )
+
+        self.assertFalse(success)
+        self.assertIn("v1.2.0-or-newer", error)
+        make_dirs.assert_not_called()
+        resolve_commit.assert_not_called()
+
+    def test_postgres_branch_install_is_rejected_before_source_download(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            config = {
+                "process_name": "InfiniDysk",
+                "config_dir": temp_dir,
+                "branch_enabled": True,
+                "branch": "main",
+                "commit_sha": "",
+                "postgres_enabled": True,
+                "repo_owner": "infinidysk",
+                "repo_name": "infinidysk",
+            }
+            with (
+                patch.object(
+                    setup, "infinidysk_postgres_runtime_floor", return_value=None
+                ),
+                patch.object(setup.os, "makedirs") as make_dirs,
+                patch.object(setup.downloader, "get_branch") as download_branch,
+            ):
+                success, error = setup.setup_branch_version(
+                    Mock(), config, "InfiniDysk", "infinidysk"
+                )
+
+        self.assertFalse(success)
+        self.assertIn("v1.2.0-or-newer", error)
+        make_dirs.assert_not_called()
+        download_branch.assert_not_called()
+
+    def test_configure_only_rejects_incomplete_runtime_before_mutation(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            config = {
+                "process_name": "InfiniDysk",
+                "config_dir": temp_dir,
+                "release_version_enabled": False,
+                "release_version": "latest",
+                "postgres_enabled": True,
+                "repo_owner": "infinidysk",
+                "repo_name": "infinidysk",
+                "env": {"CONFIG_PATH": temp_dir, "DATABASE_PROVIDER": "postgres"},
+            }
+            with (
+                patch.object(
+                    setup.CONFIG_MANAGER,
+                    "get",
+                    side_effect=lambda key, default=None: (
+                        config if key == "infinidysk" else (default or {})
+                    ),
+                ),
+                patch.object(
+                    setup,
+                    "_validate_infinidysk_postgres_source",
+                    return_value=(True, None),
+                ),
+                patch.object(
+                    setup,
+                    "_nzbdav_installed_runtime_ready",
+                    return_value=(
+                        False,
+                        "InfiniDysk frontend directory was not found.",
+                    ),
+                ),
+                patch.object(setup, "chown_single") as chown,
+                patch.object(setup, "apply_service_postgres_config") as apply_config,
+                patch.object(setup, "_install_nzbdav_prebuilt_release") as install,
+            ):
+                success, error = setup.setup_nzbdav(Mock(), configure_only=True)
+
+        self.assertFalse(success)
+        self.assertIn("requires the install phase", error)
+        self.assertIn("frontend directory was not found", error)
+        chown.assert_not_called()
+        apply_config.assert_not_called()
+        install.assert_not_called()
+
+    def test_install_only_repairs_incomplete_stable_runtime_from_prebuilt(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            benchmark = root / "backend.Benchmarks" / "NzbWebDAV.Benchmarks.csproj"
+            benchmark.parent.mkdir()
+            benchmark.write_text("<Project />", encoding="utf-8")
+            config = {
+                "process_name": "InfiniDysk",
+                "config_dir": temp_dir,
+                "release_version_enabled": False,
+                "release_version": "latest",
+                "postgres_enabled": False,
+                "repo_owner": "infinidysk",
+                "repo_name": "infinidysk",
+                "env": {"CONFIG_PATH": temp_dir},
+            }
+            with (
+                patch.object(
+                    setup.CONFIG_MANAGER,
+                    "get",
+                    side_effect=lambda key, default=None: (
+                        config if key == "infinidysk" else (default or {})
+                    ),
+                ),
+                patch.object(
+                    setup,
+                    "_validate_infinidysk_postgres_source",
+                    return_value=(True, None),
+                ),
+                patch.object(
+                    setup,
+                    "_nzbdav_installed_runtime_ready",
+                    return_value=(
+                        False,
+                        "InfiniDysk frontend directory was not found.",
+                    ),
+                ),
+                patch.object(
+                    setup,
+                    "_nzbdav_prebuilt_runtime_ready",
+                    return_value=(
+                        False,
+                        "critical file is missing: frontend/dist-node/server.js",
+                    ),
+                ),
+                patch.object(
+                    setup,
+                    "_resolve_nzbdav_release_selector",
+                    return_value=("v1.2.1", None),
+                ),
+                patch.object(
+                    setup,
+                    "_install_nzbdav_prebuilt_release",
+                    return_value=({"version_marker": "v1.2.1-1fbed04a"}, None),
+                ) as install,
+                patch.object(
+                    setup, "apply_service_postgres_config", return_value=False
+                ),
+                patch.object(
+                    setup,
+                    "_validate_infinidysk_postgres_fresh_install",
+                    return_value=(True, None),
+                ),
+                patch.object(
+                    setup,
+                    "_normalize_nzbdav_writable_ownership",
+                    return_value=(True, None),
+                ),
+                patch.object(setup, "_chown_recursive_if_needed"),
+                patch.object(setup, "chown_single"),
+                patch.object(setup.versions, "version_write") as version_write,
+            ):
+                success, error = setup.setup_nzbdav(Mock(), install_only=True)
+
+        self.assertTrue(success, error)
+        install.assert_called_once()
+        version_write.assert_called_once()
+
+    def test_source_discovery_ignores_benchmark_and_library_projects(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            for project in (
+                root / "backend.Benchmarks" / "NzbWebDAV.Benchmarks.csproj",
+                root / "libs" / "NzbWebDAV.Models.csproj",
+                root / "tests" / "NzbWebDAV.Tests.csproj",
+            ):
+                project.parent.mkdir(parents=True, exist_ok=True)
+                project.write_text("<Project />", encoding="utf-8")
+
+            found_backend, error = setup._find_nzbdav_backend_project(str(root), {})
+
+        self.assertIsNone(found_backend)
+        self.assertIn("No application .csproj", error)
+
     def test_artifact_restore_staging_resolves_data_root_symlink(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
@@ -455,16 +994,22 @@ class InfiniDyskSetupTests(unittest.TestCase):
             root = Path(tmpdir)
             (root / "blobs" / "aa" / "bb").mkdir(parents=True)
             (root / "db.sqlite.maintenance.lock").write_text("lock", encoding="utf-8")
+            session_key = root / "session.key"
+            session_key.write_text("signing key", encoding="utf-8")
             (root / "logs").mkdir()
 
-            with patch.object(
-                setup, "chown_recursive", return_value=(True, None)
-            ) as recursive:
+            with (
+                patch.object(setup, "chown_single") as chown_single,
+                patch.object(
+                    setup, "chown_recursive", return_value=(True, None)
+                ) as recursive,
+            ):
                 success, error = setup._normalize_nzbdav_writable_ownership(
                     str(root), os.getuid(), os.getgid()
                 )
 
         self.assertTrue(success, error)
+        chown_single.assert_any_call(str(session_key), os.getuid(), os.getgid())
         recursive.assert_called_once_with(str(root / "logs"), os.getuid(), os.getgid())
 
     def test_update_clear_preserves_config_data_and_sqlite_state(self):
@@ -475,8 +1020,15 @@ class InfiniDyskSetupTests(unittest.TestCase):
             (data / "state.json").write_text("state", encoding="utf-8")
             config_file = root / "settings.json"
             config_file.write_text("settings", encoding="utf-8")
-            for database_name in ("db.sqlite", "db.sqlite-wal", "metrics.db"):
+            for database_name in (
+                "db.sqlite",
+                "db.sqlite-wal",
+                "metrics.sqlite",
+                "warden.db",
+                "usenet-migration.db",
+            ):
                 (root / database_name).write_text(database_name, encoding="utf-8")
+            (root / "session.key").write_text("signing key", encoding="utf-8")
             runtime_file = root / "old-runtime.dll"
             runtime_file.write_text("replaceable", encoding="utf-8")
             config = {
@@ -494,7 +1046,10 @@ class InfiniDyskSetupTests(unittest.TestCase):
             self.assertTrue((data / "state.json").is_file())
             self.assertTrue((root / "db.sqlite").is_file())
             self.assertTrue((root / "db.sqlite-wal").is_file())
-            self.assertTrue((root / "metrics.db").is_file())
+            self.assertTrue((root / "metrics.sqlite").is_file())
+            self.assertTrue((root / "warden.db").is_file())
+            self.assertTrue((root / "usenet-migration.db").is_file())
+            self.assertTrue((root / "session.key").is_file())
             self.assertFalse(runtime_file.exists())
 
     def test_archive_exclusions_preserve_symlinked_data_directory(self):

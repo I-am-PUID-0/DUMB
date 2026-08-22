@@ -31,8 +31,13 @@ RUN --mount=type=cache,target=/root/.cache/pip,sharing=shared \
       "cffi>=1.16,<3.0" "cryptography>=50.0.0,<51.0.0" && \
     rm -rf /tmp/dumb-dev-dependencies
 
-ENV PATH="/opt/poetry/bin:/venv/bin:${PATH}" \
+ENV PATH="/venv/bin:/opt/poetry/bin:${PATH}" \
     VIRTUAL_ENV=/venv
+
+RUN activation='. /venv/bin/activate'; \
+    touch /root/.bashrc; \
+    grep -Fxq "${activation}" /root/.bashrc || \
+      printf '\n%s\n' "${activation}" >> /root/.bashrc
 
 RUN poetry --version && \
     /venv/bin/python -m pre_commit --version && \

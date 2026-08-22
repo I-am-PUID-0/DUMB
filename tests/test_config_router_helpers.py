@@ -170,6 +170,40 @@ def _service_schema():
 
 
 class ConfigRouterHelperTests(unittest.TestCase):
+    def setUp(self):
+        for helper in (
+            "infinidysk_postgres_migration_active",
+            "infinidysk_namespace_migration_active",
+        ):
+            active_patch = patch.object(config_router, helper, return_value=False)
+            active_patch.start()
+            self.addCleanup(active_patch.stop)
+        validator_patch = patch.object(
+            config_router,
+            "_reject_infinidysk_postgres_reversal",
+            return_value=None,
+        )
+        validator_patch.start()
+        self.addCleanup(validator_patch.stop)
+
+    @staticmethod
+    def _infinidysk_schema():
+        return {
+            "properties": {
+                "infinidysk": {
+                    "type": "object",
+                    "properties": {
+                        "process_name": {"type": "string"},
+                        "postgres_enabled": {"type": "boolean"},
+                        "postgres_database": {"type": "string"},
+                        "config_dir": {"type": "string"},
+                        "env": {"type": "object"},
+                    },
+                },
+                "postgres": {"type": "object"},
+            }
+        }
+
     def test_legacy_nzbdav_global_update_normalizes_to_infinidysk(self):
         payload = {
             "nzbdav": {"enabled": True, "config_dir": "/nzbdav"},
@@ -739,6 +773,581 @@ class ConfigRouterHelperTests(unittest.TestCase):
         )
         self.assertEqual(manager.saved_process_names, [])
 
+    def test_service_update_rejects_infinidysk_postgres_reversal_before_mutation(self):
+        service = {
+            "process_name": "InfiniDysk",
+            "postgres_enabled": True,
+            "config_dir": "/infinidysk",
+            "env": {"DATABASE_PROVIDER": "postgres"},
+        }
+        manager = _ConfigManager(
+            {"infinidysk": service, "postgres": {}},
+            {
+                "properties": {
+                    "infinidysk": {
+                        "type": "object",
+                        "properties": {
+                            "process_name": {"type": "string"},
+                            "postgres_enabled": {"type": "boolean"},
+                            "config_dir": {"type": "string"},
+                            "env": {"type": "object"},
+                        },
+                    }
+                }
+            },
+        )
+        manager.find_key_for_process = lambda _: ("infinidysk", None)
+        config_router.CONFIG_MANAGER = manager
+        request = types.SimpleNamespace(
+            process_name="InfiniDysk",
+            updates={"postgres_enabled": False},
+            persist=True,
+        )
+
+        with (
+            patch.object(
+                config_router,
+                "find_service_config",
+                return_value=(service, "infinidysk"),
+            ),
+            patch.object(
+                config_router,
+                "_reject_infinidysk_postgres_reversal",
+                side_effect=config_router.HTTPException(
+                    status_code=400, detail="explicit rollback required"
+                ),
+            ),
+            self.assertRaises(config_router.HTTPException) as context,
+        ):
+            asyncio.run(config_router.update_config(request, logger=_Logger()))
+
+        self.assertEqual(context.exception.status_code, 400)
+        self.assertTrue(service["postgres_enabled"])
+        self.assertEqual(manager.saved_process_names, [])
+
+    def test_global_update_rejects_infinidysk_reversal_before_deep_merge(self):
+        manager = _ConfigManager(
+            {
+                "infinidysk": {
+                    "process_name": "InfiniDysk",
+                    "postgres_enabled": True,
+                    "config_dir": "/infinidysk",
+                    "env": {"DATABASE_PROVIDER": "postgres"},
+                },
+                "postgres": {},
+            },
+            {},
+        )
+        config_router.CONFIG_MANAGER = manager
+        request = types.SimpleNamespace(
+            process_name=None,
+            updates={"infinidysk": {"postgres_enabled": False}},
+        )
+
+        with (
+            patch.object(
+                config_router,
+                "_reject_infinidysk_postgres_reversal",
+                side_effect=config_router.HTTPException(
+                    status_code=400, detail="explicit rollback required"
+                ),
+            ),
+            self.assertRaises(config_router.HTTPException) as context,
+        ):
+            asyncio.run(config_router.update_config(request, logger=_Logger()))
+
+        self.assertEqual(context.exception.status_code, 400)
+        self.assertTrue(manager.config["infinidysk"]["postgres_enabled"])
+        self.assertEqual(manager.saved_process_names, [])
+
+    def test_service_update_rejects_postgres_infinidysk_rename_before_mutation(self):
+        service = {
+            "process_name": "InfiniDysk",
+            "postgres_enabled": True,
+            "config_dir": "/infinidysk",
+            "env": {"DATABASE_PROVIDER": "postgres"},
+        }
+        schema = {
+            "properties": {
+                "infinidysk": {
+                    "type": "object",
+                    "properties": {
+                        "process_name": {"type": "string"},
+                        "postgres_enabled": {"type": "boolean"},
+                        "config_dir": {"type": "string"},
+                        "env": {"type": "object"},
+                    },
+                }
+            }
+        }
+        manager = _ConfigManager({"infinidysk": service, "postgres": {}}, schema)
+        manager.find_key_for_process = lambda _: ("infinidysk", None)
+        config_router.CONFIG_MANAGER = manager
+        request = types.SimpleNamespace(
+            process_name="InfiniDysk",
+            updates={"process_name": "Renamed InfiniDysk"},
+            persist=True,
+        )
+
+        with (
+            patch.object(
+                config_router,
+                "find_service_config",
+                return_value=(service, "infinidysk"),
+            ),
+            patch.object(
+                config_router,
+                "_reject_infinidysk_postgres_reversal",
+                side_effect=config_router.HTTPException(
+                    status_code=400, detail="guarded identity is fixed"
+                ),
+            ),
+            self.assertRaises(config_router.HTTPException) as context,
+        ):
+            asyncio.run(config_router.update_config(request, logger=_Logger()))
+
+        self.assertEqual(context.exception.status_code, 400)
+        self.assertEqual("InfiniDysk", service["process_name"])
+        self.assertEqual(manager.saved_process_names, [])
+
+    def test_global_update_rejects_postgres_infinidysk_rename_before_merge(self):
+        manager = _ConfigManager(
+            {
+                "infinidysk": {
+                    "process_name": "InfiniDysk",
+                    "postgres_enabled": True,
+                    "config_dir": "/infinidysk",
+                    "env": {"DATABASE_PROVIDER": "postgres"},
+                },
+                "postgres": {},
+            },
+            {},
+        )
+        config_router.CONFIG_MANAGER = manager
+        request = types.SimpleNamespace(
+            process_name=None,
+            updates={"infinidysk": {"process_name": "Renamed InfiniDysk"}},
+        )
+
+        with (
+            patch.object(
+                config_router,
+                "_reject_infinidysk_postgres_reversal",
+                side_effect=config_router.HTTPException(
+                    status_code=400, detail="guarded identity is fixed"
+                ),
+            ),
+            self.assertRaises(config_router.HTTPException) as context,
+        ):
+            asyncio.run(config_router.update_config(request, logger=_Logger()))
+
+        self.assertEqual(context.exception.status_code, 400)
+        self.assertEqual("InfiniDysk", manager.config["infinidysk"]["process_name"])
+        self.assertEqual(manager.saved_process_names, [])
+
+    def test_service_update_rejects_existing_sqlite_postgres_enable_without_save(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            Path(temp_dir, "db.sqlite").write_bytes(b"existing sqlite")
+            service = {
+                "process_name": "InfiniDysk",
+                "postgres_enabled": False,
+                "postgres_database": "infinidysk",
+                "config_dir": temp_dir,
+                "env": {"CONFIG_PATH": temp_dir, "DATABASE_PROVIDER": "sqlite"},
+            }
+            manager = _ConfigManager(
+                {"infinidysk": service, "postgres": {}},
+                self._infinidysk_schema(),
+            )
+            manager.find_key_for_process = lambda _: ("infinidysk", None)
+            config_router.CONFIG_MANAGER = manager
+            request = types.SimpleNamespace(
+                process_name="InfiniDysk",
+                updates={"postgres_enabled": True},
+                persist=True,
+            )
+
+            with (
+                patch.object(
+                    config_router,
+                    "find_service_config",
+                    return_value=(service, "infinidysk"),
+                ),
+                patch.object(
+                    config_router,
+                    "_reject_infinidysk_postgres_reversal",
+                    side_effect=config_router.HTTPException(
+                        status_code=400, detail="existing SQLite data"
+                    ),
+                ),
+                self.assertRaises(config_router.HTTPException) as context,
+            ):
+                asyncio.run(config_router.update_config(request, logger=_Logger()))
+
+            self.assertEqual(context.exception.status_code, 400)
+            self.assertFalse(service["postgres_enabled"])
+            self.assertEqual(manager.saved_process_names, [])
+
+    def test_service_update_rejects_managed_provider_env_before_save(self):
+        service = {
+            "process_name": "InfiniDysk",
+            "postgres_enabled": False,
+            "config_dir": "/infinidysk",
+            "env": {"DATABASE_PROVIDER": "sqlite"},
+        }
+        manager = _ConfigManager(
+            {"infinidysk": service, "postgres": {}},
+            self._infinidysk_schema(),
+        )
+        manager.find_key_for_process = lambda _: ("infinidysk", None)
+        config_router.CONFIG_MANAGER = manager
+        request = types.SimpleNamespace(
+            process_name="InfiniDysk",
+            updates={
+                "env": {
+                    "DATABASE_PROVIDER": "postgres",
+                    "DATABASE_CONNECTION_STRING": "Host=example.invalid",
+                }
+            },
+            persist=True,
+        )
+
+        with (
+            patch.object(
+                config_router,
+                "find_service_config",
+                return_value=(service, "infinidysk"),
+            ),
+            patch.object(
+                config_router,
+                "_reject_infinidysk_postgres_reversal",
+                side_effect=config_router.HTTPException(
+                    status_code=400, detail="DATABASE_PROVIDER is managed by DUMB"
+                ),
+            ),
+            self.assertRaises(config_router.HTTPException) as context,
+        ):
+            asyncio.run(config_router.update_config(request, logger=_Logger()))
+
+        self.assertEqual(context.exception.status_code, 400)
+        self.assertEqual(service["env"], {"DATABASE_PROVIDER": "sqlite"})
+        self.assertEqual(manager.saved_process_names, [])
+
+    def test_service_update_can_clear_unapplied_postgres_flag(self):
+        service = {
+            "process_name": "InfiniDysk",
+            "postgres_enabled": True,
+            "postgres_database": "infinidysk",
+            "config_dir": "/infinidysk",
+            "env": {"DATABASE_PROVIDER": "sqlite"},
+        }
+        manager = _ConfigManager(
+            {"infinidysk": service, "postgres": {}},
+            self._infinidysk_schema(),
+        )
+        manager.find_key_for_process = lambda _: ("infinidysk", None)
+        config_router.CONFIG_MANAGER = manager
+        request = types.SimpleNamespace(
+            process_name="InfiniDysk",
+            updates={"postgres_enabled": False},
+            persist=True,
+        )
+
+        with patch.object(
+            config_router,
+            "find_service_config",
+            return_value=(service, "infinidysk"),
+        ):
+            asyncio.run(config_router.update_config(request, logger=_Logger()))
+
+        self.assertFalse(service["postgres_enabled"])
+        self.assertEqual(manager.saved_process_names, ["InfiniDysk"])
+
+    def test_active_migration_blocks_service_and_global_changes_before_save(self):
+        service = {
+            "process_name": "InfiniDysk",
+            "postgres_enabled": False,
+            "config_dir": "/infinidysk",
+            "env": {"DATABASE_PROVIDER": "sqlite"},
+        }
+        manager = _ConfigManager(
+            {"infinidysk": service, "postgres": {"host": "127.0.0.1"}},
+            self._infinidysk_schema(),
+        )
+        manager.find_key_for_process = lambda _: ("infinidysk", None)
+        config_router.CONFIG_MANAGER = manager
+
+        with (
+            patch.object(
+                config_router,
+                "find_service_config",
+                return_value=(service, "infinidysk"),
+            ),
+            patch.object(
+                config_router,
+                "infinidysk_postgres_migration_active",
+                return_value=True,
+            ),
+        ):
+            with self.assertRaises(config_router.HTTPException) as service_error:
+                asyncio.run(
+                    config_router.update_config(
+                        types.SimpleNamespace(
+                            process_name="InfiniDysk",
+                            updates={"config_dir": "/different"},
+                            persist=True,
+                        ),
+                        logger=_Logger(),
+                    )
+                )
+            with self.assertRaises(config_router.HTTPException) as global_error:
+                asyncio.run(
+                    config_router.update_config(
+                        types.SimpleNamespace(
+                            process_name=None,
+                            updates={"postgres": {"host": "example.invalid"}},
+                        ),
+                        logger=_Logger(),
+                    )
+                )
+
+        self.assertEqual(service_error.exception.status_code, 409)
+        self.assertEqual(global_error.exception.status_code, 409)
+        self.assertEqual(service["config_dir"], "/infinidysk")
+        self.assertEqual(manager.config["postgres"]["host"], "127.0.0.1")
+        self.assertEqual(manager.saved_process_names, [])
+
+    def test_active_namespace_migration_blocks_postgres_change_before_save(self):
+        service = {
+            "process_name": "InfiniDysk",
+            "postgres_enabled": False,
+            "config_dir": "/infinidysk",
+            "env": {"DATABASE_PROVIDER": "sqlite"},
+        }
+        manager = _ConfigManager(
+            {"infinidysk": service, "postgres": {"host": "127.0.0.1"}},
+            self._infinidysk_schema(),
+        )
+        config_router.CONFIG_MANAGER = manager
+
+        with (
+            patch.object(
+                config_router,
+                "infinidysk_namespace_migration_active",
+                return_value=True,
+            ),
+            self.assertRaises(config_router.HTTPException) as raised,
+        ):
+            asyncio.run(
+                config_router.update_config(
+                    types.SimpleNamespace(
+                        process_name=None,
+                        updates={"postgres": {"host": "example.invalid"}},
+                    ),
+                    logger=_Logger(),
+                )
+            )
+
+        self.assertEqual(raised.exception.status_code, 409)
+        self.assertEqual(manager.config["postgres"]["host"], "127.0.0.1")
+        self.assertEqual(manager.saved_process_names, [])
+
+    def test_active_namespace_migration_blocks_all_config_changes_before_save(self):
+        sonarr = {
+            "process_name": "Sonarr TV",
+            "port": 8989,
+            "schema_declared": False,
+        }
+        schema = _service_schema()
+        schema["properties"]["dumb"] = {
+            "type": "object",
+            "properties": {"label": {"type": "string"}},
+        }
+        manager = _ConfigManager(
+            {
+                "sonarr": {"instances": {"TV": sonarr}},
+                "dumb": {"label": "before"},
+            },
+            schema,
+        )
+        config_router.CONFIG_MANAGER = manager
+
+        with (
+            patch.object(
+                config_router,
+                "find_service_config",
+                return_value=(sonarr, "sonarr.instances.TV"),
+            ),
+            patch.object(
+                config_router,
+                "infinidysk_namespace_migration_active",
+                return_value=True,
+            ),
+        ):
+            with self.assertRaises(config_router.HTTPException) as service_error:
+                asyncio.run(
+                    config_router.update_config(
+                        types.SimpleNamespace(
+                            process_name="Sonarr TV",
+                            updates={"port": 8990},
+                            persist=True,
+                        ),
+                        logger=_Logger(),
+                    )
+                )
+            with self.assertRaises(config_router.HTTPException) as global_error:
+                asyncio.run(
+                    config_router.update_config(
+                        types.SimpleNamespace(
+                            process_name=None,
+                            updates={"dumb": {"label": "after"}},
+                        ),
+                        logger=_Logger(),
+                    )
+                )
+
+        self.assertEqual(service_error.exception.status_code, 409)
+        self.assertEqual(global_error.exception.status_code, 409)
+        self.assertEqual(sonarr["port"], 8989)
+        self.assertEqual(manager.config["dumb"]["label"], "before")
+        self.assertEqual(manager.saved_process_names, [])
+
+    def test_cutover_binding_rejection_is_pre_save_and_password_rotation_is_allowed(
+        self,
+    ):
+        service = {
+            "process_name": "InfiniDysk",
+            "postgres_enabled": True,
+            "postgres_database": "infinidysk",
+            "config_dir": "/infinidysk",
+            "env": {"DATABASE_PROVIDER": "postgres"},
+        }
+        manager = _ConfigManager(
+            {
+                "infinidysk": service,
+                "postgres": {
+                    "host": "127.0.0.1",
+                    "config_dir": "/postgres_data",
+                    "password": "old",
+                },
+            },
+            self._infinidysk_schema(),
+        )
+        manager.find_key_for_process = lambda _: ("infinidysk", None)
+        config_router.CONFIG_MANAGER = manager
+
+        with patch.object(
+            config_router,
+            "_reject_infinidysk_postgres_reversal",
+            side_effect=config_router.HTTPException(
+                status_code=400, detail="cutover binding changed"
+            ),
+        ):
+            with self.assertRaises(config_router.HTTPException):
+                asyncio.run(
+                    config_router.update_config(
+                        types.SimpleNamespace(
+                            process_name=None,
+                            updates={"postgres": {"config_dir": "/other-cluster"}},
+                        ),
+                        logger=_Logger(),
+                    )
+                )
+        self.assertEqual(manager.config["postgres"]["config_dir"], "/postgres_data")
+        self.assertEqual(manager.saved_process_names, [])
+
+        with patch.object(
+            config_router,
+            "_reject_infinidysk_postgres_reversal",
+            return_value=None,
+        ):
+            asyncio.run(
+                config_router.update_config(
+                    types.SimpleNamespace(
+                        process_name=None,
+                        updates={"postgres": {"password": "rotated"}},
+                    ),
+                    logger=_Logger(),
+                )
+            )
+        self.assertEqual(manager.config["postgres"]["password"], "rotated")
+        self.assertEqual(manager.saved_process_names, [None])
+
+    def test_process_scoped_postgres_update_is_guarded_before_save(self):
+        postgres = {
+            "process_name": "PostgreSQL",
+            "host": "127.0.0.1",
+            "password": "old",
+            "config_dir": "/postgres_data",
+        }
+        manager = _ConfigManager(
+            {
+                "infinidysk": {
+                    "process_name": "InfiniDysk",
+                    "postgres_enabled": True,
+                    "config_dir": "/infinidysk",
+                    "env": {"DATABASE_PROVIDER": "postgres"},
+                },
+                "postgres": postgres,
+            },
+            self._infinidysk_schema(),
+        )
+        manager.find_key_for_process = lambda _: ("postgres", None)
+        config_router.CONFIG_MANAGER = manager
+
+        with (
+            patch.object(
+                config_router,
+                "find_service_config",
+                return_value=(postgres, "postgres"),
+            ),
+            patch.object(
+                config_router,
+                "_reject_infinidysk_postgres_reversal",
+                side_effect=config_router.HTTPException(
+                    status_code=400, detail="target binding changed"
+                ),
+            ),
+            self.assertRaises(config_router.HTTPException),
+        ):
+            asyncio.run(
+                config_router.update_config(
+                    types.SimpleNamespace(
+                        process_name="PostgreSQL",
+                        updates={"config_dir": "/other-cluster"},
+                        persist=True,
+                    ),
+                    logger=_Logger(),
+                )
+            )
+        self.assertEqual(postgres["config_dir"], "/postgres_data")
+        self.assertEqual(manager.saved_process_names, [])
+
+        with (
+            patch.object(
+                config_router,
+                "find_service_config",
+                return_value=(postgres, "postgres"),
+            ),
+            patch.object(
+                config_router,
+                "_reject_infinidysk_postgres_reversal",
+                return_value=None,
+            ),
+        ):
+            asyncio.run(
+                config_router.update_config(
+                    types.SimpleNamespace(
+                        process_name="PostgreSQL",
+                        updates={"password": "rotated"},
+                        persist=True,
+                    ),
+                    logger=_Logger(),
+                )
+            )
+        self.assertEqual(postgres["password"], "rotated")
+        self.assertEqual(manager.saved_process_names, ["PostgreSQL"])
+
     def test_load_config_file_uses_safe_yaml_parser(self):
         created = []
 
@@ -928,6 +1537,62 @@ class ConfigRouterHelperTests(unittest.TestCase):
         self.assertEqual(entry["api_key"], "jellyfin-secret")
         self.assertNotIn("api_key_configured", entry)
         self.assertFalse(entry["enabled"])
+
+    def test_service_config_write_is_frozen_by_migration_admission(self):
+        cases = (
+            ("postgres", "PostgreSQL", False, True),
+            ("sonarr", "Sonarr", True, False),
+        )
+        for config_key, process_name, namespace_active, postgres_active in cases:
+            with (
+                self.subTest(config_key=config_key),
+                tempfile.TemporaryDirectory() as temp_dir,
+            ):
+                config_path = Path(temp_dir) / "service.json"
+                original = '{"setting": "before"}\n'
+                config_path.write_text(original, encoding="utf-8")
+                manager = types.SimpleNamespace(
+                    config={
+                        config_key: {
+                            "process_name": process_name,
+                            "config_file": str(config_path),
+                        }
+                    }
+                )
+                request = types.SimpleNamespace(
+                    service_name=process_name,
+                    updates={"setting": "after"},
+                )
+                with (
+                    patch.object(config_router, "CONFIG_MANAGER", manager),
+                    patch.object(
+                        config_router,
+                        "resolve_path",
+                        side_effect=lambda value: Path(value),
+                    ),
+                    patch.object(
+                        config_router,
+                        "infinidysk_namespace_migration_active",
+                        return_value=namespace_active,
+                    ),
+                    patch.object(
+                        config_router,
+                        "infinidysk_postgres_migration_active",
+                        return_value=postgres_active,
+                    ),
+                    patch.object(config_router, "save_config_file") as save,
+                    self.assertRaises(config_router.HTTPException) as ctx,
+                ):
+                    asyncio.run(
+                        config_router.handle_service_config(
+                            request,
+                            logger=_Logger(),
+                        )
+                    )
+
+                self.assertEqual(409, ctx.exception.status_code)
+                self.assertEqual(original, config_path.read_text(encoding="utf-8"))
+                save.assert_not_called()
 
 
 if __name__ == "__main__":

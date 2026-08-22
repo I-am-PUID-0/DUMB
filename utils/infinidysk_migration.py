@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import copy
 import hashlib
+import hmac
 import json
 import os
 import re
@@ -23,6 +24,12 @@ from pathlib import Path
 from utils.config_loader import CONFIG_MANAGER
 from utils.core_services import has_core_service
 from utils.media_protection import build_adapter
+from utils.infinidysk_migration_admission import (
+    ACTIVE_POSTGRES_MIGRATION_BLOCKER,
+    EXTERNAL_MUTATION_BLOCKER,
+    INFINIDYSK_MIGRATION_ADMISSION_LOCK,
+    infinidysk_external_mutation_active,
+)
 from utils.logger import redact_sensitive_log_data
 from utils.nzbdav_settings import (
     _arr_req,
@@ -32,13 +39,14 @@ from utils.nzbdav_settings import (
     defer_nzbdav_runtime_integrations,
 )
 from utils.prowlarr_settings import _prowlarr_req
+from utils.service_postgres import service_postgres_enabled
 from utils.symlink_repair import (
     backup_symlink_manifest,
     repair_symlinks,
     restore_symlink_manifest,
 )
 
-STATE_VERSION = 3
+STATE_VERSION = 4
 DEFAULT_STATE_PATH = Path("/config/migrations/infinidysk.json")
 LEGACY_REPOSITORIES = {("nzbdav", "nzbdav"), ("nzbdav-dev", "nzbdav")}
 LEGACY_PATH_MARKERS = ("nzbdav",)
@@ -77,6 +85,10 @@ INFINIDYSK_CORE_CONSUMER_KEYS = (
     "seerr",
 )
 PREFLIGHT_TTL_SECONDS = 30 * 60
+CLEANUP_PREVIEW_TTL_SECONDS = 5 * 60
+CLEANUP_CONFIRMATION = "REMOVE INFINIDYSK MIGRATION DATA"
+CLEANUP_JOB_MAX_BYTES = 16 * 1024 * 1024
+CLEANUP_INVALID_JOB_KEY = "_dumb_cleanup_job_invalid"
 ARR_INVENTORY_TIMEOUT_SECONDS = 120
 ARR_EDITOR_BATCH_SIZE = 500
 ARR_EDITOR_SPLIT_MIN_BATCH_SIZE = 8
@@ -86,12 +98,48 @@ QUIESCE_POLL_SECONDS = 5
 INFINIDYSK_CONFIG_API_TIMEOUT_SECONDS = 10
 INFINIDYSK_HEALTH_CHECK_KEY = "repair.enable"
 ACTIVE_JOB_STATUSES = {"queued", "running", "rolling_back"}
+RECOVERY_PENDING_JOB_STATUSES = {
+    "interrupted",
+    "rollback_attention_required",
+}
+PRE_MUTATION_INTERRUPTION_STAGES = {
+    "queued",
+    "blocked",
+    "validating",
+    "preflight",
+    "backup",
+}
+CLEANUP_REJECTED_JOB_STATUSES = {
+    *ACTIVE_JOB_STATUSES,
+    "failed",
+    "failed_rolled_back",
+    "interrupted",
+    "rollback_attention_required",
+}
+CLEANUP_RETAINED_ITEMS = [
+    "Current DUMB and InfiniDysk configuration",
+    "InfiniDysk runtime, application data, and databases",
+    "Mounts, symlink libraries, and normal symlink snapshots",
+    "PostgreSQL cutover authorization and database-migration job records",
+    "Operator-managed backups outside the namespace rollback root",
+]
 NAMESPACE_PATH_MAPPINGS = (
     ("/mnt/debrid/nzbdav-symlinks", "/mnt/debrid/infinidysk-symlinks"),
     ("/mnt/debrid/nzbdav", "/mnt/debrid/infinidysk"),
     ("/data/nzbdav", "/data/infinidysk"),
     ("/log/nzbdav.log", "/log/infinidysk.log"),
     ("/nzbdav", "/infinidysk"),
+)
+POSTGRES_NAMESPACE_ORDERING_BLOCKER = (
+    "InfiniDysk namespace migration is unavailable while InfiniDysk uses "
+    "PostgreSQL. Complete the namespace migration while InfiniDysk still uses "
+    "SQLite, before running the guarded SQLite-to-PostgreSQL cutover. If the "
+    "database cutover is already complete, use its explicit rollback first."
+)
+MEDIA_PROTECTION_NAMESPACE_BLOCKER = (
+    "Media Library Protection has an active incident or retained recovery state. "
+    "Let it finish restoring its guarded media servers and scan settings before "
+    "starting the InfiniDysk namespace migration."
 )
 
 
@@ -267,6 +315,7 @@ class InfiniDyskMigrationManager:
         configured = os.environ.get("DUMB_INFINIDYSK_MIGRATION_STATE")
         self.state_path = Path(state_path or configured or DEFAULT_STATE_PATH)
         self._lock = threading.RLock()
+        self._apply_lock = threading.Lock()
         self._job_lock = threading.RLock()
         self._active_job_thread = None
         self._worker_id = secrets.token_hex(16)
@@ -393,6 +442,61 @@ class InfiniDyskMigrationManager:
     def _load_job(self) -> dict:
         return self._load_sidecar("job", "job")
 
+    def _load_job_readonly(self) -> dict:
+        path = self._sidecar_path("job")
+        try:
+            path_stat = os.lstat(path)
+        except FileNotFoundError:
+            path_stat = None
+        except OSError:
+            return {CLEANUP_INVALID_JOB_KEY: True}
+
+        if path_stat is not None:
+            if (
+                stat.S_ISLNK(path_stat.st_mode)
+                or not stat.S_ISREG(path_stat.st_mode)
+                or os.path.ismount(path)
+                or path_stat.st_size <= 0
+                or path_stat.st_size > CLEANUP_JOB_MAX_BYTES
+            ):
+                return {CLEANUP_INVALID_JOB_KEY: True}
+            flags = os.O_RDONLY | getattr(os, "O_CLOEXEC", 0)
+            flags |= getattr(os, "O_NOFOLLOW", 0)
+            try:
+                fd = os.open(path, flags)
+                with os.fdopen(fd, "rb") as handle:
+                    opened_stat = os.fstat(handle.fileno())
+                    if (
+                        opened_stat.st_dev != path_stat.st_dev
+                        or opened_stat.st_ino != path_stat.st_ino
+                        or not stat.S_ISREG(opened_stat.st_mode)
+                    ):
+                        return {CLEANUP_INVALID_JOB_KEY: True}
+                    raw_payload = handle.read(CLEANUP_JOB_MAX_BYTES + 1)
+                    final_stat = os.fstat(handle.fileno())
+                if (
+                    len(raw_payload) > CLEANUP_JOB_MAX_BYTES
+                    or final_stat.st_dev != opened_stat.st_dev
+                    or final_stat.st_ino != opened_stat.st_ino
+                    or final_stat.st_size != opened_stat.st_size
+                    or final_stat.st_mtime_ns != opened_stat.st_mtime_ns
+                ):
+                    return {CLEANUP_INVALID_JOB_KEY: True}
+                payload = json.loads(raw_payload.decode("utf-8"))
+            except (UnicodeDecodeError, json.JSONDecodeError, OSError):
+                return {CLEANUP_INVALID_JOB_KEY: True}
+            if isinstance(payload, dict) and payload:
+                return payload
+            return {CLEANUP_INVALID_JOB_KEY: True}
+
+        state = self._load_state()
+        if "job" not in state:
+            return {}
+        legacy = state.get("job")
+        if isinstance(legacy, dict) and legacy:
+            return legacy
+        return {CLEANUP_INVALID_JOB_KEY: True}
+
     def _save_state(self, payload: dict) -> None:
         self.state_path.parent.mkdir(parents=True, exist_ok=True)
         fd, temp_path = tempfile.mkstemp(
@@ -416,6 +520,471 @@ class InfiniDyskMigrationManager:
         with self._job_lock:
             job["updated_at"] = int(time.time())
             self._save_sidecar("job", "job", copy.deepcopy(job))
+
+    @staticmethod
+    def _cleanup_context(config: dict, state: dict) -> dict | None:
+        if state.get("status") != "completed":
+            return None
+        selected_mode = str(state.get("selected_mode") or "")
+        if selected_mode not in {"retain_legacy_namespace", "full_namespace"}:
+            return None
+
+        service = InfiniDyskMigrationManager._service_config(config)
+        if not service:
+            return None
+        repository = (
+            str(service.get("repo_owner") or "").strip().lower(),
+            str(service.get("repo_name") or "").strip().lower(),
+        )
+        runtime_config = getattr(CONFIG_MANAGER, "config", None)
+        legacy_identity = bool(config.get("nzbdav"))
+        legacy_identity_reader = getattr(
+            CONFIG_MANAGER, "uses_legacy_infinidysk_identity", None
+        )
+        if (
+            not legacy_identity
+            and config is runtime_config
+            and callable(legacy_identity_reader)
+        ):
+            legacy_identity = bool(legacy_identity_reader())
+        if (
+            _contains_legacy_name(service.get("process_name"))
+            or repository in LEGACY_REPOSITORIES
+            or legacy_identity
+        ):
+            return None
+
+        legacy_paths = InfiniDyskMigrationManager._legacy_paths(config)
+        migration_status = "compatibility_completed" if legacy_paths else "completed"
+        if selected_mode == "full_namespace" and legacy_paths:
+            return None
+        return {
+            "selected_mode": selected_mode,
+            "migration_status": migration_status,
+        }
+
+    def _cleanup_root(self) -> Path:
+        migration_root = self.state_path.parent.absolute()
+        try:
+            root_stat = os.lstat(migration_root)
+        except OSError as error:
+            raise InfiniDyskMigrationError(
+                "The InfiniDysk migration storage directory could not be inspected safely."
+            ) from error
+        if stat.S_ISLNK(root_stat.st_mode) or not stat.S_ISDIR(root_stat.st_mode):
+            raise InfiniDyskMigrationError(
+                "The InfiniDysk migration storage directory is not a safe directory."
+            )
+        return migration_root
+
+    def _validate_cleanup_state_path(self) -> os.stat_result:
+        migration_root = self._cleanup_root()
+        state_path = self.state_path.absolute()
+        if state_path.parent != migration_root:
+            raise InfiniDyskMigrationError(
+                "The InfiniDysk migration record could not be resolved safely."
+            )
+        try:
+            state_stat = os.lstat(state_path)
+        except FileNotFoundError as error:
+            raise InfiniDyskMigrationError(
+                "No completed InfiniDysk migration record is available to clean up."
+            ) from error
+        except OSError as error:
+            raise InfiniDyskMigrationError(
+                "The InfiniDysk migration record could not be inspected safely."
+            ) from error
+        if not stat.S_ISREG(state_stat.st_mode) or os.path.ismount(state_path):
+            raise InfiniDyskMigrationError(
+                "The InfiniDysk migration record is not a safe regular file."
+            )
+        return state_stat
+
+    @staticmethod
+    def _ensure_cleanup_job_is_safe(job: dict) -> None:
+        if not job:
+            return
+        if job.get(CLEANUP_INVALID_JOB_KEY) is True:
+            raise InfiniDyskMigrationError(
+                "InfiniDysk migration data cannot be removed because its latest job record is present but cannot be verified safely."
+            )
+        job_status = str(job.get("status") or "")
+        if job_status in CLEANUP_REJECTED_JOB_STATUSES:
+            raise InfiniDyskMigrationError(
+                "InfiniDysk migration data cannot be removed while its latest job is active or needs failure/recovery review."
+            )
+        if job_status != "completed":
+            raise InfiniDyskMigrationError(
+                "InfiniDysk migration data cannot be removed because its latest job is not a verified successful completion."
+            )
+
+    @staticmethod
+    def _cleanup_entry_record(
+        path: Path, *, relative_to: Path, expected_directory: bool | None = None
+    ) -> tuple[dict, int, int, int]:
+        path = path.absolute()
+        relative_to = relative_to.absolute()
+        try:
+            relative = str(path.relative_to(relative_to))
+        except ValueError as error:
+            raise InfiniDyskMigrationError(
+                "A DUMB-managed InfiniDysk migration artifact resolved outside its cleanup root."
+            ) from error
+        try:
+            entry_stat = os.lstat(path)
+        except OSError as error:
+            raise InfiniDyskMigrationError(
+                "A DUMB-managed InfiniDysk migration artifact could not be inspected safely."
+            ) from error
+        if stat.S_ISLNK(entry_stat.st_mode) or os.path.ismount(path):
+            raise InfiniDyskMigrationError(
+                "A DUMB-managed InfiniDysk migration artifact is a symlink or nested mount and was not removed."
+            )
+        is_directory = stat.S_ISDIR(entry_stat.st_mode)
+        is_regular = stat.S_ISREG(entry_stat.st_mode)
+        if expected_directory is True and not is_directory:
+            raise InfiniDyskMigrationError(
+                "The InfiniDysk migration backup root is not a safe directory."
+            )
+        if expected_directory is False and not is_regular:
+            raise InfiniDyskMigrationError(
+                "An InfiniDysk migration sidecar is not a safe regular file."
+            )
+        if not is_directory and not is_regular:
+            raise InfiniDyskMigrationError(
+                "A special file exists in the InfiniDysk migration backup tree and was not removed."
+            )
+
+        record = {
+            "relative": relative,
+            "type": "directory" if is_directory else "file",
+            "device": int(entry_stat.st_dev),
+            "inode": int(entry_stat.st_ino),
+            "mode": int(stat.S_IMODE(entry_stat.st_mode)),
+            "size": int(entry_stat.st_size),
+            "mtime_ns": int(entry_stat.st_mtime_ns),
+        }
+        files = 1 if is_regular else 0
+        directories = 1 if is_directory else 0
+        total_bytes = int(entry_stat.st_size) if is_regular else 0
+        if is_directory:
+            try:
+                with os.scandir(path) as entries:
+                    children = sorted(
+                        (Path(entry.path) for entry in entries),
+                        key=lambda item: item.name,
+                    )
+            except OSError as error:
+                raise InfiniDyskMigrationError(
+                    "The InfiniDysk migration backup tree could not be inspected safely."
+                ) from error
+            for child in children:
+                child_record, child_files, child_directories, child_bytes = (
+                    InfiniDyskMigrationManager._cleanup_entry_record(
+                        child, relative_to=relative_to
+                    )
+                )
+                record.setdefault("children", []).append(child_record)
+                files += child_files
+                directories += child_directories
+                total_bytes += child_bytes
+        return record, files, directories, total_bytes
+
+    def _cleanup_plan(self, config: dict, state: dict) -> dict:
+        context = self._cleanup_context(config, state)
+        if context is None:
+            raise InfiniDyskMigrationError(
+                "InfiniDysk migration data can be removed only after the recorded migration still matches the current successful configuration."
+            )
+        self._ensure_cleanup_job_is_safe(self._load_job_readonly())
+
+        migration_root = self._cleanup_root()
+        backup_root = migration_root / "infinidysk-backups"
+        if (
+            backup_root.name != "infinidysk-backups"
+            or backup_root.parent != migration_root
+        ):
+            raise InfiniDyskMigrationError(
+                "The InfiniDysk migration backup root could not be resolved safely."
+            )
+
+        records = []
+        categories = ["Migration state details"]
+        files = 0
+        directories = 0
+        total_bytes = 0
+        fixed_artifacts = (
+            (self._sidecar_path("preflight").absolute(), "Preflight inventory"),
+            (self._sidecar_path("job").absolute(), "Job history"),
+        )
+        for path, category in fixed_artifacts:
+            if not os.path.lexists(path):
+                records.append({"relative": path.name, "type": "missing"})
+                continue
+            record, entry_files, entry_directories, entry_bytes = (
+                self._cleanup_entry_record(
+                    path, relative_to=migration_root, expected_directory=False
+                )
+            )
+            records.append(record)
+            files += entry_files
+            directories += entry_directories
+            total_bytes += entry_bytes
+            categories.append(category)
+
+        if os.path.lexists(backup_root):
+            record, entry_files, entry_directories, entry_bytes = (
+                self._cleanup_entry_record(
+                    backup_root,
+                    relative_to=migration_root,
+                    expected_directory=True,
+                )
+            )
+            records.append(record)
+            files += entry_files
+            directories += entry_directories
+            total_bytes += entry_bytes
+            categories.append("DUMB configuration backups and rollback bundles")
+        else:
+            records.append({"relative": backup_root.name, "type": "missing"})
+
+        if (
+            isinstance(state.get("preflight"), dict)
+            and "Preflight inventory" not in categories
+        ):
+            categories.append("Preflight inventory")
+        if isinstance(state.get("job"), dict) and "Job history" not in categories:
+            categories.append("Job history")
+
+        fingerprint_payload = {
+            "state": _config_fingerprint(state),
+            "config": _config_fingerprint(config),
+            "context": context,
+            "records": records,
+        }
+        fingerprint = hashlib.sha256(
+            json.dumps(
+                fingerprint_payload,
+                sort_keys=True,
+                separators=(",", ":"),
+                default=str,
+            ).encode("utf-8")
+        ).hexdigest()
+        return {
+            **context,
+            "fingerprint": fingerprint,
+            "files": files,
+            "directories": directories,
+            "bytes": total_bytes,
+            "categories": categories,
+            "rollback_artifacts_available": os.path.lexists(backup_root),
+        }
+
+    def _cleanup_preview_token(self, fingerprint: str, expires_at: int) -> str:
+        message = f"{expires_at}.{fingerprint}"
+        signature = hmac.new(
+            self._worker_id.encode("utf-8"),
+            message.encode("utf-8"),
+            hashlib.sha256,
+        ).hexdigest()
+        return f"{message}.{signature}"
+
+    def _verify_cleanup_preview_token(
+        self, preview_token: str, fingerprint: str, now: int
+    ) -> None:
+        try:
+            expires_value, token_fingerprint, signature = str(preview_token).split(
+                ".", 2
+            )
+            expires_at = int(expires_value)
+        except (TypeError, ValueError) as error:
+            raise InfiniDyskMigrationError(
+                "Run the cleanup preview again before removing migration data."
+            ) from error
+        if expires_at < now or expires_at > now + CLEANUP_PREVIEW_TTL_SECONDS:
+            raise InfiniDyskMigrationError(
+                "The cleanup preview expired. Run it again before removing migration data."
+            )
+        message = f"{expires_at}.{token_fingerprint}"
+        expected_signature = hmac.new(
+            self._worker_id.encode("utf-8"),
+            message.encode("utf-8"),
+            hashlib.sha256,
+        ).hexdigest()
+        if not hmac.compare_digest(
+            signature, expected_signature
+        ) or not hmac.compare_digest(token_fingerprint, fingerprint):
+            raise InfiniDyskMigrationError(
+                "Migration data changed after preview. Run the cleanup preview again."
+            )
+
+    @staticmethod
+    def _cleanup_deletion_payload(plan: dict) -> dict:
+        return {
+            "files": int(plan.get("files") or 0),
+            "directories": int(plan.get("directories") or 0),
+            "bytes": int(plan.get("bytes") or 0),
+            "categories": list(plan.get("categories") or []),
+        }
+
+    def cleanup_preview(self, now: int | None = None) -> dict:
+        self._validate_cleanup_state_path()
+        self._ensure_cleanup_job_is_safe(self._load_job_readonly())
+        # Serialize the final token/config recheck and irreversible deletion
+        # with the same admission boundary used by configuration mutations.
+        with INFINIDYSK_MIGRATION_ADMISSION_LOCK, self._lock:
+            self._validate_cleanup_state_path()
+            state = self._load_state()
+            config = getattr(CONFIG_MANAGER, "config", None)
+            config = config if isinstance(config, dict) else {}
+            context = self._cleanup_context(config, state)
+            if context is None:
+                raise InfiniDyskMigrationError(
+                    "InfiniDysk migration data can be removed only after the recorded migration still matches the current successful configuration."
+                )
+            if state.get("cleanup_finalized"):
+                return {
+                    "available": False,
+                    "preview_token": None,
+                    "expires_at": None,
+                    **context,
+                    "cleanup_finalized": True,
+                    "cleanup_finalized_at": state.get("cleanup_finalized_at"),
+                    "rollback_artifacts_available": False,
+                    "deletion": {
+                        "files": 0,
+                        "directories": 0,
+                        "bytes": 0,
+                        "categories": [],
+                    },
+                    "retained": list(CLEANUP_RETAINED_ITEMS),
+                }
+            plan = self._cleanup_plan(config, state)
+            current_time = int(time.time() if now is None else now)
+            expires_at = current_time + CLEANUP_PREVIEW_TTL_SECONDS
+            return {
+                "available": True,
+                "preview_token": self._cleanup_preview_token(
+                    plan["fingerprint"], expires_at
+                ),
+                "expires_at": expires_at,
+                "selected_mode": plan["selected_mode"],
+                "migration_status": plan["migration_status"],
+                "cleanup_finalized": False,
+                "cleanup_finalized_at": None,
+                "rollback_artifacts_available": plan["rollback_artifacts_available"],
+                "deletion": self._cleanup_deletion_payload(plan),
+                "retained": list(CLEANUP_RETAINED_ITEMS),
+            }
+
+    def cleanup(
+        self,
+        preview_token: str,
+        confirmation: str,
+        acknowledge_validation: bool,
+        acknowledge_rollback_loss: bool,
+        now: int | None = None,
+    ) -> dict:
+        if str(confirmation) != CLEANUP_CONFIRMATION:
+            raise InfiniDyskMigrationError(
+                f"Enter {CLEANUP_CONFIRMATION} to confirm cleanup."
+            )
+        if acknowledge_validation is not True:
+            raise InfiniDyskMigrationError(
+                "Confirm that service health, playback, seeking, and library results were validated after migration."
+            )
+        if acknowledge_rollback_loss is not True:
+            raise InfiniDyskMigrationError(
+                "Confirm the irreversible loss of DUMB migration history and rollback bundles."
+            )
+        self._validate_cleanup_state_path()
+        self._ensure_cleanup_job_is_safe(self._load_job_readonly())
+        # Keep the final eligibility/token recheck, irreversible deletion, and
+        # tombstone write atomic with configuration/migration admission.
+        with INFINIDYSK_MIGRATION_ADMISSION_LOCK, self._lock:
+            if infinidysk_external_mutation_active():
+                raise InfiniDyskMigrationError(EXTERNAL_MUTATION_BLOCKER)
+            self._validate_cleanup_state_path()
+            self._ensure_cleanup_job_is_safe(self._load_job_readonly())
+            state = self._load_state()
+            config = getattr(CONFIG_MANAGER, "config", None)
+            config = config if isinstance(config, dict) else {}
+            context = self._cleanup_context(config, state)
+            if context is None:
+                raise InfiniDyskMigrationError(
+                    "InfiniDysk migration data can be removed only after the recorded migration still matches the current successful configuration."
+                )
+            current_time = int(time.time() if now is None else now)
+            if state.get("cleanup_finalized"):
+                return {
+                    "status": "already_completed",
+                    "cleanup_finalized": True,
+                    "cleanup_finalized_at": state.get("cleanup_finalized_at"),
+                    "rollback_artifacts_available": False,
+                    **context,
+                    "deleted": {
+                        "files": 0,
+                        "directories": 0,
+                        "bytes": 0,
+                        "categories": [],
+                    },
+                    "retained": list(CLEANUP_RETAINED_ITEMS),
+                    "notice_due": False,
+                }
+
+            plan = self._cleanup_plan(config, state)
+            self._verify_cleanup_preview_token(
+                preview_token, plan["fingerprint"], current_time
+            )
+            migration_root = self._cleanup_root()
+            backup_root = migration_root / "infinidysk-backups"
+            try:
+                if os.path.lexists(backup_root):
+                    self._cleanup_entry_record(
+                        backup_root,
+                        relative_to=migration_root,
+                        expected_directory=True,
+                    )
+                    shutil.rmtree(backup_root)
+                for suffix in ("preflight", "job"):
+                    sidecar = self._sidecar_path(suffix).absolute()
+                    if not os.path.lexists(sidecar):
+                        continue
+                    self._cleanup_entry_record(
+                        sidecar,
+                        relative_to=migration_root,
+                        expected_directory=False,
+                    )
+                    sidecar.unlink()
+            except (OSError, InfiniDyskMigrationError) as error:
+                raise InfiniDyskMigrationError(
+                    "DUMB could not safely remove all InfiniDysk migration artifacts. The completion marker was not finalized; inspect storage and retry."
+                ) from error
+
+            tombstone = {
+                "state_version": STATE_VERSION,
+                "status": "completed",
+                "selected_mode": plan["selected_mode"],
+                "cleanup_finalized": True,
+                "cleanup_finalized_at": current_time,
+            }
+            try:
+                self._save_state(tombstone)
+            except OSError as error:
+                raise InfiniDyskMigrationError(
+                    "Migration artifacts were removed, but DUMB could not finalize the cleanup marker. Retry cleanup after storage is writable."
+                ) from error
+            return {
+                "status": "completed",
+                "cleanup_finalized": True,
+                "cleanup_finalized_at": current_time,
+                "selected_mode": plan["selected_mode"],
+                "migration_status": plan["migration_status"],
+                "rollback_artifacts_available": False,
+                "deleted": self._cleanup_deletion_payload(plan),
+                "retained": list(CLEANUP_RETAINED_ITEMS),
+                "notice_due": False,
+            }
 
     def _update_job(
         self,
@@ -482,7 +1051,9 @@ class InfiniDyskMigrationManager:
             if job.get("status") in ACTIVE_JOB_STATUSES and not secrets.compare_digest(
                 str(job.get("worker_id") or ""), self._worker_id
             ):
+                job["interrupted_from_stage"] = str(job.get("stage") or "")
                 job["status"] = "interrupted"
+                job["interrupted_at_ns"] = time.time_ns()
                 job["stage"] = "interrupted"
                 job["message"] = (
                     "DUMB restarted while the namespace migration was active. "
@@ -490,6 +1061,14 @@ class InfiniDyskMigrationManager:
                 )
                 job["error"] = job["message"]
                 job["progress"] = int(job.get("progress") or 0)
+                self._save_job(job)
+            elif job.get("status") == "interrupted" and not int(
+                job.get("interrupted_at_ns") or 0
+            ):
+                # Older interrupted records did not retain a sub-second recovery
+                # boundary. Establish one on first read so only a subsequently
+                # generated preflight can authorize a retry.
+                job["interrupted_at_ns"] = time.time_ns()
                 self._save_job(job)
             if job.get("status") in {
                 "failed_rolled_back",
@@ -519,6 +1098,46 @@ class InfiniDyskMigrationManager:
                 )
             return copy.deepcopy(job)
 
+    @staticmethod
+    def _is_pre_mutation_interruption(job: dict) -> bool:
+        return bool(
+            job.get("status") == "interrupted"
+            and str(job.get("interrupted_from_stage") or "")
+            in PRE_MUTATION_INTERRUPTION_STAGES
+        )
+
+    def has_blocking_job(self) -> bool:
+        """Return whether namespace work is active or needs recovery review."""
+
+        job = self.get_job()
+        return bool(
+            job
+            and job.get("status")
+            in (ACTIVE_JOB_STATUSES | RECOVERY_PENDING_JOB_STATUSES)
+        )
+
+    def has_recovery_pending_job(self) -> bool:
+        """Return whether boot must stay frozen for unsafe namespace recovery."""
+
+        job = self.get_job()
+        if not job:
+            return False
+        if job.get("status") == "rollback_attention_required":
+            return True
+        if job.get("status") != "interrupted":
+            return False
+        # A known pre-mutation interruption may start the legacy topology so a
+        # fresh live preflight can authorize a retry. Once filesystem mutation
+        # or application guard mutation may have begun (or the source stage is
+        # unknown), ordinary boot stays frozen.
+        return not self._is_pre_mutation_interruption(job)
+
+    def has_pre_mutation_interrupted_job(self) -> bool:
+        """Return whether cold boot may restore the known legacy topology."""
+
+        job = self.get_job()
+        return bool(job and self._is_pre_mutation_interruption(job))
+
     def request_playback_stop(self, job_id: str) -> dict:
         job = self.get_job(job_id)
         if not job or job.get("status") not in ACTIVE_JOB_STATUSES:
@@ -547,11 +1166,17 @@ class InfiniDyskMigrationManager:
         logger,
         updater,
     ) -> dict:
-        with self._lock:
+        with INFINIDYSK_MIGRATION_ADMISSION_LOCK, self._lock:
+            self._ensure_postgres_migration_inactive()
+            if infinidysk_external_mutation_active():
+                raise InfiniDyskMigrationError(EXTERNAL_MUTATION_BLOCKER)
             current = self.get_job()
-            if current and current.get("status") in ACTIVE_JOB_STATUSES:
+            if current and current.get("status") in (
+                ACTIVE_JOB_STATUSES | {"rollback_attention_required"}
+            ):
                 raise InfiniDyskMigrationError(
-                    "An InfiniDysk namespace migration is already active."
+                    "An InfiniDysk namespace migration is active or needs recovery "
+                    "review before another migration can start."
                 )
             state = self._load_state()
             preflight = self._load_preflight()
@@ -576,6 +1201,20 @@ class InfiniDyskMigrationManager:
                 raise InfiniDyskMigrationError(
                     "DUMB configuration changed after preflight. Run the preflight again."
                 )
+            if current and current.get("status") == "interrupted":
+                if not self._is_pre_mutation_interruption(current):
+                    raise InfiniDyskMigrationError(
+                        "The interrupted namespace migration reached a stage that may "
+                        "have changed application or filesystem state. Inspect its "
+                        "recovery details before any retry."
+                    )
+                created_at_ns = int(preflight.get("created_at_ns") or 0)
+                interrupted_at_ns = int(current.get("interrupted_at_ns") or 0)
+                if not created_at_ns or created_at_ns <= interrupted_at_ns:
+                    raise InfiniDyskMigrationError(
+                        "Run a fresh namespace preflight after the interrupted job "
+                        "before retrying the migration."
+                    )
             job = {
                 "job_id": secrets.token_hex(16),
                 "status": "queued",
@@ -584,6 +1223,7 @@ class InfiniDyskMigrationManager:
                 "progress": 0,
                 "events": [],
                 "created_at": now,
+                "created_at_ns": time.time_ns(),
                 "updated_at": now,
                 "worker_pid": os.getpid(),
                 "worker_id": self._worker_id,
@@ -729,6 +1369,32 @@ class InfiniDyskMigrationManager:
     def _service_config(config: dict) -> dict:
         value = config.get("infinidysk") or config.get("nzbdav")
         return value if isinstance(value, dict) else {}
+
+    @staticmethod
+    def _service_uses_postgres(service: dict) -> bool:
+        env = service.get("env") if isinstance(service, dict) else None
+        provider = (
+            str(env.get("DATABASE_PROVIDER") or "").strip().lower()
+            if isinstance(env, dict)
+            else ""
+        )
+        return service_postgres_enabled(service) or provider in {
+            "postgres",
+            "postgresql",
+        }
+
+    @staticmethod
+    def _postgres_migration_active() -> bool:
+        # Import lazily so each migration manager can query the other without a
+        # module-import cycle. Admission checks are serialized by the shared lock.
+        from utils.arr_postgres_migration import POSTGRES_MIGRATION_MANAGER
+
+        return POSTGRES_MIGRATION_MANAGER.has_namespace_conflicting_job()
+
+    @classmethod
+    def _ensure_postgres_migration_inactive(cls) -> None:
+        if cls._postgres_migration_active():
+            raise InfiniDyskMigrationError(ACTIVE_POSTGRES_MIGRATION_BLOCKER)
 
     @staticmethod
     def _attached_services(config: dict) -> list[dict]:
@@ -1765,9 +2431,22 @@ class InfiniDyskMigrationManager:
         }
 
     def preflight(
-        self, process_handler=None, logger=None, now: int | None = None
+        self,
+        process_handler=None,
+        logger=None,
+        now: int | None = None,
+        _migration_owned: bool = False,
     ) -> dict:
-        with self._lock:
+        with INFINIDYSK_MIGRATION_ADMISSION_LOCK:
+            postgres_migration_active = self._postgres_migration_active()
+            external_mutation_active = infinidysk_external_mutation_active()
+            if not _migration_owned:
+                job = self.get_job()
+                if job and job.get("status") in ACTIVE_JOB_STATUSES:
+                    raise InfiniDyskMigrationError(
+                        "An InfiniDysk namespace migration is already active."
+                    )
+        with INFINIDYSK_MIGRATION_ADMISSION_LOCK, self._lock:
             config = CONFIG_MANAGER.config
             service = self._service_config(config)
             if not service:
@@ -1780,6 +2459,14 @@ class InfiniDyskMigrationManager:
                 )
             now = int(now or time.time())
             filesystem, blockers = self._namespace_filesystem_plan(config)
+            if self._media_protection_incident_active(process_handler):
+                blockers.append(MEDIA_PROTECTION_NAMESPACE_BLOCKER)
+            if postgres_migration_active:
+                blockers.append(ACTIVE_POSTGRES_MIGRATION_BLOCKER)
+            if external_mutation_active:
+                blockers.append(EXTERNAL_MUTATION_BLOCKER)
+            if self._service_uses_postgres(service):
+                blockers.append(POSTGRES_NAMESPACE_ORDERING_BLOCKER)
             linked_services = self._linked_service_inventory(config, process_handler)
             arr, arr_blockers, arr_discovery = self._arr_snapshot(
                 config, process_handler
@@ -1870,6 +2557,7 @@ class InfiniDyskMigrationManager:
             preflight = {
                 "token": secrets.token_urlsafe(32),
                 "created_at": now,
+                "created_at_ns": time.time_ns(),
                 "expires_at": now + PREFLIGHT_TTL_SECONDS,
                 "config_fingerprint": _config_fingerprint(config),
                 "filesystem": filesystem,
@@ -1914,6 +2602,8 @@ class InfiniDyskMigrationManager:
             return self._public_preflight(preflight)
 
     def status(self, config: dict | None = None, now: int | None = None) -> dict:
+        with INFINIDYSK_MIGRATION_ADMISSION_LOCK:
+            postgres_migration_active = self._postgres_migration_active()
         with self._lock:
             runtime_config = getattr(CONFIG_MANAGER, "config", None)
             config = config if isinstance(config, dict) else runtime_config
@@ -1926,7 +2616,7 @@ class InfiniDyskMigrationManager:
                     # Status remains available from the legacy file when a
                     # read-only/transient storage condition prevents compaction.
                     pass
-            now = int(now or time.time())
+            now = int(time.time() if now is None else now)
             service = self._service_config(config)
             repo = (
                 str(service.get("repo_owner") or "").strip().lower(),
@@ -1950,6 +2640,7 @@ class InfiniDyskMigrationManager:
                 )
             )
             enabled = bool(service.get("enabled"))
+            postgres_backed = self._service_uses_postgres(service)
             state_completed = state.get("status") == "completed"
             canonical_identity = (
                 not legacy_brand and not legacy_repository and not legacy_identity
@@ -1959,6 +2650,30 @@ class InfiniDyskMigrationManager:
             )
             namespace_completed = identity_completed and not legacy_paths
             compatibility_completed = identity_completed and bool(legacy_paths)
+            selected_mode = str(state.get("selected_mode") or "")
+            cleanup_mode_matches = state_completed and (
+                (selected_mode == "full_namespace" and namespace_completed)
+                or (
+                    selected_mode == "retain_legacy_namespace"
+                    and (compatibility_completed or namespace_completed)
+                )
+            )
+            cleanup_finalized = bool(
+                cleanup_mode_matches and state.get("cleanup_finalized")
+            )
+            cleanup_job = self._load_job_readonly()
+            cleanup_job_safe = (
+                not cleanup_job or str(cleanup_job.get("status") or "") == "completed"
+            )
+            cleanup_backup_root = (
+                self.state_path.parent.absolute() / "infinidysk-backups"
+            )
+            rollback_artifacts_available = bool(
+                cleanup_mode_matches
+                and cleanup_backup_root.is_dir()
+                and not cleanup_backup_root.is_symlink()
+                and not os.path.ismount(cleanup_backup_root)
+            )
             snoozed_until = int(state.get("snoozed_until") or 0)
             eligible = bool(service) and (
                 legacy_brand
@@ -1972,7 +2687,10 @@ class InfiniDyskMigrationManager:
                 "eligible": eligible,
                 "enabled": enabled,
                 "notice_due": (
-                    eligible and not namespace_completed and snoozed_until <= now
+                    eligible
+                    and not namespace_completed
+                    and snoozed_until <= now
+                    and not cleanup_finalized
                 ),
                 "status": (
                     "completed"
@@ -1986,6 +2704,14 @@ class InfiniDyskMigrationManager:
                 "snoozed_until": snoozed_until or None,
                 "completed_at": state.get("completed_at"),
                 "selected_mode": state.get("selected_mode"),
+                "cleanup_available": bool(
+                    cleanup_mode_matches and cleanup_job_safe and not cleanup_finalized
+                ),
+                "cleanup_finalized": cleanup_finalized,
+                "cleanup_finalized_at": (
+                    state.get("cleanup_finalized_at") if cleanup_finalized else None
+                ),
+                "rollback_artifacts_available": rollback_artifacts_available,
                 "rename_attached_services": bool(
                     state.get("rename_attached_services", False)
                 ),
@@ -1996,18 +2722,48 @@ class InfiniDyskMigrationManager:
                     "paths": legacy_paths,
                     "attached_services": attached,
                 },
+                "blockers": [
+                    *(
+                        [POSTGRES_NAMESPACE_ORDERING_BLOCKER]
+                        if eligible and postgres_backed
+                        else []
+                    ),
+                    *(
+                        [ACTIVE_POSTGRES_MIGRATION_BLOCKER]
+                        if eligible and postgres_migration_active
+                        else []
+                    ),
+                ],
                 "modes": [
                     {
                         "id": "retain_legacy_namespace",
                         "recommended": True,
-                        "available": True,
+                        "available": not (postgres_backed or postgres_migration_active),
+                        "unavailable_reason": (
+                            POSTGRES_NAMESPACE_ORDERING_BLOCKER
+                            if postgres_backed
+                            else (
+                                ACTIVE_POSTGRES_MIGRATION_BLOCKER
+                                if postgres_migration_active
+                                else None
+                            )
+                        ),
                         "title": "Switch to InfiniDysk and keep existing paths",
                         "description": "Use the InfiniDysk repository and name while retaining current mount paths, symlink roots, categories, and media-server libraries.",
                     },
                     {
                         "id": "full_namespace",
                         "recommended": False,
-                        "available": True,
+                        "available": not (postgres_backed or postgres_migration_active),
+                        "unavailable_reason": (
+                            POSTGRES_NAMESPACE_ORDERING_BLOCKER
+                            if postgres_backed
+                            else (
+                                ACTIVE_POSTGRES_MIGRATION_BLOCKER
+                                if postgres_migration_active
+                                else None
+                            )
+                        ),
                         "title": "Migrate the complete InfiniDysk namespace",
                         "description": "Move managed paths and update Arr and media-server references through the guarded cutover workflow.",
                     },
@@ -2039,15 +2795,45 @@ class InfiniDyskMigrationManager:
                 ) from exc
             return self.status(now=now)
 
-    def apply_brand_cutover(self, rename_attached_services: bool = True) -> dict:
+    @staticmethod
+    def _media_protection_incident_active(process_handler) -> bool:
+        if process_handler is None:
+            return False
+        try:
+            manager = vars(process_handler).get("media_protection_manager")
+        except TypeError:
+            return False
+        checker = getattr(manager, "has_blocking_incident", None)
+        return bool(checker()) if callable(checker) else False
+
+    def apply_brand_cutover(
+        self,
+        rename_attached_services: bool = True,
+        process_handler=None,
+    ) -> dict:
         """Persist the non-path cutover. Runtime restart/install is a separate step."""
-        with self._lock:
+        with INFINIDYSK_MIGRATION_ADMISSION_LOCK, self._lock:
+            self._ensure_postgres_migration_inactive()
+            if infinidysk_external_mutation_active():
+                raise InfiniDyskMigrationError(EXTERNAL_MUTATION_BLOCKER)
+            current_job = self.get_job()
+            if current_job and current_job.get("status") in (
+                ACTIVE_JOB_STATUSES | RECOVERY_PENDING_JOB_STATUSES
+            ):
+                raise InfiniDyskMigrationError(
+                    "A full InfiniDysk namespace migration is active or needs "
+                    "recovery review before a compatibility cutover can start."
+                )
+            if self._media_protection_incident_active(process_handler):
+                raise InfiniDyskMigrationError(MEDIA_PROTECTION_NAMESPACE_BLOCKER)
             config = CONFIG_MANAGER.config
             service = self._service_config(config)
             if not service:
                 raise InfiniDyskMigrationError(
                     "InfiniDysk service configuration is not available."
                 )
+            if self._service_uses_postgres(service):
+                raise InfiniDyskMigrationError(POSTGRES_NAMESPACE_ORDERING_BLOCKER)
 
             current_status = self.status(config)
             if current_status.get("status") in {"completed", "compatibility_completed"}:
@@ -3977,7 +4763,15 @@ class InfiniDyskMigrationManager:
         progress_callback=None,
         job_id: str | None = None,
     ) -> dict:
-        with self._lock:
+        with INFINIDYSK_MIGRATION_ADMISSION_LOCK:
+            self._ensure_postgres_migration_inactive()
+            if infinidysk_external_mutation_active():
+                raise InfiniDyskMigrationError(EXTERNAL_MUTATION_BLOCKER)
+        # Keep the long-running worker off the short state/status lock. The
+        # worker calls admission-protected helpers while it runs, so holding
+        # ``self._lock`` here would invert the global admission -> state-lock
+        # order used by API/config paths and could deadlock polling or retries.
+        with self._apply_lock:
 
             def progress(
                 stage: str,
@@ -4008,6 +4802,9 @@ class InfiniDyskMigrationManager:
                     "The namespace preflight still has blockers. Resolve them and run it again."
                 )
             config = CONFIG_MANAGER.config
+            service = self._service_config(config)
+            if self._service_uses_postgres(service):
+                raise InfiniDyskMigrationError(POSTGRES_NAMESPACE_ORDERING_BLOCKER)
             if preflight.get("config_fingerprint") != _config_fingerprint(config):
                 raise InfiniDyskMigrationError(
                     "DUMB configuration changed after preflight. Run the preflight again."
@@ -4026,12 +4823,17 @@ class InfiniDyskMigrationManager:
                 )
 
             progress("preflight", "Repeating live safety checks.", 8)
-            refreshed = self.preflight(process_handler, logger, now=now)
+            refreshed = self.preflight(
+                process_handler, logger, now=now, _migration_owned=True
+            )
             if not refreshed.get("ready"):
                 raise InfiniDyskMigrationError(
                     "Runtime conditions changed after preflight. Resolve the reported blockers and run it again."
                 )
             preflight = self._load_preflight() or preflight
+            current_config = CONFIG_MANAGER.config
+            if self._service_uses_postgres(self._service_config(current_config)):
+                raise InfiniDyskMigrationError(POSTGRES_NAMESPACE_ORDERING_BLOCKER)
 
             progress("backup", "Creating private rollback snapshots.", 14)
             backup_config = copy.deepcopy(config)
@@ -4420,6 +5222,8 @@ class InfiniDyskMigrationManager:
                     }
                 ]
                 state = self._load_state()
+                state.pop("cleanup_finalized", None)
+                state.pop("cleanup_finalized_at", None)
                 state.update(
                     {
                         "state_version": STATE_VERSION,

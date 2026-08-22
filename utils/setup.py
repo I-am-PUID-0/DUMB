@@ -4,7 +4,7 @@ from utils.global_logger import logger
 from utils.download import Downloader
 from utils.versions import Versions
 from utils.plex import PlexInstaller
-from utils.traefik_setup import setup_traefik
+from utils.traefik_setup import get_traefik_proxy_url, setup_traefik
 from utils.user_management import chown_recursive, chown_single
 from utils.resource_limits import pnpm_concurrency
 from utils.apt_lock import run_locked
@@ -23,8 +23,13 @@ from utils.authelia_settings import (
 )
 from utils.service_postgres import (
     apply_service_postgres_config,
+    infinidysk_postgres_runtime_floor,
     service_postgres_database_name,
     service_postgres_enabled,
+    validate_infinidysk_postgres_fresh_install,
+    validate_infinidysk_postgres_installed_version,
+    validate_infinidysk_postgres_release_version,
+    validate_infinidysk_postgres_source_selection,
 )
 from utils.zilean_dotnet import prepare_zilean_for_net10
 from utils.mediastorm_installer import (
@@ -84,6 +89,30 @@ _CLI_DEBRID_SOURCE_SKIP_DIRS = frozenset(
         "venv",
     }
 )
+
+
+def _validate_infinidysk_postgres_source(config):
+    minimum_commit = infinidysk_postgres_runtime_floor(config)
+    if not minimum_commit:
+        return validate_infinidysk_postgres_source_selection(config)
+    return validate_infinidysk_postgres_source_selection(
+        config,
+        minimum_commit=minimum_commit,
+        downloader=downloader,
+    )
+
+
+def _validate_infinidysk_postgres_runtime(config, config_dir):
+    minimum_commit = infinidysk_postgres_runtime_floor(config)
+    if not minimum_commit:
+        return validate_infinidysk_postgres_installed_version(config_dir)
+    return validate_infinidysk_postgres_installed_version(
+        config_dir,
+        minimum_commit=minimum_commit,
+        downloader=downloader,
+    )
+
+
 _PERSISTENT_INFERENCE_SOURCE_DIRS = {
     "cli_debrid": frozenset({"database"}),
 }
@@ -800,11 +829,17 @@ def _update_persistent_excludes(
         "infinidysk",
         "nzbdav",
     }:
-        for filename in ("db.sqlite", "metrics.sqlite"):
+        for filename in (
+            "db.sqlite",
+            "metrics.sqlite",
+            "warden.db",
+            "usenet-migration.db",
+        ):
             database = target / filename
             protect(database)
             for suffix in ("-wal", "-shm", "-journal"):
                 protect(f"{database}{suffix}")
+        protect(target / "session.key")
 
     return sorted(protected)
 
@@ -1123,6 +1158,14 @@ def _install_nzbdav_prebuilt_release(
     release_tag, error = _resolve_nzbdav_release_selector(config, requested_release)
     if not release_tag:
         return None, error
+    if service_postgres_enabled(config) or str(
+        (config.get("env") or {}).get("DATABASE_PROVIDER") or ""
+    ).strip().lower() in {"postgres", "postgresql"}:
+        release_safe, release_error = validate_infinidysk_postgres_release_version(
+            release_tag
+        )
+        if not release_safe:
+            return None, release_error
 
     release_info, release_error = downloader.fetch_github_release_info(
         config.get("repo_owner"), config.get("repo_name"), release_tag
@@ -1254,6 +1297,11 @@ def _install_nzbdav_prebuilt_release(
 def setup_release_version(process_handler, config, process_name, key):
     logger.info(f"Using release version {config['release_version']} for {process_name}")
 
+    if key == "infinidysk":
+        source_safe, source_error = _validate_infinidysk_postgres_source(config)
+        if not source_safe:
+            return False, source_error
+
     if key == "authelia":
         try:
             installed = install_authelia_release(
@@ -1320,7 +1368,8 @@ def setup_release_version(process_handler, config, process_name, key):
     else:
         target_dir = config["config_dir"]
 
-    os.makedirs(target_dir, exist_ok=True)
+    if key != "infinidysk":
+        os.makedirs(target_dir, exist_ok=True)
 
     if key == "altmount":
         from utils.altmount_settings import download_altmount_binary
@@ -1346,6 +1395,15 @@ def setup_release_version(process_handler, config, process_name, key):
         )
         if not resolved_release:
             return False, resolve_error
+        if service_postgres_enabled(config) or str(
+            (config.get("env") or {}).get("DATABASE_PROVIDER") or ""
+        ).strip().lower() in {"postgres", "postgresql"}:
+            release_safe, release_error = validate_infinidysk_postgres_release_version(
+                resolved_release
+            )
+            if not release_safe:
+                return False, release_error
+        os.makedirs(target_dir, exist_ok=True)
         release_sha, release_sha_error = downloader.get_ref_commit_sha(
             config.get("repo_owner"),
             config.get("repo_name"),
@@ -1601,6 +1659,11 @@ def setup_branch_version(process_handler, config, process_name, key):
                 glob.glob(os.path.join(target_dir, "app", "*.runtimeconfig.json"))
             )
         return False
+
+    if key == "infinidysk":
+        source_safe, source_error = _validate_infinidysk_postgres_source(config)
+        if not source_safe:
+            return False, source_error
 
     if key in [
         "bazarr",
@@ -2067,6 +2130,20 @@ def _setup_project_inner(
     config = CONFIG_MANAGER.get_instance(instance_name, key)
     if not config:
         raise ValueError(f"Configuration for {process_name} not found.")
+
+    if key == "infinidysk":
+        source_safe, source_error = _validate_infinidysk_postgres_source(config)
+        if not source_safe:
+            return False, source_error
+        postgres_selected = service_postgres_enabled(config) or str(
+            (config.get("env") or {}).get("DATABASE_PROVIDER") or ""
+        ).strip().lower() in {"postgres", "postgresql"}
+        if postgres_selected and configure_phase and not install_phase:
+            runtime_safe, runtime_error = _validate_infinidysk_postgres_runtime(
+                config, config.get("config_dir") or "/infinidysk"
+            )
+            if not runtime_safe:
+                return False, runtime_error
 
     with process_handler.setup_tracker_lock:
         already_setup = process_name in process_handler.setup_tracker
@@ -4370,6 +4447,7 @@ def _normalize_nzbdav_writable_ownership(
 
     recursive_state_dirs = {"db", "database", "databases", "data-protection", "logs"}
     writable_file_names = {
+        "session.key",
         "version.txt",
         "initial_admin_password",
         "initial_admin_password.txt",
@@ -4411,6 +4489,23 @@ def _normalize_nzbdav_writable_ownership(
         return False, f"InfiniDysk ownership preflight failed for {root}: {error}"
 
 
+def _validate_infinidysk_postgres_fresh_install(
+    config_path: str,
+    enabled: bool,
+    *,
+    service: dict | None = None,
+    postgres_config: dict | None = None,
+    allow_offline_authorization: bool = False,
+) -> tuple[bool, str | None]:
+    return validate_infinidysk_postgres_fresh_install(
+        config_path,
+        enabled,
+        service=service,
+        postgres_config=postgres_config,
+        allow_offline_authorization=allow_offline_authorization,
+    )
+
+
 def setup_nzbdav(
     process_handler, install_only: bool = False, configure_only: bool = False
 ):
@@ -4433,12 +4528,56 @@ def setup_nzbdav(
             backend_output_dir, "wwwroot"
         )
         config_path = config.get("env", {}).get("CONFIG_PATH") or nzbdav_config_dir
+        postgres_enabled = service_postgres_enabled(config)
+        postgres_selected = postgres_enabled or str(
+            (config.get("env") or {}).get("DATABASE_PROVIDER") or ""
+        ).strip().lower() in {"postgres", "postgresql"}
+        source_safe, source_error = _validate_infinidysk_postgres_source(config)
+        if not source_safe:
+            return False, source_error
+        installed_runtime_ready, installed_runtime_error = (
+            _nzbdav_installed_runtime_ready(config)
+        )
+        if configure_only and not installed_runtime_ready:
+            return False, (
+                "InfiniDysk installed runtime is incomplete and requires the install "
+                "phase before configuration: "
+                f"{installed_runtime_error or 'runtime validation failed'}"
+            )
+        if postgres_selected:
+            if configure_only or installed_runtime_ready:
+                runtime_safe, runtime_error = _validate_infinidysk_postgres_runtime(
+                    config, nzbdav_config_dir
+                )
+                if not runtime_safe:
+                    return False, runtime_error
         if not os.path.exists(nzbdav_config_dir):
             logger.debug(f"Creating InfiniDysk config directory at {nzbdav_config_dir}")
             os.makedirs(nzbdav_config_dir, exist_ok=True)
         chown_single(nzbdav_config_dir, user_id, group_id)
         os.makedirs(config_path, exist_ok=True)
         _chown_recursive_if_needed(config_path, user_id, group_id)
+
+        postgres_safe, postgres_error = _validate_infinidysk_postgres_fresh_install(
+            config_path,
+            postgres_enabled,
+            service=config,
+            postgres_config=CONFIG_MANAGER.get("postgres", {}) or {},
+            allow_offline_authorization=install_only,
+        )
+        if not postgres_safe:
+            return False, postgres_error
+
+        postgres_database = service_postgres_database_name("infinidysk", None, config)
+        postgres_changed = apply_service_postgres_config(
+            "infinidysk",
+            config,
+            CONFIG_MANAGER.get("postgres", {}) or {},
+            postgres_database,
+            enabled=postgres_enabled,
+        )
+        if postgres_changed and not install_only:
+            CONFIG_MANAGER.save_config(config.get("process_name") or "InfiniDysk")
 
         prebuilt_ready, prebuilt_runtime_error = _nzbdav_prebuilt_runtime_ready(
             nzbdav_config_dir, backend_output_dir
@@ -4447,11 +4586,24 @@ def setup_nzbdav(
             nzbdav_config_dir, config
         )
         if not prebuilt_ready and (
-            not backend_project_path or not os.path.exists(backend_project_path)
+            not installed_runtime_ready and not _source_build_enabled(config)
+        ):
+            logger.warning(
+                "The installed InfiniDysk runtime is incomplete (%s); repairing it "
+                "from the configured official release.",
+                installed_runtime_error
+                or prebuilt_runtime_error
+                or "validation failed",
+            )
+        if not prebuilt_ready and (
+            (not installed_runtime_ready and not _source_build_enabled(config))
+            or not backend_project_path
+            or not os.path.exists(backend_project_path)
         ):
             if configure_only:
                 return False, (
-                    prebuilt_runtime_error
+                    installed_runtime_error
+                    or prebuilt_runtime_error
                     or "InfiniDysk source project and prebuilt runtime are not installed."
                 )
             logger.warning(
@@ -4470,6 +4622,12 @@ def setup_nzbdav(
                 )
                 if not resolved_release:
                     return False, resolve_error
+                if postgres_selected:
+                    release_safe, release_error = (
+                        validate_infinidysk_postgres_release_version(resolved_release)
+                    )
+                    if not release_safe:
+                        return False, release_error
                 prebuilt, prebuilt_error = _install_nzbdav_prebuilt_release(
                     config,
                     config.get("process_name") or "InfiniDysk",
@@ -4485,6 +4643,7 @@ def setup_nzbdav(
                         version=prebuilt["version_marker"],
                     )
                     prebuilt_ready = True
+                    installed_runtime_ready = True
                 else:
                     logger.warning(
                         "Verified InfiniDysk prebuilt archive was unavailable or "
@@ -4546,7 +4705,7 @@ def setup_nzbdav(
                         error or "InfiniDysk backend project not found after download.",
                     )
 
-        build_needed = False
+        build_needed = not prebuilt_ready and not installed_runtime_ready
         if not prebuilt_ready:
             needs_patch = _nzbdav_resource_patch_needed(backend_project_path)
             uses_internal_nzb_models = _nzbdav_uses_internal_nzb_models(
@@ -4560,7 +4719,16 @@ def setup_nzbdav(
                 uses_internal_nzb_models
                 and _nzbdav_main_api_patch_needed(backend_project_path)
             )
-            build_needed = needs_patch or needs_namespace_patch or needs_main_api_patch
+            needs_hashing_reference_patch = (
+                _nzbdav_system_io_hashing_reference_patch_needed(backend_project_path)
+            )
+            build_needed = (
+                build_needed
+                or needs_patch
+                or needs_namespace_patch
+                or needs_main_api_patch
+                or needs_hashing_reference_patch
+            )
             backend_command, _ = _nzbdav_build_command(
                 backend_output_dir,
                 dotnet_dir=(
@@ -4718,6 +4886,11 @@ def setup_nzbdav_build(process_handler, config):
     frontend_dir = _find_nzbdav_frontend_dir(nzbdav_config_dir, config)
     backend_project_dir = os.path.dirname(backend_project_path)
     chown_recursive(backend_project_dir, user_id, group_id)
+    hashing_patched, hashing_patch_error = _patch_nzbdav_system_io_hashing_reference(
+        backend_project_path
+    )
+    if not hashing_patched:
+        return False, hashing_patch_error
     patched, patch_error = _patch_nzbdav_embedded_resource_util(backend_project_path)
     if not patched and patch_error:
         logger.warning("InfiniDysk resource patch skipped: %s", patch_error)
@@ -5017,6 +5190,86 @@ def _run_pnpm_script(process_handler, config_dir, script_name, process_name):
     process_handler.wait(process_name)
     if process_handler.returncode != 0:
         return False, f"Error running pnpm {script_name}: {process_handler.stderr}"
+    return True, None
+
+
+def _nzbdav_system_io_hashing_reference_patch_needed(backend_project_path):
+    try:
+        project_contents = Path(backend_project_path).read_text(encoding="utf-8-sig")
+    except OSError:
+        return False
+
+    if 'PackageReference Include="System.IO.Hashing"' in project_contents:
+        return False
+
+    backend_dir = Path(backend_project_path).parent
+    source_paths = (
+        backend_dir / "Par2Recovery" / "Par2TestEncoder.cs",
+        backend_dir / "Par2Recovery" / "ReedSolomon" / "Par2Reconstructor.cs",
+    )
+    for source_path in source_paths:
+        try:
+            if "using System.IO.Hashing;" in source_path.read_text(
+                encoding="utf-8", errors="ignore"
+            ):
+                return True
+        except OSError:
+            continue
+    return False
+
+
+def _patch_nzbdav_system_io_hashing_reference(backend_project_path):
+    if not _nzbdav_system_io_hashing_reference_patch_needed(backend_project_path):
+        return True, None
+
+    project_path = Path(backend_project_path)
+    packages_path = project_path.parent.parent / "Directory.Packages.props"
+    try:
+        packages_contents = packages_path.read_text(encoding="utf-8-sig")
+    except OSError as error:
+        return False, f"Failed to read {packages_path}: {error}"
+    if 'PackageVersion Include="System.IO.Hashing"' not in packages_contents:
+        return False, (
+            "InfiniDysk uses System.IO.Hashing but its central package catalog "
+            "does not declare a version; refusing to guess a dependency version."
+        )
+
+    try:
+        project_bytes = project_path.read_bytes()
+        has_bom = project_bytes.startswith(b"\xef\xbb\xbf")
+        project_contents = project_bytes.decode("utf-8-sig")
+    except (OSError, UnicodeError) as error:
+        return False, f"Failed to read {project_path}: {error}"
+
+    anchor = '      <PackageReference Include="MemoryPack" />'
+    if anchor not in project_contents:
+        return False, (
+            "InfiniDysk backend project package group did not match the expected "
+            "template; refusing to rewrite the project file."
+        )
+    replacement = '      <PackageReference Include="System.IO.Hashing" />\n' + anchor
+    patched_contents = project_contents.replace(anchor, replacement, 1)
+    encoded = patched_contents.encode("utf-8")
+    if has_bom:
+        encoded = b"\xef\xbb\xbf" + encoded
+
+    temporary_path = project_path.with_name(f".{project_path.name}.dumb-hashing.tmp")
+    try:
+        original_mode = project_path.stat().st_mode & 0o7777
+        temporary_path.write_bytes(encoded)
+        os.chmod(temporary_path, original_mode)
+        os.replace(temporary_path, project_path)
+    except OSError as error:
+        try:
+            temporary_path.unlink(missing_ok=True)
+        except OSError:
+            pass
+        return False, f"Failed to patch {project_path}: {error}"
+
+    logger.info(
+        "Added the missing System.IO.Hashing package reference required by "
+        "InfiniDysk PAR2 recovery sources."
+    )
     return True, None
 
 
@@ -5469,11 +5722,36 @@ def _find_nzbdav_backend_project(config_dir, config):
     candidates = []
     for root, files in _walk_nzbdav_source_tree(config_dir):
         for file in files:
-            if file.endswith(".csproj"):
-                candidates.append(os.path.join(root, file))
+            if not file.endswith(".csproj"):
+                continue
+            path = os.path.join(root, file)
+            relative_parts = Path(os.path.relpath(path, config_dir)).parts
+            part_tokens = {
+                token
+                for part in relative_parts
+                for token in re.split(r"[^a-z0-9]+", part.lower())
+                if token
+            }
+            if part_tokens.intersection(
+                {
+                    "bench",
+                    "benchmark",
+                    "benchmarks",
+                    "example",
+                    "examples",
+                    "lib",
+                    "libs",
+                    "sample",
+                    "samples",
+                    "test",
+                    "tests",
+                }
+            ):
+                continue
+            candidates.append(path)
 
     if not candidates:
-        return None, "No .csproj files found for InfiniDysk backend."
+        return None, "No application .csproj files found for InfiniDysk backend."
 
     scored = []
     for path in candidates:
@@ -5703,11 +5981,18 @@ def dumb_frontend_setup():
     api_host = api_config.get("host", "127.0.0.1")
     api_port = str(api_config.get("port", 8000))
     api_url = f"http://{api_host}:{api_port}"
+    traefik_config = CONFIG_MANAGER.get("traefik") or {}
+    traefik_url = get_traefik_proxy_url(traefik_config)
     env_vars = {
         **config.get("env", {}),
         "HOST": frontend_host,
         "PORT": frontend_port,
         "DUMB_API_URL": api_url,
+        # dmbdb accepts both names and gives DMB_TRAEFIK_URL precedence. Keep
+        # them synchronized so an older persisted alias cannot retain a stale
+        # port after DUMB reallocates Traefik's paired listeners.
+        "DMB_TRAEFIK_URL": traefik_url,
+        "DUMB_TRAEFIK_URL": traefik_url,
     }
     config["env"] = env_vars
     return True, None
@@ -10775,6 +11060,7 @@ def rclone_setup():
                     ]
                 elif key_type == "infinidysk":
                     from utils import nzbdav_db
+                    from utils.nzbdav_settings import _read_nzbdav_config_values
 
                     nzbdav_cfg = CONFIG_MANAGER.get("infinidysk") or {}
                     nzbdav_env = (
@@ -10795,17 +11081,38 @@ def rclone_setup():
                     env_webdav_pass = nzbdav_env.get("WEBDAV_PASSWORD") or os.getenv(
                         "WEBDAV_PASSWORD"
                     )
-                    try:
-                        value = nzbdav_db.get_config_value("webdav.user")
-                        if value:
-                            webdav_user = value
-                        value = nzbdav_db.get_config_value("webdav.pass")
-                        if value:
-                            webdav_pass = value
-                    except FileNotFoundError as e:
-                        logger.warning(
-                            "InfiniDysk db not found for rclone setup: %s", e
+                    if service_postgres_enabled(nzbdav_cfg):
+                        config_values, config_error = _read_nzbdav_config_values(
+                            ("webdav.user",), nzbdav_cfg
                         )
+                        if config_values is None:
+                            return (
+                                False,
+                                "InfiniDysk PostgreSQL WebDAV configuration "
+                                f"could not be read: {config_error or 'unknown error'}",
+                            )
+                        configured_user = str(
+                            config_values.get("webdav.user") or ""
+                        ).strip()
+                        if configured_user:
+                            webdav_user = configured_user
+                        else:
+                            logger.debug(
+                                "InfiniDysk PostgreSQL configuration omits "
+                                "webdav.user; using the application default user."
+                            )
+                    else:
+                        try:
+                            value = nzbdav_db.get_config_value("webdav.user")
+                            if value:
+                                webdav_user = value
+                            value = nzbdav_db.get_config_value("webdav.pass")
+                            if value:
+                                webdav_pass = value
+                        except FileNotFoundError as e:
+                            logger.warning(
+                                "InfiniDysk db not found for rclone setup: %s", e
+                            )
 
                     if env_webdav_user:
                         webdav_user = env_webdav_user
@@ -12089,6 +12396,17 @@ def setup_dotnet_environment(
             if os.path.exists(project_path):
                 logger.info(f"Publishing .NET project {project_path}")
                 output_path = output_dir or os.path.join(config_dir, "app")
+                publish_properties = []
+                if key == "infinidysk":
+                    # InfiniDysk main vendors third-party projects whose .NET code
+                    # quality analyzers are promoted to errors by the upstream
+                    # branch configuration. Official archives contain the same
+                    # compiled code. Disable analyzer execution for DUMB's runtime
+                    # source publish while retaining compiler and MSBuild failures.
+                    publish_properties = [
+                        "/p:RunAnalyzers=false",
+                        "/p:EnableNETAnalyzers=false",
+                    ]
                 process_handler.start_process(
                     "dotnet_publish",
                     config_dir,
@@ -12103,6 +12421,7 @@ def setup_dotnet_environment(
                         output_path,
                         "/nodeReuse:false",
                         "/p:UseSharedCompilation=false",
+                        *publish_properties,
                     ],
                     env=env,
                 )

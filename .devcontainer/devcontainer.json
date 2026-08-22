@@ -12,7 +12,7 @@
   },
   "workspaceFolder": "/workspace",
   "remoteEnv": {
-    "PATH": "/opt/poetry/bin:/venv/bin:${containerEnv:PATH}",
+    "PATH": "/venv/bin:/opt/poetry/bin:${containerEnv:PATH}",
     "VIRTUAL_ENV": "/venv"
   },
   "customizations": {
@@ -47,9 +47,7 @@
     "source=${localWorkspaceFolder}/data,target=/data,type=bind",
     "source=${localWorkspaceFolder}/log,target=/log,type=bind",
     "source=${localWorkspaceFolder}/config,target=/config,type=bind",
-    "source=${localWorkspaceFolder}/mnt/debrid,target=/mnt/debrid,type=bind,bind-propagation=rshared",
-    "source=codex-home,target=/root/.codex,type=volume",
-    "source=claude-home,target=/root/.claude,type=volume"
+    "source=${localWorkspaceFolder}/mnt/debrid,target=/mnt/debrid,type=bind,bind-propagation=rshared"
   ],
   "runArgs": [
     "--name=dumb_dev",

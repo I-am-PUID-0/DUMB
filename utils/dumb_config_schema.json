@@ -1582,6 +1582,12 @@
         "backend_port": {
           "type": "integer"
         },
+        "postgres_enabled": {
+          "type": "boolean"
+        },
+        "postgres_database": {
+          "type": "string"
+        },
         "auto_update": {
           "type": "boolean"
         },
@@ -1679,6 +1685,8 @@
         "log_level",
         "frontend_port",
         "backend_port",
+        "postgres_enabled",
+        "postgres_database",
         "auto_update",
         "auto_update_interval",
         "auto_update_start_time",
