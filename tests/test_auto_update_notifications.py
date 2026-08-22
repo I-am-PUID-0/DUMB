@@ -1811,8 +1811,12 @@ class UpdateNotificationTests(unittest.TestCase):
         with (
             patch("utils.auto_update.CONFIG_MANAGER", config_manager),
             patch(
-                "utils.auto_update.setup_project", return_value=(True, None)
-            ) as setup,
+                "utils.auto_update.setup_branch_version", return_value=(True, None)
+            ) as setup_branch,
+            patch(
+                "utils.auto_update.configure_project", return_value=(True, None)
+            ) as configure,
+            patch("utils.auto_update.setup_project") as setup_default,
         ):
             payload = updater.manual_update_install(
                 "InfiniDysk",
@@ -1822,7 +1826,14 @@ class UpdateNotificationTests(unittest.TestCase):
 
         self.assertEqual("updated", payload["status"])
         self.assertEqual(commit_sha, config["commit_sha"])
-        setup.assert_called_once_with(updater.process_handler, "InfiniDysk")
+        setup_branch.assert_called_once_with(
+            updater.process_handler,
+            config,
+            "InfiniDysk",
+            "infinidysk",
+        )
+        configure.assert_called_once_with(updater.process_handler, "InfiniDysk")
+        setup_default.assert_not_called()
         updater.update_check.assert_not_called()
         updater.start_process.assert_called_once_with(
             "InfiniDysk",
@@ -1844,8 +1855,9 @@ class UpdateNotificationTests(unittest.TestCase):
             "repo_owner": "infinidysk",
             "repo_name": "infinidysk",
             "commit_sha": "",
+            "auto_update": True,
             "release_version_enabled": True,
-            "release_version": "v0.7.9",
+            "release_version": "v1.2.0",
             "branch_enabled": False,
             "branch": "main",
         }
@@ -1856,8 +1868,12 @@ class UpdateNotificationTests(unittest.TestCase):
         with (
             patch("utils.auto_update.CONFIG_MANAGER", config_manager),
             patch(
-                "utils.auto_update.setup_project", return_value=(True, None)
-            ) as setup,
+                "utils.auto_update.setup_release_version", return_value=(True, None)
+            ) as setup_release,
+            patch(
+                "utils.auto_update.configure_project", return_value=(True, None)
+            ) as configure,
+            patch("utils.auto_update.setup_project") as setup_default,
         ):
             payload = updater.manual_update_install(
                 "InfiniDysk",
@@ -1867,8 +1883,15 @@ class UpdateNotificationTests(unittest.TestCase):
 
         self.assertEqual("updated", payload["status"])
         self.assertTrue(config["release_version_enabled"])
-        self.assertEqual("v0.7.9", config["release_version"])
-        setup.assert_called_once_with(updater.process_handler, "InfiniDysk")
+        self.assertEqual("v1.2.0", config["release_version"])
+        setup_release.assert_called_once_with(
+            updater.process_handler,
+            config,
+            "InfiniDysk",
+            "infinidysk",
+        )
+        configure.assert_called_once_with(updater.process_handler, "InfiniDysk")
+        setup_default.assert_not_called()
         updater.update_check.assert_not_called()
 
     @patch("utils.auto_update.Versions")

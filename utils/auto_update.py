@@ -1709,18 +1709,27 @@ class Update:
             # is deliberately skipped by normal setup, but this operator action
             # is an explicit request to install that exact release. Candidate-
             # first frontend/TPA installs can safely invoke the selected source
-            # installer directly; other services retain their existing setup
-            # orchestration and runtime snapshot behavior.
+            # installer directly. InfiniDysk also needs the selected source
+            # installer here: normal setup deliberately skips a fixed release
+            # while auto_update is enabled, which would otherwise turn this
+            # explicit operator action into a configure-only restart of the
+            # already-installed runtime.
             candidate_first = key in {"dumb_frontend", "traefik_proxy_admin"}
-            if candidate_first and block_reason == "release":
-                return setup_release_version(
+            explicit_source = candidate_first or key == "infinidysk"
+            if explicit_source and block_reason == "release":
+                success, error = setup_release_version(
                     self.process_handler, config, process_name, key
                 )
-            if candidate_first and block_reason in {"branch", "commit"}:
-                return setup_branch_version(
+            elif explicit_source and block_reason in {"branch", "commit"}:
+                success, error = setup_branch_version(
                     self.process_handler, config, process_name, key
                 )
-            return setup_project(self.process_handler, process_name)
+            else:
+                return setup_project(self.process_handler, process_name)
+
+            if not success or candidate_first:
+                return success, error
+            return configure_project(self.process_handler, process_name)
 
         if key in {"dumb_frontend", "traefik_proxy_admin"}:
             source_identity = self._configured_target_label(config, block_reason)
