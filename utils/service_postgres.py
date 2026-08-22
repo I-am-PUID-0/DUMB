@@ -18,6 +18,10 @@ import yaml
 
 from utils.download import Downloader
 from utils.global_logger import logger
+from utils.infinidysk_postgres_contracts import (
+    INFINIDYSK_DATABASE_CONTRACTS as _INFINIDYSK_DATABASE_CONTRACTS,
+    INFINIDYSK_TRANSIENT_SCHEMA_OBJECTS,
+)
 from utils.private_files import atomic_write_private_text
 
 SERVICE_POSTGRES_KEYS = ("altmount", "bazarr", "infinidysk", "pulsarr", "seerr")
@@ -26,15 +30,8 @@ _INFINIDYSK_MIGRATION_ROOT = Path("/config/arr-postgres-migration")
 _INFINIDYSK_AUTHORIZATION_FILENAME = "infinidysk.json"
 _INFINIDYSK_AUTHORIZATION_FORMAT = "dumb.infinidysk-postgres-cutover"
 _INFINIDYSK_AUTHORIZATION_VERSION = 1
-_INFINIDYSK_POSTGRES_ADAPTER_SCHEMA = "infinidysk-postgres-v1.2.0"
 _INFINIDYSK_POSTGRES_MIN_VERSION = (1, 2, 0)
 _INFINIDYSK_POSTGRES_BASELINE_COMMIT = "8c960ffc39fc85fdf9166aafd6cb2846878ec3c2"
-_INFINIDYSK_POSTGRES_SCHEMA_FINGERPRINT = (
-    "8d436ac58ce66de4f2bc44b97e5741735c516eee5fe296bea3f5dab7eca1424a"
-)
-_INFINIDYSK_SQLITE_MIGRATION_HISTORY_FINGERPRINT = (
-    "321ace5aa1e2a72c23d92f95cf5f9173e4aa6bdba68ff8cfcc7c0cba48020834"
-)
 _INFINIDYSK_TABLE_COUNT = 23
 _INFINIDYSK_FOREIGN_KEY_COUNT = 4
 _INFINIDYSK_IDENTITY_COUNT = 2
@@ -617,6 +614,12 @@ def _sqlite_source_fingerprints(path: Path) -> tuple[str, str] | None:
                 "AND name NOT GLOB 'sqlite_stat*' "
                 "ORDER BY type, name, tbl_name"
             ).fetchall()
+            schema_rows = [
+                row
+                for row in schema_rows
+                if str(row[1]) not in INFINIDYSK_TRANSIENT_SCHEMA_OBJECTS
+                and str(row[2]) not in INFINIDYSK_TRANSIENT_SCHEMA_OBJECTS
+            ]
             history_rows = connection.execute(
                 'SELECT "MigrationId" FROM "__EFMigrationsHistory" '
                 'ORDER BY "MigrationId"'
@@ -643,6 +646,27 @@ def _sqlite_source_fingerprints(path: Path) -> tuple[str, str] | None:
     )
 
 
+def _infinidysk_database_contract(
+    *,
+    adapter_schema: str | None,
+    sqlite_schema_fingerprint: str | None,
+    sqlite_migration_history_fingerprint: str | None,
+    postgres_schema_fingerprint: str | None,
+) -> dict | None:
+    return next(
+        (
+            contract
+            for contract in _INFINIDYSK_DATABASE_CONTRACTS
+            if adapter_schema == contract["adapter_schema"]
+            and sqlite_schema_fingerprint == contract["sqlite_schema_fingerprint"]
+            and sqlite_migration_history_fingerprint
+            == contract["sqlite_migration_history_fingerprint"]
+            and postgres_schema_fingerprint == contract["postgres_schema_fingerprint"]
+        ),
+        None,
+    )
+
+
 def _authorization_from_completed_job(payload: dict) -> dict | None:
     job_id = str(payload.get("job_id") or "").strip().lower()
     binding = payload.get("binding") or {}
@@ -653,6 +677,14 @@ def _authorization_from_completed_job(payload: dict) -> dict | None:
     database = str(binding.get("postgres_database") or "").strip()
     minimum_runtime_commit = (
         str(binding.get("service_source_commit") or "").strip().lower()
+    )
+    database_contract = _infinidysk_database_contract(
+        adapter_schema=result.get("adapter_schema"),
+        sqlite_schema_fingerprint=binding.get("source_schema_fingerprint"),
+        sqlite_migration_history_fingerprint=binding.get(
+            "source_migration_history_fingerprint"
+        ),
+        postgres_schema_fingerprint=result.get("postgres_schema_fingerprint"),
     )
     if not _INFINIDYSK_COMMIT_RE.fullmatch(minimum_runtime_commit):
         service_version = str(binding.get("service_version") or "").strip().lower()
@@ -679,11 +711,13 @@ def _authorization_from_completed_job(payload: dict) -> dict | None:
         and result.get("cutover_performed") is True
         and result.get("application_health_verified") is True
         and result.get("binding") == binding
-        and result.get("adapter_schema") == _INFINIDYSK_POSTGRES_ADAPTER_SCHEMA
-        and result.get("postgres_schema_fingerprint")
-        == _INFINIDYSK_POSTGRES_SCHEMA_FINGERPRINT
+        and database_contract is not None
+        and (
+            not binding.get("database_contract")
+            or binding.get("database_contract") == database_contract["id"]
+        )
         and main_import.get("postgres_schema_fingerprint")
-        == _INFINIDYSK_POSTGRES_SCHEMA_FINGERPRINT
+        == database_contract["postgres_schema_fingerprint"]
         and main_import.get("validated") is True
         and main_import.get("tables") == _INFINIDYSK_TABLE_COUNT
         and main_import.get("primary_key_digests_validated") == _INFINIDYSK_TABLE_COUNT
@@ -694,8 +728,6 @@ def _authorization_from_completed_job(payload: dict) -> dict | None:
         and binding.get("source_schema_fingerprint")
         and binding.get("source_path_fingerprint")
         and binding.get("launch_config_fingerprint")
-        and binding.get("source_migration_history_fingerprint")
-        == _INFINIDYSK_SQLITE_MIGRATION_HISTORY_FINGERPRINT
         and binding.get("postgres_target_fingerprint")
         and _INFINIDYSK_COMMIT_RE.fullmatch(minimum_runtime_commit)
         and database
@@ -711,7 +743,8 @@ def _authorization_from_completed_job(payload: dict) -> dict | None:
         "rehearsal_job_id": rehearsal_job_id,
         "process_name": str(payload.get("process_name") or ""),
         "service_key": "infinidysk",
-        "adapter_schema": _INFINIDYSK_POSTGRES_ADAPTER_SCHEMA,
+        "adapter_schema": database_contract["adapter_schema"],
+        "database_contract": database_contract["id"],
         "minimum_runtime_commit": minimum_runtime_commit,
         "minimum_runtime_repository": "infinidysk/infinidysk",
         "minimum_runtime_version": str(binding.get("service_version") or ""),
@@ -723,7 +756,7 @@ def _authorization_from_completed_job(payload: dict) -> dict | None:
         ],
         "postgres_database": database,
         "postgres_target_fingerprint": binding["postgres_target_fingerprint"],
-        "postgres_schema_fingerprint": _INFINIDYSK_POSTGRES_SCHEMA_FINGERPRINT,
+        "postgres_schema_fingerprint": database_contract["postgres_schema_fingerprint"],
         "postgres_physical_identity": {
             "system_identifier": str(physical_identity["system_identifier"]),
             "database_oid": str(physical_identity["database_oid"]),
@@ -764,6 +797,18 @@ def infinidysk_postgres_runtime_floor(
     ):
         return None
     authorization = _read_bounded_private_json(path, _MAX_AUTHORIZATION_BYTES)
+    authorization_contract = _infinidysk_database_contract(
+        adapter_schema=(authorization or {}).get("adapter_schema"),
+        sqlite_schema_fingerprint=(authorization or {}).get(
+            "source_schema_fingerprint"
+        ),
+        sqlite_migration_history_fingerprint=(authorization or {}).get(
+            "source_migration_history_fingerprint"
+        ),
+        postgres_schema_fingerprint=(authorization or {}).get(
+            "postgres_schema_fingerprint"
+        ),
+    )
     env = service.get("env") if isinstance(service.get("env"), dict) else {}
     config_path = Path(
         os.path.realpath(
@@ -775,7 +820,11 @@ def infinidysk_postgres_runtime_floor(
         and authorization.get("version") == _INFINIDYSK_AUTHORIZATION_VERSION
         and authorization.get("service_key") == "infinidysk"
         and authorization.get("process_name") == str(service.get("process_name") or "")
-        and authorization.get("adapter_schema") == _INFINIDYSK_POSTGRES_ADAPTER_SCHEMA
+        and authorization_contract is not None
+        and (
+            not authorization.get("database_contract")
+            or authorization.get("database_contract") == authorization_contract["id"]
+        )
         and _MIGRATION_JOB_ID_RE.fullmatch(str(authorization.get("job_id") or ""))
         and authorization.get("launch_config_fingerprint")
         == infinidysk_launch_config_fingerprint(service)
@@ -847,6 +896,14 @@ def _authorization_matches_runtime(
         if require_live_target
         else authorization.get("postgres_physical_identity")
     )
+    authorization_contract = _infinidysk_database_contract(
+        adapter_schema=authorization.get("adapter_schema"),
+        sqlite_schema_fingerprint=authorization.get("source_schema_fingerprint"),
+        sqlite_migration_history_fingerprint=authorization.get(
+            "source_migration_history_fingerprint"
+        ),
+        postgres_schema_fingerprint=authorization.get("postgres_schema_fingerprint"),
+    )
     return bool(
         authorization.get("format") == _INFINIDYSK_AUTHORIZATION_FORMAT
         and authorization.get("version") == _INFINIDYSK_AUTHORIZATION_VERSION
@@ -856,7 +913,11 @@ def _authorization_matches_runtime(
         )
         and authorization.get("service_key") == "infinidysk"
         and authorization.get("process_name") == str(service.get("process_name") or "")
-        and authorization.get("adapter_schema") == _INFINIDYSK_POSTGRES_ADAPTER_SCHEMA
+        and authorization_contract is not None
+        and (
+            not authorization.get("database_contract")
+            or authorization.get("database_contract") == authorization_contract["id"]
+        )
         and authorization.get("source_schema_fingerprint") == source_fingerprints[0]
         and authorization.get("source_path_fingerprint")
         == infinidysk_sqlite_source_path_fingerprint(
@@ -875,12 +936,12 @@ def _authorization_matches_runtime(
         == infinidysk_launch_config_fingerprint(service)
         and authorization.get("source_migration_history_fingerprint")
         == source_fingerprints[1]
-        == _INFINIDYSK_SQLITE_MIGRATION_HISTORY_FINGERPRINT
+        == authorization_contract["sqlite_migration_history_fingerprint"]
         and authorization.get("postgres_database") == database
         and authorization.get("postgres_target_fingerprint")
         == _postgres_target_fingerprint(postgres_config, database)
         and authorization.get("postgres_schema_fingerprint")
-        == _INFINIDYSK_POSTGRES_SCHEMA_FINGERPRINT
+        == authorization_contract["postgres_schema_fingerprint"]
         and live_physical_identity is not None
         and authorization.get("postgres_physical_identity") == live_physical_identity
         and authorization.get("application_health_verified") is True

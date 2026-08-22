@@ -49,13 +49,25 @@ class InfiniDyskPostgresGuardTests(unittest.TestCase):
             },
         }
 
-    def _completed_payload(self, config_path="/infinidysk"):
-        source_schema = "source-schema-fingerprint"
+    def _completed_payload(self, config_path="/infinidysk", contract_id="v1.2.0"):
+        contract = next(
+            item
+            for item in service_postgres._INFINIDYSK_DATABASE_CONTRACTS
+            if item["id"] == contract_id
+        )
+        source_schema = contract["sqlite_schema_fingerprint"]
+        source_commit = (
+            service_postgres._INFINIDYSK_POSTGRES_BASELINE_COMMIT
+            if contract_id == "v1.2.0"
+            else "b863c0b3e42cb51b20c114a08f14e18270446800"
+        )
         binding = {
             "process_name": "InfiniDysk",
             "service_key": "infinidysk",
             "instance_name": None,
-            "service_version": "v1.2.0-8c960ffc",
+            "service_version": f"{contract_id}-{source_commit[:8]}",
+            "service_source_commit": source_commit,
+            "database_contract": contract_id,
             "source_schema_fingerprint": source_schema,
             "source_path_fingerprint": (
                 service_postgres.infinidysk_sqlite_source_path_fingerprint(
@@ -68,7 +80,7 @@ class InfiniDyskPostgresGuardTests(unittest.TestCase):
                 )
             ),
             "source_migration_history_fingerprint": (
-                service_postgres._INFINIDYSK_SQLITE_MIGRATION_HISTORY_FINGERPRINT
+                contract["sqlite_migration_history_fingerprint"]
             ),
             "postgres_database": "infinidysk",
             "postgres_target_fingerprint": (
@@ -84,9 +96,7 @@ class InfiniDyskPostgresGuardTests(unittest.TestCase):
             "full_row_digests_validated": 23,
             "foreign_keys_validated": 4,
             "sequences_validated": 2,
-            "postgres_schema_fingerprint": (
-                service_postgres._INFINIDYSK_POSTGRES_SCHEMA_FINGERPRINT
-            ),
+            "postgres_schema_fingerprint": (contract["postgres_schema_fingerprint"]),
         }
         return {
             "job_id": "a" * 32,
@@ -100,11 +110,9 @@ class InfiniDyskPostgresGuardTests(unittest.TestCase):
                 "mode": "cutover",
                 "validated": True,
                 "binding": binding,
-                "adapter_schema": (
-                    service_postgres._INFINIDYSK_POSTGRES_ADAPTER_SCHEMA
-                ),
+                "adapter_schema": (contract["adapter_schema"]),
                 "postgres_schema_fingerprint": (
-                    service_postgres._INFINIDYSK_POSTGRES_SCHEMA_FINGERPRINT
+                    contract["postgres_schema_fingerprint"]
                 ),
                 "rehearsal_job_id": "b" * 32,
                 "application_health_verified": True,
@@ -129,7 +137,7 @@ class InfiniDyskPostgresGuardTests(unittest.TestCase):
         self.assertFalse(safe)
         self.assertIn("guarded SQLite-to-PostgreSQL migration", error)
 
-    def test_source_fingerprint_ignores_only_sqlite_statistics(self):
+    def test_source_fingerprint_ignores_statistics_and_transient_work_table(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             database = Path(temp_dir) / "db.sqlite"
             connection = sqlite3.connect(database)
@@ -168,6 +176,19 @@ class InfiniDyskPostgresGuardTests(unittest.TestCase):
                 )
 
                 connection.execute("ANALYZE")
+                connection.commit()
+                self.assertEqual(
+                    service_postgres._sqlite_source_fingerprints(database),
+                    before_analyze,
+                )
+
+                connection.execute(
+                    "CREATE TABLE TMP_LINKED_FILES (FileName TEXT PRIMARY KEY)"
+                )
+                connection.execute(
+                    "CREATE INDEX TMP_LINKED_FILES_UNIQUE "
+                    "ON TMP_LINKED_FILES (FileName)"
+                )
                 connection.commit()
                 self.assertEqual(
                     service_postgres._sqlite_source_fingerprints(database),
@@ -452,6 +473,24 @@ class InfiniDyskPostgresGuardTests(unittest.TestCase):
                         migration_root=root,
                     )
                 )
+
+    def test_completed_v123_job_records_its_exact_database_contract(self):
+        payload = self._completed_payload(contract_id="v1.2.3")
+
+        authorization = service_postgres._authorization_from_completed_job(payload)
+
+        self.assertIsNotNone(authorization)
+        self.assertEqual(authorization["database_contract"], "v1.2.3")
+        self.assertEqual(authorization["adapter_schema"], "infinidysk-postgres-v1.2.3")
+
+    def test_legacy_v120_completion_without_contract_id_remains_valid(self):
+        payload = self._completed_payload(contract_id="v1.2.0")
+        payload["binding"].pop("database_contract")
+
+        authorization = service_postgres._authorization_from_completed_job(payload)
+
+        self.assertIsNotNone(authorization)
+        self.assertEqual(authorization["database_contract"], "v1.2.0")
 
     def test_direct_postgres_to_sqlite_reversal_requires_explicit_rollback(self):
         with tempfile.TemporaryDirectory() as temp_dir:

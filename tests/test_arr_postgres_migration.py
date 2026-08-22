@@ -15,6 +15,7 @@ from utils.arr_postgres_migration import (
     ACTIVE_NAMESPACE_MIGRATION_BLOCKER,
     ArrPostgresMigrationError,
     ArrPostgresMigrationManager,
+    INFINIDYSK_DATABASE_CONTRACTS,
     INFINIDYSK_POSTGRES_ADAPTER_SCHEMA,
     INFINIDYSK_POSTGRES_FOREIGN_KEY_LAYOUTS,
     INFINIDYSK_POSTGRES_SCHEMA_FINGERPRINT,
@@ -40,6 +41,7 @@ from utils.arr_postgres_migration import (
     _stop_infinidysk_if_running,
     _stop_tracked_infinidysk_process,
     _validate_full_row_digests,
+    _validate_infinidysk_postgres_schema_connection,
     _wait_for_schema_helper,
     _wait_for_schema,
     build_arr_postgres_preflight,
@@ -362,6 +364,29 @@ class ArrPostgresMigrationTests(unittest.TestCase):
                 INFINIDYSK_POSTGRES_FOREIGN_KEY_LAYOUTS.values()
             )
         }
+        for contract in INFINIDYSK_DATABASE_CONTRACTS:
+            with self.subTest(contract=contract["id"]):
+                contract_history = tuple(
+                    [
+                        f"migration-{index}"
+                        for index in range(contract["sqlite_migration_count"] - 1)
+                    ]
+                    + [contract["sqlite_terminal_migration"]]
+                )
+                contract_details = {
+                    "tables": tuple(sorted(expected_tables)),
+                    "foreign_keys": tuple(sorted(expected_foreign_keys)),
+                    "migration_history": contract_history,
+                    "migration_history_fingerprint": contract[
+                        "sqlite_migration_history_fingerprint"
+                    ],
+                }
+                self.assertTrue(
+                    _infinidysk_sqlite_contract_matches(
+                        contract_details, contract["sqlite_schema_fingerprint"]
+                    )
+                )
+
         migration_history = tuple(
             [
                 f"migration-{index}"
@@ -377,12 +402,6 @@ class ArrPostgresMigrationTests(unittest.TestCase):
                 INFINIDYSK_SQLITE_MIGRATION_HISTORY_SHA256
             ),
         }
-
-        self.assertTrue(
-            _infinidysk_sqlite_contract_matches(
-                details, INFINIDYSK_SQLITE_SCHEMA_FINGERPRINT
-            )
-        )
 
         drift_cases = {
             "extra table": {**details, "tables": (*details["tables"], "FutureTable")},
@@ -451,10 +470,30 @@ class ArrPostgresMigrationTests(unittest.TestCase):
                     "SQLite-owned statistics must not look like application schema drift.",
                 )
 
+                connection.execute(
+                    "CREATE TABLE TMP_LINKED_FILES (FileName TEXT PRIMARY KEY)"
+                )
+                connection.execute(
+                    "CREATE INDEX TMP_LINKED_FILES_UNIQUE "
+                    "ON TMP_LINKED_FILES (FileName)"
+                )
+                connection.commit()
+                self.assertEqual(
+                    _sqlite_schema_fingerprint(
+                        database,
+                        {"TMP_LINKED_FILES", "TMP_LINKED_FILES_UNIQUE"},
+                    ),
+                    before_analyze,
+                    "InfiniDysk's reconstructable linked-file work table is not migrated.",
+                )
+
                 connection.execute("CREATE TABLE FutureItems (Id INTEGER PRIMARY KEY)")
                 connection.commit()
                 self.assertNotEqual(
-                    _sqlite_schema_fingerprint(database),
+                    _sqlite_schema_fingerprint(
+                        database,
+                        {"TMP_LINKED_FILES", "TMP_LINKED_FILES_UNIQUE"},
+                    ),
                     before_analyze,
                     "Application-owned schema changes must still alter the fingerprint.",
                 )
@@ -464,6 +503,32 @@ class ArrPostgresMigrationTests(unittest.TestCase):
     def test_infini_migration_uses_minimum_version_not_an_exact_release_pin(self):
         self.assertEqual(SUPPORTED_SERVICES["infinidysk"]["minimum_version"], (1, 2, 0))
         self.assertNotIn("exact_version", SUPPORTED_SERVICES["infinidysk"])
+
+    def test_infini_staged_postgres_contract_must_match_sqlite_source(self):
+        connection = MagicMock()
+        cursor = connection.cursor.return_value.__enter__.return_value
+        v120_contract = next(
+            contract
+            for contract in INFINIDYSK_DATABASE_CONTRACTS
+            if contract["id"] == "v1.2.0"
+        )
+        cursor.fetchall.side_effect = [
+            [(migration,) for migration in v120_contract["postgres_migrations"]],
+            [],
+            [],
+            [],
+            [],
+            [],
+        ]
+
+        with self.assertRaisesRegex(
+            ArrPostgresMigrationError,
+            "v1.2.3 source, v1.2.0 target",
+        ):
+            _validate_infinidysk_postgres_schema_connection(
+                connection,
+                expected_contract_id="v1.2.3",
+            )
 
     def test_infini_rollback_fails_when_authorization_clear_is_unproven(self):
         with (
@@ -1053,7 +1118,11 @@ class ArrPostgresMigrationTests(unittest.TestCase):
             manager = ArrPostgresMigrationManager(Path(temp_dir) / "migration")
             binding = {
                 "service_key": "infinidysk",
-                "source_schema_fingerprint": "source",
+                "database_contract": "v1.2.3",
+                "source_schema_fingerprint": INFINIDYSK_SQLITE_SCHEMA_FINGERPRINT,
+                "source_migration_history_fingerprint": (
+                    INFINIDYSK_SQLITE_MIGRATION_HISTORY_SHA256
+                ),
                 "launch_config_fingerprint": "launch-a",
             }
             payload = {

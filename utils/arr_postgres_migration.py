@@ -33,6 +33,10 @@ from psycopg2 import sql
 from psycopg2.extras import execute_values
 
 from utils.arr_postgres import apply_arr_postgres_config, arr_postgres_database_names
+from utils.infinidysk_postgres_contracts import (
+    INFINIDYSK_DATABASE_CONTRACTS,
+    INFINIDYSK_TRANSIENT_SCHEMA_OBJECTS,
+)
 from utils.infinidysk_migration_admission import (
     ACTIVE_NAMESPACE_MIGRATION_BLOCKER,
     EXTERNAL_MUTATION_BLOCKER,
@@ -58,28 +62,31 @@ from utils.service_postgres import (
     validate_infinidysk_postgres_source_selection,
 )
 
-INFINIDYSK_SQLITE_TERMINAL_MIGRATION = "20260820160000_Normalize-Guid-Text-Casing"
-INFINIDYSK_SQLITE_MIGRATION_COUNT = 49
-INFINIDYSK_SQLITE_MIGRATION_HISTORY_SHA256 = (
-    "321ace5aa1e2a72c23d92f95cf5f9173e4aa6bdba68ff8cfcc7c0cba48020834"
-)
-# Audited from official v1.2.0 commit 8c960ffc; newer stable runtimes must
-# reproduce this exact source contract rather than matching that release number.
-INFINIDYSK_SQLITE_SCHEMA_FINGERPRINT = (
-    "0fce2aa487e5741ba4cc6f5014b9e6e1d534634ad8698aa6e2a59e69d6d68c4e"
-)
-# This identifier is persisted in cutover authorization records. Keep it stable
-# while the supported database contract is unchanged, even as runtimes advance.
-INFINIDYSK_POSTGRES_ADAPTER_SCHEMA = "infinidysk-postgres-v1.2.0"
-INFINIDYSK_POSTGRES_SCHEMA_FINGERPRINT = (
-    "8d436ac58ce66de4f2bc44b97e5741735c516eee5fe296bea3f5dab7eca1424a"
-)
-INFINIDYSK_POSTGRES_MIGRATIONS = (
-    "20260818010011_InitializePostgresDatabase",
-    "20260818200000_Add-ArticleMiss-Cache",
-    "20260818210000_Copy-Legacy-Pipelining-Keys",
-    "20260818220000_Add-Par2-Repair-Jobs",
-)
+# Export the newest audited contract through the original names for callers and
+# tests that only need the current boundary. Validation below remains explicitly
+# multi-contract so an already-authorized v1.2.0 cutover stays valid.
+_INFINIDYSK_CURRENT_DATABASE_CONTRACT = INFINIDYSK_DATABASE_CONTRACTS[-1]
+INFINIDYSK_SQLITE_TERMINAL_MIGRATION = _INFINIDYSK_CURRENT_DATABASE_CONTRACT[
+    "sqlite_terminal_migration"
+]
+INFINIDYSK_SQLITE_MIGRATION_COUNT = _INFINIDYSK_CURRENT_DATABASE_CONTRACT[
+    "sqlite_migration_count"
+]
+INFINIDYSK_SQLITE_MIGRATION_HISTORY_SHA256 = _INFINIDYSK_CURRENT_DATABASE_CONTRACT[
+    "sqlite_migration_history_fingerprint"
+]
+INFINIDYSK_SQLITE_SCHEMA_FINGERPRINT = _INFINIDYSK_CURRENT_DATABASE_CONTRACT[
+    "sqlite_schema_fingerprint"
+]
+INFINIDYSK_POSTGRES_ADAPTER_SCHEMA = _INFINIDYSK_CURRENT_DATABASE_CONTRACT[
+    "adapter_schema"
+]
+INFINIDYSK_POSTGRES_SCHEMA_FINGERPRINT = _INFINIDYSK_CURRENT_DATABASE_CONTRACT[
+    "postgres_schema_fingerprint"
+]
+INFINIDYSK_POSTGRES_MIGRATIONS = _INFINIDYSK_CURRENT_DATABASE_CONTRACT[
+    "postgres_migrations"
+]
 INFINIDYSK_POSTGRES_TABLES = (
     "Accounts",
     "ArticleMissCacheEntries",
@@ -188,6 +195,7 @@ INFINIDYSK_AUXILIARY_SQLITE_STORES = (
     "warden.db",
     "usenet-migration.db",
 )
+INFINIDYSK_TRANSIENT_TABLES = tuple(sorted(INFINIDYSK_TRANSIENT_SCHEMA_OBJECTS))
 INFINIDYSK_IMPORT_BATCH_BYTES = 4 * 1024 * 1024
 INFINIDYSK_FULL_ROW_DIGEST_ITERSIZE = 16
 INFINIDYSK_PRIMARY_KEY_DIGEST_ITERSIZE = 1000
@@ -253,7 +261,11 @@ SUPPORTED_SERVICES = {
             "HistoryItems",
             "Accounts",
         ),
-        "excluded_tables": ("__EFMigrationsHistory", "__EFMigrationsLock"),
+        "excluded_tables": (
+            "__EFMigrationsHistory",
+            "__EFMigrationsLock",
+            *INFINIDYSK_TRANSIENT_TABLES,
+        ),
         "rehearsal_required": True,
     },
 }
@@ -317,6 +329,7 @@ def _preflight_binding(preflight: dict[str, Any]) -> dict[str, Any]:
         "source_migration_history_fingerprint": preflight.get(
             "source_migration_history_fingerprint"
         ),
+        "database_contract": preflight.get("database_contract"),
         "postgres_database": (preflight.get("postgres") or {}).get("main_database"),
         "postgres_target_fingerprint": (preflight.get("postgres") or {}).get(
             "target_fingerprint"
@@ -610,7 +623,10 @@ def _direct_file_identity(path: Path) -> tuple[int, int]:
     return entry_stat.st_dev, entry_stat.st_ino
 
 
-def _sqlite_schema_fingerprint(path: Path) -> str:
+def _sqlite_schema_fingerprint(
+    path: Path,
+    excluded_tables: set[str] | frozenset[str] | None = None,
+) -> str:
     """Hash the main SQLite schema without reading application secrets."""
 
     connection = sqlite3.connect(f"file:{path}?mode=ro", uri=True, timeout=30)
@@ -625,6 +641,13 @@ def _sqlite_schema_fingerprint(path: Path) -> str:
         ).fetchall()
     finally:
         connection.close()
+    excluded_tables = excluded_tables or set()
+    if excluded_tables:
+        rows = [
+            row
+            for row in rows
+            if str(row[1]) not in excluded_tables and str(row[2]) not in excluded_tables
+        ]
     payload = json.dumps(rows, separators=(",", ":"), ensure_ascii=False)
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
@@ -658,6 +681,9 @@ def _infinidysk_sqlite_schema_details(path: Path) -> dict[str, Any] | None:
             "SELECT name FROM sqlite_master WHERE type = 'table' "
             "AND name NOT LIKE 'sqlite_%' ORDER BY name"
         ).fetchall()
+        table_rows = [
+            row for row in table_rows if str(row[0]) not in INFINIDYSK_TRANSIENT_TABLES
+        ]
         history_rows = connection.execute(
             'SELECT "MigrationId" FROM "__EFMigrationsHistory" '
             'ORDER BY "MigrationId"'
@@ -710,28 +736,76 @@ def _infinidysk_expected_sqlite_foreign_keys() -> set[tuple[str, ...]]:
     }
 
 
-def _infinidysk_sqlite_contract_matches(
+def _infinidysk_contract_by_id(contract_id: str | None) -> dict[str, Any] | None:
+    return next(
+        (
+            contract
+            for contract in INFINIDYSK_DATABASE_CONTRACTS
+            if contract["id"] == str(contract_id or "")
+        ),
+        None,
+    )
+
+
+def _infinidysk_sqlite_contract(
     details: dict[str, Any] | None,
     schema_fingerprint: str | None,
-) -> bool:
-    """Match the audited data contract without pinning the application release."""
+) -> dict[str, Any] | None:
+    """Return the exact audited contract for a source SQLite database."""
 
     if not details:
-        return False
+        return None
     migration_history = details.get("migration_history", ())
     expected_tables = set(INFINIDYSK_POSTGRES_TABLES) | {
         "__EFMigrationsHistory",
         "__EFMigrationsLock",
     }
-    return bool(
-        schema_fingerprint == INFINIDYSK_SQLITE_SCHEMA_FINGERPRINT
-        and set(details.get("tables", ())) == expected_tables
-        and set(details.get("foreign_keys", ()))
-        == _infinidysk_expected_sqlite_foreign_keys()
-        and len(migration_history) == INFINIDYSK_SQLITE_MIGRATION_COUNT
-        and migration_history[-1] == INFINIDYSK_SQLITE_TERMINAL_MIGRATION
-        and details.get("migration_history_fingerprint")
-        == INFINIDYSK_SQLITE_MIGRATION_HISTORY_SHA256
+    if (
+        set(details.get("tables", ())) != expected_tables
+        or set(details.get("foreign_keys", ()))
+        != _infinidysk_expected_sqlite_foreign_keys()
+    ):
+        return None
+    for contract in INFINIDYSK_DATABASE_CONTRACTS:
+        if (
+            schema_fingerprint == contract["sqlite_schema_fingerprint"]
+            and len(migration_history) == contract["sqlite_migration_count"]
+            and migration_history
+            and migration_history[-1] == contract["sqlite_terminal_migration"]
+            and details.get("migration_history_fingerprint")
+            == contract["sqlite_migration_history_fingerprint"]
+        ):
+            return contract
+    return None
+
+
+def _infinidysk_sqlite_contract_matches(
+    details: dict[str, Any] | None,
+    schema_fingerprint: str | None,
+) -> bool:
+    """Match any audited data contract without pinning the application release."""
+
+    return _infinidysk_sqlite_contract(details, schema_fingerprint) is not None
+
+
+def _infinidysk_contract_for_binding(
+    binding: dict[str, Any] | None,
+) -> dict[str, Any] | None:
+    binding = binding or {}
+    return next(
+        (
+            contract
+            for contract in INFINIDYSK_DATABASE_CONTRACTS
+            if (
+                not binding.get("database_contract")
+                or binding.get("database_contract") == contract["id"]
+            )
+            and binding.get("source_schema_fingerprint")
+            == contract["sqlite_schema_fingerprint"]
+            and binding.get("source_migration_history_fingerprint")
+            == contract["sqlite_migration_history_fingerprint"]
+        ),
+        None,
     )
 
 
@@ -751,7 +825,9 @@ def _validate_infinidysk_snapshot(
     path: Path,
     binding: dict[str, Any],
 ) -> None:
-    if _sqlite_schema_fingerprint(path) != binding.get("source_schema_fingerprint"):
+    if _sqlite_schema_fingerprint(
+        path, set(INFINIDYSK_TRANSIENT_TABLES)
+    ) != binding.get("source_schema_fingerprint"):
         raise ArrPostgresMigrationError(
             "The InfiniDysk SQLite backup schema does not match preflight."
         )
@@ -761,7 +837,7 @@ def _validate_infinidysk_snapshot(
             "The InfiniDysk SQLite backup schema could not be inspected."
         )
     if not _infinidysk_sqlite_contract_matches(
-        details, _sqlite_schema_fingerprint(path)
+        details, _sqlite_schema_fingerprint(path, set(INFINIDYSK_TRANSIENT_TABLES))
     ) or details["migration_history_fingerprint"] != binding.get(
         "source_migration_history_fingerprint"
     ):
@@ -1235,6 +1311,7 @@ def build_arr_postgres_preflight(
     source_schema_fingerprint = None
     source_path_fingerprint = None
     source_migration_history_fingerprint = None
+    source_database_contract = None
     launch_config_fingerprint = None
     service_source_commit = None
     for label in database_names:
@@ -1286,7 +1363,10 @@ def build_arr_postgres_preflight(
             "foreign_key_violations": len(foreign_key_violations),
         }
         if label == "main" and healthy:
-            source_schema_fingerprint = _sqlite_schema_fingerprint(path)
+            source_schema_fingerprint = _sqlite_schema_fingerprint(
+                path,
+                set(INFINIDYSK_TRANSIENT_TABLES) if key == "infinidysk" else None,
+            )
             if key == "infinidysk":
                 source_path_fingerprint = infinidysk_sqlite_source_path_fingerprint(
                     path
@@ -1339,24 +1419,38 @@ def build_arr_postgres_preflight(
         actual_tables = (
             set(schema_details.get("tables", ())) if schema_details else set()
         )
-        terminal_ok = _infinidysk_sqlite_contract_matches(
+        matched_contract = _infinidysk_sqlite_contract(
             schema_details, source_schema_fingerprint
+        )
+        terminal_ok = matched_contract is not None
+        source_database_contract = (
+            matched_contract["id"] if matched_contract is not None else None
+        )
+        supported_contracts = ", ".join(
+            (
+                f"{contract['id']} ({contract['sqlite_migration_count']} migrations, "
+                f"ending at {contract['sqlite_terminal_migration']})"
+            )
+            for contract in INFINIDYSK_DATABASE_CONTRACTS
         )
         add_check(
             "infinidysk_sqlite_schema",
             "pass" if terminal_ok else "fail",
             (
                 "InfiniDysk SQLite matches DUMB's supported database contract: "
-                "23 application tables, both EF metadata tables, 49 migrations, "
-                "and the audited schema fingerprint."
+                "23 application tables, both EF metadata tables, and the audited "
+                f"{source_database_contract} schema fingerprint."
                 if terminal_ok
                 else "InfiniDysk SQLite has missing, extra, or changed schema data. "
-                "It must match DUMB's supported 49-migration contract ending at "
-                f"{INFINIDYSK_SQLITE_TERMINAL_MIGRATION}; update DUMB before "
-                "migrating a newer database contract."
+                f"It must match one of DUMB's supported contracts: {supported_contracts}. "
+                "Update DUMB before migrating a newer database contract."
             ),
             detected=terminal_migration,
-            required=INFINIDYSK_SQLITE_TERMINAL_MIGRATION,
+            required=[
+                contract["sqlite_terminal_migration"]
+                for contract in INFINIDYSK_DATABASE_CONTRACTS
+            ],
+            database_contract=source_database_contract,
             table_count=len(actual_tables),
             migration_count=len(migration_history),
             migration_history_fingerprint=source_migration_history_fingerprint,
@@ -1578,6 +1672,7 @@ def build_arr_postgres_preflight(
         "source_path_fingerprint": source_path_fingerprint,
         "launch_config_fingerprint": launch_config_fingerprint,
         "source_migration_history_fingerprint": (source_migration_history_fingerprint),
+        "database_contract": source_database_contract,
         "sqlite": sqlite_payload,
         "postgres": postgres_payload,
         "checks": checks,
@@ -2306,7 +2401,10 @@ def _validate_primary_key_digests(
     return results
 
 
-def _validate_infinidysk_postgres_schema_connection(connection) -> dict[str, Any]:
+def _validate_infinidysk_postgres_schema_connection(
+    connection,
+    expected_contract_id: str | None = None,
+) -> dict[str, Any]:
     with connection.cursor() as cursor:
         cursor.execute(
             'SELECT "MigrationId" FROM "__EFMigrationsHistory" '
@@ -2346,17 +2444,34 @@ def _validate_infinidysk_postgres_schema_connection(connection) -> dict[str, Any
             for row in cursor.fetchall()
         ]
 
-    if migration_history != INFINIDYSK_POSTGRES_MIGRATIONS:
+    contract = next(
+        (
+            candidate
+            for candidate in INFINIDYSK_DATABASE_CONTRACTS
+            if migration_history == candidate["postgres_migrations"]
+        ),
+        None,
+    )
+    if contract is None:
         raise ArrPostgresMigrationError(
-            "InfiniDysk PostgreSQL migration history does not match v1.2.0."
+            "InfiniDysk PostgreSQL migration history does not match a supported "
+            "database contract."
+        )
+    if expected_contract_id and contract["id"] != expected_contract_id:
+        raise ArrPostgresMigrationError(
+            "InfiniDysk SQLite and staged PostgreSQL database contracts differ "
+            f"({expected_contract_id} source, {contract['id']} target). Install the "
+            "InfiniDysk runtime matching the source database before migrating."
         )
     if tables != tuple(sorted(INFINIDYSK_POSTGRES_TABLES)):
         raise ArrPostgresMigrationError(
-            "InfiniDysk PostgreSQL must contain exactly 23 v1.2 application tables."
+            "InfiniDysk PostgreSQL must contain exactly 23 supported application "
+            "tables."
         )
     if functions != tuple(sorted(INFINIDYSK_POSTGRES_FUNCTIONS)):
         raise ArrPostgresMigrationError(
-            "InfiniDysk PostgreSQL trigger functions do not match v1.2.0."
+            "InfiniDysk PostgreSQL trigger functions do not match the supported "
+            "database contract."
         )
     trigger_names = tuple(name for name, _, _, _ in trigger_rows)
     if (
@@ -2368,7 +2483,7 @@ def _validate_infinidysk_postgres_schema_connection(connection) -> dict[str, Any
         )
     ):
         raise ArrPostgresMigrationError(
-            "InfiniDysk PostgreSQL must contain all eight enabled v1.2 triggers."
+            "InfiniDysk PostgreSQL must contain all eight supported enabled triggers."
         )
 
     foreign_keys = _postgres_foreign_key_specs(connection)
@@ -2387,7 +2502,8 @@ def _validate_infinidysk_postgres_schema_connection(connection) -> dict[str, Any
         for entry in foreign_keys
     ):
         raise ArrPostgresMigrationError(
-            "InfiniDysk PostgreSQL foreign-key catalog does not match v1.2.0."
+            "InfiniDysk PostgreSQL foreign-key catalog does not match the supported "
+            "database contract."
         )
     sequences = _postgres_sequence_specs(connection)
     identities = {
@@ -2399,7 +2515,8 @@ def _validate_infinidysk_postgres_schema_connection(connection) -> dict[str, Any
         if entry["is_identity"]
     ):
         raise ArrPostgresMigrationError(
-            "InfiniDysk PostgreSQL identity columns do not match v1.2.0."
+            "InfiniDysk PostgreSQL identity columns do not match the supported "
+            "database contract."
         )
 
     catalog = {
@@ -2439,20 +2556,27 @@ def _validate_infinidysk_postgres_schema_connection(connection) -> dict[str, Any
     catalog["fingerprint"] = hashlib.sha256(
         json.dumps(catalog, sort_keys=True, separators=(",", ":")).encode("utf-8")
     ).hexdigest()
-    if catalog["fingerprint"] != INFINIDYSK_POSTGRES_SCHEMA_FINGERPRINT:
+    if catalog["fingerprint"] != contract["postgres_schema_fingerprint"]:
         raise ArrPostgresMigrationError(
             "InfiniDysk PostgreSQL catalog fingerprint does not match the audited "
             "database contract. Update DUMB before migrating this runtime."
         )
+    catalog["database_contract"] = contract["id"]
+    catalog["adapter_schema"] = contract["adapter_schema"]
     return catalog
 
 
 def _validate_infinidysk_postgres_schema(
-    postgres_config: dict[str, Any], database: str
+    postgres_config: dict[str, Any],
+    database: str,
+    expected_contract_id: str | None = None,
 ) -> dict[str, Any]:
     connection = _pg_connect(postgres_config, database)
     try:
-        return _validate_infinidysk_postgres_schema_connection(connection)
+        return _validate_infinidysk_postgres_schema_connection(
+            connection,
+            expected_contract_id=expected_contract_id,
+        )
     finally:
         connection.close()
 
@@ -2877,6 +3001,7 @@ def _prepare_service_schema(
     owner_uid: int | None = None,
     owner_gid: int | None = None,
     helper_suffix: str = "",
+    expected_contract_id: str | None = None,
 ) -> dict[str, Any] | None:
     """Run application-specific schema initialization before staging startup."""
     if key == "infinidysk":
@@ -2927,7 +3052,11 @@ def _prepare_service_schema(
                 "InfiniDysk v1.2 --db-migration failed in the isolated staging "
                 "environment. Check the InfiniDysk service logs."
             )
-        return _validate_infinidysk_postgres_schema(postgres_config, database)
+        return _validate_infinidysk_postgres_schema(
+            postgres_config,
+            database,
+            expected_contract_id=expected_contract_id,
+        )
 
     if key == "bazarr":
         install_path = str(instance.get("config_dir") or "/opt/bazarr")
@@ -3533,10 +3662,15 @@ class ArrPostgresMigrationManager:
             main_import = (result.get("imports") or {}).get("main") or {}
             infini_contract_valid = True
             if (payload or {}).get("service_key") == "infinidysk":
+                database_contract = _infinidysk_contract_for_binding(
+                    (payload or {}).get("binding")
+                )
                 infini_contract_valid = (
-                    result.get("adapter_schema") == INFINIDYSK_POSTGRES_ADAPTER_SCHEMA
+                    database_contract is not None
+                    and result.get("adapter_schema")
+                    == database_contract["adapter_schema"]
                     and result.get("postgres_schema_fingerprint")
-                    == INFINIDYSK_POSTGRES_SCHEMA_FINGERPRINT
+                    == database_contract["postgres_schema_fingerprint"]
                     and result.get("postgres_schema_fingerprint")
                     == main_import.get("postgres_schema_fingerprint")
                     and main_import.get("validated") is True
@@ -3931,7 +4065,9 @@ class ArrPostgresMigrationManager:
                         "InfiniDysk's launch configuration changed after preflight. "
                         "Run rehearsal again before migration."
                     )
-                current_fingerprint = _sqlite_schema_fingerprint(paths["main"])
+                current_fingerprint = _sqlite_schema_fingerprint(
+                    paths["main"], set(INFINIDYSK_TRANSIENT_TABLES)
+                )
                 if current_fingerprint != (payload.get("binding") or {}).get(
                     "source_schema_fingerprint"
                 ):
@@ -4101,6 +4237,11 @@ class ArrPostgresMigrationManager:
                     owner_uid=owner_uid,
                     owner_gid=owner_gid,
                     helper_suffix=payload["job_id"][:8],
+                    expected_contract_id=(
+                        (payload.get("binding") or {}).get("database_contract")
+                        if key == "infinidysk"
+                        else None
+                    ),
                 )
                 if schema_catalog is None:
                     try:
@@ -4216,12 +4357,14 @@ class ArrPostgresMigrationManager:
                     key_counts[table] = source_counts[table]
 
             postgres_schema_fingerprint = None
+            postgres_adapter_schema = None
             if key == "infinidysk":
                 main_result = results.get("main") or {}
                 postgres_schema_fingerprint = main_result.get(
                     "postgres_schema_fingerprint"
                 )
                 expected_schema_fingerprint = (schema_catalog or {}).get("fingerprint")
+                postgres_adapter_schema = (schema_catalog or {}).get("adapter_schema")
                 if (
                     main_result.get("validated") is not True
                     or main_result.get("tables") != len(INFINIDYSK_POSTGRES_TABLES)
@@ -4258,9 +4401,7 @@ class ArrPostgresMigrationManager:
                     "validated": True,
                     "binding": copy.deepcopy(payload.get("binding") or {}),
                     "adapter_schema": (
-                        INFINIDYSK_POSTGRES_ADAPTER_SCHEMA
-                        if key == "infinidysk"
-                        else None
+                        postgres_adapter_schema if key == "infinidysk" else None
                     ),
                     "postgres_schema_fingerprint": postgres_schema_fingerprint,
                     "imports": results,
@@ -4322,9 +4463,7 @@ class ArrPostgresMigrationManager:
                     "validated": True,
                     "binding": copy.deepcopy(payload.get("binding") or {}),
                     "adapter_schema": (
-                        INFINIDYSK_POSTGRES_ADAPTER_SCHEMA
-                        if key == "infinidysk"
-                        else None
+                        postgres_adapter_schema if key == "infinidysk" else None
                     ),
                     "postgres_schema_fingerprint": postgres_schema_fingerprint,
                     "rehearsal_job_id": payload.get("rehearsal_job_id"),
