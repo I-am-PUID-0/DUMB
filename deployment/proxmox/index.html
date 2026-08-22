@@ -5410,6 +5410,20 @@ the maintainer-fork build from the <strong>Proxmox VE host shell</strong>:</p>
 <p><code>COMMUNITY_SCRIPTS_URL</code> makes the shared Community Scripts engine fetch the
 matching <code>install/dumb-install.sh</code> from the same fork and branch. Do not omit it
 while using the validation build.</p>
+<p>The default controller source is the latest stable DUMB release. For an
+advanced test installation, set <strong>DUMB Controller Branch</strong> in the script
+generator's app settings or pass <code>var_dumb_branch</code> from the host shell. For
+example, this installs the current <code>dev</code> branch:</p>
+<div class="highlight"><pre><span></span><code><span class="nv">var_dumb_branch</span><span class="o">=</span>dev<span class="w"> </span><span class="se">\</span>
+<span class="nv">COMMUNITY_SCRIPTS_URL</span><span class="o">=</span><span class="s2">&quot;https://raw.githubusercontent.com/I-am-PUID-0/ProxmoxVED/feat/dumb&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>bash<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span>curl<span class="w"> </span>-fsSL<span class="w"> </span>https://raw.githubusercontent.com/I-am-PUID-0/ProxmoxVED/feat/dumb/ct/dumb.sh<span class="k">)</span><span class="s2">&quot;</span>
+</code></pre></div>
+<p>Any valid branch in <code>I-am-PUID-0/DUMB</code> can be selected. Branch heads are
+mutable development targets and may be less stable than a published release;
+the same candidate validation and controller rollback protections still apply.
+Take an independent backup first: controller rollback restores <code>/opt/dumb</code>, but
+it does not reverse configuration migrations or application-state changes under
+<code>/config</code> or <code>/data</code>.</p>
 <div class="admonition warning">
 <p class="admonition-title">Validation build</p>
 <p>This branch is for controlled testing before the upstream pull request. Use
@@ -5476,6 +5490,14 @@ installs its initial managed services. Follow progress inside the LXC with:</p>
 <td>DUMB-managed PostgreSQL cluster when enabled</td>
 </tr>
 <tr>
+<td><code>/zurg/config.yml</code>, <code>/zurg/plex_update.sh</code></td>
+<td>Base Zurg files copied into newly configured Zurg instances</td>
+</tr>
+<tr>
+<td><code>/etc/dumb/controller-source</code></td>
+<td>Root-managed stable or branch selection used by <code>update</code></td>
+</tr>
+<tr>
 <td><code>/etc/systemd/system/dumb.service</code></td>
 <td>Native DUMB systemd service</td>
 </tr>
@@ -5495,10 +5517,23 @@ those processes inside this dedicated LXC.</p>
 journalctl<span class="w"> </span>-u<span class="w"> </span>dumb<span class="w"> </span>-f
 systemctl<span class="w"> </span>restart<span class="w"> </span>dumb
 </code></pre></div>
-<p>Run the Community Scripts updater inside the LXC to install a newer stable DUMB
-release:</p>
+<p>Run the Community Scripts updater inside the LXC to update the currently
+selected DUMB source. Stable installations follow the latest published release,
+while branch installations follow the current head of their saved branch:</p>
 <div class="highlight"><pre><span></span><code>update
 </code></pre></div>
+<p>To switch an existing LXC to <code>dev</code> or another DUMB branch, pass the branch for
+one update run:</p>
+<div class="highlight"><pre><span></span><code><span class="nv">DUMB_CONTROLLER_BRANCH</span><span class="o">=</span>dev<span class="w"> </span>update
+</code></pre></div>
+<p>The branch choice is saved only after the candidate starts and passes the API
+health check, so later <code>update</code> runs continue following it. Return to the stable
+release channel with:</p>
+<div class="highlight"><pre><span></span><code><span class="nv">DUMB_CONTROLLER_BRANCH</span><span class="o">=</span>latest<span class="w"> </span>update
+</code></pre></div>
+<p>Switching back to stable can be a controller downgrade. Verify that the branch
+did not introduce configuration or data changes that the stable release cannot
+read before making that switch.</p>
 <p>The updater reconciles the required native dependencies, downloads the new
 controller into a candidate directory, builds its locked Python environment,
 and validates it while the current controller is still running. It then backs
