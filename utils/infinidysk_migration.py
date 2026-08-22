@@ -636,9 +636,33 @@ class InfiniDyskMigrationManager:
             raise InfiniDyskMigrationError(
                 "A DUMB-managed InfiniDysk migration artifact could not be inspected safely."
             ) from error
-        if stat.S_ISLNK(entry_stat.st_mode) or os.path.ismount(path):
+        is_symlink = stat.S_ISLNK(entry_stat.st_mode)
+        if os.path.ismount(path):
             raise InfiniDyskMigrationError(
-                "A DUMB-managed InfiniDysk migration artifact is a symlink or nested mount and was not removed."
+                f"A DUMB-managed InfiniDysk migration artifact at '{relative}' is a nested mount and was not removed."
+            )
+        if is_symlink:
+            # The fixed backup root and sidecars must always be real filesystem
+            # objects. Descendant symlinks are expected in captured application
+            # runtimes (notably pnpm node_modules) and are safe to remove as link
+            # entries as long as cleanup never follows them.
+            if expected_directory is not None:
+                raise InfiniDyskMigrationError(
+                    f"A DUMB-managed InfiniDysk migration artifact at '{relative}' is a symlink and was not removed."
+                )
+            return (
+                {
+                    "relative": relative,
+                    "type": "symlink",
+                    "device": int(entry_stat.st_dev),
+                    "inode": int(entry_stat.st_ino),
+                    "mode": int(stat.S_IMODE(entry_stat.st_mode)),
+                    "size": int(entry_stat.st_size),
+                    "mtime_ns": int(entry_stat.st_mtime_ns),
+                },
+                1,
+                0,
+                int(entry_stat.st_size),
             )
         is_directory = stat.S_ISDIR(entry_stat.st_mode)
         is_regular = stat.S_ISREG(entry_stat.st_mode)
@@ -945,6 +969,10 @@ class InfiniDyskMigrationManager:
                         relative_to=migration_root,
                         expected_directory=True,
                     )
+                    if not getattr(shutil.rmtree, "avoids_symlink_attacks", False):
+                        raise InfiniDyskMigrationError(
+                            "This platform cannot safely remove a migration backup tree containing symlinks."
+                        )
                     shutil.rmtree(backup_root)
                 for suffix in ("preflight", "job"):
                     sidecar = self._sidecar_path(suffix).absolute()

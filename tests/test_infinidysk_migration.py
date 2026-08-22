@@ -2615,6 +2615,15 @@ class InfiniDyskMigrationTests(unittest.TestCase):
                 "{}", encoding="utf-8"
             )
             (files / "database.sqlite").write_bytes(b"database")
+            outside_runtime = root / "outside-runtime"
+            outside_runtime.mkdir()
+            outside_marker = outside_runtime / "operator-data.txt"
+            outside_marker.write_text("keep", encoding="utf-8")
+            node_modules = files / "frontend" / "node_modules"
+            node_modules.mkdir(parents=True)
+            (node_modules / "package-link").symlink_to(
+                outside_runtime, target_is_directory=True
+            )
             unrelated_migration = root / "postgres-migration.json"
             unrelated_migration.write_text("keep", encoding="utf-8")
             arr_postgres_migration = root / "arr-postgres-migration"
@@ -2661,6 +2670,7 @@ class InfiniDyskMigrationTests(unittest.TestCase):
             self.assertTrue((arr_postgres_migration / "job.json").is_file())
             self.assertTrue((snapshots / "latest.json").is_file())
             self.assertTrue(outside_file.is_file())
+            self.assertTrue(outside_marker.is_file())
             self.assertEqual(
                 {
                     "state_version": 4,

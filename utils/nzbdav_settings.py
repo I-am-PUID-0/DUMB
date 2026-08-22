@@ -11,6 +11,7 @@ import json, os, time, urllib.request, urllib.error, urllib.parse
 import threading
 
 _NZBDAV_PATCH_CONTEXT = threading.local()
+_NZBDAV_PATCH_LOCK = threading.Lock()
 
 
 @contextmanager
@@ -831,23 +832,47 @@ def patch_nzbdav_config():
         INFINIDYSK_MIGRATION_ADMISSION_LOCK,
         infinidysk_namespace_migration_active,
         infinidysk_postgres_migration_active,
+        release_infinidysk_external_mutation,
+        reserve_infinidysk_external_mutation,
     )
     from utils.service_postgres import infinidysk_postgres_migration_authorized
 
-    migration_owned = bool(
-        getattr(_NZBDAV_PATCH_CONTEXT, "defer_runtime_integrations", False)
-        or infinidysk_postgres_migration_authorized()
-    )
-    with INFINIDYSK_MIGRATION_ADMISSION_LOCK:
-        if not migration_owned and (
-            infinidysk_postgres_migration_active()
-            or infinidysk_namespace_migration_active()
-        ):
-            return False, (
-                "InfiniDysk configuration synchronization was deferred because a "
-                "guarded migration job is active."
-            )
+    if not _NZBDAV_PATCH_LOCK.acquire(blocking=False):
+        logger.debug(
+            "InfiniDysk configuration synchronization is already running; "
+            "skipping duplicate request."
+        )
+        return False, None
+
+    mutation_token = None
+    try:
+        migration_owned = bool(
+            getattr(_NZBDAV_PATCH_CONTEXT, "defer_runtime_integrations", False)
+            or infinidysk_postgres_migration_authorized()
+        )
+        with INFINIDYSK_MIGRATION_ADMISSION_LOCK:
+            if not migration_owned and (
+                infinidysk_postgres_migration_active()
+                or infinidysk_namespace_migration_active()
+            ):
+                return False, (
+                    "InfiniDysk configuration synchronization was deferred because a "
+                    "guarded migration job is active."
+                )
+            if not migration_owned:
+                # Keep migration admission atomic with this configuration mutation,
+                # but release the shared admission lock before waiting for Arr APIs.
+                # A dedicated single-flight lock prevents duplicate startup callers
+                # from serializing the same 60-second dependency waits.
+                mutation_token = reserve_infinidysk_external_mutation(
+                    "InfiniDysk configuration synchronization"
+                )
         return _patch_nzbdav_config_admitted()
+    finally:
+        try:
+            release_infinidysk_external_mutation(mutation_token)
+        finally:
+            _NZBDAV_PATCH_LOCK.release()
 
 
 def _patch_nzbdav_config_admitted():

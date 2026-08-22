@@ -245,6 +245,112 @@ class InfiniDyskSetupTests(unittest.TestCase):
         self.assertIn("guarded migration job is active", error)
         admitted.assert_not_called()
 
+    def test_config_patch_releases_admission_lock_before_live_dependency_waits(self):
+        contender_result = []
+
+        def admitted():
+            from utils.infinidysk_migration_admission import (
+                INFINIDYSK_MIGRATION_ADMISSION_LOCK,
+            )
+
+            def contend_for_lock():
+                acquired = INFINIDYSK_MIGRATION_ADMISSION_LOCK.acquire(timeout=0.5)
+                contender_result.append(acquired)
+                if acquired:
+                    INFINIDYSK_MIGRATION_ADMISSION_LOCK.release()
+
+            contender = threading.Thread(target=contend_for_lock)
+            contender.start()
+            contender.join(timeout=1)
+            return True, None
+
+        with (
+            patch(
+                "utils.infinidysk_migration_admission.infinidysk_postgres_migration_active",
+                return_value=False,
+            ),
+            patch(
+                "utils.infinidysk_migration_admission.infinidysk_namespace_migration_active",
+                return_value=False,
+            ),
+            patch(
+                "utils.infinidysk_migration_admission.reserve_infinidysk_external_mutation",
+                return_value="mutation-token",
+            ) as reserve,
+            patch(
+                "utils.infinidysk_migration_admission.release_infinidysk_external_mutation"
+            ) as release,
+            patch(
+                "utils.service_postgres.infinidysk_postgres_migration_authorized",
+                return_value=False,
+            ),
+            patch.object(
+                nzbdav_settings,
+                "_patch_nzbdav_config_admitted",
+                side_effect=admitted,
+            ),
+        ):
+            updated, error = nzbdav_settings.patch_nzbdav_config()
+
+        self.assertTrue(updated)
+        self.assertIsNone(error)
+        self.assertEqual([True], contender_result)
+        reserve.assert_called_once_with("InfiniDysk configuration synchronization")
+        release.assert_called_once_with("mutation-token")
+
+    def test_config_patch_skips_duplicate_concurrent_synchronization(self):
+        started = threading.Event()
+        finish = threading.Event()
+        first_result = []
+
+        def admitted():
+            started.set()
+            self.assertTrue(finish.wait(timeout=2))
+            return True, None
+
+        with (
+            patch(
+                "utils.infinidysk_migration_admission.infinidysk_postgres_migration_active",
+                return_value=False,
+            ),
+            patch(
+                "utils.infinidysk_migration_admission.infinidysk_namespace_migration_active",
+                return_value=False,
+            ),
+            patch(
+                "utils.infinidysk_migration_admission.reserve_infinidysk_external_mutation",
+                return_value="mutation-token",
+            ),
+            patch(
+                "utils.infinidysk_migration_admission.release_infinidysk_external_mutation"
+            ) as release,
+            patch(
+                "utils.service_postgres.infinidysk_postgres_migration_authorized",
+                return_value=False,
+            ),
+            patch.object(
+                nzbdav_settings,
+                "_patch_nzbdav_config_admitted",
+                side_effect=admitted,
+            ) as synchronize,
+        ):
+            first = threading.Thread(
+                target=lambda: first_result.append(
+                    nzbdav_settings.patch_nzbdav_config()
+                )
+            )
+            first.start()
+            self.assertTrue(started.wait(timeout=1))
+            duplicate_result = nzbdav_settings.patch_nzbdav_config()
+            finish.set()
+            first.join(timeout=2)
+
+        self.assertFalse(first.is_alive())
+        self.assertEqual([(True, None)], first_result)
+        self.assertEqual((False, None), duplicate_result)
+        synchronize.assert_called_once_with()
+        release.assert_called_once_with("mutation-token")
+
     def test_namespace_owned_config_patch_is_admitted_by_narrow_context(self):
         with (
             patch(
