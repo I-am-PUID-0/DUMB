@@ -2229,9 +2229,13 @@ def _normalize_digest_value(value: Any, data_type: str) -> Any:
                     converted = datetime.fromisoformat(
                         f"{timestamp_match.group('prefix')}{suffix}"
                     )
-                    microseconds = int(fraction[:6])
-                    if fraction[6] >= "5":
-                        microseconds += 1
+                    # PostgreSQL parses fractional seconds through binary
+                    # double precision, multiplies by USECS_PER_SEC, and uses
+                    # rint() to select the stored microsecond. Reproduce that
+                    # path instead of decimal half-up/half-even arithmetic:
+                    # exact-looking seven-digit decimal ties can sit just
+                    # above or below .5 after their binary conversion.
+                    microseconds = round(float(f"0.{fraction}") * 1_000_000)
                     converted += timedelta(microseconds=microseconds)
                 else:
                     if candidate.endswith(("Z", "z")):
