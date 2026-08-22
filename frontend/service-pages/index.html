@@ -5712,6 +5712,13 @@ InfiniDysk service page. Restarting DUMB
 itself interrupts rather than resumes the job, and
 the retained result directs the operator to inspect the migration backup before
 retrying.</p>
+<p>When that interruption is known to precede namespace filesystem mutation,
+DUMB may cold-start the legacy topology so the operator can generate a fresh
+preflight. Unknown or post-mutation interruptions stay frozen. A
+<code>failed_rolled_back</code> result means automatic recovery completed and needs legacy
+health validation; <code>rollback_attention_required</code> means the result's named
+rollback surfaces need targeted review. Neither state should be bypassed by a
+manual provider/path toggle or a whole-bundle restore.</p>
 <p>The worker does not treat updated API values alone as success. It verifies
 planned nested namespace roots after their parent namespace moves, rejects remaining
 legacy raw symlink targets, and requires canonical filesystem paths for
@@ -5728,6 +5735,26 @@ Sonarr—so it is not confused with a System task or root-folder edit.
 The completed result keeps these actions visible as a numbered
 <strong>Required post-migration checks</strong> list and links directly to the full
 <a href="../../services/core/infinidysk/#after-the-full-migration-succeeds">InfiniDysk post-migration checklist</a>.</p>
+<p>When the latest recorded migration is successful and the backend advertises
+<code>infinidysk_migration_cleanup</code>, the completed result also offers
+<strong>Review cleanup</strong>. The capability-gated preview returns a
+short-lived token plus file/directory/byte totals, user-facing deletion
+categories, retained categories, and its expiry; it never exposes private
+paths. Cleanup stays unavailable while a job is active or when the latest job
+is failed, interrupted, rolled back, or requires rollback attention.</p>
+<p>Applying the purge requires both explicit acknowledgements—post-migration
+validation passed, and rollback/history loss is understood—plus the exact
+confirmation <code>REMOVE INFINIDYSK MIGRATION DATA</code>. It removes DUMB-owned detailed
+namespace state, preflight/namespace-job history, and migration rollback
+bundles, while retaining current service configuration/runtime/data/databases, mounts,
+symlink libraries, normal symlink snapshots, the minimal controller-owned
+PostgreSQL cutover authorization/database-migration job evidence required by
+restart and rollback contracts, and operator-managed backups. After the
+backend records <code>cleanup_finalized</code>, the
+migration notice and manual migration action remain permanently hidden across
+refreshes and authenticated browsers. This purge is irreversible; keep
+independent backups outside the DUMB migration-backup path.
+See <a href="../../services/core/infinidysk/#finalize-the-migration-and-remove-recovery-data">Finalize the migration and remove recovery data</a>.</p>
 <p>When automatic rollback reports an error, <strong>Open result</strong> shows the sanitized
 cutover cause, each failed rollback component, and the retained rollback/config
 paths. The UI explicitly tells the operator to verify the legacy stack and make
@@ -5792,7 +5819,12 @@ state, and hides the notice. DUMB recognizes both <code>initial_admin_password</
 <code>initial_admin_password.txt</code>.</p>
 <hr />
 <h2 id="database-migration-panel">Database Migration panel<a class="headerlink" href="#database-migration-panel" title="Permanent link">&para;</a></h2>
-<p>On Sonarr, Radarr, Lidarr, Prowlarr, Whisparr, Bazarr, Pulsarr, Seerr, and AltMount service pages, <strong>Database Migration</strong> opens a guided SQLite-to-PostgreSQL workflow when the backend advertises <code>postgres_migration</code> and includes the service in <code>postgres_migration_service_keys</code>. Older backends retain the legacy Sonarr/Radarr capability path.</p>
+<p>On Sonarr, Radarr, Lidarr, Prowlarr, Whisparr, Bazarr, Pulsarr, Seerr, AltMount,
+and InfiniDysk service pages, <strong>Database Migration</strong> opens a guided
+SQLite-to-PostgreSQL workflow when the backend advertises <code>postgres_migration</code>
+and includes the service in <code>postgres_migration_service_keys</code>. Older backends
+retain the legacy Sonarr/Radarr capability path; InfiniDysk has no fallback
+and appears only when the current backend explicitly advertises <code>infinidysk</code>.</p>
 <p>The panel provides:</p>
 <ul>
 <li>non-mutating readiness checks;</li>
@@ -5804,7 +5836,40 @@ state, and hides the notice. DUMB recognizes both <code>initial_admin_password</
 <li>imported library row-count results; and</li>
 <li>explicit SQLite rollback when a cutover backup is available.</li>
 </ul>
-<p>The frontend requires a successful rehearsal before enabling its cutover choice. Closing or navigating away from the panel does not cancel the backend job; reopening the service page resumes the latest job display.</p>
+<p>For InfiniDysk, the panel identifies this as a DUMB-owned workflow because
+upstream supports PostgreSQL selection only for fresh installs. The DUMB
+adapter accepts an official stable v1.2.0-or-newer runtime only when both the
+source SQLite and staged PostgreSQL databases exactly match the supported
+schema contract. Any missing, extra, or changed schema object blocks migration
+until DUMB is updated. It requires rehearsal before cutover, migrates only
+<code>db.sqlite</code>, and leaves
+<code>metrics.sqlite</code>, <code>warden.db</code>, and <code>usenet-migration.db</code> on SQLite. Operators
+must keep an independent configuration-directory backup, configure a logical
+PostgreSQL backup after cutover, validate the UI/provider/queue/history,
+WebDAV or rclone, Arr integration, playback, and seeking, and roll back
+promptly because later PostgreSQL writes are not copied back into SQLite.</p>
+<p>The InfiniDysk panel also fails closed on namespace state. It enables
+PostgreSQL migration only after the backend reports the namespace as exactly
+<code>not_needed</code>, <code>compatibility_completed</code>, or <code>completed</code>. Missing capability or
+status data, a due/pending migration, active work, interruption, or rollback
+attention blocks preflight and start. Complete the namespace workflow first;
+do not toggle the provider to bypass this gate.</p>
+<p>InfiniDysk's <code>finalizing</code> cutover stage remains an active job: the popup and
+service-page background indicator continue polling at 99% while DUMB writes the
+durable PostgreSQL authorization record. An interrupted, failed, or
+<code>rollback_failed</code> InfiniDysk job becomes a persistent red <strong>Open recovery</strong>
+banner on the service page, including after navigation or reload. The service
+tool also reports <strong>Recovery required</strong> and remains openable even if namespace
+status cannot currently be refreshed.</p>
+<p>When <code>rollback_available</code> is true, the banner and panel direct the operator to
+the guarded rollback instead of manual provider/file changes. A
+<code>rollback_failed</code> result with <code>rollback.retry_safe: true</code> says that the guarded
+action may be retried because DUMB stopped before changing saved data. A false
+value is explicit manual-attention recovery: lifecycle/provider changes remain
+frozen while the private backup and precise failed recovery surface are
+reviewed. <code>rollback_failed</code> uses the same red danger styling as other unsafe
+terminal states.</p>
+<p>The frontend requires a successful rehearsal before enabling its cutover choice. Closing or navigating away from the panel does not cancel the backend job; reopening the service page resumes active progress, successful completion, or the persisted InfiniDysk recovery banner.</p>
 <p>See <a href="../../features/arr-postgres-migration/">SQLite to PostgreSQL Migration</a> before using it in production.</p>
 <hr />
 <h2 id="dependency-graph-view">Dependency graph view<a class="headerlink" href="#dependency-graph-view" title="Permanent link">&para;</a></h2>

@@ -5779,11 +5779,11 @@
 <tbody>
 <tr>
 <td><strong>SQLite</strong></td>
-<td>InfiniDysk, CLI Debrid, CLI Battery, Emby, Jellyfin, Maintainerr, Profilarr, Tautulli, and Plex; Sonarr, Radarr, Lidarr, Prowlarr, and Whisparr when PostgreSQL is disabled</td>
+<td>CLI Debrid, CLI Battery, Emby, Jellyfin, Maintainerr, Profilarr, Tautulli, and Plex; Sonarr, Radarr, Lidarr, Prowlarr, and Whisparr when PostgreSQL is disabled</td>
 </tr>
 <tr>
 <td><strong>SQLite or PostgreSQL</strong></td>
-<td>AIOStreams, AltMount, Bazarr, Pulsarr, and Seerr; DUMB detects the provider from their application config/environment</td>
+<td>AIOStreams, AltMount, Bazarr, InfiniDysk, Pulsarr, and Seerr; DUMB detects the provider from their application config/environment</td>
 </tr>
 <tr>
 <td><strong>PostgreSQL</strong></td>
@@ -5795,6 +5795,10 @@
 </tr>
 </tbody>
 </table>
+<p>For InfiniDysk, <strong>SQLite or PostgreSQL</strong> describes only its main operational
+database. <code>metrics.sqlite</code>, <code>warden.db</code>, and <code>usenet-migration.db</code> remain
+auxiliary SQLite stores after a PostgreSQL cutover, so their local filesystem
+health and backup requirements do not disappear when the main provider changes.</p>
 <p>Services without a confirmed database or durable application store are not listed merely because they use files or caches. Multi-instance services receive one Database Health entry per enabled instance.</p>
 <p>AIOStreams uses SQLite by default and switches provider detection when its advanced top-level <code>aiostreams.database_uri</code> setting uses a PostgreSQL URI. Database Health observes the active provider but does not migrate data between SQLite and PostgreSQL; plan and validate that change separately with an independent backup.</p>
 <p>Two modes are available:</p>

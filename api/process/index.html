@@ -5999,10 +5999,28 @@ prerequisite/dependent stages around the selected service.</p>
 </code></pre></div>
 <hr />
 <h2 id="sqlite-to-postgresql-migration">SQLite-to-PostgreSQL Migration<a class="headerlink" href="#sqlite-to-postgresql-migration" title="Permanent link">&para;</a></h2>
-<p>These endpoints power the guarded migration workflow for Sonarr, Radarr, Lidarr, Prowlarr, Whisparr, Bazarr, Pulsarr, Seerr, and AltMount. See <a href="../../features/arr-postgres-migration/">SQLite to PostgreSQL Migration</a> for operator guidance and service-specific limitations.</p>
+<p>These endpoints power the guarded migration workflow for Sonarr, Radarr,
+Lidarr, Prowlarr, Whisparr, Bazarr, Pulsarr, Seerr, AltMount, and InfiniDysk.
+See <a href="../../features/arr-postgres-migration/">SQLite to PostgreSQL Migration</a> for
+operator guidance and service-specific limitations.</p>
 <h3 id="get-processpostgres-migrationpreflight"><code>GET /process/postgres-migration/preflight</code><a class="headerlink" href="#get-processpostgres-migrationpreflight" title="Permanent link">&para;</a></h3>
 <p>Query parameter: <code>process_name</code>.</p>
 <p>Returns non-mutating SQLite integrity, detected application version when available, PostgreSQL connectivity/role, target database, and backup-space checks. <code>ready</code> is false when any blocking check fails. The response never includes the PostgreSQL password. <code>supports_log_migration</code> tells clients whether to offer the separate Arr log-database option.</p>
+<p>For InfiniDysk, this is a DUMB-managed migration adapter; upstream still
+supports PostgreSQL selection only for fresh installs. The adapter accepts an
+official stable v1.2.0-or-newer runtime only when the source SQLite database and
+migration-only staged PostgreSQL database exactly match DUMB's supported
+contract. Missing, extra, or changed schema objects or migration-history entries
+make <code>ready</code> false until DUMB is updated. It migrates only the main <code>db.sqlite</code>;
+<code>metrics.sqlite</code>, <code>warden.db</code>, and
+<code>usenet-migration.db</code> remain SQLite, and <code>supports_log_migration</code> is false.
+Any pending compatibility or full namespace migration must complete before
+PostgreSQL is selected or this workflow starts.</p>
+<p>Successful cutover authorization records the exact runtime commit. Subsequent
+official release, branch, or exact-commit selections are accepted only when the
+resolved commit equals or descends from that recorded cutover commit. Older,
+diverged, and unverifiable targets are rejected before configuration is saved
+or InfiniDysk starts.</p>
 <h3 id="post-processpostgres-migrationstart"><code>POST /process/postgres-migration/start</code><a class="headerlink" href="#post-processpostgres-migrationstart" title="Permanent link">&para;</a></h3>
 <p>Queues a persisted rehearsal or cutover job.</p>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
@@ -6018,7 +6036,7 @@ prerequisite/dependent stages around the selected service.</p>
 <p><code>mode</code> must be <code>rehearsal</code> or <code>cutover</code>. The backend requires every acknowledgement and exact confirmation text. Jobs and detailed stage events persist under <code>/config/arr-postgres-migration/jobs</code>.</p>
 <h3 id="get-processpostgres-migrationstatus"><code>GET /process/postgres-migration/status</code><a class="headerlink" href="#get-processpostgres-migrationstatus" title="Permanent link">&para;</a></h3>
 <p>Query parameter: <code>job_id</code>.</p>
-<p>Returns stage, percentage, recent detailed events, result counts, errors, and rollback state for one job.</p>
+<p>Returns stage, percentage, recent detailed events, result counts, errors, and rollback state for one job. Active statuses are <code>queued</code>, <code>running</code>, <code>finalizing</code>, and <code>rolling_back</code>. InfiniDysk uses <code>finalizing</code> at 99% while DUMB persists the controller-owned cutover authorization; clients must continue polling and must not offer rollback until a terminal status is returned.</p>
 <h3 id="get-processpostgres-migrationlatest"><code>GET /process/postgres-migration/latest</code><a class="headerlink" href="#get-processpostgres-migrationlatest" title="Permanent link">&para;</a></h3>
 <p>Query parameter: <code>process_name</code>.</p>
 <p>Returns the most recently updated migration job for that service so dmbdb can resume visibility after navigation or refresh.</p>
@@ -6028,7 +6046,18 @@ prerequisite/dependent stages around the selected service.</p>
 <span class="w">  </span><span class="nt">&quot;confirmation&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ROLLBACK Sonarr InfiniDysk&quot;</span>
 <span class="p">}</span>
 </code></pre></div>
-<p>Restores the job's preserved application configuration when applicable, persists <code>postgres_enabled: false</code>, and restarts the service against SQLite when it was running. This does not reverse-copy changes made after PostgreSQL cutover.</p>
+<p>Restores the job's preserved application configuration when applicable,
+persists <code>postgres_enabled: false</code>, and restarts the service against SQLite
+when it was running. This does not reverse-copy changes made after PostgreSQL
+cutover. For InfiniDysk, rollback restores the preserved main SQLite state;
+the three auxiliary SQLite stores were never migrated.</p>
+<p>Do not manually toggle the provider or restore the whole job bundle after an
+interruption or rollback error. Use this guarded rollback route when the job
+advertises <code>rollback_available</code>. For <code>status: rollback_failed</code>,
+<code>rollback.retry_safe: true</code> means no saved-data mutation began and the guarded
+rollback may be retried; <code>false</code> is an attention-required state that freezes
+InfiniDysk lifecycle/provider changes until the precise failed recovery surface
+is reviewed.</p>
 <p>The former <code>/process/arr-postgres-migration/*</code> paths remain available as hidden compatibility aliases for older dmbdb clients and existing Sonarr/Radarr deployments.</p>
 <hr />
 <h3 id="get-processmediastorm-initial-admin-password"><code>GET /process/mediastorm-initial-admin-password</code><a class="headerlink" href="#get-processmediastorm-initial-admin-password" title="Permanent link">&para;</a></h3>
@@ -6188,6 +6217,9 @@ provider-safety behavior.</p>
 <p>Returns whether a legacy NzbDAV deployment needs review, whether the notice is
 due or snoozed, the legacy paths and DUMB-generated attached-service names that
 were found, and the modes supported by this backend.</p>
+<p>The response also exposes <code>cleanup_available</code>, <code>cleanup_finalized</code>,
+<code>cleanup_finalized_at</code>, and <code>rollback_artifacts_available</code>. Clients must hide
+both the notice and manual migration entry once <code>cleanup_finalized</code> is true.</p>
 <h3 id="post-processinfinidysk-migrationremind-later"><code>POST /process/infinidysk-migration/remind-later</code><a class="headerlink" href="#post-processinfinidysk-migrationremind-later" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="p">{</span><span class="w"> </span><span class="nt">&quot;days&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">7</span><span class="w"> </span><span class="p">}</span>
 </code></pre></div>
@@ -6244,6 +6276,14 @@ and shared-memory sidecars that must remain writable by the managed service UID.
 Rollback also reapplies and verifies every captured symlink target after the
 legacy roots return, removes Arr root paths that exist only in the failed
 migration direction, and treats any remaining stale root as a rollback error.</p>
+<p><code>failed_rolled_back</code> means the automatic namespace rollback completed and the
+legacy topology should be verified before a new preflight. A
+<code>rollback_attention_required</code> result freezes ordinary config/service lifecycle
+changes and requires review of the named failed rollback surfaces; do not force
+a provider/path toggle or restore the complete bundle. An <code>interrupted</code> job
+known to have stopped before filesystem mutation may cold-start the legacy
+topology for a fresh preflight. Unknown or post-mutation interruptions remain
+frozen for recovery review.</p>
 <p>While a current <code>quiescing</code> job is waiting on verified media activity and the
 backend advertises capability <code>infinidysk_migration_playback_override</code>, the
 record also exposes <code>playback_override_available</code>, <code>playback_stop_requested</code>,
@@ -6255,6 +6295,74 @@ page is reloaded. Another authenticated browser or device retrieves the same
 backend-owned job without browser-local handoff state. A DUMB backend restart marks an active retained job
 <code>interrupted</code>; it is not resumed automatically because the operator must first
 inspect the backup bundle and current namespace paths.</p>
+<h3 id="get-processinfinidysk-migrationcleanup-preview"><code>GET /process/infinidysk-migration/cleanup-preview</code><a class="headerlink" href="#get-processinfinidysk-migrationcleanup-preview" title="Permanent link">&para;</a></h3>
+<p>Returns a short-lived, state-bound preview for permanently purging recovery
+material after a successful migration:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;available&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;preview_token&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&lt;short-lived token&gt;&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;expires_at&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1787270400</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;selected_mode&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;full_namespace&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;migration_status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;completed&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;cleanup_finalized&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;cleanup_finalized_at&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;rollback_artifacts_available&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;deletion&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;files&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">14</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;directories&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">3</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;bytes&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1048576</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;categories&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">      </span><span class="s2">&quot;Migration state details&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="s2">&quot;Preflight inventory&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="s2">&quot;Job history&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="s2">&quot;DUMB configuration backups and rollback bundles&quot;</span>
+<span class="w">    </span><span class="p">]</span>
+<span class="w">  </span><span class="p">},</span>
+<span class="w">  </span><span class="nt">&quot;retained&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="s2">&quot;Current DUMB and InfiniDysk configuration&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="s2">&quot;InfiniDysk runtime, application data, and databases&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="s2">&quot;Mounts, symlink libraries, and normal symlink snapshots&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="s2">&quot;PostgreSQL cutover authorization and database-migration job records&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="s2">&quot;Operator-managed backups outside the namespace rollback root&quot;</span>
+<span class="w">  </span><span class="p">]</span>
+<span class="p">}</span>
+</code></pre></div>
+<p><code>expires_at</code> is Unix time in seconds. Counts and categories are returned without
+raw filesystem paths. <code>available</code> is false and the token is null unless the
+latest migration state is safely terminal and successful, no active/unsafe
+latest job exists, cleanup has not been finalized, and the calculated deletion
+plan is safe. <code>rollback_artifacts_available</code> separately reports whether the
+DUMB rollback bundle is still present. The token fingerprints the current
+migration state and deletion inventory; request a new preview after expiry or
+any state change.</p>
+<h3 id="post-processinfinidysk-migrationcleanup"><code>POST /process/infinidysk-migration/cleanup</code><a class="headerlink" href="#post-processinfinidysk-migrationcleanup" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;preview_token&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&lt;short-lived token&gt;&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;confirmation&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;REMOVE INFINIDYSK MIGRATION DATA&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;acknowledge_validation&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;acknowledge_rollback_loss&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span>
+<span class="p">}</span>
+</code></pre></div>
+<p><code>confirmation</code> must match exactly; surrounding whitespace is rejected. Both
+acknowledgements must be literal <code>true</code>. Cleanup deletes the detailed namespace
+migration state, private preflight inventory, namespace job history, and
+DUMB-owned migration backup/rollback bundle. It does not delete the current
+DUMB/InfiniDysk
+configuration, runtime, application data, databases, mounts, symlink libraries,
+normal symlink snapshots, the minimal controller-owned PostgreSQL cutover
+authorization and database-migration job evidence under
+<code>/config/arr-postgres-migration</code>, or operator-managed backups outside the
+namespace rollback root. The retained authorization/evidence is required so a
+PostgreSQL-backed InfiniDysk remains restartable and its guarded database
+rollback contract remains verifiable after namespace cleanup.</p>
+<p>The backend replaces the detailed state with a private mode-<code>0600</code> tombstone
+containing only the selected mode, terminal status, and finalization metadata.
+The response reports <code>status</code> as <code>completed</code> or idempotent
+<code>already_completed</code>, sets <code>cleanup_finalized: true</code>,
+<code>rollback_artifacts_available: false</code>, and <code>notice_due: false</code>, and returns the
+actual <code>deleted</code> counts/categories plus the retained list. This action is
+irreversible; a finalized compatibility-only migration also accepts the
+retained legacy namespace as final.</p>
 <h3 id="post-processinfinidysk-migrationstop-playback"><code>POST /process/infinidysk-migration/stop-playback</code><a class="headerlink" href="#post-processinfinidysk-migrationstop-playback" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;job_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;0123456789abcdef0123456789abcdef&quot;</span><span class="p">,</span>
@@ -6400,7 +6508,7 @@ are updated when their exact process names are renamed.</p>
 <span class="w">  </span><span class="nt">&quot;postgres_migration&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;postgres_migration_rehearsal&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;postgres_migration_rollback&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;postgres_migration_service_keys&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;altmount&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;bazarr&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;lidarr&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;prowlarr&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;pulsarr&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;radarr&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;seerr&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;sonarr&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;whisparr&quot;</span><span class="p">],</span>
+<span class="w">  </span><span class="nt">&quot;postgres_migration_service_keys&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;altmount&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;bazarr&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;infinidysk&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;lidarr&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;prowlarr&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;pulsarr&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;radarr&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;seerr&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;sonarr&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;whisparr&quot;</span><span class="p">],</span>
 <span class="w">  </span><span class="nt">&quot;database_health_metrics&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;metrics_history_storage&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;metrics_history_hot_activation&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
@@ -6412,6 +6520,7 @@ are updated when their exact process names are renamed.</p>
 <span class="w">  </span><span class="nt">&quot;infinidysk_migration&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;infinidysk_full_namespace_migration&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;infinidysk_migration_jobs&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;infinidysk_migration_cleanup&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;runtime_api_log_level&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;rclone_optimizer&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;rclone_optimizer_infinidysk&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
@@ -6500,6 +6609,10 @@ are updated when their exact process names are renamed.</p>
 <td>Whether complete-namespace cutovers run as persisted, pollable background jobs with close/reopen progress</td>
 </tr>
 <tr>
+<td><code>infinidysk_migration_cleanup</code></td>
+<td>Whether successful migration recovery data can be previewed and permanently purged with guarded confirmation</td>
+</tr>
+<tr>
 <td><code>rclone_optimizer</code></td>
 <td>Whether background rclone optimizer job routes are available</td>
 </tr>
@@ -6581,7 +6694,7 @@ are updated when their exact process names are renamed.</p>
 </tr>
 <tr>
 <td><code>postgres_migration_service_keys</code></td>
-<td>Backend-authoritative service keys offered by the migration UI</td>
+<td>Backend-authoritative service keys offered by the migration UI; clients require explicit <code>infinidysk</code> advertisement and keep the old fallback limited to legacy services</td>
 </tr>
 <tr>
 <td><code>arr_postgres_migration*</code></td>

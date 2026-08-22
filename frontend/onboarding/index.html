@@ -5656,9 +5656,27 @@ branch selections; enabling a release or branch clears the commit pin.</p>
 <li><strong>Phalanx DB</strong>: Enable/disable for CLI Debrid</li>
 <li><strong>Decypharr</strong>: FUSE, embedded rclone, external rclone, or no-mount mode</li>
 <li><strong>AltMount</strong>: FUSE, embedded rclone, external rclone, or no-mount mode</li>
+<li><strong>InfiniDysk</strong>: Fresh-install SQLite or PostgreSQL main database</li>
 <li><strong>AIOStreams</strong>: Public base URL and Dashboard administrator credentials</li>
 </ul>
 <p>Default values are pre-filled but can be customized.</p>
+<div class="admonition info">
+<p class="admonition-title">InfiniDysk onboarding PostgreSQL is fresh-install only</p>
+<p>InfiniDysk v1.2.0+ exposes <code>postgres_enabled</code> and
+<code>postgres_database</code> (default <code>infinidysk</code>) in its service options. Enable
+PostgreSQL here only for a fresh InfiniDysk installation, matching
+upstream support.</p>
+<p>For an existing SQLite installation, leave the onboarding option disabled.
+After onboarding, open <strong>Database Migration</strong> on the InfiniDysk service
+page and complete DUMB's guarded rehearsal before cutover. The DUMB adapter
+accepts an official stable v1.2.0-or-newer runtime only while its source
+SQLite and staged PostgreSQL databases exactly match the supported contract;
+schema drift blocks migration until DUMB is updated. Only the main
+<code>db.sqlite</code> moves; <code>metrics.sqlite</code>, <code>warden.db</code>, and
+<code>usenet-migration.db</code> remain local and require filesystem backups. If the
+installation still needs an InfiniDysk identity or namespace migration,
+complete that before making any PostgreSQL selection.</p>
+</div>
 <div class="admonition note">
 <p class="admonition-title">AltMount still needs application setup</p>
 <p>Onboarding selects AltMount's mount mode and wires Arr download clients.

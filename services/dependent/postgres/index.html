@@ -5501,6 +5501,7 @@
 <li><code>whisparr-main</code> / <code>whisparr-log</code> when a Whisparr instance has <code>postgres_enabled: true</code></li>
 <li><code>bazarr</code>, <code>pulsarr</code>, and <code>altmount</code> when those services complete PostgreSQL cutover</li>
 <li>a per-instance <code>seerr</code> database when a Seerr instance completes PostgreSQL cutover</li>
+<li><code>infinidysk</code> after a fresh InfiniDysk v1.2.0+ PostgreSQL install or a successful guarded schema-compatible cutover</li>
 </ul>
 </li>
 </ul>
@@ -5509,11 +5510,38 @@
 <p>DUMB creates the main/log databases and writes the matching Arr <code>config.xml</code> entries when <code>postgres_enabled</code> is true on a supported Arr instance. SQLite remains the default for new Arr instances, and PostgreSQL is an explicit opt-in.</p>
 <p>In onboarding, enabling <code>postgres_enabled</code> on Radarr, Sonarr, Lidarr, Prowlarr, or Whisparr automatically enables and starts PostgreSQL as needed. You do not need to select PostgreSQL separately as an optional service.</p>
 </div>
+<div class="admonition info">
+<p class="admonition-title">InfiniDysk: upstream fresh-only, guarded DUMB migration available</p>
+<p>InfiniDysk v1.2.0 and newer can use DUMB-managed PostgreSQL for the main
+operational database. On a fresh installation, enabling
+<code>infinidysk.postgres_enabled</code> registers the configured database (default
+<code>infinidysk</code>) and starts PostgreSQL as needed.</p>
+<p>Upstream itself supports PostgreSQL selection only for new installations.
+For an existing SQLite installation, do not toggle the provider directly;
+use <strong>Database Migration</strong> when DUMB advertises <code>infinidysk</code>. DUMB's
+separate workflow requires an official stable v1.2.0-or-newer runtime, an
+exact match to DUMB's supported SQLite and staged PostgreSQL database
+contracts, and a successful rehearsal before cutover. Any missing, extra,
+or changed schema object or migration-history entry blocks migration until
+DUMB is updated. The workflow migrates only <code>db.sqlite</code>.
+<code>metrics.sqlite</code>, <code>warden.db</code>, and <code>usenet-migration.db</code> remain local. Any
+pending InfiniDysk identity or namespace migration must complete before
+PostgreSQL is selected. See
+<a href="../../core/infinidysk/#postgresql-in-infinidysk-v120">InfiniDysk</a>.</p>
+</div>
 <div class="admonition danger">
 <p class="admonition-title">The PostgreSQL toggle is not a migration tool</p>
-<p>DUMB does not copy existing SQLite data merely because <code>postgres_enabled</code> is set. Directly enabling it creates/configures a PostgreSQL database and starts the service against that database.</p>
-<p>If you switch an existing SQLite-backed service directly, it may start against an empty PostgreSQL database and look like a fresh install.</p>
-<p>For Sonarr, Radarr, Lidarr, Prowlarr, Whisparr, Bazarr, Pulsarr, Seerr, and AltMount, use DUMB's separate <a href="../../../features/arr-postgres-migration/">guided SQLite-to-PostgreSQL migration tool</a>. Servarr migration caveats still apply.</p>
+<p>DUMB does not copy existing SQLite data merely because <code>postgres_enabled</code>
+is set. For services other than InfiniDysk, directly enabling it
+creates/configures a PostgreSQL database and starts the service against
+that database. InfiniDysk fails closed when an existing main SQLite store
+is present and requires the guided workflow.</p>
+<p>If you switch another existing SQLite-backed service directly, it may start
+against an empty PostgreSQL database and look like a fresh install.</p>
+<p>For Sonarr, Radarr, Lidarr, Prowlarr, Whisparr, Bazarr, Pulsarr, Seerr,
+AltMount, and InfiniDysk, use DUMB's separate
+<a href="../../../features/arr-postgres-migration/">guided SQLite-to-PostgreSQL migration tool</a>.
+Servarr and InfiniDysk upstream-support caveats still apply.</p>
 </div>
 <div class="admonition info">
 <p class="admonition-title">AIOStreams is an advanced manual database consumer</p>
@@ -5527,10 +5555,14 @@
 <p>For an existing supported service, use PostgreSQL mode only after deciding how to handle its SQLite data:</p>
 <ol>
 <li>Keep SQLite: leave <code>postgres_enabled: false</code>.</li>
-<li>Start fresh on PostgreSQL: back up the service data/config directory, enable <code>postgres_enabled</code>, and accept that the PostgreSQL database starts empty.</li>
+<li>Start fresh on PostgreSQL where the application supports it: back up the service data/config directory, enable <code>postgres_enabled</code>, and accept that the PostgreSQL database starts empty. This is not an existing-InfiniDysk migration path; DUMB blocks that direct switch.</li>
 <li>Guided migration: open the service page, select <strong>Database Migration</strong>, complete a rehearsal, and review its validation before cutover.</li>
 </ol>
-<p>DUMB's guided tool automates consistent SQLite backups, application-owned schema initialization, native data-only import, type conversion, dynamic sequence repair, table-count validation, progress reporting, and configuration rollback for all nine services listed above.</p>
+<p>DUMB's guided tool automates consistent SQLite backups, application-owned schema initialization, native data-only import, type conversion, dynamic sequence repair, table-count validation, progress reporting, and configuration rollback for all ten services listed above.</p>
+<p>For an existing InfiniDysk SQLite installation, leave <code>postgres_enabled</code> off
+until a successful guarded cutover enables it. Preserve an independent
+configuration-directory backup, then validate the application and configure
+a tested PostgreSQL logical backup before retiring the rollback snapshot.</p>
 <p>Upstream PostgreSQL setup and migration references:</p>
 <ul>
 <li><a href="https://wiki.servarr.com/radarr/postgres-setup">Radarr PostgreSQL setup</a></li>
@@ -5541,6 +5573,8 @@
 <li><a href="https://wiki.bazarr.media/Additional-Configuration/PostgreSQL-Database/">Bazarr PostgreSQL database</a></li>
 <li><a href="https://jamcalli.github.io/Pulsarr/docs/installation/postgres-migration">Pulsarr PostgreSQL migration</a></li>
 <li><a href="https://docs.seerr.dev/extending-seerr/database-config/">Seerr database configuration</a></li>
+<li><a href="https://github.com/infinidysk/infinidysk/blob/main/docs/operations/postgresql.md">InfiniDysk PostgreSQL guide</a></li>
+<li><a href="https://github.com/infinidysk/infinidysk/issues/1012">InfiniDysk native migration tracking issue #1012</a></li>
 </ul>
 <div class="admonition note">
 <p class="admonition-title"> Override any of the above using <code>POSTGRES_USER</code>, <code>POSTGRES_PASSWORD</code>, or <code>POSTGRES_DB</code> environment variables.</p>

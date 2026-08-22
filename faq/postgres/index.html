@@ -4869,6 +4869,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#can-an-existing-infinidysk-installation-move-to-postgresql" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Can an existing InfiniDysk installation move to PostgreSQL?
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#can-i-reset-the-database-intentionally" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -5254,6 +5265,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#can-an-existing-infinidysk-installation-move-to-postgresql" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Can an existing InfiniDysk installation move to PostgreSQL?
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#can-i-reset-the-database-intentionally" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -5395,6 +5417,7 @@
 <ul>
 <li><strong>Riven Backend</strong>, <strong>Zilean</strong>, <strong>Traefik Proxy Admin</strong>, and <strong>mediastorm</strong></li>
 <li>Optional PostgreSQL modes for <strong>Sonarr, Radarr, Lidarr, Prowlarr, Whisparr, Bazarr, Pulsarr, Seerr, and AltMount</strong> after a guarded migration</li>
+<li>A fresh-install main-database option for <strong>InfiniDysk v1.2.0+</strong>, plus DUMB's separate guarded migration for official stable v1.2.0-or-newer runtimes whose source SQLite and staged PostgreSQL schemas exactly match DUMB's supported contract; upstream itself remains fresh-install-only</li>
 <li>Optional DUMB Metrics history storage</li>
 <li><strong>pgAdmin</strong>'s own database when pgAdmin is enabled</li>
 </ul>
@@ -5428,6 +5451,10 @@
 <td><code>mediastorm</code></td>
 </tr>
 <tr>
+<td>InfiniDysk (fresh install or guarded DUMB cutover)</td>
+<td><code>infinidysk</code> by default</td>
+</tr>
+<tr>
 <td>Metrics history (optional default)</td>
 <td><code>dumb_metrics</code></td>
 </tr>
@@ -5442,6 +5469,7 @@
 <li>Application data and settings for PostgreSQL-backed services</li>
 <li>Migrated Arr-family databases</li>
 <li>PostgreSQL Metrics history</li>
+<li>InfiniDysk's main database after a fresh PostgreSQL install or successful DUMB guarded cutover</li>
 <li>pgAdmin state stored in its database</li>
 </ul>
 <p>Services may create empty schemas on their next launch, but this does not reconstruct the deleted application data.</p>
@@ -5449,7 +5477,29 @@
 <p class="admonition-title">A directory copy is not a complete running-database backup strategy</p>
 <p>Schedule logical <code>pg_dump</code> backups for every important database and test restores. Also protect the mounted <code>/data</code> tree while the stack is stopped or with a PostgreSQL-aware physical-backup process.</p>
 <p>Follow the <a href="../pgadmin/#example-scheduled-backups-with-pgagent">scheduled pg_dump backups with pgAdmin and pgAgent</a> example, including its retention and restore-test steps.</p>
+<p>For PostgreSQL-backed InfiniDysk, the application backup does not contain
+the PostgreSQL main database. Pair the logical database backup with a
+filesystem backup of the InfiniDysk configuration directory because
+<code>metrics.sqlite</code>, <code>warden.db</code>, <code>usenet-migration.db</code>, blobs, and
+<code>session.key</code> remain local.</p>
 </div>
+<h2 id="can-an-existing-infinidysk-installation-move-to-postgresql">Can an existing InfiniDysk installation move to PostgreSQL?<a class="headerlink" href="#can-an-existing-infinidysk-installation-move-to-postgresql" title="Permanent link">&para;</a></h2>
+<p>Yes, through DUMB's guarded <strong>Database Migration</strong> workflow when the backend
+advertises <code>infinidysk</code> in <code>postgres_migration_service_keys</code>. Upstream
+InfiniDysk itself still documents PostgreSQL as new-install-only and tracks
+native migration tooling separately in
+<a href="https://github.com/infinidysk/infinidysk/issues/1012">issue #1012</a>. See the
+<a href="https://github.com/infinidysk/infinidysk/blob/main/docs/operations/postgresql.md">official InfiniDysk PostgreSQL guide</a>.</p>
+<p>DUMB requires a successful rehearsal before cutover, migrates and validates
+only <code>db.sqlite</code>, preserves the SQLite/configuration rollback data, and leaves
+<code>metrics.sqlite</code>, <code>warden.db</code>, and <code>usenet-migration.db</code> on SQLite. Keep an
+independent filesystem backup before migration. After cutover, configure and
+test a logical PostgreSQL backup; roll back promptly if validation fails
+because PostgreSQL writes are not copied back into SQLite.</p>
+<p>If DUMB still offers an NzbDAV-to-InfiniDysk identity or full namespace
+migration, complete that before enabling PostgreSQL or opening Database
+Migration. Do not try a direct provider toggle on an existing SQLite install:
+DUMB fails closed and requires the guided workflow.</p>
 <hr />
 <h2 id="can-i-reset-the-database-intentionally">Can I reset the database intentionally?<a class="headerlink" href="#can-i-reset-the-database-intentionally" title="Permanent link">&para;</a></h2>
 <p>Yes, but deleting the whole cluster resets every PostgreSQL-backed service. For a disposable installation, stop DUMB and remove <code>/data/postgres</code> (or your explicitly mounted <code>/postgres_data</code>) only after confirming the exact path and preserving any required backups.</p>

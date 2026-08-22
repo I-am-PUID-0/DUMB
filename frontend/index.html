@@ -5440,12 +5440,22 @@ is no viewer/operator/admin role split.</p>
 <td>Backend API endpoint</td>
 </tr>
 <tr>
+<td><code>DUMB_TRAEFIK_URL</code></td>
+<td>API host on port <code>18080</code></td>
+<td>Traefik web endpoint used for embedded service HTTP and WebSocket proxying</td>
+</tr>
+<tr>
 <td><code>NUXT_TELEMETRY_DISABLED</code></td>
 <td><code>1</code></td>
 <td>Disable Nuxt telemetry</td>
 </tr>
 </tbody>
 </table>
+<p>DUMB automatically injects the current Traefik listener into a managed DUMB
+Frontend process, including when startup port reservation moves Traefik away
+from <code>18080</code>. A separately deployed frontend must set <code>DUMB_TRAEFIK_URL</code> to an
+address reachable from that frontend container whenever Traefik uses another
+host or port.</p>
 <hr />
 <h2 id="browser-support">Browser support<a class="headerlink" href="#browser-support" title="Permanent link">&para;</a></h2>
 <p>The frontend is tested on modern browsers:</p>

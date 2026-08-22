@@ -5389,7 +5389,10 @@
 
 <h1 id="sqlite-to-postgresql-migration">SQLite to PostgreSQL Migration<a class="headerlink" href="#sqlite-to-postgresql-migration" title="Permanent link">&para;</a></h1>
 <p>DUMB provides a guarded tool for moving an existing supported service from SQLite to DUMB-managed PostgreSQL. Open the service page and select <strong>Database Migration</strong>.</p>
-<p>This tool is deliberately separate from <code>postgres_enabled</code>. Enabling PostgreSQL directly changes the database used at the next start; it does not copy existing SQLite data.</p>
+<p>This tool is deliberately separate from <code>postgres_enabled</code>. For most services,
+enabling PostgreSQL directly changes the database used at the next start; it
+does not copy existing SQLite data. InfiniDysk additionally blocks a direct
+provider switch when an existing main SQLite database is present.</p>
 <h2 id="supported-services">Supported services<a class="headerlink" href="#supported-services" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -5455,16 +5458,58 @@
 <td><code>altmount</code> by default</td>
 <td>AltMount supports both providers; DUMB validates the data-only conversion against AltMount's current schema</td>
 </tr>
+<tr>
+<td>InfiniDysk</td>
+<td>Configured main <code>db.sqlite</code></td>
+<td><code>infinidysk</code> by default</td>
+<td>Migration requires an official stable v1.2.0-or-newer runtime whose source SQLite and staged PostgreSQL schemas exactly match DUMB's supported contract; after cutover, official releases, branches, and exact commits are allowed only at or after the recorded cutover commit; only the main store moves and auxiliary stores remain SQLite</td>
+</tr>
 </tbody>
 </table>
 <p>Services that use PostgreSQL only, such as mediastorm, Riven Backend, Zilean, and Traefik Proxy Admin, do not have a SQLite source to migrate. Services without a confirmed PostgreSQL backend are not offered the tool.</p>
+<div class="admonition info">
+<p class="admonition-title">InfiniDysk migration is DUMB-managed</p>
+<p>InfiniDysk v1.2.0+ upstream supports selecting PostgreSQL only for a fresh
+installation and does not provide an in-place <code>db.sqlite</code> migration.
+DUMB's guarded workflow is separate. Official v1.2.0 commit
+<a href="https://github.com/infinidysk/infinidysk/commit/8c960ffc39fc85fdf9166aafd6cb2846878ec3c2"><code>8c960ffc39fc85fdf9166aafd6cb2846878ec3c2</code></a>
+is the audited contract baseline, not a runtime pin. DUMB accepts an
+official stable v1.2.0-or-newer runtime only when the live SQLite database
+and the migration-only staged PostgreSQL database exactly match that
+supported contract. A missing, extra, or changed table, column, index,
+trigger, foreign key, identity, function, or migration-history entry fails
+preflight until DUMB is updated. The workflow requires a successful
+rehearsal, imports and validates only the main store, and switches
+providers only after cutover validation. <code>metrics.sqlite</code>, <code>warden.db</code>, and
+<code>usenet-migration.db</code> remain local SQLite files.</p>
+<p>A successful cutover records the full InfiniDysk commit as the PostgreSQL
+runtime floor. Later official release tags, branch heads, and exact commit
+pins are accepted only when GitHub proves that their resolved commit is the
+recorded cutover commit or one of its descendants. Older, diverged, and
+unverifiable targets fail before DUMB saves the source change or launches
+InfiniDysk.</p>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">The cutover commit becomes the minimum InfiniDysk revision</p>
+<p>The runtime installed when cutover begins becomes the permanent minimum
+revision for that PostgreSQL deployment. DUMB will not install a release,
+branch head, or exact commit that predates or diverges from it. Running an
+older build requires first using the guarded rollback to restore SQLite;
+later PostgreSQL writes are not copied back into the SQLite snapshot.</p>
+<p>If a legacy installation still needs either NzbDAV-to-InfiniDysk identity
+migration or the optional full namespace migration, complete that before
+selecting PostgreSQL or starting the database-migration workflow. DUMB
+blocks every namespace mode once PostgreSQL is selected: the full path
+rewrites the SQLite main store, while an identity rename would disconnect
+guarded rollback job lookup.</p>
+</div>
 <h2 id="what-dumb-automates">What DUMB automates<a class="headerlink" href="#what-dumb-automates" title="Permanent link">&para;</a></h2>
 <p>The workflow:</p>
 <ol>
 <li>Confirms that the service is enabled, still configured for SQLite, and has a healthy SQLite source.</li>
 <li>Verifies PostgreSQL connectivity, database-creation privileges, and storage for staging plus backups.</li>
 <li>Creates consistent SQLite backups with SQLite's backup API and verifies each copy.</li>
-<li>Starts the current application briefly against isolated PostgreSQL staging databases so the application creates its own current schema.</li>
+<li>Lets the service create its current schema in isolated PostgreSQL staging databases. For InfiniDysk, DUMB runs only the installed v1.2 backend's <code>--db-migration</code> maintenance command with an isolated configuration path; it never boots the normal application against staging.</li>
 <li>Imports data into that schema, converts values according to PostgreSQL target types, resets sequences, and compares every imported table's row count.</li>
 <li>For cutover, clones the validated application schema into the named production databases, imports a fresh cold snapshot, and enables <code>postgres_enabled</code> only after validation succeeds.</li>
 <li>Restores the saved application configuration and SQLite mode automatically if cutover fails.</li>
@@ -5475,6 +5520,12 @@
 └── backups/
 </code></pre></div>
 <p>Existing Sonarr/Radarr job history and rollback backups therefore remain visible after upgrading. DUMB never deletes the source SQLite database.</p>
+<div class="admonition warning">
+<p class="admonition-title">Keep an independent backup</p>
+<p>DUMB's job-specific recovery bundle is not a substitute for a verified
+backup stored outside the managed migration paths. For InfiniDysk, back up
+its complete configuration directory before rehearsal or cutover.</p>
+</div>
 <h2 id="recommended-flow">Recommended flow<a class="headerlink" href="#recommended-flow" title="Permanent link">&para;</a></h2>
 <h3 id="1-run-preflight">1. Run preflight<a class="headerlink" href="#1-run-preflight" title="Permanent link">&para;</a></h3>
 <p>Open <strong>Database Migration</strong> on the service page and review every check. A failure blocks the job. A warning requires review but may be expected, such as a version that cannot be detected or a target database that already contains data.</p>
@@ -5484,34 +5535,60 @@
 <p>Rehearsal is required before dmbdb enables cutover. It:</p>
 <ul>
 <li>takes a consistent SQLite snapshot;</li>
-<li>briefly stops the application and lets it initialize isolated PostgreSQL staging databases;</li>
-<li>returns the production application to SQLite;</li>
+<li>lets the service initialize isolated PostgreSQL staging databases;</li>
+<li>leaves InfiniDysk on its existing SQLite runtime throughout the rehearsal (a running instance stays running and a stopped instance stays stopped);</li>
 <li>performs the longer import against staging;</li>
 <li>validates all table counts and selected high-value tables; and</li>
 <li>removes the staging databases.</li>
 </ul>
-<p>The schema-bootstrap interruption is normally short. Do not restart DUMB or manually start/stop the service while a job is active.</p>
-<p>Closing the migration popup does not cancel an active job. dmbdb asks for confirmation, then keeps a <strong>Database migration running in the background</strong> indicator on the service page with current progress and an <strong>Open progress</strong> action. Reopen the panel at any time to resume the detailed event view. Do not restart the DUMB API or container while the job is active.</p>
+<p>Other supported services may need a short schema-bootstrap interruption. InfiniDysk uses its migration-only maintenance command instead because its normal v1.2 runtime starts background cleanup and integration services. Do not restart DUMB or manually start/stop the service while a job is active.</p>
+<p>Closing the migration popup does not cancel an active job. dmbdb asks for confirmation, then keeps a <strong>Database migration running in the background</strong> indicator on the service page with current progress and an <strong>Open progress</strong> action. For InfiniDysk, the 99% <code>finalizing</code> stage remains active while DUMB writes the durable PostgreSQL cutover authorization; the indicator and polling remain in place until the backend publishes a terminal result. Reopen the panel at any time to resume the detailed event view. Do not restart the DUMB API or container while the job is active.</p>
 <p>When a guarded cutover finishes, the panel displays <strong>Migration completed successfully — PostgreSQL cutover is complete</strong>. If it finishes while the popup is closed, the service page replaces the running indicator with a dismissible completion notice. This confirms that DUMB imported and validated the snapshot and switched the database configuration; still verify service health, application data, and integrations afterward.</p>
 <p>When validation succeeds, the panel displays <strong>Rehearsal passed — ready for PostgreSQL cutover</strong> and automatically selects <strong>Cut over to PostgreSQL</strong>. The service is still using SQLite at this point. Review the safeguards, enter the confirmation text again, and click <strong>Start guarded cutover</strong> to perform the actual switch.</p>
 <h3 id="3-run-guarded-cutover">3. Run guarded cutover<a class="headerlink" href="#3-run-guarded-cutover" title="Permanent link">&para;</a></h3>
-<p>Cutover stops the service, creates a fresh cold backup, resets the named PostgreSQL target databases, imports and validates the snapshot, switches the application configuration, and starts the service when it was running before the job.</p>
+<p>Cutover stops the service, creates a fresh cold backup, resets the named PostgreSQL target databases, imports and validates the snapshot, switches the application configuration, and starts the service when it was running before the job. InfiniDysk cutover is stricter: the SQLite service must already be running with healthy <code>/health</code> and <code>/ready</code> responses, and DUMB requires the PostgreSQL service to remain healthy after restart before declaring success.</p>
 <p>Downtime depends mainly on SQLite size and storage speed.</p>
 <h3 id="4-validate-the-application">4. Validate the application<a class="headerlink" href="#4-validate-the-application" title="Permanent link">&para;</a></h3>
 <p>Check the service's important objects and integrations, then perform a harmless write such as saving an unchanged setting. For an Arr, verify libraries, files, root folders, profiles, indexers, download clients, and history. For Bazarr, verify shows/movies, providers, history, and subtitle searches. For request services, verify users, requests, settings, and integrations.</p>
+<p>For InfiniDysk, verify its UI plus provider, queue, and history state; confirm
+WebDAV or rclone access and Arr category/download-client behavior; and test
+representative playback and seeking. Confirm <code>metrics.sqlite</code>, <code>warden.db</code>,
+and <code>usenet-migration.db</code> remain healthy local files.</p>
 <p>Keep the SQLite backup until PostgreSQL and its
 <a href="../../faq/pgadmin/#example-scheduled-backups-with-pgagent">backup schedule</a> have
 been proven with a test restore.</p>
 <h2 id="arr-log-databases-are-optional">Arr log databases are optional<a class="headerlink" href="#arr-log-databases-are-optional" title="Permanent link">&para;</a></h2>
 <p>The five Arr services have a separate <code>logs.db</code>. Leave <strong>Migrate the service log database too</strong> disabled unless old application log entries matter. The main database already contains application configuration, library state, and history; starting fresh for diagnostic logs shortens cutover.</p>
-<p>The option is hidden for Bazarr, Pulsarr, Seerr, and AltMount because they have one migrated SQLite database.</p>
+<p>The option is hidden for Bazarr, Pulsarr, Seerr, AltMount, and InfiniDysk because they have one migrated main SQLite database.</p>
 <h2 id="rollback-behavior">Rollback behavior<a class="headerlink" href="#rollback-behavior" title="Permanent link">&para;</a></h2>
 <p>For a completed cutover, the panel can restore the preserved application configuration, set <code>postgres_enabled: false</code>, and restart against the untouched SQLite database.</p>
+<p>For InfiniDysk, rollback restores only the preserved main <code>db.sqlite</code> state;
+the three auxiliary SQLite stores never move. DUMB blocks directly toggling
+<code>postgres_enabled</code> off after a guarded cutover; use the migration job's
+explicit rollback action so the preserved source is validated before restart.</p>
 <div class="admonition warning">
 <p class="admonition-title">Rollback is not reverse migration</p>
 <p>Changes written after PostgreSQL cutover are not copied into SQLite. Roll back promptly if validation fails. A later rollback can lose settings, library changes, history, requests, or other PostgreSQL writes.</p>
 </div>
-<p>An active job is marked <code>interrupted</code> if the DUMB API restarts. Inspect its backup directory and restore SQLite before retrying.</p>
+<p>An active database-migration job is marked <code>interrupted</code> if the DUMB API
+restarts. Do not toggle <code>postgres_enabled</code>, replace <code>db.sqlite</code>, or restore the
+whole backup bundle manually. Reopen <strong>Database Migration</strong> and use the guarded
+rollback action whenever the job exposes it. For InfiniDysk, an interrupted,
+failed, or <code>rollback_failed</code> result remains visible as a red service-page
+recovery banner after the popup closes or the page reloads. The banner reopens
+the persisted job and does not disappear merely because background polling
+reached a terminal error.</p>
+<p>A terminal <code>rollback_failed</code> result has two distinct recovery meanings:</p>
+<ul>
+<li><code>rollback.retry_safe: true</code> means DUMB stopped before changing saved data.
+  The guarded rollback remains available and may be retried after fixing the
+  reported blocker.</li>
+<li><code>rollback.retry_safe: false</code> means rollback had already started changing
+  state. DUMB treats this as manual-attention recovery and freezes InfiniDysk
+  lifecycle/provider changes. Review the private job evidence and the precise
+  failed recovery surface before taking a targeted action; do not blindly
+  restore the complete bundle or force the provider toggle.</li>
+</ul>
 <h2 id="postgresql-backups-after-migration">PostgreSQL backups after migration<a class="headerlink" href="#postgresql-backups-after-migration" title="Permanent link">&para;</a></h2>
 <p>Application-native backups generally do not contain PostgreSQL data. Configure
 scheduled <code>pg_dump</code> backups for every migrated database by following the
@@ -5519,6 +5596,9 @@ scheduled <code>pg_dump</code> backups for every migrated database by following 
 including retention and restore testing. Also protect the mounted data
 directory's <code>postgres</code> subtree (container path <code>/data/postgres</code>, service path
 <code>/postgres_data</code>) with the normal backup plan.</p>
+<p>For InfiniDysk, also retain an independent filesystem backup of its complete
+configuration directory so the auxiliary SQLite stores, blobs, <code>session.key</code>,
+and other local state are protected alongside the PostgreSQL logical backup.</p>
 <h2 id="upstream-references">Upstream references<a class="headerlink" href="#upstream-references" title="Permanent link">&para;</a></h2>
 <ul>
 <li><a href="https://wiki.servarr.com/en/sonarr/postgres-setup">Sonarr PostgreSQL setup</a></li>
@@ -5529,6 +5609,8 @@ directory's <code>postgres</code> subtree (container path <code>/data/postgres</
 <li><a href="https://wiki.bazarr.media/Additional-Configuration/PostgreSQL-Database/">Bazarr PostgreSQL database</a></li>
 <li><a href="https://jamcalli.github.io/Pulsarr/docs/installation/postgres-migration">Pulsarr SQLite-to-PostgreSQL migration</a></li>
 <li><a href="https://docs.seerr.dev/extending-seerr/database-config/">Seerr database configuration and migration</a></li>
+<li><a href="https://github.com/infinidysk/infinidysk/blob/main/docs/operations/postgresql.md">InfiniDysk PostgreSQL guide</a></li>
+<li><a href="https://github.com/infinidysk/infinidysk/issues/1012">InfiniDysk native migration tracking issue #1012</a></li>
 </ul>
 
 
