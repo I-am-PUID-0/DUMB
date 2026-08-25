@@ -102,6 +102,12 @@ def _validate_infinidysk_postgres_source(config):
     )
 
 
+def _validate_infinidysk_postgres_resolved_release(config, release):
+    if infinidysk_postgres_runtime_floor(config):
+        return _validate_infinidysk_postgres_source(config)
+    return validate_infinidysk_postgres_release_version(release)
+
+
 def _validate_infinidysk_postgres_runtime(config, config_dir):
     minimum_commit = infinidysk_postgres_runtime_floor(config)
     if not minimum_commit:
@@ -1161,8 +1167,8 @@ def _install_nzbdav_prebuilt_release(
     if service_postgres_enabled(config) or str(
         (config.get("env") or {}).get("DATABASE_PROVIDER") or ""
     ).strip().lower() in {"postgres", "postgresql"}:
-        release_safe, release_error = validate_infinidysk_postgres_release_version(
-            release_tag
+        release_safe, release_error = _validate_infinidysk_postgres_resolved_release(
+            config, release_tag
         )
         if not release_safe:
             return None, release_error
@@ -1398,8 +1404,8 @@ def setup_release_version(process_handler, config, process_name, key):
         if service_postgres_enabled(config) or str(
             (config.get("env") or {}).get("DATABASE_PROVIDER") or ""
         ).strip().lower() in {"postgres", "postgresql"}:
-            release_safe, release_error = validate_infinidysk_postgres_release_version(
-                resolved_release
+            release_safe, release_error = (
+                _validate_infinidysk_postgres_resolved_release(config, resolved_release)
             )
             if not release_safe:
                 return False, release_error
@@ -4624,7 +4630,9 @@ def setup_nzbdav(
                     return False, resolve_error
                 if postgres_selected:
                     release_safe, release_error = (
-                        validate_infinidysk_postgres_release_version(resolved_release)
+                        _validate_infinidysk_postgres_resolved_release(
+                            config, resolved_release
+                        )
                     )
                     if not release_safe:
                         return False, release_error

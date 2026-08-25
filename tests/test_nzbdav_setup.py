@@ -1667,6 +1667,46 @@ class InfiniDyskSetupTests(unittest.TestCase):
             setup._nzbdav_prebuilt_archive_roots(rolling["name"], "dev"),
         )
 
+    def test_post_cutover_prebuilt_dev_uses_recorded_source_authorization(self):
+        config = {
+            "process_name": "InfiniDysk",
+            "config_dir": "/infinidysk",
+            "branch_enabled": True,
+            "branch": "dev",
+            "postgres_enabled": True,
+            "repo_owner": "infinidysk",
+            "repo_name": "infinidysk",
+        }
+
+        with (
+            patch.object(
+                setup,
+                "infinidysk_postgres_runtime_floor",
+                return_value="a" * 40,
+            ),
+            patch.object(
+                setup,
+                "_validate_infinidysk_postgres_source",
+                return_value=(True, None),
+            ) as validate_source,
+            patch.object(
+                setup.downloader,
+                "fetch_github_release_info",
+                return_value=(None, "release lookup reached"),
+            ) as fetch_release,
+        ):
+            result, error = setup._install_nzbdav_prebuilt_release(
+                config,
+                "InfiniDysk",
+                "dev",
+                "/tmp/nzbdav-test",
+            )
+
+        self.assertIsNone(result)
+        self.assertEqual("release lookup reached", error)
+        validate_source.assert_called_once_with(config)
+        fetch_release.assert_called_once_with("infinidysk", "infinidysk", "dev")
+
     def test_prebuilt_rejects_stale_rolling_release_assets(self):
         current_sha = "f" * 40
         stale_sha = "a" * 40

@@ -506,6 +506,33 @@ class ArrPostgresMigrationTests(unittest.TestCase):
         self.assertEqual(SUPPORTED_SERVICES["infinidysk"]["minimum_version"], (1, 2, 0))
         self.assertNotIn("exact_version", SUPPORTED_SERVICES["infinidysk"])
 
+    def test_latest_infini_contract_matches_v125_schema(self):
+        latest = INFINIDYSK_DATABASE_CONTRACTS[-1]
+
+        self.assertEqual("v1.2.5", latest["id"])
+        self.assertEqual(51, latest["sqlite_migration_count"])
+        self.assertEqual(
+            "20260824143000_Add-Generated-Symlink-Metadata",
+            latest["sqlite_terminal_migration"],
+        )
+        self.assertEqual(
+            latest["sqlite_terminal_migration"],
+            latest["postgres_migrations"][-1],
+        )
+        self.assertEqual(6, len(latest["postgres_migrations"]))
+        self.assertEqual(
+            "9bce3501afceee53f435834ad703e1083a2d4f51c44bd16b6bb217a8d4d9955b",
+            latest["sqlite_migration_history_fingerprint"],
+        )
+        self.assertEqual(
+            "42ade890f0f9394018630a3938c57d67acd0444b91acfaaca27289ed09fe80ae",
+            latest["sqlite_schema_fingerprint"],
+        )
+        self.assertEqual(
+            "f9a845c95f4e218a0c3f36ea7eb1e14972f63a2ad6391382e3615d4cd0601902",
+            latest["postgres_schema_fingerprint"],
+        )
+
     def test_infini_staged_postgres_contract_must_match_sqlite_source(self):
         connection = MagicMock()
         cursor = connection.cursor.return_value.__enter__.return_value
@@ -1157,7 +1184,7 @@ class ArrPostgresMigrationTests(unittest.TestCase):
             manager = ArrPostgresMigrationManager(Path(temp_dir) / "migration")
             binding = {
                 "service_key": "infinidysk",
-                "database_contract": "v1.2.3",
+                "database_contract": INFINIDYSK_DATABASE_CONTRACTS[-1]["id"],
                 "source_schema_fingerprint": INFINIDYSK_SQLITE_SCHEMA_FINGERPRINT,
                 "source_migration_history_fingerprint": (
                     INFINIDYSK_SQLITE_MIGRATION_HISTORY_SHA256

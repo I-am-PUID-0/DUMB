@@ -1537,9 +1537,9 @@ def build_arr_postgres_preflight(
             "pass" if version_ok else ("fail" if key == "infinidysk" else "warn"),
             (
                 (
-                    f"Detected InfiniDysk {version}; the official stable runtime "
-                    "meets the v1.2.0 minimum. Exact source and staged target "
-                    "database contracts are validated separately."
+                    f"Detected InfiniDysk {version}; the official runtime meets "
+                    "the v1.2.0 compatibility floor. Exact source and staged "
+                    "target database contracts are validated separately."
                     if key == "infinidysk"
                     else f"Detected {key.capitalize()} {version}."
                 )

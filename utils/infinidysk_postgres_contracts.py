@@ -9,6 +9,9 @@ INFINIDYSK_POSTGRES_MIGRATIONS_V120 = (
 INFINIDYSK_PROFILE_STREAM_INDEX_MIGRATION = (
     "20260822140000_Add-Profile-Stream-State-Index"
 )
+INFINIDYSK_GENERATED_SYMLINK_METADATA_MIGRATION = (
+    "20260824143000_Add-Generated-Symlink-Metadata"
+)
 
 # Each entry binds the complete SQLite source schema and migration history to
 # the PostgreSQL schema created by that InfiniDysk generation. Keep prior exact
@@ -48,6 +51,26 @@ INFINIDYSK_DATABASE_CONTRACTS = (
         ),
         "postgres_schema_fingerprint": (
             "c82ddbfff24ef9522687796c6f41d6ead7d9694efbc690ac9d8cfe2c30425fa9"
+        ),
+    },
+    {
+        "id": "v1.2.5",
+        "adapter_schema": "infinidysk-postgres-v1.2.5",
+        "sqlite_terminal_migration": INFINIDYSK_GENERATED_SYMLINK_METADATA_MIGRATION,
+        "sqlite_migration_count": 51,
+        "sqlite_migration_history_fingerprint": (
+            "9bce3501afceee53f435834ad703e1083a2d4f51c44bd16b6bb217a8d4d9955b"
+        ),
+        "sqlite_schema_fingerprint": (
+            "42ade890f0f9394018630a3938c57d67acd0444b91acfaaca27289ed09fe80ae"
+        ),
+        "postgres_migrations": (
+            *INFINIDYSK_POSTGRES_MIGRATIONS_V120,
+            INFINIDYSK_PROFILE_STREAM_INDEX_MIGRATION,
+            INFINIDYSK_GENERATED_SYMLINK_METADATA_MIGRATION,
+        ),
+        "postgres_schema_fingerprint": (
+            "f9a845c95f4e218a0c3f36ea7eb1e14972f63a2ad6391382e3615d4cd0601902"
         ),
     },
 )
