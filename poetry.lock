@@ -595,7 +595,7 @@ files = [
     {file = "colorama-0.4.6-py2.py3-none-any.whl", hash = "sha256:4f1d9991f5acc0ca119f9d443620b77f9d6b33703e51011c16baf57afb285fc6"},
     {file = "colorama-0.4.6.tar.gz", hash = "sha256:08695f5cb7ed6e0531a20572697297273c47b8cae5a63ffc6d6ed5c201be6e44"},
 ]
-markers = {main = "sys_platform == \"win32\" or platform_system == \"Windows\"", dev = "platform_system == \"Windows\""}
+markers = {main = "platform_system == \"Windows\" or sys_platform == \"win32\"", dev = "platform_system == \"Windows\""}
 
 [[package]]
 name = "colorlog"
@@ -2046,15 +2046,20 @@ files = [
 
 [[package]]
 name = "scalar-fastapi"
-version = "1.8.2"
-description = "This plugin provides an easy way to render a beautiful API reference based on a OpenAPI/Swagger file with FastAPI."
+version = "1.9.0"
+description = "FastAPI plugin to serve beautiful, interactive API documentation from OpenAPI/Swagger documents."
 optional = false
-python-versions = "*"
+python-versions = ">=3.9"
 groups = ["main"]
 files = [
-    {file = "scalar_fastapi-1.8.2-py3-none-any.whl", hash = "sha256:d96e2c8b3676491eaebb4ec8d9f4de77adb2374d86f87d321546fa6f084e8cb8"},
-    {file = "scalar_fastapi-1.8.2.tar.gz", hash = "sha256:0de09b8c63f78c1052792faa200d740b2ccaeeb88ac54e7ea633ac4edc6fde82"},
+    {file = "scalar_fastapi-1.9.0-py3-none-any.whl", hash = "sha256:7aa67d9d4b3bde7e5eab86a8d16637ab743f3259090bb6bee6a33cf4293f1293"},
+    {file = "scalar_fastapi-1.9.0.tar.gz", hash = "sha256:f9d01cd97a3e01188df61cc41c4525cf733ee67feb6e5bc0a65cd197e5062633"},
 ]
+
+[package.dependencies]
+fastapi = "*"
+pydantic = ">=2"
+typing-extensions = ">=4.8"
 
 [[package]]
 name = "schedule"
@@ -2424,4 +2429,4 @@ test = ["pytest", "pytest-cov"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11,<4.0"
-content-hash = "7224e1d43f0be3065d352ceeea227f589e76a6dce96b55b1cbd01718be37bc61"
+content-hash = "2ef388c82e33fd2e2fdff24effa777216f4d3dc9ba4a162586709652c545284f"
