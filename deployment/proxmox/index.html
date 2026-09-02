@@ -3727,6 +3727,67 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Troubleshooting">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-dumb-page-is-unavailable" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The DUMB page is unavailable
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#devfuse-is-missing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        /dev/fuse is missing
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#a-managed-service-cannot-find-a-runtime" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        A managed service cannot find a runtime
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#postgresql-reports-a-missing-shared-memory-segment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        PostgreSQL reports a missing shared-memory segment
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#plex-fails-to-install-or-cannot-create-its-cache-directory" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Plex fails to install or cannot create its Cache directory
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -5295,6 +5356,67 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Troubleshooting">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-dumb-page-is-unavailable" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The DUMB page is unavailable
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#devfuse-is-missing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        /dev/fuse is missing
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#a-managed-service-cannot-find-a-runtime" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        A managed service cannot find a runtime
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#postgresql-reports-a-missing-shared-memory-segment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        PostgreSQL reports a missing shared-memory segment
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#plex-fails-to-install-or-cannot-create-its-cache-directory" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Plex fails to install or cannot create its Cache directory
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -5387,7 +5509,7 @@
   
 
 
-<h1 id="deploying-dumb-on-proxmox">Deploying DUMB on Proxmox<a class="headerlink" href="#deploying-dumb-on-proxmox" title="Permanent link">&para;</a></h1>
+<h1 id="deploying-dumb-on-proxmox">Deploying DUMB on Proxmox<a class="headerlink" href="#deploying-dumb-on-proxmox" title="Permanent link">#</a></h1>
 <p>The recommended Proxmox layout runs DUMB and its managed services directly in
 one LXC. It does <strong>not</strong> install Docker inside the LXC.</p>
 <p>This keeps the normal DUMB topology simple:</p>
@@ -5401,7 +5523,7 @@ one LXC. It does <strong>not</strong> install Docker inside the LXC.</p>
 <p>Because every consumer is in the same LXC, DUMB-created FUSE mounts only need
 to exist inside that LXC. No mount propagation back to the Proxmox host is
 required.</p>
-<h2 id="install-the-validation-build">Install the validation build<a class="headerlink" href="#install-the-validation-build" title="Permanent link">&para;</a></h2>
+<h2 id="install-the-validation-build">Install the validation build<a class="headerlink" href="#install-the-validation-build" title="Permanent link">#</a></h2>
 <p>Until the script has completed LXC validation and been accepted upstream, run
 the maintainer-fork build from the <strong>Proxmox VE host shell</strong>:</p>
 <div class="highlight"><pre><span></span><code><span class="nv">COMMUNITY_SCRIPTS_URL</span><span class="o">=</span><span class="s2">&quot;https://raw.githubusercontent.com/I-am-PUID-0/ProxmoxVED/feat/dumb&quot;</span><span class="w"> </span><span class="se">\</span>
@@ -5456,7 +5578,7 @@ installs its initial managed services. Follow progress inside the LXC with:</p>
 <div class="highlight"><pre><span></span><code>journalctl<span class="w"> </span>-u<span class="w"> </span>dumb<span class="w"> </span>-f
 </code></pre></div>
 <p>Then continue with <a href="../../getting-started/">Getting Started</a>.</p>
-<h2 id="native-lxc-paths">Native LXC paths<a class="headerlink" href="#native-lxc-paths" title="Permanent link">&para;</a></h2>
+<h2 id="native-lxc-paths">Native LXC paths<a class="headerlink" href="#native-lxc-paths" title="Permanent link">#</a></h2>
 <table>
 <thead>
 <tr>
@@ -5511,7 +5633,7 @@ managed-service UID. This is required for PostgreSQL POSIX shared memory after
 temporary setup sessions end. Package-provided PostgreSQL, Plex, and Jellyfin
 systemd units are masked because DUMB, not the distribution unit, supervises
 those processes inside this dedicated LXC.</p>
-<h2 id="manage-and-update-dumb">Manage and update DUMB<a class="headerlink" href="#manage-and-update-dumb" title="Permanent link">&para;</a></h2>
+<h2 id="manage-and-update-dumb">Manage and update DUMB<a class="headerlink" href="#manage-and-update-dumb" title="Permanent link">#</a></h2>
 <p>Useful commands inside the LXC:</p>
 <div class="highlight"><pre><span></span><code>systemctl<span class="w"> </span>status<span class="w"> </span>dumb
 journalctl<span class="w"> </span>-u<span class="w"> </span>dumb<span class="w"> </span>-f
@@ -5546,7 +5668,7 @@ recovered the next time <code>update</code> runs.</p>
 directory. The update backup is removed after the replacement passes health
 verification.</p>
 <p>Use DUMB's own Updates controls for the individual services it manages.</p>
-<h2 id="backups-and-fuse">Backups and FUSE<a class="headerlink" href="#backups-and-fuse" title="Permanent link">&para;</a></h2>
+<h2 id="backups-and-fuse">Backups and FUSE<a class="headerlink" href="#backups-and-fuse" title="Permanent link">#</a></h2>
 <p>Back up at least <code>/config</code> and <code>/data</code>, plus any application-native backups
 required by the services you enabled. <code>/mnt/debrid</code> normally contains live or
 re-creatable mount views and should not be treated as the only copy of data.</p>
@@ -5557,7 +5679,7 @@ because freezing the container for suspend/snapshot-mode backups can fail.
 Prefer a stopped-mode backup window after stopping DUMB, or otherwise test
 the exact backup mode and mount stack before relying on it.</p>
 </div>
-<h2 id="existing-plex-or-arr-applications-in-other-lxcs">Existing Plex or Arr applications in other LXCs<a class="headerlink" href="#existing-plex-or-arr-applications-in-other-lxcs" title="Permanent link">&para;</a></h2>
+<h2 id="existing-plex-or-arr-applications-in-other-lxcs">Existing Plex or Arr applications in other LXCs<a class="headerlink" href="#existing-plex-or-arr-applications-in-other-lxcs" title="Permanent link">#</a></h2>
 <p>An external Plex or Arr LXC cannot see <code>/mnt/debrid</code> merely because it uses the
 same path name. It needs a separately designed storage boundary that exposes
 both the symlink library and every target path those symlinks reference.</p>
@@ -5602,8 +5724,8 @@ readlink<span class="w"> </span>&lt;representative-symlink&gt;
 the replacement mount without retaining <code>Transport endpoint is not connected</code>.
 Also confirm that consumer unmounts cannot propagate back and tear down DUMB's
 producer mount.</p>
-<h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h2>
-<h3 id="the-dumb-page-is-unavailable">The DUMB page is unavailable<a class="headerlink" href="#the-dumb-page-is-unavailable" title="Permanent link">&para;</a></h3>
+<h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">#</a></h2>
+<h3 id="the-dumb-page-is-unavailable">The DUMB page is unavailable<a class="headerlink" href="#the-dumb-page-is-unavailable" title="Permanent link">#</a></h3>
 <p>Inside the LXC:</p>
 <div class="highlight"><pre><span></span><code>systemctl<span class="w"> </span>status<span class="w"> </span>dumb<span class="w"> </span>--no-pager
 journalctl<span class="w"> </span>-u<span class="w"> </span>dumb<span class="w"> </span>-n<span class="w"> </span><span class="m">200</span><span class="w"> </span>--no-pager
@@ -5612,14 +5734,14 @@ ss<span class="w"> </span>-lntp<span class="w"> </span><span class="p">|</span><
 <p>The API normally listens on port <code>8000</code>; the user-facing frontend is port
 <code>3005</code>. The LXC firewall and network must allow the frontend port from your
 operator workstation.</p>
-<h3 id="devfuse-is-missing"><code>/dev/fuse</code> is missing<a class="headerlink" href="#devfuse-is-missing" title="Permanent link">&para;</a></h3>
+<h3 id="devfuse-is-missing"><code>/dev/fuse</code> is missing<a class="headerlink" href="#devfuse-is-missing" title="Permanent link">#</a></h3>
 <p>On the Proxmox host, inspect the generated container configuration:</p>
 <div class="highlight"><pre><span></span><code>pct<span class="w"> </span>config<span class="w"> </span>&lt;CTID&gt;<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-E<span class="w"> </span><span class="s1">&#39;features|dev/fuse&#39;</span>
 </code></pre></div>
 <p>The Community Scripts default enables FUSE. Stop and start the LXC after fixing
 its configuration; restarting only the DUMB service cannot add a missing device
 to the LXC.</p>
-<h3 id="a-managed-service-cannot-find-a-runtime">A managed service cannot find a runtime<a class="headerlink" href="#a-managed-service-cannot-find-a-runtime" title="Permanent link">&para;</a></h3>
+<h3 id="a-managed-service-cannot-find-a-runtime">A managed service cannot find a runtime<a class="headerlink" href="#a-managed-service-cannot-find-a-runtime" title="Permanent link">#</a></h3>
 <p>Confirm the native toolchain and controller environment:</p>
 <div class="highlight"><pre><span></span><code>python3.11<span class="w"> </span>--version
 python3.12<span class="w"> </span>--version
@@ -5633,7 +5755,7 @@ rclone<span class="w"> </span>version
 <p>Run <code>update</code> to repair the DUMB controller source/environment. Service-specific
 install failures remain visible in <code>journalctl -u dumb</code> and can then be retried
 from the DUMB UI.</p>
-<h3 id="postgresql-reports-a-missing-shared-memory-segment">PostgreSQL reports a missing shared-memory segment<a class="headerlink" href="#postgresql-reports-a-missing-shared-memory-segment" title="Permanent link">&para;</a></h3>
+<h3 id="postgresql-reports-a-missing-shared-memory-segment">PostgreSQL reports a missing shared-memory segment<a class="headerlink" href="#postgresql-reports-a-missing-shared-memory-segment" title="Permanent link">#</a></h3>
 <p>If several PostgreSQL-backed services fail together and the journal contains
 <code>could not open shared memory segment "/PostgreSQL..."</code>, verify the native LXC
 safeguard:</p>
@@ -5643,15 +5765,30 @@ safeguard:</p>
 restart DUMB, if the drop-in is absent. A healthy restart recreates the
 PostgreSQL shared-memory objects and keeps them after the managed UID's setup
 session closes.</p>
-<h3 id="plex-reports-port-32400-already-in-use-during-first-setup">Plex reports port 32400 already in use during first setup<a class="headerlink" href="#plex-reports-port-32400-already-in-use-during-first-setup" title="Permanent link">&para;</a></h3>
-<p>The Plex Debian package can start its own <code>plexmediaserver.service</code> while DUMB
-is preparing the managed instance. The LXC helper masks that package unit so
-only DUMB owns Plex and port <code>32400</code>:</p>
-<div class="highlight"><pre><span></span><code>systemctl<span class="w"> </span>is-enabled<span class="w"> </span>plexmediaserver.service
+<h3 id="plex-fails-to-install-or-cannot-create-its-cache-directory">Plex fails to install or cannot create its Cache directory<a class="headerlink" href="#plex-fails-to-install-or-cannot-create-its-cache-directory" title="Permanent link">#</a></h3>
+<p>Older test builds created a direct <code>/etc/systemd/system/plexmediaserver.service</code>
+mask before Plex was installed. Plex's Debian package rejects that path during
+its pre-install check. If the package was then repaired manually, the generated
+<code>/plex/Plex Media Server</code> tree could also remain owned by the package account.</p>
+<p>Current LXC helpers use a supported systemd drop-in with an unmet condition.
+That lets the Debian package install successfully without starting its own Plex
+process; DUMB remains the only process supervisor and repairs the writable tree.</p>
+<div class="highlight"><pre><span></span><code><span class="nb">test</span><span class="w"> </span>!<span class="w"> </span>-e<span class="w"> </span>/etc/systemd/system/plexmediaserver.service
+systemctl<span class="w"> </span>cat<span class="w"> </span>plexmediaserver.service<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-F<span class="w"> </span><span class="s1">&#39;ConditionPathExists=/run/dumb-allow-package-services&#39;</span>
+systemctl<span class="w"> </span>is-active<span class="w"> </span>plexmediaserver.service
 </code></pre></div>
-<p>The expected result is <code>masked</code>. If an LXC created with an earlier test build
-reports <code>enabled</code>, run <code>update</code> and restart DUMB before retrying Plex onboarding.</p>
-<h2 id="related-pages">Related pages<a class="headerlink" href="#related-pages" title="Permanent link">&para;</a></h2>
+<p>The first command should produce no output, the second should show the condition,
+and the package-owned unit should report <code>inactive</code>. For an LXC created with an
+older test build, reconcile the helper and restart the DUMB controller:</p>
+<div class="highlight"><pre><span></span><code>update
+systemctl<span class="w"> </span>restart<span class="w"> </span>dumb
+</code></pre></div>
+<p>If <code>dpkg</code> still reports an interrupted installation, complete its pending work
+after <code>update</code> has removed the legacy mask:</p>
+<div class="highlight"><pre><span></span><code>dpkg<span class="w"> </span>--configure<span class="w"> </span>-a
+apt-get<span class="w"> </span>-f<span class="w"> </span>install
+</code></pre></div>
+<h2 id="related-pages">Related pages<a class="headerlink" href="#related-pages" title="Permanent link">#</a></h2>
 <ul>
 <li><a href="../../getting-started/">Getting Started</a></li>
 <li><a href="../../features/configuration/">Configuration</a></li>
