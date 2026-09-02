@@ -99,6 +99,7 @@ class AiModelCatalogTests(unittest.TestCase):
                 }
             },
             observed,
+            as_of="2026-08-03",
         )
 
         self.assertTrue(any("official source added" in error for error in errors))

@@ -6128,6 +6128,22 @@ def phalanx_setup(
         return False, f"Error during Phalanx setup: {e}"
 
 
+def _ensure_plex_config_ownership(config_dir, puid, pgid):
+    application_support_dir = os.path.join(config_dir, "Plex Media Server")
+    os.makedirs(config_dir, exist_ok=True)
+    managed_owner = (puid, pgid)
+    for writable_dir in (config_dir, application_support_dir):
+        if not os.path.exists(writable_dir):
+            continue
+        stat_info = os.stat(writable_dir)
+        if (stat_info.st_uid, stat_info.st_gid) == managed_owner:
+            continue
+        success, error = chown_recursive(writable_dir, *managed_owner)
+        if not success:
+            return False, error
+    return True, None
+
+
 def setup_plex(install_only: bool = False, configure_only: bool = False):
     config = CONFIG_MANAGER.get("plex")
 
@@ -6180,16 +6196,14 @@ def setup_plex(install_only: bool = False, configure_only: bool = False):
     if install_only:
         return True, None
 
-    os.makedirs(config["config_dir"], exist_ok=True)
-    if os.stat(config["config_dir"]).st_uid != CONFIG_MANAGER.get("puid"):
-        chown_recursive(
-            config["config_dir"], CONFIG_MANAGER.get("puid"), CONFIG_MANAGER.get("pgid")
-        )
+    config_dir = config["config_dir"]
+    managed_owner = (CONFIG_MANAGER.get("puid"), CONFIG_MANAGER.get("pgid"))
+    success, error = _ensure_plex_config_ownership(config_dir, *managed_owner)
+    if not success:
+        return False, error
     if configure_only and not os.path.exists(plex_media_server_dir):
         return False, f"Plex not installed at {plex_media_server_dir}."
-    pid_path = os.path.join(
-        config["config_dir"], "Plex Media Server", "plexmediaserver.pid"
-    )
+    pid_path = os.path.join(config_dir, "Plex Media Server", "plexmediaserver.pid")
     if os.path.exists(pid_path):
         try:
             os.remove(pid_path)
@@ -6225,9 +6239,7 @@ def setup_plex(install_only: bool = False, configure_only: bool = False):
         success, error = perform_plex_claim(plex_claim, preferences_path, logger)
         if not success:
             return False, f"Failed to claim Plex server: {error}"
-        chown_recursive(
-            config["config_dir"], CONFIG_MANAGER.get("puid"), CONFIG_MANAGER.get("pgid")
-        )
+        chown_recursive(config_dir, *managed_owner)
     elif plex_claim and os.path.exists(preferences_path):
         with open(preferences_path) as f:
             if "plexOnlineToken" in f.read():
@@ -6241,12 +6253,8 @@ def setup_plex(install_only: bool = False, configure_only: bool = False):
                 )
                 if not success:
                     return False, f"Failed to claim Plex server: {error}"
-                if os.stat(config["config_dir"]).st_uid != CONFIG_MANAGER.get("puid"):
-                    chown_recursive(
-                        config["config_dir"],
-                        CONFIG_MANAGER.get("puid"),
-                        CONFIG_MANAGER.get("pgid"),
-                    )
+                if os.stat(config_dir).st_uid != managed_owner[0]:
+                    chown_recursive(config_dir, *managed_owner)
     dbrepair_cfg = config.get("dbrepair", {}) or {}
     if dbrepair_cfg.get("enabled") and dbrepair_cfg.get("run_before_start"):
         from utils.plex_dbrepair import run_dbrepair_once
