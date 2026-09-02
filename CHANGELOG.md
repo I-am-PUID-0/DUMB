@@ -1,5 +1,41 @@
 # Changelog
 
+## [2.22.0](https://github.com/I-am-PUID-0/DUMB/compare/2.21.1...2.22.0) (2026-09-02)
+
+
+### ✨ Features
+
+* **aiostreams:** add managed OCI service integration ([0f61755](https://github.com/I-am-PUID-0/DUMB/commit/0f617555dea9ef2776295387080e117c7b96e2c5))
+* **infinidysk:** add guarded SQLite-to-PostgreSQL migration ([e35ca25](https://github.com/I-am-PUID-0/DUMB/commit/e35ca2530fbe94a70006328f6048a9cb74ff12c6))
+* **infinidysk:** validate db-contract provenance during PostgreSQL migration ([2a6426d](https://github.com/I-am-PUID-0/DUMB/commit/2a6426df1538d5139cb37d7d8238d17dacca28b2))
+
+
+### 🐛 Bug Fixes
+
+* **cli-debrid:** prevent mixed source trees during updates ([c3d6e86](https://github.com/I-am-PUID-0/DUMB/commit/c3d6e8681fc98498eaa7c181ca332d64969d2c9e))
+* **infinidysk:** allow proven post-cutover runtime updates and support v1.2.5 ([88b5d8b](https://github.com/I-am-PUID-0/DUMB/commit/88b5d8b18aad03393a2f5460036c72b477f4d9f0))
+* **infinidysk:** honor explicit configured-source installs ([2294e41](https://github.com/I-am-PUID-0/DUMB/commit/2294e416b3b45de0e5dd1d491ab70353e9e449d0))
+* **infinidysk:** match PostgreSQL timestamp rounding in migration digests ([68ca0ab](https://github.com/I-am-PUID-0/DUMB/commit/68ca0aba38493866606d71125e764a653bbff31e))
+* **infinidysk:** normalize timestamp precision during migration validation ([1871fc8](https://github.com/I-am-PUID-0/DUMB/commit/1871fc8e3e40b2091128a9f47e85850e4fdc028b))
+* **infinidysk:** preserve native runtime version labels ([170adf5](https://github.com/I-am-PUID-0/DUMB/commit/170adf5802e823035a42404a5fe86c75f2bc08a3)), closes [#328](https://github.com/I-am-PUID-0/DUMB/issues/328)
+* **infinidysk:** prevent startup lock stalls and unblock cleanup ([b9b660a](https://github.com/I-am-PUID-0/DUMB/commit/b9b660abaf33a213f641e88952ef7feaff57ed54))
+* **infinidysk:** support the v1.2.3 PostgreSQL migration contract ([369c72c](https://github.com/I-am-PUID-0/DUMB/commit/369c72ccbc9f3995dcf7379385f17656544ef257))
+* **onboarding:** start PostgreSQL before optional service migrations ([5aa1e2b](https://github.com/I-am-PUID-0/DUMB/commit/5aa1e2b550a588538e0b75d1ac1b4c45ca9da945))
+* **plex:** repair nested config ownership before startup ([fdf2801](https://github.com/I-am-PUID-0/DUMB/commit/fdf2801c7a513ef10f1d4d7e9ccc0d88f75353ee)), closes [#326](https://github.com/I-am-PUID-0/DUMB/issues/326)
+* **startup:** avoid migration admission deadlock on mount waits ([e8dc3b7](https://github.com/I-am-PUID-0/DUMB/commit/e8dc3b7e266f3e43119e4f35dfb4ab625555be57))
+
+
+### 🤡 Other Changes
+
+* **deps:** update dependencies ([c53c137](https://github.com/I-am-PUID-0/DUMB/commit/c53c1379f6e01ff613c305db5b6c80a91f4d6724))
+* **deps:** update dependencies ([954fd81](https://github.com/I-am-PUID-0/DUMB/commit/954fd81e396a258e055081ecf14093095339c7a3))
+
+
+### 🛠️ Build System
+
+* **deps:** bump docker/setup-buildx-action from 4.2.0 to 4.3.0 ([#321](https://github.com/I-am-PUID-0/DUMB/issues/321)) ([160d5a1](https://github.com/I-am-PUID-0/DUMB/commit/160d5a150250d2e6238e9bbfe980b6cf07b52de7))
+* **deps:** bump python-dotenv from 1.2.2 to 1.2.3 ([#322](https://github.com/I-am-PUID-0/DUMB/issues/322)) ([cb9114d](https://github.com/I-am-PUID-0/DUMB/commit/cb9114dbc14167558ae3d9d9d6bc0d269feafb63))
+
 ## [2.21.1](https://github.com/I-am-PUID-0/DUMB/compare/2.21.0...2.21.1) (2026-08-19)
 
 
