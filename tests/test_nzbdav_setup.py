@@ -596,6 +596,142 @@ class InfiniDyskSetupTests(unittest.TestCase):
             json.loads(config["env"]["SERVICE_PROVIDER"]),
         )
 
+    def test_release_application_version_uses_native_dev_build_label(self):
+        self.assertEqual(
+            "dev-260829.1208",
+            setup._nzbdav_release_application_version(
+                "dev",
+                release_info={
+                    "name": "Rolling :dev (dev-260829.1208)",
+                    "body": "Snapshot from the current main branch.",
+                },
+                packaged_version="dev",
+            ),
+        )
+
+    def test_release_application_version_uses_concrete_rc_label(self):
+        self.assertEqual(
+            "1.2.7-rc.1",
+            setup._nzbdav_release_application_version(
+                "rc",
+                release_info={"name": "Rolling :rc (v1.2.7-rc.1)"},
+                packaged_version="1.2.7-rc.1",
+            ),
+        )
+        self.assertEqual(
+            "1.2.7-rc.1",
+            setup._nzbdav_release_application_version("v1.2.7-rc.1"),
+        )
+
+    def test_configure_uses_recorded_application_version_not_internal_marker(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            version_path = Path(tmpdir) / "version.txt"
+            version_path.write_text("dev-e0eef520\n", encoding="utf-8")
+            with patch.object(setup, "chown_single"):
+                setup._write_nzbdav_install_info(
+                    tmpdir,
+                    method="prebuilt",
+                    requested_selector="dev",
+                    resolved_release="dev",
+                    source_commit="e0eef520" * 5,
+                    application_version="dev-260829.1208",
+                )
+            config = {
+                "enabled": True,
+                "process_name": "InfiniDysk",
+                "config_dir": tmpdir,
+                "webdav_password": "configured-password",
+                "backend_port": 8080,
+                "frontend_port": 3000,
+                "log_level": "INFO",
+                "env": {"NZBDAV_VERSION": "dev-e0eef520"},
+            }
+            config_manager = Mock()
+            config_manager.find_key_for_process.return_value = ("infinidysk", None)
+            config_manager.get_instance.return_value = config
+            process_handler = Mock()
+            process_handler.setup_tracker = set()
+            process_handler.setup_tracker_lock = threading.Lock()
+
+            with (
+                patch.object(setup, "CONFIG_MANAGER", config_manager),
+                patch.object(setup, "setup_nzbdav", return_value=(True, None)),
+            ):
+                success, error = setup._setup_project_inner(
+                    process_handler,
+                    "InfiniDysk",
+                    install_phase=False,
+                    configure_phase=True,
+                )
+            marker_contents = version_path.read_text(encoding="utf-8")
+
+        self.assertTrue(success, error)
+        self.assertEqual("dev-260829.1208", config["env"]["NZBDAV_VERSION"])
+        self.assertEqual("dev-e0eef520\n", marker_contents)
+
+    def test_configure_preserves_native_dev_version_during_legacy_upgrade(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            Path(tmpdir, "version.txt").write_text("dev-e0eef520\n", encoding="utf-8")
+            config = {
+                "enabled": True,
+                "process_name": "InfiniDysk",
+                "config_dir": tmpdir,
+                "webdav_password": "configured-password",
+                "backend_port": 8080,
+                "frontend_port": 3000,
+                "log_level": "INFO",
+                "env": {"NZBDAV_VERSION": "dev-260829.1208"},
+            }
+            config_manager = Mock()
+            config_manager.find_key_for_process.return_value = ("infinidysk", None)
+            config_manager.get_instance.return_value = config
+            process_handler = Mock()
+            process_handler.setup_tracker = set()
+            process_handler.setup_tracker_lock = threading.Lock()
+
+            with (
+                patch.object(setup, "CONFIG_MANAGER", config_manager),
+                patch.object(setup, "setup_nzbdav", return_value=(True, None)),
+            ):
+                success, error = setup._setup_project_inner(
+                    process_handler,
+                    "InfiniDysk",
+                    install_phase=False,
+                    configure_phase=True,
+                )
+
+        self.assertTrue(success, error)
+        self.assertEqual("dev-260829.1208", config["env"]["NZBDAV_VERSION"])
+
+    def test_legacy_dev_install_uses_recorded_install_time(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            Path(tmpdir, "version.txt").write_text("dev-e0eef520\n", encoding="utf-8")
+            with patch.object(setup, "chown_single"):
+                setup._write_nzbdav_install_info(
+                    tmpdir,
+                    method="source",
+                    requested_selector="dev",
+                    resolved_release="dev",
+                    source_commit="e0eef520" * 5,
+                    installed_at=1,
+                )
+
+            application_version = setup._nzbdav_configured_application_version(
+                tmpdir, "dev-e0eef520", "dev-e0eef520"
+            )
+
+        self.assertEqual("dev-700101.0000", application_version)
+
+    def test_legacy_rc_marker_is_not_exposed_to_infinidysk(self):
+        self.assertEqual(
+            "1.2.7-rc.1",
+            setup._nzbdav_configured_application_version(
+                "/missing",
+                "1.2.7-rc.1-e0eef520",
+                "1.2.7-rc.1-e0eef520",
+            ),
+        )
+
     def test_fresh_prerelease_install_handles_comparison_error_without_type_crash(self):
         config = {
             "process_name": "InfiniDysk",
@@ -1607,12 +1743,13 @@ class InfiniDyskSetupTests(unittest.TestCase):
 
             self.assertIsNone(error)
             self.assertEqual(f"v1.0.0-{release_sha[:8]}", result["version_marker"])
+            self.assertEqual("v1.0.0", result["application_version"])
             self.assertTrue((root / "app" / "NzbWebDAV.dll").is_file())
             self.assertTrue((root / "frontend" / "dist-node" / "server.js").is_file())
             self.assertTrue((root / setup._NZBDAV_PREBUILT_MARKER).is_file())
-            self.assertEqual(
-                "prebuilt", setup.read_nzbdav_install_info(str(root))["method"]
-            )
+            install_info = setup.read_nzbdav_install_info(str(root))
+            self.assertEqual("prebuilt", install_info["method"])
+            self.assertEqual("v1.0.0", install_info["application_version"])
             self.assertTrue(runtime_ready, runtime_error)
 
             canonical_marker = root / setup._NZBDAV_PREBUILT_MARKER

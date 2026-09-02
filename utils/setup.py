@@ -74,6 +74,7 @@ _NZBDAV_SOURCE_BUILD_FORMAT = 3
 _NZBDAV_INSTALL_STATE = ".dumb_infinidysk_install.json"
 _NZBDAV_LEGACY_INSTALL_STATE = ".dumb_nzbdav_install.json"
 _NZBDAV_INSTALL_STATE_FORMAT = 1
+_NZBDAV_APPLICATION_VERSION_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._+-]{0,127}")
 _SQLITE_FILE_RE = re.compile(r"(?i).+\.(?:db|sqlite|sqlite3)(?:-(?:wal|shm|journal))?$")
 _CLI_DEBRID_IMPORT_MODULE = "database.database_reading"
 _CLI_DEBRID_SOURCE_SCAN_LIMIT = 5000
@@ -547,6 +548,127 @@ def _write_nzbdav_source_build_marker(config_dir: str) -> None:
     atomic_write_private_text(marker_path, f"{_NZBDAV_SOURCE_BUILD_FORMAT}\n")
 
 
+def _normalize_nzbdav_application_version(value) -> str | None:
+    version = str(value or "").strip()
+    if not version or not _NZBDAV_APPLICATION_VERSION_RE.fullmatch(version):
+        return None
+    return version
+
+
+def _read_nzbdav_packaged_version(config_dir: str) -> str | None:
+    version_path = Path(config_dir, "version.txt")
+    try:
+        if (
+            version_path.is_symlink()
+            or not version_path.is_file()
+            or version_path.stat().st_size > 256
+        ):
+            return None
+        return _normalize_nzbdav_application_version(
+            version_path.read_text(encoding="utf-8")
+        )
+    except OSError:
+        return None
+
+
+def _nzbdav_dev_application_version(timestamp: int | float | None = None) -> str:
+    try:
+        built_at = float(timestamp if timestamp is not None else time.time())
+        build_time = time.gmtime(built_at)
+    except (OSError, OverflowError, TypeError, ValueError):
+        build_time = time.gmtime()
+    return time.strftime("dev-%y%m%d.%H%M", build_time)
+
+
+def _nzbdav_release_application_version(
+    release_tag: str,
+    *,
+    release_info: dict | None = None,
+    packaged_version: str | None = None,
+) -> str:
+    """Resolve InfiniDysk's application label separately from DUMB's SHA marker."""
+
+    release = _normalize_nzbdav_application_version(release_tag) or "unknown"
+    packaged = _normalize_nzbdav_application_version(packaged_version)
+    release_lower = release.lower()
+    metadata = release_info if isinstance(release_info, dict) else {}
+
+    if release_lower == "dev":
+        for candidate in (
+            metadata.get("name"),
+            metadata.get("body"),
+            packaged,
+        ):
+            match = re.search(
+                r"(?<![A-Za-z0-9._+-])(dev-\d{6}\.\d{4})(?![A-Za-z0-9._+-])",
+                str(candidate or "")[:4096],
+                re.IGNORECASE,
+            )
+            if match:
+                return match.group(1)
+        # A DUMB source fallback is itself a new build. Persist its build time
+        # instead of presenting DUMB's internal commit marker to InfiniDysk.
+        return _nzbdav_dev_application_version()
+
+    rc_pattern = re.compile(r"v?\d+(?:\.\d+){2,3}-rc\.\d+", re.IGNORECASE)
+    if release_lower == "rc":
+        for candidate in (packaged, metadata.get("name"), metadata.get("body")):
+            match = rc_pattern.search(str(candidate or "")[:4096])
+            if match:
+                return match.group(0).removeprefix("v")
+        return "rc"
+
+    if rc_pattern.fullmatch(release):
+        return release.removeprefix("v")
+
+    # Stable releases intentionally retain their tag spelling (including a
+    # leading v), matching the existing DUMB/InfiniDysk display contract.
+    if re.fullmatch(r"v?\d+(?:\.\d+){1,3}", release):
+        return release
+    return packaged or release
+
+
+def _nzbdav_configured_application_version(
+    config_dir: str,
+    installed_marker: str,
+    existing_value: str | None = None,
+) -> str:
+    install_info = read_nzbdav_install_info(config_dir) or {}
+    recorded = _normalize_nzbdav_application_version(
+        install_info.get("application_version")
+    )
+    if recorded:
+        return recorded
+
+    marker = str(installed_marker or "").strip()
+    existing = _normalize_nzbdav_application_version(existing_value)
+    if re.fullmatch(r"dev-[0-9a-fA-F]{8}", marker):
+        if existing and re.fullmatch(r"dev-\d{6}\.\d{4}", existing, re.IGNORECASE):
+            return existing
+        installed_at = install_info.get("installed_at")
+        if isinstance(installed_at, int) and installed_at > 0:
+            return _nzbdav_dev_application_version(installed_at)
+        version_path = Path(config_dir, "version.txt")
+        try:
+            if not version_path.is_symlink():
+                marker_mtime = version_path.stat().st_mtime
+                if marker_mtime > 0:
+                    return _nzbdav_dev_application_version(marker_mtime)
+        except OSError:
+            pass
+        return "dev"
+
+    rc_match = re.fullmatch(
+        r"(?P<release>v?\d+(?:\.\d+){2,3}-rc\.\d+)-[0-9a-fA-F]{8}",
+        marker,
+        re.IGNORECASE,
+    )
+    if rc_match:
+        return rc_match.group("release").removeprefix("v")
+
+    return versions.display_version("infinidysk", marker) or marker
+
+
 def _write_nzbdav_install_info(config_dir: str, **values) -> None:
     def bounded(value):
         text = redact_sensitive_log_data(str(value or "")).strip()
@@ -560,6 +682,7 @@ def _write_nzbdav_install_info(config_dir: str, **values) -> None:
         "source_commit": bounded(values.get("source_commit")),
         "asset_name": bounded(values.get("asset_name")),
         "fallback_reason": bounded(values.get("fallback_reason")),
+        "application_version": bounded(values.get("application_version")),
         "installed_at": int(values.get("installed_at") or time.time()),
     }
     state_path = os.path.join(config_dir, _NZBDAV_INSTALL_STATE)
@@ -592,6 +715,7 @@ def read_nzbdav_install_info(config_dir: str | None) -> dict | None:
                 "source_commit",
                 "asset_name",
                 "fallback_reason",
+                "application_version",
             ):
                 value = redact_sensitive_log_data(str(payload.get(key) or "")).strip()
                 if value:
@@ -624,6 +748,7 @@ def _record_nzbdav_source_install(
     source_commit: str | None,
     resolved_release: str | None = None,
     fallback_reason: str | None = None,
+    application_version: str | None = None,
 ) -> None:
     _write_nzbdav_source_build_marker(config_dir)
     for marker_name in (_NZBDAV_PREBUILT_MARKER, _NZBDAV_LEGACY_PREBUILT_MARKER):
@@ -638,6 +763,7 @@ def _record_nzbdav_source_install(
         resolved_release=resolved_release,
         source_commit=source_commit,
         fallback_reason=fallback_reason,
+        application_version=application_version,
     )
 
 
@@ -1237,6 +1363,11 @@ def _install_nzbdav_prebuilt_release(
         candidate_app_dir = os.path.join(candidate_dir, "app")
         os.replace(os.path.join(candidate_dir, "backend"), candidate_app_dir)
         marker = f"{release_tag}-{release_sha[:8]}"
+        application_version = _nzbdav_release_application_version(
+            release_tag,
+            release_info=release_info,
+            packaged_version=_read_nzbdav_packaged_version(candidate_dir),
+        )
         marker_metadata = {
             "release_tag": release_tag,
             "source_commit": release_sha,
@@ -1254,6 +1385,7 @@ def _install_nzbdav_prebuilt_release(
             source_commit=release_sha,
             asset_name=asset_name,
             installed_at=marker_metadata["installed_at"],
+            application_version=application_version,
         )
         for candidate_path in (
             candidate_app_dir,
@@ -1293,6 +1425,7 @@ def _install_nzbdav_prebuilt_release(
             "asset_name": asset.get("name"),
             "asset_sha256": published_digest.removeprefix("sha256:"),
             "version_marker": marker,
+            "application_version": application_version,
         }, None
     except (OSError, TypeError, ValueError) as error:
         return None, str(error)
@@ -1552,6 +1685,9 @@ def setup_release_version(process_handler, config, process_name, key):
             resolved_release=nzbdav_resolved_release,
             source_commit=nzbdav_release_sha,
             fallback_reason=nzbdav_prebuilt_error,
+            application_version=_nzbdav_release_application_version(
+                nzbdav_resolved_release
+            ),
         )
 
     return True, None
@@ -2478,14 +2614,15 @@ def _setup_project_inner(
                     with open(version_path, "r") as f:
                         version_value = f.read().strip()
                         if version_value:
-                            # DUMB keeps the resolved release commit in its
-                            # internal marker so moved tags remain detectable.
-                            # InfiniDysk classifies non-semver labels as Dev,
-                            # so expose the ordinary release portion to the
-                            # application while retaining the full marker on
-                            # disk for DUMB's update comparisons.
-                            env["NZBDAV_VERSION"] = versions.display_version(
-                                "infinidysk", version_value
+                            # Keep DUMB's commit-aware update marker private.
+                            # InfiniDysk receives the native application label
+                            # persisted with the installed runtime instead.
+                            env["NZBDAV_VERSION"] = (
+                                _nzbdav_configured_application_version(
+                                    config.get("config_dir", "/infinidysk"),
+                                    version_value,
+                                    env.get("NZBDAV_VERSION"),
+                                )
                             )
                         else:
                             env.pop("NZBDAV_VERSION", None)
@@ -4757,6 +4894,11 @@ def setup_nzbdav(
             if not success:
                 return False, error
             if source_fallback_info:
+                source_fallback_info["application_version"] = (
+                    _nzbdav_release_application_version(
+                        source_fallback_info["resolved_release"]
+                    )
+                )
                 _record_nzbdav_source_install(nzbdav_config_dir, **source_fallback_info)
         elif build_needed and configure_only:
             return False, "InfiniDysk build output missing during configure phase."
