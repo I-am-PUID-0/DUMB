@@ -195,6 +195,31 @@ INFINIDYSK_AUXILIARY_SQLITE_STORES = (
     "warden.db",
     "usenet-migration.db",
 )
+INFINIDYSK_DATABASE_CONTRACT_FILENAME = "db-contract.json"
+INFINIDYSK_DATABASE_CONTRACT_VERSION = "infinidysk-db-v1"
+INFINIDYSK_DATABASE_CONTRACT_MAX_BYTES = 64 * 1024
+INFINIDYSK_DATABASE_CONTRACT_KEYS = frozenset(
+    {
+        "contract",
+        "appVersion",
+        "generatedAtUtc",
+        "provider",
+        "terminalMigration",
+        "migrationCount",
+        "migrationHistoryHash",
+        "transientObjects",
+        "databases",
+    }
+)
+INFINIDYSK_DATABASE_CONTRACT_ENTRY_KEYS = frozenset(
+    {
+        "provider",
+        "terminalMigration",
+        "migrationCount",
+        "migrationHistoryHash",
+        "transientObjects",
+    }
+)
 INFINIDYSK_TRANSIENT_TABLES = tuple(sorted(INFINIDYSK_TRANSIENT_SCHEMA_OBJECTS))
 INFINIDYSK_IMPORT_BATCH_BYTES = 4 * 1024 * 1024
 INFINIDYSK_FULL_ROW_DIGEST_ITERSIZE = 16
@@ -333,6 +358,12 @@ def _preflight_binding(preflight: dict[str, Any]) -> dict[str, Any]:
         "launch_config_fingerprint": preflight.get("launch_config_fingerprint"),
         "source_migration_history_fingerprint": preflight.get(
             "source_migration_history_fingerprint"
+        ),
+        "source_database_contract_file_fingerprint": preflight.get(
+            "source_database_contract_file_fingerprint"
+        ),
+        "source_database_contract_file_status": (
+            (preflight.get("source_database_contract_file") or {}).get("status")
         ),
         "database_contract": preflight.get("database_contract"),
         "postgres_database": (preflight.get("postgres") or {}).get("main_database"),
@@ -979,6 +1010,267 @@ def _read_infinidysk_version_marker(config_dir: Path) -> str | None:
         return None
 
 
+def _read_bounded_infinidysk_database_contract(
+    path: Path,
+) -> tuple[dict[str, Any] | None, str | None]:
+    """Read one application-owned contract without following links or racing writes."""
+
+    try:
+        path_stat = path.lstat()
+    except FileNotFoundError:
+        return None, None
+    except OSError:
+        return None, "The InfiniDysk database contract could not be inspected."
+
+    if (
+        not stat.S_ISREG(path_stat.st_mode)
+        or stat.S_ISLNK(path_stat.st_mode)
+        or path_stat.st_nlink != 1
+        or path_stat.st_size < 1
+        or path_stat.st_size > INFINIDYSK_DATABASE_CONTRACT_MAX_BYTES
+    ):
+        return None, (
+            "The InfiniDysk database contract must be a bounded, direct regular file."
+        )
+
+    flags = os.O_RDONLY | getattr(os, "O_CLOEXEC", 0)
+    flags |= getattr(os, "O_NOFOLLOW", 0)
+    try:
+        descriptor = os.open(path, flags)
+        try:
+            opened_stat = os.fstat(descriptor)
+            if (
+                not stat.S_ISREG(opened_stat.st_mode)
+                or opened_stat.st_nlink != 1
+                or (opened_stat.st_dev, opened_stat.st_ino)
+                != (path_stat.st_dev, path_stat.st_ino)
+                or opened_stat.st_size > INFINIDYSK_DATABASE_CONTRACT_MAX_BYTES
+            ):
+                return None, (
+                    "The InfiniDysk database contract changed while it was opened."
+                )
+            chunks: list[bytes] = []
+            remaining = INFINIDYSK_DATABASE_CONTRACT_MAX_BYTES + 1
+            while remaining:
+                chunk = os.read(descriptor, remaining)
+                if not chunk:
+                    break
+                chunks.append(chunk)
+                remaining -= len(chunk)
+            raw = b"".join(chunks)
+            final_stat = os.fstat(descriptor)
+        finally:
+            os.close(descriptor)
+    except OSError:
+        return None, "The InfiniDysk database contract could not be read safely."
+
+    if (
+        len(raw) > INFINIDYSK_DATABASE_CONTRACT_MAX_BYTES
+        or len(raw) != opened_stat.st_size
+        or final_stat.st_nlink != 1
+        or final_stat.st_dev != opened_stat.st_dev
+        or final_stat.st_ino != opened_stat.st_ino
+        or final_stat.st_size != opened_stat.st_size
+        or final_stat.st_mtime_ns != opened_stat.st_mtime_ns
+        or final_stat.st_ctime_ns != opened_stat.st_ctime_ns
+    ):
+        return None, "The InfiniDysk database contract changed while it was read."
+
+    try:
+        payload = json.loads(raw.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        return None, "The InfiniDysk database contract is not valid UTF-8 JSON."
+    if not isinstance(payload, dict):
+        return None, "The InfiniDysk database contract must be a JSON object."
+    return payload, None
+
+
+def _infinidysk_database_contract_entry_error(
+    entry: Any,
+    *,
+    expected_provider: str,
+    expected_transient_objects: set[str],
+) -> str | None:
+    if not isinstance(entry, dict):
+        return "contains an invalid database entry"
+    if set(entry) != INFINIDYSK_DATABASE_CONTRACT_ENTRY_KEYS:
+        return "contains an unsupported database-entry shape"
+    if entry.get("provider") != expected_provider:
+        return f"does not describe the expected {expected_provider} provider"
+
+    migration_count = entry.get("migrationCount")
+    if (
+        isinstance(migration_count, bool)
+        or not isinstance(migration_count, int)
+        or migration_count < 0
+        or migration_count > 10000
+    ):
+        return "contains an invalid migration count"
+
+    terminal_migration = entry.get("terminalMigration")
+    history_hash = entry.get("migrationHistoryHash")
+    if migration_count:
+        if (
+            not isinstance(terminal_migration, str)
+            or not terminal_migration
+            or len(terminal_migration) > 256
+        ):
+            return "contains an invalid terminal migration"
+        if not isinstance(history_hash, str) or not re.fullmatch(
+            r"sha256:[0-9a-f]{64}", history_hash
+        ):
+            return "contains an invalid migration-history hash"
+    elif terminal_migration is not None:
+        return "contains a terminal migration for an empty history"
+    elif history_hash is not None and history_hash != (
+        "sha256:" + hashlib.sha256(b"").hexdigest()
+    ):
+        return "contains an invalid empty migration-history hash"
+
+    transient_objects = entry.get("transientObjects")
+    if (
+        not isinstance(transient_objects, list)
+        or len(transient_objects) > 32
+        or any(
+            not isinstance(item, str) or not item or len(item) > 128
+            for item in transient_objects
+        )
+        or len(set(transient_objects)) != len(transient_objects)
+        or set(transient_objects) != expected_transient_objects
+    ):
+        return "contains an unsupported transient-object declaration"
+    return None
+
+
+def _infinidysk_database_contract_provenance(
+    config_path: Path,
+    migration_history: tuple[str, ...] | list[str],
+    *,
+    expected_provider: str,
+) -> dict[str, Any]:
+    """Verify InfiniDysk's v1 contract against one live database migration history."""
+
+    path = config_path / INFINIDYSK_DATABASE_CONTRACT_FILENAME
+    payload, read_error = _read_bounded_infinidysk_database_contract(path)
+    result: dict[str, Any] = {
+        "path": str(path),
+        "status": "missing" if payload is None and read_error is None else "invalid",
+        "present": payload is not None or read_error is not None,
+        "valid": False,
+    }
+    if read_error:
+        result["error"] = read_error
+        return result
+    if payload is None:
+        return result
+
+    def invalid(message: str) -> dict[str, Any]:
+        result["error"] = message
+        return result
+
+    if set(payload) != INFINIDYSK_DATABASE_CONTRACT_KEYS:
+        return invalid(
+            "The InfiniDysk database contract has an unsupported top-level shape."
+        )
+    if payload.get("contract") != INFINIDYSK_DATABASE_CONTRACT_VERSION:
+        return invalid(
+            "The InfiniDysk database contract protocol is not supported by DUMB."
+        )
+    if (
+        not isinstance(payload.get("appVersion"), str)
+        or not payload["appVersion"].strip()
+        or len(payload["appVersion"]) > 128
+        or not isinstance(payload.get("generatedAtUtc"), str)
+        or not payload["generatedAtUtc"].strip()
+        or len(payload["generatedAtUtc"]) > 128
+    ):
+        return invalid(
+            "The InfiniDysk database contract has invalid generation metadata."
+        )
+
+    databases = payload.get("databases")
+    if not isinstance(databases, dict) or set(databases) != {
+        "main",
+        "metrics",
+        "usenetMigration",
+    }:
+        return invalid(
+            "The InfiniDysk database contract has an unsupported database catalog."
+        )
+
+    main = databases.get("main")
+    entry_error = _infinidysk_database_contract_entry_error(
+        main,
+        expected_provider=expected_provider,
+        expected_transient_objects=set(INFINIDYSK_TRANSIENT_TABLES),
+    )
+    if entry_error:
+        return invalid(f"The InfiniDysk main database contract {entry_error}.")
+    for name in ("metrics", "usenetMigration"):
+        entry_error = _infinidysk_database_contract_entry_error(
+            databases.get(name),
+            expected_provider="sqlite",
+            expected_transient_objects=set(),
+        )
+        if entry_error:
+            return invalid(f"The InfiniDysk {name} database contract {entry_error}.")
+
+    for key in INFINIDYSK_DATABASE_CONTRACT_ENTRY_KEYS:
+        if payload.get(key) != main.get(key):
+            return invalid(
+                "The InfiniDysk top-level database contract does not match "
+                "databases.main."
+            )
+
+    ordered_history = tuple(sorted(str(item) for item in migration_history))
+    if not ordered_history:
+        return invalid(
+            "The live InfiniDysk main database has no applied migration history."
+        )
+    expected_history_hash = (
+        "sha256:"
+        + hashlib.sha256("\n".join(ordered_history).encode("utf-8")).hexdigest()
+    )
+    if (
+        main.get("migrationCount") != len(ordered_history)
+        or main.get("terminalMigration") != ordered_history[-1]
+        or main.get("migrationHistoryHash") != expected_history_hash
+    ):
+        return invalid(
+            "The InfiniDysk database contract does not match the live main "
+            "database migration history."
+        )
+
+    identity = {
+        "contract": payload["contract"],
+        "provider": main["provider"],
+        "terminalMigration": main["terminalMigration"],
+        "migrationCount": main["migrationCount"],
+        "migrationHistoryHash": main["migrationHistoryHash"],
+        "transientObjects": sorted(main["transientObjects"]),
+    }
+    result.update(
+        {
+            "status": "verified",
+            "valid": True,
+            "contract": payload["contract"],
+            "app_version": payload["appVersion"].strip(),
+            "generated_at_utc": payload["generatedAtUtc"].strip(),
+            "provider": main["provider"],
+            "terminal_migration": main["terminalMigration"],
+            "migration_count": main["migrationCount"],
+            "migration_history_hash": main["migrationHistoryHash"],
+            "transient_objects": sorted(main["transientObjects"]),
+            "identity_fingerprint": hashlib.sha256(
+                json.dumps(identity, sort_keys=True, separators=(",", ":")).encode(
+                    "utf-8"
+                )
+            ).hexdigest(),
+        }
+    )
+    return result
+
+
 def _sqlite_quick_check(path: Path) -> tuple[bool, str]:
     if not path.is_file():
         return False, "Database file is missing."
@@ -1316,6 +1608,8 @@ def build_arr_postgres_preflight(
     source_schema_fingerprint = None
     source_path_fingerprint = None
     source_migration_history_fingerprint = None
+    source_database_contract_file = None
+    source_database_contract_file_fingerprint = None
     source_database_contract = None
     launch_config_fingerprint = None
     service_source_commit = None
@@ -1430,6 +1724,55 @@ def build_arr_postgres_preflight(
         terminal_ok = matched_contract is not None
         source_database_contract = (
             matched_contract["id"] if matched_contract is not None else None
+        )
+
+        source_database_contract_file = _infinidysk_database_contract_provenance(
+            main_path.parent,
+            migration_history,
+            expected_provider="sqlite",
+        )
+        source_database_contract_file_fingerprint = (
+            source_database_contract_file.get("identity_fingerprint")
+            if source_database_contract_file.get("valid") is True
+            else None
+        )
+        if source_database_contract_file.get("valid") is True:
+            contract_file_status = "pass"
+            contract_file_message = (
+                "InfiniDysk's database contract matches the live SQLite migration "
+                f"history and DUMB's audited {source_database_contract} schema."
+                if terminal_ok
+                else "InfiniDysk's database contract matches the live SQLite "
+                "migration history, but that history is not yet an audited DUMB "
+                "migration contract."
+            )
+        elif source_database_contract_file.get("present"):
+            contract_file_status = "fail"
+            contract_file_message = str(
+                source_database_contract_file.get("error")
+                or "The InfiniDysk database contract is invalid."
+            )
+        else:
+            contract_file_status = "warn"
+            contract_file_message = (
+                "InfiniDysk db-contract.json is not present. This is expected before "
+                "v1.2.6; DUMB will retain its direct audited schema and migration-"
+                "history validation."
+            )
+        add_check(
+            "infinidysk_database_contract_file",
+            contract_file_status,
+            contract_file_message,
+            path=source_database_contract_file.get("path"),
+            contract=source_database_contract_file.get("contract"),
+            app_version=source_database_contract_file.get("app_version"),
+            provider=source_database_contract_file.get("provider"),
+            terminal_migration=source_database_contract_file.get("terminal_migration"),
+            migration_count=source_database_contract_file.get("migration_count"),
+            migration_history_hash=source_database_contract_file.get(
+                "migration_history_hash"
+            ),
+            database_contract=source_database_contract,
         )
         supported_contracts = ", ".join(
             (
@@ -1677,6 +2020,10 @@ def build_arr_postgres_preflight(
         "source_path_fingerprint": source_path_fingerprint,
         "launch_config_fingerprint": launch_config_fingerprint,
         "source_migration_history_fingerprint": (source_migration_history_fingerprint),
+        "source_database_contract_file": source_database_contract_file,
+        "source_database_contract_file_fingerprint": (
+            source_database_contract_file_fingerprint
+        ),
         "database_contract": source_database_contract,
         "sqlite": sqlite_payload,
         "postgres": postgres_payload,
@@ -3027,6 +3374,7 @@ def _prepare_service_schema(
     owner_gid: int | None = None,
     helper_suffix: str = "",
     expected_contract_id: str | None = None,
+    require_database_contract_file: bool = False,
 ) -> dict[str, Any] | None:
     """Run application-specific schema initialization before staging startup."""
     if key == "infinidysk":
@@ -3077,11 +3425,32 @@ def _prepare_service_schema(
                 "InfiniDysk v1.2 --db-migration failed in the isolated staging "
                 "environment. Check the InfiniDysk service logs."
             )
-        return _validate_infinidysk_postgres_schema(
+
+        schema_catalog = _validate_infinidysk_postgres_schema(
             postgres_config,
             database,
             expected_contract_id=expected_contract_id,
         )
+        contract_file = _infinidysk_database_contract_provenance(
+            staging_config_path,
+            tuple(schema_catalog.get("migration_history") or ()),
+            expected_provider="postgres",
+        )
+        if contract_file.get("present") and contract_file.get("valid") is not True:
+            raise ArrPostgresMigrationError(
+                str(
+                    contract_file.get("error")
+                    or "The staged InfiniDysk PostgreSQL database contract is invalid."
+                )
+            )
+        if require_database_contract_file and contract_file.get("valid") is not True:
+            raise ArrPostgresMigrationError(
+                "The installed InfiniDysk runtime verified db-contract.json for "
+                "SQLite but did not write a matching PostgreSQL contract during "
+                "isolated schema staging."
+            )
+        schema_catalog["database_contract_file"] = contract_file
+        return schema_catalog
 
     if key == "bazarr":
         install_path = str(instance.get("config_dir") or "/opt/bazarr")
@@ -3685,6 +4054,10 @@ class ArrPostgresMigrationManager:
             payload = self.get_job(path.stem)
             result = (payload or {}).get("result") or {}
             main_import = (result.get("imports") or {}).get("main") or {}
+            postgres_contract_file = result.get("postgres_database_contract_file") or {}
+            source_contract_file_required = bool(
+                binding.get("source_database_contract_file_fingerprint")
+            )
             infini_contract_valid = True
             if (payload or {}).get("service_key") == "infinidysk":
                 database_contract = _infinidysk_contract_for_binding(
@@ -3708,6 +4081,15 @@ class ArrPostgresMigrationManager:
                     == len(INFINIDYSK_POSTGRES_FOREIGN_KEYS)
                     and main_import.get("sequences_validated")
                     == len(INFINIDYSK_POSTGRES_IDENTITIES)
+                    and (
+                        not source_contract_file_required
+                        or (
+                            postgres_contract_file.get("valid") is True
+                            and postgres_contract_file.get("contract")
+                            == INFINIDYSK_DATABASE_CONTRACT_VERSION
+                            and postgres_contract_file.get("provider") == "postgres"
+                        )
+                    )
                 )
             if (
                 payload
@@ -4100,6 +4482,55 @@ class ArrPostgresMigrationManager:
                         "The SQLite schema changed after preflight. Run preflight and "
                         "rehearsal again before migration."
                     )
+
+                current_schema_details = _infinidysk_sqlite_schema_details(
+                    paths["main"]
+                )
+                if not current_schema_details:
+                    raise ArrPostgresMigrationError(
+                        "The InfiniDysk SQLite migration history could not be "
+                        "revalidated after preflight."
+                    )
+                current_contract_file = _infinidysk_database_contract_provenance(
+                    paths["main"].parent,
+                    current_schema_details["migration_history"],
+                    expected_provider="sqlite",
+                )
+                if (
+                    current_contract_file.get("present")
+                    and current_contract_file.get("valid") is not True
+                ):
+                    raise ArrPostgresMigrationError(
+                        str(
+                            current_contract_file.get("error")
+                            or "The InfiniDysk database contract became invalid "
+                            "after preflight."
+                        )
+                    )
+                expected_contract_file_status = (payload.get("binding") or {}).get(
+                    "source_database_contract_file_status"
+                )
+                if (
+                    expected_contract_file_status is not None
+                    and current_contract_file.get("status")
+                    != expected_contract_file_status
+                ):
+                    raise ArrPostgresMigrationError(
+                        "InfiniDysk db-contract.json availability or validity changed "
+                        "after preflight. Run preflight and rehearsal again before "
+                        "migration."
+                    )
+                expected_contract_file_fingerprint = (payload.get("binding") or {}).get(
+                    "source_database_contract_file_fingerprint"
+                )
+                if expected_contract_file_fingerprint and (
+                    current_contract_file.get("identity_fingerprint")
+                    != expected_contract_file_fingerprint
+                ):
+                    raise ArrPostgresMigrationError(
+                        "InfiniDysk db-contract.json changed or disappeared after "
+                        "preflight. Run preflight and rehearsal again before migration."
+                    )
             self._progress(payload, "backup", "Creating rollback backup.", 5)
             _ensure_private_child_directory(self.root, self.backups_dir)
             _ensure_private_child_directory(self.root, backup_dir.parent)
@@ -4267,6 +4698,12 @@ class ArrPostgresMigrationManager:
                         if key == "infinidysk"
                         else None
                     ),
+                    require_database_contract_file=bool(
+                        key == "infinidysk"
+                        and (payload.get("binding") or {}).get(
+                            "source_database_contract_file_fingerprint"
+                        )
+                    ),
                 )
                 if schema_catalog is None:
                     try:
@@ -4383,6 +4820,7 @@ class ArrPostgresMigrationManager:
 
             postgres_schema_fingerprint = None
             postgres_adapter_schema = None
+            postgres_database_contract_file = None
             if key == "infinidysk":
                 main_result = results.get("main") or {}
                 postgres_schema_fingerprint = main_result.get(
@@ -4390,6 +4828,9 @@ class ArrPostgresMigrationManager:
                 )
                 expected_schema_fingerprint = (schema_catalog or {}).get("fingerprint")
                 postgres_adapter_schema = (schema_catalog or {}).get("adapter_schema")
+                postgres_database_contract_file = (schema_catalog or {}).get(
+                    "database_contract_file"
+                )
                 if (
                     main_result.get("validated") is not True
                     or main_result.get("tables") != len(INFINIDYSK_POSTGRES_TABLES)
@@ -4429,6 +4870,9 @@ class ArrPostgresMigrationManager:
                         postgres_adapter_schema if key == "infinidysk" else None
                     ),
                     "postgres_schema_fingerprint": postgres_schema_fingerprint,
+                    "postgres_database_contract_file": (
+                        postgres_database_contract_file
+                    ),
                     "imports": results,
                     "key_row_counts": key_counts,
                     "cutover_performed": False,
@@ -4491,6 +4935,9 @@ class ArrPostgresMigrationManager:
                         postgres_adapter_schema if key == "infinidysk" else None
                     ),
                     "postgres_schema_fingerprint": postgres_schema_fingerprint,
+                    "postgres_database_contract_file": (
+                        postgres_database_contract_file
+                    ),
                     "rehearsal_job_id": payload.get("rehearsal_job_id"),
                     "application_health_verified": key == "infinidysk",
                     "imports": results,

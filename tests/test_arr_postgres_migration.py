@@ -31,6 +31,7 @@ from utils.arr_postgres_migration import (
     _convert_value,
     _digest_rows,
     _clear_infinidysk_rollback_authorization,
+    _infinidysk_database_contract_provenance,
     _infinidysk_namespace_migration_resolved,
     _infinidysk_postgres_source_selection,
     _infinidysk_sqlite_contract_matches,
@@ -149,6 +150,61 @@ def create_sqlite(path, table="Series", rows=2):
         connection.commit()
     finally:
         connection.close()
+
+
+def create_infinidysk_database_contract(
+    config_path: Path,
+    migration_history,
+    *,
+    provider="sqlite",
+    transient_objects=None,
+):
+    ordered_history = tuple(sorted(migration_history))
+    history_hash = (
+        "sha256:"
+        + hashlib.sha256("\n".join(ordered_history).encode("utf-8")).hexdigest()
+    )
+    main = {
+        "provider": provider,
+        "terminalMigration": ordered_history[-1] if ordered_history else None,
+        "migrationCount": len(ordered_history),
+        "migrationHistoryHash": history_hash if ordered_history else None,
+        "transientObjects": (
+            transient_objects
+            if transient_objects is not None
+            else ["TMP_LINKED_FILES", "TMP_LINKED_FILES_UNIQUE"]
+        ),
+    }
+    metrics = {
+        "provider": "sqlite",
+        "terminalMigration": "MetricsMigration",
+        "migrationCount": 1,
+        "migrationHistoryHash": (
+            "sha256:" + hashlib.sha256(b"MetricsMigration").hexdigest()
+        ),
+        "transientObjects": [],
+    }
+    usenet_migration = {
+        "provider": "sqlite",
+        "terminalMigration": None,
+        "migrationCount": 0,
+        "migrationHistoryHash": None,
+        "transientObjects": [],
+    }
+    payload = {
+        "contract": "infinidysk-db-v1",
+        "appVersion": "1.2.7",
+        "generatedAtUtc": "2026-08-25T19:00:00.0000000Z",
+        **main,
+        "databases": {
+            "main": dict(main),
+            "metrics": metrics,
+            "usenetMigration": usenet_migration,
+        },
+    }
+    config_path.mkdir(parents=True, exist_ok=True)
+    (config_path / "db-contract.json").write_text(json.dumps(payload), encoding="utf-8")
+    return payload
 
 
 class ArrPostgresMigrationTests(unittest.TestCase):
@@ -428,6 +484,86 @@ class ArrPostgresMigrationTests(unittest.TestCase):
             _infinidysk_sqlite_contract_matches(details, "f" * 64),
             "Column, index, or trigger changes must alter the audited schema fingerprint.",
         )
+
+    def test_infini_database_contract_file_matches_live_main_history(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            config_path = Path(temp_dir)
+            migration_history = ("MigrationB", "MigrationA")
+            create_infinidysk_database_contract(config_path, migration_history)
+
+            result = _infinidysk_database_contract_provenance(
+                config_path, migration_history, expected_provider="sqlite"
+            )
+
+        self.assertEqual(result["status"], "verified")
+        self.assertTrue(result["valid"])
+        self.assertEqual(result["provider"], "sqlite")
+        self.assertEqual(result["terminal_migration"], "MigrationB")
+        self.assertEqual(result["migration_count"], 2)
+        self.assertRegex(result["identity_fingerprint"], r"^[0-9a-f]{64}$")
+
+    def test_infini_database_contract_file_missing_is_legacy_compatible(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            result = _infinidysk_database_contract_provenance(
+                Path(temp_dir), ("MigrationA",), expected_provider="sqlite"
+            )
+
+        self.assertEqual(result["status"], "missing")
+        self.assertFalse(result["present"])
+        self.assertFalse(result["valid"])
+
+    def test_infini_database_contract_file_fails_closed_on_bad_provenance(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            config_path = Path(temp_dir)
+            migration_history = ("MigrationA", "MigrationB")
+
+            create_infinidysk_database_contract(config_path, migration_history)
+            stale = _infinidysk_database_contract_provenance(
+                config_path,
+                (*migration_history, "MigrationC"),
+                expected_provider="sqlite",
+            )
+            self.assertEqual(stale["status"], "invalid")
+            self.assertIn("does not match the live main", stale["error"])
+
+            payload = create_infinidysk_database_contract(
+                config_path, migration_history, transient_objects=["FutureScratch"]
+            )
+            transient = _infinidysk_database_contract_provenance(
+                config_path, migration_history, expected_provider="sqlite"
+            )
+            self.assertEqual(transient["status"], "invalid")
+            self.assertIn("transient-object", transient["error"])
+
+            payload["provider"] = "postgres"
+            payload["databases"]["main"]["provider"] = "postgres"
+            (config_path / "db-contract.json").write_text(
+                json.dumps(payload), encoding="utf-8"
+            )
+            wrong_provider = _infinidysk_database_contract_provenance(
+                config_path, migration_history, expected_provider="sqlite"
+            )
+            self.assertEqual(wrong_provider["status"], "invalid")
+            self.assertIn("expected sqlite", wrong_provider["error"])
+
+            (config_path / "db-contract.json").write_text("{broken", encoding="utf-8")
+            malformed = _infinidysk_database_contract_provenance(
+                config_path, migration_history, expected_provider="sqlite"
+            )
+            self.assertEqual(malformed["status"], "invalid")
+            self.assertIn("UTF-8 JSON", malformed["error"])
+
+            contract_path = config_path / "db-contract.json"
+            contract_path.unlink()
+            target_path = config_path / "contract-target.json"
+            create_infinidysk_database_contract(config_path, migration_history)
+            contract_path.replace(target_path)
+            contract_path.symlink_to(target_path.name)
+            unsafe = _infinidysk_database_contract_provenance(
+                config_path, migration_history, expected_provider="sqlite"
+            )
+            self.assertEqual(unsafe["status"], "invalid")
+            self.assertIn("direct regular file", unsafe["error"])
 
     def test_infini_schema_fingerprint_ignores_sqlite_internal_statistics(self):
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -1137,12 +1273,50 @@ class ArrPostgresMigrationTests(unittest.TestCase):
                     staging_config_path=staging_path,
                 )
 
-        self.assertEqual(result, {"fingerprint": "schema"})
+        self.assertEqual(result["fingerprint"], "schema")
+        self.assertEqual(result["database_contract_file"]["status"], "missing")
+        self.assertFalse(result["database_contract_file"]["present"])
         args = process_handler.start_process.call_args
         self.assertEqual(args.args[2], ["dotnet", "InfiniDysk.dll", "--db-migration"])
         self.assertEqual(args.kwargs["env"]["CONFIG_PATH"], str(staging_path))
         self.assertEqual(args.kwargs["env"]["ASPNETCORE_URLS"], "http://127.0.0.1:0")
         process_handler.wait.assert_called_once()
+
+    def test_infinidysk_schema_helper_requires_staged_contract_when_source_had_one(
+        self,
+    ):
+        process_handler = Mock()
+        process_handler.start_process.return_value = (True, None)
+        process_handler.returncode = 0
+        with tempfile.TemporaryDirectory() as temp_dir:
+            staging_path = Path(temp_dir) / "isolated-config"
+            with (
+                patch(
+                    "utils.arr_postgres_migration._infinidysk_runtime_command",
+                    return_value=(["dotnet", "InfiniDysk.dll"], None),
+                ),
+                patch(
+                    "utils.arr_postgres_migration._validate_infinidysk_postgres_schema",
+                    return_value={"fingerprint": "schema"},
+                ),
+                self.assertRaisesRegex(
+                    ArrPostgresMigrationError,
+                    "did not write a matching PostgreSQL contract",
+                ),
+            ):
+                _prepare_service_schema(
+                    "infinidysk",
+                    {
+                        "config_dir": "/infinidysk",
+                        "backend_output_dir": "/infinidysk/app",
+                        "env": {"CONFIG_PATH": "/live-config"},
+                    },
+                    process_handler,
+                    postgres_config={"host": "127.0.0.1"},
+                    database="stage",
+                    staging_config_path=staging_path,
+                    require_database_contract_file=True,
+                )
 
     def test_sequence_reset_uses_oid_for_mixed_case_identity_sequences(self):
         cursor = MagicMock()
@@ -1235,6 +1409,28 @@ class ArrPostgresMigrationTests(unittest.TestCase):
                 manager._matching_rehearsal("InfiniDysk", changed_binding)
             )
 
+            contract_binding = {
+                **binding,
+                "source_database_contract_file_fingerprint": "a" * 64,
+            }
+            payload["binding"] = contract_binding
+            payload["result"]["binding"] = contract_binding
+            manager._save(payload)
+            self.assertIsNone(
+                manager._matching_rehearsal("InfiniDysk", contract_binding)
+            )
+
+            payload["result"]["postgres_database_contract_file"] = {
+                "valid": True,
+                "contract": "infinidysk-db-v1",
+                "provider": "postgres",
+            }
+            manager._save(payload)
+            self.assertEqual(
+                manager._matching_rehearsal("InfiniDysk", contract_binding)["job_id"],
+                payload["job_id"],
+            )
+
     def test_infinidysk_command_drift_during_final_health_check_refuses_before_stop(
         self,
     ):
@@ -1297,6 +1493,10 @@ class ArrPostgresMigrationTests(unittest.TestCase):
                 patch(
                     "utils.arr_postgres_migration._sqlite_schema_fingerprint",
                     return_value="bound-schema",
+                ),
+                patch(
+                    "utils.arr_postgres_migration._infinidysk_sqlite_schema_details",
+                    return_value={"migration_history": ()},
                 ),
                 patch(
                     "utils.arr_postgres_migration._tracked_process_identity",
