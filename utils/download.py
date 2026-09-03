@@ -1,10 +1,31 @@
 from utils.global_logger import logger
 from utils.config_loader import CONFIG_MANAGER
 from utils.install_cache import INSTALL_CACHE
-import requests, time, os, zipfile, io, shutil, platform, re, tarfile, tempfile, stat, hashlib
+import requests, time, os, zipfile, io, shutil, platform, re, tarfile, tempfile, stat, hashlib, errno
 import fnmatch
 from pathlib import Path
 from urllib.parse import quote
+
+
+def _replace_cross_device_safe(source, destination):
+    # os.replace() requires source and destination to be on the same
+    # filesystem. Bind-mounted persistent targets (e.g. /infinidysk) are a
+    # separate mount from the container's own root filesystem, so a plain
+    # os.replace() raises EXDEV here even though the paths look local.
+    try:
+        os.replace(source, destination)
+    except OSError as error:
+        if error.errno != errno.EXDEV:
+            raise
+        if os.path.islink(source):
+            link_target = os.readlink(source)
+            if os.path.lexists(destination):
+                os.unlink(destination)
+            os.symlink(link_target, destination)
+            os.unlink(source)
+        else:
+            shutil.copy2(source, destination)
+            os.unlink(source)
 
 
 class Downloader:
@@ -727,7 +748,7 @@ class Downloader:
                         previous = os.path.join(backup, relative)
                         os.makedirs(os.path.dirname(previous), exist_ok=True)
                         os.replace(destination, previous)
-                    os.replace(source, destination)
+                    _replace_cross_device_safe(source, destination)
                     applied.append((destination, previous))
             shutil.rmtree(backup)
             return True, None
