@@ -960,6 +960,31 @@ class DownloaderHelperTests(unittest.TestCase):
                 {data_parent.resolve()},
             )
 
+    def test_cross_device_replace_failure_restores_prior_destination(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            staging_dir = Path(temp_dir) / "staging"
+            staging_dir.mkdir()
+            (staging_dir / "runtime.txt").write_text("updated", encoding="utf-8")
+
+            target = Path(temp_dir) / "target"
+            target.mkdir()
+            existing = target / "runtime.txt"
+            existing.write_text("working", encoding="utf-8")
+
+            with patch.object(
+                download,
+                "_replace_cross_device_safe",
+                side_effect=OSError("simulated EXDEV fallback failure"),
+            ):
+                success, error = self.downloader._merge_staging_transactionally(
+                    str(staging_dir), str(target)
+                )
+
+            self.assertFalse(success)
+            self.assertIn("simulated EXDEV fallback failure", error)
+            self.assertTrue(existing.exists())
+            self.assertEqual("working", existing.read_text(encoding="utf-8"))
+
     def test_download_uses_verified_cached_archive_when_revalidation_is_offline(self):
         zip_buffer = io.BytesIO()
         with zipfile.ZipFile(zip_buffer, "w") as archive:

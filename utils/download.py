@@ -748,8 +748,8 @@ class Downloader:
                         previous = os.path.join(backup, relative)
                         os.makedirs(os.path.dirname(previous), exist_ok=True)
                         os.replace(destination, previous)
-                    _replace_cross_device_safe(source, destination)
                     applied.append((destination, previous))
+                    _replace_cross_device_safe(source, destination)
             shutil.rmtree(backup)
             return True, None
         except Exception as error:
