@@ -203,14 +203,19 @@ def _uses_postgres_database(config: Optional[dict] = None) -> bool:
 
 
 def _infinidysk_api_key(config: dict) -> str:
-    env = config.get("env") or {}
-    api_key = str(env.get("FRONTEND_BACKEND_API_KEY") or "").strip()
-    if api_key or _uses_postgres_database(config):
-        return api_key
+    # nzbdav_db.get_config_value reads whichever backend InfiniDysk is
+    # actually running against (sqlite or PostgreSQL), so it reflects the
+    # key InfiniDysk currently enforces even if the two have drifted apart.
+    # FRONTEND_BACKEND_API_KEY is only a fallback for when that read fails
+    # (e.g. before InfiniDysk has ever started and generated a key).
     try:
-        return str(nzbdav_db.get_config_value("api.key") or "").strip()
+        db_api_key = str(nzbdav_db.get_config_value("api.key") or "").strip()
     except FileNotFoundError:
-        return ""
+        db_api_key = ""
+    if db_api_key:
+        return db_api_key
+    env = config.get("env") or {}
+    return str(env.get("FRONTEND_BACKEND_API_KEY") or "").strip()
 
 
 def _infinidysk_config_api_request(

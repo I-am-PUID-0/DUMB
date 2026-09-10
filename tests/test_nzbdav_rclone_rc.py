@@ -6,7 +6,7 @@ from utils import nzbdav_settings
 
 
 class InfiniDyskRcloneRcTests(unittest.TestCase):
-    def test_postgres_config_api_uses_env_key_and_repeated_config_fields(self):
+    def test_postgres_config_api_prefers_live_db_key_over_env_fallback(self):
         class Response:
             status = 200
 
@@ -32,8 +32,12 @@ class InfiniDyskRcloneRcTests(unittest.TestCase):
             patch.object(
                 nzbdav_settings.nzbdav_db,
                 "get_config_value",
-                side_effect=AssertionError("PostgreSQL mode must not read db.sqlite"),
-            ),
+                # get_config_value is PostgreSQL-aware: in postgres mode it
+                # reads InfiniDysk's live api.key from Postgres rather than
+                # db.sqlite. That live value must win over the possibly
+                # stale FRONTEND_BACKEND_API_KEY env var.
+                return_value="live-postgres-key",
+            ) as get_config_value,
             patch.object(
                 nzbdav_settings, "safe_urlopen", return_value=Response()
             ) as urlopen,
@@ -48,13 +52,14 @@ class InfiniDyskRcloneRcTests(unittest.TestCase):
             )
 
         self.assertIsNone(error)
+        get_config_value.assert_called_with("api.key")
         self.assertEqual(payload["configItems"][0]["configName"], "rclone.host")
         request = urlopen.call_args.args[0]
         self.assertEqual(
             parse_qs(request.data.decode("utf-8")),
             {"config-keys": ["rclone.host", "rclone.user"]},
         )
-        self.assertEqual(request.get_header("X-api-key"), "env-api-key")
+        self.assertEqual(request.get_header("X-api-key"), "live-postgres-key")
 
     def test_empty_settings_are_seeded_once(self):
         values = {

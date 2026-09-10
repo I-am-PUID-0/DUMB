@@ -1,4 +1,5 @@
 from utils.config_loader import CONFIG_MANAGER
+from utils.database_health import _parse_ado_net_connection_string
 from utils.global_logger import logger
 from typing import Dict, Iterable, Optional, Tuple
 import os, re, sqlite3
@@ -282,7 +283,79 @@ def list_accounts(config_dir: Optional[str] = None) -> list[dict]:
     return [{"type": row["Type"], "username": row["Username"]} for row in rows]
 
 
+def _uses_postgres_database(config_dir: Optional[str] = None) -> bool:
+    # An explicit config_dir means the caller wants a specific sqlite store
+    # (e.g. a backup file), regardless of the live backend setting.
+    if config_dir:
+        return False
+    cfg = CONFIG_MANAGER.get("infinidysk") or {}
+    if not isinstance(cfg, dict):
+        return False
+    env = cfg.get("env") or {}
+    return (
+        cfg.get("postgres_enabled") is True
+        or str(env.get("DATABASE_PROVIDER") or "").strip().lower() == "postgres"
+    )
+
+
+def _postgres_connection_params() -> Optional[dict]:
+    cfg = CONFIG_MANAGER.get("infinidysk") or {}
+    env = cfg.get("env") or {} if isinstance(cfg, dict) else {}
+    parsed = _parse_ado_net_connection_string(
+        str(env.get("DATABASE_CONNECTION_STRING") or "")
+    )
+    if not parsed.get("host") or not parsed.get("database"):
+        return None
+    return {
+        "host": parsed.get("host") or "127.0.0.1",
+        "port": int(parsed.get("port") or 5432),
+        "user": parsed.get("user") or "DUMB",
+        "password": parsed.get("password") or "",
+        "dbname": parsed["database"],
+    }
+
+
+def _get_config_value_postgres(name: str) -> Optional[str]:
+    import psycopg2
+
+    params = _postgres_connection_params()
+    if not params:
+        return None
+    conn = psycopg2.connect(
+        connect_timeout=2, application_name="dumb_nzbdav_db", **params
+    )
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                'SELECT "ConfigValue" FROM "ConfigItems" WHERE "ConfigName" = %s',
+                (name,),
+            )
+            row = cursor.fetchone()
+            return row[0] if row else None
+    finally:
+        conn.close()
+
+
 def get_config_value(name: str, config_dir: Optional[str] = None) -> Optional[str]:
+    # InfiniDysk stores its live config (including api.key) in whichever
+    # backend it's actually running against. When that's PostgreSQL, the
+    # sqlite file this function otherwise reads is stale or absent, so a
+    # caller trusting it (or a hardcoded fallback) can silently drift from
+    # the key InfiniDysk actually enforces. Read the real backend first and
+    # only fall back to sqlite if that isn't possible.
+    if _uses_postgres_database(config_dir):
+        try:
+            value = _get_config_value_postgres(name)
+        except Exception as error:
+            logger.warning(
+                "Failed to read InfiniDysk config '%s' from PostgreSQL: %s",
+                name,
+                error,
+            )
+        else:
+            if value is not None:
+                return value
+
     db_path = _get_db_path(config_dir)
     if not os.path.exists(db_path):
         raise FileNotFoundError(f"InfiniDysk db not found: {db_path}")

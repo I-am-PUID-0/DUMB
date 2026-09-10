@@ -73,6 +73,45 @@ class InfiniDyskSetupTests(unittest.TestCase):
             nzbdav_settings._infinidysk_mount_root(config),
         )
 
+    def test_api_key_prefers_live_db_value_over_stale_env_when_postgres_enabled(self):
+        # Regression: InfiniDysk's Postgres-backed api.key can drift from
+        # FRONTEND_BACKEND_API_KEY (e.g. after a reinstall regenerates it).
+        # The live DB value is what InfiniDysk actually enforces and what
+        # gets pushed to each Arr instance's SABnzbd download client, so it
+        # must win over the possibly-stale env var.
+        config = {
+            "postgres_enabled": True,
+            "env": {
+                "DATABASE_PROVIDER": "postgres",
+                "FRONTEND_BACKEND_API_KEY": "stale-env-key",
+            },
+        }
+        with patch.object(
+            nzbdav_settings.nzbdav_db,
+            "get_config_value",
+            return_value="live-db-key",
+        ):
+            self.assertEqual(
+                "live-db-key", nzbdav_settings._infinidysk_api_key(config)
+            )
+
+    def test_api_key_falls_back_to_env_when_db_read_fails(self):
+        config = {
+            "postgres_enabled": True,
+            "env": {
+                "DATABASE_PROVIDER": "postgres",
+                "FRONTEND_BACKEND_API_KEY": "fallback-key",
+            },
+        }
+        with patch.object(
+            nzbdav_settings.nzbdav_db,
+            "get_config_value",
+            side_effect=FileNotFoundError,
+        ):
+            self.assertEqual(
+                "fallback-key", nzbdav_settings._infinidysk_api_key(config)
+            )
+
     def test_postgres_refuses_an_existing_sqlite_main_database(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             Path(temp_dir, "db.sqlite").write_bytes(b"existing application data")
@@ -432,8 +471,12 @@ class InfiniDyskSetupTests(unittest.TestCase):
             patch.object(
                 nzbdav_settings.nzbdav_db,
                 "get_config_value",
-                side_effect=AssertionError("PostgreSQL mode must not read db.sqlite"),
-            ),
+                # get_config_value is itself PostgreSQL-aware: in Postgres
+                # mode it reads the live backend, not db.sqlite, so calling
+                # it here is expected and safe. This stands in for that
+                # live read returning InfiniDysk's real api.key.
+                return_value="live-postgres-key",
+            ) as get_config_value,
             patch.object(
                 nzbdav_settings.nzbdav_db,
                 "set_config_value",
@@ -444,6 +487,7 @@ class InfiniDyskSetupTests(unittest.TestCase):
                 updated, error = nzbdav_settings.patch_nzbdav_config()
 
         self.assertTrue(updated)
+        get_config_value.assert_called_with("api.key")
         self.assertIsNone(error)
         self.assertEqual(api_request.call_count, 2)
         self.assertEqual(api_request.call_args_list[0].args[1], "/api/get-config")

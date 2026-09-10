@@ -77,6 +77,53 @@ class NzbDavDbSecurityTests(unittest.TestCase):
                 key_columns=["ConfigName"],
             )
 
+    def test_get_config_value_reads_postgres_when_backend_is_postgres(self):
+        # When InfiniDysk runs against PostgreSQL, the sqlite file this
+        # module otherwise reads is stale/absent -- get_config_value must
+        # read the live backend instead, not the on-disk sqlite fallback.
+        self.nzbdav_db.CONFIG_MANAGER.get = lambda *args, **kwargs: {
+            "postgres_enabled": True,
+            "env": {
+                "DATABASE_CONNECTION_STRING": (
+                    'Host="127.0.0.1";Port="5432";Database="infinidysk_main";'
+                    'Username="DUMB";Password="postgres"'
+                ),
+            },
+        }
+
+        fake_cursor = mock.MagicMock()
+        fake_cursor.__enter__.return_value = fake_cursor
+        fake_cursor.fetchone.return_value = ("live-postgres-value",)
+        fake_connection = mock.MagicMock()
+        fake_connection.cursor.return_value = fake_cursor
+
+        with mock.patch("psycopg2.connect", return_value=fake_connection) as connect:
+            value = self.nzbdav_db.get_config_value("api.key")
+
+        self.assertEqual("live-postgres-value", value)
+        _, kwargs = connect.call_args
+        self.assertEqual("127.0.0.1", kwargs["host"])
+        self.assertEqual("infinidysk_main", kwargs["dbname"])
+        self.assertEqual("DUMB", kwargs["user"])
+
+    def test_get_config_value_falls_back_to_sqlite_when_postgres_read_fails(self):
+        self.nzbdav_db.CONFIG_MANAGER.get = lambda *args, **kwargs: {
+            "postgres_enabled": True,
+            "env": {
+                "DATABASE_CONNECTION_STRING": (
+                    'Host="127.0.0.1";Port="5432";Database="infinidysk_main";'
+                    'Username="DUMB";Password="postgres"'
+                ),
+            },
+        }
+
+        with mock.patch(
+            "psycopg2.connect", side_effect=OSError("connection refused")
+        ):
+            value = self.nzbdav_db.get_config_value("api.key")
+
+        self.assertEqual("abc", value)
+
     def test_upsert_row_rejects_unknown_data_column(self):
         with self.assertRaises(ValueError):
             self.nzbdav_db.upsert_row(
