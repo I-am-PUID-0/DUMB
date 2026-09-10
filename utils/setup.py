@@ -132,6 +132,21 @@ _NZBDAV_SERVICE_PROVIDER = json.dumps(
     },
     separators=(",", ":"),
 )
+# These services resolve and install sources in their dedicated setup functions.
+# Shared setup and explicit manual installs must agree on this ownership boundary.
+SERVICE_MANAGED_SOURCE_KEYS = frozenset(
+    {
+        "emby",
+        "profilarr",
+        "aiostreams",
+        "sonarr",
+        "radarr",
+        "lidarr",
+        "prowlarr",
+        "readarr",
+        "whisparr",
+    }
+)
 COMMIT_PIN_SERVICE_KEYS = frozenset(
     {
         "dumb_frontend",
@@ -2424,17 +2439,7 @@ def _setup_project_inner(
                         process_name,
                         runtime_error or "runtime validation failed",
                     )
-            source_managed_by_service_setup = key in {
-                "emby",
-                "profilarr",
-                "aiostreams",
-                "sonarr",
-                "radarr",
-                "lidarr",
-                "prowlarr",
-                "readarr",
-                "whisparr",
-            }
+            source_managed_by_service_setup = key in SERVICE_MANAGED_SOURCE_KEYS
             if (
                 not bootstrap_installed
                 and not source_managed_by_service_setup

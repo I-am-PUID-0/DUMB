@@ -159,6 +159,90 @@ class UpdateNotificationTests(unittest.TestCase):
             self.assertTrue((target / "old-runtime").is_file())
             process_handler.stop_process.assert_not_called()
 
+    def test_configured_generic_releases_bypass_scheduled_update_guard(self):
+        for key in ("seerr", "pulsarr", "maintainerr", "cli_debrid", "zilean"):
+            for failure in (None, "download failed"):
+                with self.subTest(key=key, failure=failure):
+                    updater = self._updater()
+                    updater.process_handler = Mock(
+                        process_names=[],
+                        setup_tracker=set(),
+                        setup_tracker_lock=threading.Lock(),
+                    )
+                    updater.start_process = Mock(return_value=("started", None))
+                    config = {
+                        "auto_update": True,
+                        "release_version_enabled": True,
+                        "release_version": "v1.2.3",
+                    }
+                    original = dict(config)
+                    with (
+                        patch(
+                            "utils.auto_update.setup_release_version",
+                            return_value=(failure is None, failure),
+                        ) as release,
+                        patch("utils.auto_update.setup_project") as normal,
+                        patch(
+                            "utils.auto_update.configure_project",
+                            return_value=(True, None),
+                        ) as configure,
+                    ):
+                        success, message = updater._install_configured_target(
+                            key, config, key, None, "release"
+                        )
+                    release.assert_called_once_with(
+                        updater.process_handler, config, key, key
+                    )
+                    normal.assert_not_called()
+                    self.assertEqual(config, original)
+                    if failure:
+                        self.assertFalse(success)
+                        self.assertIn(failure, message)
+                        configure.assert_not_called()
+                        updater.start_process.assert_not_called()
+                    else:
+                        self.assertTrue(success, message)
+                        configure.assert_called_once_with(updater.process_handler, key)
+                        updater.start_process.assert_called_once()
+
+    def test_configured_releases_preserve_dedicated_service_installers(self):
+        for key in (
+            "emby",
+            "profilarr",
+            "aiostreams",
+            "sonarr",
+            "radarr",
+            "lidarr",
+            "prowlarr",
+            "readarr",
+            "whisparr",
+        ):
+            with self.subTest(key=key):
+                updater = self._updater()
+                updater.process_handler = Mock(
+                    process_names=[],
+                    setup_tracker=set(),
+                    setup_tracker_lock=threading.Lock(),
+                )
+                updater.start_process = Mock(return_value=("started", None))
+                config = {
+                    "auto_update": True,
+                    "release_version_enabled": True,
+                    "release_version": "v1.2.3",
+                }
+                with (
+                    patch("utils.auto_update.setup_release_version") as generic,
+                    patch(
+                        "utils.auto_update.setup_project", return_value=(True, None)
+                    ) as dedicated,
+                ):
+                    success, message = updater._install_configured_target(
+                        key, config, key, None, "release"
+                    )
+                self.assertTrue(success, message)
+                dedicated.assert_called_once_with(updater.process_handler, key)
+                generic.assert_not_called()
+
     def test_configured_frontend_release_bypasses_scheduled_update_guard(self):
         updater = self._updater()
         updater.process_handler = Mock()

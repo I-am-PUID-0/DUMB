@@ -123,7 +123,10 @@ class SetupPnpmTests(unittest.TestCase):
             'riven_data_dir = os.path.join(config["config_dir"], "data")',
             setup_source,
         )
-        self.assertIn("source_managed_by_service_setup = key in {", setup_source)
+        self.assertIn(
+            "source_managed_by_service_setup = key in SERVICE_MANAGED_SOURCE_KEYS",
+            setup_source,
+        )
         self.assertIn('"/opt/emby-server/bin/emby-server",', setup_source)
         self.assertIn('config["env"]["EMBY_DATA"] = emby_config_dir', setup_source)
 

@@ -3,6 +3,7 @@ import zipfile
 from unittest.mock import Mock, patch
 
 import tempfile
+import threading
 import unittest
 from pathlib import Path
 
@@ -13,6 +14,54 @@ from utils.tautulli_update import tautulli_persistent_excludes
 
 
 class TautulliUpdateTests(unittest.TestCase):
+    def test_configured_release_reinstalls_even_with_auto_update_enabled(self):
+        for install_error in (None, "release download failed"):
+            with self.subTest(install_error=install_error):
+                updater = Update.__new__(Update)
+                updater.process_handler = Mock(
+                    process_names=["Tautulli"],
+                    setup_tracker=["Tautulli"],
+                    setup_tracker_lock=threading.Lock(),
+                )
+                updater.stop_process = Mock()
+                updater.start_process = Mock(return_value=(Mock(), None))
+                config = {
+                    "auto_update": True,
+                    "release_version_enabled": True,
+                    "release_version": "v2.18.0",
+                }
+                with (
+                    patch(
+                        "utils.auto_update.setup_release_version",
+                        return_value=(install_error is None, install_error),
+                    ) as install,
+                    patch("utils.auto_update.setup_project") as default_setup,
+                    patch(
+                        "utils.auto_update.configure_project", return_value=(True, None)
+                    ) as configure,
+                ):
+                    success, message = updater._install_configured_target(
+                        "Tautulli", config, "tautulli", None, "release"
+                    )
+                install.assert_called_once_with(
+                    updater.process_handler, config, "Tautulli", "tautulli"
+                )
+                default_setup.assert_not_called()
+                updater.stop_process.assert_called_once_with("Tautulli")
+                self.assertTrue(config["auto_update"])
+                self.assertTrue(config["release_version_enabled"])
+                if install_error:
+                    self.assertFalse(success)
+                    self.assertIn(install_error, message)
+                    configure.assert_not_called()
+                    updater.start_process.assert_not_called()
+                else:
+                    self.assertTrue(success, message)
+                    configure.assert_called_once_with(
+                        updater.process_handler, "Tautulli"
+                    )
+                    updater.start_process.assert_called_once()
+
     def test_install_and_rollback_allow_templates_but_preserve_all_runtime_entries(
         self,
     ):

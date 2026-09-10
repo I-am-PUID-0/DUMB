@@ -4,6 +4,7 @@ from utils.logger import format_time
 from utils.versions import Versions, display_version
 from utils.download import Downloader
 from utils.setup import (
+    SERVICE_MANAGED_SOURCE_KEYS,
     setup_project,
     setup_release_version,
     setup_branch_version,
@@ -1705,19 +1706,12 @@ class Update:
         block_reason,
     ):
         def install_selected_source():
-            # Explicit configured-target installs must not reuse setup_project's
-            # scheduled-update guard. A fixed release with auto_update enabled
-            # is deliberately skipped by normal setup, but this operator action
-            # is an explicit request to install that exact release. Candidate-
-            # first frontend/TPA installs can safely invoke the selected source
-            # installer directly. InfiniDysk also needs the selected source
-            # installer here: normal setup deliberately skips a fixed release
-            # while auto_update is enabled, which would otherwise turn this
-            # explicit operator action into a configure-only restart of the
-            # already-installed runtime.
+            # Manual fixed-release installs must bypass the scheduled-update
+            # guard and same-version skip. Dedicated service installers retain
+            # ownership of their source selection and installation layout.
             candidate_first = key in {"dumb_frontend", "traefik_proxy_admin"}
-            explicit_source = candidate_first or key == "infinidysk"
-            if explicit_source and block_reason == "release":
+            explicit_source = candidate_first or key in {"infinidysk", "tautulli"}
+            if block_reason == "release" and key not in SERVICE_MANAGED_SOURCE_KEYS:
                 success, error = setup_release_version(
                     self.process_handler, config, process_name, key
                 )
