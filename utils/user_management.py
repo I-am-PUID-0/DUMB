@@ -438,6 +438,23 @@ def migrate_symlinks():
         raise
 
 
+def ensure_gpu_group_membership(username):
+    """Grant the managed account existing GPU groups without changing devices."""
+    if not os.path.isdir("/dev/dri"):
+        return
+    account = pwd.getpwnam(username)
+    groups = []
+    for name in ("render", "video"):
+        try:
+            group = grp.getgrnam(name)
+        except KeyError:
+            continue
+        if account.pw_gid != group.gr_gid and username not in group.gr_mem:
+            groups.append(name)
+    if groups:
+        subprocess.run(["usermod", "-aG", ",".join(groups), username], check=True)
+
+
 def create_system_user(username="DUMB"):
     validate_managed_user_ids(user_id, group_id)
 
@@ -460,6 +477,7 @@ def create_system_user(username="DUMB"):
         try:
             pwd.getpwnam(username)
             logger.debug(f"User '{username}' with UID {user_id} already exists.")
+            ensure_gpu_group_membership(username)
             migrate_symlinks()
             return
         except KeyError:
@@ -481,6 +499,7 @@ def create_system_user(username="DUMB"):
             f"Writing to /etc/passwd took {passwd_write_end - passwd_write_start:.2f} seconds"
         )
 
+        ensure_gpu_group_membership(username)
         user_password = _generate_user_password()
         hashed_password = _hash_user_password(user_password)
         _set_user_password(username, hashed_password)

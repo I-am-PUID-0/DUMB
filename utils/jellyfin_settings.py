@@ -2,6 +2,8 @@ from utils.global_logger import logger
 from utils.config_loader import CONFIG_MANAGER
 import defusedxml.ElementTree as DefusedET
 import os
+import shlex
+from pathlib import Path
 import xml.etree.ElementTree as ET
 
 JELLYFIN_PORT_TAGS = (
@@ -11,6 +13,41 @@ JELLYFIN_PORT_TAGS = (
     "InternalHttpPort",
     "PublicHttpPort",
 )
+
+
+def configure_jellyfin_runtime(config, command):
+    """Keep an explicit FFmpeg selection, otherwise prefer Jellyfin's build."""
+    previous = config.get("command") or []
+    if isinstance(previous, str):
+        previous = shlex.split(previous)
+    ffmpeg = None
+    for index, arg in enumerate(previous):
+        if arg == "--ffmpeg" and index + 1 < len(previous):
+            ffmpeg = previous[index + 1]
+        elif arg.startswith("--ffmpeg="):
+            ffmpeg = arg.split("=", 1)[1]
+    if not ffmpeg and os.path.isfile("/usr/lib/jellyfin-ffmpeg/ffmpeg"):
+        ffmpeg = "/usr/lib/jellyfin-ffmpeg/ffmpeg"
+    if ffmpeg:
+        command.extend(["--ffmpeg", ffmpeg])
+    else:
+        logger.warning("Jellyfin FFmpeg was not found; using Jellyfin's fallback.")
+    config["command"] = command
+
+    env = config.setdefault("env", {})
+    if "LIBVA_DRIVER_NAME" in env or "LIBVA_DRIVER_NAME" in os.environ:
+        return
+    # Do not force an Intel driver on AMD or mixed-GPU systems.
+    vendors = set()
+    for vendor_path in Path("/sys/class/drm").glob("renderD*/device/vendor"):
+        try:
+            vendors.add(vendor_path.read_text().strip().lower())
+        except OSError:
+            return
+    if vendors == {"0x8086"} and any(
+        Path("/usr/lib").glob("*-linux-gnu/dri/iHD_drv_video.so")
+    ):
+        env["LIBVA_DRIVER_NAME"] = "iHD"
 
 
 def _patch_xml_port(config_path: str, desired_port: int, prefer_network_tags: bool):
