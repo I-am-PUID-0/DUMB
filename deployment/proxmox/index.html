@@ -3675,10 +3675,32 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#net-repository-checks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        .NET repository checks
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#native-lxc-paths" class="md-nav__link">
     <span class="md-ellipsis">
       
         Native LXC paths
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#gpu-passthrough-and-jellyfin" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GPU passthrough and Jellyfin
       
     </span>
   </a>
@@ -5304,10 +5326,32 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#net-repository-checks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        .NET repository checks
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#native-lxc-paths" class="md-nav__link">
     <span class="md-ellipsis">
       
         Native LXC paths
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#gpu-passthrough-and-jellyfin" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GPU passthrough and Jellyfin
       
     </span>
   </a>
@@ -5578,6 +5622,22 @@ installs its initial managed services. Follow progress inside the LXC with:</p>
 <div class="highlight"><pre><span></span><code>journalctl<span class="w"> </span>-u<span class="w"> </span>dumb<span class="w"> </span>-f
 </code></pre></div>
 <p>Then continue with <a href="../../getting-started/">Getting Started</a>.</p>
+<h2 id="net-repository-checks">.NET repository checks<a class="headerlink" href="#net-repository-checks" title="Permanent link">#</a></h2>
+<p>Debian 13 has an <a href="https://learn.microsoft.com/en-us/dotnet/core/install/linux-debian">official Microsoft .NET feed</a>.
+An updater message claiming that the feed does not exist can also come from a
+failed network probe.</p>
+<p>The DUMB install/update scripts wrap the existing Community Scripts .NET
+installer with a local repository check. On Debian, this check runs before the
+shared installer can remove an existing Microsoft source/keyring, retries
+transient failures, and reuses a successful result for the duration of that
+.NET setup invocation. Failed checks stop the update before repository changes.
+The wrapper also avoids the shared probe's reversed cached success/failure
+handling without modifying core or changing checks for other applications.</p>
+<p>Use the updated DUMB helper scripts for this fix; updating only DUMB's Python
+controller does not change native runtime reconciliation. No core fork or
+<code>COMMUNITY_SCRIPTS_CORE_URL</code> override is required. Existing running services
+remain on the previous controller if dependency reconciliation fails before
+activation.</p>
 <h2 id="native-lxc-paths">Native LXC paths<a class="headerlink" href="#native-lxc-paths" title="Permanent link">#</a></h2>
 <table>
 <thead>
@@ -5633,6 +5693,31 @@ managed-service UID. This is required for PostgreSQL POSIX shared memory after
 temporary setup sessions end. Package-provided PostgreSQL, Plex, and Jellyfin
 systemd units are masked because DUMB, not the distribution unit, supervises
 those processes inside this dedicated LXC.</p>
+<h2 id="gpu-passthrough-and-jellyfin">GPU passthrough and Jellyfin<a class="headerlink" href="#gpu-passthrough-and-jellyfin" title="Permanent link">#</a></h2>
+<p>When GPU passthrough is enabled, the installer invokes the Community Scripts
+hardware-acceleration helper to select the vendor's drivers and required Debian
+repository components. The update path also reconciles drivers when updating
+the controller. Intel GPU support requires the appropriate VA-API driver;
+OpenCL tone mapping additionally depends on a compute runtime compatible with
+the GPU generation. Installing a package does not prove either path works.</p>
+<p>DUMB creates and maintains its own service account. Adding only the
+package-created <code>jellyfin</code> account to <code>render</code>/<code>video</code> does not grant access to
+DUMB's Jellyfin process. After applying the installer and controller fixes,
+restart DUMB and inspect the actual Jellyfin process:</p>
+<div class="highlight"><pre><span></span><code>pgrep<span class="w"> </span>-a<span class="w"> </span>-f<span class="w"> </span><span class="s1">&#39;/usr/lib/jellyfin/bin/jellyfin&#39;</span>
+ls<span class="w"> </span>-ln<span class="w"> </span>/dev/dri/renderD*
+<span class="c1"># Replace &lt;PID&gt; with the Jellyfin PID shown above.</span>
+grep<span class="w"> </span>-E<span class="w"> </span><span class="s1">&#39;^(Uid|Gid|Groups):&#39;</span><span class="w"> </span>/proc/&lt;PID&gt;/status
+</code></pre></div>
+<p>The command should select <code>/usr/lib/jellyfin-ffmpeg/ffmpeg</code> unless a custom path
+was configured. The process's primary or supplementary groups must include the
+render device's numeric GID. For an unprivileged LXC, unmapped ownership must be
+corrected in the Proxmox device mapping; making render nodes world-writable is
+not required by DUMB.</p>
+<p>Verify playback by forcing a transcode and checking the Jellyfin FFmpeg log for
+the selected binary, QSV/VA-API codec, and successful device initialization.
+Testing only as root can conceal service-user permission failures. See the
+<a href="../../services/core/jellyfin/#hardware-acceleration">Jellyfin service guide</a>.</p>
 <h2 id="manage-and-update-dumb">Manage and update DUMB<a class="headerlink" href="#manage-and-update-dumb" title="Permanent link">#</a></h2>
 <p>Useful commands inside the LXC:</p>
 <div class="highlight"><pre><span></span><code>systemctl<span class="w"> </span>status<span class="w"> </span>dumb

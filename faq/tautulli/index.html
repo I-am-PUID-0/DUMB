@@ -4999,6 +4999,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#settings-shows-keyerror-pms_is_cloud" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Settings shows KeyError: 'pms_is_cloud'
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -5220,6 +5231,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#settings-shows-keyerror-pms_is_cloud" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Settings shows KeyError: 'pms_is_cloud'
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -5325,6 +5347,18 @@
 <li>Make sure your Plex libraries have been scanned recently.</li>
 <li>Check that Tautulli has permission to access Plex history and metadata.</li>
 </ul>
+<hr />
+<h2 id="settings-shows-keyerror-pms_is_cloud">Settings shows <code>KeyError: 'pms_is_cloud'</code><a class="headerlink" href="#settings-shows-keyerror-pms_is_cloud" title="Permanent link">#</a></h2>
+<p>This can happen when an older <code>data/interfaces</code> template remains beside newer
+Tautulli Python code. The error can also appear when accessing Tautulli directly;
+it is not an authentication error.</p>
+<p>DUMB updates now refresh the bundled <code>data/interfaces</code> tree while preserving
+configuration, databases, and other runtime files beside it. After installing a
+DUMB version containing this fix, update Tautulli to refresh the matching source
+and templates together. Do not delete the <code>data</code> directory: it also holds your
+Tautulli configuration and history. An explicit exclusion of <code>data/interfaces</code>
+will continue to preserve those templates and should be reviewed if the error
+persists.</p>
 
 
 
