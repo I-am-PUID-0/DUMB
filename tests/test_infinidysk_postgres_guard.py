@@ -767,13 +767,24 @@ class InfiniDyskPostgresGuardTests(unittest.TestCase):
                 payload, migration_root=root
             )
             current = self._service(temp_dir)
-            with patch.object(
-                service_postgres,
-                "_sqlite_source_fingerprints",
-                return_value=source_fingerprints,
+            # Exercise binding rules against the recorded cutover runtime,
+            # not live GitHub resolution/ancestry for a moving latest release.
+            current["commit_sha"] = payload["binding"]["service_source_commit"]
+            with (
+                patch.object(
+                    service_postgres,
+                    "_sqlite_source_fingerprints",
+                    return_value=source_fingerprints,
+                ),
+                patch.object(
+                    service_postgres.Downloader,
+                    "fetch_with_retries",
+                    side_effect=AssertionError("Binding test must not access GitHub"),
+                ),
             ):
                 changed_path = self._service(Path(temp_dir) / "other")
-                safe, _ = (
+                changed_path["commit_sha"] = current["commit_sha"]
+                safe, error = (
                     service_postgres.validate_infinidysk_postgres_candidate_update(
                         current,
                         changed_path,
@@ -781,10 +792,11 @@ class InfiniDyskPostgresGuardTests(unittest.TestCase):
                         migration_root=root,
                     )
                 )
-                self.assertFalse(safe)
+                self.assertFalse(safe, error)
+                self.assertIn("binding", error)
 
                 changed_cluster = {**self.postgres, "config_dir": "/other-cluster"}
-                safe, _ = (
+                safe, error = (
                     service_postgres.validate_infinidysk_postgres_candidate_update(
                         current,
                         current,
@@ -793,7 +805,8 @@ class InfiniDyskPostgresGuardTests(unittest.TestCase):
                         migration_root=root,
                     )
                 )
-                self.assertFalse(safe)
+                self.assertFalse(safe, error)
+                self.assertIn("binding", error)
 
                 rotated = {**self.postgres, "password": "rotated-secret"}
                 safe, error = (
@@ -805,7 +818,7 @@ class InfiniDyskPostgresGuardTests(unittest.TestCase):
                         migration_root=root,
                     )
                 )
-                self.assertTrue(safe)
+                self.assertTrue(safe, error)
                 self.assertIsNone(error)
 
     def test_offline_postgres_provider_still_blocks_binding_changes(self):
