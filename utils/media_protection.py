@@ -707,6 +707,7 @@ class MediaProtectionManager:
         if (
             key not in STORAGE_KEYS
             or not config
+            or not config.get("enabled")
             or not _global_config().get("enabled", True)
         ):
             return []
@@ -1070,10 +1071,15 @@ class MediaProtectionManager:
                 )
                 if not current_state or current_state.get("stopped_by_dumb"):
                     return False
+                _, target_config = _process_config(current.get("target_process"))
+                if not target_config or not target_config.get("enabled"):
+                    return False
             if not self._is_running(process_name):
                 return False
             policy = protection_policy(process_name)
-            if not policy.get("stop_when_idle_on_outage", True):
+            if not policy.get("enabled") or not policy.get(
+                "stop_when_idle_on_outage", True
+            ):
                 return False
             activity = build_adapter(
                 state.get("key"), process_name, self.logger
@@ -1110,6 +1116,9 @@ class MediaProtectionManager:
                     in {"active", "waiting_for_recovery", "recovery_failed"}
                 ]
             for token, incident in active:
+                if self._retire_unused_incident(token):
+                    stable_since.pop(token, None)
+                    continue
                 if incident.get("status") == "recovery_failed" and time.time() < float(
                     incident.get("next_recovery_attempt_at") or 0
                 ):
@@ -1154,6 +1163,36 @@ class MediaProtectionManager:
                 else:
                     stable_since.pop(token, None)
             self._stop_event.wait(interval)
+
+    def _retire_unused_incident(self, token: str) -> bool:
+        """Retain recovery evidence unless an inactive target had no side effects."""
+        with INFINIDYSK_MIGRATION_ADMISSION_LOCK:
+            if infinidysk_namespace_migration_active():
+                return False
+            with self.lock:
+                incident = self.incidents.get(token)
+                if (
+                    not incident
+                    or incident.get("status") != "waiting_for_recovery"
+                    or incident.get("awaiting_operation_completion")
+                    or incident.get("operation_interrupted_at")
+                ):
+                    return False
+                _, config = _process_config(incident.get("target_process"))
+                if config and config.get("enabled"):
+                    return False
+                if any(
+                    entry.get("stopped_by_dumb")
+                    or entry.get("guard_snapshot")
+                    or entry.get("guard_error")
+                    for entry in incident.get("media_servers", [])
+                ):
+                    return False
+                incident["status"] = "recovered"
+                incident["recovered_at"] = time.time()
+                incident["resolution"] = "inactive_target_without_side_effects"
+                self._save()
+                return True
 
     def status(self, process_name: str | None = None) -> dict:
         root = _global_config()

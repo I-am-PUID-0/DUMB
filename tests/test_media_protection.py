@@ -159,6 +159,104 @@ class MediaProtectionTests(unittest.TestCase):
         self.assertEqual(0, self.adapter.guarded)
         self.notify_event.assert_not_called()
 
+    def test_disabled_decypharr_cannot_protect_running_plex(self):
+        self.config.config["decypharr"] = {
+            "enabled": False,
+            "process_name": "Decypharr",
+            "mount_path": "/mnt/debrid/decypharr",
+        }
+        result = self.manager.begin_planned("Decypharr", "stop", "stop_now")
+        self.assertEqual("not_applicable", result["status"])
+        self.assertIsNone(self.manager.begin_unplanned("Decypharr", "crashed"))
+        self.manager.handle_unexpected_exit("Decypharr", "crashed")
+        self.assertEqual({}, self.manager.incidents)
+        self.assertEqual([], self.handler.stopped)
+        self.assertEqual(0, self.adapter.guarded)
+        self.notify_event.assert_not_called()
+
+    def test_monitor_retires_persisted_unused_incident_without_mutations(self):
+        self.manager.incidents["unused"] = {
+            "target_process": "Decypharr",
+            "status": "waiting_for_recovery",
+            "media_servers": [],
+        }
+        self.manager._save()
+        self.manager._load()
+        with patch.object(
+            self.manager._stop_event,
+            "wait",
+            side_effect=lambda _: self.manager._stop_event.set(),
+        ):
+            self.manager._monitor()
+        self.assertEqual([], self.manager.status()["active"])
+        self.assertFalse(self.manager.has_blocking_incident())
+        self.manager._load()
+        self.assertEqual("recovered", self.manager.incidents["unused"]["status"])
+        self.assertEqual([], self.handler.stopped)
+        self.assertEqual([], self.handler.started)
+        self.assertEqual(0, self.adapter.restored)
+
+    def test_unused_incident_retains_possible_side_effects_and_operation_holds(self):
+        for extra, entries in (
+            ({}, [{"stopped_by_dumb": True}]),
+            ({}, [{"guard_snapshot": {"changed": ["scan"]}}]),
+            ({}, [{"guard_error": "partial failure"}]),
+            ({"awaiting_operation_completion": True}, []),
+            ({"operation_interrupted_at": 1}, []),
+            ({"status": "active"}, []),
+        ):
+            with self.subTest(extra=extra, entries=entries):
+                self.manager.incidents["unused"] = {
+                    "target_process": "Decypharr",
+                    "status": "waiting_for_recovery",
+                    "media_servers": entries,
+                    **extra,
+                }
+                self.assertFalse(self.manager._retire_unused_incident("unused"))
+                self.assertTrue(self.manager.status()["active"])
+
+    def test_enabled_dependency_and_namespace_migration_retain_incident(self):
+        self.manager.incidents["unused"] = {
+            "target_process": "CLI Debrid",
+            "status": "waiting_for_recovery",
+            "media_servers": [],
+        }
+        self.assertFalse(self.manager._retire_unused_incident("unused"))
+        self.config.config["cli_debrid"]["enabled"] = False
+        with patch.object(
+            media_protection, "infinidysk_namespace_migration_active", return_value=True
+        ):
+            self.assertFalse(self.manager._retire_unused_incident("unused"))
+        self.assertTrue(self.manager._retire_unused_incident("unused"))
+
+    def test_disabled_protection_or_target_cannot_stop_guarded_server_later(self):
+        for disabled in ("target", "global", "policy"):
+            with self.subTest(disabled=disabled):
+                self.config.config["cli_debrid"]["enabled"] = True
+                root = self.config.config["dumb"]["media_protection"]
+                root["enabled"] = True
+                root["services"] = []
+                self.adapter.state = "busy"
+                token = self.manager.begin_unplanned("CLI Debrid", "crashed")
+                incident = self.manager.incidents[token]
+                if disabled == "target":
+                    self.config.config["cli_debrid"]["enabled"] = False
+                elif disabled == "global":
+                    root["enabled"] = False
+                else:
+                    root["services"] = [
+                        {"process_name": "Plex Media Server", "enabled": False}
+                    ]
+                self.adapter.state = "idle"
+                self.assertFalse(
+                    self.manager._stop_idle_media_if_admitted(
+                        token, incident["media_servers"][0]
+                    )
+                )
+                self.assertEqual([], self.handler.stopped)
+                self.assertEqual(0, self.adapter.restored)
+                self.manager.incidents.clear()
+
     def test_safe_planned_action_defers_for_active_stream(self):
         self.adapter.state = "busy"
         result = self.manager.begin_planned("CLI Debrid", "restart", "safe")

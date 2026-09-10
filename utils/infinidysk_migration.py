@@ -2716,6 +2716,9 @@ class InfiniDyskMigrationManager:
                 "enabled": enabled,
                 "notice_due": (
                     eligible
+                    # Disabled legacy defaults do not prove service use. Keep
+                    # manual eligibility and all migration recovery evidence.
+                    and enabled
                     and not namespace_completed
                     and snoozed_until <= now
                     and not cleanup_finalized

@@ -2432,6 +2432,25 @@ class InfiniDyskMigrationTests(unittest.TestCase):
             )
         )
 
+    def test_disabled_legacy_defaults_do_not_prompt_but_remain_migratable(self):
+        for service_key in ("infinidysk", "nzbdav"):
+            with (
+                self.subTest(service_key=service_key),
+                tempfile.TemporaryDirectory() as temp_dir,
+            ):
+                manager = InfiniDyskMigrationManager(Path(temp_dir) / "state.json")
+                config = legacy_config()
+                config[service_key] = config.pop("infinidysk")
+                config[service_key]["enabled"] = False
+                config["radarr"]["instances"]["NzbDAV"]["enabled"] = False
+                status = manager.status(config, now=1_000)
+                self.assertTrue(status["eligible"])
+                self.assertFalse(status["notice_due"])
+                self.assertTrue(status["legacy"]["paths"])
+                self.assertFalse(manager.state_path.exists())
+                config[service_key]["enabled"] = True
+                self.assertTrue(manager.status(config, now=1_000)["notice_due"])
+
     def test_remind_later_is_persisted_server_side(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             manager = InfiniDyskMigrationManager(Path(temp_dir) / "state.json")
