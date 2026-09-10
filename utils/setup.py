@@ -2591,6 +2591,13 @@ def _setup_project_inner(
                 logger.info("Generated InfiniDysk WebDAV password.")
 
             backend_port = str(config.get("backend_port", 8080))
+            existing_env = config.get("env") or {}
+            frontend_backend_api_key = str(
+                existing_env.get("FRONTEND_BACKEND_API_KEY") or ""
+            ).strip()
+            if not frontend_backend_api_key:
+                frontend_backend_api_key = secrets.token_hex(32)
+                logger.info("Generated InfiniDysk frontend/backend API key.")
             default_env = {
                 "LOG_LEVEL": config.get("log_level", "INFO").upper(),
                 "WEBDAV_PASSWORD": webdav_password,
@@ -2599,7 +2606,7 @@ def _setup_project_inner(
                 "PORT": str(config.get("frontend_port", 3000)),
                 "NODE_ENV": "production",
                 "BACKEND_URL": f"http://127.0.0.1:{backend_port}",
-                "FRONTEND_BACKEND_API_KEY": secrets.token_hex(32),
+                "FRONTEND_BACKEND_API_KEY": frontend_backend_api_key,
                 "SERVICE_PROVIDER": _NZBDAV_SERVICE_PROVIDER,
             }
             env = default_env.copy()

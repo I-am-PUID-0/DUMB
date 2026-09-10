@@ -596,6 +596,57 @@ class InfiniDyskSetupTests(unittest.TestCase):
             json.loads(config["env"]["SERVICE_PROVIDER"]),
         )
 
+    def _run_infinidysk_configure(self, env):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = {
+                "enabled": True,
+                "process_name": "InfiniDysk",
+                "config_dir": tmpdir,
+                "webdav_password": "configured-password",
+                "backend_port": 8080,
+                "frontend_port": 3000,
+                "log_level": "INFO",
+                "env": env,
+            }
+            config_manager = Mock()
+            config_manager.find_key_for_process.return_value = ("infinidysk", None)
+            config_manager.get_instance.return_value = config
+            process_handler = Mock()
+            process_handler.setup_tracker = set()
+            process_handler.setup_tracker_lock = threading.Lock()
+
+            with (
+                patch.object(setup, "CONFIG_MANAGER", config_manager),
+                patch.object(setup, "setup_nzbdav", return_value=(True, None)),
+            ):
+                success, error = setup._setup_project_inner(
+                    process_handler,
+                    "InfiniDysk",
+                    install_phase=False,
+                    configure_phase=True,
+                )
+            return success, error, config
+
+    def test_configure_preserves_existing_frontend_backend_api_key(self):
+        success, error, config = self._run_infinidysk_configure(
+            {"FRONTEND_BACKEND_API_KEY": "existing-frontend-backend-key"}
+        )
+
+        self.assertTrue(success, error)
+        # A stored key must survive every configure pass; regenerating it here
+        # silently invalidates the SABnzbd credential already handed to the Arr
+        # download clients.
+        self.assertEqual(
+            "existing-frontend-backend-key",
+            config["env"]["FRONTEND_BACKEND_API_KEY"],
+        )
+
+    def test_configure_generates_frontend_backend_api_key_when_absent(self):
+        success, error, config = self._run_infinidysk_configure({})
+
+        self.assertTrue(success, error)
+        self.assertRegex(config["env"]["FRONTEND_BACKEND_API_KEY"], r"^[0-9a-f]{64}$")
+
     def test_release_application_version_uses_native_dev_build_label(self):
         self.assertEqual(
             "dev-260829.1208",
