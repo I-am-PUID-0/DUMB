@@ -1,5 +1,20 @@
 # Changelog
 
+## [2.22.1](https://github.com/I-am-PUID-0/DUMB/compare/2.22.0...2.22.1) (2026-09-10)
+
+
+### 🐛 Bug Fixes
+
+* **jellyfin:** preserve ffmpeg selection and supplementary GPU groups ([79637cb](https://github.com/I-am-PUID-0/DUMB/commit/79637cb3cd67188d75af96772501b8c2b6596a29)), closes [#342](https://github.com/I-am-PUID-0/DUMB/issues/342)
+* suppress inactive-service notices and retire harmless protection incidents ([3758ec1](https://github.com/I-am-PUID-0/DUMB/commit/3758ec16ef001f6b4c46e61d3041d51fd9694607))
+* **tautulli:** refresh bundled templates while preserving runtime data ([e243996](https://github.com/I-am-PUID-0/DUMB/commit/e243996c4d942d882b55acc917938f8095586c38))
+* **updates:** honor explicit release installs across shared service setup ([301fa81](https://github.com/I-am-PUID-0/DUMB/commit/301fa81d511dee90c592c819fe6aaffcf701d146))
+
+
+### 🛠️ Build System
+
+* **deps:** update Ruff and workflow-dispatch ([6a2bcb5](https://github.com/I-am-PUID-0/DUMB/commit/6a2bcb5e0a1a3070dae9d9c5c9d9ac5d9eeb5da4))
+
 ## [2.22.0](https://github.com/I-am-PUID-0/DUMB/compare/2.21.1...2.22.0) (2026-09-02)
 
 
