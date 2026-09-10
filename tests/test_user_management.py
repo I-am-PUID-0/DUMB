@@ -30,6 +30,43 @@ user_management = importlib.import_module("utils.user_management")
 
 
 class UserManagementSecurityTests(unittest.TestCase):
+    def test_gpu_membership_adds_only_missing_existing_groups(self):
+        render = Mock(gr_gid=109, gr_mem=[])
+        video = Mock(gr_gid=44, gr_mem=["DUMB"])
+        with (
+            patch.object(user_management.os.path, "isdir", return_value=True),
+            patch.object(
+                user_management.pwd, "getpwnam", return_value=Mock(pw_gid=1000)
+            ),
+            patch.object(user_management.grp, "getgrnam", side_effect=[render, video]),
+            patch.object(user_management.subprocess, "run") as run,
+        ):
+            user_management.ensure_gpu_group_membership("DUMB")
+        run.assert_called_once_with(["usermod", "-aG", "render", "DUMB"], check=True)
+
+    def test_gpu_membership_skips_missing_device_and_missing_groups(self):
+        for device in (False, True):
+            with (
+                patch.object(user_management.os.path, "isdir", return_value=device),
+                patch.object(
+                    user_management.pwd, "getpwnam", return_value=Mock(pw_gid=1000)
+                ),
+                patch.object(user_management.grp, "getgrnam", side_effect=KeyError),
+                patch.object(user_management.subprocess, "run") as run,
+            ):
+                user_management.ensure_gpu_group_membership("DUMB")
+            run.assert_not_called()
+
+    def test_existing_user_reconciles_gpu_groups_on_startup(self):
+        with (
+            patch.object(user_management.grp, "getgrgid"),
+            patch.object(user_management.pwd, "getpwnam"),
+            patch.object(user_management, "ensure_gpu_group_membership") as reconcile,
+            patch.object(user_management, "migrate_symlinks"),
+        ):
+            user_management.create_system_user()
+        reconcile.assert_called_once_with("DUMB")
+
     def _symlink_migration_calls(self, *, legacy_identity, config_dir):
         config = types.SimpleNamespace(
             get=lambda key, default=None: {

@@ -1,15 +1,87 @@
 import io
 import os
 import signal
+import subprocess
+import sys
+import json
 import tempfile
 import threading
 import unittest
 from unittest.mock import Mock, call, patch
 
-from utils.processes import ProcessHandler, _immediate_exit_summary
+from utils.processes import ProcessHandler, _immediate_exit_summary, _process_identity
 
 
 class ProcessNotificationTests(unittest.TestCase):
+    def test_process_identity_loads_account_groups_before_spawn(self):
+        with (
+            patch("utils.processes.os.getgroups", return_value=[0, 88]),
+            patch("utils.processes.os.geteuid", return_value=0),
+            patch("utils.processes.pwd.getpwuid", return_value=Mock(pw_name="service")),
+            patch(
+                "utils.processes.os.getgrouplist", return_value=[1000, 109, 44, 109]
+            ) as groups,
+        ):
+            identity = _process_identity(1000, 1000)
+        groups.assert_called_once_with("service", 1000)
+        self.assertEqual(
+            {"user": 1000, "group": 1000, "extra_groups": [44, 88, 109, 1000]}, identity
+        )
+
+    def test_numeric_identity_without_passwd_does_not_inherit_root_groups(self):
+        with (
+            patch("utils.processes.os.getgroups", return_value=[0]),
+            patch("utils.processes.os.geteuid", return_value=0),
+            patch("utils.processes.pwd.getpwuid", side_effect=KeyError),
+        ):
+            self.assertEqual(
+                {"user": 1234, "group": 5678, "extra_groups": [5678]},
+                _process_identity(1234, 5678),
+            )
+
+    def test_unprivileged_identity_does_not_attempt_setgroups(self):
+        with patch("utils.processes.os.geteuid", return_value=1000):
+            self.assertEqual(
+                {"user": 1000, "group": 1000}, _process_identity(1000, 1000)
+            )
+
+    @unittest.skipUnless(
+        os.geteuid() == 0, "requires isolated root credential switching"
+    )
+    def test_spawned_service_reads_group_protected_file(self):
+        with tempfile.TemporaryDirectory() as directory:
+            os.chmod(directory, 0o755)
+            path = os.path.join(directory, "device-access-fixture")
+            with open(path, "w") as handle:
+                handle.write("accessible")
+            os.chown(path, 0, 23456)
+            os.chmod(path, 0o640)
+            with (
+                patch(
+                    "utils.processes.pwd.getpwuid", return_value=Mock(pw_name="service")
+                ),
+                patch("utils.processes.os.getgrouplist", return_value=[1000, 23456]),
+                patch("utils.processes.os.getgroups", return_value=[0]),
+            ):
+                identity = _process_identity(1000, 1000)
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    "-c",
+                    "import json, os, sys; print(json.dumps([os.getuid(), os.getgid(), os.getgroups(), open(sys.argv[1]).read()]))",
+                    path,
+                ],
+                capture_output=True,
+                text=True,
+                check=True,
+                timeout=10,
+                **identity,
+            )
+        uid, gid, groups, content = json.loads(result.stdout)
+        self.assertEqual((1000, 1000, "accessible"), (uid, gid, content))
+        self.assertIn(23456, groups)
+        self.assertNotIn(0, groups)
+
     def test_start_process_releases_admission_lock_before_dependency_waits(self):
         handler = object.__new__(ProcessHandler)
         handler.init_attributes(Mock())
@@ -303,7 +375,8 @@ class ProcessNotificationTests(unittest.TestCase):
                     )
 
                 self.assertTrue(success, error)
-                self.assertIsNone(popen.call_args.kwargs["preexec_fn"])
+                self.assertNotIn("user", popen.call_args.kwargs)
+                self.assertNotIn("extra_groups", popen.call_args.kwargs)
 
         notify_event.assert_not_called()
 

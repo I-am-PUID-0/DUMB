@@ -11,9 +11,27 @@ from utils.service_health import ServiceHealthMonitor
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from contextlib import contextmanager
 import shlex, os, time, signal, threading, subprocess, sys, uvicorn, socket, psutil, requests
+import pwd
 from json import dump
 
 STARTUP_TERMINAL_PHASES = {"ready", "degraded", "shutting_down"}
+
+
+def _process_identity(user_id, group_id):
+    """Resolve groups before fork; let Popen drop credentials in the child."""
+    identity = {"user": user_id, "group": group_id}
+    if os.geteuid() == 0:
+        try:
+            username = pwd.getpwuid(user_id).pw_name
+        except KeyError:
+            groups = [group_id]
+        else:
+            groups = os.getgrouplist(username, group_id)
+        # Docker --group-add grants device access through the controller's
+        # supplementary groups. Preserve those explicit non-root grants too.
+        groups.extend(gid for gid in os.getgroups() if gid != 0)
+        identity["extra_groups"] = sorted(set(groups))
+    return identity
 
 
 def _immediate_exit_summary(stdout_output: str, stderr_output: str) -> str | None:
@@ -569,10 +587,6 @@ class ProcessHandler:
                     if not result:
                         return False, error
 
-            def preexec_fn():
-                os.setgid(group_id)
-                os.setuid(user_id)
-
             process_description = process_name
             self.logger.info(f"Starting {process_description} process")
 
@@ -818,7 +832,7 @@ class ProcessHandler:
                 cwd=config_dir,
                 universal_newlines=True,
                 bufsize=1,
-                preexec_fn=(preexec_fn if not skip_preexec else None),
+                **({} if skip_preexec else _process_identity(user_id, group_id)),
                 env=process_env,
             )
 

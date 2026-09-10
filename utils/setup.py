@@ -10283,7 +10283,7 @@ def setup_jellyfin(install_only: bool = False, configure_only: bool = False):
             dir_path, CONFIG_MANAGER.get("puid"), CONFIG_MANAGER.get("pgid")
         )
     logger.info("Setting up Jellyfin Media Server environment...")
-    config["command"] = [
+    command = [
         "/usr/lib/jellyfin/bin/jellyfin",
         "--datadir",
         os.path.join(config["config_dir"], "data"),
@@ -10294,6 +10294,9 @@ def setup_jellyfin(install_only: bool = False, configure_only: bool = False):
         "--logdir",
         os.path.join(config["config_dir"], "log"),
     ]
+    from utils.jellyfin_settings import configure_jellyfin_runtime
+
+    configure_jellyfin_runtime(config, command)
     try:
         from utils.jellyfin_settings import patch_jellyfin_config
 
