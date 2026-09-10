@@ -1,4 +1,5 @@
 from utils import postgres
+from utils.tautulli_update import tautulli_persistent_excludes
 from utils.config_loader import CONFIG_MANAGER
 from utils.global_logger import logger
 from utils.download import Downloader
@@ -973,6 +974,8 @@ def _update_persistent_excludes(
                 protect(f"{database}{suffix}")
         protect(target / "session.key")
 
+    if service_key == "tautulli" or repo_name == "tautulli":
+        return tautulli_persistent_excludes(target_dir, protected)
     return sorted(protected)
 
 
@@ -6563,7 +6566,9 @@ def setup_tautulli(
 
     if needs_download:
         logger.warning("Tautulli not found at %s. Downloading...", tautulli_py_path)
-        exclude_dirs = _update_persistent_excludes(config, config_dir)
+        exclude_dirs = _update_persistent_excludes(
+            config, config_dir, service_key="tautulli"
+        )
         if config.get("clear_on_update"):
             success, error = clear_directory(config_dir, exclude_dirs)
             if not success:

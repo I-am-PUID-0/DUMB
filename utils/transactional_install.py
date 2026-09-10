@@ -345,14 +345,24 @@ class RuntimeRollbackSnapshot:
             return False
         try:
             self.target.mkdir(parents=True, exist_ok=True)
-            for entry in list(self.target.iterdir()):
-                relative = entry.name
-                if self._is_persistent(relative):
-                    continue
-                if entry.is_dir() and not entry.is_symlink():
-                    shutil.rmtree(entry)
-                else:
-                    entry.unlink(missing_ok=True)
+
+            def remove_replaceable(directory):
+                for entry in list(directory.iterdir()):
+                    relative = str(entry.relative_to(self.target))
+                    if self._is_persistent(relative):
+                        continue
+                    if entry.is_dir() and not entry.is_symlink():
+                        if any(
+                            value.startswith(f"{relative}/")
+                            for value in self.persistent
+                        ):
+                            remove_replaceable(entry)
+                        else:
+                            shutil.rmtree(entry)
+                    else:
+                        entry.unlink(missing_ok=True)
+
+            remove_replaceable(self.target)
             shutil.copytree(
                 self.snapshot,
                 self.target,

@@ -1,3 +1,4 @@
+from utils.tautulli_update import tautulli_persistent_excludes
 from utils.global_logger import logger
 from utils.logger import format_time
 from utils.versions import Versions, display_version
@@ -3875,6 +3876,8 @@ class Update:
                 normalized.append(relative)
             else:
                 normalized.append(text)
+        if key == "tautulli":
+            return tautulli_persistent_excludes(target_dir, normalized)
         return normalized
 
     def _snapshot_target(self, key, config):
