@@ -978,6 +978,34 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Choose an operation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#reset-dumb-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reset DUMB configuration
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#remove-service-files" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Remove service files
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -5218,6 +5246,34 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Choose an operation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#reset-dumb-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reset DUMB configuration
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#remove-service-files" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Remove service files
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -5343,7 +5399,7 @@
   
 
 
-<h1 id="service-reset-and-removal">Service Reset and Removal<a class="headerlink" href="#service-reset-and-removal" title="Permanent link">&para;</a></h1>
+<h1 id="service-reset-and-removal">Service Reset and Removal<a class="headerlink" href="#service-reset-and-removal" title="Permanent link">#</a></h1>
 <p>DUMB can reset one previously configured service or instance without requiring a full stack reset. When the backend advertises <code>service_reset</code>, open the service page and select <strong>Reset / Remove</strong>.</p>
 <p>The workflow always:</p>
 <ol>
@@ -5355,8 +5411,8 @@
 <li>applies the selected reset or removal.</li>
 </ol>
 <p>You must type the exact process name before DUMB accepts either operation.</p>
-<h2 id="choose-an-operation">Choose an operation<a class="headerlink" href="#choose-an-operation" title="Permanent link">&para;</a></h2>
-<h3 id="reset-dumb-configuration">Reset DUMB configuration<a class="headerlink" href="#reset-dumb-configuration" title="Permanent link">&para;</a></h3>
+<h2 id="choose-an-operation">Choose an operation<a class="headerlink" href="#choose-an-operation" title="Permanent link">#</a></h2>
+<h3 id="reset-dumb-configuration">Reset DUMB configuration<a class="headerlink" href="#reset-dumb-configuration" title="Permanent link">#</a></h3>
 <p>This option keeps the service's application files and data. DUMB disables the selected service/instance and restores its DUMB configuration fields to the current defaults.</p>
 <ul>
 <li>A single-instance service returns to its disabled default block.</li>
@@ -5364,7 +5420,7 @@
 <li>A custom instance keeps its identity, port, and instance-specific paths, but other DUMB settings and generated secrets return to template values.</li>
 </ul>
 <p>Use this when DUMB configuration is wrong but the application's own database, settings, and runtime files should remain available.</p>
-<h3 id="remove-service-files">Remove service files<a class="headerlink" href="#remove-service-files" title="Permanent link">&para;</a></h3>
+<h3 id="remove-service-files">Remove service files<a class="headerlink" href="#remove-service-files" title="Permanent link">#</a></h3>
 <p>This option performs the configuration reset and also clears the previewed DUMB-owned config/runtime/data paths.</p>
 <ul>
 <li>A custom instance is removed from the service's <code>instances</code> object. If it was the last instance, DUMB writes the disabled default template in the same operation instead of temporarily saving an empty <code>instances</code> object.</li>
@@ -5372,7 +5428,7 @@
 <li>Only paths attributed exclusively to the selected process are eligible.</li>
 </ul>
 <p>Removed application files are not backed up and cannot be restored by DUMB. Review the path list carefully.</p>
-<h2 id="safety-boundary">Safety boundary<a class="headerlink" href="#safety-boundary" title="Permanent link">&para;</a></h2>
+<h2 id="safety-boundary">Safety boundary<a class="headerlink" href="#safety-boundary" title="Permanent link">#</a></h2>
 <p>DUMB intentionally retains:</p>
 <ul>
 <li><code>/mnt</code> content, mountpoints, media roots, and symlink libraries;</li>
@@ -5391,13 +5447,13 @@
 <p class="admonition-title">Dependent services</p>
 <p>DUMB warns when another configured service references the target, but it does not rewrite that other service's <code>core_service</code>, <code>core_services</code>, URL, mount, or application integration settings. Review dependencies before starting the remaining stack.</p>
 </div>
-<h2 id="configuration-backup-and-recovery">Configuration backup and recovery<a class="headerlink" href="#configuration-backup-and-recovery" title="Permanent link">&para;</a></h2>
+<h2 id="configuration-backup-and-recovery">Configuration backup and recovery<a class="headerlink" href="#configuration-backup-and-recovery" title="Permanent link">#</a></h2>
 <p>Before changing <code>dumb_config.json</code>, DUMB writes a mode-<code>0600</code> full-config backup under:</p>
 <div class="highlight"><pre><span></span><code>/config/service-reset-backups/
 </code></pre></div>
 <p>The API response includes the exact backup path. The backup can recover DUMB configuration, including a removed custom instance, but it does not contain deleted service files.</p>
 <p>If an operation reports failure, the selected process remains stopped. Check the DUMB log and the backup directory before retrying. Restore configuration only while DUMB is stopped, then restart the container so configuration is reloaded consistently.</p>
-<h2 id="api">API<a class="headerlink" href="#api" title="Permanent link">&para;</a></h2>
+<h2 id="api">API<a class="headerlink" href="#api" title="Permanent link">#</a></h2>
 <p>The frontend uses two capability-gated endpoints:</p>
 <div class="highlight"><pre><span></span><code><span class="err">GET /api/process/service-reset/preview?process_name=Sonarr%20Movies&amp;action=remove</span>
 </code></pre></div>
@@ -5412,7 +5468,7 @@
 </code></pre></div>
 <p>Supported actions are <code>reset</code> and <code>remove</code>. Use the preview returned immediately before the POST; DUMB recalculates and validates the plan again when applying it.</p>
 <p>The DUMB API and DUMB Frontend control-plane services cannot be reset through this workflow.</p>
-<h2 id="related-pages">Related pages<a class="headerlink" href="#related-pages" title="Permanent link">&para;</a></h2>
+<h2 id="related-pages">Related pages<a class="headerlink" href="#related-pages" title="Permanent link">#</a></h2>
 <ul>
 <li><a href="../../frontend/service-pages/">Service pages</a></li>
 <li><a href="../configuration/">Configuration</a></li>
