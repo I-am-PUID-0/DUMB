@@ -1,10 +1,44 @@
 from utils.global_logger import logger
 from utils.config_loader import CONFIG_MANAGER
 from utils.install_cache import INSTALL_CACHE
-import requests, time, os, zipfile, io, shutil, platform, re, tarfile, tempfile, stat, hashlib
+import requests, time, os, zipfile, io, shutil, platform, re, tarfile, tempfile, stat, hashlib, errno
 import fnmatch
 from pathlib import Path
 from urllib.parse import quote
+
+
+def _replace_cross_device_safe(source, destination):
+    # os.replace() requires source and destination to be on the same
+    # filesystem. Bind-mounted persistent targets (e.g. /infinidysk) are a
+    # separate mount from the container's own root filesystem, so a plain
+    # os.replace() raises EXDEV here even though the paths look local.
+    try:
+        os.replace(source, destination)
+    except OSError as error:
+        if error.errno != errno.EXDEV:
+            raise
+        if os.path.islink(source):
+            link_target = os.readlink(source)
+            if os.path.lexists(destination):
+                os.unlink(destination)
+            os.symlink(link_target, destination)
+            os.unlink(source)
+        elif os.path.isdir(source):
+            # A staged file can land where an existing install left a
+            # directory (or a backup/rollback can be moving a whole
+            # directory that was displaced for the same reason).
+            # shutil.copy2()+unlink() only work on a single file, so mirror
+            # the tree across the device boundary instead.
+            if os.path.lexists(destination):
+                if os.path.isdir(destination) and not os.path.islink(destination):
+                    shutil.rmtree(destination)
+                else:
+                    os.unlink(destination)
+            shutil.copytree(source, destination, symlinks=True)
+            shutil.rmtree(source)
+        else:
+            shutil.copy2(source, destination)
+            os.unlink(source)
 
 
 class Downloader:
@@ -711,7 +745,9 @@ class Downloader:
                         os.makedirs(
                             os.path.dirname(previous_directory_entry), exist_ok=True
                         )
-                        os.replace(destination_root, previous_directory_entry)
+                        _replace_cross_device_safe(
+                            destination_root, previous_directory_entry
+                        )
                         applied.append((destination_root, previous_directory_entry))
                     os.makedirs(destination_root, exist_ok=True)
                     created_dirs.append(destination_root)
@@ -726,12 +762,13 @@ class Downloader:
                     if os.path.lexists(destination):
                         previous = os.path.join(backup, relative)
                         os.makedirs(os.path.dirname(previous), exist_ok=True)
-                        os.replace(destination, previous)
-                    os.replace(source, destination)
+                        _replace_cross_device_safe(destination, previous)
                     applied.append((destination, previous))
+                    _replace_cross_device_safe(source, destination)
             shutil.rmtree(backup)
             return True, None
         except Exception as error:
+            rollback_error = None
             for destination, previous in reversed(applied):
                 try:
                     if os.path.lexists(destination):
@@ -743,14 +780,28 @@ class Downloader:
                             os.unlink(destination)
                     if previous and os.path.lexists(previous):
                         os.makedirs(os.path.dirname(destination), exist_ok=True)
-                        os.replace(previous, destination)
-                except OSError:
-                    pass
+                        _replace_cross_device_safe(previous, destination)
+                except OSError as restore_error:
+                    # Keep rolling back the rest of `applied`, but remember
+                    # that at least one restore failed so the backup isn't
+                    # deleted below -- it may be the only remaining copy of
+                    # `destination`'s prior contents.
+                    rollback_error = restore_error
             for directory in reversed(created_dirs):
                 try:
                     os.rmdir(directory)
                 except OSError:
                     pass
+            if rollback_error is not None:
+                self.logger.error(
+                    f"Rollback could not fully restore {target} from backup; "
+                    f"preserving {backup} for manual recovery: {rollback_error}"
+                )
+                return False, (
+                    f"Failed applying extracted files: {error}; rollback also "
+                    f"failed ({rollback_error}); previous state preserved at "
+                    f"{backup}"
+                )
             shutil.rmtree(backup, ignore_errors=True)
             return False, f"Failed applying extracted files: {error}"
 
