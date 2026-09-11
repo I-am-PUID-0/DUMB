@@ -1100,6 +1100,67 @@ class DownloaderHelperTests(unittest.TestCase):
                 (target / "plugin").read_text(encoding="utf-8"),
             )
 
+    def test_rollback_preserves_backup_when_restore_itself_fails(self):
+        # a.txt applies successfully (backed up, then replaced). zzz_bad.txt
+        # then fails before it ever reaches a replace, which triggers
+        # rollback -- and the rollback's own restore of a.txt's backup is
+        # made to fail too. The backup must be preserved (not
+        # rmtree(ignore_errors=True)'d away) since it's the only remaining
+        # copy of a.txt's prior content, and the error must say so.
+        with tempfile.TemporaryDirectory() as temp_dir:
+            staging_dir = Path(temp_dir) / "staging"
+            staging_dir.mkdir()
+            (staging_dir / "a.txt").write_text("updated-a", encoding="utf-8")
+            (staging_dir / "zzz_bad.txt").write_text("updated-bad", encoding="utf-8")
+
+            target = Path(temp_dir) / "target"
+            target.mkdir()
+            existing_a = target / "a.txt"
+            existing_a.write_text("working-a", encoding="utf-8")
+
+            real_copy2 = shutil.copy2
+            real_safe_extract_path = self.downloader._safe_extract_path
+            calls = {"copy2": 0}
+
+            def counting_copy2(src, dst, *args, **kwargs):
+                # 1st call: back a.txt up. 2nd call: replace it with the
+                # staged copy. 3rd call: rollback restoring a.txt from the
+                # backup -- that's the one we want to fail.
+                calls["copy2"] += 1
+                if calls["copy2"] == 3:
+                    raise OSError("simulated restore failure for a.txt")
+                return real_copy2(src, dst, *args, **kwargs)
+
+            def blocking_safe_extract_path(target_dir, relative):
+                if os.path.basename(relative) == "zzz_bad.txt":
+                    return None
+                return real_safe_extract_path(target_dir, relative)
+
+            with (
+                patch.object(download.os, "replace", side_effect=self._always_exdev),
+                patch.object(download.shutil, "copy2", side_effect=counting_copy2),
+                patch.object(
+                    self.downloader,
+                    "_safe_extract_path",
+                    side_effect=blocking_safe_extract_path,
+                ),
+            ):
+                success, error = self.downloader._merge_staging_transactionally(
+                    str(staging_dir), str(target)
+                )
+
+            self.assertFalse(success)
+            self.assertIn("Unsafe staged path", error)
+            self.assertIn("rollback also failed", error)
+            self.assertIn("previous state preserved at", error)
+
+            preserved_dir = Path(error.rsplit("preserved at ", 1)[1])
+            self.assertTrue(preserved_dir.is_dir())
+            self.assertEqual(
+                "working-a",
+                (preserved_dir / "a.txt").read_text(encoding="utf-8"),
+            )
+
     def test_download_uses_verified_cached_archive_when_revalidation_is_offline(self):
         zip_buffer = io.BytesIO()
         with zipfile.ZipFile(zip_buffer, "w") as archive:

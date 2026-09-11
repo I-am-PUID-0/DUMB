@@ -768,6 +768,7 @@ class Downloader:
             shutil.rmtree(backup)
             return True, None
         except Exception as error:
+            rollback_error = None
             for destination, previous in reversed(applied):
                 try:
                     if os.path.lexists(destination):
@@ -780,13 +781,27 @@ class Downloader:
                     if previous and os.path.lexists(previous):
                         os.makedirs(os.path.dirname(destination), exist_ok=True)
                         _replace_cross_device_safe(previous, destination)
-                except OSError:
-                    pass
+                except OSError as restore_error:
+                    # Keep rolling back the rest of `applied`, but remember
+                    # that at least one restore failed so the backup isn't
+                    # deleted below -- it may be the only remaining copy of
+                    # `destination`'s prior contents.
+                    rollback_error = restore_error
             for directory in reversed(created_dirs):
                 try:
                     os.rmdir(directory)
                 except OSError:
                     pass
+            if rollback_error is not None:
+                self.logger.error(
+                    f"Rollback could not fully restore {target} from backup; "
+                    f"preserving {backup} for manual recovery: {rollback_error}"
+                )
+                return False, (
+                    f"Failed applying extracted files: {error}; rollback also "
+                    f"failed ({rollback_error}); previous state preserved at "
+                    f"{backup}"
+                )
             shutil.rmtree(backup, ignore_errors=True)
             return False, f"Failed applying extracted files: {error}"
 
