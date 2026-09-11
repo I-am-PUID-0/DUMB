@@ -732,7 +732,9 @@ class Downloader:
                         os.makedirs(
                             os.path.dirname(previous_directory_entry), exist_ok=True
                         )
-                        os.replace(destination_root, previous_directory_entry)
+                        _replace_cross_device_safe(
+                            destination_root, previous_directory_entry
+                        )
                         applied.append((destination_root, previous_directory_entry))
                     os.makedirs(destination_root, exist_ok=True)
                     created_dirs.append(destination_root)
@@ -747,7 +749,7 @@ class Downloader:
                     if os.path.lexists(destination):
                         previous = os.path.join(backup, relative)
                         os.makedirs(os.path.dirname(previous), exist_ok=True)
-                        os.replace(destination, previous)
+                        _replace_cross_device_safe(destination, previous)
                     applied.append((destination, previous))
                     _replace_cross_device_safe(source, destination)
             shutil.rmtree(backup)
@@ -764,7 +766,7 @@ class Downloader:
                             os.unlink(destination)
                     if previous and os.path.lexists(previous):
                         os.makedirs(os.path.dirname(destination), exist_ok=True)
-                        os.replace(previous, destination)
+                        _replace_cross_device_safe(previous, destination)
                 except OSError:
                     pass
             for directory in reversed(created_dirs):

@@ -1,6 +1,8 @@
+import errno
 import io
 import hashlib
 import os
+import shutil
 import stat
 import sys
 import tarfile
@@ -984,6 +986,91 @@ class DownloaderHelperTests(unittest.TestCase):
             self.assertIn("simulated EXDEV fallback failure", error)
             self.assertTrue(existing.exists())
             self.assertEqual("working", existing.read_text(encoding="utf-8"))
+
+    @staticmethod
+    def _always_exdev(*_args, **_kwargs):
+        raise OSError(errno.EXDEV, "Invalid cross-device link")
+
+    def test_fresh_install_across_devices_succeeds(self):
+        # No existing destination file: only the final staged-file replace runs.
+        # Every os.replace() call raises EXDEV, so this exercises the plain
+        # copy2()+unlink() fallback with nothing to back up first.
+        with tempfile.TemporaryDirectory() as temp_dir:
+            staging_dir = Path(temp_dir) / "staging"
+            staging_dir.mkdir()
+            (staging_dir / "runtime.txt").write_text("updated", encoding="utf-8")
+
+            target = Path(temp_dir) / "target"
+
+            with patch.object(download.os, "replace", side_effect=self._always_exdev):
+                success, error = self.downloader._merge_staging_transactionally(
+                    str(staging_dir), str(target)
+                )
+
+            self.assertTrue(success, error)
+            self.assertEqual(
+                "updated", (target / "runtime.txt").read_text(encoding="utf-8")
+            )
+
+    def test_update_with_existing_file_across_devices_succeeds(self):
+        # Reproduces the maintainer's report: destination already has a file,
+        # so the backup-out replace runs before the new-file-in replace. Both
+        # must go through the cross-device-safe helper, not a plain
+        # os.replace(), or this raises EXDEV and the update never completes.
+        with tempfile.TemporaryDirectory() as temp_dir:
+            staging_dir = Path(temp_dir) / "staging"
+            staging_dir.mkdir()
+            (staging_dir / "runtime.txt").write_text("updated", encoding="utf-8")
+
+            target = Path(temp_dir) / "target"
+            target.mkdir()
+            existing = target / "runtime.txt"
+            existing.write_text("working", encoding="utf-8")
+
+            with patch.object(download.os, "replace", side_effect=self._always_exdev):
+                success, error = self.downloader._merge_staging_transactionally(
+                    str(staging_dir), str(target)
+                )
+
+            self.assertTrue(success, error)
+            self.assertEqual("updated", existing.read_text(encoding="utf-8"))
+
+    def test_rollback_after_injected_failure_restores_backup_across_devices(self):
+        # a.txt updates successfully (backed up, then replaced) before
+        # zzz_bad.txt's own copy fails and triggers the exception-handler
+        # rollback. The restore of a.txt's backup must also survive being
+        # cross-device, or the already-applied update is left in place (or
+        # worse, the only remaining copy is deleted with the backup dir).
+        with tempfile.TemporaryDirectory() as temp_dir:
+            staging_dir = Path(temp_dir) / "staging"
+            staging_dir.mkdir()
+            (staging_dir / "a.txt").write_text("updated-a", encoding="utf-8")
+            (staging_dir / "zzz_bad.txt").write_text("updated-bad", encoding="utf-8")
+
+            target = Path(temp_dir) / "target"
+            target.mkdir()
+            existing_a = target / "a.txt"
+            existing_a.write_text("working-a", encoding="utf-8")
+
+            real_copy2 = shutil.copy2
+
+            def selective_copy2(src, dst, *args, **kwargs):
+                if os.path.basename(src) == "zzz_bad.txt":
+                    raise OSError("simulated disk failure copying zzz_bad.txt")
+                return real_copy2(src, dst, *args, **kwargs)
+
+            with (
+                patch.object(download.os, "replace", side_effect=self._always_exdev),
+                patch.object(download.shutil, "copy2", side_effect=selective_copy2),
+            ):
+                success, error = self.downloader._merge_staging_transactionally(
+                    str(staging_dir), str(target)
+                )
+
+            self.assertFalse(success)
+            self.assertIn("simulated disk failure", error)
+            self.assertEqual("working-a", existing_a.read_text(encoding="utf-8"))
+            self.assertFalse((target / "zzz_bad.txt").exists())
 
     def test_download_uses_verified_cached_archive_when_revalidation_is_offline(self):
         zip_buffer = io.BytesIO()
