@@ -23,6 +23,19 @@ def _replace_cross_device_safe(source, destination):
                 os.unlink(destination)
             os.symlink(link_target, destination)
             os.unlink(source)
+        elif os.path.isdir(source):
+            # A staged file can land where an existing install left a
+            # directory (or a backup/rollback can be moving a whole
+            # directory that was displaced for the same reason).
+            # shutil.copy2()+unlink() only work on a single file, so mirror
+            # the tree across the device boundary instead.
+            if os.path.lexists(destination):
+                if os.path.isdir(destination) and not os.path.islink(destination):
+                    shutil.rmtree(destination)
+                else:
+                    os.unlink(destination)
+            shutil.copytree(source, destination, symlinks=True)
+            shutil.rmtree(source)
         else:
             shutil.copy2(source, destination)
             os.unlink(source)

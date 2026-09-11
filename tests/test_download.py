@@ -1072,6 +1072,34 @@ class DownloaderHelperTests(unittest.TestCase):
             self.assertEqual("working-a", existing_a.read_text(encoding="utf-8"))
             self.assertFalse((target / "zzz_bad.txt").exists())
 
+    def test_staged_file_replaces_existing_directory_across_devices(self):
+        # A prior install left a directory where the new release ships a
+        # plain file at the same relative path. Backing that directory out
+        # to the backup dir is a directory move, which shutil.copy2()+
+        # unlink() cannot do -- the cross-device fallback needs a
+        # copytree()/rmtree() branch for directories.
+        with tempfile.TemporaryDirectory() as temp_dir:
+            staging_dir = Path(temp_dir) / "staging"
+            staging_dir.mkdir()
+            (staging_dir / "plugin").write_text("updated-plugin", encoding="utf-8")
+
+            target = Path(temp_dir) / "target"
+            existing_dir = target / "plugin"
+            existing_dir.mkdir(parents=True)
+            (existing_dir / "old.txt").write_text("stale", encoding="utf-8")
+
+            with patch.object(download.os, "replace", side_effect=self._always_exdev):
+                success, error = self.downloader._merge_staging_transactionally(
+                    str(staging_dir), str(target)
+                )
+
+            self.assertTrue(success, error)
+            self.assertTrue((target / "plugin").is_file())
+            self.assertEqual(
+                "updated-plugin",
+                (target / "plugin").read_text(encoding="utf-8"),
+            )
+
     def test_download_uses_verified_cached_archive_when_revalidation_is_offline(self):
         zip_buffer = io.BytesIO()
         with zipfile.ZipFile(zip_buffer, "w") as archive:
