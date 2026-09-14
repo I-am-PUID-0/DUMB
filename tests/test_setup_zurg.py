@@ -1,3 +1,4 @@
+import os
 import tempfile
 import unittest
 import yaml
@@ -56,6 +57,7 @@ class SetupZurgTests(unittest.TestCase):
     def test_update_port_preserves_nested_keys(self):
         """Test that update_port only updates top-level port key, not nested ones."""
         with tempfile.NamedTemporaryFile(mode='w', suffix='.yml', delete=False) as f:
+            self.addCleanup(os.unlink, f.name)
             config_content = """port: 9999
 providers:
   - type: nzb
@@ -93,6 +95,7 @@ providers:
     def test_update_token_preserves_structure(self):
         """Test that update_token only updates top-level token key."""
         with tempfile.NamedTemporaryFile(mode='w', suffix='.yml', delete=False) as f:
+            self.addCleanup(os.unlink, f.name)
             config_content = """token: old_token
 api:
   key: some_nested_key
@@ -115,6 +118,7 @@ api:
     def test_update_creds_preserves_nested_credentials(self):
         """Test that update_creds only updates top-level credential keys."""
         with tempfile.NamedTemporaryFile(mode='w', suffix='.yml', delete=False) as f:
+            self.addCleanup(os.unlink, f.name)
             config_content = """username: olduser
 password: oldpass
 providers:
