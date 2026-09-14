@@ -1,5 +1,6 @@
 import tempfile
 import unittest
+import yaml
 from pathlib import Path
 from unittest.mock import patch
 
@@ -51,6 +52,94 @@ class SetupZurgTests(unittest.TestCase):
             self.assertTrue(success, error)
             self.assertTrue(data_target.is_dir())
             permissions.assert_called_once_with(str(config_link / "zurg"), 0o755)
+
+    def test_update_port_preserves_nested_keys(self):
+        """Test that update_port only updates top-level port key, not nested ones."""
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.yml', delete=False) as f:
+            config_content = """port: 9999
+providers:
+  - type: nzb
+    nntp:
+      host: news.example.com
+      port: 563
+      tls: true
+      username: someuser
+      password: somepass
+      connections: 25
+      servers:
+        - host: other.example.com
+          port: 563
+          username: u2
+          password: p2
+"""
+            f.write(config_content)
+            f.flush()
+
+            setup.update_port(f.name, 8888)
+
+            with open(f.name, 'r') as result:
+                updated_content = result.read()
+                parsed = yaml.safe_load(updated_content)
+
+            # Verify top-level port was updated
+            self.assertEqual(parsed['port'], 8888)
+            # Verify nested ports were NOT updated
+            self.assertEqual(parsed['providers'][0]['nntp']['port'], 563)
+            self.assertEqual(parsed['providers'][0]['nntp']['servers'][0]['port'], 563)
+            # Verify nested credentials are still present
+            self.assertEqual(parsed['providers'][0]['nntp']['username'], 'someuser')
+            self.assertEqual(parsed['providers'][0]['nntp']['password'], 'somepass')
+
+    def test_update_token_preserves_structure(self):
+        """Test that update_token only updates top-level token key."""
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.yml', delete=False) as f:
+            config_content = """token: old_token
+api:
+  key: some_nested_key
+  token: nested_token
+"""
+            f.write(config_content)
+            f.flush()
+
+            setup.update_token(f.name, 'new_token')
+
+            with open(f.name, 'r') as result:
+                updated_content = result.read()
+                parsed = yaml.safe_load(updated_content)
+
+            # Verify top-level token was updated
+            self.assertEqual(parsed['token'], 'new_token')
+            # Verify nested token was NOT updated
+            self.assertEqual(parsed['api']['token'], 'nested_token')
+
+    def test_update_creds_preserves_nested_credentials(self):
+        """Test that update_creds only updates top-level credential keys."""
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.yml', delete=False) as f:
+            config_content = """username: olduser
+password: oldpass
+providers:
+  - type: nzb
+    nntp:
+      host: news.example.com
+      port: 563
+      username: nesteduser
+      password: nestedpass
+"""
+            f.write(config_content)
+            f.flush()
+
+            setup.update_creds(f.name, 'newuser', 'newpass')
+
+            with open(f.name, 'r') as result:
+                updated_content = result.read()
+                parsed = yaml.safe_load(updated_content)
+
+            # Verify top-level credentials were updated
+            self.assertEqual(parsed['username'], 'newuser')
+            self.assertEqual(parsed['password'], 'newpass')
+            # Verify nested credentials were NOT updated
+            self.assertEqual(parsed['providers'][0]['nntp']['username'], 'nesteduser')
+            self.assertEqual(parsed['providers'][0]['nntp']['password'], 'nestedpass')
 
 
 if __name__ == "__main__":

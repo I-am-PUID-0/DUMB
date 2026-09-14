@@ -10735,7 +10735,7 @@ def update_port(config_file_path, instance_port):
         lines = file.readlines()
     with open(config_file_path, "w") as file:
         for line in lines:
-            if line.strip().startswith("port:") or line.strip().startswith("# port:"):
+            if line.startswith("port:") or line.startswith("# port:"):
                 file.write(f"port: {instance_port}\n")
             else:
                 file.write(line)
@@ -10756,7 +10756,7 @@ def update_token(config_file_path, api_key_value):
         lines = file.readlines()
     with open(config_file_path, "w") as file:
         for line in lines:
-            if line.strip().startswith("token:"):
+            if line.startswith("token:"):
                 file.write(f"token: {api_key_value}\n")
             else:
                 file.write(line)
@@ -10770,11 +10770,11 @@ def update_creds(config_file_path, username, password):
             lines = file.readlines()
         with open(config_file_path, "w") as file:
             for line in lines:
-                if line.strip().startswith("username:") or line.strip().startswith(
+                if line.startswith("username:") or line.startswith(
                     "# username:"
                 ):
                     file.write(f"username: {username}\n")
-                elif line.strip().startswith("password:") or line.strip().startswith(
+                elif line.startswith("password:") or line.startswith(
                     "# password:"
                 ):
                     file.write(f"password: {password}\n")
@@ -10787,11 +10787,11 @@ def update_creds(config_file_path, username, password):
             lines = file.readlines()
         with open(config_file_path, "w") as file:
             for line in lines:
-                if line.strip().startswith("username:") or line.strip().startswith(
+                if line.startswith("username:") or line.startswith(
                     "# username:"
                 ):
                     file.write("# username: <username>\n")
-                elif line.strip().startswith("password:") or line.strip().startswith(
+                elif line.startswith("password:") or line.startswith(
                     "# password:"
                 ):
                     file.write("# password: <password>\n")
