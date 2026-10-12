@@ -8,6 +8,7 @@ from utils.plex import PlexInstaller
 from utils.traefik_setup import get_traefik_proxy_url, setup_traefik
 from utils.user_management import chown_recursive, chown_single
 from utils.resource_limits import pnpm_concurrency
+from utils.bun_runtime import ensure_bun_runtime
 from utils.apt_lock import run_locked
 from utils.port_probe import is_port_available as _is_port_available
 from utils.private_files import atomic_write_private_text
@@ -491,7 +492,6 @@ def _prepare_decypharr_source_tree(target_dir: str) -> tuple[bool, str | None]:
         "scripts",
         "testdata",
         "node_modules",
-        "main.go",
         "go.mod",
         "go.sum",
         "package.json",
@@ -504,9 +504,23 @@ def _prepare_decypharr_source_tree(target_dir: str) -> tuple[bool, str | None]:
         ".dumb_frontend_build_fingerprint",
     ]
     try:
+        if not os.path.exists(target_dir):
+            return True, None
+        # Upstream can remove or rename any root Go file. Leaving downgrade.go
+        # after its storage implementation was removed mixes two revisions and
+        # fails with undefined: storage.Downgrade.
+        with os.scandir(target_dir) as entries:
+            cleanup_targets.extend(
+                entry.name
+                for entry in entries
+                if entry.name.endswith(".go")
+                and (entry.is_file(follow_symlinks=False) or entry.is_symlink())
+            )
         for entry in cleanup_targets:
             path = os.path.join(target_dir, entry)
-            if os.path.isdir(path):
+            if os.path.islink(path):
+                os.remove(path)
+            elif os.path.isdir(path):
                 shutil.rmtree(path)
             elif os.path.isfile(path):
                 os.remove(path)
@@ -12712,18 +12726,11 @@ def setup_bun_environment(process_handler, config_dir):
         env.setdefault("npm_config_fund", "false")
         env.setdefault("npm_config_audit", "false")
 
-        if not os.path.isfile(bun_bin):
-            logger.info("Installing Bun runtime to %s", bun_install)
-            process_handler.start_process(
-                "bun_install_runtime",
-                config_dir,
-                ["bash", "-lc", "curl -fsSL https://bun.sh/install | bash"],
-                env=env,
-            )
-            process_handler.wait("bun_install_runtime")
-            if process_handler.returncode != 0:
-                return False, f"Error installing Bun: {process_handler.stderr}"
-            chown_recursive(bun_install, user_id, group_id)
+        success, error = ensure_bun_runtime(
+            process_handler, config_dir, env, user_id, group_id
+        )
+        if not success:
+            return False, error
 
         _prepare_shared_build_cache(bun_runtime_cache)
         bun_install_command = [bun_bin, "install"]

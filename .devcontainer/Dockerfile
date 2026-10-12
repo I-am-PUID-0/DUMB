@@ -3,7 +3,7 @@
 ARG DUMB_IMAGE=iampuid0/dumb:dev
 FROM ${DUMB_IMAGE}
 
-ARG POETRY_VERSION=2.4.1
+ARG POETRY_VERSION=2.5.1
 
 # Source-built service artifacts persist across devcontainer rebuilds. Install
 # Maintainerr's canvas dependencies here as well as in the production image so

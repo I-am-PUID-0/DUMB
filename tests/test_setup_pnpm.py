@@ -148,7 +148,12 @@ class SetupPnpmTests(unittest.TestCase):
         process_handler.stderr = "fatal error: fuse.h: No such file or directory"
         process_handler.stdout = ""
 
-        with patch.object(setup, "setup_pnpm_environment", return_value=(True, None)):
+        with (
+            patch.object(setup, "setup_pnpm_environment", return_value=(True, None)),
+            patch.object(
+                setup, "_prepare_shared_build_cache", return_value="/tmp/decypharr-test"
+            ),
+        ):
             success, error = setup.build_decypharr_dev(
                 process_handler,
                 {"config_dir": "/decypharr", "branch": "beta"},

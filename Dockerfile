@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1.7
 
 ARG RCLONE_TAG=latest
-ARG GO_VERSION=1.26.5
+ARG GO_VERSION=1.27.2
 ARG DUMB_DOCS_REF=master
 
 FROM golang:${GO_VERSION}-bookworm AS go-runtime
@@ -14,8 +14,8 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0-noble AS dotnet-sdk
 FROM ubuntu:26.04 AS base
 
 ARG APT_REFRESH=manual
-ARG NPM_VERSION=12.0.1
-ARG PNPM_VERSION=10.34.5
+ARG NPM_VERSION=12.2.0
+ARG PNPM_VERSION=10.34.6
 
 # ---- Environment ---------------------------------------------------------------------------------------------------------------------------------
 ENV DEBIAN_FRONTEND=noninteractive \
@@ -93,25 +93,27 @@ RUN echo "export PATH=/usr/lib/postgresql/16/bin:\$PATH" >> /root/.bashrc
 # Stage 1: pgadmin-builder
 ####################################################################################################################################################
 FROM base AS pgadmin-builder
-ARG PGADMIN_VERSION=9.17
+ARG PGADMIN_VERSION=9.18
 RUN --mount=type=cache,target=/root/.cache/pip,sharing=shared \
     python3.11 -m venv /pgadmin/venv && \
     /pgadmin/venv/bin/python -m pip install --upgrade pip setuptools wheel && \
     /pgadmin/venv/bin/python -m pip install "pgadmin4==${PGADMIN_VERSION}" && \
-    # Recent pgAdmin releases pin setuptools to either 82.x or 83.x on
-    # Python >3.9. Setuptools 83 contains the CVE-2026-59890 fix and remains
-    # runtime-compatible. Normalize the installed package metadata to the
-    # bounded secured range before upgrading so pip check remains meaningful.
+    # Preserve pgAdmin 9.18's setuptools 84.x requirement. Older pgAdmin
+    # overrides pin 82.x or 83.x; normalize only those legacy requirements
+    # to the secured 83.x range containing the CVE-2026-59890 fix.
     PGADMIN_METADATA="$(find /pgadmin/venv/lib/python3.11/site-packages \
       -path '*/pgadmin4-*.dist-info/METADATA' -print -quit)" && \
     test -n "${PGADMIN_METADATA}" && \
     sed -E -i 's/setuptools==(82|83)\.\*/setuptools>=83,<84/' "${PGADMIN_METADATA}" && \
-    grep -q 'Requires-Dist: setuptools>=83,<84; python_version > "3.9"' "${PGADMIN_METADATA}" && \
+    PGADMIN_SETUPTOOLS_SPEC=$(sed -n \
+      's/^Requires-Dist: \(setuptools[^;]*\); python_version > "3.9"$/\1/p' \
+      "${PGADMIN_METADATA}") && \
+    test -n "${PGADMIN_SETUPTOOLS_SPEC}" && \
     /pgadmin/venv/bin/python -m pip install --upgrade --no-deps \
-      "setuptools>=83,<84" && \
+      "${PGADMIN_SETUPTOOLS_SPEC}" "setuptools>=83" && \
     /pgadmin/venv/bin/python -m pip check && \
     /pgadmin/venv/bin/python -c \
-      'import importlib.metadata, pgadmin4; assert importlib.metadata.version("setuptools").startswith("83.")' && \
+      'import importlib.metadata, pgadmin4; assert int(importlib.metadata.version("setuptools").split(".")[0]) >= 83' && \
     find /pgadmin/venv/lib/python3.11/site-packages -type d \
       \( -name tests -o -name test \) -prune -exec rm -rf '{}' +
 
@@ -234,7 +236,7 @@ RUN --mount=type=cache,target=/root/.cache/pip,sharing=shared \
 # Stage 6: requirements-builder
 ####################################################################################################################################################
 FROM base AS poetry-builder
-ARG POETRY_VERSION=2.4.1
+ARG POETRY_VERSION=2.5.1
 RUN --mount=type=cache,target=/root/.cache/pip,sharing=shared \
     python3.11 -m venv /opt/poetry && \
     /opt/poetry/bin/python -m pip install --upgrade pip setuptools wheel && \
