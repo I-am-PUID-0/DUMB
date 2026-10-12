@@ -31,6 +31,16 @@ components and transitive dependencies.
 
 ---
 
+## Tini
+
+- Project: <https://github.com/krallin/tini>
+- License: MIT
+- Upstream license: <https://github.com/krallin/tini/blob/master/LICENSE>
+- Note: DUMB uses the distribution package as its container init process. The
+  packaged license notice is retained at `/usr/share/doc/tini/copyright`.
+
+---
+
 ## dmbdb
 
 - Project: <https://github.com/nicocapalbo/dmbdb>

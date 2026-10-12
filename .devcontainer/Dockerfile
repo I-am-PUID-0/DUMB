@@ -12,7 +12,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     apt-get update && \
     apt-get install -y --no-install-recommends \
       libcairo2-dev libpango1.0-dev libjpeg-dev libgif-dev \
-      libpixman-1-dev librsvg2-dev && \
+      libpixman-1-dev librsvg2-dev tini && \
     rm -rf /var/lib/apt/lists/*
 
 COPY pyproject.toml poetry.lock /tmp/dumb-dev-dependencies/
@@ -43,3 +43,6 @@ RUN poetry --version && \
     /venv/bin/python -m pre_commit --version && \
     /venv/bin/python -m black --version && \
     /venv/bin/python -m ruff --version
+
+# Published base images may predate the production init entrypoint.
+ENTRYPOINT ["/usr/bin/tini", "-s", "--", "python", "/main.py"]

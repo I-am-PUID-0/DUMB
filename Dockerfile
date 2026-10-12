@@ -61,7 +61,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
       fuse3 libfuse-dev ffmpeg mesa-va-drivers mesa-vulkan-drivers openssl unzip pkg-config \
       libcairo2-dev libpango1.0-dev libjpeg-dev libgif-dev libpixman-1-dev librsvg2-dev \
       postgresql-client-16 postgresql-16 postgresql-contrib-16 pgagent \
-      htop bash && \
+      htop bash tini && \
     test -f /usr/include/fuse/fuse.h && \
     # Python convenience + locale
     locale-gen en_US.UTF-8 && \
@@ -326,4 +326,5 @@ ENV PATH="/venv/bin:$PATH"
 WORKDIR /
 
 HEALTHCHECK --interval=60s --timeout=10s CMD ["python", "/healthcheck.py"]
-ENTRYPOINT ["python", "/main.py"]
+# Keep orphan reaping separate from Python-owned service/helper waits.
+ENTRYPOINT ["/usr/bin/tini", "-s", "--", "python", "/main.py"]

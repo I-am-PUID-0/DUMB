@@ -11,6 +11,7 @@
     }
   },
   "workspaceFolder": "/workspace",
+  "init": true,
   "remoteEnv": {
     "PATH": "/venv/bin:/opt/poetry/bin:${containerEnv:PATH}",
     "VIRTUAL_ENV": "/venv"

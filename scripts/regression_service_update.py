@@ -393,6 +393,7 @@ def run_regression(args: argparse.Namespace) -> dict:
             "-d",
             "--name",
             container,
+            "--init",
             "--cap-add",
             "SYS_ADMIN",
             "--device",
