@@ -210,6 +210,7 @@ class Downloader:
             if zip_folder_name is None and key != "bazarr":
                 zip_folder_name = f"{repo_owner}-{repo_name}*"
 
+            selected_asset = None
             if key == "bazarr":
                 bazarr_asset = next(
                     (
@@ -223,6 +224,7 @@ class Downloader:
                     bazarr_asset.get("browser_download_url") if bazarr_asset else None
                 )
                 asset_id = bazarr_asset.get("id") if bazarr_asset else None
+                selected_asset = bazarr_asset
             elif key == "emby":
                 expected_name = (
                     f"emby-server-deb_{release_version}_{architecture}.deb".lower()
@@ -239,12 +241,40 @@ class Downloader:
                     emby_asset.get("browser_download_url") if emby_asset else None
                 )
                 asset_id = emby_asset.get("id") if emby_asset else None
+                selected_asset = emby_asset
             else:
                 download_url, asset_id = self.find_asset_download_url(
                     release_info, architecture
                 )
+                selected_asset = next(
+                    (
+                        asset
+                        for asset in release_info.get("assets", [])
+                        if (
+                            asset.get("id") == asset_id
+                            if asset_id is not None
+                            else asset.get("browser_download_url") == download_url
+                        )
+                    ),
+                    None,
+                )
             if not download_url:
                 return False, f"No release asset found for {process_name}."
+
+            expected_sha256 = self._github_asset_sha256(selected_asset)
+            if expected_sha256:
+                self.logger.info(
+                    "Verifying %s against its GitHub-published SHA-256 checksum; "
+                    "this is an integrity check, not publisher-signature verification.",
+                    process_name,
+                )
+            else:
+                self.logger.warning(
+                    "No published GitHub asset checksum is available for %s; "
+                    "proceeding with HTTPS and cache integrity checks only, "
+                    "without publisher-signature verification.",
+                    process_name,
+                )
 
             if asset_id:
                 headers = self.get_headers()
@@ -262,6 +292,7 @@ class Downloader:
                 headers=headers,
                 exclude_dirs=exclude_dirs,
                 staging_validator=staging_validator,
+                expected_sha256=expected_sha256,
             )
             if not success:
                 logger.error(
@@ -273,6 +304,22 @@ class Downloader:
         except Exception as e:
             logger.error(f"Error in download release version: {e}")
             return False, str(e)
+
+    @staticmethod
+    def _github_asset_sha256(asset):
+        """Read GitHub's asset integrity metadata without treating it as a signature."""
+        if asset is None or asset.get("digest") is None:
+            return None
+        digest = asset["digest"]
+        if not isinstance(digest, str) or not re.fullmatch(
+            r"sha256:[0-9a-fA-F]{64}", digest
+        ):
+            raise ValueError(
+                "GitHub release asset digest is invalid or unsupported; "
+                "expected sha256 followed by 64 hexadecimal characters. "
+                "The download was refused; correct the upstream release metadata."
+            )
+        return digest.lower()
 
     def get_latest_release(
         self, repo_owner, repo_name, nightly=False, prerelease=False
@@ -935,6 +982,15 @@ class Downloader:
     ):
         staging_dir = None
         try:
+            expected_digest = ""
+            if expected_sha256 is not None:
+                if not isinstance(expected_sha256, str):
+                    return False, "Expected SHA-256 digest is invalid."
+                expected_digest = expected_sha256.strip().lower()
+                if expected_digest.startswith("sha256:"):
+                    expected_digest = expected_digest.removeprefix("sha256:")
+                if not re.fullmatch(r"[0-9a-f]{64}", expected_digest):
+                    return False, "Expected SHA-256 digest is invalid."
             self.logger.debug(f"Downloading from {url}")
             headers = dict(headers or self.get_headers())
             cached_content, cached_metadata = INSTALL_CACHE.lookup_download(url)
@@ -978,12 +1034,7 @@ class Downloader:
             size = len(content)
             if size > limits["download_bytes"]:
                 return False, "Download exceeds the configured size limit."
-            expected_digest = str(expected_sha256 or "").strip().lower()
-            if expected_digest.startswith("sha256:"):
-                expected_digest = expected_digest.removeprefix("sha256:")
             if expected_digest:
-                if not re.fullmatch(r"[0-9a-f]{64}", expected_digest):
-                    return False, "Expected SHA-256 digest is invalid."
                 actual_digest = hashlib.sha256(content).hexdigest()
                 if actual_digest != expected_digest:
                     INSTALL_CACHE.invalidate_download(url, "digest-mismatch")

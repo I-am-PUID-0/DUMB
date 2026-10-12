@@ -86,6 +86,8 @@ utils_pkg = sys.modules.get("utils")
 if utils_pkg is not None and hasattr(utils_pkg, "download"):
     delattr(utils_pkg, "download")
 from utils import download
+from utils import install_cache as install_cache_module
+from utils.install_cache import InstallCache
 
 
 class DownloaderHelperTests(unittest.TestCase):
@@ -374,6 +376,7 @@ class DownloaderHelperTests(unittest.TestCase):
                     "id": 2,
                     "name": "emby-server-deb_4.10.0.21_arm64.deb",
                     "browser_download_url": "https://example.test/emby.deb",
+                    "digest": "sha256:" + "b" * 64,
                 },
             ],
         }
@@ -404,6 +407,395 @@ class DownloaderHelperTests(unittest.TestCase):
             "https://api.github.com/repos/MediaBrowser/Emby.Releases/releases/assets/2",
             extract.call_args.args[0],
         )
+        self.assertEqual(
+            "sha256:" + "b" * 64, extract.call_args.kwargs["expected_sha256"]
+        )
+
+    @staticmethod
+    def _bazarr_release_info(digest):
+        return {
+            "tag_name": "v1.0.0",
+            "assets": [
+                {
+                    "id": 42,
+                    "name": "bazarr.zip",
+                    "browser_download_url": "https://example.test/bazarr.zip",
+                    "digest": digest,
+                }
+            ],
+        }
+
+    def _download_bazarr_release(self, target, **kwargs):
+        return self.downloader.download_release_version(
+            process_name="Bazarr",
+            key="bazarr",
+            repo_owner="owner",
+            repo_name="repo",
+            release_version="v1.0.0",
+            target_dir=str(target),
+            **kwargs,
+        )
+
+    @staticmethod
+    def _flat_zip_content(runtime="verified"):
+        buffer = io.BytesIO()
+        with zipfile.ZipFile(buffer, "w") as archive:
+            archive.writestr("runtime.txt", runtime)
+            archive.writestr("config.json", "candidate config")
+        return buffer.getvalue()
+
+    def test_release_asset_digest_is_propagated_for_bazarr(self):
+        digest = "sha256:" + "A" * 64
+        with (
+            patch.object(
+                self.downloader,
+                "fetch_github_release_info",
+                return_value=(self._bazarr_release_info(digest), None),
+            ),
+            patch.object(
+                self.downloader, "download_and_extract", return_value=(True, None)
+            ) as extract,
+        ):
+            success, error = self._download_bazarr_release("/unused/bazarr")
+
+        self.assertTrue(success, error)
+        self.assertEqual(digest.lower(), extract.call_args.kwargs["expected_sha256"])
+
+    def test_release_uses_digest_from_selected_architecture_asset(self):
+        digest = "sha256:" + "a" * 64
+        release_info = {
+            "assets": [
+                {
+                    "id": 1,
+                    "name": "decypharr-linux-arm64",
+                    "browser_download_url": "https://example.test/arm64",
+                    "digest": "unsupported-unselected-metadata",
+                },
+                {
+                    "id": 2,
+                    "name": "decypharr-linux-amd64",
+                    "browser_download_url": "https://example.test/amd64",
+                    "digest": digest,
+                },
+            ],
+        }
+        with (
+            patch.object(
+                self.downloader, "get_architecture", return_value="linux-amd64"
+            ),
+            patch.object(
+                self.downloader,
+                "fetch_github_release_info",
+                return_value=(release_info, None),
+            ),
+            patch.object(
+                self.downloader, "download_and_extract", return_value=(True, None)
+            ) as extract,
+        ):
+            success, error = self.downloader.download_release_version(
+                "Decypharr", "decypharr", "owner", "repo", "v1.0.0", "/unused"
+            )
+
+        self.assertTrue(success, error)
+        self.assertTrue(extract.call_args.args[0].endswith("/assets/2"))
+        self.assertEqual(digest, extract.call_args.kwargs["expected_sha256"])
+
+    def test_release_rejects_invalid_or_unsupported_asset_digest_before_download(self):
+        for digest in (
+            "",
+            " ",
+            "a" * 64,
+            "sha256:short",
+            "sha256:" + "g" * 64,
+            "sha512:" + "a" * 128,
+            123,
+            False,
+            [],
+            {},
+        ):
+            with self.subTest(digest=digest), tempfile.TemporaryDirectory() as temp_dir:
+                target = Path(temp_dir, "service")
+                target.mkdir()
+                runtime = target / "runtime.txt"
+                runtime.write_text("working", encoding="utf-8")
+                with (
+                    patch.object(
+                        self.downloader,
+                        "fetch_github_release_info",
+                        return_value=(self._bazarr_release_info(digest), None),
+                    ),
+                    patch.object(self.downloader, "download_and_extract") as extract,
+                ):
+                    success, error = self._download_bazarr_release(target)
+
+                self.assertFalse(success)
+                self.assertIn("invalid or unsupported", error)
+                self.assertIn("upstream release metadata", error)
+                extract.assert_not_called()
+                self.assertEqual("working", runtime.read_text(encoding="utf-8"))
+
+    def test_release_missing_asset_digest_logs_unsigned_fallback(self):
+        for missing in (True, False):
+            with self.subTest(missing=missing):
+                release_info = self._bazarr_release_info(None)
+                if missing:
+                    release_info["assets"][0].pop("digest")
+                with (
+                    patch.object(
+                        self.downloader,
+                        "fetch_github_release_info",
+                        return_value=(release_info, None),
+                    ),
+                    patch.object(
+                        self.downloader,
+                        "download_and_extract",
+                        return_value=(True, None),
+                    ) as extract,
+                    patch.object(self.downloader.logger, "warning") as warning,
+                ):
+                    success, error = self._download_bazarr_release("/unused")
+
+                self.assertTrue(success, error)
+                self.assertIsNone(extract.call_args.kwargs["expected_sha256"])
+                self.assertIn(
+                    "No published GitHub asset checksum", warning.call_args.args[0]
+                )
+                self.assertIn(
+                    "without publisher-signature verification",
+                    warning.call_args.args[0],
+                )
+
+    def test_release_digest_verifies_fresh_and_cached_downloads(self):
+        content = self._flat_zip_content()
+        digest = "sha256:" + hashlib.sha256(content).hexdigest()
+        url = "https://api.github.com/repos/owner/repo/releases/assets/42"
+        response = FakeResponse(
+            200,
+            {"Content-Disposition": "attachment; filename=bazarr.zip", "ETag": '"v1"'},
+            content,
+        )
+        with tempfile.TemporaryDirectory() as temp_dir:
+            cache = InstallCache(Path(temp_dir, "cache"))
+            with (
+                patch.object(download, "INSTALL_CACHE", cache),
+                patch.object(
+                    install_cache_module, "install_cache_enabled", return_value=True
+                ),
+                patch.object(
+                    self.downloader,
+                    "fetch_github_release_info",
+                    return_value=(self._bazarr_release_info(digest), None),
+                ),
+                patch.object(
+                    self.downloader,
+                    "fetch_with_retries",
+                    side_effect=[response, FakeResponse(304), None],
+                ) as fetch,
+                patch.object(
+                    cache, "store_download", wraps=cache.store_download
+                ) as store,
+            ):
+                for attempt in range(3):
+                    target = Path(temp_dir, f"service-{attempt}")
+                    success, error = self._download_bazarr_release(target)
+                    self.assertTrue(success, error)
+                    self.assertEqual("verified", (target / "runtime.txt").read_text())
+                cached, metadata = cache.lookup_download(url)
+
+            self.assertEqual(content, cached)
+            self.assertEqual(digest.removeprefix("sha256:"), metadata["sha256"])
+            self.assertEqual(3, fetch.call_count)
+            store.assert_called_once()
+            self.assertEqual('"v1"', fetch.call_args_list[1].args[1]["If-None-Match"])
+
+    def test_release_digest_mismatch_never_retries_without_verification(self):
+        content = self._flat_zip_content("unverified")
+        for status in (200, 304, None):
+            with self.subTest(status=status), tempfile.TemporaryDirectory() as temp_dir:
+                cache = InstallCache(Path(temp_dir, "cache"))
+                target = Path(temp_dir, "service")
+                target.mkdir()
+                runtime = target / "runtime.txt"
+                runtime.write_text("working", encoding="utf-8")
+                config = target / "config.json"
+                config.write_text("persistent config", encoding="utf-8")
+                response = (
+                    None
+                    if status is None
+                    else FakeResponse(
+                        status,
+                        {"Content-Disposition": "attachment; filename=bazarr.zip"},
+                        content,
+                    )
+                )
+                url = "https://api.github.com/repos/owner/repo/releases/assets/42"
+                with (
+                    patch.object(download, "INSTALL_CACHE", cache),
+                    patch.object(
+                        install_cache_module, "install_cache_enabled", return_value=True
+                    ),
+                    patch.object(
+                        self.downloader,
+                        "fetch_github_release_info",
+                        return_value=(
+                            self._bazarr_release_info("sha256:" + "0" * 64),
+                            None,
+                        ),
+                    ),
+                    patch.object(
+                        self.downloader, "fetch_with_retries", return_value=response
+                    ) as fetch,
+                ):
+                    if status != 200:
+                        # The cache hashes are self-consistent but disagree with
+                        # the independent published digest.
+                        cache.store_download(url, content, filename="bazarr.zip")
+                    with patch.object(
+                        cache, "store_download", wraps=cache.store_download
+                    ) as store:
+                        success, error = self._download_bazarr_release(target)
+                    cached, _ = cache.lookup_download(url)
+
+                self.assertFalse(success)
+                self.assertIn("published SHA-256", error)
+                self.assertEqual("working", runtime.read_text())
+                self.assertEqual("persistent config", config.read_text())
+                self.assertEqual(
+                    ["config.json", "runtime.txt"],
+                    sorted(p.name for p in target.iterdir()),
+                )
+                self.assertIsNone(cached)
+                fetch.assert_called_once()
+                store.assert_not_called()
+                self.assertFalse(any(Path(temp_dir).glob(".service.dumb-*")))
+
+    def test_corrupt_release_cache_redownload_still_requires_published_digest(self):
+        content = self._flat_zip_content()
+        expected_digest = hashlib.sha256(content).hexdigest()
+        for valid_replacement in (True, False):
+            with (
+                self.subTest(valid_replacement=valid_replacement),
+                tempfile.TemporaryDirectory() as temp_dir,
+            ):
+                cache = InstallCache(Path(temp_dir, "cache"))
+                url = "https://api.github.com/repos/owner/repo/releases/assets/42"
+                target = Path(temp_dir, "service")
+                target.mkdir()
+                (target / "runtime.txt").write_text("working")
+                replacement = (
+                    content if valid_replacement else self._flat_zip_content("tampered")
+                )
+                response = FakeResponse(
+                    200,
+                    {"Content-Disposition": "attachment; filename=bazarr.zip"},
+                    replacement,
+                )
+                with (
+                    patch.object(download, "INSTALL_CACHE", cache),
+                    patch.object(
+                        install_cache_module, "install_cache_enabled", return_value=True
+                    ),
+                    patch.object(
+                        self.downloader,
+                        "fetch_github_release_info",
+                        return_value=(
+                            self._bazarr_release_info("sha256:" + expected_digest),
+                            None,
+                        ),
+                    ),
+                    patch.object(
+                        self.downloader, "fetch_with_retries", return_value=response
+                    ) as fetch,
+                ):
+                    metadata = cache.store_download(url, content, filename="bazarr.zip")
+                    cache._object_path(metadata["sha256"]).write_bytes(b"corrupt")
+                    success, error = self._download_bazarr_release(target)
+
+                self.assertEqual(valid_replacement, success, error)
+                self.assertEqual(
+                    "verified" if valid_replacement else "working",
+                    (target / "runtime.txt").read_text(),
+                )
+                fetch.assert_called_once()
+                self.assertTrue(list(cache.quarantine.iterdir()))
+
+    def test_verified_release_candidate_rejection_and_retry_preserve_persistent_data(
+        self,
+    ):
+        content = self._flat_zip_content("candidate")
+        digest = "sha256:" + hashlib.sha256(content).hexdigest()
+        response = FakeResponse(
+            200,
+            {"Content-Disposition": "attachment; filename=bazarr.zip"},
+            content,
+        )
+        with tempfile.TemporaryDirectory() as temp_dir:
+            cache = InstallCache(Path(temp_dir, "cache"))
+            target = Path(temp_dir, "service")
+            target.mkdir()
+            (target / "runtime.txt").write_text("working")
+            (target / "config.json").write_text("persistent config")
+            staged_paths = []
+
+            def reject_candidate(staging_dir):
+                staged_paths.append(Path(staging_dir))
+                self.assertEqual(
+                    "candidate", (Path(staging_dir) / "runtime.txt").read_text()
+                )
+                return False, "candidate is incompatible"
+
+            with (
+                patch.object(download, "INSTALL_CACHE", cache),
+                patch.object(
+                    install_cache_module, "install_cache_enabled", return_value=True
+                ),
+                patch.object(
+                    self.downloader,
+                    "fetch_github_release_info",
+                    return_value=(self._bazarr_release_info(digest), None),
+                ),
+                patch.object(
+                    self.downloader,
+                    "fetch_with_retries",
+                    side_effect=[response, FakeResponse(304)],
+                ) as fetch,
+            ):
+                success, error = self._download_bazarr_release(
+                    target,
+                    exclude_dirs=["config.json"],
+                    staging_validator=reject_candidate,
+                )
+                self.assertFalse(success)
+                self.assertIn("candidate is incompatible", error)
+                self.assertEqual("working", (target / "runtime.txt").read_text())
+                self.assertEqual(
+                    "persistent config", (target / "config.json").read_text()
+                )
+                self.assertFalse(staged_paths[0].exists())
+                success, error = self._download_bazarr_release(
+                    target, exclude_dirs=["config.json"]
+                )
+
+            self.assertTrue(success, error)
+            self.assertEqual("candidate", (target / "runtime.txt").read_text())
+            self.assertEqual("persistent config", (target / "config.json").read_text())
+            self.assertEqual(2, fetch.call_count)
+            self.assertFalse(any(Path(temp_dir).glob(".service.dumb-*")))
+
+    def test_invalid_expected_digest_is_rejected_before_cache_or_network(self):
+        for digest in ("", "sha512:" + "a" * 128, "sha256:invalid", 123, False):
+            with (
+                self.subTest(digest=digest),
+                patch.object(download.INSTALL_CACHE, "lookup_download") as cache_lookup,
+                patch.object(self.downloader, "fetch_with_retries") as fetch,
+            ):
+                success, error = self.downloader.download_and_extract(
+                    "https://example.test/app.zip", "/unused", expected_sha256=digest
+                )
+                self.assertFalse(success)
+                self.assertIn("SHA-256 digest is invalid", error)
+                cache_lookup.assert_not_called()
+                fetch.assert_not_called()
 
     def test_nzbdav_tag_only_version_uses_source_zipball(self):
         with (

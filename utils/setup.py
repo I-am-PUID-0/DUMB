@@ -9,6 +9,10 @@ from utils.traefik_setup import get_traefik_proxy_url, setup_traefik
 from utils.user_management import chown_recursive, chown_single
 from utils.resource_limits import pnpm_concurrency
 from utils.bun_runtime import ensure_bun_runtime
+from utils.artifact_verification import (
+    ArtifactVerificationError,
+    verify_publisher_signature,
+)
 from utils.apt_lock import run_locked
 from utils.port_probe import is_port_available as _is_port_available
 from utils.private_files import atomic_write_private_text
@@ -53,6 +57,7 @@ from utils.aiostreams_installer import (
 )
 from pathlib import Path
 import ast
+import signal
 import defusedxml.ElementTree as ET
 import symtable
 import yaml
@@ -12305,92 +12310,296 @@ def _dotnet_sdk_major(dotnet_cmd, env):
 def _ensure_local_dotnet_sdk(
     config_dir, env, required_major, force_reinstall: bool = False
 ):
-    install_root = os.path.join(config_dir, ".dotnet-sdk")
-    script_path = os.path.join(install_root, "dotnet-install.sh")
-    dotnet_cmd = os.path.join(install_root, "dotnet")
-
-    if force_reinstall and os.path.isdir(install_root):
-        logger.warning(
-            "Resetting the managed local .NET SDK at %s before retry.", install_root
+    install_root = Path(config_dir, ".dotnet-sdk")
+    with _get_install_lock(f"dotnet-sdk:{install_root.resolve()}"):
+        return _provision_local_dotnet_sdk(
+            config_dir, env, required_major, force_reinstall
         )
-        with os.scandir(install_root) as entries:
-            for entry in entries:
-                try:
-                    if entry.is_dir(follow_symlinks=False):
-                        shutil.rmtree(entry.path)
-                    else:
-                        os.unlink(entry.path)
-                except OSError as e:
-                    return False, f"Failed resetting local .NET SDK: {e}", None
 
-    os.makedirs(install_root, exist_ok=True)
-    chown_single(install_root, user_id, group_id)
-    env["DOTNET_ROOT"] = install_root
-    env["PATH"] = f"{install_root}:{env.get('PATH', '')}"
-    env["DUMB_DOTNET_BIN"] = dotnet_cmd
 
-    existing_major = (
-        _dotnet_sdk_major(dotnet_cmd, env) if os.path.isfile(dotnet_cmd) else None
+def _run_dotnet_bootstrap(command, env, timeout):
+    """Bound a bootstrap command and terminate its descendants on failure."""
+    process = subprocess.Popen(
+        command,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        env=env,
+        start_new_session=True,
     )
-    if existing_major is not None and existing_major >= required_major:
-        return True, None, dotnet_cmd
-
     try:
-        response = requests.get("https://dot.net/v1/dotnet-install.sh", timeout=30)
+        stdout, stderr = process.communicate(timeout=timeout)
+    except BaseException:
+        try:
+            os.killpg(process.pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+        process.communicate()
+        raise
+    return subprocess.CompletedProcess(command, process.returncode, stdout, stderr)
+
+
+def _dotnet_sdk_release_archive(script_path, env, required_major):
+    """Resolve a signed installer's selected SDK to Microsoft's SHA-512 metadata."""
+    command = [
+        "/bin/bash",
+        str(script_path),
+        "--channel",
+        f"{required_major}.0",
+        "--dry-run",
+        "--no-path",
+    ]
+    process = _run_dotnet_bootstrap(command, env=env, timeout=180)
+    if process.returncode != 0:
+        process = _run_dotnet_bootstrap(
+            command + ["--quality", "preview"], env=env, timeout=180
+        )
+    if process.returncode != 0:
+        error = (process.stderr or "").strip().splitlines()[-1:] or [""]
+        raise ValueError(f"SDK {required_major} resolution failed: {' '.join(error)}")
+
+    urls = re.findall(
+        r"^dotnet-install: URL #\d+ - [^:]+: (https://\S+)$",
+        process.stdout or "",
+        re.MULTILINE,
+    )
+    if not urls:
+        raise ArtifactVerificationError("Installer did not resolve an SDK archive.")
+    selected_url = urls[0]
+    parsed_url = urllib.parse.urlsplit(selected_url)
+    archive_name = Path(parsed_url.path).name
+    version_match = re.fullmatch(
+        r"dotnet-sdk-(\d+\.\d+\.\d+(?:-[A-Za-z0-9.-]+)?)-(linux(?:-musl)?-[A-Za-z0-9]+)\.tar\.gz",
+        archive_name,
+    )
+    if (
+        parsed_url.hostname
+        not in {"builds.dotnet.microsoft.com", "download.visualstudio.microsoft.com"}
+        or parsed_url.username is not None
+        or parsed_url.password is not None
+        or parsed_url.port not in {None, 443}
+        or parsed_url.query
+        or parsed_url.fragment
+        or version_match is None
+        or int(version_match.group(1).split(".")[0]) != required_major
+    ):
+        raise ArtifactVerificationError(
+            "Installer resolved an unsupported SDK archive."
+        )
+
+    sdk_version = version_match.group(1)
+    response = requests.get(
+        "https://builds.dotnet.microsoft.com/dotnet/release-metadata/"
+        f"{required_major}.0/releases.json",
+        timeout=30,
+    )
+    response.raise_for_status()
+    metadata = response.json()
+    hashes = set()
+    for release in metadata.get("releases", []):
+        sdks = [release.get("sdk", {})] + release.get("sdks", [])
+        for sdk in sdks:
+            if sdk.get("version") != sdk_version:
+                continue
+            for archive in sdk.get("files", []):
+                if archive.get("url") == selected_url:
+                    hashes.add(str(archive.get("hash") or "").lower())
+    if len(hashes) != 1 or not re.fullmatch(r"[0-9a-f]{128}", next(iter(hashes), "")):
+        raise ArtifactVerificationError(
+            "Selected SDK archive has no unambiguous published SHA-512 checksum."
+        )
+    return selected_url, sdk_version, hashes.pop()
+
+
+def _download_verified_dotnet_sdk(url, archive_path, expected_sha512):
+    """Hash the complete SDK before any extraction or executable probe."""
+    response = requests.get(url, stream=True, timeout=(15, 300))
+    try:
         response.raise_for_status()
-        with open(script_path, "w", encoding="utf-8") as f:
-            f.write(response.text)
-        os.chmod(script_path, 0o755)
-        chown_single(script_path, user_id, group_id)
+        digest = hashlib.sha512()
+        downloaded = 0
+        limit = downloader._archive_limits()["download_bytes"]
+        with archive_path.open("wb") as archive:
+            for chunk in response.iter_content(chunk_size=1024 * 1024):
+                downloaded += len(chunk)
+                if downloaded > limit:
+                    raise ArtifactVerificationError(
+                        "SDK exceeds the download size limit."
+                    )
+                digest.update(chunk)
+                archive.write(chunk)
+        if digest.hexdigest() != expected_sha512:
+            raise ArtifactVerificationError(
+                "SDK archive failed its published SHA-512 verification."
+            )
+    finally:
+        response.close()
+
+
+def _provision_local_dotnet_sdk(config_dir, env, required_major, force_reinstall):
+    install_root = Path(config_dir, ".dotnet-sdk")
+    dotnet_cmd = str(install_root / "dotnet")
+    selected_env = dict(env)
+    selected_env["DOTNET_ROOT"] = str(install_root)
+    selected_env["PATH"] = f"{install_root}:{env.get('PATH', '')}"
+    selected_env["DUMB_DOTNET_BIN"] = dotnet_cmd
+    if not force_reinstall and install_root.joinpath("dotnet").is_file():
+        existing_major = _dotnet_sdk_major(dotnet_cmd, selected_env)
+        if existing_major is not None and existing_major >= required_major:
+            env.update(selected_env)
+            return True, None, dotnet_cmd
+
+    trust_root = stage_name = None
+    config_fd = stage_fd = candidate_fd = None
+    retain_backup = False
+    directory_flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW
+    try:
+        if install_root.is_symlink() or (
+            install_root.exists() and not install_root.is_dir()
+        ):
+            raise ValueError("Managed SDK installation is not a real directory.")
+        tmp_stat = os.stat("/tmp", follow_symlinks=False)
+        if (
+            not stat.S_ISDIR(tmp_stat.st_mode)
+            or tmp_stat.st_uid != 0
+            or (tmp_stat.st_mode & 0o022 and not tmp_stat.st_mode & stat.S_ISVTX)
+        ):
+            raise ArtifactVerificationError("No protected /tmp verification directory.")
+        # Extraction resolves real paths, so this stage must have a parent that
+        # a managed service cannot rename or substitute.
+        trust_root = Path(tempfile.mkdtemp(prefix="dumb-dotnet-verify-", dir="/tmp"))
+        bootstrap_env = {
+            "PATH": "/usr/sbin:/usr/bin:/sbin:/bin",
+            "HOME": str(trust_root),
+            "DOTNET_CLI_HOME": str(trust_root / "cli"),
+            "DOTNET_CLI_TELEMETRY_OPTOUT": "1",
+            "DOTNET_SKIP_FIRST_TIME_EXPERIENCE": "1",
+            "LANG": "C.UTF-8",
+        }
+        for name in ("HTTPS_PROXY", "HTTP_PROXY", "NO_PROXY"):
+            if name in env:
+                bootstrap_env[name] = env[name]
+        script_path = trust_root / "dotnet-install.sh"
+        signature_path = trust_root / "dotnet-install.sig"
+        for name, destination in (
+            ("dotnet-install.sh", script_path),
+            ("dotnet-install.sig", signature_path),
+        ):
+            response = requests.get(f"https://dot.net/v1/{name}", timeout=30)
+            try:
+                response.raise_for_status()
+                destination.write_bytes(response.content)
+            finally:
+                response.close()
+        verify_publisher_signature(script_path, signature_path, "dotnet")
+        sdk_url, sdk_version, sdk_sha512 = _dotnet_sdk_release_archive(
+            script_path, bootstrap_env, required_major
+        )
+        archive_path = trust_root / "sdk.tar.gz"
+        _download_verified_dotnet_sdk(sdk_url, archive_path, sdk_sha512)
+        verified_root = trust_root / "candidate"
+        verified_root.mkdir()
+        with archive_path.open("rb") as archive:
+            downloader._extract_tarfile(archive, str(verified_root))
+        candidate_env = dict(bootstrap_env)
+        candidate_env["DOTNET_ROOT"] = str(verified_root)
+        candidate_cmd = str(verified_root / "dotnet")
+        process = _run_dotnet_bootstrap(
+            [candidate_cmd, "--version"], env=candidate_env, timeout=30
+        )
+        if process.returncode != 0 or (process.stdout or "").strip() != sdk_version:
+            raise ArtifactVerificationError(
+                "Verified SDK archive does not expose its selected SDK version."
+            )
+
+        config_fd = os.open(os.path.realpath(config_dir), directory_flags)
+        config_path = Path(f"/proc/{os.getpid()}/fd/{config_fd}")
+        stage_name = Path(
+            tempfile.mkdtemp(prefix=".dumb-dotnet-sdk-", dir=str(config_path))
+        )
+        stage_fd = os.open(stage_name, directory_flags)
+        stage_stat = os.fstat(stage_fd)
+        if stage_stat.st_uid != os.geteuid() or stage_stat.st_mode & 0o077:
+            raise ArtifactVerificationError("SDK activation directory is not private.")
+        stage_root = Path(f"/proc/{os.getpid()}/fd/{stage_fd}")
+        # copytree preserves these supplied FD paths; it does not resolve them
+        # back through the mutable service directory.
+        candidate_root = stage_root / "candidate"
+        shutil.copytree(verified_root, candidate_root, symlinks=True)
+        candidate_fd = os.open(candidate_root, directory_flags)
+        os.chmod(candidate_root, 0o755)
+        success, error = chown_recursive(str(candidate_root), user_id, group_id)
+        if not success:
+            raise OSError(error)
+        try:
+            previous_stat = os.stat(
+                ".dotnet-sdk", dir_fd=config_fd, follow_symlinks=False
+            )
+        except FileNotFoundError:
+            previous_stat = None
+        if previous_stat is not None and not stat.S_ISDIR(previous_stat.st_mode):
+            raise ValueError("Managed SDK installation changed to an unsafe entry.")
+        if previous_stat is not None:
+            os.replace(
+                ".dotnet-sdk", "previous", src_dir_fd=config_fd, dst_dir_fd=stage_fd
+            )
+        try:
+            os.replace(
+                "candidate", ".dotnet-sdk", src_dir_fd=stage_fd, dst_dir_fd=config_fd
+            )
+        except OSError as activation_error:
+            try:
+                if previous_stat is not None:
+                    os.replace(
+                        "previous",
+                        ".dotnet-sdk",
+                        src_dir_fd=stage_fd,
+                        dst_dir_fd=config_fd,
+                    )
+            except OSError as rollback_error:
+                retain_backup = previous_stat is not None
+                raise OSError(
+                    f"SDK activation failed ({activation_error}); restore failed "
+                    f"({rollback_error}). Previous SDK retained at "
+                    f"{Path(config_dir) / stage_name.name / 'previous'}."
+                ) from rollback_error
+            raise
+        env.update(selected_env)
+        return True, None, dotnet_cmd
     except Exception as e:
         return (
             False,
-            f"Failed downloading dotnet-install.sh for SDK {required_major}: {e}",
+            f"Failed provisioning verified .NET SDK {required_major}: {e}",
             None,
         )
-
-    install_cmd = [
-        "/bin/bash",
-        script_path,
-        "--channel",
-        f"{required_major}.0",
-        "--install-dir",
-        install_root,
-        "--no-path",
-    ]
-    process = subprocess.run(
-        install_cmd,
-        capture_output=True,
-        text=True,
-        env=env,
-        check=False,
-    )
-    if process.returncode != 0:
-        preview_cmd = install_cmd + ["--quality", "preview"]
-        process = subprocess.run(
-            preview_cmd,
-            capture_output=True,
-            text=True,
-            env=env,
-            check=False,
-        )
-    if process.returncode != 0:
-        stderr_tail = (process.stderr or "").strip().splitlines()[-1:] or [""]
-        return (
-            False,
-            f"Failed installing .NET SDK {required_major} locally: {' '.join(stderr_tail).strip()}",
-            None,
-        )
-
-    installed_major = _dotnet_sdk_major(dotnet_cmd, env)
-    if installed_major is None or installed_major < required_major:
-        return (
-            False,
-            f"Installed local dotnet does not satisfy required SDK {required_major}.",
-            None,
-        )
-
-    return True, None, dotnet_cmd
+    finally:
+        if trust_root is not None:
+            shutil.rmtree(trust_root, ignore_errors=True)
+        if stage_fd is not None and not retain_backup:
+            with os.scandir(stage_fd) as entries:
+                for entry in entries:
+                    if entry.is_dir(follow_symlinks=False):
+                        shutil.rmtree(entry.name, dir_fd=stage_fd, ignore_errors=True)
+                    else:
+                        os.unlink(entry.name, dir_fd=stage_fd)
+            pinned_stat = os.fstat(stage_fd)
+            with os.scandir(config_fd) as entries:
+                for entry in entries:
+                    if entry.inode() != pinned_stat.st_ino:
+                        continue
+                    try:
+                        named_stat = entry.stat(follow_symlinks=False)
+                        if (named_stat.st_dev, named_stat.st_ino) == (
+                            pinned_stat.st_dev,
+                            pinned_stat.st_ino,
+                        ):
+                            os.rmdir(entry.name, dir_fd=config_fd)
+                            break
+                    except FileNotFoundError:
+                        continue
+        for descriptor in (candidate_fd, stage_fd, config_fd):
+            if descriptor is not None:
+                os.close(descriptor)
 
 
 def setup_dotnet_environment(

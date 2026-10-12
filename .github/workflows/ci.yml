@@ -81,10 +81,10 @@ jobs:
           PYTHONPYCACHEPREFIX: /tmp/dumb-pycache
         run: poetry run python -m compileall -q api utils tests scripts
 
-      - name: Install container init for process regressions
+      - name: Install init and signature verification dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends tini
+          sudo apt-get install -y --no-install-recommends tini gpgv gnupg
 
       - name: Unit tests
         run: poetry run python -m unittest discover -s tests
