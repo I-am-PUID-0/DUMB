@@ -78,7 +78,9 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     apt-get purge -y software-properties-common gnupg2 lsb-release && \
     apt-get autoremove -y && \
     rm -rf /var/lib/apt/lists/* && \
-    go version && dotnet --info >/dev/null && node --version && npm --version && pnpm --version
+    go version && dotnet --info >/dev/null && node --version && \
+    node -e "const version = process.versions.node; const match = /^24\.(\d+)\.\d+$/.exec(version); if (!match || Number(match[1]) < 15) { console.error('DUMB requires Node.js >=24.15.0 <25; found ' + process.version); process.exit(1); }" && \
+    npm --version && pnpm --version
 
 # Keep login shells and setup subprocesses on a UTF-8 locale. PostgreSQL
 # initialization also pins its locale and encoding explicitly below.
