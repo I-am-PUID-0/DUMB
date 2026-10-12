@@ -76,12 +76,15 @@ class HttpProbe:
     method: str = "GET"
     required_json_key: str | None = None
     required_text: str | None = None
+    healthy_text: str | None = None
 
 
 HTTP_PROBES = {
     "infinidysk": HttpProbe("InfiniDysk backend health", "/health", "backend_port"),
     "jellyfin": HttpProbe("Jellyfin health", "/health"),
-    "emby": HttpProbe("Emby application ping", "/emby/System/Ping"),
+    "emby": HttpProbe(
+        "Emby application ping", "/emby/System/Ping", healthy_text="Emby Server"
+    ),
     "plex": HttpProbe(
         "Plex identity",
         "/identity",
@@ -316,6 +319,7 @@ class ServiceHealthMonitor:
             "method": spec.method,
             "required_json_key": spec.required_json_key,
             "required_text": spec.required_text,
+            "healthy_text": spec.healthy_text,
             "auth": None,
             "cache_identity": (
                 spec.name,
@@ -468,7 +472,13 @@ class ServiceHealthMonitor:
                     f"{process_name} health endpoint returned an unexpected response",
                     {**details, "validation": validation_failure},
                 )
-            if probe.get("required_text") and status is None:
+            healthy_text = probe.get("healthy_text")
+            if status is None and (
+                probe.get("required_text")
+                or (healthy_text and text.casefold() == healthy_text.casefold())
+            ):
+                # A native identity response is not a reported health state.
+                # Match its whole body only on this probe's successful response.
                 reported = None
                 details.pop("reported_status", None)
                 final_status = "healthy"

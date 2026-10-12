@@ -2,7 +2,8 @@ import json
 import unittest
 from unittest.mock import Mock, patch
 
-from utils.service_health import ServiceHealthMonitor
+from utils.service_health import MAX_RESPONSE_BYTES, ServiceHealthMonitor
+from utils.service_health import requests as probe_requests
 
 
 class FakeRaw:
@@ -46,6 +47,164 @@ class ServiceHealthMonitorTests(unittest.TestCase):
         self.assertIsNone(result["reason"])
         self.assertEqual(result["details"]["endpoint"], "/health")
         request.assert_called_once()
+
+    @patch("utils.service_health.requests.request")
+    def test_emby_native_ping_identity_is_healthy(self, request):
+        for body in ("Emby Server", "\r\nEmby Server\r\n", "emby SERVER"):
+            with self.subTest(body=body):
+                request.reset_mock()
+                request.return_value = FakeResponse(body=body)
+                result = self.monitor.check(
+                    "emby", "Cinema Media Server", {"port": 8096}
+                )
+                self.assertEqual(result["status"], "healthy")
+                self.assertTrue(result["healthy"])
+                self.assertIsNone(result["reason"])
+                self.assertNotIn("reported_status", result["details"])
+                self.assertEqual(result["details"]["endpoint"], "/emby/System/Ping")
+                request.assert_called_once_with(
+                    "GET",
+                    "http://127.0.0.1:8096/emby/System/Ping",
+                    auth=None,
+                    allow_redirects=False,
+                    stream=True,
+                    timeout=2.5,
+                )
+
+    @patch("utils.service_health.requests.request")
+    def test_emby_identity_requires_whole_raw_response(self, request):
+        for body, content_type in (
+            ("Emby Server failed", "text/plain"),
+            ("Not Emby Server", "text/plain"),
+            ("<html><body>Emby Server</body></html>", "text/html"),
+            ('"Emby Server"', "application/json"),
+            (json.dumps({"status": "Emby Server"}), "application/json"),
+        ):
+            with self.subTest(body=body):
+                request.return_value = FakeResponse(
+                    body=body, content_type=content_type
+                )
+                result = self.monitor.check("emby", "Emby", {"port": 8096})
+                self.assertEqual(result["status"], "degraded")
+                self.assertTrue(result["healthy"])
+                self.assertIsNotNone(result["reason"])
+                self.assertIn("reported_status", result["details"])
+
+    @patch("utils.service_health.requests.request")
+    def test_emby_identity_cannot_override_http_failure_or_redirect_status(
+        self, request
+    ):
+        for code in (302, 401, 403, 404, 405, 429, 500, 503):
+            with self.subTest(code=code):
+                request.return_value = FakeResponse(
+                    status_code=code, body="Emby Server"
+                )
+                result = self.monitor.check("emby", "Emby", {"port": 8096})
+                self.assertEqual(
+                    result["status"], "degraded" if code < 500 else "unhealthy"
+                )
+                self.assertEqual(result["healthy"], code < 500)
+                self.assertIsNotNone(result["reason"])
+                self.assertEqual(result["details"]["http_status"], code)
+                self.assertEqual(result["details"]["supported"], code != 404)
+
+    @patch("utils.service_health.requests.request")
+    def test_emby_reported_states_and_component_severity_remain_authoritative(
+        self, request
+    ):
+        bodies = (
+            ("Unhealthy", "text/plain", "unhealthy"),
+            ("maintenance_window", "text/plain", "degraded"),
+            (
+                json.dumps({"status": "Starting", "message": "Emby Server"}),
+                "application/json",
+                "starting",
+            ),
+            (
+                json.dumps({"status": "Degraded", "message": "Emby Server"}),
+                "application/json",
+                "degraded",
+            ),
+            (
+                json.dumps({"status": "Unhealthy", "message": "Emby Server"}),
+                "application/json",
+                "unhealthy",
+            ),
+            (
+                json.dumps(
+                    {
+                        "name": "Emby Server",
+                        "components": {"database": {"status": "Unhealthy"}},
+                    }
+                ),
+                "application/json",
+                "unhealthy",
+            ),
+            (
+                json.dumps(
+                    {
+                        "status": "Emby Server",
+                        "components": {"database": {"status": "Unhealthy"}},
+                    }
+                ),
+                "application/json",
+                "unhealthy",
+            ),
+        )
+        for body, content_type, expected in bodies:
+            with self.subTest(body=body):
+                request.return_value = FakeResponse(
+                    body=body, content_type=content_type
+                )
+                result = self.monitor.check("emby", "Emby", {"port": 8096})
+                self.assertEqual(result["status"], expected)
+                self.assertEqual(result["healthy"], expected != "unhealthy")
+                self.assertIsNotNone(result["reason"])
+                if "components" in body:
+                    self.assertEqual(
+                        result["details"]["components"],
+                        [{"name": "database", "status": "unhealthy"}],
+                    )
+
+    @patch("utils.service_health.requests.request")
+    def test_emby_identity_is_not_a_generic_healthy_state(self, request):
+        for key, config in (
+            ("jellyfin", {"port": 8096}),
+            ("infinidysk", {"backend_port": 8080}),
+        ):
+            with self.subTest(key=key):
+                request.return_value = FakeResponse(body="Emby Server")
+                result = self.monitor.check(key, "Emby", config)
+                self.assertEqual(result["status"], "degraded")
+                self.assertEqual(result["details"]["reported_status"], "Emby Server")
+        request.return_value = FakeResponse(body="Healthy")
+        result = self.monitor.check("jellyfin", "Jellyfin", {"port": 8096})
+        self.assertEqual(result["status"], "healthy")
+        self.assertEqual(result["details"]["endpoint"], "/health")
+
+    @patch("utils.service_health.requests.request")
+    def test_emby_timeout_remains_unhealthy(self, request):
+        # Full discovery uses a minimal requests stub. Model a timeout through
+        # the same RequestException interface caught by the monitor.
+        class Timeout(probe_requests.RequestException):
+            pass
+
+        request.side_effect = Timeout("fixture timeout")
+        result = self.monitor.check("emby", "Emby", {"port": 8096})
+        self.assertEqual(result["status"], "unhealthy")
+        self.assertFalse(result["healthy"])
+        self.assertEqual(result["details"]["error_type"], "Timeout")
+        self.assertIn("did not respond", result["reason"])
+
+    @patch("utils.service_health.requests.request")
+    def test_emby_identity_does_not_bypass_response_size_limit(self, request):
+        request.return_value = FakeResponse(
+            body="Emby Server" + " " * MAX_RESPONSE_BYTES
+        )
+        result = self.monitor.check("emby", "Emby", {"port": 8096})
+        self.assertEqual(result["status"], "degraded")
+        self.assertTrue(result["details"]["response_truncated"])
+        self.assertIn("safe size limit", result["reason"])
 
     @patch("utils.service_health.requests.request")
     def test_mediastorm_uses_application_health_endpoint(self, request):
