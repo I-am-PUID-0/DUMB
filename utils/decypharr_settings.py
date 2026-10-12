@@ -212,6 +212,38 @@ def _debrid_key(entry: dict) -> str:
     return (entry.get("provider") or entry.get("name") or "").strip().lower()
 
 
+def _debrid_api_defaults(provider: str, *, current_schema: bool) -> dict[str, str]:
+    """API controls for a new or untuned provider, preserving schema recipes."""
+    if str(provider or "").strip().lower() == "torbox":
+        return {
+            "rate_limit": "2/second",
+            "torrents_refresh_interval": "30m",
+        }
+    return {
+        "rate_limit": "250/minute",
+        "torrents_refresh_interval": "10m" if current_schema else "15s",
+    }
+
+
+def _backfill_debrid_api_defaults(
+    entry: dict, provider: str, *, current_schema: bool
+) -> bool:
+    changed = False
+    torbox = str(provider or "").strip().lower() == "torbox"
+    for key, value in _debrid_api_defaults(
+        provider, current_schema=current_schema
+    ).items():
+        if torbox:
+            missing = key not in entry or entry[key] is None or entry[key] == ""
+        else:
+            # Retain the existing backfill behavior for other providers.
+            missing = not entry.get(key)
+        if missing:
+            entry[key] = value
+            changed = True
+    return changed
+
+
 def _has_usenet_providers(config_data: dict) -> bool:
     try:
         providers = (config_data.get("usenet") or {}).get("providers") or []
@@ -1138,26 +1170,18 @@ def patch_decypharr_config(
                             "name": name_lc,
                             "api_key": api_key,
                             "download_api_keys": [api_key],
-                            "rate_limit": "250/minute",
-                            "torrents_refresh_interval": "10m",
+                            **_debrid_api_defaults(
+                                name_lc, current_schema=current_schema
+                            ),
                             "download_links_refresh_interval": "5m",
                             "workers": 4000,
                             "auto_expire_links_after": "3d",
                         }
                     )
 
-                # Mount configuration (features)
-                mount_block = {
-                    "type": mount_type or "dfs",
-                    "mount_path": mount_path,
-                }
-                if mount_block["type"] == "rclone":
-                    merged_rc = _merged_embedded_rclone()
-                    mount_block["rclone"] = merged_rc
-                elif mount_block["type"] == "dfs":
-                    mount_block["dfs"] = _merged_dfs_settings()
-
-                config_data["mount"] = mount_block
+                # The feature mount was already prepared above. Rebuilding it
+                # here discards external RC settings and custom mount options
+                # before the first serialization.
                 config_data["download_folder"] = "/mnt/debrid/decypharr_downloads"
             else:
                 # Legacy (non-beta) defaults
@@ -1170,9 +1194,10 @@ def patch_decypharr_config(
                                 "name": name_lc,
                                 "api_key": api_key,
                                 "download_api_keys": [api_key],
-                                "rate_limit": "250/minute",
+                                **_debrid_api_defaults(
+                                    name_lc, current_schema=current_schema
+                                ),
                                 "use_webdav": True,
-                                "torrents_refresh_interval": "15s",
                                 "download_links_refresh_interval": "40m",
                                 "workers": 50,
                                 "auto_expire_links_after": "3d",
@@ -1189,8 +1214,9 @@ def patch_decypharr_config(
                                 "name": name_lc,
                                 "api_key": api_key,
                                 "download_api_keys": [api_key] if api_key else [],
-                                "rate_limit": "250/minute",
-                                "torrents_refresh_interval": "15s",
+                                **_debrid_api_defaults(
+                                    name_lc, current_schema=current_schema
+                                ),
                                 "download_links_refresh_interval": "40m",
                                 "workers": 50,
                                 "auto_expire_links_after": "3d",
@@ -1223,8 +1249,7 @@ def patch_decypharr_config(
                         "name": name_lc,
                         "api_key": api_key,
                         "download_api_keys": [api_key],
-                        "rate_limit": "250/minute",
-                        "torrents_refresh_interval": "10m",
+                        **_debrid_api_defaults(name_lc, current_schema=current_schema),
                         "download_links_refresh_interval": "5m",
                         "workers": 4000,
                         "auto_expire_links_after": "3d",
@@ -1247,11 +1272,9 @@ def patch_decypharr_config(
                         dl_keys.add(api_key)
                         d["download_api_keys"] = list(dl_keys)
                         changed = True
-                    if not d.get("rate_limit"):
-                        d["rate_limit"] = "250/minute"
-                        changed = True
-                    if not d.get("torrents_refresh_interval"):
-                        d["torrents_refresh_interval"] = "10m"
+                    if _backfill_debrid_api_defaults(
+                        d, name_lc, current_schema=current_schema
+                    ):
                         changed = True
                     if not d.get("download_links_refresh_interval"):
                         d["download_links_refresh_interval"] = "5m"
@@ -1285,9 +1308,8 @@ def patch_decypharr_config(
                         "name": name_lc,
                         "api_key": api_key,
                         "download_api_keys": [api_key],
-                        "rate_limit": "250/minute",
+                        **_debrid_api_defaults(name_lc, current_schema=current_schema),
                         "use_webdav": True,
-                        "torrents_refresh_interval": "15s",
                         "download_links_refresh_interval": "40m",
                         "workers": 50,
                         "auto_expire_links_after": "3d",
@@ -1308,6 +1330,12 @@ def patch_decypharr_config(
                     if api_key not in dl_keys:
                         dl_keys.add(api_key)
                         d["download_api_keys"] = list(dl_keys)
+                        changed = True
+                    # Existing legacy entries historically rely on upstream
+                    # defaults. Only fill TorBox's missing API controls here.
+                    if name_lc == "torbox" and _backfill_debrid_api_defaults(
+                        d, name_lc, current_schema=False
+                    ):
                         changed = True
                     if d.get("use_webdav") is not True:
                         d["use_webdav"] = True
@@ -1338,8 +1366,7 @@ def patch_decypharr_config(
                         "name": name_lc,
                         "api_key": api_key,
                         "download_api_keys": [api_key] if api_key else [],
-                        "rate_limit": "250/minute",
-                        "torrents_refresh_interval": "15s",
+                        **_debrid_api_defaults(name_lc, current_schema=current_schema),
                         "download_links_refresh_interval": "40m",
                         "workers": 50,
                         "auto_expire_links_after": "3d",
@@ -1362,11 +1389,9 @@ def patch_decypharr_config(
                         dl_keys.add(api_key)
                         d["download_api_keys"] = list(dl_keys)
                         changed = True
-                    if not d.get("rate_limit"):
-                        d["rate_limit"] = "250/minute"
-                        changed = True
-                    if not d.get("torrents_refresh_interval"):
-                        d["torrents_refresh_interval"] = "15s"
+                    if _backfill_debrid_api_defaults(
+                        d, name_lc, current_schema=current_schema
+                    ):
                         changed = True
                     if not d.get("download_links_refresh_interval"):
                         d["download_links_refresh_interval"] = "40m"
