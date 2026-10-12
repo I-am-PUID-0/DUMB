@@ -184,7 +184,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#configuration-settings-in-dumb_configjson" class="md-skip">
+        <a href="#build-and-update-requirements" class="md-skip">
           Skip to content
         </a>
       
@@ -2060,6 +2060,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#build-and-update-requirements" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Build and update requirements
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#configuration-settings-in-dumb_configjson" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2068,27 +2079,10 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Configuration Settings in dumb_config.json">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#configuration-key-descriptions" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Configuration Key Descriptions
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
 </li>
       
         <li class="md-nav__item">
-  <a href="#commit--branch--version-targeting" class="md-nav__link">
+  <a href="#commit-branch-version-targeting" class="md-nav__link">
     <span class="md-ellipsis">
       
         Commit / Branch / Version Targeting
@@ -5274,6 +5268,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#build-and-update-requirements" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Build and update requirements
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#configuration-settings-in-dumb_configjson" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -5282,27 +5287,10 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Configuration Settings in dumb_config.json">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#configuration-key-descriptions" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Configuration Key Descriptions
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
 </li>
       
         <li class="md-nav__item">
-  <a href="#commit--branch--version-targeting" class="md-nav__link">
+  <a href="#commit-branch-version-targeting" class="md-nav__link">
     <span class="md-ellipsis">
       
         Commit / Branch / Version Targeting
@@ -5492,7 +5480,12 @@ and metrics in a single interface.</p>
 </ul>
 </div>
 <hr />
-<h2 id="configuration-settings-in-dumb_configjson">Configuration Settings in <code>dumb_config.json</code><a class="headerlink" href="#configuration-settings-in-dumb_configjson" title="Permanent link">#</a></h2>
+<h2 id="build-and-update-requirements">Build and update requirements<a class="headerlink" href="#build-and-update-requirements" title="Permanent link">&para;</a></h2>
+<p>Installing or rebuilding the current frontend requires <strong>Node.js <code>&gt;=24.15.0 &lt;25</code></strong> and <strong>pnpm 10</strong>. This matches the <a href="https://github.com/nuxt/nuxt/releases/tag/v4.6.0">Nuxt 4.6 toolchain requirements</a>. An older frontend pin follows the engine requirement declared by that selected source.</p>
+<p>New DUMB image builds and release validation enforce the current Node range. Frontend updates use the runtime already bundled in the running image; updating frontend source alone does not upgrade Node. Before rebuilding from an older image with Node below 24.15, update the DUMB image and recreate its container using your existing persistent volumes. Separately deployed frontends must provide a compatible Node and pnpm installation.</p>
+<p>The frontend source includes a dependency-free Node check in its install and build commands, so those commands can detect an incompatible runtime even on an older DUMB backend. The check reads that source's own <code>package.json</code>; with strict engine validation, pnpm may reject the requirement first with an expected/actual version error. Neither check upgrades Node.</p>
+<p>Production starts the compiled Nitro server with <code>node .output/server/index.mjs</code>, which does not run the source check. The version floor above applies to dependency installation and source builds; it does not establish the minimum runtime for every previously compiled frontend.</p>
+<h2 id="configuration-settings-in-dumb_configjson">Configuration Settings in <code>dumb_config.json</code><a class="headerlink" href="#configuration-settings-in-dumb_configjson" title="Permanent link">&para;</a></h2>
 <p>This block is nested at <code>dumb.frontend</code> in <code>/config/dumb_config.json</code>:</p>
 <div class="highlight"><pre><span></span><code><span class="nt">&quot;frontend&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">    </span><span class="nt">&quot;enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
@@ -5523,7 +5516,7 @@ and metrics in a single interface.</p>
 <span class="w">    </span><span class="nt">&quot;env&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{}</span><span class="w">            </span>
 <span class="p">}</span>
 </code></pre></div>
-<h3 id="configuration-key-descriptions">Configuration Key Descriptions<a class="headerlink" href="#configuration-key-descriptions" title="Permanent link">#</a></h3>
+<h3 id="configuration-key-descriptions">Configuration Key Descriptions<a class="headerlink" href="#configuration-key-descriptions" title="Permanent link">&para;</a></h3>
 <ul>
 <li><strong><code>enabled</code></strong>: Determines whether the DUMB Frontend service is active.</li>
 <li><strong><code>process_name</code></strong>: Name used in logs and process tracking.</li>
@@ -5545,7 +5538,7 @@ and metrics in a single interface.</p>
 <li><strong><code>env</code></strong>: Environment variables for the frontend.</li>
 </ul>
 <hr />
-<h2 id="commit--branch--version-targeting">Commit / Branch / Version Targeting<a class="headerlink" href="#commit--branch--version-targeting" title="Permanent link">#</a></h2>
+<h2 id="commit-branch-version-targeting">Commit / Branch / Version Targeting<a class="headerlink" href="#commit-branch-version-targeting" title="Permanent link">&para;</a></h2>
 <p>You can control which source revision of the frontend is deployed by setting:</p>
 <ul>
 <li><code>commit_sha</code> to a full 40-character SHA for an immutable source pin</li>
@@ -5555,14 +5548,14 @@ and metrics in a single interface.</p>
 <p><code>commit_sha</code> takes precedence over release and branch settings. Automatic
 updates remain disabled until the commit pin is changed or cleared.</p>
 <hr />
-<h2 id="accessing-the-dumb-frontend">Accessing the DUMB Frontend<a class="headerlink" href="#accessing-the-dumb-frontend" title="Permanent link">#</a></h2>
+<h2 id="accessing-the-dumb-frontend">Accessing the DUMB Frontend<a class="headerlink" href="#accessing-the-dumb-frontend" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Navigate to: <code>http://&lt;host&gt;:&lt;port&gt;</code><ul>
 <li>default port <code>3005</code></li>
 </ul>
 </li>
 </ul>
-<h2 id="startup-behavior">Startup behavior<a class="headerlink" href="#startup-behavior" title="Permanent link">#</a></h2>
+<h2 id="startup-behavior">Startup behavior<a class="headerlink" href="#startup-behavior" title="Permanent link">&para;</a></h2>
 <p>DUMB starts its API before the enabled-service preinstall phase. When the
 frontend runtime is already built and its configured version does not require a
 new install, DUMB also starts the frontend before that phase. This makes the UI
@@ -5577,21 +5570,23 @@ following applies:</p>
 </ul>
 <p>In those cases, DUMB keeps the existing install/update path and starts the
 frontend after its runtime is ready.</p>
-<h2 id="self-update-behavior">Self-update behavior<a class="headerlink" href="#self-update-behavior" title="Permanent link">#</a></h2>
-<p>Manual and scheduled frontend updates are prepared transactionally. DUMB
-downloads, builds, and validates the candidate in an adjacent directory while
+<h2 id="self-update-behavior">Self-update behavior<a class="headerlink" href="#self-update-behavior" title="Permanent link">&para;</a></h2>
+<p>Current DUMB releases prepare manual and scheduled frontend updates transactionally.
+DUMB downloads, builds, and validates the candidate in an adjacent directory while
 the installed frontend continues serving the dashboard. Only the final atomic
 directory swap, process restart, and readiness check create frontend downtime.</p>
-<p>If the candidate cannot be built or validated, DUMB removes it and leaves the
-current frontend running. If the replacement cannot configure, start, or become
-ready after activation, DUMB restores and verifies the previous runtime.</p>
+<p>If the candidate cannot be built or validated, including an unsupported Node
+version during preparation, DUMB removes it and leaves the current frontend
+running. If the replacement cannot configure, start, or become ready after
+activation, DUMB restores and verifies the previous runtime. The frontend's Node
+check does not add these update or rollback guarantees to older DUMB backends.</p>
 <p>An update started from the frontend can briefly interrupt its own HTTP request
 during the final restart. Current dmbdb clients recognize that transport break,
 wait for the proxy to return, read the final update status retained by the DUMB
 API, and reload to pick up the new assets. If automatic confirmation times out,
 refresh the page and reopen <strong>Updates</strong>; do not assume the installation failed
 solely from the interrupted browser request.</p>
-<h2 id="frontend-usage-guides">Frontend usage guides<a class="headerlink" href="#frontend-usage-guides" title="Permanent link">#</a></h2>
+<h2 id="frontend-usage-guides">Frontend usage guides<a class="headerlink" href="#frontend-usage-guides" title="Permanent link">&para;</a></h2>
 <p>For UI walkthroughs, use the frontend section:</p>
 <ul>
 <li><a href="../../../frontend/dashboard/">Dashboard</a> - Service cards, toolbar, and logs</li>
@@ -5601,13 +5596,13 @@ solely from the interrupted browser request.</p>
 <li><a href="../../../frontend/metrics/">Metrics</a> - System monitoring</li>
 </ul>
 <hr />
-<h2 id="tips">Tips<a class="headerlink" href="#tips" title="Permanent link">#</a></h2>
+<h2 id="tips">Tips<a class="headerlink" href="#tips" title="Permanent link">&para;</a></h2>
 <ul>
 <li><strong>Automatic Updates</strong>: Enable <code>auto_update</code> to keep the frontend up-to-date with the latest features.</li>
 <li><strong>Log Monitoring</strong>: Utilize the service logs functionality for effective monitoring and troubleshooting.</li>
 </ul>
 <hr />
-<h2 id="resources">Resources<a class="headerlink" href="#resources" title="Permanent link">#</a></h2>
+<h2 id="resources">Resources<a class="headerlink" href="#resources" title="Permanent link">&para;</a></h2>
 <ul>
 <li><a href="https://github.com/nicocapalbo/dmbdb">DUMB Frontend GitHub Repository</a></li>
 <li><a href="https://github.com/nicocapalbo/dmbdb/blob/main/CHANGELOG.md">DUMB Frontend CHANGELOG</a></li>

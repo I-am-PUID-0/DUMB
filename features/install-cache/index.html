@@ -1142,6 +1142,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#download-verification" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Download verification
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#configuration" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -5243,6 +5254,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#download-verification" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Download verification
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#configuration" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -5365,7 +5387,7 @@
   
 
 
-<h1 id="install-cache-and-safe-updates">Install cache and safe updates<a class="headerlink" href="#install-cache-and-safe-updates" title="Permanent link">#</a></h1>
+<h1 id="install-cache-and-safe-updates">Install cache and safe updates<a class="headerlink" href="#install-cache-and-safe-updates" title="Permanent link">&para;</a></h1>
 <p>DUMB keeps reproducible downloads, package-manager data, and selected compiled
 service artifacts under <code>/config/.cache/dumb</code>. The cache accelerates container
 startup, updates, and exact-source reinstalls without treating a cached file as
@@ -5378,7 +5400,7 @@ service config file, explicit config/data/database paths, conventional persisten
 data/database directories, root-level SQLite files and their active sidecars,
 and symlinked data directories. The guarded paths are also excluded from archive
 merges, while replaceable source and runtime output can still be refreshed.</p>
-<h2 id="installing-a-configured-release">Installing a configured release<a class="headerlink" href="#installing-a-configured-release" title="Permanent link">#</a></h2>
+<h2 id="installing-a-configured-release">Installing a configured release<a class="headerlink" href="#installing-a-configured-release" title="Permanent link">&para;</a></h2>
 <p>For services using the shared release installer, an explicit configured-target
 install applies the selected fixed release even when automatic updates are enabled
 or that release is already installed. Scheduled setup still respects release pins;
@@ -5387,14 +5409,15 @@ saving a release selector alone does not request a reinstall.</p>
 Manual installs continue to use the existing snapshot and failure-recovery flow.
 A failed release download is reported as an installation failure, rather than a
 successful restart of the existing version.</p>
-<h2 id="safety-model">Safety model<a class="headerlink" href="#safety-model" title="Permanent link">#</a></h2>
+<h2 id="safety-model">Safety model<a class="headerlink" href="#safety-model" title="Permanent link">&para;</a></h2>
 <p>An external project can always fail to download or build. DUMB's goal is to
 make that failure non-destructive:</p>
 <ol>
 <li>Resolve the requested release, branch head, or exact commit.</li>
 <li>Download into a content-addressed cache and verify its SHA-256 digest.
-   Conditional requests reuse unchanged content, and a failed revalidation may
-   use the last digest-verified object for that exact URL.</li>
+   For GitHub release assets, also require the published SHA-256 digest when
+   available. Conditional requests and offline reuse still check that published
+   digest before accepting cached content.</li>
 <li>Validate the complete archive before applying files. Unsafe paths, links,
    malformed archives, extraction errors, and configured size limits fail the
    installation.</li>
@@ -5418,7 +5441,50 @@ migration. DUMB never replaces persistent data with a cached copy. If an
 upstream migration is not backward compatible, leave the restored service
 stopped and follow that application's documented database recovery path.</p>
 </div>
-<h2 id="configuration">Configuration<a class="headerlink" href="#configuration" title="Permanent link">#</a></h2>
+<h2 id="download-verification">Download verification<a class="headerlink" href="#download-verification" title="Permanent link">&para;</a></h2>
+<p>DUMB uses different checks for different download sources:</p>
+<table>
+<thead>
+<tr>
+<th>Download</th>
+<th>Verification</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Managed Bun runtime</td>
+<td>Verify the publisher-signed checksum manifest against a bundled, pinned Bun key, then check the selected ZIP's SHA-256 before extraction or execution.</td>
+</tr>
+<tr>
+<td>Local .NET SDK bootstrap</td>
+<td>Verify Microsoft's installer-script signature against its bundled, pinned key before running the script to resolve an SDK version. Check the SDK archive's SHA-512 against official Microsoft HTTPS release metadata before extraction or execution.</td>
+</tr>
+<tr>
+<td>Shared GitHub release assets</td>
+<td>Check the selected asset's published SHA-256 digest when the release API supplies it, including cached and offline reuse.</td>
+</tr>
+<tr>
+<td>Ubuntu packages, including Tini</td>
+<td>Use APT's authenticated repository metadata and package checksums.</td>
+</tr>
+</tbody>
+</table>
+<p>A required Bun or Microsoft signature that is missing, invalid, or signed by an
+unrecognized key stops provisioning. Checksum mismatches also stop provisioning.
+The existing Bun binary or local .NET SDK stays in place until a verified
+candidate passes its version check. DUMB does not retry these failures with an
+unsigned installer or trust a replacement key automatically.</p>
+<p>Some GitHub release assets have no published digest. Those remain installable
+with HTTPS and DUMB's cache integrity checks; the log explicitly reports the
+missing published checksum. A present but malformed or unsupported digest
+refuses the download. A cache's own checksum detects changed cached bytes,
+but does not establish who originally published them.</p>
+<p>Published SDK and GitHub checksums provide integrity checks, rather than a
+separate publisher signature. OCI digests and package-manager lockfile hashes
+also do not imply universal publisher-signature or provenance verification.
+Bundled signing keys need maintenance when their publishers announce rotations
+or revocations; verification does not fetch new trust roots at runtime.</p>
+<h2 id="configuration">Configuration<a class="headerlink" href="#configuration" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;dumb&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">    </span><span class="nt">&quot;install_cache&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
@@ -5455,7 +5521,7 @@ new controller-only cache under <code>/tmp</code> for the current process. The d
 shows this fallback and its reason. Correct the configured path or ownership
 and restart DUMB to resume the persistent cache; the temporary fallback is not
 reused after restart.</p>
-<h2 id="package-manager-behavior">Package-manager behavior<a class="headerlink" href="#package-manager-behavior" title="Permanent link">#</a></h2>
+<h2 id="package-manager-behavior">Package-manager behavior<a class="headerlink" href="#package-manager-behavior" title="Permanent link">&para;</a></h2>
 <ul>
 <li>pnpm uses a shared content-addressed store grouped by pnpm major, verifies
   store integrity, and attempts a frozen lockfile install first. A lockfile
@@ -5471,7 +5537,7 @@ reused after restart.</p>
   lock behavior when their project supplies a lockfile.</li>
 <li>mediastorm OCI data remains digest-addressed and verified.</li>
 </ul>
-<h2 id="dashboard-maintenance">Dashboard maintenance<a class="headerlink" href="#dashboard-maintenance" title="Permanent link">#</a></h2>
+<h2 id="dashboard-maintenance">Dashboard maintenance<a class="headerlink" href="#dashboard-maintenance" title="Permanent link">&para;</a></h2>
 <p>Newer backends advertise <code>install_cache_management</code>. The dashboard <strong>Updates</strong>
 panel then shows three distinct totals:</p>
 <ul>
@@ -5517,7 +5583,7 @@ operators should still avoid cleanup while another install path is actively
 building.
 Do not manually delete transaction journals or <code>dumb-previous</code> directories
 while an update is active.</p>
-<h2 id="recovery-guidance">Recovery guidance<a class="headerlink" href="#recovery-guidance" title="Permanent link">#</a></h2>
+<h2 id="recovery-guidance">Recovery guidance<a class="headerlink" href="#recovery-guidance" title="Permanent link">&para;</a></h2>
 <p>If an update reports that the previous runtime was restored:</p>
 <ol>
 <li>Confirm that the service is running and inspect its service log.</li>
