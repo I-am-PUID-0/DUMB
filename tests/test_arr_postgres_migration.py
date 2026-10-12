@@ -5,12 +5,16 @@ import sqlite3
 import subprocess
 import tempfile
 import threading
+import traceback
 import unittest
 import uuid
+from contextlib import nullcontext
 from datetime import datetime
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import ANY, MagicMock, Mock, call, patch
+
+from psycopg2 import Error as PostgresError, sql
 
 from utils.arr_postgres_migration import (
     ACTIVE_NAMESPACE_MIGRATION_BLOCKER,
@@ -29,6 +33,10 @@ from utils.arr_postgres_migration import (
     _backup_sqlite,
     _converted_import_batches,
     _convert_value,
+    _validate_postgres_foreign_keys,
+    _validate_primary_key_digests,
+    _validate_postgres_sequences,
+    _prepare_target_for_import,
     _digest_rows,
     _clear_infinidysk_rollback_authorization,
     _infinidysk_database_contract_provenance,
@@ -48,6 +56,7 @@ from utils.arr_postgres_migration import (
     _wait_for_schema_helper,
     _wait_for_schema,
     build_arr_postgres_preflight,
+    import_sqlite_to_postgres,
 )
 from utils.infinidysk_migration import InfiniDyskMigrationManager
 
@@ -205,6 +214,14 @@ def create_infinidysk_database_contract(
     config_path.mkdir(parents=True, exist_ok=True)
     (config_path / "db-contract.json").write_text(json.dumps(payload), encoding="utf-8")
     return payload
+
+
+def query_identifiers(query):
+    if isinstance(query, sql.Identifier):
+        return [query.strings]
+    if isinstance(query, sql.Composed):
+        return [name for part in query.seq for name in query_identifiers(part)]
+    return []
 
 
 class ArrPostgresMigrationTests(unittest.TestCase):
@@ -785,6 +802,418 @@ class ArrPostgresMigrationTests(unittest.TestCase):
             self.assertEqual(report["confirmation_text"], "MIGRATE Sonarr TV")
             self.assertNotIn("secret-value", json.dumps(report))
 
+    def test_preflight_recovery_artifacts_block_main_but_only_warn_for_log(self):
+        for label, filename, expected_status in (
+            ("main", "sonarr.db", "fail"),
+            ("log", "logs.db", "warn"),
+        ):
+            with self.subTest(label=label), tempfile.TemporaryDirectory() as temp_dir:
+                config, _, api_state = self.make_runtime(temp_dir)
+                path = Path(temp_dir) / "sonarr" / filename
+                with sqlite3.connect(path) as source:
+                    source.execute('CREATE TABLE "lost_and_found" (c0 TEXT)')
+                    source.execute("INSERT INTO lost_and_found VALUES ('unassigned')")
+                before = path.read_bytes()
+                with (
+                    patch(
+                        "utils.arr_postgres_migration._postgres_role_summary",
+                        return_value={"superuser": True, "createdb": True},
+                    ),
+                    patch(
+                        "utils.arr_postgres_migration._postgres_database_summary",
+                        return_value={
+                            "name": "stage",
+                            "exists": False,
+                            "table_count": 0,
+                            "row_count": 0,
+                        },
+                    ),
+                    patch(
+                        "utils.arr_postgres_migration.shutil.disk_usage",
+                        return_value=SimpleNamespace(total=10**12, used=0, free=10**12),
+                    ),
+                ):
+                    report = build_arr_postgres_preflight(
+                        config,
+                        "Sonarr TV",
+                        api_state=api_state,
+                        root=Path(temp_dir) / "migration",
+                    )
+                check = next(
+                    c for c in report["checks"] if c["id"] == f"sqlite_{label}"
+                )
+                self.assertEqual(check["status"], expected_status)
+                self.assertEqual(report["ready"], label == "log")
+                self.assertIn("reconcile", check["message"])
+                self.assertEqual(
+                    report["sqlite"][label]["recovery_tables"], ["lost_and_found"]
+                )
+                self.assertEqual(path.read_bytes(), before)
+
+    def test_import_preparation_rejects_recovery_before_connect_even_if_excluded(self):
+        for table in ("lost_and_found", "Lost_And_Found"):
+            with self.subTest(table=table), tempfile.TemporaryDirectory() as temp_dir:
+                path = Path(temp_dir) / "source.db"
+                create_sqlite(path)
+                with sqlite3.connect(path) as source:
+                    source.execute(f'CREATE TABLE "{table}" (c0 TEXT)')
+                    source.execute(f'INSERT INTO "{table}" VALUES ("unassigned")')
+                before = path.read_bytes()
+                with (
+                    patch("utils.arr_postgres_migration._pg_connect") as connect,
+                    self.assertRaisesRegex(
+                        ArrPostgresMigrationError, "recovery artifact.*" + table
+                    ),
+                ):
+                    _prepare_target_for_import(
+                        path, {}, "stage", excluded_tables={table}
+                    )
+                connect.assert_not_called()
+                self.assertEqual(path.read_bytes(), before)
+
+    def test_import_preparation_checks_all_columns_before_any_truncate(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            path = Path(temp_dir) / "source.db"
+            create_sqlite(path, table="AItems")
+            with sqlite3.connect(path) as source:
+                source.execute('CREATE TABLE "ZItems" ("Id" INTEGER, "Missing" TEXT)')
+                source.execute("INSERT INTO ZItems VALUES (9, 'preserved')")
+            before = path.read_bytes()
+            target = Mock()
+            metadata = {
+                "AItems": {"Id": {}, "Title": {}},
+                "ZItems": {"Id": {}},
+            }
+            with (
+                patch("utils.arr_postgres_migration._pg_connect", return_value=target),
+                patch(
+                    "utils.arr_postgres_migration._postgres_table_columns",
+                    side_effect=lambda _, table: metadata[table],
+                ),
+                self.assertRaisesRegex(
+                    ArrPostgresMigrationError,
+                    r"public.ZItems.*Missing.*No target tables were truncated",
+                ),
+            ):
+                _prepare_target_for_import(path, {}, "stage")
+            target.cursor.assert_not_called()
+            target.commit.assert_not_called()
+            target.close.assert_called_once_with()
+            self.assertEqual(path.read_bytes(), before)
+
+    def test_shadow_or_missing_native_resolution_blocks_before_target_mutation(self):
+        for prepare in (True, False):
+            for oids in ((202, 101), (None, 101), (None, None)):
+                with (
+                    self.subTest(prepare=prepare, oids=oids),
+                    tempfile.TemporaryDirectory() as temp_dir,
+                ):
+                    path = Path(temp_dir) / "source.db"
+                    create_sqlite(path, table="Collections")
+                    before = path.read_bytes()
+                    target = Mock()
+                    cursor = MagicMock()
+                    cursor.__enter__.return_value = cursor
+                    cursor.fetchone.return_value = oids
+                    target.cursor.return_value = cursor
+                    with (
+                        patch(
+                            "utils.arr_postgres_migration._pg_connect",
+                            return_value=target,
+                        ),
+                        patch(
+                            "utils.arr_postgres_migration._postgres_table_columns",
+                            return_value={"Id": {}, "Title": {}},
+                        ),
+                        (
+                            patch(
+                                "utils.arr_postgres_migration._prepare_target_for_import",
+                                return_value=["Collections"],
+                            )
+                            if not prepare
+                            else nullcontext()
+                        ),
+                        patch("utils.arr_postgres_migration.execute_values") as insert,
+                        self.assertRaisesRegex(
+                            ArrPostgresMigrationError,
+                            r"search_path.*public.Collections",
+                        ),
+                    ):
+                        if prepare:
+                            _prepare_target_for_import(path, {}, "stage")
+                        else:
+                            import_sqlite_to_postgres(path, {}, "stage")
+                    insert.assert_not_called()
+                    target.commit.assert_not_called()
+                    self.assertEqual(len(cursor.execute.call_args_list), 1)
+                    query, params = cursor.execute.call_args.args
+                    self.assertIn("pg_catalog.to_regclass", query)
+                    self.assertIn("pg_catalog.format('%%I', %s)", query)
+                    self.assertIn("pg_catalog.format('%%I.%%I', 'public', %s)", query)
+                    self.assertEqual(params, ["Collections", "Collections"])
+                    self.assertEqual(path.read_bytes(), before)
+
+    def test_import_uses_named_projection_and_public_tables_with_reordered_metadata(
+        self,
+    ):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            path = Path(temp_dir) / "source.db"
+            with sqlite3.connect(path) as source:
+                source.execute(
+                    'CREATE TABLE "Collections" ("Id" INTEGER PRIMARY KEY, "Title" TEXT, "SearchOnAdd" INTEGER, "Added" DATETIME)'
+                )
+                source.execute(
+                    "INSERT INTO Collections VALUES (7, 'Example Collection', 1, '2026-01-02T03:04:05Z')"
+                )
+            metadata = {
+                column: {"data_type": kind, "is_generated": "NEVER"}
+                for column, kind in (
+                    ("Added", "timestamp with time zone"),
+                    ("SearchOnAdd", "boolean"),
+                    ("Title", "text"),
+                    ("Id", "integer"),
+                )
+            }
+            target = Mock()
+            cursor = MagicMock()
+            cursor.__enter__.return_value = cursor
+            cursor.fetchone.side_effect = [(101, 101), (101, 101), (1,)]
+            target.cursor.return_value = cursor
+            with (
+                patch("utils.arr_postgres_migration._pg_connect", return_value=target),
+                patch(
+                    "utils.arr_postgres_migration._postgres_table_columns",
+                    return_value=metadata,
+                ),
+                patch(
+                    "utils.arr_postgres_migration._reset_postgres_sequences",
+                    return_value=0,
+                ),
+                patch(
+                    "utils.arr_postgres_migration._validate_postgres_sequences",
+                    return_value=[],
+                ),
+                patch("utils.arr_postgres_migration.execute_values") as insert,
+            ):
+                result = import_sqlite_to_postgres(
+                    path, {}, "stage", service_key="radarr"
+                )
+            self.assertTrue(result["validated"])
+            self.assertEqual(
+                insert.call_args.args[2],
+                [(7, "Example Collection", True, "2026-01-02T03:04:05Z")],
+            )
+            self.assertEqual(
+                query_identifiers(insert.call_args.args[1]),
+                [
+                    ("public", "Collections"),
+                    ("Id",),
+                    ("Title",),
+                    ("SearchOnAdd",),
+                    ("Added",),
+                ],
+            )
+            relation_queries = [
+                c.args[0]
+                for c in cursor.execute.call_args_list
+                if isinstance(c.args[0], sql.Composed)
+            ]
+            self.assertEqual(len(relation_queries), 2)
+            self.assertTrue(
+                all(
+                    ("public", "Collections") in query_identifiers(q)
+                    for q in relation_queries
+                )
+            )
+
+    def test_batch_error_reports_column_types_without_row_contents(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            path = Path(temp_dir) / "source.db"
+            create_sqlite(path, table="Collections", rows=1)
+            target = Mock()
+            cursor = MagicMock()
+            cursor.__enter__.return_value = cursor
+            target.cursor.return_value = cursor
+            cursor.fetchone.side_effect = [(101, 101), (101, 101)]
+            metadata = {
+                column: {"data_type": "integer", "is_generated": "NEVER"}
+                for column in ("Id", "Title")
+            }
+            private_value = "/example/private-row-value"
+            with (
+                patch("utils.arr_postgres_migration._pg_connect", return_value=target),
+                patch(
+                    "utils.arr_postgres_migration._postgres_table_columns",
+                    return_value=metadata,
+                ),
+                patch(
+                    "utils.arr_postgres_migration.execute_values",
+                    side_effect=PostgresError(private_value),
+                ),
+                self.assertRaises(ArrPostgresMigrationError) as raised,
+            ):
+                import_sqlite_to_postgres(path, {}, "stage", service_key="radarr")
+            message = str(raised.exception)
+            self.assertIn("public.Collections", message)
+            self.assertIn("Title (TEXT -> integer)", message)
+            self.assertIn("SQLSTATE", message)
+            self.assertNotIn(private_value, message)
+            self.assertNotIn("Item 1", message)
+            self.assertNotIn(
+                private_value, "".join(traceback.format_exception(raised.exception))
+            )
+            target.rollback.assert_called_once_with()
+
+    def test_conversion_diagnostic_and_row_width_preserve_values_privately(self):
+        for row in (("private-row-value",), (1, "unexpected-private-value")):
+            with self.subTest(row_width=len(row)):
+                source = sqlite3.connect(":memory:")
+                try:
+                    cursor = source.execute("SELECT " + ",".join("?" for _ in row), row)
+                    with self.assertRaises(ArrPostgresMigrationError) as raised:
+                        list(
+                            _converted_import_batches(
+                                cursor,
+                                ["SearchOnAdd"],
+                                {"SearchOnAdd": {"data_type": "boolean"}},
+                                batch_size=500,
+                                max_batch_bytes=None,
+                                table="Collections",
+                            )
+                        )
+                    message = str(raised.exception)
+                    self.assertIn("Collections", message)
+                    self.assertNotIn("private", message)
+                    if len(row) == 1:
+                        self.assertIn("SearchOnAdd", message)
+                        self.assertIn("str", message)
+                        self.assertIn("boolean", message)
+                finally:
+                    source.close()
+
+    def test_failed_target_connections_close_sqlite_sources(self):
+        original_connect = sqlite3.connect
+        with tempfile.TemporaryDirectory() as temp_dir:
+            path = Path(temp_dir) / "source.db"
+            create_sqlite(path)
+            for prepare in (True, False):
+                with self.subTest(prepare=prepare):
+                    connections = []
+
+                    def connect(*args, **kwargs):
+                        result = original_connect(*args, **kwargs)
+                        connections.append(result)
+                        return result
+
+                    with (
+                        patch(
+                            "utils.arr_postgres_migration.sqlite3.connect",
+                            side_effect=connect,
+                        ),
+                        patch(
+                            "utils.arr_postgres_migration._pg_connect",
+                            side_effect=PostgresError("unreachable"),
+                        ),
+                        (
+                            patch(
+                                "utils.arr_postgres_migration._prepare_target_for_import",
+                                return_value=["Series"],
+                            )
+                            if not prepare
+                            else nullcontext()
+                        ),
+                        self.assertRaises(PostgresError),
+                    ):
+                        if prepare:
+                            _prepare_target_for_import(path, {}, "stage")
+                        else:
+                            import_sqlite_to_postgres(path, {}, "stage")
+                    for connection in connections:
+                        with self.assertRaises(sqlite3.ProgrammingError):
+                            connection.execute("SELECT 1")
+
+    def test_content_validation_reads_public_tables(self):
+        for validation in (_validate_full_row_digests, _validate_primary_key_digests):
+            with self.subTest(validation=validation.__name__):
+                source = sqlite3.connect(":memory:")
+                try:
+                    source.execute(
+                        'CREATE TABLE "Items" ("Id" INTEGER PRIMARY KEY, "Title" TEXT)'
+                    )
+                    source.execute("INSERT INTO Items VALUES (7, 'preserved')")
+                    cursor = MagicMock()
+                    cursor.__enter__.return_value = cursor
+                    cursor.fetchall.return_value = [("Id",)]
+                    cursor.__iter__.return_value = iter(
+                        [(7, "preserved")]
+                        if validation is _validate_full_row_digests
+                        else [(7,)]
+                    )
+                    target = Mock()
+                    target.cursor.return_value = cursor
+                    with patch(
+                        "utils.arr_postgres_migration._postgres_table_columns",
+                        return_value={
+                            "Title": {"data_type": "text"},
+                            "Id": {"data_type": "integer"},
+                        },
+                    ):
+                        validation(source, target, ["Items"])
+                    self.assertIn(
+                        ("public", "Items"),
+                        query_identifiers(cursor.execute.call_args.args[0]),
+                    )
+                finally:
+                    source.close()
+
+    def test_sequence_validation_reads_public_maximum(self):
+        cursor = MagicMock()
+        cursor.__enter__.return_value = cursor
+        cursor.fetchone.side_effect = [(7,), (7, True), (1,)]
+        target = Mock()
+        target.cursor.return_value = cursor
+        spec = {
+            "table": "Items",
+            "column": "Id",
+            "is_identity": True,
+            "sequence_schema": "public",
+            "sequence": "Items_Id_seq",
+        }
+        with patch(
+            "utils.arr_postgres_migration._postgres_sequence_specs", return_value=[spec]
+        ):
+            result = _validate_postgres_sequences(target)
+        self.assertEqual(result[0]["next_value"], 8)
+        self.assertIn(
+            ("public", "Items"),
+            query_identifiers(cursor.execute.call_args_list[0].args[0]),
+        )
+
+    def test_foreign_key_validation_reads_public_child_and_parent(self):
+        cursor = MagicMock()
+        cursor.__enter__.return_value = cursor
+        cursor.fetchone.return_value = (0,)
+        target = Mock()
+        target.cursor.return_value = cursor
+        spec = {
+            "name": "FK_Items_Parent",
+            "validated": True,
+            "delete_action": "c",
+            "child_table": "Items",
+            "parent_table": "Parents",
+            "child_columns": ["ParentId"],
+            "parent_columns": ["Id"],
+        }
+        with patch(
+            "utils.arr_postgres_migration._postgres_foreign_key_specs",
+            return_value=[spec],
+        ):
+            result = _validate_postgres_foreign_keys(target)
+        self.assertEqual(result[0]["violations"], 0)
+        names = query_identifiers(cursor.execute.call_args.args[0])
+        self.assertIn(("public", "Items"), names)
+        self.assertIn(("public", "Parents"), names)
+
     def test_preflight_blocks_an_instance_already_using_postgres(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             config = StubConfig(temp_dir)
@@ -1344,6 +1773,17 @@ class ArrPostgresMigrationTests(unittest.TestCase):
             reset_count = _reset_postgres_sequences(connection)
 
         self.assertEqual(reset_count, 2)
+        maximum_queries = [
+            item.args[0]
+            for item in cursor.execute.call_args_list
+            if isinstance(item.args[0], sql.Composed)
+        ]
+        self.assertIn(
+            ("public", "IndexerApiHits"), query_identifiers(maximum_queries[0])
+        )
+        self.assertIn(
+            ("public", "WatchdogEntries"), query_identifiers(maximum_queries[1])
+        )
         setval_calls = [
             item
             for item in cursor.execute.call_args_list
@@ -1720,7 +2160,8 @@ class ArrPostgresMigrationTests(unittest.TestCase):
         executed_sql = [entry.args[0] for entry in cursor.execute.call_args_list]
         self.assertTrue(
             any(
-                "ON import_queue ((metadata::jsonb ->> 'nzbdav_id'))" in statement
+                "ON public.import_queue ((metadata::jsonb ->> 'nzbdav_id'))"
+                in statement
                 for statement in executed_sql
             )
         )

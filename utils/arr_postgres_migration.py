@@ -1295,10 +1295,37 @@ def _sqlite_tables(
 
 
 def _sqlite_columns(connection: sqlite3.Connection, table: str) -> list[str]:
+    return list(_sqlite_column_types(connection, table))
+
+
+def _sqlite_column_types(connection: sqlite3.Connection, table: str) -> dict[str, str]:
     escaped = table.replace('"', '""')
-    return [
-        str(row[1]) for row in connection.execute(f'PRAGMA table_info("{escaped}")')
-    ]
+    return {
+        str(row[1]): str(row[2])
+        for row in connection.execute(f'PRAGMA table_info("{escaped}")')
+    }
+
+
+def _sqlite_recovery_tables(path: Path) -> list[str]:
+    connection = sqlite3.connect(f"file:{path}?mode=ro", uri=True, timeout=30)
+    try:
+        return [
+            table
+            for table in _sqlite_tables(connection)
+            if table.casefold() == "lost_and_found"
+        ]
+    finally:
+        connection.close()
+
+
+def _sqlite_recovery_message(tables: list[str]) -> str:
+    return (
+        "SQLite contains recovery artifact tables: "
+        + ", ".join(tables)
+        + ". These may contain unassigned recovered rows. Preserve the original "
+        "database and migration backups, and reconcile the recovered data before "
+        "migrating. DUMB will not drop or ignore these tables."
+    )
 
 
 def _sqlite_row_counts(
@@ -1632,12 +1659,16 @@ def build_arr_postgres_preflight(
             )
         )
         foreign_key_violations = _sqlite_foreign_key_violations(path) if healthy else []
+        recovery_tables = _sqlite_recovery_tables(path) if healthy else []
         if foreign_key_violations:
             healthy = False
             message = (
                 "foreign_key_check found "
                 f"{len(foreign_key_violations)} or more violations."
             )
+        if recovery_tables:
+            healthy = False
+            message = _sqlite_recovery_message(recovery_tables)
         required = label == "main"
         status = "pass" if healthy else ("fail" if required else "warn")
         add_check(
@@ -1652,6 +1683,7 @@ def build_arr_postgres_preflight(
             bytes=size,
             display_size=_format_bytes(size),
             foreign_key_violations=len(foreign_key_violations),
+            recovery_tables=recovery_tables,
         )
         sqlite_payload[label] = {
             "path": str(path),
@@ -1660,6 +1692,7 @@ def build_arr_postgres_preflight(
             "display_size": _format_bytes(size),
             "quick_check": message,
             "foreign_key_violations": len(foreign_key_violations),
+            "recovery_tables": recovery_tables,
         }
         if label == "main" and healthy:
             source_schema_fingerprint = _sqlite_schema_fingerprint(
@@ -2211,6 +2244,27 @@ def _convert_value(value, data_type: str):
     return value
 
 
+def _validate_public_table_resolution(connection, tables: list[str]) -> None:
+    """Require unqualified queries on this connection to resolve public tables."""
+    with connection.cursor() as cursor:
+        for table in tables:
+            cursor.execute(
+                "SELECT pg_catalog.to_regclass(pg_catalog.format('%%I', %s))::oid, "
+                "pg_catalog.to_regclass(pg_catalog.format('%%I.%%I', 'public', %s))::oid",
+                [table, table],
+            )
+            resolved_oid, public_oid = cursor.fetchone()
+            if public_oid is None or resolved_oid != public_oid:
+                raise ArrPostgresMigrationError(
+                    f"PostgreSQL search_path does not resolve {table} to the "
+                    f"supported public.{table} table. No import can safely proceed. "
+                    "Preserve the SQLite source and backups, and reconcile the "
+                    "database/role search_path with the application's public "
+                    "schema before migrating. DUMB will not change role or "
+                    "server settings."
+                )
+
+
 def _prepare_target_for_import(
     sqlite_path: Path,
     postgres_config: dict[str, Any],
@@ -2219,8 +2273,12 @@ def _prepare_target_for_import(
     service_key: str | None = None,
 ) -> list[str]:
     source = sqlite3.connect(f"file:{sqlite_path}?mode=ro", uri=True, timeout=60)
-    target = _pg_connect(postgres_config, database)
+    target = None
     try:
+        recovery_tables = _sqlite_recovery_tables(sqlite_path)
+        if recovery_tables:
+            raise ArrPostgresMigrationError(_sqlite_recovery_message(recovery_tables))
+        target = _pg_connect(postgres_config, database)
         source_tables = _sqlite_tables(source, excluded_tables)
         if service_key == "infinidysk" and set(source_tables) != set(
             INFINIDYSK_POSTGRES_TABLES
@@ -2238,6 +2296,20 @@ def _prepare_target_for_import(
             raise ArrPostgresMigrationError(
                 "PostgreSQL schema is missing SQLite tables: " + ", ".join(missing[:10])
             )
+        for table in source_tables:
+            target_columns = _postgres_table_columns(target, table)
+            missing_columns = [
+                column
+                for column in _sqlite_columns(source, table)
+                if column not in target_columns
+            ]
+            if missing_columns:
+                raise ArrPostgresMigrationError(
+                    f"PostgreSQL public.{table} is missing importable columns: "
+                    + ", ".join(missing_columns[:10])
+                    + ". No target tables were truncated. Preserve the SQLite "
+                    "source and backups, and verify the application-created schema."
+                )
         if service_key == "infinidysk":
             asymmetric_tables = []
             for table in source_tables:
@@ -2250,11 +2322,12 @@ def _prepare_target_for_import(
                     "InfiniDysk SQLite and official v1.2 PostgreSQL column sets "
                     "differ for: " + ", ".join(asymmetric_tables[:10])
                 )
+        _validate_public_table_resolution(target, source_tables)
         with target.cursor() as cursor:
             cursor.execute("SET session_replication_role = replica")
             if source_tables:
                 identifiers = sql.SQL(", ").join(
-                    sql.Identifier(table) for table in source_tables
+                    sql.Identifier("public", table) for table in source_tables
                 )
                 cursor.execute(
                     sql.SQL("TRUNCATE TABLE {} RESTART IDENTITY CASCADE").format(
@@ -2265,7 +2338,8 @@ def _prepare_target_for_import(
         return source_tables
     finally:
         source.close()
-        target.close()
+        if target is not None:
+            target.close()
 
 
 def _postgres_sequence_specs(connection) -> list[dict[str, Any]]:
@@ -2320,7 +2394,7 @@ def _reset_postgres_sequences(connection) -> int:
             column = entry["column"]
             cursor.execute(
                 sql.SQL("SELECT MAX({}) FROM {}").format(
-                    sql.Identifier(column), sql.Identifier(table)
+                    sql.Identifier(column), sql.Identifier("public", table)
                 )
             )
             maximum = cursor.fetchone()[0]
@@ -2359,7 +2433,7 @@ def _validate_postgres_sequences(
             cursor.execute(
                 sql.SQL("SELECT MAX({}) FROM {}").format(
                     sql.Identifier(entry["column"]),
-                    sql.Identifier(entry["table"]),
+                    sql.Identifier("public", entry["table"]),
                 )
             )
             maximum = cursor.fetchone()[0]
@@ -2505,10 +2579,10 @@ def _validate_postgres_foreign_keys(
                     "SELECT COUNT(*) FROM {} AS {} WHERE {} AND NOT EXISTS "
                     "(SELECT 1 FROM {} AS {} WHERE {})"
                 ).format(
-                    sql.Identifier(entry["child_table"]),
+                    sql.Identifier("public", entry["child_table"]),
                     sql.Identifier("child_row"),
                     non_null_condition,
-                    sql.Identifier(entry["parent_table"]),
+                    sql.Identifier("public", entry["parent_table"]),
                     sql.Identifier("parent_row"),
                     join_condition,
                 )
@@ -2681,7 +2755,7 @@ def _validate_full_row_digests(
             cursor.execute(
                 sql.SQL("SELECT {} FROM {}").format(
                     sql.SQL(", ").join(sql.Identifier(column) for column in columns),
-                    sql.Identifier(table),
+                    sql.Identifier("public", table),
                 )
             )
             target_digest = _digest_rows(
@@ -2757,7 +2831,7 @@ def _validate_primary_key_digests(
                     sql.SQL(", ").join(
                         sql.Identifier(column) for column in target_keys
                     ),
-                    sql.Identifier(table),
+                    sql.Identifier("public", table),
                 )
             )
             target_digest = _digest_rows(
@@ -2779,7 +2853,7 @@ def _validate_infinidysk_postgres_schema_connection(
 ) -> dict[str, Any]:
     with connection.cursor() as cursor:
         cursor.execute(
-            'SELECT "MigrationId" FROM "__EFMigrationsHistory" '
+            'SELECT "MigrationId" FROM public."__EFMigrationsHistory" '
             'ORDER BY "MigrationId"'
         )
         migration_history = tuple(str(row[0]) for row in cursor.fetchall())
@@ -2974,6 +3048,7 @@ def _converted_import_batches(
     *,
     batch_size: int,
     max_batch_bytes: int | None,
+    table: str | None = None,
 ):
     """Yield converted rows bounded by aggregate bytes between atomic rows.
 
@@ -2984,10 +3059,24 @@ def _converted_import_batches(
     batch_size = max(1, int(batch_size))
 
     def convert(row):
-        return tuple(
-            _convert_value(value, target_columns[column]["data_type"])
-            for column, value in zip(columns, row)
-        )
+        if len(row) != len(columns):
+            name = f" for {table}" if table else ""
+            raise ArrPostgresMigrationError(
+                f"SQLite row{name} does not match the named import columns."
+            )
+        converted = []
+        for column, value in zip(columns, row):
+            data_type = target_columns[column]["data_type"]
+            try:
+                converted.append(_convert_value(value, data_type))
+            except (ArrPostgresMigrationError, ValueError, OverflowError, OSError):
+                name = f"{table}.{column}" if table else column
+                raise ArrPostgresMigrationError(
+                    f"SQLite {type(value).__name__} value for {name} could not be "
+                    f"converted to PostgreSQL {data_type}. Preserve the SQLite "
+                    "source and backups, and verify its column definitions and data."
+                ) from None
+        return tuple(converted)
 
     if max_batch_bytes is None:
         while True:
@@ -3040,10 +3129,12 @@ def import_sqlite_to_postgres(
         service_key=service_key,
     )
     source = sqlite3.connect(f"file:{sqlite_path}?mode=ro", uri=True, timeout=60)
-    target = _pg_connect(postgres_config, database)
+    target = None
     imported: dict[str, int] = {}
     try:
+        target = _pg_connect(postgres_config, database)
         target.autocommit = False
+        _validate_public_table_resolution(target, tables)
         with target.cursor() as cursor:
             cursor.execute("SET session_replication_role = replica")
         total_rows = 0
@@ -3059,6 +3150,7 @@ def import_sqlite_to_postgres(
         processed_rows = 0
         for table_index, table in enumerate(tables, start=1):
             source_columns = _sqlite_columns(source, table)
+            source_types = _sqlite_column_types(source, table)
             target_columns = _postgres_table_columns(target, table)
             columns = [
                 column
@@ -3081,7 +3173,7 @@ def import_sqlite_to_postgres(
             source_cursor = source.execute(f'SELECT {select_columns} FROM "{escaped}"')
             imported_count = 0
             insert_query = sql.SQL("INSERT INTO {} ({}) VALUES %s").format(
-                sql.Identifier(table),
+                sql.Identifier("public", table),
                 sql.SQL(", ").join(sql.Identifier(column) for column in columns),
             )
             max_batch_bytes = (
@@ -3093,14 +3185,29 @@ def import_sqlite_to_postgres(
                 target_columns,
                 batch_size=batch_size,
                 max_batch_bytes=max_batch_bytes,
+                table=table,
             ):
                 with target.cursor() as cursor:
-                    execute_values(
-                        cursor,
-                        insert_query,
-                        converted,
-                        page_size=len(converted),
-                    )
+                    try:
+                        execute_values(
+                            cursor,
+                            insert_query,
+                            converted,
+                            page_size=len(converted),
+                        )
+                    except psycopg2.Error as error:
+                        column_types = ", ".join(
+                            f"{column} ({source_types[column] or 'untyped'} -> "
+                            f"{target_columns[column]['data_type']})"
+                            for column in columns
+                        )
+                        raise ArrPostgresMigrationError(
+                            f"Import into PostgreSQL public.{table} failed "
+                            f"(SQLSTATE {error.pgcode or 'unknown'}). "
+                            f"SQLite -> PostgreSQL column types: {column_types}. "
+                            "Preserve the SQLite source and backups, and verify "
+                            "the source data and application-created target schema."
+                        ) from None
                 target.commit()
                 imported_count += len(converted)
                 processed_rows += len(converted)
@@ -3125,7 +3232,9 @@ def import_sqlite_to_postgres(
         with target.cursor() as cursor:
             for table, expected in source_counts.items():
                 cursor.execute(
-                    sql.SQL("SELECT COUNT(*) FROM {}").format(sql.Identifier(table))
+                    sql.SQL("SELECT COUNT(*) FROM {}").format(
+                        sql.Identifier("public", table)
+                    )
                 )
                 actual = int(cursor.fetchone()[0])
                 if actual != expected:
@@ -3180,11 +3289,13 @@ def import_sqlite_to_postgres(
             "validated": True,
         }
     except Exception:
-        target.rollback()
+        if target is not None:
+            target.rollback()
         raise
     finally:
         source.close()
-        target.close()
+        if target is not None:
+            target.close()
 
 
 def _set_database_entries(config_manager, database_names: list[str]) -> None:
@@ -3289,7 +3400,7 @@ def _repair_altmount_postgres_migration_010(
         connection = _pg_connect(postgres_config, database)
         with connection.cursor() as cursor:
             cursor.execute(
-                "SELECT version_id FROM goose_db_version "
+                "SELECT version_id FROM public.goose_db_version "
                 "WHERE is_applied = TRUE ORDER BY id DESC LIMIT 1"
             )
             current = cursor.fetchone()
@@ -3314,12 +3425,12 @@ def _repair_altmount_postgres_migration_010(
             # https://github.com/javi11/altmount/blob/main/internal/database/migrations/postgres/010_add_nzbdav_id_index.sql
             cursor.execute(
                 "CREATE INDEX IF NOT EXISTS idx_import_queue_nzbdav_id "
-                "ON import_queue ((metadata::jsonb ->> 'nzbdav_id'))"
+                "ON public.import_queue ((metadata::jsonb ->> 'nzbdav_id'))"
             )
             cursor.execute(
-                "INSERT INTO goose_db_version (version_id, is_applied) "
+                "INSERT INTO public.goose_db_version (version_id, is_applied) "
                 "SELECT 10, TRUE WHERE NOT EXISTS ("
-                "SELECT 1 FROM goose_db_version "
+                "SELECT 1 FROM public.goose_db_version "
                 "WHERE version_id = 10 AND is_applied = TRUE"
                 ")"
             )
