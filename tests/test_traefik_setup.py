@@ -39,15 +39,6 @@ def _install_runtime_stubs():
     versions.Versions = lambda *args, **kwargs: object()
     sys.modules["utils.versions"] = versions
 
-    yaml = types.ModuleType("yaml")
-    sys.modules["yaml"] = yaml
-
-    ruamel = types.ModuleType("ruamel")
-    ruamel_yaml = types.ModuleType("ruamel.yaml")
-    ruamel_yaml.YAML = lambda *args, **kwargs: object()
-    sys.modules["ruamel"] = ruamel
-    sys.modules["ruamel.yaml"] = ruamel_yaml
-
 
 _install_runtime_stubs()
 

@@ -67,17 +67,6 @@ def _install_runtime_stubs():
     jsonschema.ValidationError = type("ValidationError", (Exception,), {})
     sys.modules["jsonschema"] = jsonschema
 
-    ruamel = types.ModuleType("ruamel")
-    ruamel_yaml = types.ModuleType("ruamel.yaml")
-    ruamel_yaml.YAML = lambda *args, **kwargs: types.SimpleNamespace(
-        load=lambda raw: {},
-        dump=lambda data, file: file.write(str(data)),
-        indent=lambda *args, **kwargs: None,
-        preserve_quotes=False,
-    )
-    sys.modules["ruamel"] = ruamel
-    sys.modules["ruamel.yaml"] = ruamel_yaml
-
     xmltodict = types.ModuleType("xmltodict")
     xmltodict.parse = lambda raw: {}
     xmltodict.unparse = lambda data, **kwargs: ""

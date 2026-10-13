@@ -46,6 +46,7 @@ from utils.service_postgres import (
     validate_infinidysk_postgres_source_selection,
 )
 from utils.zilean_dotnet import prepare_zilean_for_net10
+from utils.zurg_config import read_zurg_port, update_zurg_config
 from utils.mediastorm_installer import (
     MEDIASTORM_OCI_REFERENCE,
     MediaStormInstallError,
@@ -10888,82 +10889,28 @@ def zurg_setup(install_only: bool = False, configure_only: bool = False):
 
 def update_port(config_file_path, instance_port):
     logger.debug(f"Updating port in {config_file_path} to {instance_port}")
-    with open(config_file_path, "r") as file:
-        lines = file.readlines()
-    with open(config_file_path, "w") as file:
-        for line in lines:
-            if line.strip().startswith("port:") or line.strip().startswith("# port:"):
-                file.write(f"port: {instance_port}\n")
-            else:
-                file.write(line)
-
-
-def _ensure_secret_file_permissions(config_file_path):
-    try:
-        os.chmod(config_file_path, 0o600)
-    except Exception as e:
-        logger.debug(
-            f"Failed to apply secret file permissions on {config_file_path}: {e}"
-        )
+    update_zurg_config(config_file_path, {"port": instance_port})
 
 
 def update_token(config_file_path, api_key_value):
     logger.debug(f"Updating token in {config_file_path}")
-    with open(config_file_path, "r") as file:
-        lines = file.readlines()
-    with open(config_file_path, "w") as file:
-        for line in lines:
-            if line.strip().startswith("token:"):
-                file.write(f"token: {api_key_value}\n")
-            else:
-                file.write(line)
-    _ensure_secret_file_permissions(config_file_path)
+    update_zurg_config(config_file_path, {"token": api_key_value})
 
 
 def update_creds(config_file_path, username, password):
     if username and password:
         logger.debug(f"Updating credentials in {config_file_path}")
-        with open(config_file_path, "r") as file:
-            lines = file.readlines()
-        with open(config_file_path, "w") as file:
-            for line in lines:
-                if line.strip().startswith("username:") or line.strip().startswith(
-                    "# username:"
-                ):
-                    file.write(f"username: {username}\n")
-                elif line.strip().startswith("password:") or line.strip().startswith(
-                    "# password:"
-                ):
-                    file.write(f"password: {password}\n")
-                else:
-                    file.write(line)
-        _ensure_secret_file_permissions(config_file_path)
+        update_zurg_config(
+            config_file_path, {"username": username, "password": password}
+        )
     else:
         logger.debug(f"Removing credentials in {config_file_path}")
-        with open(config_file_path, "r") as file:
-            lines = file.readlines()
-        with open(config_file_path, "w") as file:
-            for line in lines:
-                if line.strip().startswith("username:") or line.strip().startswith(
-                    "# username:"
-                ):
-                    file.write("# username: <username>\n")
-                elif line.strip().startswith("password:") or line.strip().startswith(
-                    "# password:"
-                ):
-                    file.write("# password: <password>\n")
-                else:
-                    file.write(line)
-        _ensure_secret_file_permissions(config_file_path)
+        update_zurg_config(config_file_path, remove=("username", "password"))
 
 
 def get_port_from_config(config_file_path):
     try:
-        with open(config_file_path, "r") as file:
-            for line in file:
-                if line.strip().startswith("port:"):
-                    port = line.split(":")[1].strip()
-                    return port
+        return read_zurg_port(config_file_path)
     except Exception as e:
         logger.error(f"Error reading port from config file: {e}")
     return "9999"
