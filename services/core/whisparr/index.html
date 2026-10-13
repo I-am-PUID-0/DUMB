@@ -2649,6 +2649,34 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Configuration in dumb_config.json">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#key-configuration-fields" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Key Configuration Fields
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#choosing-v2-or-v3-eros" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Choosing v2 or v3 (Eros)
+      
+    </span>
+  </a>
+  
 </li>
       
         <li class="md-nav__item">
@@ -5271,6 +5299,34 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Configuration in dumb_config.json">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#key-configuration-fields" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Key Configuration Fields
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#choosing-v2-or-v3-eros" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Choosing v2 or v3 (Eros)
+      
+    </span>
+  </a>
+  
 </li>
       
         <li class="md-nav__item">
@@ -5425,10 +5481,10 @@
   
 
 
-<h1 id="whisparr-core-service">Whisparr (Core Service)<a class="headerlink" href="#whisparr-core-service" title="Permanent link">&para;</a></h1>
+<h1 id="whisparr-core-service">Whisparr (Core Service)<a class="headerlink" href="#whisparr-core-service" title="Permanent link">#</a></h1>
 <p><strong>Whisparr</strong> is an automation tool for managing adult content libraries, similar to Radarr/Sonarr workflows.</p>
 <hr />
-<h2 id="service-relationships">Service Relationships<a class="headerlink" href="#service-relationships" title="Permanent link">&para;</a></h2>
+<h2 id="service-relationships">Service Relationships<a class="headerlink" href="#service-relationships" title="Permanent link">#</a></h2>
 <table>
 <thead>
 <tr>
@@ -5456,11 +5512,12 @@
 </tbody>
 </table>
 <hr />
-<h2 id="configuration-in-dumb_configjson">Configuration in <code>dumb_config.json</code><a class="headerlink" href="#configuration-in-dumb_configjson" title="Permanent link">&para;</a></h2>
+<h2 id="configuration-in-dumb_configjson">Configuration in <code>dumb_config.json</code><a class="headerlink" href="#configuration-in-dumb_configjson" title="Permanent link">#</a></h2>
 <div class="highlight"><pre><span></span><code><span class="nt">&quot;whisparr&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;instances&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">    </span><span class="nt">&quot;Default&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">      </span><span class="nt">&quot;enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;whisparr_version&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&quot;</span><span class="p">,</span>
 <span class="w">      </span><span class="nt">&quot;core_service&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&quot;</span><span class="p">,</span>
 <span class="w">      </span><span class="nt">&quot;use_neutarr&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
 <span class="w">      </span><span class="nt">&quot;postgres_enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
@@ -5471,6 +5528,9 @@
 <span class="w">      </span><span class="nt">&quot;repo_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Whisparr&quot;</span><span class="p">,</span>
 <span class="w">      </span><span class="nt">&quot;release_version_enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
 <span class="w">      </span><span class="nt">&quot;release_version&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;latest&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;branch_enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;branch&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;commit_sha&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&quot;</span><span class="p">,</span>
 <span class="w">      </span><span class="nt">&quot;clear_on_update&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
 <span class="w">      </span><span class="nt">&quot;exclude_dirs&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[],</span>
 <span class="w">      </span><span class="nt">&quot;platforms&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[],</span>
@@ -5489,23 +5549,82 @@
 <span class="w">  </span><span class="p">}</span>
 <span class="p">}</span>
 </code></pre></div>
-<h3 id="key-configuration-fields">Key Configuration Fields<a class="headerlink" href="#key-configuration-fields" title="Permanent link">&para;</a></h3>
+<h3 id="key-configuration-fields">Key Configuration Fields<a class="headerlink" href="#key-configuration-fields" title="Permanent link">#</a></h3>
 <ul>
+<li><code>whisparr_version</code>: Choose <code>v2</code> or <code>v3</code> (Eros), or leave blank to detect and preserve the existing version. A new instance with no existing version defaults to v2.</li>
 <li><code>core_service</code>: Set to <code>decypharr</code>, <code>infinidysk</code>, <code>altmount</code>, or a list of workflow keys to enable DUMB integration.</li>
 <li><code>use_neutarr</code>: Opt this instance into NeutArr automation.</li>
 <li><code>postgres_enabled</code>: Opt this instance into DUMB-managed PostgreSQL config. SQLite is the default; set this to <code>true</code> only when you want Whisparr to use PostgreSQL.</li>
 <li><code>postgres_main_db</code> / <code>postgres_log_db</code>: Optional database-name overrides. When blank, DUMB uses <code>whisparr-main</code> and <code>whisparr-log</code> for the default instance, or unique instance-scoped names for additional instances.</li>
 <li><code>port</code>: Web UI port (default <code>6969</code>).</li>
-<li><code>pinned_version</code>: Optional version pin for Whisparr updates.</li>
-<li><code>repo_owner</code> / <code>repo_name</code>: GitHub repo used for releases or branch builds.</li>
-<li><code>release_version_enabled</code> / <code>release_version</code>: Use GitHub releases (e.g., <code>latest</code>, <code>nightly</code>, <code>prerelease</code>, or a tag).</li>
-<li><code>clear_on_update</code>: Clear the install directory before updating.</li>
-<li><code>exclude_dirs</code>: Directories to preserve when clearing.</li>
-<li><code>platforms</code>: Build platforms (auto‑defaults to <code>["dotnet"]</code> when using branches).</li>
+<li><code>pinned_version</code>: Optional exact numeric release version, such as <code>3.6.4.1865</code>, within the selected major version. This applies when <code>release_version_enabled</code> is <code>false</code>.</li>
+<li><code>repo_owner</code> / <code>repo_name</code>: GitHub release source. Official v2 releases use <code>Whisparr/Whisparr</code>; v3 releases use <code>Whisparr/Whisparr-Eros</code>.</li>
+<li><code>release_version_enabled</code> / <code>release_version</code>: Select a GitHub release using <code>latest</code>, <code>prerelease</code>, or an exact tag. When disabled, an unpinned instance still installs the latest official release for its selected version.</li>
+<li><code>branch_enabled</code> / <code>branch</code>: Select an update channel: <code>v2</code> or <code>v2-develop</code> for v2, and <code>eros</code> or <code>eros-develop</code> for v3. These select packaged releases; Whisparr source builds are not supported.</li>
+<li><code>commit_sha</code>: Leave blank. Installing Whisparr from a specific source commit is not supported.</li>
+<li><code>clear_on_update</code> / <code>exclude_dirs</code>: Generic install-cleanup settings. Whisparr stages a replacement of its managed binary directory; keep <code>config_dir</code> separate from that directory. These fields do not convert or relocate databases.</li>
 <li><code>config_dir</code>, <code>config_file</code>, <code>log_file</code>: Paths for config and logs.</li>
 </ul>
 <hr />
-<h2 id="postgresql-database-mode">PostgreSQL database mode<a class="headerlink" href="#postgresql-database-mode" title="Permanent link">&para;</a></h2>
+<h2 id="choosing-v2-or-v3-eros">Choosing v2 or v3 (Eros)<a class="headerlink" href="#choosing-v2-or-v3-eros" title="Permanent link">#</a></h2>
+<p>Choose <strong>Whisparr v2</strong>, <strong>Whisparr v3 (Eros)</strong>, or <strong>Detect existing version</strong> during onboarding. You can also set <code>whisparr_version</code> on the instance in DUMB Config.</p>
+<p>Leaving the setting blank preserves the version indicated by the existing database, installed binary, repository, or update channel. It defaults to v2 only for a new instance without that existing version information.</p>
+<table>
+<thead>
+<tr>
+<th>Version</th>
+<th>Official release repository</th>
+<th>Stable / development channel</th>
+<th>SQLite main database</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>v2</td>
+<td><a href="https://github.com/Whisparr/Whisparr/releases">Whisparr/Whisparr</a></td>
+<td><code>v2</code> / <code>v2-develop</code></td>
+<td><code>whisparr2.db</code>; older installs may use <code>whisparr.db</code></td>
+</tr>
+<tr>
+<td>v3 (Eros)</td>
+<td><a href="https://github.com/Whisparr/Whisparr-Eros/releases">Whisparr/Whisparr-Eros</a></td>
+<td><code>eros</code> / <code>eros-develop</code></td>
+<td><code>whisparr3.db</code></td>
+</tr>
+</tbody>
+</table>
+<p>Both versions use <code>logs.db</code> for SQLite logs. DUMB keeps each instance's binary separate under <code>/opt/whisparr/instances/&lt;instance-slug&gt;/Whisparr/Whisparr</code> and leaves the configured data directory in place.</p>
+<div class="admonition warning">
+<p class="admonition-title">Changing versions does not convert the database</p>
+<p>v2 and v3 have different databases and library models. Create a separate instance with its own <code>config_dir</code> and port when installing the other version.</p>
+<p>DUMB refuses an installation or startup when the selected version conflicts with existing data, or when both version families are present in the same data directory. It does not rename, delete, or convert those databases.</p>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">Legacy v2 database filenames require a separate migration</p>
+<p>Current v2 releases (2.2 and newer) open <code>whisparr2.db</code>; they do not automatically discover or rename a legacy <code>whisparr.db</code>. Starting a newer binary against only the legacy file could create an empty library. See the <a href="https://github.com/Whisparr/Whisparr/blob/v2.2.0-release.231/src/NzbDrone.Common/Extensions/PathExtensions.cs">upstream v2 database path</a>.</p>
+<p>DUMB keeps a compatible existing v2 installation working, but blocks an incompatible binary or an update or release pin that would change the expected database filename until you have completed a separately backed-up and validated database migration. It also blocks an older v2 binary against the newer filename and requires deliberate resolution if both filenames or their recovery files are present.</p>
+<p>Changing <code>whisparr_version</code>, clearing the install directory, or changing <code>exclude_dirs</code> does not perform this migration. Preserve the original database and recovery files while planning it.</p>
+</div>
+<p>For example, a separate v3 instance using the official stable releases can use:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">&quot;whisparr&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;instances&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;Eros&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">&quot;enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;whisparr_version&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;v3&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;repo_owner&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Whisparr&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;repo_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Whisparr-Eros&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;release_version_enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;release_version&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;latest&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;port&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">6970</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;config_dir&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/whisparr/eros&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;config_file&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/whisparr/eros/config.xml&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;log_file&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/whisparr/eros/logs/whisparr.txt&quot;</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<hr />
+<h2 id="postgresql-database-mode">PostgreSQL database mode<a class="headerlink" href="#postgresql-database-mode" title="Permanent link">#</a></h2>
 <p>When <code>postgres_enabled</code> is <code>true</code>, DUMB:</p>
 <ul>
 <li>enables the bundled PostgreSQL service if needed;</li>
@@ -5516,25 +5635,29 @@
 <p>During onboarding, enabling <code>postgres_enabled</code> for Whisparr is enough; you do not need to separately select PostgreSQL as an optional service.</p>
 <div class="admonition danger">
 <p class="admonition-title">This does not migrate existing SQLite data</p>
-<p>Setting <code>postgres_enabled: true</code> changes the database backend Whisparr starts with. It does <strong>not</strong> copy <code>whisparr.db</code> into PostgreSQL.</p>
+<p>Setting <code>postgres_enabled: true</code> changes the database backend Whisparr starts with. It does <strong>not</strong> copy the existing SQLite database (<code>whisparr2.db</code>, legacy <code>whisparr.db</code>, or <code>whisparr3.db</code>) into PostgreSQL.</p>
 <p>If you enable this on an existing SQLite-backed Whisparr instance without doing a manual migration, Whisparr can start against fresh PostgreSQL databases and appear empty or newly initialized.</p>
 </div>
 <p>For an existing instance, use <strong>Database Migration</strong> on the service page. DUMB requires a rehearsal, initializes an isolated Whisparr-owned PostgreSQL schema, imports and validates every table, and preserves SQLite for rollback. See <a href="../../../features/arr-postgres-migration/">SQLite to PostgreSQL Migration</a>.</p>
+<p>This changes the database backend for the installed Whisparr version. It does not convert a v2 library into a v3 library.</p>
 <div class="admonition warning">
 <p class="admonition-title">PostgreSQL is not a temporary toggle</p>
 <p>There is no known supported migration path from PostgreSQL back to SQLite for Whisparr. Treat <code>postgres_enabled: true</code> as a long-term database choice unless you are willing to recreate the Whisparr instance from scratch.</p>
 <p>DUMB can restore the preserved pre-cutover SQLite state, but it does not copy later PostgreSQL writes back into SQLite.</p>
 </div>
 <hr />
-<h2 id="repo-based-installs-and-updates">Repo-based installs and updates<a class="headerlink" href="#repo-based-installs-and-updates" title="Permanent link">&para;</a></h2>
-<p>Whisparr now supports the same repo‑based controls as other DUMB services.</p>
+<h2 id="repo-based-installs-and-updates">Repo-based installs and updates<a class="headerlink" href="#repo-based-installs-and-updates" title="Permanent link">#</a></h2>
+<p>DUMB installs ready-to-run official GitHub release archives for the selected Whisparr version. The default install and updater also use these archives; older Servarr <code>nightly</code> and <code>eros</code> download feeds are not used to find current Whisparr releases.</p>
 <ul>
-<li><strong>GitHub releases</strong>: Set <code>release_version_enabled: true</code> with a valid <code>repo_owner</code>/<code>repo_name</code>.</li>
-<li><strong>Default updater</strong>: Leave <code>release_version_enabled: false</code> to use the standard Arr updater.</li>
+<li><strong>Default stable releases</strong>: Leave <code>release_version_enabled: false</code> and <code>pinned_version</code> blank.</li>
+<li><strong>Explicit GitHub release</strong>: Set <code>release_version_enabled: true</code> with the matching official repository, then choose <code>latest</code>, <code>prerelease</code>, or a release tag in <code>release_version</code>.</li>
+<li><strong>Exact numeric pin</strong>: Leave <code>release_version_enabled: false</code> and set <code>pinned_version</code> to the exact release version from the selected major version.</li>
+<li><strong>Development channel</strong>: Use <code>v2-develop</code> or <code>eros-develop</code> with <code>branch_enabled: true</code>. Use the corresponding stable channel to stay on stable releases.</li>
 </ul>
-<p>GitHub sources take priority when enabled and are <strong>not</strong> a fallback. <code>pinned_version</code> only applies to the traditional Arr updater.</p>
+<p>An explicit GitHub release selection takes priority over <code>pinned_version</code>. Release tags and pins must match the selected Whisparr major version. Unavailable releases fail the install or update instead of silently switching versions or compiling from source.</p>
+<p>Updates replace the managed binary directory after staging the selected release. Configuration and database directories remain separate, and DUMB checks their compatibility before stopping the running service or activating a replacement binary.</p>
 <hr />
-<h2 id="integration-with-dumb">Integration with DUMB<a class="headerlink" href="#integration-with-dumb" title="Permanent link">&para;</a></h2>
+<h2 id="integration-with-dumb">Integration with DUMB<a class="headerlink" href="#integration-with-dumb" title="Permanent link">#</a></h2>
 <ul>
 <li>For Decypharr integration, set <code>core_service</code> to <code>decypharr</code> and follow the <a href="../decypharr/">Decypharr guide</a>.</li>
 <li>For InfiniDysk integration, set <code>core_service</code> to <code>infinidysk</code> and follow the <a href="../infinidysk/">InfiniDysk guide</a>.</li>
@@ -5545,15 +5668,18 @@
 <li>See <a href="../../../reference/core-service/">Core Service Routing</a> for how <code>core_service</code> affects automation.</li>
 </ul>
 <hr />
-<h2 id="accessing-the-ui">Accessing the UI<a class="headerlink" href="#accessing-the-ui" title="Permanent link">&para;</a></h2>
+<h2 id="accessing-the-ui">Accessing the UI<a class="headerlink" href="#accessing-the-ui" title="Permanent link">#</a></h2>
 <ul>
 <li>Navigate to: <code>http://&lt;host&gt;:6969</code></li>
 </ul>
 <hr />
-<h2 id="resources">Resources<a class="headerlink" href="#resources" title="Permanent link">&para;</a></h2>
+<h2 id="resources">Resources<a class="headerlink" href="#resources" title="Permanent link">#</a></h2>
 <ul>
 <li><a href="https://whisparr.com/">Whisparr Website</a></li>
 <li><a href="https://github.com/Whisparr/Whisparr">Whisparr GitHub</a></li>
+<li><a href="https://github.com/Whisparr/Whisparr/releases">Whisparr v2 releases</a></li>
+<li><a href="https://github.com/Whisparr/Whisparr-Eros">Whisparr v3 (Eros) GitHub</a></li>
+<li><a href="https://github.com/Whisparr/Whisparr-Eros/releases">Whisparr v3 (Eros) releases</a></li>
 <li><a href="https://wiki.servarr.com/whisparr/postgres-setup">Whisparr PostgreSQL setup</a></li>
 </ul>
 
