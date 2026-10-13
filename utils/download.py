@@ -1,10 +1,145 @@
 from utils.global_logger import logger
 from utils.config_loader import CONFIG_MANAGER
 from utils.install_cache import INSTALL_CACHE
-import requests, time, os, zipfile, io, shutil, platform, re, tarfile, tempfile, stat, hashlib
+import requests, time, os, zipfile, io, shutil, platform, re, tarfile, stat, hashlib, secrets
 import fnmatch
+import fcntl
 from pathlib import Path
 from urllib.parse import quote
+
+
+def archive_overlay_recovery_paths(directory_path):
+    """List retained archive workspaces without reading or deleting their contents.
+
+    A held directory descriptor may be supplied by the installer; other callers
+    pass the configured root (including a root symlink).
+    """
+    root = (
+        os.readlink(f"/proc/self/fd/{directory_path}")
+        if isinstance(directory_path, int)
+        else os.path.realpath(os.path.abspath(directory_path))
+    )
+    try:
+        names = os.listdir(directory_path if isinstance(directory_path, int) else root)
+    except (FileNotFoundError, NotADirectoryError):
+        return []
+    return [
+        os.path.join(root, name)
+        for name in sorted(names)
+        if name.startswith(".dumb-overlay-")
+    ]
+
+
+def _mount_id(directory_fd):
+    # st_dev does not distinguish a bind mount of the same filesystem.
+    with open(f"/proc/self/fdinfo/{directory_fd}", encoding="ascii") as info:
+        for line in info:
+            if line.startswith("mnt_id:"):
+                return int(line.split(":", 1)[1])
+    raise OSError("Cannot verify the installation mount identity.")
+
+
+class _ArchiveWorkspace:
+    """Private extraction/rollback storage anchored to the live installation mount."""
+
+    def __init__(self, target_dir, logger):
+        self.logger = logger
+        self.target = os.path.realpath(os.path.abspath(target_dir))
+        self.target_fd = None
+        self.workspace_fd = None
+        self.name = f".dumb-overlay-{secrets.token_hex(16)}"
+        self.preserve_backup = False
+        self.backup_removed = False
+        self.created_target = not os.path.lexists(self.target)
+        flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW
+        try:
+            os.makedirs(self.target, exist_ok=True)
+            self.target_fd = os.open(self.target, flags)
+            try:
+                fcntl.flock(self.target_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except BlockingIOError:
+                raise OSError(
+                    "Another archive installation is already in progress for this target."
+                ) from None
+            pending = archive_overlay_recovery_paths(self.target_fd)
+            if pending:
+                raise OSError(
+                    "Unresolved archive recovery workspace exists; preserve and recover or inspect it before retrying: "
+                    + ", ".join(pending)
+                )
+            self.mount_id = _mount_id(self.target_fd)
+            os.mkdir(self.name, mode=0o700, dir_fd=self.target_fd)
+            self.workspace_fd = os.open(self.name, flags, dir_fd=self.target_fd)
+            metadata = os.fstat(self.workspace_fd)
+            if (
+                metadata.st_uid != os.geteuid()
+                or stat.S_IMODE(metadata.st_mode) != 0o700
+            ):
+                raise OSError("Unsafe archive workspace ownership or permissions.")
+            if _mount_id(self.workspace_fd) != self.mount_id:
+                raise OSError("Archive workspace is outside the installation mount.")
+            for name in ("stage", "backup"):
+                os.mkdir(name, mode=0o700, dir_fd=self.workspace_fd)
+            # Holding the descriptor protects the stage even when a service can
+            # rename entries in its install root. Never reopen it by its name.
+            self.path = f"/proc/self/fd/{self.workspace_fd}"
+            self.stage = os.path.join(self.path, "stage")
+            self.backup = os.path.join(self.path, "backup")
+        except Exception:
+            self.close()
+            raise
+
+    def recovery_path(self):
+        return os.path.join(os.readlink(f"/proc/self/fd/{self.workspace_fd}"), "backup")
+
+    def discard_backup(self):
+        shutil.rmtree("backup", dir_fd=self.workspace_fd)
+        self.backup_removed = True
+
+    def close(self):
+        if self.workspace_fd is not None:
+            try:
+                for name in ("stage", "backup"):
+                    if name == "backup" and (
+                        self.preserve_backup or self.backup_removed
+                    ):
+                        continue
+                    try:
+                        shutil.rmtree(name, dir_fd=self.workspace_fd)
+                    except FileNotFoundError:
+                        pass
+                    except OSError as error:
+                        self.preserve_backup = True
+                        self.logger.warning(
+                            "Retaining archive workspace after cleanup failed: %s",
+                            error,
+                        )
+                if not self.preserve_backup:
+                    # A service may rename our directory, but cannot redirect
+                    # fd-anchored cleanup into a replacement under the old name.
+                    named = os.stat(
+                        self.name, dir_fd=self.target_fd, follow_symlinks=False
+                    )
+                    held = os.fstat(self.workspace_fd)
+                    if (named.st_dev, named.st_ino) == (held.st_dev, held.st_ino):
+                        os.rmdir(self.name, dir_fd=self.target_fd)
+            except OSError as error:
+                self.logger.warning("Could not remove archive workspace: %s", error)
+            finally:
+                os.close(self.workspace_fd)
+                self.workspace_fd = None
+        if self.target_fd is not None:
+            if self.created_target:
+                try:
+                    named = os.stat(self.target, follow_symlinks=False)
+                    held = os.fstat(self.target_fd)
+                    if (named.st_dev, named.st_ino) == (held.st_dev, held.st_ino):
+                        os.rmdir(self.target)
+                except OSError:
+                    # A committed install or retained recovery workspace is not empty.
+                    pass
+            os.close(self.target_fd)
+            self.target_fd = None
 
 
 class Downloader:
@@ -631,21 +766,25 @@ class Downloader:
         return None, None
 
     def _safe_extract_path(self, target_dir, member_name):
-        target_real = os.path.realpath(target_dir)
-        destination = os.path.realpath(os.path.join(target_dir, member_name))
+        target = os.path.abspath(target_dir)
+        destination = os.path.abspath(os.path.join(target, member_name))
         try:
-            if os.path.commonpath([target_real, destination]) != target_real:
-                self.logger.warning(
-                    "Skipping archive member outside target directory: %s",
-                    member_name,
-                )
-                return None
-        except Exception:
+            if os.path.commonpath([target, destination]) != target:
+                raise ValueError("Archive path escapes its root.")
+            # The root may be a configured symlink or a held descriptor. Leaf
+            # symlinks are objects to replace, not destinations to dereference.
+            relative = os.path.relpath(destination, target)
+            parent = target
+            for part in Path(relative).parts[:-1]:
+                parent = os.path.join(parent, part)
+                if os.path.islink(parent):
+                    raise ValueError("Archive path traverses a directory symlink.")
+            return destination
+        except (ValueError, OSError):
             self.logger.warning(
-                "Skipping archive member with invalid target path: %s", member_name
+                "Skipping archive member with unsafe target path: %s", member_name
             )
             return None
-        return destination
 
     @staticmethod
     def _archive_limits():
@@ -724,82 +863,255 @@ class Downloader:
                 normalized.add(text)
         return normalized
 
-    def _merge_staging_transactionally(self, staging_dir, target_dir):
-        staged_file_count = sum(
-            len(filenames) for _, _, filenames in os.walk(staging_dir)
-        )
-        if staged_file_count == 0:
+    @staticmethod
+    def _overlay_parent(target_fd, relative, mount_id):
+        directory_fd = os.dup(target_fd)
+        try:
+            for part in Path(relative).parts[:-1]:
+                try:
+                    next_fd = os.open(
+                        part,
+                        os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW,
+                        dir_fd=directory_fd,
+                    )
+                except FileNotFoundError:
+                    os.close(directory_fd)
+                    return None
+                try:
+                    if _mount_id(next_fd) != mount_id:
+                        raise ValueError(
+                            f"Archive overlay crosses a nested mount: {relative}"
+                        )
+                except Exception:
+                    os.close(next_fd)
+                    raise
+                os.close(directory_fd)
+                directory_fd = next_fd
+            return directory_fd
+        except Exception:
+            os.close(directory_fd)
+            raise
+
+    @staticmethod
+    def _check_overlay_entry(parent_fd, name, mount_id, recursive=False):
+        entry_fd = os.open(name, os.O_PATH | os.O_NOFOLLOW, dir_fd=parent_fd)
+        try:
+            if _mount_id(entry_fd) != mount_id:
+                raise ValueError(f"Archive overlay would change a nested mount: {name}")
+            metadata = os.fstat(entry_fd)
+            if recursive and stat.S_ISDIR(metadata.st_mode):
+                directory_fd = os.open(
+                    name, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=parent_fd
+                )
+                try:
+                    for child in os.listdir(directory_fd):
+                        Downloader._check_overlay_entry(
+                            directory_fd, child, mount_id, recursive=True
+                        )
+                finally:
+                    os.close(directory_fd)
+        finally:
+            os.close(entry_fd)
+
+    def _merge_staging_transactionally(
+        self, staging_dir, target_dir, exclude_dirs=None, _workspace=None
+    ):
+        entries = []
+        for current_root, directories, filenames in os.walk(staging_dir):
+            directories.sort()
+            filenames.sort()
+            relative_root = os.path.relpath(current_root, staging_dir)
+            if relative_root != ".":
+                entries.append((relative_root, True))
+            entries.extend(
+                (os.path.relpath(os.path.join(current_root, name), staging_dir), False)
+                for name in filenames
+            )
+        if not any(not directory for _, directory in entries):
             return False, "Archive extraction produced no eligible files."
 
-        # Service roots such as /decypharr are symlinks into /data. Resolve the
-        # live target before choosing the backup directory so every os.replace
-        # remains on the installation filesystem without replacing the symlink.
-        target = os.path.realpath(os.path.abspath(target_dir))
-        parent = os.path.dirname(target)
-        os.makedirs(target, exist_ok=True)
-        backup = tempfile.mkdtemp(
-            prefix=f".{os.path.basename(target)}.dumb-overlay-backup-", dir=parent
-        )
+        workspace = _workspace
+        owns_workspace = workspace is None
         applied = []
-        created_dirs = []
         try:
-            for current_root, directories, filenames in os.walk(staging_dir):
-                directories.sort()
-                filenames.sort()
-                relative_root = os.path.relpath(current_root, staging_dir)
-                destination_root = (
-                    target
-                    if relative_root == "."
-                    else os.path.join(target, relative_root)
-                )
-                if not os.path.isdir(destination_root):
-                    if os.path.lexists(destination_root):
-                        previous_directory_entry = os.path.join(backup, relative_root)
-                        os.makedirs(
-                            os.path.dirname(previous_directory_entry), exist_ok=True
+            if workspace is None:
+                workspace = _ArchiveWorkspace(target_dir, self.logger)
+            source_fd = os.open(staging_dir, os.O_RDONLY | os.O_DIRECTORY)
+            try:
+                if _mount_id(source_fd) != workspace.mount_id:
+                    raise ValueError(
+                        "Archive staging is outside the installation mount."
+                    )
+            finally:
+                os.close(source_fd)
+            excludes = self._normalized_archive_excludes(target_dir, exclude_dirs)
+            planned_directories = {
+                relative for relative, directory in entries if directory
+            }
+            # Inspect the entire plan before the first backup or replacement.
+            # Unchanged/excluded nested mounts remain untouched.
+            for relative, directory in entries:
+                if Path(relative).parts[0].startswith(".dumb-overlay-"):
+                    raise ValueError(
+                        "Archive member conflicts with reserved recovery workspace."
+                    )
+                parent_fd = None
+                try:
+                    try:
+                        parent_fd = self._overlay_parent(
+                            workspace.target_fd, relative, workspace.mount_id
                         )
-                        os.replace(destination_root, previous_directory_entry)
-                        applied.append((destination_root, previous_directory_entry))
-                    os.makedirs(destination_root, exist_ok=True)
-                    created_dirs.append(destination_root)
-                for filename in filenames:
-                    source = os.path.join(current_root, filename)
-                    relative = os.path.relpath(source, staging_dir)
-                    destination = self._safe_extract_path(target, relative)
-                    if not destination:
-                        raise ValueError(f"Unsafe staged path: {relative}")
-                    os.makedirs(os.path.dirname(destination), exist_ok=True)
-                    previous = None
-                    if os.path.lexists(destination):
-                        previous = os.path.join(backup, relative)
-                        os.makedirs(os.path.dirname(previous), exist_ok=True)
-                        os.replace(destination, previous)
-                    os.replace(source, destination)
-                    applied.append((destination, previous))
-            shutil.rmtree(backup)
-            return True, None
-        except Exception as error:
-            for destination, previous in reversed(applied):
-                try:
-                    if os.path.lexists(destination):
-                        if os.path.isdir(destination) and not os.path.islink(
-                            destination
+                    except NotADirectoryError:
+                        # A staged directory replaces this non-directory ancestor.
+                        ancestor = Path(relative).parent
+                        if any(
+                            str(parent) in planned_directories
+                            for parent in (ancestor, *ancestor.parents)
                         ):
-                            shutil.rmtree(destination)
-                        else:
-                            os.unlink(destination)
-                    if previous and os.path.lexists(previous):
-                        os.makedirs(os.path.dirname(destination), exist_ok=True)
-                        os.replace(previous, destination)
-                except OSError:
-                    pass
-            for directory in reversed(created_dirs):
+                            continue
+                        raise
+                    if parent_fd is None:
+                        continue
+                    name = os.path.basename(relative)
+                    try:
+                        metadata = os.stat(
+                            name, dir_fd=parent_fd, follow_symlinks=False
+                        )
+                    except FileNotFoundError:
+                        continue
+                    if directory and stat.S_ISLNK(metadata.st_mode):
+                        raise ValueError(
+                            f"Archive overlay would traverse a directory symlink: {relative}"
+                        )
+                    replacing_directory = not directory and stat.S_ISDIR(
+                        metadata.st_mode
+                    )
+                    if not directory and any(
+                        excluded.startswith(f"{relative}/")
+                        and os.path.lexists(
+                            os.path.join(
+                                f"/proc/self/fd/{workspace.target_fd}", excluded
+                            )
+                        )
+                        for excluded in excludes
+                    ):
+                        raise ValueError(
+                            f"Archive overlay would replace an entry containing excluded data: {relative}"
+                        )
+                    self._check_overlay_entry(
+                        parent_fd,
+                        name,
+                        workspace.mount_id,
+                        recursive=replacing_directory,
+                    )
+                finally:
+                    if parent_fd is not None:
+                        os.close(parent_fd)
+
+            for relative, directory in entries:
+                parent_fd = self._overlay_parent(
+                    workspace.target_fd, relative, workspace.mount_id
+                )
+                if parent_fd is None:
+                    raise OSError(f"Missing staged parent directory: {relative}")
                 try:
-                    os.rmdir(directory)
-                except OSError:
-                    pass
-            shutil.rmtree(backup, ignore_errors=True)
+                    name = os.path.basename(relative)
+                    try:
+                        metadata = os.stat(
+                            name, dir_fd=parent_fd, follow_symlinks=False
+                        )
+                    except FileNotFoundError:
+                        metadata = None
+                    if (
+                        directory
+                        and metadata is not None
+                        and stat.S_ISDIR(metadata.st_mode)
+                    ):
+                        continue
+                    previous = None
+                    if metadata is not None:
+                        self._check_overlay_entry(
+                            parent_fd,
+                            name,
+                            workspace.mount_id,
+                            recursive=stat.S_ISDIR(metadata.st_mode),
+                        )
+                        previous = os.path.join(workspace.backup, relative)
+                        os.makedirs(os.path.dirname(previous), exist_ok=True)
+                        os.replace(name, previous, src_dir_fd=parent_fd)
+                    # Register a successful backup before installing the new entry.
+                    applied.append((relative, previous))
+                    if directory:
+                        os.mkdir(name, dir_fd=parent_fd)
+                    else:
+                        os.replace(
+                            os.path.join(staging_dir, relative),
+                            name,
+                            dst_dir_fd=parent_fd,
+                        )
+                finally:
+                    os.close(parent_fd)
+        except Exception as error:
+            rollback_errors = []
+            if workspace is not None:
+                for relative, previous in reversed(applied):
+                    parent_fd = None
+                    try:
+                        parent_fd = self._overlay_parent(
+                            workspace.target_fd, relative, workspace.mount_id
+                        )
+                        if parent_fd is None:
+                            raise OSError("Rollback parent directory is missing.")
+                        name = os.path.basename(relative)
+                        if previous and not os.path.lexists(previous):
+                            raise OSError("Rollback backup is missing.")
+                        try:
+                            metadata = os.stat(
+                                name, dir_fd=parent_fd, follow_symlinks=False
+                            )
+                        except FileNotFoundError:
+                            metadata = None
+                        if metadata is not None:
+                            self._check_overlay_entry(
+                                parent_fd, name, workspace.mount_id
+                            )
+                            if stat.S_ISDIR(metadata.st_mode):
+                                os.rmdir(name, dir_fd=parent_fd)
+                            else:
+                                os.unlink(name, dir_fd=parent_fd)
+                        if previous:
+                            os.replace(previous, name, dst_dir_fd=parent_fd)
+                    except OSError as rollback_error:
+                        rollback_errors.append(f"{relative}: {rollback_error}")
+                    except ValueError as rollback_error:
+                        rollback_errors.append(f"{relative}: {rollback_error}")
+                    finally:
+                        if parent_fd is not None:
+                            os.close(parent_fd)
+                if rollback_errors:
+                    workspace.preserve_backup = True
+                    recovery = workspace.recovery_path()
+                    return (
+                        False,
+                        f"Failed applying extracted files: {error}. Rollback incomplete; recovery backup retained at {recovery}: {'; '.join(rollback_errors)}",
+                    )
             return False, f"Failed applying extracted files: {error}"
+        else:
+            # Commit is complete. Garbage collection cannot trigger rollback:
+            # cleanup may already have deleted some previous entries.
+            try:
+                workspace.discard_backup()
+            except OSError as error:
+                workspace.preserve_backup = True
+                self.logger.warning(
+                    "Archive installed, but backup cleanup failed; retained workspace at %s: %s",
+                    workspace.recovery_path(),
+                    error,
+                )
+            return True, None
+        finally:
+            if owns_workspace and workspace is not None:
+                workspace.close()
 
     def _extract_tarfile(
         self, tar_bytes_io, target_dir, zip_folder_name=None, exclude_dirs=None
@@ -980,7 +1292,7 @@ class Downloader:
         expected_sha256=None,
         staging_validator=None,
     ):
-        staging_dir = None
+        workspace = None
         try:
             expected_digest = ""
             if expected_sha256 is not None:
@@ -1100,13 +1412,9 @@ class Downloader:
             normalized_excludes = self._normalized_archive_excludes(
                 target_dir, exclude_dirs
             )
-            resolved_target = os.path.realpath(os.path.abspath(target_dir))
-            target_parent = os.path.dirname(resolved_target)
-            os.makedirs(target_parent, exist_ok=True)
-            staging_dir = tempfile.mkdtemp(
-                prefix=f".{os.path.basename(resolved_target)}.dumb-extract-",
-                dir=target_parent,
-            )
+            if looks_like_zip() or looks_like_tar():
+                workspace = _ArchiveWorkspace(target_dir, self.logger)
+                staging_dir = workspace.stage
 
             if looks_like_zip():
                 try:
@@ -1201,7 +1509,10 @@ class Downloader:
                                 f"{validation_error or 'unknown validation error'}",
                             )
                     success, error = self._merge_staging_transactionally(
-                        staging_dir, target_dir
+                        staging_dir,
+                        target_dir,
+                        normalized_excludes,
+                        _workspace=workspace,
                     )
                     if not success:
                         return False, error
@@ -1229,7 +1540,10 @@ class Downloader:
                                 f"{validation_error or 'unknown validation error'}",
                             )
                     success, error = self._merge_staging_transactionally(
-                        staging_dir, target_dir
+                        staging_dir,
+                        target_dir,
+                        normalized_excludes,
+                        _workspace=workspace,
                     )
                     if not success:
                         return False, error
@@ -1258,8 +1572,8 @@ class Downloader:
             self.logger.error(f"Error in download and extraction: {e}")
             return False, str(e)
         finally:
-            if staging_dir:
-                shutil.rmtree(staging_dir, ignore_errors=True)
+            if workspace is not None:
+                workspace.close()
 
     def set_permissions(self, file_path, mode):
         try:

@@ -1,6 +1,8 @@
 import io
 import hashlib
 import os
+import errno
+import shutil
 import stat
 import sys
 import tarfile
@@ -1321,18 +1323,26 @@ class DownloaderHelperTests(unittest.TestCase):
             (resolved_target / "runtime.txt").write_text("working", encoding="utf-8")
             target_link = root / "service"
             target_link.symlink_to(resolved_target, target_is_directory=True)
-            real_mkdtemp = tempfile.mkdtemp
             transaction_parents = []
+            original_workspace = download._ArchiveWorkspace
 
-            def tracked_mkdtemp(*args, **kwargs):
-                transaction_parents.append(Path(kwargs["dir"]).resolve())
-                return real_mkdtemp(*args, **kwargs)
+            def tracked_workspace(target_dir, logger):
+                workspace = original_workspace(target_dir, logger)
+                transaction_parents.append(
+                    Path(workspace.stage).resolve().parent.parent
+                )
+                transaction_parents.append(
+                    Path(workspace.backup).resolve().parent.parent
+                )
+                return workspace
 
             with (
                 patch.object(
                     self.downloader, "fetch_with_retries", return_value=response
                 ),
-                patch.object(download.tempfile, "mkdtemp", side_effect=tracked_mkdtemp),
+                patch.object(
+                    download, "_ArchiveWorkspace", side_effect=tracked_workspace
+                ),
             ):
                 success, error = self.downloader.download_and_extract(
                     "https://example.test/app.zip",
@@ -1342,15 +1352,537 @@ class DownloaderHelperTests(unittest.TestCase):
 
             self.assertTrue(success, error)
             self.assertTrue(target_link.is_symlink())
-            self.assertEqual(
-                (resolved_target / "runtime.txt").read_text(encoding="utf-8"),
-                "updated",
+            self.assertEqual("updated", (resolved_target / "runtime.txt").read_text())
+            self.assertEqual([resolved_target.resolve()] * 2, transaction_parents)
+            self.assertFalse(list(resolved_target.glob(".dumb-overlay-*")))
+
+    @staticmethod
+    def _overlay_response(entries):
+        buffer = io.BytesIO()
+        with zipfile.ZipFile(buffer, "w") as archive:
+            for name, value in entries.items():
+                archive.writestr(name, value)
+        return FakeResponse(
+            200,
+            {"Content-Disposition": "attachment; filename=app.zip"},
+            buffer.getvalue(),
+        )
+
+    def _apply_overlay(self, target, entries, **kwargs):
+        with patch.object(
+            self.downloader,
+            "fetch_with_retries",
+            return_value=self._overlay_response(entries),
+        ):
+            return self.downloader.download_and_extract(
+                "https://example.test/app.zip", str(target), **kwargs
             )
-            self.assertGreaterEqual(len(transaction_parents), 2)
+
+    def test_install_failure_after_backup_restores_the_same_entry_and_prior_changes(
+        self,
+    ):
+        with tempfile.TemporaryDirectory() as temporary:
+            target = Path(temporary, "service")
+            target.mkdir()
+            for name in ("a.txt", "b.txt"):
+                (target / name).write_text(f"old {name}")
+            original_replace = os.replace
+
+            def fail_second_install(source, destination, **kwargs):
+                if "/stage/" in str(source) and destination == "b.txt":
+                    raise OSError(errno.EIO, "injected install failure")
+                return original_replace(source, destination, **kwargs)
+
+            with patch.object(download.os, "replace", side_effect=fail_second_install):
+                success, error = self._apply_overlay(
+                    target, {"a.txt": "new a", "b.txt": "new b", "new.txt": "new"}
+                )
+            self.assertFalse(success)
+            self.assertIn("injected install failure", error)
             self.assertEqual(
-                set(transaction_parents),
-                {data_parent.resolve()},
+                {"a.txt": "old a.txt", "b.txt": "old b.txt"},
+                {p.name: p.read_text() for p in target.iterdir()},
             )
+
+    def test_late_exdev_failure_rolls_back_without_copy_unlink_fallback(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            target = Path(temporary, "service")
+            target.mkdir()
+            (target / "runtime.txt").write_text("original")
+            original_replace = os.replace
+
+            def fail_new_move(source, destination, **kwargs):
+                if "/stage/" in str(source):
+                    raise OSError(errno.EXDEV, "injected late cross-device failure")
+                return original_replace(source, destination, **kwargs)
+
+            with (
+                patch.object(download.os, "replace", side_effect=fail_new_move),
+                patch.object(download.shutil, "copytree") as copy_tree,
+                patch.object(download.shutil, "copy2") as copy_file,
+            ):
+                success, error = self._apply_overlay(
+                    target, {"runtime.txt": "candidate"}
+                )
+            self.assertFalse(success)
+            self.assertIn("cross-device", error)
+            self.assertEqual("original", (target / "runtime.txt").read_text())
+            self.assertFalse(list(target.glob(".dumb-overlay-*")))
+            copy_tree.assert_not_called()
+            copy_file.assert_not_called()
+
+    def test_external_stage_on_different_mount_is_rejected_before_backups(self):
+        if not os.path.isdir("/dev/shm") or not os.access("/dev/shm", os.W_OK):
+            self.skipTest("No writable separate temporary filesystem.")
+        with (
+            tempfile.TemporaryDirectory() as source_root,
+            tempfile.TemporaryDirectory(
+                prefix="dumb-overlay-test-", dir="/dev/shm"
+            ) as target_root,
+        ):
+            if os.stat(source_root).st_dev == os.stat(target_root).st_dev:
+                self.skipTest("Temporary fixtures are on the same filesystem.")
+            source = Path(source_root)
+            target = Path(target_root)
+            (source / "runtime.txt").write_text("candidate")
+            (target / "runtime.txt").write_text("original")
+            with patch.object(download.os, "replace") as replace:
+                success, error = self.downloader._merge_staging_transactionally(
+                    str(source), str(target)
+                )
+            self.assertFalse(success)
+            self.assertIn("staging is outside", error)
+            replace.assert_not_called()
+            self.assertEqual("candidate", (source / "runtime.txt").read_text())
+            self.assertEqual("original", (target / "runtime.txt").read_text())
+            self.assertEqual(["runtime.txt"], [p.name for p in target.iterdir()])
+
+    def test_failed_restore_retains_original_backup_and_reports_recovery_path(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            target = Path(temporary, "service")
+            target.mkdir()
+            (target / "runtime.txt").write_text("old runtime")
+            original_replace = os.replace
+
+            def fail_install_and_restore(source, destination, **kwargs):
+                if "/stage/" in str(source):
+                    raise OSError(errno.EIO, "injected install failure")
+                if "/backup/" in str(source):
+                    raise OSError(errno.EACCES, "injected restore failure")
+                return original_replace(source, destination, **kwargs)
+
+            with patch.object(
+                download.os, "replace", side_effect=fail_install_and_restore
+            ):
+                success, error = self._apply_overlay(
+                    target, {"runtime.txt": "new runtime"}
+                )
+            self.assertFalse(success)
+            self.assertIn("Rollback incomplete", error)
+            workspaces = list(target.glob(".dumb-overlay-*"))
+            self.assertEqual(1, len(workspaces))
+            backup = workspaces[0] / "backup"
+            self.assertIn(str(backup), error)
+            self.assertEqual("old runtime", (backup / "runtime.txt").read_text())
+            self.assertFalse((workspaces[0] / "stage").exists())
+
+    def test_commit_cleanup_failure_does_not_roll_back_installed_files(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            target = Path(temporary, "service")
+            target.mkdir()
+            for name in ("a.txt", "b.txt"):
+                (target / name).write_text(f"old {name}")
+            original_rmtree = shutil.rmtree
+            cleanup_calls = []
+
+            def fail_partial_cleanup(path, *args, **kwargs):
+                if path == "backup":
+                    cleanup_calls.append(path)
+                    os.unlink("backup/a.txt", dir_fd=kwargs["dir_fd"])
+                    raise OSError(errno.EBUSY, "injected partial cleanup failure")
+                return original_rmtree(path, *args, **kwargs)
+
+            with (
+                patch.object(
+                    download.shutil, "rmtree", side_effect=fail_partial_cleanup
+                ),
+                patch.object(self.downloader.logger, "warning") as warning,
+            ):
+                success, error = self._apply_overlay(
+                    target, {"a.txt": "new a", "b.txt": "new b"}
+                )
+            self.assertTrue(success, error)
+            self.assertEqual(["backup"], cleanup_calls)
+            self.assertEqual("new a", (target / "a.txt").read_text())
+            self.assertEqual("new b", (target / "b.txt").read_text())
+            workspaces = list(target.glob(".dumb-overlay-*"))
+            self.assertEqual(1, len(workspaces))
+            self.assertEqual("old b.txt", (workspaces[0] / "backup/b.txt").read_text())
+            self.assertIn(str(workspaces[0] / "backup"), str(warning.call_args))
+
+    def test_directory_replacement_failure_restores_all_original_children(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            target = Path(temporary, "service")
+            (target / "a-directory").mkdir(parents=True)
+            (target / "a-directory/one.txt").write_text("one")
+            (target / "a-directory/two.txt").write_text("two")
+            (target / "z.txt").write_text("old z")
+            original_replace = os.replace
+
+            def fail_later_install(source, destination, **kwargs):
+                if "/stage/" in str(source) and destination == "z.txt":
+                    raise OSError(errno.EIO, "injected later failure")
+                return original_replace(source, destination, **kwargs)
+
+            with patch.object(download.os, "replace", side_effect=fail_later_install):
+                success, error = self._apply_overlay(
+                    target, {"a-directory": "replacement file", "z.txt": "new z"}
+                )
+            self.assertFalse(success)
+            self.assertIn("injected later failure", error)
+            self.assertEqual("one", (target / "a-directory/one.txt").read_text())
+            self.assertEqual("two", (target / "a-directory/two.txt").read_text())
+            self.assertEqual("old z", (target / "z.txt").read_text())
+            self.assertFalse(list(target.glob(".dumb-overlay-*")))
+
+    def test_file_to_directory_replacement_rolls_back_after_child_install_failure(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            target = Path(temporary, "service")
+            target.mkdir()
+            (target / "folder").write_text("original file")
+            original_replace = os.replace
+
+            def fail_child_install(source, destination, **kwargs):
+                if "/stage/" in str(source):
+                    raise OSError(errno.EIO, "injected child failure")
+                return original_replace(source, destination, **kwargs)
+
+            with patch.object(download.os, "replace", side_effect=fail_child_install):
+                success, error = self._apply_overlay(
+                    target, {"folder/child.txt": "new child"}
+                )
+            self.assertFalse(success)
+            self.assertIn("injected child failure", error)
+            self.assertEqual("original file", (target / "folder").read_text())
+            self.assertEqual(["folder"], [p.name for p in target.iterdir()])
+
+    def test_directory_replacement_cannot_delete_excluded_descendant(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            target = Path(temporary, "service")
+            (target / "storage").mkdir(parents=True)
+            (target / "storage/state.db").write_text("persistent data")
+            (target / "a.txt").write_text("old runtime")
+            success, error = self._apply_overlay(
+                target,
+                {"a.txt": "new runtime", "storage": "replacement"},
+                exclude_dirs=[str(target / "storage/state.db")],
+            )
+            self.assertFalse(success)
+            self.assertIn("excluded data", error)
+            self.assertEqual(
+                "persistent data", (target / "storage/state.db").read_text()
+            )
+            self.assertEqual("old runtime", (target / "a.txt").read_text())
+            self.assertFalse(list(target.glob(".dumb-overlay-*")))
+
+    def test_replacing_directory_symlink_cannot_remove_excluded_data_access(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            target = Path(temporary, "service")
+            data = Path(temporary, "protected-data")
+            target.mkdir()
+            data.mkdir()
+            (data / "state.db").write_text("persistent data")
+            (target / "storage").symlink_to(data, target_is_directory=True)
+            (target / "a.txt").write_text("old runtime")
+            success, error = self._apply_overlay(
+                target,
+                {"a.txt": "candidate", "storage": "replacement"},
+                exclude_dirs=["storage/state.db"],
+            )
+            self.assertFalse(success)
+            self.assertIn("excluded data", error)
+            self.assertTrue((target / "storage").is_symlink())
+            self.assertEqual(
+                "persistent data", (target / "storage/state.db").read_text()
+            )
+            self.assertEqual("old runtime", (target / "a.txt").read_text())
+
+    def test_existing_leaf_symlink_is_replaced_without_changing_its_referent(self):
+        buffer = io.BytesIO()
+        with zipfile.ZipFile(buffer, "w") as archive:
+            archive.writestr("new-target.txt", "new target")
+            link = zipfile.ZipInfo("link")
+            link.create_system = 3
+            link.external_attr = (stat.S_IFLNK | 0o777) << 16
+            archive.writestr(link, "new-target.txt")
+        with tempfile.TemporaryDirectory() as temporary:
+            target = Path(temporary, "service")
+            target.mkdir()
+            (target / "old-target.txt").write_text("old target")
+            (target / "link").symlink_to("old-target.txt")
+            response = FakeResponse(
+                200,
+                {"Content-Disposition": "attachment; filename=app.zip"},
+                buffer.getvalue(),
+            )
+            with patch.object(
+                self.downloader, "fetch_with_retries", return_value=response
+            ):
+                success, error = self.downloader.download_and_extract(
+                    "https://example.test/app.zip", str(target)
+                )
+            self.assertTrue(success, error)
+            self.assertEqual("new-target.txt", os.readlink(target / "link"))
+            self.assertEqual("old target", (target / "old-target.txt").read_text())
+            self.assertEqual("new target", (target / "link").read_text())
+
+    def test_existing_directory_symlink_is_rejected_before_any_changes(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            target = Path(temporary, "service")
+            outside = Path(temporary, "outside")
+            target.mkdir()
+            outside.mkdir()
+            (outside / "runtime.txt").write_text("outside runtime")
+            (target / "nested").symlink_to(outside, target_is_directory=True)
+            (target / "a.txt").write_text("old runtime")
+            success, error = self._apply_overlay(
+                target, {"a.txt": "new runtime", "nested/runtime.txt": "candidate"}
+            )
+            self.assertFalse(success)
+            self.assertIn("directory symlink", error)
+            self.assertEqual("old runtime", (target / "a.txt").read_text())
+            self.assertEqual("outside runtime", (outside / "runtime.txt").read_text())
+            self.assertTrue((target / "nested").is_symlink())
+
+    def test_nested_mount_preflight_preserves_entire_install(self):
+        for replace_parent in (False, True):
+            with (
+                self.subTest(replace_parent=replace_parent),
+                tempfile.TemporaryDirectory() as temporary,
+            ):
+                target = Path(temporary, "service")
+                (target / "folder/nested").mkdir(parents=True)
+                (target / "folder/nested/state.db").write_text("mounted data")
+                (target / "a.txt").write_text("old runtime")
+                original_mount_id = download._mount_id
+
+                def nested_mount_id(descriptor):
+                    actual = original_mount_id(descriptor)
+                    path = os.readlink(f"/proc/self/fd/{descriptor}")
+                    return (
+                        actual + 1 if path == str(target / "folder/nested") else actual
+                    )
+
+                entries = (
+                    {"a.txt": "new runtime", "folder": "replacement"}
+                    if replace_parent
+                    else {
+                        "a.txt": "new runtime",
+                        "folder/nested/state.db": "replacement",
+                    }
+                )
+                with patch.object(download, "_mount_id", side_effect=nested_mount_id):
+                    success, error = self._apply_overlay(target, entries)
+                self.assertFalse(success)
+                self.assertIn("nested mount", error)
+                self.assertEqual("old runtime", (target / "a.txt").read_text())
+                self.assertEqual(
+                    "mounted data", (target / "folder/nested/state.db").read_text()
+                )
+                self.assertFalse(list(target.glob(".dumb-overlay-*")))
+
+    def test_excluded_nested_mount_does_not_block_unrelated_runtime_update(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            target = Path(temporary, "service")
+            (target / "data").mkdir(parents=True)
+            (target / "data/state.db").write_text("mounted data")
+            (target / "runtime.txt").write_text("old runtime")
+            original_mount_id = download._mount_id
+
+            def nested_mount_id(descriptor):
+                actual = original_mount_id(descriptor)
+                return (
+                    actual + 1
+                    if os.readlink(f"/proc/self/fd/{descriptor}")
+                    == str(target / "data")
+                    else actual
+                )
+
+            with patch.object(download, "_mount_id", side_effect=nested_mount_id):
+                success, error = self._apply_overlay(
+                    target,
+                    {"runtime.txt": "new runtime", "data/state.db": "candidate"},
+                    exclude_dirs=["data"],
+                )
+            self.assertTrue(success, error)
+            self.assertEqual("new runtime", (target / "runtime.txt").read_text())
+            self.assertEqual("mounted data", (target / "data/state.db").read_text())
+
+    def test_real_mount_root_overlay_works_for_fresh_update_and_rollback(self):
+        target = Path("/dev/shm")
+        if not target.is_dir() or not os.access(target, os.W_OK):
+            self.skipTest("No writable separate temporary filesystem.")
+        with open("/proc/self/mountinfo", encoding="ascii") as info:
+            if not any(line.split()[4] == "/dev/shm" for line in info):
+                self.skipTest("/dev/shm is not a mount root.")
+        self.assertNotEqual(os.stat(target).st_dev, os.stat(target.parent).st_dev)
+        for existing in (False, True):
+            for fail_install in (False, True):
+                with (
+                    self.subTest(existing=existing, fail_install=fail_install),
+                    tempfile.TemporaryDirectory(
+                        prefix="dumb-overlay-test-", dir=target
+                    ) as temporary,
+                ):
+                    fixture = Path(temporary)
+                    runtime = fixture / "runtime.txt"
+                    if existing:
+                        runtime.write_text("old runtime")
+                    original_replace = os.replace
+                    workspaces = []
+                    replacements = []
+
+                    def validate_stage(stage):
+                        workspace = Path(stage).resolve().parent
+                        workspaces.append(workspace)
+                        self.assertEqual(target, workspace.parent)
+                        return True, None
+
+                    def inspect_replace(source, destination, **kwargs):
+                        replacements.append((source, destination))
+                        if "/stage/" in str(source) and fail_install:
+                            raise OSError(errno.EIO, "injected mount-root failure")
+                        return original_replace(source, destination, **kwargs)
+
+                    try:
+                        with patch.object(
+                            download.os, "replace", side_effect=inspect_replace
+                        ):
+                            success, error = self._apply_overlay(
+                                target,
+                                {f"{fixture.name}/runtime.txt": "new runtime"},
+                                staging_validator=validate_stage,
+                            )
+                        self.assertEqual(not fail_install, success, error)
+                        if success:
+                            self.assertEqual("new runtime", runtime.read_text())
+                        elif existing:
+                            self.assertEqual("old runtime", runtime.read_text())
+                        else:
+                            self.assertFalse(runtime.exists())
+                        self.assertTrue(replacements)
+                        self.assertTrue(all(not path.exists() for path in workspaces))
+                    finally:
+                        for workspace in workspaces:
+                            shutil.rmtree(workspace, ignore_errors=True)
+
+    def test_recovery_workspace_blocks_retry_without_modifying_backup(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            target = Path(temporary, "service")
+            backup = target / ".dumb-overlay-retained/backup"
+            backup.mkdir(parents=True)
+            (backup / "runtime.txt").write_text("recoverable original")
+            (target / "runtime.txt").write_text("current runtime")
+            with patch.object(download.os, "replace") as replace:
+                success, error = self._apply_overlay(
+                    target, {"runtime.txt": "candidate"}
+                )
+            self.assertFalse(success)
+            self.assertIn("Unresolved archive recovery workspace", error)
+            self.assertIn(str(backup.parent), error)
+            replace.assert_not_called()
+            self.assertEqual(
+                "recoverable original", (backup / "runtime.txt").read_text()
+            )
+            self.assertEqual("current runtime", (target / "runtime.txt").read_text())
+            self.assertEqual([backup.parent], list(target.glob(".dumb-overlay-*")))
+
+    def test_concurrent_overlay_is_rejected_without_affecting_first_candidate(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            target = Path(temporary, "service")
+            target.mkdir()
+            (target / "runtime.txt").write_text("old runtime")
+            nested_results = []
+
+            def validate_stage(stage):
+                nested_results.append(
+                    self._apply_overlay(target, {"runtime.txt": "concurrent candidate"})
+                )
+                self.assertEqual("old runtime", (target / "runtime.txt").read_text())
+                return True, None
+
+            success, error = self._apply_overlay(
+                target,
+                {"runtime.txt": "first candidate"},
+                staging_validator=validate_stage,
+            )
+            self.assertTrue(success, error)
+            self.assertEqual(1, len(nested_results))
+            self.assertFalse(nested_results[0][0])
+            self.assertIn("already in progress", nested_results[0][1])
+            self.assertEqual("first candidate", (target / "runtime.txt").read_text())
+            self.assertFalse(list(target.glob(".dumb-overlay-*")))
+
+    def test_reserved_workspace_archive_member_cannot_replace_recovery_storage(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            target = Path(temporary, "service")
+            target.mkdir()
+            (target / "runtime.txt").write_text("old runtime")
+            success, error = self._apply_overlay(
+                target,
+                {
+                    "runtime.txt": "candidate",
+                    ".dumb-overlay-forged/backup/data.txt": "forged",
+                },
+            )
+            self.assertFalse(success)
+            self.assertIn("reserved recovery workspace", error)
+            self.assertEqual("old runtime", (target / "runtime.txt").read_text())
+            self.assertEqual(["runtime.txt"], [p.name for p in target.iterdir()])
+
+    def test_target_rename_does_not_redirect_protected_data_checks_or_mutations(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            target = Path(temporary, "service")
+            original = Path(temporary, "original-service")
+            (target / "storage").mkdir(parents=True)
+            (target / "storage/state.db").write_text("persistent original")
+            (target / "a.txt").write_text("old runtime")
+
+            def move_target(stage):
+                target.rename(original)
+                target.mkdir()
+                (target / "a.txt").write_text("replacement root")
+                return True, None
+
+            success, error = self._apply_overlay(
+                target,
+                {"a.txt": "candidate", "storage": "replacement"},
+                exclude_dirs=["storage/state.db"],
+                staging_validator=move_target,
+            )
+            self.assertFalse(success)
+            self.assertIn("excluded data", error)
+            self.assertEqual(
+                "persistent original", (original / "storage/state.db").read_text()
+            )
+            self.assertEqual("old runtime", (original / "a.txt").read_text())
+            self.assertEqual("replacement root", (target / "a.txt").read_text())
+            self.assertFalse(list(original.glob(".dumb-overlay-*")))
+
+    def test_fresh_install_failure_removes_empty_created_root(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            target = Path(temporary, "new-service")
+            with patch.object(
+                download.os,
+                "replace",
+                side_effect=OSError(errno.EIO, "injected failure"),
+            ):
+                success, error = self._apply_overlay(
+                    target, {"runtime.txt": "candidate"}
+                )
+            self.assertFalse(success)
+            self.assertIn("injected failure", error)
+            self.assertFalse(target.exists())
 
     def test_download_uses_verified_cached_archive_when_revalidation_is_offline(self):
         zip_buffer = io.BytesIO()

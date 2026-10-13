@@ -10,7 +10,7 @@ from utils import postgres
 from utils.tautulli_update import tautulli_persistent_excludes
 from utils.config_loader import CONFIG_MANAGER
 from utils.global_logger import logger
-from utils.download import Downloader
+from utils.download import Downloader, archive_overlay_recovery_paths
 from utils.versions import Versions
 from utils.plex import PlexInstaller
 from utils.traefik_setup import get_traefik_proxy_url, setup_traefik
@@ -11714,6 +11714,19 @@ def setup_environment(
 
 
 def clear_directory(directory_path, exclude_dirs=None, retries=3, delay=2):
+    try:
+        recovery_paths = archive_overlay_recovery_paths(directory_path)
+    except OSError as error:
+        return (
+            False,
+            f"Cannot inspect archive recovery state in {directory_path}: {error}",
+        )
+    if recovery_paths:
+        return (
+            False,
+            f"Cannot clear {directory_path}: archive recovery workspace exists at "
+            f"{recovery_paths[0]}; preserve and recover it before retrying.",
+        )
 
     if exclude_dirs is None:
         exclude_dirs = []
