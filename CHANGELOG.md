@@ -1,5 +1,32 @@
 # Changelog
 
+## [2.23.0](https://github.com/I-am-PUID-0/DUMB/compare/2.22.1...2.23.0) (2026-10-13)
+
+
+### ✨ Features
+
+* **whisparr:** add v2 and Eros selection with database safeguards ([b24a2c1](https://github.com/I-am-PUID-0/DUMB/commit/b24a2c1202184569cfc257965fa07697b2b17688)), closes [#359](https://github.com/I-am-PUID-0/DUMB/issues/359)
+
+
+### 🐛 Bug Fixes
+
+* **decypharr:** add TorBox defaults and preserve bootstrap mounts ([7b5b642](https://github.com/I-am-PUID-0/DUMB/commit/7b5b642442aa3016d35e1cc40e767cc4c2f87dff))
+* **deps:** refresh dependencies and repair source-build compatibility ([f9f41da](https://github.com/I-am-PUID-0/DUMB/commit/f9f41da8469fed209a18c9c673230516fbd6bbcd))
+* **download:** preserve archive rollback on mounted service roots ([6636b73](https://github.com/I-am-PUID-0/DUMB/commit/6636b73c7bfe312b68a7f256c81b06b7a64c4eb9)), closes [#335](https://github.com/I-am-PUID-0/DUMB/issues/335)
+* **health:** recognize Emby's native ping identity as healthy ([da7b15d](https://github.com/I-am-PUID-0/DUMB/commit/da7b15d92a9c1bd318d5d807951357d385afbb47))
+* **infinidysk:** persist stable keys and recover rejected credentials ([57db0a1](https://github.com/I-am-PUID-0/DUMB/commit/57db0a160db989a639ba7e14af97511f8cd302b4))
+* **migration:** bind imports to validated PostgreSQL public tables ([ea59d1d](https://github.com/I-am-PUID-0/DUMB/commit/ea59d1d7eb4b456d4c05da58e11d42b61c4e248c))
+* **runtime:** reap orphaned children with container init ([984111d](https://github.com/I-am-PUID-0/DUMB/commit/984111d3e9c4b6944de8df4401e803c70788f0e5)), closes [#344](https://github.com/I-am-PUID-0/DUMB/issues/344)
+* **security:** verify bootstrap signatures and release digests ([2a10f2e](https://github.com/I-am-PUID-0/DUMB/commit/2a10f2e9356d34c614de266c6f0a932fca8ce638))
+* **zurg:** edit root YAML settings without corrupting providers ([007f1f3](https://github.com/I-am-PUID-0/DUMB/commit/007f1f3a0e87a83b3b1597cd0733a728eac8b7b0)), closes [#346](https://github.com/I-am-PUID-0/DUMB/issues/346)
+
+
+### 🛠️ Build System
+
+* **deps:** bump actions/upload-artifact from 7.0.1 to 7.0.2 ([#360](https://github.com/I-am-PUID-0/DUMB/issues/360)) ([0f36446](https://github.com/I-am-PUID-0/DUMB/commit/0f3644612f1ecc16f3cff7d4a9288083ea1d2644))
+* **deps:** bump apprise from 1.13.1 to 2.0.1 ([#361](https://github.com/I-am-PUID-0/DUMB/issues/361)) ([9a627df](https://github.com/I-am-PUID-0/DUMB/commit/9a627df9cb4b5a775edcaea66c12d18ec5cfab59))
+* require Node &gt;=24.15.0 &lt;25 in DUMB images ([50e0382](https://github.com/I-am-PUID-0/DUMB/commit/50e03820deef48374337784de3f1e2e6f548819f))
+
 ## [2.22.1](https://github.com/I-am-PUID-0/DUMB/compare/2.22.0...2.22.1) (2026-09-10)
 
 
