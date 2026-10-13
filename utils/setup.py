@@ -2656,11 +2656,12 @@ def _setup_project_inner(
                 logger.info(f"Copied .env from {src} to {dest}")
 
         if configure_phase and key == "infinidysk":
+            original_env = (config.get("env") or {}).copy()
+            original_webdav_password = config.get("webdav_password")
             webdav_password = (config.get("webdav_password") or "").strip()
             if not webdav_password:
                 webdav_password = secrets.token_urlsafe(24)
                 config["webdav_password"] = webdav_password
-                CONFIG_MANAGER.save_config(process_name)
                 logger.info("Generated InfiniDysk WebDAV password.")
 
             backend_port = str(config.get("backend_port", 8080))
@@ -2672,7 +2673,10 @@ def _setup_project_inner(
                 "PORT": str(config.get("frontend_port", 3000)),
                 "NODE_ENV": "production",
                 "BACKEND_URL": f"http://127.0.0.1:{backend_port}",
-                "FRONTEND_BACKEND_API_KEY": secrets.token_hex(32),
+                "FRONTEND_BACKEND_API_KEY": (
+                    str(original_env.get("FRONTEND_BACKEND_API_KEY") or "").strip()
+                    or secrets.token_hex(32)
+                ),
                 "SERVICE_PROVIDER": _NZBDAV_SERVICE_PROVIDER,
             }
             env = default_env.copy()
@@ -2704,9 +2708,13 @@ def _setup_project_inner(
                         "Failed to read InfiniDysk version file at %s", version_path
                     )
             config["env"] = env
+            infinidysk_config_changed = (
+                original_env != env
+                or original_webdav_password != config.get("webdav_password")
+            )
 
         if configure_phase and config.get("env"):
-            env_changed = False
+            env_changed = key == "infinidysk" and infinidysk_config_changed
             for env_key, value in config["env"].items():
                 if not isinstance(value, str):
                     continue

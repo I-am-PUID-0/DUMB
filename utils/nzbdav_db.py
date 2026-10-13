@@ -1,6 +1,7 @@
 from utils.config_loader import CONFIG_MANAGER
 from utils.global_logger import logger
 from typing import Dict, Iterable, Optional, Tuple
+from pathlib import Path
 import os, re, sqlite3
 
 _TABLE_NAME_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
@@ -292,6 +293,57 @@ def get_config_value(name: str, config_dir: Optional[str] = None) -> Optional[st
             (name,),
         ).fetchone()
     return row["ConfigValue"] if row else None
+
+
+def uses_postgres_database(config: dict) -> bool:
+    from utils.service_postgres import _infinidysk_postgres_selected
+
+    return _infinidysk_postgres_selected(config)
+
+
+def get_active_config_value(name: str, config: dict) -> Optional[str]:
+    """Read the selected application store without falling back across providers."""
+    if not uses_postgres_database(config):
+        env = config.get("env") or {}
+        config_dir = env.get("CONFIG_PATH") or config.get("config_dir") or "/infinidysk"
+        uri = (Path(config_dir) / "db.sqlite").resolve().as_uri() + "?mode=ro"
+        connection = sqlite3.connect(uri, uri=True, timeout=2)
+        try:
+            row = connection.execute(
+                "SELECT ConfigValue FROM ConfigItems WHERE ConfigName = ?", (name,)
+            ).fetchone()
+            return row[0] if row else None
+        finally:
+            connection.close()
+
+    import psycopg2
+    from utils.database_health import _service_postgres_connection
+
+    settings = _service_postgres_connection(
+        "infinidysk", config, {"postgres": CONFIG_MANAGER.get("postgres") or {}}
+    )
+    connection = psycopg2.connect(
+        host=settings["host"],
+        port=settings["port"],
+        user=settings["user"],
+        password=settings["password"],
+        dbname=settings["database"],
+        connect_timeout=2,
+        application_name="dumb_infinidysk_config",
+    )
+    try:
+        connection.set_session(readonly=True, autocommit=True)
+        with connection.cursor() as cursor:
+            cursor.execute("SET statement_timeout = '2s'")
+            cursor.execute(
+                'SELECT "ConfigValue" FROM "public"."ConfigItems" '
+                'WHERE "ConfigName" = %s',
+                (name,),
+            )
+            row = cursor.fetchone()
+        return row[0] if row else None
+    finally:
+        connection.close()
 
 
 def set_config_value(

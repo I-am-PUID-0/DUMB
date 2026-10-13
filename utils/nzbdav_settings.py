@@ -195,53 +195,70 @@ def _uses_postgres_database(config: Optional[dict] = None) -> bool:
     config = (
         config if isinstance(config, dict) else (CONFIG_MANAGER.get("infinidysk") or {})
     )
-    env = config.get("env") or {}
-    return (
-        config.get("postgres_enabled") is True
-        or str(env.get("DATABASE_PROVIDER") or "").strip().lower() == "postgres"
-    )
+    return nzbdav_db.uses_postgres_database(config)
+
+
+def _infinidysk_config_snapshot(config: dict) -> dict:
+    """Keep recovered request credentials separate from persistent process settings."""
+    return {**config, "env": (config.get("env") or {}).copy()}
 
 
 def _infinidysk_api_key(config: dict) -> str:
     env = config.get("env") or {}
     api_key = str(env.get("FRONTEND_BACKEND_API_KEY") or "").strip()
-    if api_key or _uses_postgres_database(config):
+    if api_key:
         return api_key
+    return _infinidysk_database_api_key(config)
+
+
+def _infinidysk_database_api_key(config: dict) -> str:
     try:
-        return str(nzbdav_db.get_config_value("api.key") or "").strip()
-    except FileNotFoundError:
+        return str(nzbdav_db.get_active_config_value("api.key", config) or "").strip()
+    except Exception:
+        # Recovery is optional; never expose database connection errors or secrets.
         return ""
 
 
 def _infinidysk_config_api_request(
     config: dict, endpoint: str, fields: list[tuple[str, str]]
 ) -> tuple[Optional[dict], Optional[str]]:
+    # Callers supply an invocation-local snapshot so a validated recovery key can
+    # also be used for subsequent settings and Arr calls without changing DUMB env.
     api_key = _infinidysk_api_key(config)
     if not api_key:
         return None, "InfiniDysk frontend/backend API key is unavailable."
     backend_port = int(config.get("backend_port") or 8080)
-    request = safe_request(
-        f"http://127.0.0.1:{backend_port}/{endpoint.lstrip('/')}",
-        data=urllib.parse.urlencode(fields).encode("utf-8"),
-        headers={
-            "Content-Type": "application/x-www-form-urlencoded",
-            "x-api-key": api_key,
-        },
-        method="POST",
-    )
-    try:
-        with safe_urlopen(request, timeout=5) as response:
-            payload = json.loads(response.read().decode("utf-8") or "{}")
-            if 200 <= response.status < 300:
-                return payload if isinstance(payload, dict) else {}, None
-            return (
-                None,
-                f"InfiniDysk configuration API returned HTTP {response.status}.",
-            )
-    except urllib.error.HTTPError as error:
-        return None, f"InfiniDysk configuration API returned HTTP {error.code}."
-    except (urllib.error.URLError, TimeoutError, OSError, ValueError, TypeError):
-        return None, "InfiniDysk configuration API is not available yet."
+    for attempt in range(2):
+        request = safe_request(
+            f"http://127.0.0.1:{backend_port}/{endpoint.lstrip('/')}",
+            data=urllib.parse.urlencode(fields).encode("utf-8"),
+            headers={
+                "Content-Type": "application/x-www-form-urlencoded",
+                "x-api-key": api_key,
+            },
+            method="POST",
+        )
+        try:
+            with safe_urlopen(request, timeout=5) as response:
+                payload = json.loads(response.read().decode("utf-8") or "{}")
+                if 200 <= response.status < 300:
+                    if attempt:
+                        config["env"]["FRONTEND_BACKEND_API_KEY"] = api_key
+                    return payload if isinstance(payload, dict) else {}, None
+                return (
+                    None,
+                    f"InfiniDysk configuration API returned HTTP {response.status}.",
+                )
+        except urllib.error.HTTPError as error:
+            if error.code == 401 and attempt == 0:
+                recovered_key = _infinidysk_database_api_key(config)
+                if recovered_key and recovered_key != api_key:
+                    api_key = recovered_key
+                    continue
+            return None, f"InfiniDysk configuration API returned HTTP {error.code}."
+        except (urllib.error.URLError, TimeoutError, OSError, ValueError, TypeError):
+            return None, "InfiniDysk configuration API is not available yet."
+    return None, "InfiniDysk configuration API returned HTTP 401."
 
 
 def _read_nzbdav_config_values(
@@ -294,7 +311,7 @@ def sync_nzbdav_rclone_rc(
     password: Optional[str] = None,
 ) -> Tuple[bool, Optional[str]]:
     keys = ("rclone.rc-enabled", "rclone.host", "rclone.user", "rclone.pass")
-    nzbdav_config = CONFIG_MANAGER.get("infinidysk") or {}
+    nzbdav_config = _infinidysk_config_snapshot(CONFIG_MANAGER.get("infinidysk") or {})
     current, error = _read_nzbdav_config_values(keys, nzbdav_config)
     if current is None:
         return False, error
@@ -876,7 +893,7 @@ def patch_nzbdav_config():
 
 
 def _patch_nzbdav_config_admitted():
-    config = CONFIG_MANAGER.get("infinidysk") or {}
+    config = _infinidysk_config_snapshot(CONFIG_MANAGER.get("infinidysk") or {})
     download_client_name = (
         "NzbDAV"
         if "nzbdav" in str(config.get("process_name") or "").lower()
@@ -885,7 +902,6 @@ def _patch_nzbdav_config_admitted():
     standalone_symlink_root = _infinidysk_symlink_root(config)
     standalone_mount_root = _infinidysk_mount_root(config)
     backend_port = int(config.get("backend_port") or 8080)
-    nzbdav_api_key = _infinidysk_api_key(config)
 
     radarr_entries, sonarr_entries, lidarr_entries, whisparr_entries = (
         _collect_arr_entries()
@@ -1203,6 +1219,7 @@ def _patch_nzbdav_config_admitted():
     except Exception as e:
         logger.warning("Failed to ensure Arr root folders: %s", e)
 
+    nzbdav_api_key = _infinidysk_api_key(config)
     if not nzbdav_api_key:
         logger.warning(
             "InfiniDysk API key not found; skipping Arr download client setup."
@@ -1217,6 +1234,18 @@ def _patch_nzbdav_config_admitted():
         )
         _schedule_nzbdav_retry()
         return updated, None
+
+    if not _uses_postgres_database(config):
+        _, auth_error = _infinidysk_config_api_request(
+            config, "/api/get-config", [("config-keys", "api.categories")]
+        )
+        if auth_error == "InfiniDysk configuration API returned HTTP 401.":
+            logger.warning(
+                "InfiniDysk rejected its configured API key; deferring Arr download client setup."
+            )
+            _schedule_nzbdav_retry()
+            return updated, None
+        nzbdav_api_key = _infinidysk_api_key(config)
 
     category_map = {
         "radarr": "movies",

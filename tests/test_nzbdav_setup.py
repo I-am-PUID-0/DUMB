@@ -1,3 +1,4 @@
+import ast
 import json
 import os
 import subprocess
@@ -11,6 +12,113 @@ from utils import nzbdav_settings, setup
 
 
 class InfiniDyskSetupTests(unittest.TestCase):
+    def test_configure_persists_completed_credentials_and_reuses_them_after_reload(
+        self,
+    ):
+        # Execute the real ConfigManager without constructing its live singleton.
+        source = Path(setup.__file__).with_name("config_loader.py")
+        tree = ast.parse(source.read_text())
+        tree.body = [
+            node
+            for node in tree.body
+            if not (
+                isinstance(node, ast.Assign)
+                and any(
+                    isinstance(target, ast.Name) and target.id == "CONFIG_MANAGER"
+                    for target in node.targets
+                )
+            )
+        ]
+        namespace = {"__file__": str(source)}
+        exec(compile(tree, str(source), "exec"), namespace)  # noqa: S102
+        manager_class = namespace["ConfigManager"]
+
+        for initial_key in (
+            None,
+            "configured-fixture-key",
+            "  configured-fixture-key  ",
+        ):
+            with (
+                self.subTest(initial_key=initial_key),
+                tempfile.TemporaryDirectory() as tmp,
+            ):
+                path = Path(tmp, "config.json")
+                config = {
+                    "process_name": "InfiniDysk",
+                    "config_dir": tmp,
+                    "webdav_password": "",
+                    "env": {"EXTRA_SETTING": "{backend_port}"},
+                    "backend_port": 8080,
+                }
+                if initial_key is not None:
+                    config["env"]["FRONTEND_BACKEND_API_KEY"] = initial_key
+                path.write_text(json.dumps({"infinidysk": config}))
+                handler = Mock()
+                handler.setup_tracker = {"InfiniDysk"}
+                handler.setup_tracker_lock = threading.Lock()
+                saved_snapshots = []
+                for cycle in range(2):
+                    manager = manager_class.__new__(manager_class)
+                    manager.file_path = str(path)
+                    manager.schema = {}
+                    manager._legacy_infinidysk_identity = False
+                    manager.config = json.loads(path.read_text())
+                    original_save = manager.save_config
+
+                    def save(process_name):
+                        saved_snapshots.append(json.loads(json.dumps(manager.config)))
+                        original_save(process_name)
+
+                    with (
+                        patch.object(setup, "CONFIG_MANAGER", manager),
+                        patch.object(manager, "save_config", side_effect=save),
+                        patch.object(setup, "setup_nzbdav", return_value=(True, None)),
+                        patch.object(
+                            setup,
+                            "_validate_infinidysk_postgres_source",
+                            return_value=(True, None),
+                        ),
+                        patch.object(
+                            setup.secrets,
+                            "token_hex",
+                            return_value="generated-fixture-key",
+                        ) as generate_key,
+                        patch.object(
+                            setup.secrets,
+                            "token_urlsafe",
+                            return_value="generated-webdav-fixture",
+                        ) as generate_password,
+                    ):
+                        success, error = setup._setup_project_inner(
+                            handler,
+                            "InfiniDysk",
+                            install_phase=False,
+                            configure_phase=True,
+                        )
+                    self.assertTrue(success, error)
+                    self.assertEqual(
+                        generate_key.call_count, int(cycle == 0 and initial_key is None)
+                    )
+                    self.assertEqual(generate_password.call_count, int(cycle == 0))
+                    persisted = json.loads(path.read_text())["infinidysk"]
+                    expected_key = (
+                        initial_key.strip() if initial_key else "generated-fixture-key"
+                    )
+                    self.assertEqual(
+                        persisted["env"]["FRONTEND_BACKEND_API_KEY"], expected_key
+                    )
+                    self.assertEqual(
+                        persisted["webdav_password"], "generated-webdav-fixture"
+                    )
+                    self.assertEqual(
+                        persisted["env"]["WEBDAV_PASSWORD"], "generated-webdav-fixture"
+                    )
+                    self.assertEqual(persisted["env"]["EXTRA_SETTING"], "8080")
+                self.assertEqual(len(saved_snapshots), 1)
+                self.assertIn(
+                    "FRONTEND_BACKEND_API_KEY", saved_snapshots[0]["infinidysk"]["env"]
+                )
+
     def test_postgres_install_only_refuses_a_ready_v11_runtime(self):
         config = {
             "process_name": "InfiniDysk",
