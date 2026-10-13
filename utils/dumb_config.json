@@ -1333,6 +1333,7 @@
   "whisparr": {
     "instances": {
       "Default": {
+        "whisparr_version": "",
         "enabled": false,
         "core_service": "",
         "use_neutarr": false,

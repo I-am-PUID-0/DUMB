@@ -215,7 +215,6 @@ class UpdateNotificationTests(unittest.TestCase):
             "lidarr",
             "prowlarr",
             "readarr",
-            "whisparr",
         ):
             with self.subTest(key=key):
                 updater = self._updater()

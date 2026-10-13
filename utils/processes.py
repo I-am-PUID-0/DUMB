@@ -484,6 +484,17 @@ class ProcessHandler:
                 key, instance_name = CONFIG_MANAGER.find_key_for_process(process_name)
                 config_for_wait = CONFIG_MANAGER.get_instance(instance_name, key)
 
+            if key == "whisparr":
+                from utils.whisparr_settings import validate_whisparr_runtime
+
+                # Setup can replace the managed command while the caller still
+                # holds its old value. Validate and launch the prepared runtime.
+                command = config_for_wait.get("command") or command
+                config_dir = config_for_wait.get("config_dir") or config_dir
+                validate_whisparr_runtime(
+                    config_for_wait, command[0] if command else None
+                )
+
             if config_for_wait:
                 if config_for_wait.get("wait_for_dir"):
                     dependency_dir = config_for_wait["wait_for_dir"]

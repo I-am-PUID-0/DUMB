@@ -864,6 +864,18 @@ def _reject_infinidysk_postgres_reversal(
         raise HTTPException(status_code=400, detail=error)
 
 
+def _validate_whisparr_update(candidate_service):
+    from utils.whisparr_settings import (
+        WhisparrConfigurationError,
+        resolve_whisparr_version,
+    )
+
+    try:
+        resolve_whisparr_version(candidate_service)
+    except WhisparrConfigurationError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from None
+
+
 @config_router.get("/")
 async def get_config(
     process_name: Optional[str] = Query(
@@ -945,6 +957,8 @@ async def update_config(
             "symlink_backup_roots",
         }
         config_key, _ = CONFIG_MANAGER.find_key_for_process(process_name)
+        if config_key == "whisparr":
+            _validate_whisparr_update(merged)
         guarded_service = config_key in {"infinidysk", "postgres"}
         with INFINIDYSK_MIGRATION_ADMISSION_LOCK:
             namespace_blocked = infinidysk_namespace_migration_active()
@@ -1079,6 +1093,12 @@ async def update_config(
             status_code=400,
             detail=f"Validation error in global update at '{loc}': {detail}",
         )
+
+    if "whisparr" in updates:
+        for instance in (
+            merged_config.get("whisparr", {}).get("instances", {}) or {}
+        ).values():
+            _validate_whisparr_update(instance)
 
     infinidysk_updates = updates.get("infinidysk")
     guarded_update = isinstance(infinidysk_updates, dict) or "postgres" in updates

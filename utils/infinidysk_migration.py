@@ -1767,6 +1767,11 @@ class InfiniDyskMigrationManager:
             ]
         host = f"http://127.0.0.1:{int(port)}"
         api_version, item_endpoint = ARR_SERVICE_API[key]
+        if key == "whisparr":
+            from utils.whisparr_settings import resolve_whisparr_version
+
+            if resolve_whisparr_version(instance) == "v3":
+                item_endpoint = "movie"
         endpoint = "queue"
         try:
             queue = (
@@ -3402,6 +3407,8 @@ class InfiniDyskMigrationManager:
                 exact_updates.append(target)
 
         editor_endpoint, id_field = ARR_EDITOR_API[service_key]
+        if service_key == "whisparr" and item_endpoint == "movie":
+            editor_endpoint, id_field = "movie/editor", "movieIds"
         completed = 0
 
         def report(mode: str) -> None:

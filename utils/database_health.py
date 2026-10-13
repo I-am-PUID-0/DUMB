@@ -19,6 +19,7 @@ from typing import Any
 from urllib.parse import unquote, urlparse
 
 import yaml
+from utils.whisparr_settings import whisparr_database_file
 
 ARR_DATABASE_FILES = {
     "sonarr": "sonarr.db",
@@ -387,8 +388,13 @@ class DatabaseHealthCollector:
         service = candidate["service_config"]
         config_dir = str(service.get("config_dir") or "")
         if key in ARR_DATABASE_FILES:
+            main_file = (
+                whisparr_database_file(service)
+                if key == "whisparr"
+                else ARR_DATABASE_FILES[key]
+            )
             return [
-                ("main", os.path.join(config_dir, ARR_DATABASE_FILES[key])),
+                ("main", os.path.join(config_dir, main_file)),
                 ("logs", os.path.join(config_dir, "logs.db")),
             ]
         if key == "infinidysk":

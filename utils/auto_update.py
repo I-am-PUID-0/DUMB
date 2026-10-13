@@ -1,3 +1,9 @@
+from utils.whisparr_settings import (
+    WhisparrConfigurationError,
+    read_whisparr_version,
+    resolve_whisparr_version,
+    whisparr_release_selector,
+)
 from utils.tautulli_update import tautulli_persistent_excludes
 from utils.global_logger import logger
 from utils.logger import format_time
@@ -9,6 +15,8 @@ from utils.setup import (
     setup_release_version,
     setup_branch_version,
     configure_project,
+    _resolve_arr_install_dir,
+    _get_install_lock,
 )
 from utils.plex import PlexInstaller
 from utils.arr import ArrInstaller
@@ -118,7 +126,7 @@ class Update:
             return "pinned_version"
         if str(config.get("commit_sha") or "").strip():
             return "commit"
-        if config.get("branch_enabled"):
+        if config.get("branch_enabled") and key not in {"whisparr", "whisparr-v3"}:
             return "branch"
         if config.get("release_version_enabled"):
             release = str(config.get("release_version") or "").strip().lower()
@@ -558,6 +566,19 @@ class Update:
             else None
         )
 
+        if key in {"whisparr", "whisparr-v3"}:
+            return self._manual_check_whisparr(
+                process_name,
+                config,
+                key,
+                instance_name,
+                block_reason,
+                checked_at,
+                auto_update_enabled,
+                interval_hours,
+                start_time,
+                next_check_at,
+            )
         if key == "plex":
             return self._manual_check_plex(
                 process_name,
@@ -1115,6 +1136,133 @@ class Update:
             )
         return payload
 
+    def _whisparr_installer(self, config, key, instance_name):
+        resolve_whisparr_version(config)
+        whisparr_release_selector(config)
+        install_dir, _ = _resolve_arr_install_dir(
+            key, instance_name or "Default", config
+        )
+        return ArrInstaller("whisparr", install_dir=install_dir, whisparr_config=config)
+
+    @staticmethod
+    def _whisparr_current_version(config, installer):
+        command = config.get("command")
+        if isinstance(command, list) and command and isinstance(command[0], str):
+            version = read_whisparr_version(command[0])
+            if version:
+                return version
+        binary = installer._find_whisparr_binary(installer.install_dir)
+        return read_whisparr_version(binary) if binary else None
+
+    @staticmethod
+    def _whisparr_target_is_active(config, installer, version):
+        binary = installer._find_whisparr_binary(installer.install_dir)
+        command = config.get("command")
+        return bool(
+            binary
+            and read_whisparr_version(binary) == version
+            and isinstance(command, list)
+            and command
+            and isinstance(command[0], str)
+            and os.path.realpath(command[0]) == os.path.realpath(binary)
+        )
+
+    def _manual_check_whisparr(
+        self,
+        process_name,
+        config,
+        key,
+        instance_name,
+        block_reason,
+        checked_at,
+        auto_update_enabled,
+        interval_hours,
+        start_time,
+        next_check_at,
+    ):
+        payload = {
+            "checked_at": checked_at,
+            "auto_update_enabled": auto_update_enabled,
+            "auto_update_interval": interval_hours,
+            "auto_update_start_time": start_time,
+            "next_check_at": next_check_at,
+        }
+        try:
+            installer = self._whisparr_installer(config, key, instance_name)
+            target, error = installer.get_latest_version()
+            if not target:
+                raise WhisparrConfigurationError(
+                    error or "Failed to resolve Whisparr release."
+                )
+            current = self._whisparr_current_version(config, installer)
+            installed = self._whisparr_target_is_active(config, installer, target)
+        except WhisparrConfigurationError as error:
+            return {
+                **payload,
+                "status": "error",
+                "reason": "whisparr_configuration",
+                "message": str(error),
+            }
+        payload.update(
+            {
+                "status": (
+                    "no_update"
+                    if installed
+                    else ("blocked" if block_reason else "update_available")
+                ),
+                "reason": block_reason,
+                "current_version": current,
+                "available_version": target,
+            }
+        )
+        if block_reason:
+            payload.update(
+                {
+                    "configured_target_kind": block_reason,
+                    "configured_target_installed": installed,
+                }
+            )
+        return payload
+
+    def _update_whisparr(
+        self, process_name, config, key, instance_name, force=False, target_config=None
+    ):
+        try:
+            installer = self._whisparr_installer(
+                target_config if target_config is not None else config,
+                key,
+                instance_name,
+            )
+            target, error = installer.get_latest_version()
+            if not target:
+                raise WhisparrConfigurationError(
+                    error or "Failed to resolve Whisparr release."
+                )
+            if not force and self._whisparr_target_is_active(config, installer, target):
+                return False, f"No updates available for {process_name}."
+        except WhisparrConfigurationError as error:
+            return False, f"Failed Whisparr update preflight: {error}"
+
+        def before_activate():
+            if process_name in self.process_handler.process_names:
+                self.stop_process(process_name)
+            with self.process_handler.setup_tracker_lock:
+                self.process_handler.setup_tracker.discard(process_name)
+
+        with _get_install_lock("whisparr"):
+            success, error = installer.install(
+                force=True, before_activate=before_activate
+            )
+        if not success:
+            return False, f"Failed to update {process_name}: {error}"
+        success, error = configure_project(self.process_handler, process_name)
+        if not success:
+            return False, f"Failed to configure updated {process_name}: {error}"
+        process, error = self.start_process(process_name, config, key, instance_name)
+        if not process:
+            return False, f"Failed to start {process_name}: {error}"
+        return True, f"Updated {process_name} to {target}."
+
     def _manual_check_arr(
         self,
         process_name,
@@ -1502,6 +1650,36 @@ class Update:
             return self._manual_update_install_unprotected(
                 process_name, allow_override, target
             )
+        if key in {"whisparr", "whisparr-v3"}:
+            selected = dict(config)
+            if allow_override and requested_target != "configured":
+                selected.update(
+                    {
+                        "pinned_version": "",
+                        "commit_sha": "",
+                        "release_version_enabled": False,
+                        "release_version": "",
+                        "branch_enabled": False,
+                    }
+                )
+            if requested_target in {"prerelease", "nightly"}:
+                selected.update(
+                    {
+                        "release_version_enabled": True,
+                        "release_version": requested_target,
+                    }
+                )
+            try:
+                resolve_whisparr_version(selected)
+                whisparr_release_selector(selected)
+            except WhisparrConfigurationError as error:
+                payload = {
+                    "status": "error",
+                    "reason": "whisparr_configuration",
+                    "message": str(error),
+                }
+                self._safe_record_update_status(process_name, payload)
+                return payload
         protection = None
         manager = getattr(self, "media_protection_manager", None)
         if manager is not None:
@@ -1705,6 +1883,11 @@ class Update:
         instance_name,
         block_reason,
     ):
+        if key in {"whisparr", "whisparr-v3"}:
+            return self._update_whisparr(
+                process_name, config, key, instance_name, force=True
+            )
+
         def install_selected_source():
             # Manual fixed-release installs must bypass the scheduled-update
             # guard and same-version skip. Dedicated service installers retain
@@ -3087,6 +3270,8 @@ class Update:
                 self._active_install_operation = None
 
     def update_check(self, process_name, config, key, instance_name):
+        if key in {"whisparr", "whisparr-v3"}:
+            return self._update_whisparr(process_name, config, key, instance_name)
         commit_sha = str(config.get("commit_sha") or "").strip().lower()
         if commit_sha:
             return (
@@ -3514,6 +3699,15 @@ class Update:
     ):
         if not target_version:
             return False, f"No updates available for {process_name}."
+        if key in {"whisparr", "whisparr-v3"}:
+            selected = {
+                **config,
+                "pinned_version": target_version,
+                "release_version_enabled": False,
+            }
+            return self._update_whisparr(
+                process_name, config, key, instance_name, target_config=selected
+            )
 
         versions = Versions()
         install_dir = config.get("install_dir")
@@ -3664,6 +3858,8 @@ class Update:
         return True, f"Updated {process_name} to {latest_version}."
 
     def update_check_arr_latest(self, process_name, config, key, instance_name):
+        if key in {"whisparr", "whisparr-v3"}:
+            return self._update_whisparr(process_name, config, key, instance_name)
         versions = Versions()
         install_dir = config.get("install_dir")
         if install_dir:

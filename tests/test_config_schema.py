@@ -55,6 +55,23 @@ class DumbConfigSchemaTests(unittest.TestCase):
             ],
         )
 
+    def test_whisparr_version_defaults_to_detection_and_permits_both_families(self):
+        instance = self.config["whisparr"]["instances"]["Default"]
+        self.assertEqual("", instance["whisparr_version"])
+        for family in ("", "v2", "v3"):
+            candidate = json.loads(json.dumps(self.config))
+            candidate["whisparr"]["instances"]["Default"]["whisparr_version"] = family
+            self.assertEqual(
+                [], list(Draft7Validator(self.schema).iter_errors(candidate))
+            )
+        candidate["whisparr"]["instances"]["Default"]["whisparr_version"] = "v4"
+        self.assertTrue(
+            any(
+                list(error.path)[-1] == "whisparr_version"
+                for error in Draft7Validator(self.schema).iter_errors(candidate)
+            )
+        )
+
     def test_profilarr_defaults_to_unpinned_latest_release(self):
         profilarr = self.config["profilarr"]["instances"]["Default"]
 

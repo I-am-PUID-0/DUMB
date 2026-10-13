@@ -1,3 +1,11 @@
+from utils.whisparr_settings import (
+    WhisparrConfigurationError,
+    resolve_whisparr_version,
+    validate_whisparr_runtime,
+    whisparr_branch,
+    whisparr_repository,
+    whisparr_release_selector,
+)
 from utils import postgres
 from utils.tautulli_update import tautulli_persistent_excludes
 from utils.config_loader import CONFIG_MANAGER
@@ -185,6 +193,31 @@ def _get_install_lock(key: str) -> threading.Lock:
 def _resolve_arr_install_dir(
     key: str, instance_name: str, instance: dict
 ) -> tuple[str, bool]:
+    if key in {"whisparr", "whisparr-v3"}:
+        resolve_whisparr_version(instance)
+        instance_slug = instance_name.lower().replace(" ", "_")
+        configured_instances = (CONFIG_MANAGER.get("whisparr") or {}).get(
+            "instances"
+        ) or {}
+        for configured_name in configured_instances:
+            if (
+                configured_name != instance_name
+                and configured_name.lower().replace(" ", "_") == instance_slug
+            ):
+                raise WhisparrConfigurationError(
+                    "Whisparr instance names map to the same managed runtime directory "
+                    "after case and space normalization. Rename one instance to a distinct "
+                    "name before installing; disabled instances may still own that runtime."
+                )
+        if (
+            instance_slug in {"", ".", ".."}
+            or "/" in instance_slug
+            or "\\" in instance_slug
+        ):
+            raise WhisparrConfigurationError(
+                "Whisparr instance name cannot form a safe installation directory."
+            )
+        return os.path.join("/opt/whisparr", "instances", instance_slug), True
     shared_dir = f"/opt/{key}"
     instance_slug = instance_name.lower().replace(" ", "_")
     instance_dir = os.path.join(shared_dir, "instances", instance_slug)
@@ -1473,6 +1506,12 @@ def _install_nzbdav_prebuilt_release(
 def setup_release_version(process_handler, config, process_name, key):
     logger.info(f"Using release version {config['release_version']} for {process_name}")
 
+    if key in {"whisparr", "whisparr-v3"}:
+        try:
+            resolve_whisparr_version(config)
+            whisparr_release_selector(config)
+        except WhisparrConfigurationError as error:
+            return False, str(error)
     if key == "infinidysk":
         source_safe, source_error = _validate_infinidysk_postgres_source(config)
         if not source_safe:
@@ -2310,6 +2349,13 @@ def _setup_project_inner(
     if not config:
         raise ValueError(f"Configuration for {process_name} not found.")
 
+    if key in {"whisparr", "whisparr-v3"}:
+        try:
+            resolve_whisparr_version(config)
+            whisparr_release_selector(config)
+            _resolve_arr_install_dir(key, instance_name or "Default", config)
+        except WhisparrConfigurationError as error:
+            return False, str(error)
     if key == "infinidysk":
         source_safe, source_error = _validate_infinidysk_postgres_source(config)
         if not source_safe:
@@ -3528,9 +3574,42 @@ def _binary_interpreter_exists(binary_path: str) -> bool:
 def _install_arr_binary(
     key, instance_name, instance, process_name, process_handler=None
 ):
-    install_dir, is_instance_dir = _resolve_arr_install_dir(
-        key, instance_name, instance
-    )
+    try:
+        install_dir, is_instance_dir = _resolve_arr_install_dir(
+            key, instance_name, instance
+        )
+    except WhisparrConfigurationError as error:
+        return False, str(error), instance.get("install_dir"), None, True
+    if key in {"whisparr", "whisparr-v3"}:
+        from utils.arr import ArrInstaller
+
+        binary_path = os.path.join(install_dir, "Whisparr", "Whisparr")
+        try:
+            whisparr_release_selector(instance)
+            installer = ArrInstaller(
+                "whisparr", install_dir=install_dir, whisparr_config=instance
+            )
+            with _get_install_lock("whisparr"):
+                existing_binary = _find_arr_binary(install_dir, "whisparr")
+                force_reinstall = bool(
+                    existing_binary and not _binary_interpreter_exists(existing_binary)
+                )
+                success, error = installer.install(force=force_reinstall)
+            if not success:
+                return False, error, install_dir, binary_path, True
+            resolved = _find_arr_binary(install_dir, "whisparr")
+            if not resolved:
+                return (
+                    False,
+                    "Whisparr binary missing after installation.",
+                    install_dir,
+                    binary_path,
+                    True,
+                )
+            validate_whisparr_runtime(instance, resolved)
+            return True, None, install_dir, resolved, True
+        except WhisparrConfigurationError as error:
+            return False, str(error), install_dir, binary_path, True
     binary_path = os.path.join(install_dir, key.capitalize(), f"{key.capitalize()}")
     pinned_version = (instance.get("pinned_version") or "").strip()
 
@@ -3864,11 +3943,23 @@ def setup_arr_instance(
 ):
     if install_only and configure_only:
         return False, "Invalid arr setup phase."
+    if key in {"whisparr", "whisparr-v3"}:
+        try:
+            resolve_whisparr_version(instance)
+            whisparr_release_selector(instance)
+        except WhisparrConfigurationError as error:
+            return False, str(error)
     if configure_only:
-        install_dir, _ = _resolve_arr_install_dir(key, instance_name, instance)
-        binary_path = os.path.join(install_dir, key.capitalize(), f"{key.capitalize()}")
+        try:
+            install_dir, _ = _resolve_arr_install_dir(key, instance_name, instance)
+        except WhisparrConfigurationError as error:
+            return False, str(error)
+        binary_key = "whisparr" if key in {"whisparr", "whisparr-v3"} else key
+        binary_path = os.path.join(
+            install_dir, binary_key.capitalize(), binary_key.capitalize()
+        )
         if not os.path.exists(binary_path):
-            resolved = _find_arr_binary(install_dir, key)
+            resolved = _find_arr_binary(install_dir, binary_key)
             if resolved:
                 binary_path = resolved
                 logger.info("Resolved %s binary to %s", key.capitalize(), binary_path)
@@ -3881,7 +3972,16 @@ def setup_arr_instance(
         if not success:
             return False, error
 
-    if not install_only and instance.get("install_dir") != install_dir:
+    if key in {"whisparr", "whisparr-v3"}:
+        try:
+            validate_whisparr_runtime(instance, binary_path)
+        except WhisparrConfigurationError as error:
+            return False, str(error)
+    if (
+        not install_only
+        and key not in {"whisparr", "whisparr-v3"}
+        and instance.get("install_dir") != install_dir
+    ):
         instance["install_dir"] = install_dir
         CONFIG_MANAGER.save_config(process_name)
     config_dir = instance["config_dir"]
@@ -3901,6 +4001,24 @@ def setup_arr_instance(
     port = instance.get("port", 8989)
     loglevel = instance.get("log_level", "INFO").upper()
     ensure_arr_config(process_name, config_file, port, loglevel)
+    if key in {"whisparr", "whisparr-v3"}:
+        try:
+            tree = ET.parse(config_file)
+            root = tree.getroot()
+            owner, repo = whisparr_repository(instance)
+            for name, value in (
+                ("Branch", whisparr_branch(instance)),
+                ("GithubOwnerRepo", f"{owner}/{repo}"),
+            ):
+                element = root.find(name)
+                if element is None:
+                    element = root.makeelement(name, {})
+                    root.append(element)
+                element.text = value
+            tree.write(config_file)
+            chown_single(config_file, user_id, group_id)
+        except (WhisparrConfigurationError, OSError, ET.ParseError) as error:
+            return False, f"Failed configuring Whisparr update identity: {error}"
     try:
         apply_arr_postgres_config(
             key,
@@ -3917,6 +4035,9 @@ def setup_arr_instance(
         "--nobrowser",
         f"--data={config_dir}",
     ]
+    if key in {"whisparr", "whisparr-v3"}:
+        instance["install_dir"] = install_dir
+        CONFIG_MANAGER.save_config(process_name)
     if key == "prowlarr":
         try:
             from utils.prowlarr_settings import ensure_custom_indexers
@@ -3932,6 +4053,15 @@ def setup_arr_instance(
 
 def install_arr_instances(key, process_handler=None):
     instances = CONFIG_MANAGER.get(key, {}).get("instances", {}) or {}
+    if key in {"whisparr", "whisparr-v3"}:
+        try:
+            for instance_name, instance in instances.items():
+                if instance.get("enabled"):
+                    resolve_whisparr_version(instance)
+                    whisparr_release_selector(instance)
+                    _resolve_arr_install_dir(key, instance_name, instance)
+        except WhisparrConfigurationError as error:
+            return False, str(error)
     for instance_name, instance in instances.items():
         if not instance.get("enabled"):
             continue

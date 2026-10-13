@@ -3982,6 +3982,11 @@
             ".*": {
               "type": "object",
               "properties": {
+                "whisparr_version": {
+                  "type": "string",
+                  "enum": ["", "v2", "v3"],
+                  "description": "Empty detects the existing version, or uses v2 for a new instance. v3 selects Eros; each version needs its own data directory."
+                },
                 "enabled": {
                   "type": "boolean"
                 },

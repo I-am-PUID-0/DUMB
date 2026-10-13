@@ -860,6 +860,7 @@ CORE_SERVICE_DEBRID_PROVIDERS = {
 }
 
 SERVICE_OPTION_DESCRIPTIONS = {
+    "whisparr_version": "Whisparr version: v2 or v3 (Eros). Empty detects the existing version, or uses v2 for a new instance. Each version needs its own data directory.",
     "repo_owner": "GitHub username (owner) of the service repository.",
     "repo_name": "Name of the GitHub repository for the service.",
     "release_version_enabled": "Whether to pin to a specific release version.",
@@ -2353,6 +2354,19 @@ async def restart_service(
     def restart():
         process_name = request.process_name
         logger.info(f"Received request to restart {process_name}")
+        key, instance_name = CONFIG_MANAGER.find_key_for_process(process_name)
+        if key == "whisparr":
+            from utils.whisparr_settings import (
+                WhisparrConfigurationError,
+                resolve_whisparr_version,
+            )
+
+            try:
+                resolve_whisparr_version(
+                    CONFIG_MANAGER.get_instance(instance_name, key)
+                )
+            except WhisparrConfigurationError as error:
+                raise HTTPException(status_code=400, detail=str(error)) from None
         protection = media_protection.begin_planned(
             process_name, "restart", request.protection_override
         )
@@ -3789,6 +3803,20 @@ def _validate_postgres_service_options(config_block: dict, options: dict) -> Non
 def apply_service_options(
     config_block, options: dict, logger, *, service_key: str | None = None
 ):
+    if service_key == "whisparr":
+        from utils.whisparr_settings import (
+            WhisparrConfigurationError,
+            resolve_whisparr_version,
+        )
+
+        candidate = copy.deepcopy(config_block)
+        candidate.update(
+            {key: value for key, value in options.items() if value is not None}
+        )
+        try:
+            resolve_whisparr_version(candidate)
+        except WhisparrConfigurationError as error:
+            raise HTTPException(status_code=400, detail=str(error)) from None
     if service_key in {"infinidysk", "postgres"}:
         with INFINIDYSK_MIGRATION_ADMISSION_LOCK:
             if (

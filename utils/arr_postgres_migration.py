@@ -7,6 +7,8 @@ workflow used by the API and frontend.
 
 from __future__ import annotations
 
+from utils.whisparr_settings import resolve_whisparr_version, whisparr_database_file
+
 import copy
 import hashlib
 import http.client
@@ -1510,7 +1512,12 @@ def _source_paths(key: str, instance: dict[str, Any]) -> dict[str, Any]:
         "config_xml": Path(
             str(instance.get("config_file") or config_dir / "config.xml")
         ),
-        "main": config_dir / SUPPORTED_SERVICES[key]["main_file"],
+        "main": config_dir
+        / (
+            whisparr_database_file(instance)
+            if key == "whisparr"
+            else SUPPORTED_SERVICES[key]["main_file"]
+        ),
         "log": config_dir / "logs.db",
     }
 
@@ -4516,7 +4523,9 @@ class ArrPostgresMigrationManager:
         process_name = payload["process_name"]
         key, instance_name, instance = _resolve_instance(config_manager, process_name)
         paths = _source_paths(key, instance)
-        spec = SUPPORTED_SERVICES[key]
+        spec = dict(SUPPORTED_SERVICES[key])
+        if key == "whisparr" and resolve_whisparr_version(instance) == "v3":
+            spec["key_tables"] = ("Movies", "MovieFiles", "History")
         postgres_config = config_manager.get("postgres", {}) or {}
         original_postgres_config = copy.deepcopy(postgres_config)
         database_map = _database_names(key, instance_name, instance)
