@@ -191,6 +191,30 @@ def _get_install_lock(key: str) -> threading.Lock:
     return lock
 
 
+def _prepare_whisparr_profile_config(config, process_name):
+    from utils.whisparr_profiles import prepare_whisparr_profile
+
+    user_id = CONFIG_MANAGER.get("puid")
+    group_id = CONFIG_MANAGER.get("pgid")
+    prepared = prepare_whisparr_profile(
+        config,
+        owner_ids=(
+            os.geteuid() if user_id is None else user_id,
+            os.getegid() if group_id is None else group_id,
+        ),
+    )
+    if prepared != config:
+        previous = dict(config)
+        config.clear()
+        config.update(prepared)
+        try:
+            CONFIG_MANAGER.save_config(process_name)
+        except Exception:
+            config.clear()
+            config.update(previous)
+            raise
+
+
 def _resolve_arr_install_dir(
     key: str, instance_name: str, instance: dict
 ) -> tuple[str, bool]:
@@ -218,7 +242,14 @@ def _resolve_arr_install_dir(
             raise WhisparrConfigurationError(
                 "Whisparr instance name cannot form a safe installation directory."
             )
-        return os.path.join("/opt/whisparr", "instances", instance_slug), True
+        install_dir = os.path.join("/opt/whisparr", "instances", instance_slug)
+        profiles = instance.get("whisparr_profiles") or {}
+        if any(
+            isinstance(profile, dict) and profile.get("initialized")
+            for profile in profiles.values()
+        ):
+            install_dir = os.path.join(install_dir, resolve_whisparr_version(instance))
+        return install_dir, True
     shared_dir = f"/opt/{key}"
     instance_slug = instance_name.lower().replace(" ", "_")
     instance_dir = os.path.join(shared_dir, "instances", instance_slug)
@@ -2352,6 +2383,7 @@ def _setup_project_inner(
 
     if key in {"whisparr", "whisparr-v3"}:
         try:
+            _prepare_whisparr_profile_config(config, process_name)
             resolve_whisparr_version(config)
             whisparr_release_selector(config)
             _resolve_arr_install_dir(key, instance_name or "Default", config)
@@ -3954,6 +3986,7 @@ def setup_arr_instance(
         return False, "Invalid arr setup phase."
     if key in {"whisparr", "whisparr-v3"}:
         try:
+            _prepare_whisparr_profile_config(instance, process_name)
             resolve_whisparr_version(instance)
             whisparr_release_selector(instance)
         except WhisparrConfigurationError as error:
@@ -4046,6 +4079,16 @@ def setup_arr_instance(
     ]
     if key in {"whisparr", "whisparr-v3"}:
         instance["install_dir"] = install_dir
+        if any(
+            profile.get("initialized")
+            for profile in (instance.get("whisparr_profiles") or {}).values()
+        ):
+            from utils.whisparr_profiles import plan_whisparr_profile
+
+            remembered = plan_whisparr_profile(
+                instance, instance, instance_name=instance_name
+            )
+            instance["whisparr_profiles"] = remembered["whisparr_profiles"]
         CONFIG_MANAGER.save_config(process_name)
     if key == "prowlarr":
         try:

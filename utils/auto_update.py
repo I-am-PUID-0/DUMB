@@ -17,6 +17,7 @@ from utils.setup import (
     configure_project,
     _resolve_arr_install_dir,
     _get_install_lock,
+    _prepare_whisparr_profile_config,
 )
 from utils.plex import PlexInstaller
 from utils.arr import ArrInstaller
@@ -42,6 +43,7 @@ from utils.install_cache import INSTALL_CACHE
 from utils.transactional_install import RuntimeRollbackSnapshot
 from utils.transactional_install import DirectoryReleaseTransaction
 from datetime import datetime
+import copy
 from glob import glob
 import threading, time, os, schedule, subprocess, shutil
 
@@ -1228,6 +1230,12 @@ class Update:
         self, process_name, config, key, instance_name, force=False, target_config=None
     ):
         try:
+            _prepare_whisparr_profile_config(config, process_name)
+            if target_config is not None and config.get("whisparr_profiles"):
+                target_config = copy.deepcopy(target_config)
+                target_config["whisparr_profiles"] = copy.deepcopy(
+                    config["whisparr_profiles"]
+                )
             installer = self._whisparr_installer(
                 target_config if target_config is not None else config,
                 key,

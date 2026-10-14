@@ -313,6 +313,212 @@ class WhisparrSetupTests(unittest.TestCase):
                 [(str(install_dir), [str(binary), "--nobrowser", f"--data={data}"])],
             )
 
+    def test_saved_modern_runtime_is_adopted_when_switching_back_without_download(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            original = root / "original" / "Whisparr" / "Whisparr"
+            original.parent.mkdir(parents=True)
+            write_whisparr_runtime(original, "2.2.0.231")
+            target = root / "managed-v2"
+            data = root / "data"
+            data.mkdir()
+            (data / "whisparr2.db").write_bytes(b"preserved library fixture")
+            config = {
+                "config_dir": str(data),
+                "config_file": str(data / "config.xml"),
+                "whisparr_version": "v2",
+                "command": [str(original), "--nobrowser", f"--data={data}"],
+                "auto_update": False,
+                "whisparr_profiles": {"v2": {"initialized": True}},
+            }
+            installer = arr.ArrInstaller(
+                "whisparr", install_dir=str(target), whisparr_config=config
+            )
+            with patch.object(arr, "Downloader") as download:
+                success, error = installer.install()
+            self.assertTrue(success, error)
+            download.assert_not_called()
+            adopted = target / "Whisparr" / "Whisparr"
+            self.assertEqual(
+                adopted.with_name("Whisparr.Core.dll").read_bytes(),
+                original.with_name("Whisparr.Core.dll").read_bytes(),
+            )
+            self.assertEqual(
+                (data / "whisparr2.db").read_bytes(), b"preserved library fixture"
+            )
+            self.assertTrue(original.exists())
+
+    def test_saved_flat_runtime_is_adopted_into_family_child_without_copying_other_family(
+        self,
+    ):
+        for version, database_name in (
+            ("2.2.0.231", "whisparr2.db"),
+            ("2.0.0.2151", "whisparr.db"),
+        ):
+            with (
+                self.subTest(version=version),
+                tempfile.TemporaryDirectory() as directory,
+            ):
+                root = Path(directory)
+                original_root = root / "original-instance"
+                original = write_whisparr_runtime(original_root / "Whisparr", version)
+                original.with_name("runtime-resource").write_bytes(b"original resource")
+                other_family = original_root / "v3"
+                write_whisparr_runtime(other_family / "Whisparr/Whisparr", "3.6.4.1865")
+                sentinel = other_family / "sentinel"
+                sentinel.write_bytes(b"other family remains intact")
+                existing_temp = original_root / ".v3.dumb-candidate-old-fixture"
+                existing_temp.mkdir()
+                (existing_temp / "recovery-sentinel").write_bytes(
+                    b"retain old evidence"
+                )
+                data = root / "data"
+                data.mkdir()
+                database = data / database_name
+                database.write_bytes(b"preserved library fixture")
+                target = original_root / "v2"
+                config = {
+                    "config_dir": str(data),
+                    "config_file": str(data / "config.xml"),
+                    "whisparr_version": "v2",
+                    "install_dir": str(original_root),
+                    "command": [str(original), "--nobrowser", f"--data={data}"],
+                    "auto_update": False,
+                    "whisparr_profiles": {"v2": {"initialized": True}},
+                }
+                installer = arr.ArrInstaller(
+                    "whisparr", install_dir=str(target), whisparr_config=config
+                )
+                before = original.read_bytes()
+                with (
+                    patch.object(arr, "Downloader") as downloader,
+                    patch(
+                        "utils.transactional_install.install_cache_root",
+                        return_value=root / "cache",
+                    ),
+                ):
+                    success, error = installer.install()
+                self.assertTrue(success, error)
+                downloader.assert_not_called()
+                adopted_root = target / "Whisparr"
+                self.assertEqual(before, (adopted_root / "Whisparr").read_bytes())
+                self.assertEqual(
+                    original.with_name("Whisparr.Core.dll").read_bytes(),
+                    (adopted_root / "Whisparr.Core.dll").read_bytes(),
+                )
+                self.assertEqual(
+                    b"original resource",
+                    (adopted_root / "runtime-resource").read_bytes(),
+                )
+                self.assertFalse((adopted_root / "v2").exists())
+                self.assertFalse((adopted_root / "v3").exists())
+                self.assertFalse(any(adopted_root.glob(".*.dumb-*")))
+                self.assertEqual(b"other family remains intact", sentinel.read_bytes())
+                self.assertEqual(
+                    b"retain old evidence",
+                    (existing_temp / "recovery-sentinel").read_bytes(),
+                )
+                self.assertEqual(b"preserved library fixture", database.read_bytes())
+                self.assertEqual(before, original.read_bytes())
+                remaining = [
+                    path
+                    for path in original_root.iterdir()
+                    if path.name.startswith(".v2.dumb-")
+                ]
+                self.assertEqual([], remaining)
+
+    def test_flat_runtime_child_overlap_still_requires_a_saved_profile(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            original_root = root / "original"
+            original = write_whisparr_runtime(original_root / "Whisparr", "2.0.0.2151")
+            data = root / "data"
+            data.mkdir()
+            database = data / "whisparr.db"
+            database.write_bytes(b"legacy library")
+            installer = arr.ArrInstaller(
+                "whisparr",
+                install_dir=str(original_root / "v2"),
+                whisparr_config={
+                    "config_dir": str(data),
+                    "whisparr_version": "v2",
+                    "command": [str(original)],
+                },
+            )
+            with patch.object(arr, "Downloader") as downloader:
+                success, error = installer.install()
+            self.assertFalse(success)
+            self.assertIn("overlaps", error)
+            downloader.assert_not_called()
+            self.assertFalse((original_root / "v2").exists())
+            self.assertEqual(b"legacy library", database.read_bytes())
+
+    def test_managed_flat_adoption_still_rejects_source_data_overlap(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            original = write_whisparr_runtime(root / "original/Whisparr", "2.2.0.231")
+            data = original.parent / "data"
+            data.mkdir()
+            database = data / "whisparr2.db"
+            database.write_bytes(b"library inside original runtime")
+            target = original.parent / "v2"
+            installer = arr.ArrInstaller(
+                "whisparr",
+                install_dir=str(target),
+                whisparr_config={
+                    "config_dir": str(data),
+                    "whisparr_version": "v2",
+                    "command": [str(original)],
+                    "whisparr_profiles": {"v2": {"initialized": True}},
+                },
+            )
+            with patch.object(arr, "Downloader") as downloader:
+                success, error = installer.install()
+            self.assertFalse(success)
+            self.assertIn("overlaps", error)
+            downloader.assert_not_called()
+            self.assertFalse(target.exists())
+            self.assertEqual(b"library inside original runtime", database.read_bytes())
+
+    def test_managed_flat_exclusions_cannot_hide_directory_symlinks(self):
+        for excluded_name in ("v3", ".v3.dumb-candidate-fixture"):
+            with (
+                self.subTest(excluded_name=excluded_name),
+                tempfile.TemporaryDirectory() as directory,
+            ):
+                root = Path(directory)
+                original = write_whisparr_runtime(
+                    root / "original/Whisparr", "2.2.0.231"
+                )
+                unrelated = root / "unrelated"
+                unrelated.mkdir()
+                sentinel = unrelated / "sentinel"
+                sentinel.write_bytes(b"preserve unrelated")
+                (original.parent / excluded_name).symlink_to(
+                    unrelated, target_is_directory=True
+                )
+                data = root / "data"
+                data.mkdir()
+                (data / "whisparr2.db").write_bytes(b"library")
+                target = original.parent / "v2"
+                installer = arr.ArrInstaller(
+                    "whisparr",
+                    install_dir=str(target),
+                    whisparr_config={
+                        "config_dir": str(data),
+                        "whisparr_version": "v2",
+                        "command": [str(original)],
+                        "whisparr_profiles": {"v2": {"initialized": True}},
+                    },
+                )
+                with patch.object(arr, "Downloader") as downloader:
+                    success, error = installer.install()
+                self.assertFalse(success)
+                self.assertIn("symbolic-link directories", error)
+                downloader.assert_not_called()
+                self.assertFalse(target.exists())
+                self.assertEqual(b"preserve unrelated", sentinel.read_bytes())
+
     def test_other_arr_install_path_rules_are_unchanged(self):
         self.assertEqual(
             setup._resolve_arr_install_dir("radarr", "Movies", {}),

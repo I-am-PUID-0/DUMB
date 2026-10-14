@@ -1359,7 +1359,47 @@
         "config_file": "/whisparr/default/config.xml",
         "log_file": "/whisparr/default/logs/whisparr.txt",
         "command": [],
-        "env": {}
+        "env": {},
+        "whisparr_profiles": {
+          "v2": {
+            "initialized": false,
+            "config_dir": "",
+            "config_file": "",
+            "log_file": "",
+            "install_dir": "",
+            "command": [],
+            "release_version_enabled": false,
+            "release_version": "latest",
+            "pinned_version": "",
+            "branch": "",
+            "branch_enabled": false,
+            "commit_sha": "",
+            "repo_owner": "Whisparr",
+            "repo_name": "Whisparr",
+            "source_config_dir": ""
+          },
+          "v3": {
+            "initialized": false,
+            "config_dir": "",
+            "config_file": "",
+            "log_file": "",
+            "install_dir": "",
+            "command": [],
+            "release_version_enabled": false,
+            "release_version": "latest",
+            "pinned_version": "",
+            "branch": "",
+            "branch_enabled": false,
+            "commit_sha": "",
+            "repo_owner": "Whisparr",
+            "repo_name": "Whisparr-Eros",
+            "source_config_dir": ""
+          }
+        },
+        "install_dir": "",
+        "branch": "",
+        "branch_enabled": false,
+        "commit_sha": ""
       }
     }
   },

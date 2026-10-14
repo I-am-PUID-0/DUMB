@@ -3982,10 +3982,135 @@
             ".*": {
               "type": "object",
               "properties": {
+                "whisparr_profiles": {
+                  "type": "object",
+                  "description": "Managed saved v2 and Eros profiles. DUMB selects their data paths and release settings when whisparr_version changes.",
+                  "additionalProperties": false,
+                  "properties": {
+                    "v2": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "initialized": {
+                          "type": "boolean"
+                        },
+                        "config_dir": {
+                          "type": "string"
+                        },
+                        "config_file": {
+                          "type": "string"
+                        },
+                        "log_file": {
+                          "type": "string"
+                        },
+                        "install_dir": {
+                          "type": "string"
+                        },
+                        "command": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "release_version_enabled": {
+                          "type": "boolean"
+                        },
+                        "release_version": {
+                          "type": "string"
+                        },
+                        "pinned_version": {
+                          "type": "string"
+                        },
+                        "branch": {
+                          "type": "string"
+                        },
+                        "branch_enabled": {
+                          "type": "boolean"
+                        },
+                        "commit_sha": {
+                          "type": "string"
+                        },
+                        "repo_owner": {
+                          "type": "string"
+                        },
+                        "repo_name": {
+                          "type": "string"
+                        },
+                        "source_config_dir": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "v3": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "initialized": {
+                          "type": "boolean"
+                        },
+                        "config_dir": {
+                          "type": "string"
+                        },
+                        "config_file": {
+                          "type": "string"
+                        },
+                        "log_file": {
+                          "type": "string"
+                        },
+                        "install_dir": {
+                          "type": "string"
+                        },
+                        "command": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "release_version_enabled": {
+                          "type": "boolean"
+                        },
+                        "release_version": {
+                          "type": "string"
+                        },
+                        "pinned_version": {
+                          "type": "string"
+                        },
+                        "branch": {
+                          "type": "string"
+                        },
+                        "branch_enabled": {
+                          "type": "boolean"
+                        },
+                        "commit_sha": {
+                          "type": "string"
+                        },
+                        "repo_owner": {
+                          "type": "string"
+                        },
+                        "repo_name": {
+                          "type": "string"
+                        },
+                        "source_config_dir": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                },
+                "install_dir": {
+                  "type": "string"
+                },
+                "log_file": {
+                  "type": "string"
+                },
+                "commit_sha": {
+                  "type": "string",
+                  "description": "Source/commit builds are unsupported for Whisparr; leave empty."
+                },
                 "whisparr_version": {
                   "type": "string",
                   "enum": ["", "v2", "v3"],
-                  "description": "Empty detects the existing version, or uses v2 for a new instance. v3 selects Eros; each version needs its own data directory."
+                  "description": "Empty detects the existing version. v2 and v3 (Eros) select separate saved SQLite profiles; PostgreSQL requires separate instances."
                 },
                 "enabled": {
                   "type": "boolean"

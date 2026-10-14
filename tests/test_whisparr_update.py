@@ -1,7 +1,12 @@
+import copy
+import os
+import sqlite3
 import tempfile
 import threading
 import unittest
 from pathlib import Path
+from contextlib import closing
+from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 from utils import arr
@@ -210,6 +215,99 @@ class WhisparrUpdateTests(unittest.TestCase):
                 b"Version=3.6.4.1865",
                 binary.with_name("Whisparr.Core.dll").read_bytes(),
             )
+
+    def test_configured_release_prepares_pending_library_before_replacing_runtime(self):
+        from utils import setup
+        from utils.whisparr_profiles import plan_whisparr_profile
+
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            data = root / "mixed"
+            data.mkdir()
+            for name in ("whisparr2.db", "whisparr3.db"):
+                with closing(sqlite3.connect(data / name)) as connection:
+                    connection.execute("CREATE TABLE Library (name TEXT)")
+                    connection.execute("INSERT INTO Library VALUES (?)", (name,))
+                    connection.commit()
+            original = (data / "whisparr3.db").read_bytes()
+            old = write_whisparr_runtime(
+                root / "original-runtime/Whisparr/Whisparr", "3.6.2.1727"
+            )
+            initial = {
+                "whisparr_version": "v3",
+                "config_dir": str(data),
+                "config_file": str(data / "config.xml"),
+                "command": [str(old)],
+            }
+            config = plan_whisparr_profile(initial, initial, instance_name="Adult")
+            target_config = {
+                **copy.deepcopy(config),
+                "release_version_enabled": True,
+                "release_version": "latest",
+            }
+            target_before = copy.deepcopy(target_config)
+            selected_data = Path(config["config_dir"])
+            updater = self._updater()
+            manager = SimpleNamespace(
+                get=lambda key: {"puid": os.geteuid(), "pgid": os.getegid()}[key],
+                save_config=Mock(),
+            )
+            downloader = Mock()
+            downloader.get_latest_release.return_value = ("v3.6.4-release.1865", None)
+
+            def download(**kwargs):
+                # The library is usable before replacement can stop the service.
+                self.assertFalse(updater.stop_process.called)
+                self.assertTrue((selected_data / "whisparr3.db").is_file())
+                self.assertEqual(
+                    config["whisparr_profiles"]["v3"]["source_config_dir"], ""
+                )
+                write_whisparr_runtime(
+                    Path(kwargs["target_dir"]) / "Whisparr", "3.6.4.1865"
+                )
+                return True, None
+
+            downloader.download_release_version.side_effect = download
+            with (
+                patch.object(setup, "CONFIG_MANAGER", manager),
+                patch.object(arr, "Downloader", return_value=downloader),
+                patch.object(
+                    updater, "_whisparr_installer", wraps=updater._whisparr_installer
+                ) as installer_factory,
+                patch(
+                    "utils.auto_update._resolve_arr_install_dir",
+                    return_value=(str(root / "runtime/v3"), True),
+                ),
+                patch("utils.auto_update.configure_project", return_value=(True, None)),
+                patch(
+                    "utils.transactional_install.install_cache_root",
+                    return_value=root / "cache",
+                ),
+            ):
+                success, error = updater._update_whisparr(
+                    "Whisparr Adult",
+                    config,
+                    "whisparr",
+                    "Adult",
+                    force=True,
+                    target_config=target_config,
+                )
+            self.assertTrue(success, error)
+            self.assertEqual(target_config, target_before)
+            self.assertEqual(
+                installer_factory.call_args.args[0]["whisparr_profiles"]["v3"][
+                    "source_config_dir"
+                ],
+                "",
+            )
+            manager.save_config.assert_called_once_with("Whisparr Adult")
+            updater.stop_process.assert_called_once_with("Whisparr Adult")
+            with closing(sqlite3.connect(selected_data / "whisparr3.db")) as connection:
+                self.assertEqual(
+                    connection.execute("SELECT name FROM Library").fetchall(),
+                    [("whisparr3.db",)],
+                )
+            self.assertEqual((data / "whisparr3.db").read_bytes(), original)
 
     def test_existing_v3_database_routes_legacy_nightly_to_eros_repository(self):
         with tempfile.TemporaryDirectory() as temp:

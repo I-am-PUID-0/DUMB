@@ -1,3 +1,4 @@
+import ast
 import asyncio
 import copy
 import importlib
@@ -99,9 +100,8 @@ class WhisparrConsumerTests(unittest.TestCase):
         self.assertEqual(self.manager.file_path.read_bytes(), disk_before)
         self.assertEqual(self.manager.saved, [])
 
-    def test_service_config_rejects_wrong_version_before_any_edit_or_save(self):
-        before = copy.deepcopy(self.manager.config)
-        disk_before = self.manager.file_path.read_bytes()
+    def test_service_config_selects_profile_before_save_preserving_original(self):
+        original = (self.config_dir / "whisparr2.db").read_bytes()
         request = SimpleNamespace(
             process_name="Whisparr",
             updates={"port": 6970, "whisparr_version": "v3"},
@@ -114,18 +114,29 @@ class WhisparrConsumerTests(unittest.TestCase):
                 "find_service_config",
                 return_value=(self.instance, "whisparr.instances.Default"),
             ),
-            patch.object(config_router, "record_config_change") as record,
+            patch.object(config_router, "record_config_change"),
         ):
-            with self.assertRaises(config_router.HTTPException) as raised:
-                asyncio.run(config_router.update_config(request, logger=self.logger))
-        self.assertEqual(raised.exception.status_code, 400)
-        self.assertIn("existing v2 database", raised.exception.detail)
-        self._assert_unchanged(before, disk_before)
-        record.assert_not_called()
+            response = asyncio.run(
+                config_router.update_config(request, logger=self.logger)
+            )
+        expected = self.config_dir / "whisparr-profiles" / "v3"
+        self.assertEqual(self.instance["config_dir"], str(expected))
+        self.assertEqual(self.instance["config_file"], str(expected / "config.xml"))
+        self.assertEqual(self.instance["port"], 6970)
+        self.assertEqual(response["config"], self.instance)
+        self.assertEqual(
+            self.instance["whisparr_profiles"]["v2"]["config_dir"], str(self.config_dir)
+        )
+        self.assertFalse(expected.exists())
+        self.assertEqual((self.config_dir / "whisparr2.db").read_bytes(), original)
+        self.assertEqual(self.manager.saved, ["Whisparr"])
+        saved = json.loads(self.manager.file_path.read_text())["whisparr"]["instances"][
+            "Default"
+        ]
+        self.assertEqual(saved["whisparr_profiles"], self.instance["whisparr_profiles"])
 
-    def test_global_config_rejection_preserves_unrelated_edits_and_disk(self):
-        before = copy.deepcopy(self.manager.config)
-        disk_before = self.manager.file_path.read_bytes()
+    def test_global_config_switch_preserves_unrelated_updates_and_profile_history(self):
+        original = (self.config_dir / "whisparr2.db").read_bytes()
         request = SimpleNamespace(
             process_name=None,
             updates={
@@ -135,27 +146,153 @@ class WhisparrConsumerTests(unittest.TestCase):
         )
         with (
             patch.object(config_router, "CONFIG_MANAGER", self.manager),
-            patch.object(config_router, "record_config_change") as record,
+            patch.object(config_router, "record_config_change"),
+        ):
+            asyncio.run(config_router.update_config(request, logger=self.logger))
+        updated = self.manager.get_instance("Default", "whisparr")
+        expected = self.config_dir / "whisparr-profiles" / "v3"
+        self.assertEqual(updated["config_dir"], str(expected))
+        self.assertEqual(
+            updated["whisparr_profiles"]["v2"]["config_dir"], str(self.config_dir)
+        )
+        self.assertFalse(self.manager.config["dumb"]["ui"]["log_timestamp"])
+        self.assertFalse(expected.exists())
+        self.assertEqual((self.config_dir / "whisparr2.db").read_bytes(), original)
+        self.assertEqual(self.manager.saved, [None])
+
+    def test_global_creation_does_not_record_a_nonexistent_old_profile(self):
+        fresh_dir = self.root / "fresh"
+        fresh = json.loads((ROOT / "utils/dumb_config.json").read_text())["whisparr"][
+            "instances"
+        ]["Default"]
+        fresh.update(
+            process_name="Whisparr Extra",
+            config_dir=str(fresh_dir),
+            config_file=str(fresh_dir / "config.xml"),
+            whisparr_version="v3",
+        )
+        fresh.pop("whisparr_profiles")
+        request = SimpleNamespace(
+            process_name=None,
+            updates={"whisparr": {"instances": {"Extra": fresh}}},
+        )
+        with (
+            patch.object(config_router, "CONFIG_MANAGER", self.manager),
+            patch.object(config_router, "record_config_change"),
+        ):
+            asyncio.run(config_router.update_config(request, logger=self.logger))
+        created = self.manager.config["whisparr"]["instances"]["Extra"]
+        self.assertEqual(created["config_dir"], str(fresh_dir))
+        self.assertEqual(created["whisparr_version"], "v3")
+        self.assertFalse(created["whisparr_profiles"]["v2"]["initialized"])
+        self.assertFalse(created["whisparr_profiles"]["v3"]["initialized"])
+        self.assertFalse(fresh_dir.exists())
+
+    def test_global_creation_ignores_submitted_managed_profile_history(self):
+        from utils.whisparr_profiles import whisparr_profile_defaults
+
+        fresh_dir = self.root / "fresh"
+        forged = whisparr_profile_defaults()
+        forged["v3"].update(
+            initialized=True,
+            config_dir=str(self.root / "forged-destination"),
+            config_file=str(self.root / "forged-destination" / "config.xml"),
+            source_config_dir=str(self.config_dir),
+        )
+        fresh = json.loads((ROOT / "utils/dumb_config.json").read_text())["whisparr"][
+            "instances"
+        ]["Default"]
+        fresh.update(
+            process_name="Whisparr Extra",
+            config_dir=str(fresh_dir),
+            config_file=str(fresh_dir / "config.xml"),
+            whisparr_version="v3",
+            whisparr_profiles=forged,
+        )
+        request = SimpleNamespace(
+            process_name=None,
+            updates={"whisparr": {"instances": {"Extra": fresh}}},
+        )
+        with (
+            patch.object(config_router, "CONFIG_MANAGER", self.manager),
+            patch.object(config_router, "record_config_change"),
+        ):
+            asyncio.run(config_router.update_config(request, logger=self.logger))
+        created = self.manager.config["whisparr"]["instances"]["Extra"]
+        self.assertEqual(created["config_dir"], str(fresh_dir))
+        self.assertEqual(created["whisparr_profiles"], whisparr_profile_defaults())
+        self.assertFalse(fresh_dir.exists())
+        self.assertFalse((self.root / "forged-destination").exists())
+
+    def test_onboarding_options_select_profile_before_mutation(self):
+        original = (self.config_dir / "whisparr2.db").read_bytes()
+        with patch.object(process_router, "CONFIG_MANAGER", self.manager):
+            process_router.apply_service_options(
+                self.instance,
+                {"port": 6970, "whisparr_version": "v3"},
+                self.logger,
+                service_key="whisparr",
+            )
+        expected = self.config_dir / "whisparr-profiles" / "v3"
+        self.assertEqual(self.instance["config_dir"], str(expected))
+        self.assertEqual(self.instance["whisparr_version"], "v3")
+        self.assertFalse(expected.exists())
+        self.assertEqual((self.config_dir / "whisparr2.db").read_bytes(), original)
+        self.assertEqual(self.manager.saved, [None])
+
+    def test_explicit_wrong_profile_directory_is_rejected_without_saving(self):
+        foreign = self.root / "foreign"
+        foreign.mkdir()
+        self._sqlite(foreign / "whisparr2.db")
+        before = copy.deepcopy(self.manager.config)
+        disk_before = self.manager.file_path.read_bytes()
+        request = SimpleNamespace(
+            process_name="Whisparr",
+            updates={
+                "whisparr_version": "v3",
+                "config_dir": str(foreign),
+                "config_file": str(foreign / "config.xml"),
+            },
+            persist=True,
+        )
+        with (
+            patch.object(config_router, "CONFIG_MANAGER", self.manager),
+            patch.object(
+                config_router,
+                "find_service_config",
+                return_value=(self.instance, "whisparr.instances.Default"),
+            ),
         ):
             with self.assertRaises(config_router.HTTPException) as raised:
                 asyncio.run(config_router.update_config(request, logger=self.logger))
         self.assertEqual(raised.exception.status_code, 400)
         self.assertIn("existing v2 database", raised.exception.detail)
         self._assert_unchanged(before, disk_before)
-        record.assert_not_called()
 
-    def test_onboarding_options_reject_wrong_version_before_mutation(self):
+    def test_global_profile_failure_does_not_apply_unrelated_changes(self):
+        foreign = self.root / "foreign"
+        foreign.mkdir()
+        self._sqlite(foreign / "whisparr2.db")
         before = copy.deepcopy(self.manager.config)
         disk_before = self.manager.file_path.read_bytes()
-        with patch.object(process_router, "CONFIG_MANAGER", self.manager):
-            with self.assertRaises(process_router.HTTPException) as raised:
-                process_router.apply_service_options(
-                    self.instance,
-                    {"port": 6970, "whisparr_version": "v3"},
-                    self.logger,
-                    service_key="whisparr",
-                )
-        self.assertEqual(raised.exception.status_code, 400)
+        request = SimpleNamespace(
+            process_name=None,
+            updates={
+                "dumb": {"ui": {"log_timestamp": False}},
+                "whisparr": {
+                    "instances": {
+                        "Default": {
+                            "whisparr_version": "v3",
+                            "config_dir": str(foreign),
+                            "config_file": str(foreign / "config.xml"),
+                        }
+                    }
+                },
+            },
+        )
+        with patch.object(config_router, "CONFIG_MANAGER", self.manager):
+            with self.assertRaises(config_router.HTTPException):
+                asyncio.run(config_router.update_config(request, logger=self.logger))
         self._assert_unchanged(before, disk_before)
 
     def test_onboarding_options_allow_v3_with_a_separate_empty_directory(self):
@@ -177,6 +314,106 @@ class WhisparrConsumerTests(unittest.TestCase):
         self.assertTrue((self.config_dir / "whisparr2.db").is_file())
         self.assertEqual(list(separate.iterdir()), [])
 
+    def test_mixed_library_api_setup_roundtrip_preserves_both_libraries(self):
+        from utils import setup
+        from tests.test_whisparr_setup import write_whisparr_runtime
+
+        original_v2 = (self.config_dir / "whisparr2.db").read_bytes()
+        self._sqlite(self.config_dir / "whisparr3.db")
+        with closing(sqlite3.connect(self.config_dir / "whisparr3.db")) as database:
+            database.execute("UPDATE Probe SET note = 'eros library'")
+            database.commit()
+        original_v3 = (self.config_dir / "whisparr3.db").read_bytes()
+        current = self.instance
+
+        def select(family):
+            request = SimpleNamespace(
+                process_name="Whisparr",
+                updates={"whisparr_version": family},
+                persist=True,
+            )
+            with (
+                patch.object(config_router, "CONFIG_MANAGER", self.manager),
+                patch.object(
+                    config_router,
+                    "find_service_config",
+                    return_value=(current, "whisparr.instances.Default"),
+                ),
+                patch.object(config_router, "record_config_change"),
+            ):
+                return asyncio.run(
+                    config_router.update_config(request, logger=self.logger)
+                )["config"]
+
+        def configure(family):
+            runtime = self.root / "runtime" / family
+            binary = runtime / "Whisparr" / "Whisparr"
+            binary.parent.mkdir(parents=True, exist_ok=True)
+            write_whisparr_runtime(
+                binary, "2.2.0.231" if family == "v2" else "3.6.4.1865"
+            )
+            with (
+                patch.object(setup, "CONFIG_MANAGER", self.manager),
+                patch.object(
+                    setup, "_resolve_arr_install_dir", return_value=(str(runtime), True)
+                ),
+                patch.object(setup, "chown_single"),
+                patch.object(setup, "_chown_recursive_if_needed"),
+                patch.object(setup, "apply_arr_postgres_config"),
+            ):
+                success, error = setup.setup_arr_instance(
+                    "whisparr", "Default", current, "Whisparr", configure_only=True
+                )
+            self.assertTrue(success, error)
+            self.assertEqual(
+                current["command"],
+                [str(binary), "--nobrowser", f"--data={current['config_dir']}"],
+            )
+            self.assertEqual(
+                current["whisparr_profiles"][family]["command"], current["command"]
+            )
+            self.assertEqual(
+                current["whisparr_profiles"][family]["source_config_dir"], ""
+            )
+
+        selected = select("v3")
+        eros = Path(selected["config_dir"])
+        self.assertFalse(eros.exists(), "Config save must not seed files.")
+        configure("v3")
+        with closing(sqlite3.connect(eros / "whisparr3.db")) as database:
+            self.assertEqual(
+                database.execute("SELECT note FROM Probe").fetchone()[0], "eros library"
+            )
+            database.execute("UPDATE Probe SET note = 'new Eros activity'")
+            database.commit()
+        selected = select("v2")
+        v2 = Path(selected["config_dir"])
+        self.assertNotEqual(v2, eros)
+        configure("v2")
+        with closing(sqlite3.connect(v2 / "whisparr2.db")) as database:
+            self.assertEqual(
+                database.execute("SELECT note FROM Probe").fetchone()[0],
+                "preserved fixture",
+            )
+        selected = select("v3")
+        self.assertEqual(selected["config_dir"], str(eros))
+        self.assertEqual(selected["config_file"], str(eros / "config.xml"))
+        self.assertIn("v3", selected["command"][0])
+        configure("v3")
+        with closing(sqlite3.connect(eros / "whisparr3.db")) as database:
+            self.assertEqual(
+                database.execute("SELECT note FROM Probe").fetchone()[0],
+                "new Eros activity",
+            )
+        self.assertEqual((self.config_dir / "whisparr2.db").read_bytes(), original_v2)
+        self.assertEqual((self.config_dir / "whisparr3.db").read_bytes(), original_v3)
+        self.assertEqual(
+            json.loads(self.manager.file_path.read_text())["whisparr"]["instances"][
+                "Default"
+            ],
+            current,
+        )
+
     def test_restart_rejection_precedes_protection_and_stopping(self):
         self.instance["whisparr_version"] = "v3"
         handler, updater, protection = Mock(), Mock(), Mock()
@@ -197,6 +434,126 @@ class WhisparrConsumerTests(unittest.TestCase):
         protection.begin_planned.assert_not_called()
         handler.stop_process.assert_not_called()
         updater.auto_update.assert_not_called()
+
+    def test_real_config_manager_preserves_profile_history_after_save_and_defaults(
+        self,
+    ):
+        from utils.whisparr_profiles import plan_whisparr_profile
+
+        source = ROOT / "utils/config_loader.py"
+        tree = ast.parse(source.read_text())
+        tree.body = [
+            node
+            for node in tree.body
+            if not (
+                isinstance(node, ast.Assign)
+                and any(
+                    isinstance(target, ast.Name) and target.id == "CONFIG_MANAGER"
+                    for target in node.targets
+                )
+            )
+        ]
+        namespace = {"__file__": str(source)}
+        exec(compile(tree, str(source), "exec"), namespace)  # noqa: S102
+        manager_class = namespace["ConfigManager"]
+        initial = {**self.instance, "pinned_version": "2.2.0.231"}
+        selected = plan_whisparr_profile(
+            initial, {**initial, "whisparr_version": "v3"}, instance_name="Default"
+        )
+        defaults = json.loads((ROOT / "utils/dumb_config.json").read_text())
+        full = copy.deepcopy(defaults)
+        full["whisparr"]["instances"]["Default"] = selected
+        path = self.root / "real-config.json"
+        path.write_text(json.dumps(full))
+        manager = manager_class.__new__(manager_class)
+        manager.config = full
+        manager.schema = json.loads(
+            (ROOT / "utils/dumb_config_schema.json").read_text()
+        )
+        manager.file_path = str(path)
+        manager._legacy_infinidysk_identity = False
+        manager.save_config(process_name="Whisparr")
+        loaded = json.loads(path.read_text())
+        loaded = manager._merge_configs(loaded, defaults)
+        loaded = manager._prune_extraneous_keys(loaded, defaults)
+        with patch.object(manager, "_get_env_var", return_value="false") as env:
+            profile_only = {
+                "whisparr": {
+                    "instances": {
+                        "Default": {
+                            "whisparr_profiles": copy.deepcopy(
+                                selected["whisparr_profiles"]
+                            )
+                        }
+                    }
+                }
+            }
+            manager._merge_with_env(profile_only)
+            env.assert_not_called()
+        self.assertEqual(
+            profile_only["whisparr"]["instances"]["Default"]["whisparr_profiles"],
+            selected["whisparr_profiles"],
+        )
+        current = loaded["whisparr"]["instances"]["Default"]
+        self.assertEqual(current["whisparr_profiles"], selected["whisparr_profiles"])
+        self.assertEqual(current["branch"], selected["branch"])
+        self.assertEqual(current["install_dir"], selected["install_dir"])
+        restored = plan_whisparr_profile(
+            current, {**current, "whisparr_version": "v2"}, instance_name="Default"
+        )
+        self.assertEqual(restored["config_dir"], str(self.config_dir))
+        self.assertEqual(restored["pinned_version"], "2.2.0.231")
+        self.assertFalse(Path(current["config_dir"]).exists())
+
+    def test_pending_snapshot_failure_keeps_running_process_untouched(self):
+        from utils import setup
+        from utils.whisparr_profiles import plan_whisparr_profile
+
+        corrupt = self.config_dir / "whisparr3.db"
+        corrupt.write_bytes(b"invalid SQLite fixture")
+        planned = plan_whisparr_profile(
+            self.instance,
+            {**self.instance, "whisparr_version": "v3"},
+            instance_name="Default",
+        )
+        self.instance.clear()
+        self.instance.update(planned)
+        before = copy.deepcopy(self.manager.config)
+        handler, updater, protection, state = Mock(), Mock(), Mock(), Mock()
+        protection.begin_planned.return_value = {
+            "status": "allowed",
+            "token": "fixture",
+        }
+        state.get_status.return_value = "running"
+        request = SimpleNamespace(process_name="Whisparr", protection_override=False)
+        with (
+            patch.object(process_router, "CONFIG_MANAGER", self.manager),
+            patch.object(setup, "CONFIG_MANAGER", self.manager),
+            patch.object(
+                process_router,
+                "_prepare_whisparr_profile_config",
+                setup._prepare_whisparr_profile_config,
+            ),
+        ):
+            with self.assertRaises(process_router.HTTPException) as raised:
+                asyncio.run(
+                    process_router.restart_service(
+                        request,
+                        process_handler=handler,
+                        updater=updater,
+                        logger=self.logger,
+                        api_state=state,
+                        media_protection=protection,
+                    )
+                )
+        self.assertEqual(raised.exception.status_code, 400)
+        self.assertIn("snapshot", raised.exception.detail)
+        handler.stop_process.assert_not_called()
+        updater.auto_update.assert_not_called()
+        protection.complete_planned.assert_called_once_with("fixture", success=False)
+        self.assertEqual(self.manager.config, before)
+        self.assertEqual(corrupt.read_bytes(), b"invalid SQLite fixture")
+        self.assertFalse(Path(self.instance["config_dir"]).exists())
 
     def test_onboarding_metadata_advertises_version_for_each_instance(self):
         template = json.loads((ROOT / "utils/dumb_config.json").read_text())

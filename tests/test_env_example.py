@@ -57,6 +57,31 @@ class EnvExampleGeneratorTests(unittest.TestCase):
         self.assertIn('DUMB_FRONTEND_ORIGINS=["http://0.0.0.0:3005"]', generated)
         self.assertIn("DUMB_UI_SIDEBAR_SERVICE_SHORTCUTS={}", generated)
 
+    def test_managed_whisparr_profiles_are_not_environment_options(self):
+        generated = generate_env_example.generate_env_example(
+            {
+                "whisparr": {
+                    "instances": {
+                        "Default": {
+                            "whisparr_version": "v3",
+                            "whisparr_profiles": {
+                                "v2": {
+                                    "initialized": True,
+                                    "config_dir": "/example/v2",
+                                },
+                                "v3": {
+                                    "initialized": True,
+                                    "config_dir": "/example/v3",
+                                },
+                            },
+                        }
+                    }
+                }
+            }
+        )
+        self.assertIn("WHISPARR_INSTANCES_DEFAULT_WHISPARR_VERSION=v3", generated)
+        self.assertNotIn("WHISPARR_PROFILES", generated)
+
     def test_env_example_is_in_sync_with_dumb_config(self):
         config = json.loads((ROOT / "utils" / "dumb_config.json").read_text())
         expected = generate_env_example.generate_env_example(config)

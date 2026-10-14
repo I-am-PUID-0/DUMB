@@ -425,6 +425,9 @@ class ConfigManager:
     def _merge_with_env(self, config, prefix=None):
         for key, value in config.items():
             current_keys = prefix + [key] if prefix else [key]
+            if key == "whisparr_profiles" and current_keys[0] == "whisparr":
+                # Saved libraries are controller state, not environment overrides.
+                continue
 
             if isinstance(value, dict):
                 config[key] = self._merge_with_env(value, current_keys)

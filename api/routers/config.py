@@ -864,14 +864,35 @@ def _reject_infinidysk_postgres_reversal(
         raise HTTPException(status_code=400, detail=error)
 
 
-def _validate_whisparr_update(candidate_service):
+def _validate_whisparr_update(
+    candidate_service, previous_service=None, *, instance_name=None
+):
+    from utils.whisparr_profiles import (
+        plan_whisparr_profile,
+        whisparr_profile_defaults,
+    )
     from utils.whisparr_settings import (
         WhisparrConfigurationError,
         resolve_whisparr_version,
     )
 
     try:
-        resolve_whisparr_version(candidate_service)
+        candidate_service = copy.deepcopy(candidate_service)
+        if previous_service:
+            candidate_service.setdefault(
+                "whisparr_profiles", whisparr_profile_defaults()
+            )
+        else:
+            # New instances have no controller history to restore. Never turn
+            # submitted profile tables into authoritative pending seed state.
+            candidate_service["whisparr_profiles"] = whisparr_profile_defaults()
+        candidate = plan_whisparr_profile(
+            previous_service if previous_service else candidate_service,
+            candidate_service,
+            instance_name=instance_name,
+        )
+        resolve_whisparr_version(candidate)
+        return candidate
     except WhisparrConfigurationError as error:
         raise HTTPException(status_code=400, detail=str(error)) from None
 
@@ -958,7 +979,19 @@ async def update_config(
         }
         config_key, _ = CONFIG_MANAGER.find_key_for_process(process_name)
         if config_key == "whisparr":
-            _validate_whisparr_update(merged)
+            normalized = _validate_whisparr_update(
+                merged, service_config, instance_name=path_parts[-1]
+            )
+            updates = {
+                **updates,
+                **{
+                    key: value
+                    for key, value in normalized.items()
+                    if key not in merged or value != merged[key]
+                },
+            }
+            merged = normalized
+            validate(instance=merged, schema=instance_schema)
         guarded_service = config_key in {"infinidysk", "postgres"}
         with INFINIDYSK_MIGRATION_ADMISSION_LOCK:
             namespace_blocked = infinidysk_namespace_migration_active()
@@ -1046,11 +1079,14 @@ async def update_config(
                     "InfiniDysk auto-sync after config update skipped: %s", exc
                 )
 
-        return {
+        result = {
             "status": "service config updated",
             "process_name": process_name,
             "persisted": persist,
         }
+        if config_key == "whisparr":
+            result["config"] = copy.deepcopy(service_config)
+        return result
 
     before_global_config = copy.deepcopy(CONFIG_MANAGER.config)
     updates = _preserve_redacted_notification_secrets(
@@ -1095,10 +1131,19 @@ async def update_config(
         )
 
     if "whisparr" in updates:
-        for instance in (
-            merged_config.get("whisparr", {}).get("instances", {}) or {}
-        ).values():
-            _validate_whisparr_update(instance)
+        previous_instances = (
+            CONFIG_MANAGER.config.get("whisparr", {}).get("instances", {}) or {}
+        )
+        candidates = merged_config.get("whisparr", {}).get("instances", {}) or {}
+        for instance_name, instance in candidates.items():
+            normalized = _validate_whisparr_update(
+                instance,
+                previous_instances.get(instance_name, {}),
+                instance_name=instance_name,
+            )
+            candidates[instance_name] = normalized
+        # Persist the normalized profile paths along with the user's updates.
+        updates["whisparr"] = copy.deepcopy(merged_config["whisparr"])
 
     infinidysk_updates = updates.get("infinidysk")
     guarded_update = isinstance(infinidysk_updates, dict) or "postgres" in updates

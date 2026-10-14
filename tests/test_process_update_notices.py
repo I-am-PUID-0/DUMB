@@ -68,6 +68,7 @@ def _install_process_router_stubs():
     setup.ensure_managed_postgres_database = lambda *args, **kwargs: None
     setup.read_nzbdav_install_info = lambda *args, **kwargs: {}
     setup.setup_project = lambda *args, **kwargs: None
+    setup._prepare_whisparr_profile_config = lambda *args, **kwargs: None
     sys.modules["utils.setup"] = setup
 
     core_services = types.ModuleType("utils.core_services")

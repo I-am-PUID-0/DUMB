@@ -103,6 +103,9 @@ def _format_value(value: Any) -> str:
 
 
 def _iter_leaves(node: Any, path: tuple[str, ...] = ()):  # type: ignore[no-untyped-def]
+    if path and path[0] == "whisparr" and path[-1] == "whisparr_profiles":
+        # Persisted profile history is managed state, not an environment option.
+        return
     if isinstance(node, dict) and node:
         for key, value in node.items():
             yield from _iter_leaves(value, path + (str(key),))

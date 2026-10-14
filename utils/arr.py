@@ -174,14 +174,54 @@ class ArrInstaller:
         source_dir = os.path.realpath(os.path.dirname(source_binary))
         data_dir = os.path.realpath(config["config_dir"])
         target_dir = os.path.realpath(self.install_dir)
-        if any(
-            os.path.commonpath((source_dir, other)) in {source_dir, other}
-            for other in (data_dir, target_dir)
-        ):
+        family = resolve_whisparr_version(config)
+        saved_profile = (config.get("whisparr_profiles") or {}).get(family, {})
+        managed_flat_runtime = (
+            saved_profile.get("initialized")
+            and os.path.dirname(target_dir) == source_dir
+            and os.path.basename(target_dir) == family
+        )
+        data_overlap = os.path.commonpath((source_dir, data_dir)) in {
+            source_dir,
+            data_dir,
+        }
+        target_overlap = os.path.commonpath((source_dir, target_dir)) in {
+            source_dir,
+            target_dir,
+        }
+        if data_overlap or (target_overlap and not managed_flat_runtime):
             raise WhisparrConfigurationError(
                 "Cannot adopt a Whisparr runtime whose folder overlaps its data or managed binary directory."
             )
+        database_ignore = shutil.ignore_patterns(
+            "whisparr*.db", "whisparr*.db-*", "logs.db", "logs.db-*"
+        )
+
+        def ignored_managed_entry(name):
+            return name in {"v2", "v3"} or name.startswith((".v2.dumb-", ".v3.dumb-"))
+
+        def ignore_runtime(current, names):
+            ignored = database_ignore(current, names)
+            if managed_flat_runtime and os.path.realpath(current) == source_dir:
+                ignored.update(name for name in names if ignored_managed_entry(name))
+            return ignored
+
         for current, directories, files in os.walk(source_dir):
+            if managed_flat_runtime and os.path.realpath(current) == source_dir:
+                # Exclusions must never turn a directory symlink into an
+                # accepted source. In particular, a managed name cannot alias
+                # another runtime or an unrelated directory.
+                for name in directories + files:
+                    if ignored_managed_entry(name) and os.path.islink(
+                        os.path.join(current, name)
+                    ):
+                        raise WhisparrConfigurationError(
+                            "Cannot adopt a Whisparr runtime containing symbolic-link directories."
+                        )
+                directories[:] = [
+                    name for name in directories if not ignored_managed_entry(name)
+                ]
+                files = [name for name in files if not ignored_managed_entry(name)]
             for name in directories + files:
                 path = os.path.join(current, name)
                 if os.path.islink(path) and name in directories:
@@ -202,9 +242,7 @@ class ArrInstaller:
             shutil.copytree(
                 source_dir,
                 os.path.join(candidate, "Whisparr"),
-                ignore=shutil.ignore_patterns(
-                    "whisparr*.db", "whisparr*.db-*", "logs.db", "logs.db-*"
-                ),
+                ignore=ignore_runtime,
             )
             binary = os.path.join(candidate, "Whisparr", "Whisparr")
             validate_whisparr_runtime(config, binary)
@@ -248,7 +286,37 @@ class ArrInstaller:
             and selector in {"latest", "prerelease"}
             and legacy_whisparr_database(config)
         )
-        if legacy_moving_install and not existing_binary:
+        saved_profile = (config.get("whisparr_profiles") or {}).get(
+            resolve_whisparr_version(config), {}
+        )
+        preserve_saved_runtime = (
+            not force and saved_profile.get("initialized") and not existing_binary
+        )
+        if preserve_saved_runtime:
+            command = config.get("command") or []
+            source_binary = next(
+                (
+                    argument
+                    for argument in command[:2]
+                    if isinstance(argument, str)
+                    and os.path.basename(argument) == "Whisparr"
+                    and os.path.isfile(argument)
+                ),
+                None,
+            )
+            source_version = read_whisparr_version(source_binary)
+            requested = normalize_whisparr_release_version(selector)
+            preserve_saved_runtime = bool(
+                source_version
+                and (
+                    source_version == requested
+                    or (
+                        selector in {"latest", "prerelease"}
+                        and not config.get("auto_update")
+                    )
+                )
+            )
+        if (legacy_moving_install or preserve_saved_runtime) and not existing_binary:
             if self._adopt_legacy_whisparr(before_activate=before_activate):
                 return True, None
         if existing_binary and not force:
