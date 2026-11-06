@@ -888,6 +888,22 @@ class Update:
                 "next_check_at": next_check_at,
             }
 
+        if key == "infinidysk":
+            supported, source_error = validate_infinidysk_source(
+                config, self.downloader
+            )
+            if not supported:
+                return {
+                    "status": "error",
+                    "reason": "unsupported_source",
+                    "message": source_error,
+                    "checked_at": checked_at,
+                    "auto_update_enabled": auto_update_enabled,
+                    "auto_update_interval": interval_hours,
+                    "auto_update_start_time": start_time,
+                    "next_check_at": next_check_at,
+                }
+
         commit_sha = str(config.get("commit_sha") or "").strip().lower()
         if commit_sha:
             current_version, _ = versions.version_check(
@@ -2855,9 +2871,26 @@ class Update:
             process_name, latest_config, now_ts + 1
         )
         Update._next_check_at[process_name] = next_due_at
-        update_status = self.scheduled_update_check(
-            process_name, latest_config, key, instance_name
-        )
+        try:
+            update_status = self.scheduled_update_check(
+                process_name, latest_config, key, instance_name
+            )
+        except Exception as error:
+            # The install path already marked the operation failed and ran
+            # rollback; an exception here must not end the scheduler loop.
+            self.logger.warning(
+                "Scheduled update failed for %s: %s", process_name, error
+            )
+            self._safe_record_update_status(
+                process_name,
+                {
+                    "status": "error",
+                    "message": str(error),
+                    "auto_update_enabled": True,
+                    "next_check_at": next_due_at,
+                },
+            )
+            return
         if isinstance(update_status, dict) and update_status.get("status") == "blocked":
             update_status = {
                 **update_status,

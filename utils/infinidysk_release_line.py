@@ -11,6 +11,7 @@ INFINIDYSK_REPOSITORY = ("infinidysk", "infinidysk")
 INFINIDYSK_UNSUPPORTED_MAJOR = 2
 INFINIDYSK_V1_BRANCH = "v1"
 _RELEASE_MAJOR_RE = re.compile(r"v?(\d+)\.\d+(?:\.\d+)?(?:[-+].*)?", re.IGNORECASE)
+_COMMIT_SHA_RE = re.compile(r"[0-9a-f]{40}")
 _MOVING_RELEASE_SELECTORS = {"", "latest", "prerelease"}
 
 
@@ -44,6 +45,8 @@ def _unsupported_error(selection, reason=None):
 def infinidysk_commit_on_v1(commit, downloader):
     """Prove the commit is contained in the official 1.x maintenance branch."""
 
+    if not _COMMIT_SHA_RE.fullmatch(str(commit or "")):
+        return False, "not a full 40-character commit SHA"
     owner, name = INFINIDYSK_REPOSITORY
     url = (
         f"https://api.github.com/repos/{owner}/{name}/compare/"
@@ -95,6 +98,11 @@ def validate_infinidysk_source(service, downloader):
         return True, None
     commit = str(service.get("commit_sha") or "").strip().lower()
     if commit:
+        if not _COMMIT_SHA_RE.fullmatch(commit):
+            return False, (
+                "infinidysk source check failed: commit_sha must be a full "
+                "40-character hexadecimal value."
+            )
         selection = f"commit {commit[:12]}"
     elif service.get("branch_enabled") is True:
         branch = str(service.get("branch") or "main").strip() or "main"
@@ -104,7 +112,9 @@ def validate_infinidysk_source(service, downloader):
             return False, _unsupported_error(selection, error or "commit lookup failed")
     elif service.get("release_version_enabled") is True:
         release = str(service.get("release_version") or "").strip()
-        if release.lower() in _MOVING_RELEASE_SELECTORS or "nightly" in release.lower():
+        if release.lower() in _MOVING_RELEASE_SELECTORS:
+            return True, None
+        if "nightly" in release.lower() and infinidysk_release_major(release) is None:
             return True, None
         return validate_infinidysk_release(release, downloader)
     else:

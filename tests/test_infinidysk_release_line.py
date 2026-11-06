@@ -89,6 +89,37 @@ class InfinidyskReleaseLineTests(unittest.TestCase):
 
                 self.assertEqual(expected, supported)
 
+    def test_commit_must_be_a_full_sha_before_any_lookup(self):
+        for commit in ("v1", "abc1234", "a" * 39 + "g"):
+            with self.subTest(commit=commit):
+                downloader = _downloader("identical")
+
+                supported, error = validate_infinidysk_source(
+                    _official(commit_sha=commit), downloader
+                )
+
+                self.assertFalse(supported)
+                self.assertIn("40-character", error)
+                downloader.fetch_with_retries.assert_not_called()
+
+    def test_version_shaped_nightly_tags_are_judged_by_major(self):
+        cases = (
+            ("v2.0.0-nightly.3", False),
+            ("v1.4.0-nightly.3", True),
+            ("nightly", True),
+        )
+        for release, expected in cases:
+            with self.subTest(release=release):
+                downloader = _downloader("diverged")
+
+                supported, _ = validate_infinidysk_source(
+                    _official(release_version_enabled=True, release_version=release),
+                    downloader,
+                )
+
+                self.assertEqual(expected, supported)
+                downloader.fetch_with_retries.assert_not_called()
+
     def test_github_failure_refuses_fixed_source(self):
         downloader = _downloader()
         downloader.fetch_with_retries.return_value = FakeResponse(502)

@@ -844,7 +844,13 @@ class UpdateNotificationTests(unittest.TestCase):
             "repo_name": "infinidysk",
         }
 
-        with patch("utils.auto_update.Versions") as versions:
+        with (
+            patch("utils.auto_update.Versions") as versions,
+            patch(
+                "utils.auto_update.validate_infinidysk_source",
+                return_value=(True, None),
+            ),
+        ):
             versions.return_value.version_check.return_value = ("v0.8.1", None)
             pending = updater._manual_check_generic_repo(
                 "InfiniDysk",
@@ -1038,7 +1044,13 @@ class UpdateNotificationTests(unittest.TestCase):
             "repo_name": "infinidysk",
         }
 
-        with patch("utils.auto_update.Versions") as versions:
+        with (
+            patch("utils.auto_update.Versions") as versions,
+            patch(
+                "utils.auto_update.validate_infinidysk_source",
+                return_value=(True, None),
+            ),
+        ):
             versions.return_value.version_check.return_value = (
                 "dev-aaaaaaaa",
                 None,
@@ -1060,6 +1072,57 @@ class UpdateNotificationTests(unittest.TestCase):
         self.assertIsNone(payload["reason"])
         self.assertFalse(payload["configured_target_installed"])
         self.assertEqual("dev-bbbbbbbb", payload["available_version"])
+
+    def test_infinidysk_status_check_reports_2x_source_as_error(self):
+        updater = self._updater()
+        config = {
+            "release_version_enabled": True,
+            "release_version": "v2.0.0",
+            "auto_update": True,
+            "repo_owner": "infinidysk",
+            "repo_name": "infinidysk",
+        }
+
+        with patch("utils.auto_update.Versions") as versions:
+            versions.return_value.version_check.return_value = ("v1.7.2", None)
+            payload = updater._manual_check_generic_repo(
+                "InfiniDysk",
+                config,
+                "infinidysk",
+                None,
+                "release",
+                1,
+                True,
+                24,
+                "04:00",
+                None,
+            )
+
+        self.assertEqual("error", payload["status"])
+        self.assertEqual("unsupported_source", payload["reason"])
+        self.assertIn("1.x only", payload["message"])
+
+    def test_scheduled_install_failure_does_not_escape_the_scheduler_job(self):
+        updater = self._updater()
+        updater._calculate_next_check_at = Mock(return_value=200)
+        updater.scheduled_update_check = Mock(side_effect=RuntimeError("refused"))
+        config = {"auto_update": True}
+        config_manager = Mock()
+        config_manager.get_instance.return_value = config
+        Update._next_check_at = {"InfiniDysk": 100}
+
+        with (
+            patch("utils.auto_update.CONFIG_MANAGER", config_manager),
+            patch("utils.auto_update.time.time", return_value=100),
+        ):
+            updater._run_scheduled_update_if_due(
+                "InfiniDysk", config, "infinidysk", None
+            )
+
+        status = updater._safe_record_update_status.call_args.args[1]
+        self.assertEqual("error", status["status"])
+        self.assertEqual("refused", status["message"])
+        self.assertEqual(200, status["next_check_at"])
 
     def test_mediastorm_status_uses_oci_digest_for_latest(self):
         updater = self._updater()

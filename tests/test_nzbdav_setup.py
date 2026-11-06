@@ -991,6 +991,91 @@ class InfiniDyskSetupTests(unittest.TestCase):
         on_v1.assert_called_once_with("a" * 40, setup.downloader)
         latest.assert_not_called()
 
+    def test_official_selector_rejects_2x_tag_and_off_v1_named_ref(self):
+        config = {"repo_owner": "infinidysk", "repo_name": "infinidysk"}
+        with patch.object(setup.downloader, "get_ref_commit_sha") as resolve_ref:
+            resolved, error = setup._resolve_nzbdav_release_selector(config, "v2.0.0")
+
+        self.assertIsNone(resolved)
+        self.assertIn("1.x only", error)
+        resolve_ref.assert_not_called()
+
+        with (
+            patch.object(
+                setup.downloader,
+                "get_ref_commit_sha",
+                return_value=("a" * 40, None),
+            ),
+            patch(
+                "utils.infinidysk_release_line.infinidysk_commit_on_v1",
+                return_value=(False, "not part of the v1 branch"),
+            ),
+        ):
+            resolved, error = setup._resolve_nzbdav_release_selector(config, "dev")
+
+        self.assertIsNone(resolved)
+        self.assertIn("not part of the v1 branch", error)
+
+    def test_official_prerelease_falls_back_when_rc_is_off_v1(self):
+        config = {"repo_owner": "infinidysk", "repo_name": "infinidysk"}
+        with (
+            patch.object(
+                setup.downloader,
+                "get_ref_commit_sha",
+                return_value=("a" * 40, None),
+            ),
+            patch.object(
+                setup,
+                "infinidysk_commit_on_v1",
+                return_value=(False, "not part of the v1 branch"),
+            ),
+            patch.object(
+                setup.downloader,
+                "get_latest_release",
+                return_value=("v1.4.0-rc.2", None),
+            ) as latest,
+        ):
+            resolved, error = setup._resolve_nzbdav_release_selector(
+                config, "prerelease"
+            )
+
+        self.assertIsNone(error)
+        self.assertEqual("v1.4.0-rc.2", resolved)
+        latest.assert_called_once_with("infinidysk", "infinidysk", prerelease=True)
+
+    def test_off_v1_branch_install_is_rejected_before_source_download(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            config = {
+                "process_name": "InfiniDysk",
+                "config_dir": temp_dir,
+                "branch_enabled": True,
+                "branch": "main",
+                "commit_sha": "",
+                "repo_owner": "infinidysk",
+                "repo_name": "infinidysk",
+            }
+            with (
+                patch.object(
+                    setup.downloader,
+                    "get_ref_commit_sha",
+                    return_value=("a" * 40, None),
+                ),
+                patch(
+                    "utils.infinidysk_release_line.infinidysk_commit_on_v1",
+                    return_value=(False, "not part of the v1 branch"),
+                ),
+                patch.object(setup.os, "makedirs") as make_dirs,
+                patch.object(setup.downloader, "get_branch") as download_branch,
+            ):
+                success, error = setup.setup_branch_version(
+                    Mock(), config, "InfiniDysk", "infinidysk"
+                )
+
+        self.assertFalse(success)
+        self.assertIn("1.x only", error)
+        make_dirs.assert_not_called()
+        download_branch.assert_not_called()
+
     def test_postgres_fixed_v11_release_is_rejected_before_filesystem_mutation(self):
         config = {
             "process_name": "InfiniDysk",
