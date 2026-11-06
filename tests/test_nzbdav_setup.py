@@ -1,4 +1,5 @@
 import ast
+import io
 import json
 import os
 import subprocess
@@ -1066,60 +1067,92 @@ class InfiniDyskSetupTests(unittest.TestCase):
         self.assertIn("502", error)
         latest.assert_not_called()
 
-    def test_installed_pinned_commit_starts_without_the_source_check(self):
+    def test_installed_pinned_commit_skips_the_source_check_only_when_verified(
+        self,
+    ):
         commit_sha = "c" * 40
-        with tempfile.TemporaryDirectory() as temp_dir:
-            Path(temp_dir, "app").mkdir()
-            Path(temp_dir, "app", "backend.dll").write_text("", encoding="utf-8")
-            Path(temp_dir, "version.txt").write_text(
-                f"commit-{commit_sha[:12]}", encoding="utf-8"
-            )
-            Path(temp_dir, setup._NZBDAV_INSTALL_STATE).write_text(
-                "{}", encoding="utf-8"
-            )
-            Path(temp_dir, ".dumb_branch_state.json").write_text(
-                json.dumps(
-                    {
-                        "repo_owner": "infinidysk",
-                        "repo_name": "infinidysk",
-                        "source_kind": "commit",
-                        "source_ref": commit_sha,
-                        "commit_sha": commit_sha,
-                    }
-                ),
-                encoding="utf-8",
-            )
-            config = {
-                "process_name": "InfiniDysk",
-                "config_dir": temp_dir,
-                "commit_sha": commit_sha,
-                "repo_owner": "infinidysk",
-                "repo_name": "infinidysk",
-            }
-            with (
-                patch.object(
-                    setup,
-                    "_validate_infinidysk_postgres_source",
-                    return_value=(True, None),
-                ),
-                patch.object(
-                    setup, "_nzbdav_source_build_is_current", return_value=True
-                ),
-                patch.object(setup, "validate_infinidysk_source") as source_check,
-                patch.object(
-                    setup.downloader,
-                    "get_commit",
-                    return_value=("https://example.invalid/a.zip", "source"),
-                ),
-                patch.object(setup.downloader, "download_and_extract") as download,
-            ):
-                success, error = setup.setup_branch_version(
-                    Mock(), config, "InfiniDysk", "infinidysk"
-                )
+        real_open = open
+        cases = (
+            # verified, check result, started, checked, record written
+            (True, (False, "not 1.x"), True, False, False),
+            (False, (False, "not 1.x"), False, True, False),
+            (False, (True, None), True, True, True),
+        )
+        for verified, check_result, started, checked, recorded in cases:
+            written = {}
 
-        self.assertTrue(success, error)
-        source_check.assert_not_called()
-        download.assert_not_called()
+            def capture_open(path, mode="r", *args, **kwargs):
+                if str(path).startswith("/config/") and "w" in mode:
+                    buffer = io.StringIO()
+                    buffer.close = lambda: written.update(json.loads(buffer.getvalue()))
+                    return buffer
+                return real_open(path, mode, *args, **kwargs)
+
+            with (
+                self.subTest(verified=verified, check_result=check_result),
+                tempfile.TemporaryDirectory() as temp_dir,
+            ):
+                Path(temp_dir, "app").mkdir()
+                Path(temp_dir, "app", "backend.dll").write_text("", encoding="utf-8")
+                Path(temp_dir, "version.txt").write_text(
+                    f"commit-{commit_sha[:12]}", encoding="utf-8"
+                )
+                Path(temp_dir, setup._NZBDAV_INSTALL_STATE).write_text(
+                    "{}", encoding="utf-8"
+                )
+                state = {
+                    "repo_owner": "infinidysk",
+                    "repo_name": "infinidysk",
+                    "source_kind": "commit",
+                    "source_ref": commit_sha,
+                    "commit_sha": commit_sha,
+                }
+                if verified:
+                    state["infinidysk_v1_verified"] = True
+                Path(temp_dir, ".dumb_branch_state.json").write_text(
+                    json.dumps(state), encoding="utf-8"
+                )
+                config = {
+                    "process_name": "InfiniDysk",
+                    "config_dir": temp_dir,
+                    "commit_sha": commit_sha,
+                    "repo_owner": "infinidysk",
+                    "repo_name": "infinidysk",
+                }
+                with (
+                    patch.object(
+                        setup,
+                        "_validate_infinidysk_postgres_source",
+                        return_value=(True, None),
+                    ),
+                    patch.object(
+                        setup, "_nzbdav_source_build_is_current", return_value=True
+                    ),
+                    patch.object(
+                        setup,
+                        "validate_infinidysk_source",
+                        return_value=check_result,
+                    ) as source_check,
+                    patch.object(
+                        setup.downloader,
+                        "get_commit",
+                        return_value=("https://example.invalid/a.zip", "source"),
+                    ),
+                    patch.object(setup.downloader, "download_and_extract") as download,
+                    patch.object(setup.os, "makedirs"),
+                    patch.object(setup, "chown_single"),
+                    patch("builtins.open", capture_open),
+                ):
+                    success, error = setup.setup_branch_version(
+                        Mock(), config, "InfiniDysk", "infinidysk"
+                    )
+
+                self.assertEqual(started, success, error)
+                self.assertEqual(checked, source_check.called)
+                self.assertEqual(
+                    recorded, written.get("infinidysk_v1_verified") is True
+                )
+                download.assert_not_called()
 
     def test_off_v1_branch_install_is_rejected_before_source_download(self):
         with tempfile.TemporaryDirectory() as temp_dir:

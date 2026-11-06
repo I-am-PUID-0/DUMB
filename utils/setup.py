@@ -1923,6 +1923,7 @@ def setup_branch_version(process_handler, config, process_name, key):
             )
         return False
 
+    infinidysk_v1_verified = False
     if key == "infinidysk":
         source_safe, source_error = _validate_infinidysk_postgres_source(config)
         if not source_safe:
@@ -1934,6 +1935,7 @@ def setup_branch_version(process_handler, config, process_name, key):
         # Was checked when installed; starting it downloads nothing new.
         pinned_commit_installed = (
             bool(pinned_commit)
+            and pinned_state.get("infinidysk_v1_verified") is True
             and pinned_state.get("source_kind") == "commit"
             and pinned_state.get("commit_sha") == pinned_commit
             and pinned_state.get("repo_owner") == config.get("repo_owner")
@@ -1945,6 +1947,7 @@ def setup_branch_version(process_handler, config, process_name, key):
             source_safe, source_error = validate_infinidysk_source(config, downloader)
             if not source_safe:
                 return False, source_error
+        infinidysk_v1_verified = True
 
     if key in [
         "bazarr",
@@ -2023,6 +2026,14 @@ def setup_branch_version(process_handler, config, process_name, key):
                             target_dir,
                             requested_selector=source_ref,
                             source_commit=current_sha,
+                        )
+                    if infinidysk_v1_verified and not previous_state.get(
+                        "infinidysk_v1_verified"
+                    ):
+                        _write_branch_state(
+                            target_dir,
+                            key,
+                            {**previous_state, "infinidysk_v1_verified": True},
                         )
                     logger.info(
                         "%s '%s' unchanged for %s (%s); skipping reinstall/setup.",
@@ -2153,6 +2164,11 @@ def setup_branch_version(process_handler, config, process_name, key):
                         "branch": source_ref if source_kind == "branch" else None,
                         "commit_sha": current_sha,
                         "updated_at": int(time.time()),
+                        **(
+                            {"infinidysk_v1_verified": True}
+                            if infinidysk_v1_verified
+                            else {}
+                        ),
                     },
                 )
         if key == "infinidysk":
