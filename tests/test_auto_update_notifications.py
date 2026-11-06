@@ -5,7 +5,7 @@ from pathlib import Path
 from unittest.mock import Mock, patch
 
 from api.api_state import APIState
-from utils.auto_update import Update
+from utils.auto_update import ScheduledUpdateFailed, Update
 from utils.config_loader import CONFIG_MANAGER
 
 
@@ -1122,6 +1122,35 @@ class UpdateNotificationTests(unittest.TestCase):
         status = updater._safe_record_update_status.call_args.args[1]
         self.assertEqual("error", status["status"])
         self.assertEqual("refused", status["message"])
+        self.assertEqual(200, status["next_check_at"])
+
+    def test_scheduled_install_failure_keeps_install_timing_fields(self):
+        updater = self._updater()
+        updater._calculate_next_check_at = Mock(return_value=200)
+        timed = {
+            "status": "error",
+            "message": "refused",
+            "install_duration_seconds": 4.2,
+            "downtime_status": "ongoing",
+        }
+        updater.scheduled_update_check = Mock(side_effect=ScheduledUpdateFailed(timed))
+        config = {"auto_update": True}
+        config_manager = Mock()
+        config_manager.get_instance.return_value = config
+        Update._next_check_at = {"InfiniDysk": 100}
+
+        with (
+            patch("utils.auto_update.CONFIG_MANAGER", config_manager),
+            patch("utils.auto_update.time.time", return_value=100),
+        ):
+            updater._run_scheduled_update_if_due(
+                "InfiniDysk", config, "infinidysk", None
+            )
+
+        status = updater._safe_record_update_status.call_args.args[1]
+        self.assertEqual("error", status["status"])
+        self.assertEqual(4.2, status["install_duration_seconds"])
+        self.assertEqual("ongoing", status["downtime_status"])
         self.assertEqual(200, status["next_check_at"])
 
     def test_mediastorm_status_uses_oci_digest_for_latest(self):

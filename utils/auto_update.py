@@ -49,6 +49,12 @@ from glob import glob
 import threading, time, os, schedule, subprocess, shutil
 
 
+class ScheduledUpdateFailed(RuntimeError):
+    def __init__(self, payload):
+        super().__init__(payload.get("message"))
+        self.payload = payload
+
+
 class Update:
     _scheduler_initialized = False
     _jobs = {}
@@ -2881,11 +2887,15 @@ class Update:
             self.logger.warning(
                 "Scheduled update failed for %s: %s", process_name, error
             )
+            # The failure payload carries the install timing fields by now.
+            payload = getattr(error, "payload", None) or {
+                "status": "error",
+                "message": str(error),
+            }
             self._safe_record_update_status(
                 process_name,
                 {
-                    "status": "error",
-                    "message": str(error),
+                    **payload,
                     "auto_update_enabled": True,
                     "next_check_at": next_due_at,
                 },
@@ -3298,7 +3308,7 @@ class Update:
                             status="failed",
                             message=str(error)[:1000],
                         )
-                        raise RuntimeError(error)
+                        raise ScheduledUpdateFailed(payload)
                 else:
                     payload = {"status": "updated", "message": str(error)}
                     INSTALL_CACHE.update_operation(

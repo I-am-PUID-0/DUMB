@@ -102,15 +102,16 @@ class InfinidyskReleaseLineTests(unittest.TestCase):
                 self.assertIn("40-character", error)
                 downloader.fetch_with_retries.assert_not_called()
 
-    def test_version_shaped_nightly_tags_are_judged_by_major(self):
+    def test_nightly_selectors_are_checked_like_install_resolves_them(self):
         cases = (
-            ("v2.0.0-nightly.3", False),
-            ("v1.4.0-nightly.3", True),
-            ("nightly", True),
+            ("v2.0.0-nightly.3", "ahead", False, False),
+            ("v1.4.0-nightly.3", "diverged", True, False),
+            ("nightly", "ahead", True, True),
+            ("nightly-v2", "diverged", False, True),
         )
-        for release, expected in cases:
+        for release, compare_status, expected, looked_up in cases:
             with self.subTest(release=release):
-                downloader = _downloader("diverged")
+                downloader = _downloader(compare_status)
 
                 supported, _ = validate_infinidysk_source(
                     _official(release_version_enabled=True, release_version=release),
@@ -118,7 +119,7 @@ class InfinidyskReleaseLineTests(unittest.TestCase):
                 )
 
                 self.assertEqual(expected, supported)
-                downloader.fetch_with_retries.assert_not_called()
+                self.assertEqual(looked_up, downloader.fetch_with_retries.called)
 
     def test_github_failure_refuses_fixed_source(self):
         downloader = _downloader()

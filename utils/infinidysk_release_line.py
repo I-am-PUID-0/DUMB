@@ -87,8 +87,8 @@ def validate_infinidysk_release(release, downloader):
 def validate_infinidysk_source(service, downloader):
     """Refuse fixed infinidysk selections that are not 1.x.
 
-    Moving channels (latest, prerelease, nightly) are already limited to 1.x
-    when they are resolved. Forks are the user's choice and are not checked.
+    Moving channels (latest, prerelease) are already limited to 1.x when
+    they are resolved. Forks are the user's choice and are not checked.
     """
 
     service = service if isinstance(service, dict) else {}
@@ -113,8 +113,6 @@ def validate_infinidysk_source(service, downloader):
     elif service.get("release_version_enabled") is True:
         release = str(service.get("release_version") or "").strip()
         if release.lower() in _MOVING_RELEASE_SELECTORS:
-            return True, None
-        if "nightly" in release.lower() and infinidysk_release_major(release) is None:
             return True, None
         return validate_infinidysk_release(release, downloader)
     else:
