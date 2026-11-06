@@ -1124,6 +1124,33 @@ class UpdateNotificationTests(unittest.TestCase):
         self.assertEqual("refused", status["message"])
         self.assertEqual(200, status["next_check_at"])
 
+    def test_due_install_run_keeps_a_preflight_error(self):
+        updater = self._updater()
+        updater._calculate_next_check_at = Mock(return_value=200)
+        refusal = {
+            "status": "error",
+            "reason": "unsupported_source",
+            "message": "infinidysk source check failed",
+        }
+        updater.scheduled_update_check = Mock(return_value=refusal)
+        config = {"auto_update": True, "auto_update_mode": "install"}
+        config_manager = Mock()
+        config_manager.get_instance.return_value = config
+        Update._next_check_at = {"InfiniDysk": 100}
+
+        with (
+            patch("utils.auto_update.CONFIG_MANAGER", config_manager),
+            patch("utils.auto_update.time.time", return_value=100),
+        ):
+            updater._run_scheduled_update_if_due(
+                "InfiniDysk", config, "infinidysk", None
+            )
+
+        status = updater._safe_record_update_status.call_args.args[1]
+        self.assertEqual("error", status["status"])
+        self.assertEqual("unsupported_source", status["reason"])
+        self.assertEqual(200, status["next_check_at"])
+
     def test_scheduled_install_failure_keeps_install_timing_fields(self):
         updater = self._updater()
         updater._calculate_next_check_at = Mock(return_value=200)

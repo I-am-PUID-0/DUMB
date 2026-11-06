@@ -754,8 +754,12 @@ class Versions:
                 rc_sha, _ = self.downloader.get_ref_commit_sha(
                     repo_owner, repo_name, "rc"
                 )
-                if rc_sha and infinidysk_commit_on_v1(rc_sha, self.downloader)[0]:
-                    latest_release_version = "rc"
+                if rc_sha:
+                    on_v1, reason = infinidysk_commit_on_v1(rc_sha, self.downloader)
+                    if on_v1:
+                        latest_release_version = "rc"
+                    elif on_v1 is None:
+                        error = f"infinidysk rc check failed: {reason}"
             if not latest_release_version and not error:
                 latest_release_version, error = self.downloader.get_latest_release(
                     repo_owner, repo_name, nightly=nightly, prerelease=prerelease

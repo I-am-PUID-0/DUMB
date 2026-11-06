@@ -1043,6 +1043,84 @@ class InfiniDyskSetupTests(unittest.TestCase):
         self.assertEqual("v1.4.0-rc.2", resolved)
         latest.assert_called_once_with("infinidysk", "infinidysk", prerelease=True)
 
+    def test_official_prerelease_reports_failed_rc_lookup(self):
+        config = {"repo_owner": "infinidysk", "repo_name": "infinidysk"}
+        with (
+            patch.object(
+                setup.downloader,
+                "get_ref_commit_sha",
+                return_value=("a" * 40, None),
+            ),
+            patch.object(
+                setup,
+                "infinidysk_commit_on_v1",
+                return_value=(None, "GitHub ancestry lookup failed with status 502"),
+            ),
+            patch.object(setup.downloader, "get_latest_release") as latest,
+        ):
+            resolved, error = setup._resolve_nzbdav_release_selector(
+                config, "prerelease"
+            )
+
+        self.assertIsNone(resolved)
+        self.assertIn("502", error)
+        latest.assert_not_called()
+
+    def test_installed_pinned_commit_starts_without_the_source_check(self):
+        commit_sha = "c" * 40
+        with tempfile.TemporaryDirectory() as temp_dir:
+            Path(temp_dir, "app").mkdir()
+            Path(temp_dir, "app", "backend.dll").write_text("", encoding="utf-8")
+            Path(temp_dir, "version.txt").write_text(
+                f"commit-{commit_sha[:12]}", encoding="utf-8"
+            )
+            Path(temp_dir, setup._NZBDAV_INSTALL_STATE).write_text(
+                "{}", encoding="utf-8"
+            )
+            Path(temp_dir, ".dumb_branch_state.json").write_text(
+                json.dumps(
+                    {
+                        "repo_owner": "infinidysk",
+                        "repo_name": "infinidysk",
+                        "source_kind": "commit",
+                        "source_ref": commit_sha,
+                        "commit_sha": commit_sha,
+                    }
+                ),
+                encoding="utf-8",
+            )
+            config = {
+                "process_name": "InfiniDysk",
+                "config_dir": temp_dir,
+                "commit_sha": commit_sha,
+                "repo_owner": "infinidysk",
+                "repo_name": "infinidysk",
+            }
+            with (
+                patch.object(
+                    setup,
+                    "_validate_infinidysk_postgres_source",
+                    return_value=(True, None),
+                ),
+                patch.object(
+                    setup, "_nzbdav_source_build_is_current", return_value=True
+                ),
+                patch.object(setup, "validate_infinidysk_source") as source_check,
+                patch.object(
+                    setup.downloader,
+                    "get_commit",
+                    return_value=("https://example.invalid/a.zip", "source"),
+                ),
+                patch.object(setup.downloader, "download_and_extract") as download,
+            ):
+                success, error = setup.setup_branch_version(
+                    Mock(), config, "InfiniDysk", "infinidysk"
+                )
+
+        self.assertTrue(success, error)
+        source_check.assert_not_called()
+        download.assert_not_called()
+
     def test_off_v1_branch_install_is_rejected_before_source_download(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             config = {

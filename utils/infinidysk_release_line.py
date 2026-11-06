@@ -43,7 +43,10 @@ def _unsupported_error(selection, reason=None):
 
 
 def infinidysk_commit_on_v1(commit, downloader):
-    """Prove the commit is contained in the official 1.x maintenance branch."""
+    """Prove the commit is contained in the official 1.x maintenance branch.
+
+    Returns None (not False) when GitHub could not answer.
+    """
 
     if not _COMMIT_SHA_RE.fullmatch(str(commit or "")):
         return False, "not a full 40-character commit SHA"
@@ -55,7 +58,7 @@ def infinidysk_commit_on_v1(commit, downloader):
     response = downloader.fetch_with_retries(url, downloader.get_headers())
     if response is None or response.status_code != 200:
         status = response.status_code if response is not None else "no_response"
-        return False, f"GitHub ancestry lookup failed with status {status}"
+        return None, f"GitHub ancestry lookup failed with status {status}"
     try:
         payload = response.json()
     except ValueError:

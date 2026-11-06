@@ -2901,7 +2901,10 @@ class Update:
                 },
             )
             return
-        if isinstance(update_status, dict) and update_status.get("status") == "blocked":
+        if isinstance(update_status, dict) and update_status.get("status") in {
+            "blocked",
+            "error",
+        }:
             update_status = {
                 **update_status,
                 "auto_update_enabled": True,

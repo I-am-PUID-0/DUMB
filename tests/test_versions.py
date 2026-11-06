@@ -312,6 +312,29 @@ class VersionsHelperTests(unittest.TestCase):
 
         self.assertEqual([{"nightly": False, "prerelease": True}], latest_calls)
 
+    def test_official_prerelease_check_reports_failed_rc_lookup(self):
+        versions = Versions()
+        latest_calls = []
+        versions.downloader.get_latest_release = lambda *args, **kwargs: (
+            latest_calls.append(kwargs) or ("v1.8.0-rc.1", None)
+        )
+        versions.downloader.branch_response = FakeResponse(502, {})
+        versions.version_check = lambda *args, **kwargs: ("rc-abcdef12", None)
+
+        update_needed, info = versions.compare_versions(
+            "InfiniDysk",
+            "infinidysk",
+            "infinidysk",
+            None,
+            "infinidysk",
+            prerelease=True,
+        )
+
+        self.assertFalse(update_needed)
+        self.assertIn("rc check failed", info)
+        self.assertIn("502", info)
+        self.assertEqual([], latest_calls)
+
     def test_nzbdav_stable_marker_compares_by_commit_but_displays_release(self):
         versions = Versions()
         versions.downloader.get_latest_release = lambda *args, **kwargs: (
