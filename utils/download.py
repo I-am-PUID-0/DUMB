@@ -6,6 +6,10 @@ import fnmatch
 import fcntl
 from pathlib import Path
 from urllib.parse import quote
+from utils.infinidysk_release_line import (
+    infinidysk_release_supported,
+    is_infinidysk_repository,
+)
 
 
 def archive_overlay_recovery_paths(directory_path):
@@ -461,7 +465,14 @@ class Downloader:
     ):
         self.logger.debug(f"Fetching latest {repo_name} release.")
         headers = self.get_headers()
-        if nightly or prerelease:
+        # GitHub's single "latest" release may be infinidysk 2.x, so the
+        # official repository is always resolved from its release list.
+        official_infinidysk = is_infinidysk_repository(repo_owner, repo_name)
+        if official_infinidysk:
+            # Reads one page of 100 releases; page further if 1.x fixes ever
+            # fall behind 100 newer releases.
+            api_url = f"https://api.github.com/repos/{repo_owner}/{repo_name}/releases?per_page=100"
+        elif nightly or prerelease:
             api_url = f"https://api.github.com/repos/{repo_owner}/{repo_name}/releases"
         else:
             api_url = (
@@ -470,6 +481,27 @@ class Downloader:
         response = self.fetch_with_retries(api_url, headers)
         if response and response.status_code == 200:
             releases = response.json()
+            if official_infinidysk:
+                if not isinstance(releases, list):
+                    return None, "GitHub returned an invalid release list."
+                releases = [
+                    release
+                    for release in releases
+                    if isinstance(release, dict)
+                    and infinidysk_release_supported(release.get("tag_name"))
+                ]
+                if not nightly and not prerelease:
+                    stable_releases = [
+                        release
+                        for release in releases
+                        if not release.get("draft") and not release.get("prerelease")
+                    ]
+                    if stable_releases:
+                        latest_stable = max(
+                            stable_releases, key=self._github_release_recency_key
+                        )
+                        return latest_stable["tag_name"], None
+                    return None, "No supported infinidysk 1.x release found."
             if nightly:
                 nightly_releases = [
                     release
@@ -540,6 +572,7 @@ class Downloader:
             return 0, None
 
         headers = self.get_headers()
+        official_infinidysk = is_infinidysk_repository(repo_owner, repo_name)
         releases_seen = 0
         latest_seen = False
         for page in range(1, max(1, int(max_pages)) + 1):
@@ -560,6 +593,8 @@ class Downloader:
                     continue
                 tag_name = str(release.get("tag_name") or "").strip()
                 if not tag_name:
+                    continue
+                if official_infinidysk and not infinidysk_release_supported(tag_name):
                     continue
                 if nightly:
                     if "nightly" not in tag_name.lower():

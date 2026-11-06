@@ -1174,6 +1174,10 @@ class UpdateNotificationTests(unittest.TestCase):
         with (
             patch("utils.auto_update.Versions") as versions,
             patch(
+                "utils.auto_update.validate_infinidysk_source",
+                return_value=(True, None),
+            ),
+            patch(
                 "utils.auto_update.setup_release_version", return_value=(True, None)
             ) as install_release,
             patch(
@@ -1893,6 +1897,10 @@ class UpdateNotificationTests(unittest.TestCase):
 
         with (
             patch("utils.auto_update.CONFIG_MANAGER", config_manager),
+            patch(
+                "utils.auto_update.validate_infinidysk_source",
+                return_value=(True, None),
+            ),
             patch(
                 "utils.auto_update.setup_branch_version", return_value=(True, None)
             ) as setup_branch,

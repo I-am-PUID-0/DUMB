@@ -9,6 +9,7 @@ from utils.global_logger import logger
 from utils.logger import format_time
 from utils.versions import Versions, display_version
 from utils.download import Downloader
+from utils.infinidysk_release_line import validate_infinidysk_source
 from utils.setup import (
     SERVICE_MANAGED_SOURCE_KEYS,
     setup_project,
@@ -1941,6 +1942,11 @@ class Update:
                 install_candidate,
             )
 
+        if key == "infinidysk":
+            supported, error = validate_infinidysk_source(config, self.downloader)
+            if not supported:
+                return False, error
+
         if process_name in self.process_handler.process_names:
             self.stop_process(process_name)
         with self.process_handler.setup_tracker_lock:
@@ -3286,6 +3292,10 @@ class Update:
                 False,
                 f"No updates available for {process_name}: pinned to commit {commit_sha[:12]}.",
             )
+        if key == "infinidysk":
+            supported, error = validate_infinidysk_source(config, self.downloader)
+            if not supported:
+                return False, error
 
         if key == "plex":
             return self.update_check_plex(process_name, config, key, instance_name)

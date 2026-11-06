@@ -1,5 +1,6 @@
 from utils.global_logger import logger
 from utils.download import Downloader
+from utils.infinidysk_release_line import infinidysk_commit_on_v1
 from utils.config_loader import CONFIG_MANAGER
 from utils.runtime_paths import pyproject_file
 import os, subprocess, json, re, requests, shlex, urllib.parse, ast
@@ -753,7 +754,7 @@ class Versions:
                 rc_sha, _ = self.downloader.get_ref_commit_sha(
                     repo_owner, repo_name, "rc"
                 )
-                if rc_sha:
+                if rc_sha and infinidysk_commit_on_v1(rc_sha, self.downloader)[0]:
                     latest_release_version = "rc"
             if not latest_release_version and not error:
                 latest_release_version, error = self.downloader.get_latest_release(

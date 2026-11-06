@@ -274,6 +274,7 @@ class VersionsHelperTests(unittest.TestCase):
             "rc-cf468605",
             None,
         )
+        versions.downloader.branch_response = FakeResponse(200, {"status": "ahead"})
 
         update_needed, info = versions.compare_versions(
             "InfiniDysk",
@@ -286,6 +287,30 @@ class VersionsHelperTests(unittest.TestCase):
 
         self.assertFalse(update_needed)
         self.assertEqual("rc", info["latest_version"])
+        self.assertTrue(versions.downloader.last_url.endswith("...v1"))
+
+    def test_official_prerelease_check_skips_rc_outside_v1(self):
+        versions = Versions()
+        latest_calls = []
+
+        def latest(*args, **kwargs):
+            latest_calls.append(kwargs)
+            return "v1.8.0-rc.1", None
+
+        versions.downloader.get_latest_release = latest
+        versions.downloader.branch_response = FakeResponse(200, {"status": "diverged"})
+        versions.version_check = lambda *args, **kwargs: ("v1.7.1-abcdef12", None)
+
+        versions.compare_versions(
+            "InfiniDysk",
+            "infinidysk",
+            "infinidysk",
+            None,
+            "infinidysk",
+            prerelease=True,
+        )
+
+        self.assertEqual([{"nightly": False, "prerelease": True}], latest_calls)
 
     def test_nzbdav_stable_marker_compares_by_commit_but_displays_release(self):
         versions = Versions()

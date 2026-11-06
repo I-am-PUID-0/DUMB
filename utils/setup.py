@@ -11,6 +11,12 @@ from utils.tautulli_update import tautulli_persistent_excludes
 from utils.config_loader import CONFIG_MANAGER
 from utils.global_logger import logger
 from utils.download import Downloader, archive_overlay_recovery_paths
+from utils.infinidysk_release_line import (
+    infinidysk_commit_on_v1,
+    is_infinidysk_repository,
+    validate_infinidysk_release,
+    validate_infinidysk_source,
+)
 from utils.versions import Versions
 from utils.plex import PlexInstaller
 from utils.traefik_setup import get_traefik_proxy_url, setup_traefik
@@ -1275,18 +1281,21 @@ def _resolve_nzbdav_release_selector(
 ) -> tuple[str | None, str | None]:
     release_tag = str(requested_release or "latest").strip() or "latest"
     release_lower = release_tag.lower()
+    official = is_infinidysk_repository(
+        config.get("repo_owner"), config.get("repo_name")
+    )
     if release_lower not in {"latest", "prerelease"}:
+        if official:
+            supported, error = validate_infinidysk_release(release_tag, downloader)
+            if not supported:
+                return None, error
         return release_tag, None
 
-    if (
-        release_lower == "prerelease"
-        and str(config.get("repo_owner") or "").strip().lower() == "infinidysk"
-        and str(config.get("repo_name") or "").strip().lower() == "infinidysk"
-    ):
+    if release_lower == "prerelease" and official:
         rc_sha, _ = downloader.get_ref_commit_sha(
             config.get("repo_owner"), config.get("repo_name"), "rc"
         )
-        if rc_sha:
+        if rc_sha and infinidysk_commit_on_v1(rc_sha, downloader)[0]:
             return "rc", None
 
     resolved_tag, error = downloader.get_latest_release(
@@ -1912,6 +1921,9 @@ def setup_branch_version(process_handler, config, process_name, key):
 
     if key == "infinidysk":
         source_safe, source_error = _validate_infinidysk_postgres_source(config)
+        if not source_safe:
+            return False, source_error
+        source_safe, source_error = validate_infinidysk_source(config, downloader)
         if not source_safe:
             return False, source_error
 

@@ -976,6 +976,9 @@ class InfiniDyskSetupTests(unittest.TestCase):
                 "get_ref_commit_sha",
                 return_value=("a" * 40, None),
             ) as resolve_ref,
+            patch.object(
+                setup, "infinidysk_commit_on_v1", return_value=(True, None)
+            ) as on_v1,
             patch.object(setup.downloader, "get_latest_release") as latest,
         ):
             resolved, error = setup._resolve_nzbdav_release_selector(
@@ -985,6 +988,7 @@ class InfiniDyskSetupTests(unittest.TestCase):
         self.assertIsNone(error)
         self.assertEqual("rc", resolved)
         resolve_ref.assert_called_once_with("infinidysk", "infinidysk", "rc")
+        on_v1.assert_called_once_with("a" * 40, setup.downloader)
         latest.assert_not_called()
 
     def test_postgres_fixed_v11_release_is_rejected_before_filesystem_mutation(self):
@@ -1935,6 +1939,9 @@ class InfiniDyskSetupTests(unittest.TestCase):
                 return_value=(True, None),
             ) as validate_source,
             patch.object(
+                setup, "validate_infinidysk_release", return_value=(True, None)
+            ),
+            patch.object(
                 setup.downloader,
                 "fetch_github_release_info",
                 return_value=(None, "release lookup reached"),
@@ -1973,6 +1980,9 @@ class InfiniDyskSetupTests(unittest.TestCase):
 
         with (
             patch.object(setup.platform, "machine", return_value="x86_64"),
+            patch.object(
+                setup, "validate_infinidysk_release", return_value=(True, None)
+            ),
             patch.object(
                 setup.downloader,
                 "fetch_github_release_info",
@@ -2092,6 +2102,9 @@ class InfiniDyskSetupTests(unittest.TestCase):
                     setup.downloader,
                     "get_ref_commit_sha",
                     return_value=(release_sha, None),
+                ),
+                patch.object(
+                    setup, "validate_infinidysk_release", return_value=(True, None)
                 ),
                 patch.object(
                     setup.downloader,
