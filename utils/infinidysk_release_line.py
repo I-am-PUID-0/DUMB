@@ -35,9 +35,9 @@ def infinidysk_release_supported(tag):
 def _unsupported_error(selection, reason=None):
     detail = f" ({reason})" if reason else ""
     return (
-        "This DUMB integration supports infinidysk 1.x only, and the selected "
-        f"{selection} is not 1.x{detail}. infinidysk 2.x needs a separate "
-        "migration. Nothing was changed."
+        "infinidysk source check failed: this DUMB integration supports "
+        f"infinidysk 1.x only, and the selected {selection} is not 1.x{detail}. "
+        "infinidysk 2.x needs a separate migration."
     )
 
 

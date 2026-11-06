@@ -207,6 +207,25 @@ class DownloaderHelperTests(unittest.TestCase):
                 self.assertEqual(expected, version)
                 self.assertNotIn("/releases/latest", fetch.call_args.args[0])
 
+    def test_official_infinidysk_1x_release_is_found_past_the_first_page(self):
+        newer = [
+            {"id": 200 - index, "tag_name": f"v2.{index}.0", "prerelease": False}
+            for index in range(100)
+        ]
+        older = [{"id": 1, "tag_name": "v1.7.2", "prerelease": False}]
+        pages = [FakeResponse(200, json_data=newer), FakeResponse(200, json_data=older)]
+
+        with patch.object(
+            self.downloader, "fetch_with_retries", side_effect=pages
+        ) as fetch:
+            version, error = self.downloader.get_latest_release(
+                "infinidysk", "infinidysk"
+            )
+
+        self.assertIsNone(error)
+        self.assertEqual("v1.7.2", version)
+        self.assertTrue(fetch.call_args.args[0].endswith("per_page=100&page=2"))
+
     def test_prerelease_discovery_uses_publish_recency_not_tag_sorting(self):
         response = FakeResponse(
             200,

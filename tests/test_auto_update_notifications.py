@@ -1872,6 +1872,39 @@ class UpdateNotificationTests(unittest.TestCase):
         self.assertTrue(config["release_version_enabled"])
         self.assertEqual("prerelease", config["release_version"])
 
+    def test_configured_infinidysk_2x_install_is_an_error_before_stop(self):
+        updater = self._updater()
+        updater.process_handler = Mock(
+            process_names=["InfiniDysk"],
+            setup_tracker=set(),
+            setup_tracker_lock=threading.Lock(),
+        )
+        updater.stop_process = Mock()
+        config = {
+            "repo_owner": "infinidysk",
+            "repo_name": "infinidysk",
+            "release_version_enabled": True,
+            "release_version": "v2.0.0",
+        }
+        config_manager = Mock()
+        config_manager.find_key_for_process.return_value = ("infinidysk", None)
+        config_manager.get_instance.return_value = config
+
+        with (
+            patch("utils.auto_update.CONFIG_MANAGER", config_manager),
+            patch("utils.auto_update.setup_release_version") as install,
+        ):
+            payload = updater.manual_update_install(
+                "InfiniDysk",
+                allow_override=False,
+                target="configured",
+            )
+
+        self.assertEqual("error", payload["status"])
+        self.assertIn("1.x only", payload["message"])
+        updater.stop_process.assert_not_called()
+        install.assert_not_called()
+
     def test_configured_commit_install_applies_pin_without_update_override(self):
         updater = self._updater()
         updater.process_handler = Mock(
