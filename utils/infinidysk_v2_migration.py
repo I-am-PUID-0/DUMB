@@ -23,6 +23,12 @@ from urllib.parse import quote
 
 from utils.config_loader import CONFIG_MANAGER
 from utils.infinidysk_migration_admission import INFINIDYSK_MIGRATION_ADMISSION_LOCK
+from utils.infinidysk_v2_inventory import (
+    MAX_TREE_MANIFEST_BYTES,
+    InventoryError,
+    tree_fingerprint,
+    tree_summary,
+)
 from utils.infinidysk_v2_support import V2_RELEASE, generation, v1_data_root
 from utils.infinidysk_v2_topology import associated_rclone, rclone_mount_path
 
@@ -31,7 +37,6 @@ JOB_TYPE = "infinidysk_v1_to_v2"
 PREVIEW_TTL = 30 * 60
 MINIMUM_SCHEMA = "20260824160000"
 MAX_STATE_BYTES = 4 * 1024 * 1024
-MAX_TREE_ENTRIES = 200_000
 ACTIVE = {
     "queued",
     "running",
@@ -116,72 +121,20 @@ def _identity(path):
     }
 
 
-def _tree(path, *, content=False):
-    """Bounded, no-follow inventory. Content mode is used only after quiescence."""
-    root = Path(path)
-    if not root.exists():
-        return []
-    entries = []
-    for directory, folders, files in os.walk(root, followlinks=False):
-        for name in sorted(folders + files):
-            item = Path(directory) / name
-            value = item.lstat()
-            row = {
-                "path": str(item.relative_to(root)),
-                "mode": value.st_mode,
-                "mtime_ns": value.st_mtime_ns,
-            }
-            # Directory allocation size depends on filesystem and deletion
-            # history; copytree preserves entries/metadata, not this number.
-            if not stat.S_ISDIR(value.st_mode):
-                row["size"] = value.st_size
-            if stat.S_ISLNK(value.st_mode):
-                row["link"] = os.readlink(item)
-            elif stat.S_ISREG(value.st_mode) and content:
-                digest = hashlib.sha256()
-                with item.open("rb") as handle:
-                    for chunk in iter(lambda: handle.read(1024 * 1024), b""):
-                        digest.update(chunk)
-                row["sha256"] = digest.hexdigest()
-            elif not (stat.S_ISREG(value.st_mode) or stat.S_ISDIR(value.st_mode)):
-                raise InfiniDyskV2MigrationError(
-                    "Source inventory contains a special file."
-                )
-            entries.append(row)
-            if len(entries) > MAX_TREE_ENTRIES:
-                raise InfiniDyskV2MigrationError(
-                    "Source inventory exceeds the supported bound."
-                )
-    return sorted(entries, key=lambda item: item["path"])
+def _source_summary(path, *, validate_links=False, role="Source"):
+    try:
+        return tree_summary(path, validate_links=validate_links, role=role)
+    except InventoryError as error:
+        raise InfiniDyskV2MigrationError(str(error)) from error
 
 
-def _validate_data_links(root, entries):
-    """Copied live data may reference only relative paths within its own tree."""
-    root = Path(root)
-    for row in entries:
-        if "link" not in row:
-            continue
-        target = Path(row["link"])
-        if target.is_absolute():
-            raise InfiniDyskV2MigrationError(
-                "Source data contains an absolute symbolic link; copied live data must remain independent of retained originals."
-            )
-        depth = len(Path(row["path"]).parent.parts)
-        for component in target.parts:
-            if component == "..":
-                depth -= 1
-                if depth < 0:
-                    raise InfiniDyskV2MigrationError(
-                        "Source data contains a symbolic link that leaves its root before re-entry."
-                    )
-            elif component != ".":
-                depth += 1
-        try:
-            (root / row["path"]).resolve().relative_to(root)
-        except (ValueError, RuntimeError, OSError):
-            raise InfiniDyskV2MigrationError(
-                "Source data contains an escaping or cyclic symbolic link."
-            ) from None
+def _source_fingerprint(path, *, scratch_root, validate_links=False, role="Source"):
+    try:
+        return tree_fingerprint(
+            path, scratch_root=scratch_root, validate_links=validate_links, role=role
+        )
+    except InventoryError as error:
+        raise InfiniDyskV2MigrationError(str(error)) from error
 
 
 def _capacity_check(requirements):
@@ -479,15 +432,21 @@ class InfiniDyskV2MigrationManager:
 
     def _copy_capacity(self, plan, *, postgres_size=None, postgres_snapshot=None):
         sizes = {}
+        inventories = []
         for key in ("data_dir", "runtime_dir"):
             source = Path(plan["source"][key])
             if str(source) not in sizes:
-                entries = _tree(source)
-                if str(source) == plan["source"]["data_dir"]:
-                    _validate_data_links(source, entries)
-                sizes[str(source)] = sum(
-                    row.get("size", 0) for row in entries if stat.S_ISREG(row["mode"])
+                summary = _source_summary(
+                    source,
+                    validate_links=str(source) == plan["source"]["data_dir"],
+                    role=(
+                        "Retained v1 data"
+                        if key == "data_dir"
+                        else "Retained v1 runtime"
+                    ),
                 )
+                sizes[str(source)] = summary["bytes"]
+                inventories.append({"role": key, **summary})
         data = Path(plan["source"]["data_dir"])
         db = data / "db.sqlite"
         database_bytes = db.lstat().st_size if db.is_file() else 0
@@ -502,7 +461,10 @@ class InfiniDyskV2MigrationManager:
         candidate = sizes.get(str(data), 0) + database_bytes
         headroom = max(64 * 1024 * 1024, database_bytes * 3)
         requirements = [
-            (self.state_root, sum(sizes.values()) + database_bytes),
+            (
+                self.state_root,
+                sum(sizes.values()) + database_bytes + MAX_TREE_MANIFEST_BYTES,
+            ),
             (Path(plan["target"]["data_dir"]).parent, candidate + headroom),
         ]
         if postgres_size is not None and postgres_snapshot is None:
@@ -514,7 +476,7 @@ class InfiniDyskV2MigrationManager:
                     (tempfile.gettempdir(), postgres_size * 3),
                 ]
             )
-        return _capacity_check(requirements)
+        return {**_capacity_check(requirements), "source_inventories": inventories}
 
     def _plan(self, options):
         config = self._config()
@@ -1185,10 +1147,20 @@ class InfiniDyskV2MigrationManager:
                         raise InfiniDyskV2MigrationError(
                             "A retained snapshot path is already occupied."
                         )
+                    originals[str(source)] = _source_fingerprint(
+                        source,
+                        scratch_root=root,
+                        validate_links=label == "data",
+                        role=f"Retained v1 {label}",
+                    )
                     shutil.copytree(source, destination, symlinks=True)
-                    originals[str(source)] = _digest(_tree(source, content=True))
                     if (
-                        _digest(_tree(destination, content=True))
+                        _source_fingerprint(
+                            destination,
+                            scratch_root=root,
+                            validate_links=label == "data",
+                            role=f"Copied v1 {label}",
+                        )
                         != originals[str(source)]
                     ):
                         raise InfiniDyskV2MigrationError(
@@ -1290,7 +1262,15 @@ class InfiniDyskV2MigrationManager:
             )
         self._assert_stopped(job["plan"])
         for source, fingerprint in snapshot["original_fingerprints"].items():
-            if _digest(_tree(source, content=True)) != fingerprint:
+            if (
+                _source_fingerprint(
+                    source,
+                    scratch_root=snapshot["source_snapshot"],
+                    validate_links=source == job["plan"]["source"]["data_dir"],
+                    role="Retained v1 source",
+                )
+                != fingerprint
+            ):
                 raise InfiniDyskV2MigrationError(
                     "The original v1 source changed during native execution."
                 )

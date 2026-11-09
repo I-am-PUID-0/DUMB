@@ -585,7 +585,7 @@ class InfiniDyskV2MigrationTests(unittest.TestCase):
             self.assertFalse(preview["ready"])
             self.assertTrue(any("free space" in value for value in preview["blockers"]))
         with (
-            patch("utils.infinidysk_v2_migration.MAX_TREE_ENTRIES", 1),
+            patch("utils.infinidysk_v2_inventory.MAX_TREE_ENTRIES", 1),
             patch("utils.infinidysk_v2_migration.shutil.copytree") as copying,
         ):
             preview = self.manager.preview({"mode": "migrate"})
@@ -603,27 +603,117 @@ class InfiniDyskV2MigrationTests(unittest.TestCase):
                     [(self.root, 80 * 1024 * 1024), (self.root, 80 * 1024 * 1024)]
                 )
 
-    def test_retained_tree_verification_ignores_directory_allocation_size(self):
-        from utils.infinidysk_v2_migration import _tree
+    def test_full_blob_inventory_is_summarized_once_without_binding_live_contents(self):
+        from utils.infinidysk_v2_inventory import tree_summary
 
-        original = _tree(self.source, content=True)
-        original_lstat = Path.lstat
+        for index in range(40):
+            (self.source / "blobs" / f"blob-{index}").write_text("retained metadata")
+        first = self.manager._plan({"mode": "migrate"})
+        summaries = first["capacity"]["source_inventories"]
+        self.assertEqual(len(summaries), 1)
+        self.assertEqual(summaries[0]["entries"], tree_summary(self.source)["entries"])
+        self.assertEqual(summaries[0]["bytes"], tree_summary(self.source)["bytes"])
+        (self.source / "blobs" / "new-active-entry").write_text(
+            "permitted before quiescence"
+        )
+        second = self.manager._plan({"mode": "migrate"})
+        self.assertEqual(first["plan_fingerprint"], second["plan_fingerprint"])
+        self.assertEqual(
+            second["capacity"]["source_inventories"][0]["entries"],
+            summaries[0]["entries"] + 1,
+        )
+
+    def test_large_complete_inventory_keeps_full_copy_capacity_guard_and_small_state(
+        self,
+    ):
+        from utils.infinidysk_v2_inventory import MAX_TREE_MANIFEST_BYTES
+
+        source_bytes = 64 * 1024**3
+        summary = {"entries": 350_000, "bytes": source_bytes}
+        with (
+            patch(
+                "utils.infinidysk_v2_migration._source_summary", return_value=summary
+            ) as scanning,
+            patch(
+                "utils.infinidysk_v2_migration.shutil.disk_usage",
+                return_value=SimpleNamespace(free=100 * 1024**3),
+            ),
+            patch("utils.infinidysk_v2_migration.shutil.copytree") as copying,
+            patch("utils.infinidysk_v2_migration._source_fingerprint") as hashing,
+        ):
+            preview = self.manager.preview({"mode": "migrate"})
+        self.assertFalse(preview["ready"])
+        self.assertTrue(any("free space" in value for value in preview["blockers"]))
+        scanning.assert_called_once()
+        copying.assert_not_called()
+        hashing.assert_not_called()
+        with (
+            patch(
+                "utils.infinidysk_v2_migration._source_summary", return_value=summary
+            ),
+            patch(
+                "utils.infinidysk_v2_migration.shutil.disk_usage",
+                return_value=SimpleNamespace(free=400 * 1024**3),
+            ),
+        ):
+            plan = self.manager._plan({"mode": "migrate"})
+        database_bytes = (self.source / "db.sqlite").stat().st_size
+        capacity = plan["capacity"]
+        self.assertEqual(
+            capacity["estimated_bytes"],
+            2 * source_bytes
+            + MAX_TREE_MANIFEST_BYTES
+            + 2 * database_bytes
+            + max(64 * 1024**2, database_bytes * 3),
+        )
+        self.assertEqual(len(capacity["source_inventories"]), 1)
+        self.assertEqual(capacity["source_inventories"][0]["entries"], 350_000)
+        self.assertIsInstance(capacity["estimated_bytes"], int)
+        self.assertLess(len(json.dumps(capacity)), 1024)
+        self.assertFalse(capacity["reserved"])
+
+    def test_known_cold_manifest_budget_refuses_before_source_copy(self):
+        for index in range(30):
+            (self.source / "blobs" / (f"blob-{index}-" + "x" * 180)).touch()
+        _, request = self.preview_request()
+        with (
+            patch("utils.infinidysk_v2_inventory.MAX_TREE_MANIFEST_BYTES", 8192),
+            patch("utils.infinidysk_v2_migration.shutil.copytree") as copying,
+        ):
+            job = self.wait(self.manager.rehearse(request))
+        self.assertFalse(job["result"]["validated"])
+        self.assertIn("manifest", job["error"])
+        copying.assert_not_called()
+
+    def test_retained_tree_verification_ignores_directory_allocation_size(self):
+        from utils.infinidysk_v2_inventory import tree_fingerprint
+        import os
+        import stat
+
+        original = tree_fingerprint(self.source, scratch_root=self.root)
+        original_stat = os.stat
 
         def different_directory_allocation(path, *args, **kwargs):
-            value = original_lstat(path, *args, **kwargs)
-            if path.is_dir() and path == self.source / "blobs":
-                return SimpleNamespace(
-                    st_mode=value.st_mode,
-                    st_size=value.st_size + 8192,
-                    st_mtime_ns=value.st_mtime_ns,
-                )
+            value = original_stat(path, *args, **kwargs)
+            if path == "blobs" and stat.S_ISDIR(value.st_mode):
+                fields = {
+                    field: getattr(value, field)
+                    for field in dir(value)
+                    if field.startswith("st_")
+                }
+                fields["st_size"] += 8192
+                return SimpleNamespace(**fields)
             return value
 
-        with patch.object(Path, "lstat", different_directory_allocation):
-            changed_allocation = _tree(self.source, content=True)
+        with patch(
+            "utils.infinidysk_v2_inventory.os.stat", different_directory_allocation
+        ):
+            changed_allocation = tree_fingerprint(self.source, scratch_root=self.root)
         self.assertEqual(original, changed_allocation)
         (self.source / "blobs" / "original").write_text("changed actual bytes")
-        self.assertNotEqual(original, _tree(self.source, content=True))
+        self.assertNotEqual(
+            original, tree_fingerprint(self.source, scratch_root=self.root)
+        )
 
     def test_combined_and_legacy_rclone_core_aliases_are_inventoried_and_owned(self):
         instance = self.config.config["rclone"]["instances"]["usenet"]
