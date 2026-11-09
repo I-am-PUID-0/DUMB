@@ -4,7 +4,8 @@ import sys
 import tempfile
 import types
 import unittest
-from unittest.mock import Mock, patch
+from pathlib import Path
+from unittest.mock import Mock, mock_open, patch
 
 
 def _install_stubs():
@@ -94,6 +95,106 @@ class UserManagementSecurityTests(unittest.TestCase):
 
         self.assertIn(("/infinidysk", "/data/infinidysk"), calls)
         self.assertNotIn(("/nzbdav", "/data/nzbdav"), calls)
+        self.assertNotIn(("/cli_debrid/data", "/data/cli_debrid"), calls)
+
+    def test_cli_guard_precedes_broken_link_cleanup_and_other_migrations(self):
+        with (
+            patch.object(user_management, "is_mount", return_value=True),
+            patch.object(
+                user_management,
+                "_prepare_managed_cli_runtime",
+                side_effect=RuntimeError("refused CLI redirect"),
+            ),
+            patch.object(user_management, "cleanup_broken_symlinks") as cleanup,
+            patch.object(user_management, "migrate_and_symlink") as migrate,
+        ):
+            with self.assertRaisesRegex(RuntimeError, "refused CLI redirect"):
+                user_management.migrate_symlinks()
+        cleanup.assert_not_called()
+        migrate.assert_not_called()
+
+    def test_cli_early_guard_skips_fresh_roots_and_disabled_cli_with_custom_battery(
+        self,
+    ):
+        with tempfile.TemporaryDirectory() as tmp:
+            for cli, battery in (
+                ({"enabled": True, "config_dir": str(Path(tmp, "not-installed"))}, {}),
+                (
+                    {"enabled": False, "config_dir": tmp},
+                    {
+                        "enabled": True,
+                        "config_dir": tmp,
+                        "command": ["python", "operator_battery.py"],
+                    },
+                ),
+                ({"enabled": True, "config_dir": tmp}, "invalid"),
+            ):
+                values = {"cli_debrid": cli, "cli_battery": battery}
+                with (
+                    patch.object(
+                        user_management,
+                        "config",
+                        types.SimpleNamespace(
+                            get=lambda key, default=None: values.get(key, default)
+                        ),
+                    ),
+                    patch.object(
+                        user_management, "prepare_cli_debrid_runtime"
+                    ) as prepare,
+                ):
+                    user_management._prepare_managed_cli_runtime()
+                prepare.assert_not_called()
+
+    def test_new_user_uses_guarded_cli_preparation_instead_of_broad_cli_chown(self):
+        values = {"dumb": {"log_dir": "/log"}, "rclone": {"instances": {}}}
+        with (
+            patch.object(
+                user_management,
+                "config",
+                types.SimpleNamespace(
+                    get=lambda key, default=None: values.get(key, default)
+                ),
+            ),
+            patch.object(user_management.grp, "getgrgid"),
+            patch.object(user_management.pwd, "getpwnam", side_effect=KeyError),
+            patch.object(user_management.os.path, "exists", return_value=True),
+            patch.object(user_management.os, "makedirs"),
+            patch.object(user_management.os, "chown"),
+            patch.object(
+                user_management.os,
+                "stat",
+                return_value=types.SimpleNamespace(st_uid=1000, st_gid=1000),
+            ),
+            patch("builtins.open", mock_open()),
+            patch.object(user_management, "ensure_gpu_group_membership"),
+            patch.object(
+                user_management,
+                "_generate_user_password",
+                return_value="example-test-password",
+            ),
+            patch.object(
+                user_management, "_hash_user_password", return_value="example-test-hash"
+            ),
+            patch.object(user_management, "_set_user_password"),
+            patch.object(
+                user_management, "chown_recursive", return_value=(True, None)
+            ) as broad_chown,
+            patch.object(
+                user_management, "chown_startup_directory", return_value=(True, None)
+            ),
+            patch.object(
+                user_management, "_prepare_managed_cli_runtime"
+            ) as cli_prepare,
+            patch.object(user_management, "migrate_symlinks"),
+        ):
+            user_management.create_system_user()
+        cli_prepare.assert_called_once()
+        self.assertFalse(
+            any(
+                str(call.args[0]).startswith("/cli_debrid")
+                for call in broad_chown.call_args_list
+            )
+        )
 
     def test_legacy_install_does_not_create_an_unused_canonical_root(self):
         calls = self._symlink_migration_calls(

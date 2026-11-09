@@ -9,6 +9,7 @@ from utils.whisparr_settings import (
 from utils import postgres
 from utils.tautulli_update import tautulli_persistent_excludes
 from utils.config_loader import CONFIG_MANAGER
+from utils.cli_debrid_runtime import prepare_cli_debrid_runtime
 from utils.global_logger import logger
 from utils.download import Downloader, archive_overlay_recovery_paths
 from utils.infinidysk_release_line import (
@@ -2255,8 +2256,9 @@ def additional_setup(process_handler, process_name, config, key):
             )
 
     if key == "cli_debrid":
-        utilities_dir = os.path.join(config["config_dir"], "utilities")
-        success, error = chown_recursive(utilities_dir, user_id, group_id)
+        success, error = prepare_cli_debrid_runtime(
+            config, CONFIG_MANAGER.get("data_root", "/data"), user_id, group_id
+        )
         if not success:
             return False, error
 
@@ -3213,13 +3215,11 @@ def _setup_project_inner(
                     return False, error
 
         if key == "cli_debrid":
-            utilities_dir = os.path.join(
-                config.get("config_dir", "/cli_debrid"), "utilities"
+            success, error = prepare_cli_debrid_runtime(
+                config, CONFIG_MANAGER.get("data_root", "/data"), user_id, group_id
             )
-            if os.path.isdir(utilities_dir):
-                success, error = chown_recursive(utilities_dir, user_id, group_id)
-                if not success:
-                    return False, error
+            if not success:
+                return False, error
 
         if key == "bazarr":
             success, error = setup_bazarr(

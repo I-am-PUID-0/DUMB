@@ -16,6 +16,7 @@ from utils.arr_postgres import (
     arr_postgres_enabled,
 )
 from utils.core_services import has_core_service
+from utils.cli_debrid_runtime import cli_battery_is_embedded
 from utils.service_postgres import SERVICE_POSTGRES_KEYS, service_postgres_enabled
 
 
@@ -75,7 +76,11 @@ def build_conditional_dependency_map(
     # operator enables both services, serialize Battery before CLI Debrid to
     # avoid concurrent first-run migrations. Newer prerelease topologies can
     # leave the standalone service disabled as documented.
-    if _service_has_enabled_instance(config_getter("cli_battery")):
+    if _service_has_enabled_instance(
+        config_getter("cli_battery")
+    ) and not cli_battery_is_embedded(
+        config_getter("cli_debrid"), config_getter("cli_battery")
+    ):
         deps.setdefault("cli_debrid", set()).add("cli_battery")
 
     if _service_has_enabled_instance(config_getter("traefik_proxy_admin")):

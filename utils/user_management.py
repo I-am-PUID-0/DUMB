@@ -1,6 +1,8 @@
 from utils.config_loader import CONFIG_MANAGER as config
 from utils.global_logger import logger
 from utils.resource_limits import available_cpu_count
+from utils.cli_debrid_runtime import cli_battery_is_managed, prepare_cli_debrid_runtime
+from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor
 import os
 import time
@@ -365,11 +367,33 @@ def cleanup_broken_symlinks(directory):
                 logger.warning(f"Failed to remove broken symlink: {path}: {e}")
 
 
+def _prepare_managed_cli_runtime():
+    cli = config.get("cli_debrid", {}) or {}
+    battery = config.get("cli_battery", {}) or {}
+    if not isinstance(cli, dict) or not isinstance(battery, dict):
+        return
+    if not (
+        cli.get("enabled")
+        or (battery.get("enabled") and cli_battery_is_managed(cli, battery))
+    ):
+        return
+    # Fresh/custom checkouts are installed later. Their mandatory post-extract
+    # and prelaunch checks create the data alias once the runtime exists.
+    if not Path(cli.get("config_dir") or "/cli_debrid").is_dir():
+        return
+    success, error = prepare_cli_debrid_runtime(
+        cli, config.get("data_root", "/data"), user_id, group_id
+    )
+    if not success:
+        raise RuntimeError(error)
+
+
 def migrate_symlinks():
     data_root = str(config.get("data_root")) or "/data"
     logger.debug(f"Data root for symlinks: {data_root}")
     try:
         if is_mount(data_root):
+            _prepare_managed_cli_runtime()
             cleanup_broken_symlinks(data_root)
 
             symlink_map = [
@@ -378,7 +402,6 @@ def migrate_symlinks():
                 ("/postgres_data", os.path.join(data_root, "postgres")),
                 ("/pgadmin/data", os.path.join(data_root, "pgadmin")),
                 ("/zilean/app/data", os.path.join(data_root, "zilean")),
-                ("/cli_debrid/data", os.path.join(data_root, "cli_debrid")),
                 ("/phalanx_db/data", os.path.join(data_root, "phalanx_db")),
                 ("/decypharr", os.path.join(data_root, "decypharr")),
                 ("/plex", os.path.join(data_root, "plex")),
@@ -511,8 +534,6 @@ def create_system_user(username="DUMB"):
         debrid_mount_base_dir = "/mnt/debrid"
         riven_dir = "/riven/backend/data"
         zilean_dir = "/zilean/app/data"
-        cli_debrid_dir = "/cli_debrid/data"
-        cli_debrid_utilities_dir = "/cli_debrid/utilities"
 
         rclone_instances = config.get("rclone", {}).get("instances", {})
 
@@ -549,8 +570,7 @@ def create_system_user(username="DUMB"):
         chown_recursive(riven_dir, user_id, group_id)
         chown_recursive(home_dir, user_id, group_id)
         chown_recursive(zilean_dir, user_id, group_id)
-        chown_recursive(cli_debrid_dir, user_id, group_id)
-        chown_recursive(cli_debrid_utilities_dir, user_id, group_id)
+        _prepare_managed_cli_runtime()
 
         for instance_name, instance_config in rclone_instances.items():
             if instance_config.get("enabled", False):

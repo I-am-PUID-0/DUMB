@@ -5,6 +5,11 @@ from utils.logger import (
     redact_sensitive_log_data,
 )
 from utils.config_loader import CONFIG_MANAGER
+from utils.cli_debrid_runtime import (
+    cli_battery_is_managed,
+    cli_battery_topology,
+    prepare_cli_debrid_runtime,
+)
 from utils.wait_for_url import wait_for_urls
 from utils.notifications import notify_event
 from utils.service_health import ServiceHealthMonitor
@@ -358,6 +363,26 @@ class ProcessHandler:
             del self.external_processes[process_name]
             self._update_running_processes_file()
 
+    def _reconcile_cli_battery_runtime(self, cli_config):
+        battery = CONFIG_MANAGER.get("cli_battery", {}) or {}
+        if not cli_battery_is_managed(cli_config, battery):
+            return True, None
+        topology = cli_battery_topology(cli_config)
+        battery_name = battery.get("process_name") or "CLI Battery"
+        running = self._prefixed_name(battery_name) in self.process_names
+        if topology == "embedded":
+            if running:
+                self.stop_process(battery_name)
+                if self._prefixed_name(battery_name) in self.process_names:
+                    return (
+                        False,
+                        "The legacy CLI Battery process could not be stopped before launching embedded Battery.",
+                    )
+            return True, None
+        if topology == "standalone" and battery.get("enabled") and not running:
+            return self.start_process(battery_name)
+        return True, None
+
     def start_process(
         self,
         process_name,
@@ -386,6 +411,18 @@ class ProcessHandler:
             except Exception:
                 service_key = None
             if service_key:
+                if service_key == "cli_battery":
+                    cli_config = CONFIG_MANAGER.get("cli_debrid", {}) or {}
+                    battery = CONFIG_MANAGER.get("cli_battery", {}) or {}
+                    if cli_battery_is_managed(cli_config, battery):
+                        topology = cli_battery_topology(cli_config)
+                        if topology != "standalone":
+                            reason = (
+                                "CLI Battery is embedded in the installed CLI Debrid; no standalone process is needed."
+                                if topology == "embedded"
+                                else "CLI Battery standalone entrypoint is missing and the installed CLI Debrid embedded contract could not be verified; install or repair CLI Debrid first."
+                            )
+                            return False, reason
                 blocker = infinidysk_recovery_blocks_service(service_key, process_name)
                 if blocker:
                     self.logger.warning(
@@ -597,6 +634,24 @@ class ProcessHandler:
                     )
                     if not result:
                         return False, error
+
+            if key == "cli_debrid" and isinstance(config_for_wait, dict):
+                launch_config = {
+                    **config_for_wait,
+                    "config_dir": config_dir,
+                    "env": {**(config_for_wait.get("env") or {}), **(env or {})},
+                }
+                success, error = prepare_cli_debrid_runtime(
+                    launch_config,
+                    CONFIG_MANAGER.get("data_root", "/data"),
+                    user_id,
+                    group_id,
+                )
+                if not success:
+                    return False, error
+                success, error = self._reconcile_cli_battery_runtime(launch_config)
+                if not success:
+                    return False, error
 
             process_description = process_name
             self.logger.info(f"Starting {process_description} process")

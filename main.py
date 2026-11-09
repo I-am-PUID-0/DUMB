@@ -9,6 +9,7 @@ from utils.auto_update import Update
 from utils.dependencies import initialize_dependencies
 from utils.core_services import get_core_services, has_core_service
 from utils.dependency_map import build_conditional_dependency_map
+from utils.cli_debrid_runtime import cli_battery_is_embedded
 from utils.startup import (
     run_migration_aware_preinstall,
     start_control_plane_before_preinstall,
@@ -268,6 +269,13 @@ def _apply_global_port_reservations(config_manager) -> None:
 
 
 def start_configured_process(config_obj, updater, key_name, exit_on_error=True):
+    if key_name == "cli_battery" and cli_battery_is_embedded(
+        config.get("cli_debrid", {}), config_obj
+    ):
+        logger.info(
+            "CLI Battery is embedded in the installed CLI Debrid; skipping its standalone process."
+        )
+        return True
     all_started = True
     try:
         if "instances" in config_obj:
@@ -786,6 +794,10 @@ def _collect_preinstall_targets(config_manager) -> list[tuple[str, str]]:
     for key, cfg in config_manager.config.items():
         if not isinstance(cfg, dict):
             continue
+        if key == "cli_battery" and cli_battery_is_embedded(
+            config_manager.get("cli_debrid", {}), cfg
+        ):
+            continue
         if key == "dumb":
             continue
         if "instances" in cfg and isinstance(cfg["instances"], dict):
@@ -942,6 +954,10 @@ def _collect_expected_process_names(config_manager, keys):
             names.append(cfg["process_name"])
     for key in keys:
         cfg = config_manager.get(key, {}) or {}
+        if key == "cli_battery" and cli_battery_is_embedded(
+            config_manager.get("cli_debrid", {}), cfg
+        ):
+            continue
         if "instances" in cfg and isinstance(cfg.get("instances"), dict):
             for instance in cfg["instances"].values():
                 if (

@@ -267,14 +267,63 @@ class APIState:
         incoming_status = payload.get("status")
         with self._update_cache_lock:
             previous = self._update_cache.get(normalized)
+            if not hasattr(self, "_scheduler_previous_update_statuses"):
+                self._scheduler_previous_update_statuses = {}
+            if payload.get("scheduler_state") in {"running", "deferred"}:
+                self._scheduler_previous_update_statuses.setdefault(
+                    normalized, previous
+                )
+                notification_previous = previous
+            elif incoming_status in {"scheduled", "ok"}:
+                # Schedule registration and endpoint acknowledgements aren't
+                # version results, including while a check is still running.
+                notification_previous = self._scheduler_previous_update_statuses.get(
+                    normalized, previous
+                )
+            else:
+                notification_previous = self._scheduler_previous_update_statuses.pop(
+                    normalized, previous
+                )
             update_payload = {
                 "process_name": process_name,
                 "checked_at": payload.get("checked_at") or now_ts,
                 **payload,
             }
+            if payload.get("scheduler_state") is not None:
+                update_payload["scheduler_message"] = payload.get("message")
+            scheduler_metadata = {
+                key: value
+                for key, value in update_payload.items()
+                if key.startswith("scheduler_")
+                or key in {"last_run_status", "retry_after_seconds", "next_retry_at"}
+            }
+            if payload.get("scheduler_state") in {"running", "deferred"} and isinstance(
+                previous, dict
+            ):
+                # Progress isn't a new version check. Keep useful version/stage
+                # metadata and the timestamp of the last actual result.
+                update_payload = {
+                    **previous,
+                    **update_payload,
+                    "checked_at": previous.get("checked_at") or now_ts,
+                }
+                if self._is_project_update_process(process_name) and previous.get(
+                    "status"
+                ) in {"update_available", "blocked", "no_update"}:
+                    # Project availability notices survive transient checks and
+                    # retries. Keep their result/message; live scheduler fields
+                    # describe work without retriggering availability notices.
+                    update_payload["status"] = previous["status"]
+                    update_payload["message"] = previous.get("message")
             if (
                 self._is_project_update_process(process_name)
-                and incoming_status == "scheduled"
+                and (
+                    incoming_status == "scheduled"
+                    or (
+                        incoming_status == "ok"
+                        and normalized in self._scheduler_previous_update_statuses
+                    )
+                )
                 and isinstance(previous, dict)
                 and previous.get("status")
                 in {"update_available", "blocked", "no_update"}
@@ -293,6 +342,7 @@ class APIState:
                             "next_check_at",
                         }
                     },
+                    **scheduler_metadata,
                 }
             if (
                 self._is_project_update_process(process_name)
@@ -302,6 +352,7 @@ class APIState:
             ):
                 update_payload = {
                     **previous,
+                    **scheduler_metadata,
                     "last_check_error": payload.get("message")
                     or "The latest update check failed.",
                     "last_check_failed_at": now_ts,
@@ -333,9 +384,9 @@ class APIState:
                 service_name=process_name,
             )
         elif update_payload.get("status") == "update_available" and (
-            not isinstance(previous, dict)
-            or previous.get("status") != "update_available"
-            or previous.get("available_version")
+            not isinstance(notification_previous, dict)
+            or notification_previous.get("status") != "update_available"
+            or notification_previous.get("available_version")
             != update_payload.get("available_version")
         ):
             notify_event(

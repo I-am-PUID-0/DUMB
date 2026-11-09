@@ -56,7 +56,14 @@ class ScheduledUpdateFailed(RuntimeError):
 
 
 class Update:
-    _scheduler_initialized = False
+    # Every Update instance registers with the same scheduler and runner.
+    _scheduler = schedule.Scheduler()
+    _scheduler_lock = threading.RLock()
+    _scheduled_work_lock = threading.Lock()
+    _active_scheduled_work = {}
+    _scheduled_work_limits = {"update": 1, "api": 1, "symlink_backup": 1}
+    _scheduled_report_interval = 60
+    _scheduled_long_running_seconds = 300
     _jobs = {}
     _next_check_at = {}
     _symlink_backup_jobs = {}
@@ -81,11 +88,250 @@ class Update:
         self._update_timing_lock = threading.Lock()
         self._update_timings = {}
 
-        if not Update._scheduler_initialized:
-            self.scheduler = schedule.Scheduler()
-            Update._scheduler_initialized = True
+        self.scheduler = Update._scheduler
+
+    def _cancel_scheduler_job(self, job):
+        with Update._scheduler_lock:
+            self.scheduler.cancel_job(job)
+
+    def _scheduled_work_payload(self, kind, process_name, state, record=None, **extra):
+        payload = {
+            "status": ("checking" if kind != "symlink_backup" else "running"),
+            "scheduler_state": state,
+            "scheduler_job": kind,
+            **extra,
+        }
+        if state != "running":
+            payload["status"] = state
+        if record is not None:
+            elapsed = max(0.0, time.monotonic() - record["started_monotonic"])
+            payload.update(
+                scheduler_started_at=record["started_at"],
+                scheduler_elapsed_seconds=round(elapsed, 3),
+                scheduler_long_running=elapsed
+                >= Update._scheduled_long_running_seconds,
+            )
+        if state == "deferred":
+            payload.update(retry_after_seconds=60, next_retry_at=int(time.time()) + 60)
+        if kind == "update":
+            payload["next_check_at"] = Update._next_check_at.get(process_name)
+        elif kind == "api":
+            payload["next_check_at"] = Update._api_next_check_at
         else:
-            self.scheduler = schedule.default_scheduler
+            payload["next_backup_at"] = Update._symlink_backup_next_at.get(process_name)
+        return payload
+
+    def _publish_scheduled_work_status(self, kind, process_name, payload):
+        if kind == "symlink_backup":
+            self._safe_record_symlink_backup_status(process_name, payload)
+        else:
+            # Install timing deliberately buffers terminal update statuses.
+            # A running worker must remain visible before that timing finishes.
+            self._write_update_status(process_name, payload)
+
+    def _finish_scheduled_work_status(self, kind, process_name, payload):
+        with Update._scheduled_work_lock:
+            record = Update._active_scheduled_work.get((kind, process_name))
+        state = payload.get("status")
+        state = (
+            state
+            if state in {"deferred", "error", "blocked", "disabled"}
+            else "completed"
+        )
+        metadata = self._scheduled_work_payload(kind, process_name, state, record)
+        payload = {
+            **metadata,
+            **payload,
+            "scheduler_state": state,
+            "scheduler_job": kind,
+        }
+        lock = record["status_lock"] if record is not None else threading.Lock()
+        with lock:
+            if record is not None:
+                # Serialize against heartbeat publication so the terminal result
+                # always wins even when a worker completes during a report.
+                record["reporting"] = False
+            if kind == "symlink_backup":
+                self._safe_record_symlink_backup_status(process_name, payload)
+            else:
+                self._safe_record_update_status(process_name, payload)
+        return payload
+
+    def _dispatch_scheduled_work(self, kind, process_name, callback, *args):
+        if self.process_handler.shutting_down:
+            return False
+        identity = (kind, process_name)
+        with Update._scheduled_work_lock:
+            if identity in Update._active_scheduled_work:
+                return False
+            running = [
+                name
+                for (active_kind, name) in Update._active_scheduled_work
+                if active_kind == kind
+            ]
+            if len(running) >= Update._scheduled_work_limits[kind]:
+                record = None
+            else:
+                record = {
+                    "owner": self,
+                    "started_at": int(time.time()),
+                    "started_monotonic": time.monotonic(),
+                    "last_report_at": time.monotonic(),
+                    "status_lock": threading.Lock(),
+                    "reporting": True,
+                }
+                Update._active_scheduled_work[identity] = record
+        if record is None:
+            payload = self._scheduled_work_payload(
+                kind,
+                process_name,
+                "deferred",
+                reason="scheduled_worker_busy",
+                message=(
+                    f"Scheduled {kind} deferred while {', '.join(running)} is running. "
+                    "Will retry on the next scheduler tick."
+                ),
+            )
+            self._publish_scheduled_work_status(kind, process_name, payload)
+            return False
+
+        def run():
+            try:
+                # A shutdown or config change after dispatch must not admit a
+                # new mutation. Due callbacks also reread live configuration.
+                if self.process_handler.shutting_down:
+                    self._finish_scheduled_work_status(
+                        kind,
+                        process_name,
+                        {
+                            "status": "deferred",
+                            "reason": "shutting_down",
+                            "message": "Scheduled work stopped before execution during shutdown.",
+                        },
+                    )
+                    return
+                callback(*args)
+                self.logger.info(
+                    "Scheduled %s worker finished for %s.", kind, process_name
+                )
+            except Exception as error:
+                self.logger.error(
+                    "Scheduled %s worker failed for %s: %s",
+                    kind,
+                    process_name,
+                    error,
+                    exc_info=True,
+                )
+                self._finish_scheduled_work_status(
+                    kind,
+                    process_name,
+                    {"status": "error", "message": str(error)},
+                )
+            finally:
+                # A watchdog never releases a slot held by a live writer.
+                with Update._scheduled_work_lock:
+                    if Update._active_scheduled_work.get(identity) is record:
+                        Update._active_scheduled_work.pop(identity)
+
+        thread = threading.Thread(
+            target=run, name=f"scheduled-{kind}-{process_name}", daemon=True
+        )
+        record["thread"] = thread
+        self._publish_scheduled_work_status(
+            kind,
+            process_name,
+            self._scheduled_work_payload(
+                kind,
+                process_name,
+                "running",
+                record,
+                message=f"Scheduled {kind} is running for {process_name}.",
+            ),
+        )
+        try:
+            thread.start()
+        except Exception as error:
+            try:
+                self._finish_scheduled_work_status(
+                    kind, process_name, {"status": "error", "message": str(error)}
+                )
+            finally:
+                with Update._scheduled_work_lock:
+                    Update._active_scheduled_work.pop(identity, None)
+            return False
+        return True
+
+    def _report_running_scheduled_work(self):
+        now = time.monotonic()
+        with Update._scheduled_work_lock:
+            reports = []
+            for (kind, process_name), record in Update._active_scheduled_work.items():
+                if now - record["last_report_at"] >= Update._scheduled_report_interval:
+                    record["last_report_at"] = now
+                    reports.append((kind, process_name, record))
+        for kind, process_name, record in reports:
+            with record["status_lock"]:
+                if not record["reporting"]:
+                    continue
+                owner = record["owner"]
+                payload = owner._scheduled_work_payload(
+                    kind,
+                    process_name,
+                    "running",
+                    record,
+                    message=(
+                        f"Scheduled {kind} is still running for {process_name}; "
+                        "the worker remains active and has not reported completion."
+                    ),
+                )
+                owner._publish_scheduled_work_status(kind, process_name, payload)
+                if payload["scheduler_long_running"]:
+                    owner.logger.warning(
+                        "Scheduled %s for %s is still running after %.1f seconds; "
+                        "no timeout or successful completion is implied.",
+                        kind,
+                        process_name,
+                        payload["scheduler_elapsed_seconds"],
+                    )
+
+    def _dispatch_scheduled_update_if_due(
+        self, process_name, config, key, instance_name
+    ):
+        due_at = Update._next_check_at.get(process_name)
+        if due_at is not None and int(time.time()) >= due_at:
+            return self._dispatch_scheduled_work(
+                "update",
+                process_name,
+                self._run_scheduled_update_if_due,
+                process_name,
+                config,
+                key,
+                instance_name,
+            )
+        return False
+
+    def _dispatch_api_update_check_if_due(self, process_name):
+        due_at = Update._api_next_check_at
+        if due_at is not None and int(time.time()) >= due_at:
+            return self._dispatch_scheduled_work(
+                "api", process_name, self._run_api_update_check_if_due, process_name
+            )
+        return False
+
+    def _dispatch_scheduled_symlink_backup_if_due(
+        self, process_name, key, instance_name
+    ):
+        due_at = Update._symlink_backup_next_at.get(process_name)
+        if due_at is not None and int(time.time()) >= due_at:
+            return self._dispatch_scheduled_work(
+                "symlink_backup",
+                process_name,
+                self._run_scheduled_symlink_backup_if_due,
+                process_name,
+                key,
+                instance_name,
+            )
+        return False
 
     def _fetch_branch_head_sha(self, repo_owner: str, repo_name: str, branch: str):
         return self.downloader.get_ref_commit_sha(repo_owner, repo_name, branch)
@@ -484,7 +730,7 @@ class Update:
             "auto_update_start_time": self._api_update_start_time,
         }
 
-    def check_api_update(self, process_name="DUMB API"):
+    def check_api_update(self, process_name="DUMB API", *, record_status=True):
         """Check the controller image version without attempting self-installation."""
         config = self._api_update_config()
         payload = self._manual_update_check_internal(
@@ -509,7 +755,8 @@ class Update:
             "auto_update_start_time": self._api_update_start_time,
             "next_check_at": next_check_at,
         }
-        self._safe_record_update_status(process_name, payload)
+        if record_status:
+            self._safe_record_update_status(process_name, payload)
         return payload
 
     def _run_api_update_check_if_due(self, process_name):
@@ -523,22 +770,34 @@ class Update:
             )
             Update._api_next_check_at = due_at
         if now_ts < due_at:
-            return
+            return self._finish_scheduled_work_status(
+                "api",
+                process_name,
+                {
+                    "status": "scheduled",
+                    "last_run_status": "rescheduled",
+                    "message": "Scheduled work was rescheduled before execution.",
+                    "next_check_at": due_at,
+                },
+            )
         try:
-            self.check_api_update(process_name)
+            payload = self.check_api_update(process_name, record_status=False)
         except Exception as error:
+            payload = {"status": "error", "message": str(error)}
             Update._api_next_check_at = self._calculate_next_run_at(
                 self._api_update_interval_hours,
                 self._api_update_start_time,
                 now_ts + 1,
             )
             self.logger.warning("Scheduled DUMB API update check failed: %s", error)
+        payload["next_check_at"] = Update._api_next_check_at
+        return self._finish_scheduled_work_status("api", process_name, payload)
 
     def start_api_update_monitor(self, process_name="DUMB API"):
         """Always monitor DUMB API releases; installation remains operator-owned."""
         if Update._api_update_job:
             try:
-                self.scheduler.cancel_job(Update._api_update_job)
+                self._cancel_scheduler_job(Update._api_update_job)
             except Exception:
                 pass
         Update._api_next_check_at = self._calculate_next_run_at(
@@ -546,22 +805,25 @@ class Update:
             self._api_update_start_time,
             int(time.time()) + 1,
         )
-        Update._api_update_job = self.scheduler.every(1).minutes.do(
-            self._run_api_update_check_if_due,
-            process_name,
-        )
+        with Update._scheduler_lock:
+            Update._api_update_job = self.scheduler.every(1).minutes.do(
+                self._dispatch_api_update_check_if_due,
+                process_name,
+            )
         self._ensure_scheduler_running(process_name)
 
         def initial_check():
             try:
-                self.check_api_update(process_name)
+                payload = self.check_api_update(process_name, record_status=False)
             except Exception as error:
                 self.logger.warning(
                     "Initial DUMB API update check failed: %s",
                     error,
                 )
+                payload = {"status": "error", "message": str(error)}
+            self._finish_scheduled_work_status("api", process_name, payload)
 
-        threading.Thread(target=initial_check, daemon=True).start()
+        self._dispatch_scheduled_work("api", process_name, initial_check)
 
     def _manual_update_check_internal(self, process_name, config, key, instance_name):
         block_reason = self._get_update_block_reason(config, key)
@@ -2310,7 +2572,7 @@ class Update:
         existing_job = Update._jobs.get(process_name)
         if existing_job:
             try:
-                self.scheduler.cancel_job(existing_job)
+                self._cancel_scheduler_job(existing_job)
             except Exception:
                 pass
             Update._jobs.pop(process_name, None)
@@ -2344,14 +2606,19 @@ class Update:
         existing_job = Update._jobs.get(process_name)
         if existing_job:
             try:
-                self.scheduler.cancel_job(existing_job)
+                self._cancel_scheduler_job(existing_job)
             except Exception:
                 pass
         next_check_at = self._calculate_next_check_at(process_name, config)
         Update._next_check_at[process_name] = next_check_at
-        job = self.scheduler.every(1).minutes.do(
-            self._run_scheduled_update_if_due, process_name, config, key, instance_name
-        )
+        with Update._scheduler_lock:
+            job = self.scheduler.every(1).minutes.do(
+                self._dispatch_scheduled_update_if_due,
+                process_name,
+                config,
+                key,
+                instance_name,
+            )
         Update._jobs[process_name] = job
         self.logger.debug(
             f"Scheduled automatic update check for {process_name}, w/ key: {key}, and job ID: {id(job)}"
@@ -2383,8 +2650,15 @@ class Update:
                 return
             Update._schedule_thread_started = True
             Update._schedule_thread_count += 1
-            thread = threading.Thread(target=self._run_scheduler_loop, daemon=True)
-            thread.start()
+            thread = threading.Thread(
+                target=self._run_scheduler_loop, name="update-scheduler", daemon=True
+            )
+            try:
+                thread.start()
+            except Exception:
+                Update._schedule_thread_started = False
+                Update._schedule_thread_count -= 1
+                raise
             self.logger.debug(
                 "Scheduler loop started for %s. Active loops: %d, jobs: %d, thread: %s",
                 process_name,
@@ -2396,9 +2670,27 @@ class Update:
     def _run_scheduler_loop(self):
         try:
             while not self.process_handler.shutting_down:
-                self.scheduler.run_pending()
+                try:
+                    with Update._scheduler_lock:
+                        self.scheduler.run_pending()
+                except Exception as error:
+                    self.logger.error("Scheduler tick failed: %s", error, exc_info=True)
+                try:
+                    self._report_running_scheduled_work()
+                except Exception as error:
+                    self.logger.error(
+                        "Scheduler progress report failed: %s", error, exc_info=True
+                    )
                 time.sleep(1)
         finally:
+            with Update._scheduled_work_lock:
+                outstanding = list(Update._active_scheduled_work)
+            if outstanding:
+                self.logger.warning(
+                    "Scheduler stopped dispatching during shutdown; running workers "
+                    "retain their safety locks until they return: %s",
+                    outstanding,
+                )
             with Update._schedule_thread_lock:
                 Update._schedule_thread_started = False
                 if Update._schedule_thread_count > 0:
@@ -2459,7 +2751,7 @@ class Update:
         existing_job = Update._symlink_backup_jobs.get(process_name)
         if existing_job:
             try:
-                self.scheduler.cancel_job(existing_job)
+                self._cancel_scheduler_job(existing_job)
             except Exception:
                 pass
             Update._symlink_backup_jobs.pop(process_name, None)
@@ -2479,9 +2771,13 @@ class Update:
         retention_count = self.symlink_backup_retention_count(process_name, config)
         next_backup_at = self._calculate_next_run_at(interval_hours, start_time)
         Update._symlink_backup_next_at[process_name] = next_backup_at
-        job = self.scheduler.every(1).minutes.do(
-            self._run_scheduled_symlink_backup_if_due, process_name, key, instance_name
-        )
+        with Update._scheduler_lock:
+            job = self.scheduler.every(1).minutes.do(
+                self._dispatch_scheduled_symlink_backup_if_due,
+                process_name,
+                key,
+                instance_name,
+            )
         Update._symlink_backup_jobs[process_name] = job
         self._safe_record_symlink_backup_status(
             process_name,
@@ -2510,10 +2806,19 @@ class Update:
 
     def _run_scheduled_symlink_backup_if_due(self, process_name, key, instance_name):
         latest_config = CONFIG_MANAGER.get_instance(instance_name, key)
-        if not latest_config:
-            return
-        if not self.symlink_backup_enabled(process_name, latest_config, key):
-            return
+        if not latest_config or not self.symlink_backup_enabled(
+            process_name, latest_config, key
+        ):
+            self._cancel_symlink_backup_job(process_name)
+            return self._finish_scheduled_work_status(
+                "symlink_backup",
+                process_name,
+                {
+                    "status": "disabled",
+                    "reason": "symlink_backup_disabled",
+                    "next_backup_at": None,
+                },
+            )
 
         now_ts = int(time.time())
         due_at = Update._symlink_backup_next_at.get(process_name)
@@ -2523,7 +2828,16 @@ class Update:
             )
             Update._symlink_backup_next_at[process_name] = due_at
         if now_ts < due_at:
-            return
+            return self._finish_scheduled_work_status(
+                "symlink_backup",
+                process_name,
+                {
+                    "status": "scheduled",
+                    "last_run_status": "rescheduled",
+                    "message": "Scheduled work was rescheduled before execution.",
+                    "next_backup_at": due_at,
+                },
+            )
 
         next_due_at = self._calculate_next_symlink_backup_at(
             process_name, latest_config, now_ts + 1
@@ -2585,12 +2899,15 @@ class Update:
                 "retention_errors": prune_report.get("errors"),
                 "errors": report.get("errors"),
             }
-            self._safe_record_symlink_backup_status(process_name, payload)
+            return self._finish_scheduled_work_status(
+                "symlink_backup", process_name, payload
+            )
         except Exception as e:
             self.logger.error(
                 "Scheduled symlink backup failed for %s: %s", process_name, e
             )
-            self._safe_record_symlink_backup_status(
+            return self._finish_scheduled_work_status(
+                "symlink_backup",
                 process_name,
                 {
                     "status": "error",
@@ -2843,12 +3160,22 @@ class Update:
     def _run_scheduled_update_if_due(self, process_name, config, key, instance_name):
         latest_config = CONFIG_MANAGER.get_instance(instance_name, key)
         if not latest_config:
-            return
+            self._cancel_auto_update_job(process_name)
+            return self._finish_scheduled_work_status(
+                "update",
+                process_name,
+                {
+                    "status": "disabled",
+                    "reason": "config_not_found",
+                    "next_check_at": None,
+                },
+            )
         block_reason = self._get_update_block_reason(latest_config, key)
         if block_reason:
             self._cancel_auto_update_job(process_name)
             target_label = self._configured_target_label(latest_config, block_reason)
-            self._safe_record_update_status(
+            self._finish_scheduled_work_status(
+                "update",
                 process_name,
                 {
                     "status": "blocked",
@@ -2863,7 +3190,16 @@ class Update:
             )
             return
         if not latest_config.get("auto_update"):
-            return
+            self._cancel_auto_update_job(process_name)
+            return self._finish_scheduled_work_status(
+                "update",
+                process_name,
+                {
+                    "status": "disabled",
+                    "reason": "auto_update_disabled",
+                    "next_check_at": None,
+                },
+            )
 
         now_ts = int(time.time())
         due_at = Update._next_check_at.get(process_name)
@@ -2871,7 +3207,16 @@ class Update:
             due_at = self._calculate_next_check_at(process_name, latest_config, now_ts)
             Update._next_check_at[process_name] = due_at
         if now_ts < due_at:
-            return
+            return self._finish_scheduled_work_status(
+                "update",
+                process_name,
+                {
+                    "status": "scheduled",
+                    "last_run_status": "rescheduled",
+                    "message": "Scheduled work was rescheduled before execution.",
+                    "next_check_at": due_at,
+                },
+            )
 
         next_due_at = self._calculate_next_check_at(
             process_name, latest_config, now_ts + 1
@@ -2892,7 +3237,8 @@ class Update:
                 "status": "error",
                 "message": str(error),
             }
-            self._safe_record_update_status(
+            self._finish_scheduled_work_status(
+                "update",
                 process_name,
                 {
                     **payload,
@@ -2904,13 +3250,22 @@ class Update:
         if isinstance(update_status, dict) and update_status.get("status") in {
             "blocked",
             "error",
+            "deferred",
         }:
+            if update_status.get("status") == "deferred":
+                next_due_at = now_ts + 60
+                Update._next_check_at[process_name] = next_due_at
+                update_status = {
+                    **update_status,
+                    "retry_after_seconds": 60,
+                    "next_retry_at": next_due_at,
+                }
             update_status = {
                 **update_status,
                 "auto_update_enabled": True,
                 "next_check_at": next_due_at,
             }
-            self._safe_record_update_status(process_name, update_status)
+            self._finish_scheduled_work_status("update", process_name, update_status)
             return
         schedule_status = {
             "status": "scheduled",
@@ -2924,12 +3279,16 @@ class Update:
             ),
             "next_check_at": next_due_at,
         }
+        if isinstance(update_status, dict):
+            schedule_status["last_run_status"] = update_status.get("status")
         if self.auto_update_mode(latest_config) == "check_only" and isinstance(
             update_status, dict
         ):
             schedule_status = {**update_status, **schedule_status}
             schedule_status["status"] = update_status.get("status", "scheduled")
-        self._safe_record_update_status(process_name, schedule_status)
+        return self._finish_scheduled_work_status(
+            "update", process_name, schedule_status
+        )
 
     def auto_update(
         self, process_name, enable_update, force_update_check: bool = False
@@ -3217,7 +3576,13 @@ class Update:
             INFINIDYSK_MIGRATION_ADMISSION_LOCK,
         )
 
-        with INFINIDYSK_MIGRATION_ADMISSION_LOCK:
+        if not INFINIDYSK_MIGRATION_ADMISSION_LOCK.acquire(blocking=False):
+            return {
+                "status": "deferred",
+                "reason": "update_admission_busy",
+                "message": "Scheduled update deferred while lifecycle admission is busy.",
+            }
+        try:
             blocker = self._infinidysk_migration_update_blocker(key)
             if blocker:
                 payload = {
@@ -3230,6 +3595,8 @@ class Update:
             return self._scheduled_update_check_admitted(
                 process_name, config, key, instance_name
             )
+        finally:
+            INFINIDYSK_MIGRATION_ADMISSION_LOCK.release()
 
     def _scheduled_update_check_admitted(
         self, process_name, config, key, instance_name
@@ -3252,6 +3619,16 @@ class Update:
                 "status": "error",
                 "message": f"Scheduled update check failed for {process_name}.",
             }
+        # Avoid starting planned maintenance when a manual/boot update already
+        # owns this updater. The install path rechecks atomically before creating
+        # any install operation, covering a contender arriving after this probe.
+        if not self.updating.acquire(blocking=False):
+            return {
+                "status": "deferred",
+                "reason": "update_in_progress",
+                "message": "Scheduled update deferred while another update is running.",
+            }
+        self.updating.release()
         manager = getattr(self, "media_protection_manager", None)
         protection = None
         if manager is not None:
@@ -3270,7 +3647,12 @@ class Update:
             install_status = self._scheduled_update_check_unprotected(
                 process_name, config, key, instance_name
             )
-            success = True
+            success = isinstance(install_status, dict) and install_status.get(
+                "status"
+            ) in {
+                "updated",
+                "no_update",
+            }
         finally:
             if manager is not None and protection is not None:
                 manager.complete_planned(protection.get("token"), success=success)
@@ -3279,11 +3661,17 @@ class Update:
     def _scheduled_update_check_unprotected(
         self, process_name, config, key, instance_name
     ):
-        operation_id = INSTALL_CACHE.begin_operation(process_name)
-        self._active_install_operation = operation_id
-        success = False
-        payload = None
-        with self.updating:
+        if not self.updating.acquire(blocking=False):
+            return {
+                "status": "deferred",
+                "reason": "update_in_progress",
+                "message": "Scheduled update deferred while another update is running.",
+            }
+        try:
+            operation_id = INSTALL_CACHE.begin_operation(process_name)
+            self._active_install_operation = operation_id
+            success = False
+            payload = None
             timing_started = self._begin_update_timing(process_name)
             try:
                 self.logger.info(
@@ -3340,6 +3728,8 @@ class Update:
                             self._finish_update_timing(process_name, payload)
                     finally:
                         self._active_install_operation = None
+        finally:
+            self.updating.release()
 
     def update_check(self, process_name, config, key, instance_name):
         if key in {"whisparr", "whisparr-v3"}:

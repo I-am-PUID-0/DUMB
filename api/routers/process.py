@@ -21,6 +21,7 @@ from utils.setup import (
     _prepare_whisparr_profile_config,
 )
 from utils.core_services import has_core_service
+from utils.cli_debrid_runtime import cli_battery_is_embedded
 from utils.dependency_map import (
     build_conditional_dependency_map,
     filter_conditional_deps_for_instance,
@@ -504,6 +505,13 @@ def _effective_core_dependencies(
         if mount_type in {"rclone", "dfs", "none"}:
             deps = [dep for dep in deps if dep != "rclone"]
 
+    if (
+        core_key == "cli_debrid"
+        and cfg.get("config_dir")
+        and cli_battery_is_embedded(cfg, CONFIG_MANAGER.get("cli_battery", {}) or {})
+    ):
+        deps = [dep for dep in deps if dep != "cli_battery"]
+
     if core_key == "riven_backend" and bool(
         cfg.get("branch_enabled") or str(cfg.get("commit_sha") or "").strip()
     ):
@@ -516,7 +524,9 @@ def _onboarding_core_dependencies(
     core_key: str, config_obj: Optional[Dict[str, Any]] = None
 ) -> List[str]:
     deps = _effective_core_dependencies(core_key, config_obj)
-    if core_key == "decypharr" and "rclone" not in deps:
+    if (core_key == "decypharr" and "rclone" not in deps) or core_key == "cli_debrid":
+        # Onboarding can install a different source before launch. Retain the
+        # potential legacy Battery dependency; installed embedded runtimes skip it.
         deps = list(
             dict.fromkeys(list(CORE_SERVICE_DEPENDENCIES.get(core_key, [])) + deps)
         )
@@ -595,7 +605,7 @@ CLI Debrid Service
 - Lightweight, Python‑based downloader and streaming‑link creator.
 - Integrates tightly with Real‑Debrid, Trakt, Plex, and various scraping services.
 - Automates media collection, quality upgrades, and webhook‑driven triggers.
-- Requires CLI Battery for metadata and optionally Phalanx DB for decentralized metadata.
+- Uses embedded CLI Battery for metadata in newer installed sources; older sources use the standalone CLI Battery process. Phalanx DB is optional for decentralized metadata.
 
 Documentation: https://dumbarr.com/services/core/cli-debrid""",
     "decypharr": """\
