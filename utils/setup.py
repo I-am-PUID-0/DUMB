@@ -1276,6 +1276,12 @@ def _nzbdav_named_release_channel(config: dict) -> bool:
     return not any(character.isdigit() for character in release)
 
 
+def _validate_nzbdav_release_commit(config, release, commit):
+    if not is_infinidysk_repository(config.get("repo_owner"), config.get("repo_name")):
+        return True, None
+    return validate_infinidysk_release(release, downloader, resolved_commit=commit)
+
+
 def _resolve_nzbdav_release_selector(
     config: dict, requested_release: str | None
 ) -> tuple[str | None, str | None]:
@@ -1449,6 +1455,12 @@ def _install_nzbdav_prebuilt_release(
             f"release {release_tag} archives target {release_target[:8]}, but the "
             f"tag now points to {release_sha[:8]}",
         )
+
+    source_safe, source_error = _validate_nzbdav_release_commit(
+        config, release_tag, release_sha
+    )
+    if not source_safe:
+        return None, source_error
 
     staging_parent = _same_filesystem_staging_parent(target_dir)
     os.makedirs(staging_parent, exist_ok=True)
@@ -1663,7 +1675,6 @@ def setup_release_version(process_handler, config, process_name, key):
             )
             if not release_safe:
                 return False, release_error
-        os.makedirs(target_dir, exist_ok=True)
         release_sha, release_sha_error = downloader.get_ref_commit_sha(
             config.get("repo_owner"),
             config.get("repo_name"),
@@ -1671,6 +1682,12 @@ def setup_release_version(process_handler, config, process_name, key):
         )
         if not release_sha:
             return False, release_sha_error
+        source_safe, source_error = _validate_nzbdav_release_commit(
+            config, resolved_release, release_sha
+        )
+        if not source_safe:
+            return False, source_error
+        os.makedirs(target_dir, exist_ok=True)
         nzbdav_release_marker = f"{resolved_release}-{release_sha[:8]}"
         nzbdav_requested_release = requested_release
         nzbdav_resolved_release = resolved_release
@@ -1969,7 +1986,15 @@ def setup_branch_version(process_handler, config, process_name, key):
     if key == "zurg":
         return False, "Source branch and commit installs are not supported for Zurg."
     else:
-        os.makedirs(target_dir, exist_ok=True)
+        immutable_infinidysk_branch = (
+            key == "infinidysk"
+            and not commit_sha
+            and is_infinidysk_repository(
+                config.get("repo_owner"), config.get("repo_name")
+            )
+        )
+        if not immutable_infinidysk_branch:
+            os.makedirs(target_dir, exist_ok=True)
         if commit_sha:
             source_kind = "commit"
             source_ref = commit_sha
@@ -1984,14 +2009,33 @@ def setup_branch_version(process_handler, config, process_name, key):
             source_kind = "branch"
             source_ref = (config.get("branch") or "main").strip() or "main"
             logger.info("Using branch %s for %s", source_ref, process_name)
-            source_url, zip_folder_name = downloader.get_branch(
-                config["repo_owner"], config["repo_name"], source_ref
-            )
+            if immutable_infinidysk_branch:
+                current_sha, sha_error = _fetch_branch_head_sha(
+                    config["repo_owner"], config["repo_name"], source_ref
+                )
+                if not current_sha:
+                    return False, sha_error or f"Failed to resolve branch {source_ref}"
+                source_safe, source_error = validate_infinidysk_source(
+                    {**config, "commit_sha": current_sha}, downloader
+                )
+                if not source_safe:
+                    return False, source_error
+                source_url, zip_folder_name = downloader.get_commit(
+                    config["repo_owner"], config["repo_name"], current_sha
+                )
+            else:
+                source_url, zip_folder_name = downloader.get_branch(
+                    config["repo_owner"], config["repo_name"], source_ref
+                )
+                if not source_url:
+                    return False, f"Failed to fetch branch {source_ref}"
+                current_sha, sha_error = _fetch_branch_head_sha(
+                    config["repo_owner"], config["repo_name"], source_ref
+                )
             if not source_url:
                 return False, f"Failed to fetch branch {source_ref}"
-            current_sha, sha_error = _fetch_branch_head_sha(
-                config["repo_owner"], config["repo_name"], source_ref
-            )
+            if immutable_infinidysk_branch:
+                os.makedirs(target_dir, exist_ok=True)
             if not current_sha and sha_error:
                 logger.debug(
                     "Branch head SHA lookup failed for %s: %s. Continuing with install.",
@@ -2097,9 +2141,12 @@ def setup_branch_version(process_handler, config, process_name, key):
             "maintainerr",
         }:
             branch_name = (config.get("branch") or "main").strip() or "main"
-            branch_sha, branch_sha_error = _fetch_branch_head_sha(
-                config["repo_owner"], config["repo_name"], branch_name
-            )
+            if immutable_infinidysk_branch:
+                branch_sha, branch_sha_error = current_sha, None
+            else:
+                branch_sha, branch_sha_error = _fetch_branch_head_sha(
+                    config["repo_owner"], config["repo_name"], branch_name
+                )
             if branch_sha:
                 branch_version = f"{branch_name}-{branch_sha[:8]}"
             else:
@@ -2148,7 +2195,7 @@ def setup_branch_version(process_handler, config, process_name, key):
                         "Failed to record the installed frontend branch revision: "
                         f"{marker_error}",
                     )
-            if source_kind == "branch":
+            if source_kind == "branch" and not immutable_infinidysk_branch:
                 current_sha, _ = _fetch_branch_head_sha(
                     config["repo_owner"], config["repo_name"], source_ref
                 )
@@ -5058,6 +5105,11 @@ def setup_nzbdav(
                     )
                     if not source_sha:
                         return False, source_sha_error
+                    source_safe, source_error = _validate_nzbdav_release_commit(
+                        config, resolved_release, source_sha
+                    )
+                    if not source_safe:
+                        return False, source_error
                     version_to_write = f"{resolved_release}-{source_sha[:8]}"
                     source_fallback_info = {
                         "requested_selector": str(release or "latest"),

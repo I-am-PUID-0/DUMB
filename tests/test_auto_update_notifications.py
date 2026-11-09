@@ -1109,11 +1109,11 @@ class UpdateNotificationTests(unittest.TestCase):
         config = {"auto_update": True}
         config_manager = Mock()
         config_manager.get_instance.return_value = config
-        Update._next_check_at = {"InfiniDysk": 100}
 
         with (
             patch("utils.auto_update.CONFIG_MANAGER", config_manager),
             patch("utils.auto_update.time.time", return_value=100),
+            patch.object(Update, "_next_check_at", {"InfiniDysk": 100}),
         ):
             updater._run_scheduled_update_if_due(
                 "InfiniDysk", config, "infinidysk", None
@@ -1136,11 +1136,11 @@ class UpdateNotificationTests(unittest.TestCase):
         config = {"auto_update": True, "auto_update_mode": "install"}
         config_manager = Mock()
         config_manager.get_instance.return_value = config
-        Update._next_check_at = {"InfiniDysk": 100}
 
         with (
             patch("utils.auto_update.CONFIG_MANAGER", config_manager),
             patch("utils.auto_update.time.time", return_value=100),
+            patch.object(Update, "_next_check_at", {"InfiniDysk": 100}),
         ):
             updater._run_scheduled_update_if_due(
                 "InfiniDysk", config, "infinidysk", None
@@ -1164,11 +1164,11 @@ class UpdateNotificationTests(unittest.TestCase):
         config = {"auto_update": True}
         config_manager = Mock()
         config_manager.get_instance.return_value = config
-        Update._next_check_at = {"InfiniDysk": 100}
 
         with (
             patch("utils.auto_update.CONFIG_MANAGER", config_manager),
             patch("utils.auto_update.time.time", return_value=100),
+            patch.object(Update, "_next_check_at", {"InfiniDysk": 100}),
         ):
             updater._run_scheduled_update_if_due(
                 "InfiniDysk", config, "infinidysk", None
@@ -1179,6 +1179,67 @@ class UpdateNotificationTests(unittest.TestCase):
         self.assertEqual(4.2, status["install_duration_seconds"])
         self.assertEqual("ongoing", status["downtime_status"])
         self.assertEqual(200, status["next_check_at"])
+
+    def test_scheduler_publishes_install_failure_when_rollback_also_raises(self):
+        updater = self._updater()
+        updater._safe_record_update_status = Update._safe_record_update_status.__get__(
+            updater, Update
+        )
+        updater._calculate_next_check_at = Mock(return_value=200)
+        updater.update_check = Mock(return_value=(False, "install failed"))
+
+        def fail_rollback(process_name):
+            updater._mark_update_downtime_started(process_name)
+            raise OSError("rollback failed")
+
+        updater._recover_pending_snapshot = Mock(side_effect=fail_rollback)
+        updater.scheduled_update_check = updater._scheduled_update_check_unprotected
+        config = {"auto_update": True}
+        config_manager = Mock()
+        config_manager.get_instance.return_value = config
+
+        with (
+            patch("utils.auto_update.CONFIG_MANAGER", config_manager),
+            patch("utils.auto_update.INSTALL_CACHE"),
+            patch("utils.auto_update.time.time", return_value=100),
+            patch.object(Update, "_next_check_at", {"InfiniDysk": 100}),
+        ):
+            updater._run_scheduled_update_if_due(
+                "InfiniDysk", config, "infinidysk", None
+            )
+
+        status = updater._write_update_status.call_args.args[1]
+        self.assertEqual("error", status["status"])
+        self.assertEqual("install failed", status["message"])
+        self.assertEqual("ongoing", status["downtime_status"])
+        self.assertGreaterEqual(status["install_duration_seconds"], 0)
+        self.assertEqual(200, status["next_check_at"])
+        self.assertEqual({}, updater._update_timings)
+        self.assertIsNone(updater._active_install_operation)
+        self.assertIn("rollback failed", str(updater.logger.error.call_args))
+
+        updater._write_update_status.reset_mock()
+        follow_up = {"status": "checking"}
+        updater._safe_record_update_status("InfiniDysk", follow_up)
+        updater._write_update_status.assert_called_once_with("InfiniDysk", follow_up)
+        self.assertTrue(updater._begin_update_timing("InfiniDysk"))
+        updater._finish_update_timing("InfiniDysk")
+
+    def test_scheduled_rollback_error_preserves_unexpected_install_exception(self):
+        updater = self._updater()
+        original_error = RuntimeError("unexpected install failure")
+        updater.update_check = Mock(side_effect=original_error)
+        updater._recover_pending_snapshot = Mock(side_effect=OSError("rollback failed"))
+
+        with patch("utils.auto_update.INSTALL_CACHE"):
+            with self.assertRaises(RuntimeError) as raised:
+                updater._scheduled_update_check_unprotected(
+                    "InfiniDysk", {}, "infinidysk", None
+                )
+
+        self.assertIs(raised.exception, original_error)
+        self.assertEqual({}, updater._update_timings)
+        self.assertIsNone(updater._active_install_operation)
 
     def test_mediastorm_status_uses_oci_digest_for_latest(self):
         updater = self._updater()

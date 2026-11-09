@@ -7,7 +7,7 @@ import tempfile
 import threading
 import unittest
 from pathlib import Path
-from unittest.mock import Mock, patch
+from unittest.mock import Mock, call, mock_open, patch
 
 from utils import nzbdav_settings, setup
 
@@ -1186,6 +1186,290 @@ class InfiniDyskSetupTests(unittest.TestCase):
         self.assertIn("1.x only", error)
         make_dirs.assert_not_called()
         download_branch.assert_not_called()
+
+    def test_moved_named_release_is_refused_before_install_mutation(self):
+        for release in ("dev", "prerelease"):
+            with self.subTest(release=release), tempfile.TemporaryDirectory() as tmp:
+                sentinel = Path(tmp, "installed-runtime")
+                sentinel.write_text("keep", encoding="utf-8")
+                config = {
+                    "process_name": "InfiniDysk",
+                    "config_dir": tmp,
+                    "repo_owner": "infinidysk",
+                    "repo_name": "infinidysk",
+                    "release_version": release,
+                    "clear_on_update": True,
+                }
+                with (
+                    patch.object(
+                        setup.downloader,
+                        "get_ref_commit_sha",
+                        side_effect=[("a" * 40, None), ("b" * 40, None)],
+                    ),
+                    patch(
+                        "utils.infinidysk_release_line.infinidysk_commit_on_v1",
+                        side_effect=lambda sha, _downloader: (
+                            (True, None) if sha == "a" * 40 else (False, "off v1")
+                        ),
+                    ),
+                    patch.object(
+                        setup, "infinidysk_commit_on_v1", return_value=(True, None)
+                    ),
+                    patch.object(setup, "_install_nzbdav_prebuilt_release") as prebuilt,
+                    patch.object(setup, "clear_directory") as clear,
+                    patch.object(setup, "_prepare_nzbdav_source_tree") as prepare,
+                    patch.object(
+                        setup.downloader, "download_release_version"
+                    ) as download,
+                ):
+                    success, error = setup.setup_release_version(
+                        Mock(), config, "InfiniDysk", "infinidysk"
+                    )
+
+                self.assertFalse(success)
+                self.assertIn("off v1", error)
+                prebuilt.assert_not_called()
+                clear.assert_not_called()
+                prepare.assert_not_called()
+                download.assert_not_called()
+                self.assertEqual("keep", sentinel.read_text(encoding="utf-8"))
+
+    def test_prebuilt_rechecks_moved_named_ref_before_staging(self):
+        config = {"repo_owner": "infinidysk", "repo_name": "infinidysk"}
+        release_info = {
+            "assets": [
+                {
+                    "name": "infinidysk-dev-linux-x64.tar.gz",
+                    "digest": f"sha256:{'c' * 64}",
+                    "browser_download_url": "https://example.test/dev.tar.gz",
+                }
+            ],
+        }
+        with (
+            patch.object(setup.platform, "machine", return_value="x86_64"),
+            patch.object(
+                setup.downloader,
+                "get_ref_commit_sha",
+                side_effect=[("a" * 40, None), ("b" * 40, None)],
+            ),
+            patch(
+                "utils.infinidysk_release_line.infinidysk_commit_on_v1",
+                side_effect=[(True, None), (False, "off v1")],
+            ),
+            patch.object(
+                setup.downloader,
+                "fetch_github_release_info",
+                return_value=(release_info, None),
+            ),
+            patch.object(setup.os, "makedirs") as make_dirs,
+            patch.object(setup.downloader, "download_and_extract") as download,
+        ):
+            result, error = setup._install_nzbdav_prebuilt_release(
+                config, "InfiniDysk", "dev", "/tmp/infinidysk-ref-test"
+            )
+
+        self.assertIsNone(result)
+        self.assertIn("off v1", error)
+        make_dirs.assert_not_called()
+        download.assert_not_called()
+
+    def test_source_fallback_rechecks_exact_commit_before_clearing(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            sentinel = Path(tmp, "installed-runtime")
+            sentinel.write_text("keep", encoding="utf-8")
+            config = {
+                "process_name": "InfiniDysk",
+                "config_dir": tmp,
+                "repo_owner": "infinidysk",
+                "repo_name": "infinidysk",
+                "release_version_enabled": True,
+                "release_version": "dev",
+                "clear_on_update": True,
+                "env": {"CONFIG_PATH": tmp},
+            }
+            with (
+                patch.object(
+                    setup.CONFIG_MANAGER,
+                    "get",
+                    side_effect=lambda key, default=None: (
+                        config if key == "infinidysk" else (default or {})
+                    ),
+                ),
+                patch.object(
+                    setup,
+                    "_validate_infinidysk_postgres_source",
+                    return_value=(True, None),
+                ),
+                patch.object(
+                    setup,
+                    "_validate_infinidysk_postgres_fresh_install",
+                    return_value=(True, None),
+                ),
+                patch.object(
+                    setup, "apply_service_postgres_config", return_value=False
+                ),
+                patch.object(
+                    setup,
+                    "_nzbdav_installed_runtime_ready",
+                    return_value=(False, "missing"),
+                ),
+                patch.object(
+                    setup,
+                    "_nzbdav_prebuilt_runtime_ready",
+                    return_value=(False, "missing"),
+                ),
+                patch.object(
+                    setup,
+                    "_find_nzbdav_backend_project",
+                    return_value=(None, "missing"),
+                ),
+                patch.object(
+                    setup,
+                    "_install_nzbdav_prebuilt_release",
+                    return_value=(None, "archive unavailable"),
+                ),
+                patch.object(
+                    setup.downloader,
+                    "get_ref_commit_sha",
+                    side_effect=[("a" * 40, None), ("b" * 40, None)],
+                ),
+                patch(
+                    "utils.infinidysk_release_line.infinidysk_commit_on_v1",
+                    side_effect=[(True, None), (False, "off v1")],
+                ) as ancestry,
+                patch.object(setup, "chown_single"),
+                patch.object(setup, "_chown_recursive_if_needed"),
+                patch.object(setup, "clear_directory") as clear,
+                patch.object(setup, "_prepare_nzbdav_source_tree") as prepare,
+                patch.object(setup.downloader, "download_release_version") as download,
+            ):
+                success, error = setup.setup_nzbdav(Mock(), install_only=True)
+
+            self.assertFalse(success)
+            self.assertIn("off v1", error)
+            self.assertEqual(
+                [call("a" * 40, setup.downloader), call("b" * 40, setup.downloader)],
+                ancestry.call_args_list,
+            )
+            clear.assert_not_called()
+            prepare.assert_not_called()
+            download.assert_not_called()
+            self.assertEqual("keep", sentinel.read_text(encoding="utf-8"))
+
+    def test_official_branch_download_and_markers_use_validated_commit(self):
+        for repo_owner in ("infinidysk", "custom-fork"):
+            with (
+                self.subTest(repo_owner=repo_owner),
+                tempfile.TemporaryDirectory() as tmp,
+            ):
+                config = {
+                    "process_name": "InfiniDysk",
+                    "config_dir": tmp,
+                    "repo_owner": repo_owner,
+                    "repo_name": "infinidysk",
+                    "branch_enabled": True,
+                    "branch": "v1",
+                }
+                with (
+                    patch.object(
+                        setup,
+                        "_validate_infinidysk_postgres_source",
+                        return_value=(True, None),
+                    ),
+                    patch.object(
+                        setup.downloader,
+                        "get_ref_commit_sha",
+                        return_value=("b" * 40, None),
+                    ) as resolve,
+                    patch(
+                        "utils.infinidysk_release_line.infinidysk_commit_on_v1",
+                        return_value=(True, None),
+                    ) as ancestry,
+                    patch.object(
+                        setup.downloader,
+                        "get_commit",
+                        return_value=("https://example.test/commit.zip", "commit"),
+                    ) as commit,
+                    patch.object(
+                        setup.downloader,
+                        "get_branch",
+                        return_value=("https://example.test/branch.zip", "branch"),
+                    ) as branch,
+                    patch.object(
+                        setup.downloader,
+                        "download_and_extract",
+                        return_value=(True, None),
+                    ) as download,
+                    patch.object(
+                        setup, "_prepare_nzbdav_source_tree", return_value=(True, None)
+                    ),
+                    patch.object(setup, "additional_setup", return_value=(True, None)),
+                    patch.object(setup, "_record_nzbdav_source_install") as record,
+                    patch.object(setup.versions, "version_write") as marker,
+                    patch.object(setup, "chown_single"),
+                    patch("builtins.open", mock_open()),
+                    patch.object(setup.os, "makedirs"),
+                ):
+                    success, error = setup.setup_branch_version(
+                        Mock(), config, "InfiniDysk", "infinidysk"
+                    )
+
+                self.assertTrue(success, error)
+                if repo_owner == "infinidysk":
+                    commit.assert_called_once_with(repo_owner, "infinidysk", "b" * 40)
+                    branch.assert_not_called()
+                    self.assertEqual(2, resolve.call_count)
+                    ancestry.assert_has_calls([call("b" * 40, setup.downloader)] * 2)
+                    self.assertEqual(
+                        "https://example.test/commit.zip", download.call_args.args[0]
+                    )
+                else:
+                    commit.assert_not_called()
+                    branch.assert_called_once_with(repo_owner, "infinidysk", "v1")
+                    ancestry.assert_not_called()
+                self.assertEqual("v1-bbbbbbbb", marker.call_args.kwargs["version"])
+                self.assertEqual("b" * 40, record.call_args.kwargs["source_commit"])
+
+    def test_moved_official_branch_is_refused_before_filesystem_mutation(self):
+        config = {
+            "process_name": "InfiniDysk",
+            "config_dir": "/tmp/infinidysk-ref-test",
+            "repo_owner": "infinidysk",
+            "repo_name": "infinidysk",
+            "branch_enabled": True,
+            "branch": "dev",
+            "clear_on_update": True,
+        }
+        with (
+            patch.object(
+                setup, "_validate_infinidysk_postgres_source", return_value=(True, None)
+            ),
+            patch.object(
+                setup.downloader,
+                "get_ref_commit_sha",
+                side_effect=[("a" * 40, None), ("b" * 40, None)],
+            ),
+            patch(
+                "utils.infinidysk_release_line.infinidysk_commit_on_v1",
+                side_effect=[(True, None), (False, "off v1")],
+            ),
+            patch.object(setup.os, "makedirs") as make_dirs,
+            patch.object(setup, "clear_directory") as clear,
+            patch.object(setup.downloader, "get_commit") as commit,
+            patch.object(setup.downloader, "get_branch") as branch,
+            patch.object(setup.downloader, "download_and_extract") as download,
+        ):
+            success, error = setup.setup_branch_version(
+                Mock(), config, "InfiniDysk", "infinidysk"
+            )
+
+        self.assertFalse(success)
+        self.assertIn("off v1", error)
+        make_dirs.assert_not_called()
+        clear.assert_not_called()
+        commit.assert_not_called()
+        branch.assert_not_called()
+        download.assert_not_called()
 
     def test_postgres_fixed_v11_release_is_rejected_before_filesystem_mutation(self):
         config = {

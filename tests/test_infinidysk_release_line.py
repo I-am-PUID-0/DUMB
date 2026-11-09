@@ -56,6 +56,47 @@ class InfinidyskReleaseLineTests(unittest.TestCase):
                 url = downloader.fetch_with_retries.call_args.args[0]
                 self.assertTrue(url.endswith(f"compare/{'a' * 40}...v1"))
 
+    def test_resolved_named_ref_validates_the_download_commit_without_resolving_again(
+        self,
+    ):
+        for status, expected in (("ahead", True), ("diverged", False)):
+            with self.subTest(status=status):
+                downloader = _downloader(status)
+                supported, _ = validate_infinidysk_release(
+                    "rc", downloader, resolved_commit="b" * 40
+                )
+
+                self.assertEqual(expected, supported)
+                downloader.get_ref_commit_sha.assert_not_called()
+                self.assertTrue(
+                    downloader.fetch_with_retries.call_args.args[0].endswith(
+                        f"compare/{'b' * 40}...v1"
+                    )
+                )
+
+    def test_resolved_version_tag_keeps_local_classification(self):
+        for release, expected in (("v1.7.2", True), ("v2.0.0", False)):
+            with self.subTest(release=release):
+                downloader = _downloader("diverged")
+                supported, _ = validate_infinidysk_release(
+                    release, downloader, resolved_commit="b" * 40
+                )
+                self.assertEqual(expected, supported)
+                downloader.get_ref_commit_sha.assert_not_called()
+                downloader.fetch_with_retries.assert_not_called()
+
+    def test_resolved_named_ref_refuses_lookup_failure(self):
+        downloader = _downloader()
+        downloader.fetch_with_retries.return_value = FakeResponse(502)
+
+        supported, error = validate_infinidysk_release(
+            "dev", downloader, resolved_commit="b" * 40
+        )
+
+        self.assertFalse(supported)
+        self.assertIn("502", error)
+        downloader.get_ref_commit_sha.assert_not_called()
+
     def test_fixed_sources_are_checked_and_moving_channels_are_not(self):
         cases = [
             (_official(commit_sha="b" * 40), "diverged", False),

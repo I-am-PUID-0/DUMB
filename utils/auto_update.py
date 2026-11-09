@@ -3323,11 +3323,23 @@ class Update:
                 self._safe_record_update_status(process_name, payload)
                 return payload
             finally:
-                if not success:
-                    self._recover_pending_snapshot(process_name)
-                if timing_started:
-                    self._finish_update_timing(process_name, payload)
-                self._active_install_operation = None
+                try:
+                    if not success:
+                        try:
+                            self._recover_pending_snapshot(process_name)
+                        except Exception as recovery_error:
+                            self.logger.error(
+                                "Rollback failed for %s: %s",
+                                process_name,
+                                recovery_error,
+                                exc_info=True,
+                            )
+                finally:
+                    try:
+                        if timing_started:
+                            self._finish_update_timing(process_name, payload)
+                    finally:
+                        self._active_install_operation = None
 
     def update_check(self, process_name, config, key, instance_name):
         if key in {"whisparr", "whisparr-v3"}:

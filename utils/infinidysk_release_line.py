@@ -69,8 +69,8 @@ def infinidysk_commit_on_v1(commit, downloader):
     return False, f"not part of the {INFINIDYSK_V1_BRANCH} branch"
 
 
-def validate_infinidysk_release(release, downloader):
-    """Accept a 1.x version tag, or a named ref whose commit is on 1.x."""
+def validate_infinidysk_release(release, downloader, *, resolved_commit=None):
+    """Accept a 1.x version tag, or a named ref's exact install commit on 1.x."""
 
     release = str(release or "").strip()
     selection = f"release {release or 'missing'}"
@@ -78,7 +78,9 @@ def validate_infinidysk_release(release, downloader):
         if infinidysk_release_supported(release):
             return True, None
         return False, _unsupported_error(selection)
-    commit, error = downloader.get_ref_commit_sha(*INFINIDYSK_REPOSITORY, release)
+    commit, error = resolved_commit, None
+    if resolved_commit is None:
+        commit, error = downloader.get_ref_commit_sha(*INFINIDYSK_REPOSITORY, release)
     if not commit:
         return False, _unsupported_error(selection, error or "commit lookup failed")
     on_v1, reason = infinidysk_commit_on_v1(commit, downloader)
