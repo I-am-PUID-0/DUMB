@@ -5,7 +5,7 @@ from pathlib import Path
 from unittest.mock import Mock, patch
 
 from api.api_state import APIState
-from utils.auto_update import Update
+from utils.auto_update import ScheduledUpdateFailed, Update
 from utils.config_loader import CONFIG_MANAGER
 
 
@@ -844,7 +844,13 @@ class UpdateNotificationTests(unittest.TestCase):
             "repo_name": "infinidysk",
         }
 
-        with patch("utils.auto_update.Versions") as versions:
+        with (
+            patch("utils.auto_update.Versions") as versions,
+            patch(
+                "utils.auto_update.validate_infinidysk_source",
+                return_value=(True, None),
+            ),
+        ):
             versions.return_value.version_check.return_value = ("v0.8.1", None)
             pending = updater._manual_check_generic_repo(
                 "InfiniDysk",
@@ -1038,7 +1044,13 @@ class UpdateNotificationTests(unittest.TestCase):
             "repo_name": "infinidysk",
         }
 
-        with patch("utils.auto_update.Versions") as versions:
+        with (
+            patch("utils.auto_update.Versions") as versions,
+            patch(
+                "utils.auto_update.validate_infinidysk_source",
+                return_value=(True, None),
+            ),
+        ):
             versions.return_value.version_check.return_value = (
                 "dev-aaaaaaaa",
                 None,
@@ -1060,6 +1072,113 @@ class UpdateNotificationTests(unittest.TestCase):
         self.assertIsNone(payload["reason"])
         self.assertFalse(payload["configured_target_installed"])
         self.assertEqual("dev-bbbbbbbb", payload["available_version"])
+
+    def test_infinidysk_status_check_reports_2x_source_as_error(self):
+        updater = self._updater()
+        config = {
+            "release_version_enabled": True,
+            "release_version": "v2.0.0",
+            "auto_update": True,
+            "repo_owner": "infinidysk",
+            "repo_name": "infinidysk",
+        }
+
+        with patch("utils.auto_update.Versions") as versions:
+            versions.return_value.version_check.return_value = ("v1.7.2", None)
+            payload = updater._manual_check_generic_repo(
+                "InfiniDysk",
+                config,
+                "infinidysk",
+                None,
+                "release",
+                1,
+                True,
+                24,
+                "04:00",
+                None,
+            )
+
+        self.assertEqual("error", payload["status"])
+        self.assertEqual("unsupported_source", payload["reason"])
+        self.assertIn("1.x only", payload["message"])
+
+    def test_scheduled_install_failure_does_not_escape_the_scheduler_job(self):
+        updater = self._updater()
+        updater._calculate_next_check_at = Mock(return_value=200)
+        updater.scheduled_update_check = Mock(side_effect=RuntimeError("refused"))
+        config = {"auto_update": True}
+        config_manager = Mock()
+        config_manager.get_instance.return_value = config
+        Update._next_check_at = {"InfiniDysk": 100}
+
+        with (
+            patch("utils.auto_update.CONFIG_MANAGER", config_manager),
+            patch("utils.auto_update.time.time", return_value=100),
+        ):
+            updater._run_scheduled_update_if_due(
+                "InfiniDysk", config, "infinidysk", None
+            )
+
+        status = updater._safe_record_update_status.call_args.args[1]
+        self.assertEqual("error", status["status"])
+        self.assertEqual("refused", status["message"])
+        self.assertEqual(200, status["next_check_at"])
+
+    def test_due_install_run_keeps_a_preflight_error(self):
+        updater = self._updater()
+        updater._calculate_next_check_at = Mock(return_value=200)
+        refusal = {
+            "status": "error",
+            "reason": "unsupported_source",
+            "message": "infinidysk source check failed",
+        }
+        updater.scheduled_update_check = Mock(return_value=refusal)
+        config = {"auto_update": True, "auto_update_mode": "install"}
+        config_manager = Mock()
+        config_manager.get_instance.return_value = config
+        Update._next_check_at = {"InfiniDysk": 100}
+
+        with (
+            patch("utils.auto_update.CONFIG_MANAGER", config_manager),
+            patch("utils.auto_update.time.time", return_value=100),
+        ):
+            updater._run_scheduled_update_if_due(
+                "InfiniDysk", config, "infinidysk", None
+            )
+
+        status = updater._safe_record_update_status.call_args.args[1]
+        self.assertEqual("error", status["status"])
+        self.assertEqual("unsupported_source", status["reason"])
+        self.assertEqual(200, status["next_check_at"])
+
+    def test_scheduled_install_failure_keeps_install_timing_fields(self):
+        updater = self._updater()
+        updater._calculate_next_check_at = Mock(return_value=200)
+        timed = {
+            "status": "error",
+            "message": "refused",
+            "install_duration_seconds": 4.2,
+            "downtime_status": "ongoing",
+        }
+        updater.scheduled_update_check = Mock(side_effect=ScheduledUpdateFailed(timed))
+        config = {"auto_update": True}
+        config_manager = Mock()
+        config_manager.get_instance.return_value = config
+        Update._next_check_at = {"InfiniDysk": 100}
+
+        with (
+            patch("utils.auto_update.CONFIG_MANAGER", config_manager),
+            patch("utils.auto_update.time.time", return_value=100),
+        ):
+            updater._run_scheduled_update_if_due(
+                "InfiniDysk", config, "infinidysk", None
+            )
+
+        status = updater._safe_record_update_status.call_args.args[1]
+        self.assertEqual("error", status["status"])
+        self.assertEqual(4.2, status["install_duration_seconds"])
+        self.assertEqual("ongoing", status["downtime_status"])
+        self.assertEqual(200, status["next_check_at"])
 
     def test_mediastorm_status_uses_oci_digest_for_latest(self):
         updater = self._updater()
@@ -1173,6 +1292,10 @@ class UpdateNotificationTests(unittest.TestCase):
 
         with (
             patch("utils.auto_update.Versions") as versions,
+            patch(
+                "utils.auto_update.validate_infinidysk_source",
+                return_value=(True, None),
+            ),
             patch(
                 "utils.auto_update.setup_release_version", return_value=(True, None)
             ) as install_release,
@@ -1868,6 +1991,39 @@ class UpdateNotificationTests(unittest.TestCase):
         self.assertTrue(config["release_version_enabled"])
         self.assertEqual("prerelease", config["release_version"])
 
+    def test_configured_infinidysk_2x_install_is_an_error_before_stop(self):
+        updater = self._updater()
+        updater.process_handler = Mock(
+            process_names=["InfiniDysk"],
+            setup_tracker=set(),
+            setup_tracker_lock=threading.Lock(),
+        )
+        updater.stop_process = Mock()
+        config = {
+            "repo_owner": "infinidysk",
+            "repo_name": "infinidysk",
+            "release_version_enabled": True,
+            "release_version": "v2.0.0",
+        }
+        config_manager = Mock()
+        config_manager.find_key_for_process.return_value = ("infinidysk", None)
+        config_manager.get_instance.return_value = config
+
+        with (
+            patch("utils.auto_update.CONFIG_MANAGER", config_manager),
+            patch("utils.auto_update.setup_release_version") as install,
+        ):
+            payload = updater.manual_update_install(
+                "InfiniDysk",
+                allow_override=False,
+                target="configured",
+            )
+
+        self.assertEqual("error", payload["status"])
+        self.assertIn("1.x only", payload["message"])
+        updater.stop_process.assert_not_called()
+        install.assert_not_called()
+
     def test_configured_commit_install_applies_pin_without_update_override(self):
         updater = self._updater()
         updater.process_handler = Mock(
@@ -1893,6 +2049,10 @@ class UpdateNotificationTests(unittest.TestCase):
 
         with (
             patch("utils.auto_update.CONFIG_MANAGER", config_manager),
+            patch(
+                "utils.auto_update.validate_infinidysk_source",
+                return_value=(True, None),
+            ),
             patch(
                 "utils.auto_update.setup_branch_version", return_value=(True, None)
             ) as setup_branch,

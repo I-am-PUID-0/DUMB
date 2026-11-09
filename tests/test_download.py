@@ -159,6 +159,73 @@ class DownloaderHelperTests(unittest.TestCase):
         self.assertIsNone(error)
         self.assertEqual("v0.10.0-rc.3", version)
 
+    def test_official_infinidysk_releases_stay_on_1x(self):
+        response = FakeResponse(
+            200,
+            json_data=[
+                {
+                    "id": 40,
+                    "tag_name": "v2.0.0",
+                    "draft": False,
+                    "prerelease": False,
+                    "published_at": "2026-12-01T00:00:00Z",
+                },
+                {
+                    "id": 39,
+                    "tag_name": "v2.0.0-beta.5",
+                    "draft": False,
+                    "prerelease": True,
+                    "published_at": "2026-11-20T00:00:00Z",
+                },
+                {
+                    "id": 38,
+                    "tag_name": "v1.7.2",
+                    "draft": False,
+                    "prerelease": False,
+                    "published_at": "2026-11-10T00:00:00Z",
+                },
+                {
+                    "id": 37,
+                    "tag_name": "v1.8.0-rc.1",
+                    "draft": False,
+                    "prerelease": True,
+                    "published_at": "2026-11-05T00:00:00Z",
+                },
+            ],
+        )
+
+        for prerelease, expected in ((False, "v1.7.2"), (True, "v1.8.0-rc.1")):
+            with self.subTest(prerelease=prerelease):
+                with patch.object(
+                    self.downloader, "fetch_with_retries", return_value=response
+                ) as fetch:
+                    version, error = self.downloader.get_latest_release(
+                        "infinidysk", "infinidysk", prerelease=prerelease
+                    )
+
+                self.assertIsNone(error)
+                self.assertEqual(expected, version)
+                self.assertNotIn("/releases/latest", fetch.call_args.args[0])
+
+    def test_official_infinidysk_1x_release_is_found_past_the_first_page(self):
+        newer = [
+            {"id": 200 - index, "tag_name": f"v2.{index}.0", "prerelease": False}
+            for index in range(100)
+        ]
+        older = [{"id": 1, "tag_name": "v1.7.2", "prerelease": False}]
+        pages = [FakeResponse(200, json_data=newer), FakeResponse(200, json_data=older)]
+
+        with patch.object(
+            self.downloader, "fetch_with_retries", side_effect=pages
+        ) as fetch:
+            version, error = self.downloader.get_latest_release(
+                "infinidysk", "infinidysk"
+            )
+
+        self.assertIsNone(error)
+        self.assertEqual("v1.7.2", version)
+        self.assertTrue(fetch.call_args.args[0].endswith("per_page=100&page=2"))
+
     def test_prerelease_discovery_uses_publish_recency_not_tag_sorting(self):
         response = FakeResponse(
             200,

@@ -11,6 +11,12 @@ from utils.tautulli_update import tautulli_persistent_excludes
 from utils.config_loader import CONFIG_MANAGER
 from utils.global_logger import logger
 from utils.download import Downloader, archive_overlay_recovery_paths
+from utils.infinidysk_release_line import (
+    infinidysk_commit_on_v1,
+    is_infinidysk_repository,
+    validate_infinidysk_release,
+    validate_infinidysk_source,
+)
 from utils.versions import Versions
 from utils.plex import PlexInstaller
 from utils.traefik_setup import get_traefik_proxy_url, setup_traefik
@@ -1275,19 +1281,26 @@ def _resolve_nzbdav_release_selector(
 ) -> tuple[str | None, str | None]:
     release_tag = str(requested_release or "latest").strip() or "latest"
     release_lower = release_tag.lower()
+    official = is_infinidysk_repository(
+        config.get("repo_owner"), config.get("repo_name")
+    )
     if release_lower not in {"latest", "prerelease"}:
+        if official:
+            supported, error = validate_infinidysk_release(release_tag, downloader)
+            if not supported:
+                return None, error
         return release_tag, None
 
-    if (
-        release_lower == "prerelease"
-        and str(config.get("repo_owner") or "").strip().lower() == "infinidysk"
-        and str(config.get("repo_name") or "").strip().lower() == "infinidysk"
-    ):
+    if release_lower == "prerelease" and official:
         rc_sha, _ = downloader.get_ref_commit_sha(
             config.get("repo_owner"), config.get("repo_name"), "rc"
         )
         if rc_sha:
-            return "rc", None
+            on_v1, reason = infinidysk_commit_on_v1(rc_sha, downloader)
+            if on_v1:
+                return "rc", None
+            if on_v1 is None:
+                return None, f"infinidysk rc check failed: {reason}"
 
     resolved_tag, error = downloader.get_latest_release(
         config.get("repo_owner"),
@@ -1910,10 +1923,31 @@ def setup_branch_version(process_handler, config, process_name, key):
             )
         return False
 
+    infinidysk_v1_verified = False
     if key == "infinidysk":
         source_safe, source_error = _validate_infinidysk_postgres_source(config)
         if not source_safe:
             return False, source_error
+        pinned_commit = str(config.get("commit_sha") or "").strip().lower()
+        pinned_state = (
+            _read_branch_state(config["config_dir"], key) if pinned_commit else {}
+        )
+        # Was checked when installed; starting it downloads nothing new.
+        pinned_commit_installed = (
+            bool(pinned_commit)
+            and pinned_state.get("infinidysk_v1_verified") is True
+            and pinned_state.get("source_kind") == "commit"
+            and pinned_state.get("commit_sha") == pinned_commit
+            and pinned_state.get("repo_owner") == config.get("repo_owner")
+            and pinned_state.get("repo_name") == config.get("repo_name")
+            and _has_branch_runtime_artifacts(config["config_dir"], key)
+            and _commit_version_marker_matches(config["config_dir"], pinned_commit)
+        )
+        if not pinned_commit_installed:
+            source_safe, source_error = validate_infinidysk_source(config, downloader)
+            if not source_safe:
+                return False, source_error
+        infinidysk_v1_verified = True
 
     if key in [
         "bazarr",
@@ -1992,6 +2026,14 @@ def setup_branch_version(process_handler, config, process_name, key):
                             target_dir,
                             requested_selector=source_ref,
                             source_commit=current_sha,
+                        )
+                    if infinidysk_v1_verified and not previous_state.get(
+                        "infinidysk_v1_verified"
+                    ):
+                        _write_branch_state(
+                            target_dir,
+                            key,
+                            {**previous_state, "infinidysk_v1_verified": True},
                         )
                     logger.info(
                         "%s '%s' unchanged for %s (%s); skipping reinstall/setup.",
@@ -2122,6 +2164,11 @@ def setup_branch_version(process_handler, config, process_name, key):
                         "branch": source_ref if source_kind == "branch" else None,
                         "commit_sha": current_sha,
                         "updated_at": int(time.time()),
+                        **(
+                            {"infinidysk_v1_verified": True}
+                            if infinidysk_v1_verified
+                            else {}
+                        ),
                     },
                 )
         if key == "infinidysk":

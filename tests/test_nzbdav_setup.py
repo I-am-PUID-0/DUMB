@@ -1,4 +1,5 @@
 import ast
+import io
 import json
 import os
 import subprocess
@@ -976,6 +977,9 @@ class InfiniDyskSetupTests(unittest.TestCase):
                 "get_ref_commit_sha",
                 return_value=("a" * 40, None),
             ) as resolve_ref,
+            patch.object(
+                setup, "infinidysk_commit_on_v1", return_value=(True, None)
+            ) as on_v1,
             patch.object(setup.downloader, "get_latest_release") as latest,
         ):
             resolved, error = setup._resolve_nzbdav_release_selector(
@@ -985,7 +989,203 @@ class InfiniDyskSetupTests(unittest.TestCase):
         self.assertIsNone(error)
         self.assertEqual("rc", resolved)
         resolve_ref.assert_called_once_with("infinidysk", "infinidysk", "rc")
+        on_v1.assert_called_once_with("a" * 40, setup.downloader)
         latest.assert_not_called()
+
+    def test_official_selector_rejects_2x_tag_and_off_v1_named_ref(self):
+        config = {"repo_owner": "infinidysk", "repo_name": "infinidysk"}
+        with patch.object(setup.downloader, "get_ref_commit_sha") as resolve_ref:
+            resolved, error = setup._resolve_nzbdav_release_selector(config, "v2.0.0")
+
+        self.assertIsNone(resolved)
+        self.assertIn("1.x only", error)
+        resolve_ref.assert_not_called()
+
+        with (
+            patch.object(
+                setup.downloader,
+                "get_ref_commit_sha",
+                return_value=("a" * 40, None),
+            ),
+            patch(
+                "utils.infinidysk_release_line.infinidysk_commit_on_v1",
+                return_value=(False, "not part of the v1 branch"),
+            ),
+        ):
+            resolved, error = setup._resolve_nzbdav_release_selector(config, "dev")
+
+        self.assertIsNone(resolved)
+        self.assertIn("not part of the v1 branch", error)
+
+    def test_official_prerelease_falls_back_when_rc_is_off_v1(self):
+        config = {"repo_owner": "infinidysk", "repo_name": "infinidysk"}
+        with (
+            patch.object(
+                setup.downloader,
+                "get_ref_commit_sha",
+                return_value=("a" * 40, None),
+            ),
+            patch.object(
+                setup,
+                "infinidysk_commit_on_v1",
+                return_value=(False, "not part of the v1 branch"),
+            ),
+            patch.object(
+                setup.downloader,
+                "get_latest_release",
+                return_value=("v1.4.0-rc.2", None),
+            ) as latest,
+        ):
+            resolved, error = setup._resolve_nzbdav_release_selector(
+                config, "prerelease"
+            )
+
+        self.assertIsNone(error)
+        self.assertEqual("v1.4.0-rc.2", resolved)
+        latest.assert_called_once_with("infinidysk", "infinidysk", prerelease=True)
+
+    def test_official_prerelease_reports_failed_rc_lookup(self):
+        config = {"repo_owner": "infinidysk", "repo_name": "infinidysk"}
+        with (
+            patch.object(
+                setup.downloader,
+                "get_ref_commit_sha",
+                return_value=("a" * 40, None),
+            ),
+            patch.object(
+                setup,
+                "infinidysk_commit_on_v1",
+                return_value=(None, "GitHub ancestry lookup failed with status 502"),
+            ),
+            patch.object(setup.downloader, "get_latest_release") as latest,
+        ):
+            resolved, error = setup._resolve_nzbdav_release_selector(
+                config, "prerelease"
+            )
+
+        self.assertIsNone(resolved)
+        self.assertIn("502", error)
+        latest.assert_not_called()
+
+    def test_installed_pinned_commit_skips_the_source_check_only_when_verified(
+        self,
+    ):
+        commit_sha = "c" * 40
+        real_open = open
+        cases = (
+            # verified, check result, started, checked, record written
+            (True, (False, "not 1.x"), True, False, False),
+            (False, (False, "not 1.x"), False, True, False),
+            (False, (True, None), True, True, True),
+        )
+        for verified, check_result, started, checked, recorded in cases:
+            written = {}
+
+            def capture_open(path, mode="r", *args, **kwargs):
+                if str(path).startswith("/config/") and "w" in mode:
+                    buffer = io.StringIO()
+                    buffer.close = lambda: written.update(json.loads(buffer.getvalue()))
+                    return buffer
+                return real_open(path, mode, *args, **kwargs)
+
+            with (
+                self.subTest(verified=verified, check_result=check_result),
+                tempfile.TemporaryDirectory() as temp_dir,
+            ):
+                Path(temp_dir, "app").mkdir()
+                Path(temp_dir, "app", "backend.dll").write_text("", encoding="utf-8")
+                Path(temp_dir, "version.txt").write_text(
+                    f"commit-{commit_sha[:12]}", encoding="utf-8"
+                )
+                Path(temp_dir, setup._NZBDAV_INSTALL_STATE).write_text(
+                    "{}", encoding="utf-8"
+                )
+                state = {
+                    "repo_owner": "infinidysk",
+                    "repo_name": "infinidysk",
+                    "source_kind": "commit",
+                    "source_ref": commit_sha,
+                    "commit_sha": commit_sha,
+                }
+                if verified:
+                    state["infinidysk_v1_verified"] = True
+                Path(temp_dir, ".dumb_branch_state.json").write_text(
+                    json.dumps(state), encoding="utf-8"
+                )
+                config = {
+                    "process_name": "InfiniDysk",
+                    "config_dir": temp_dir,
+                    "commit_sha": commit_sha,
+                    "repo_owner": "infinidysk",
+                    "repo_name": "infinidysk",
+                }
+                with (
+                    patch.object(
+                        setup,
+                        "_validate_infinidysk_postgres_source",
+                        return_value=(True, None),
+                    ),
+                    patch.object(
+                        setup, "_nzbdav_source_build_is_current", return_value=True
+                    ),
+                    patch.object(
+                        setup,
+                        "validate_infinidysk_source",
+                        return_value=check_result,
+                    ) as source_check,
+                    patch.object(
+                        setup.downloader,
+                        "get_commit",
+                        return_value=("https://example.invalid/a.zip", "source"),
+                    ),
+                    patch.object(setup.downloader, "download_and_extract") as download,
+                    patch.object(setup.os, "makedirs"),
+                    patch.object(setup, "chown_single"),
+                    patch("builtins.open", capture_open),
+                ):
+                    success, error = setup.setup_branch_version(
+                        Mock(), config, "InfiniDysk", "infinidysk"
+                    )
+
+                self.assertEqual(started, success, error)
+                self.assertEqual(checked, source_check.called)
+                self.assertEqual(
+                    recorded, written.get("infinidysk_v1_verified") is True
+                )
+                download.assert_not_called()
+
+    def test_off_v1_branch_install_is_rejected_before_source_download(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            config = {
+                "process_name": "InfiniDysk",
+                "config_dir": temp_dir,
+                "branch_enabled": True,
+                "branch": "main",
+                "commit_sha": "",
+                "repo_owner": "infinidysk",
+                "repo_name": "infinidysk",
+            }
+            with (
+                patch.object(
+                    setup.downloader,
+                    "get_ref_commit_sha",
+                    return_value=("a" * 40, None),
+                ),
+                patch(
+                    "utils.infinidysk_release_line.infinidysk_commit_on_v1",
+                    return_value=(False, "not part of the v1 branch"),
+                ),
+                patch.object(setup.os, "makedirs") as make_dirs,
+                patch.object(setup.downloader, "get_branch") as download_branch,
+            ):
+                success, error = setup.setup_branch_version(
+                    Mock(), config, "InfiniDysk", "infinidysk"
+                )
+
+        self.assertFalse(success)
+        self.assertIn("1.x only", error)
+        make_dirs.assert_not_called()
+        download_branch.assert_not_called()
 
     def test_postgres_fixed_v11_release_is_rejected_before_filesystem_mutation(self):
         config = {
@@ -1935,6 +2135,9 @@ class InfiniDyskSetupTests(unittest.TestCase):
                 return_value=(True, None),
             ) as validate_source,
             patch.object(
+                setup, "validate_infinidysk_release", return_value=(True, None)
+            ),
+            patch.object(
                 setup.downloader,
                 "fetch_github_release_info",
                 return_value=(None, "release lookup reached"),
@@ -1973,6 +2176,9 @@ class InfiniDyskSetupTests(unittest.TestCase):
 
         with (
             patch.object(setup.platform, "machine", return_value="x86_64"),
+            patch.object(
+                setup, "validate_infinidysk_release", return_value=(True, None)
+            ),
             patch.object(
                 setup.downloader,
                 "fetch_github_release_info",
@@ -2092,6 +2298,9 @@ class InfiniDyskSetupTests(unittest.TestCase):
                     setup.downloader,
                     "get_ref_commit_sha",
                     return_value=(release_sha, None),
+                ),
+                patch.object(
+                    setup, "validate_infinidysk_release", return_value=(True, None)
                 ),
                 patch.object(
                     setup.downloader,

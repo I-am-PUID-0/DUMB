@@ -9,6 +9,7 @@ from utils.global_logger import logger
 from utils.logger import format_time
 from utils.versions import Versions, display_version
 from utils.download import Downloader
+from utils.infinidysk_release_line import validate_infinidysk_source
 from utils.setup import (
     SERVICE_MANAGED_SOURCE_KEYS,
     setup_project,
@@ -46,6 +47,12 @@ from datetime import datetime
 import copy
 from glob import glob
 import threading, time, os, schedule, subprocess, shutil
+
+
+class ScheduledUpdateFailed(RuntimeError):
+    def __init__(self, payload):
+        super().__init__(payload.get("message"))
+        self.payload = payload
 
 
 class Update:
@@ -886,6 +893,22 @@ class Update:
                 "auto_update_start_time": start_time,
                 "next_check_at": next_check_at,
             }
+
+        if key == "infinidysk":
+            supported, source_error = validate_infinidysk_source(
+                config, self.downloader
+            )
+            if not supported:
+                return {
+                    "status": "error",
+                    "reason": "unsupported_source",
+                    "message": source_error,
+                    "checked_at": checked_at,
+                    "auto_update_enabled": auto_update_enabled,
+                    "auto_update_interval": interval_hours,
+                    "auto_update_start_time": start_time,
+                    "next_check_at": next_check_at,
+                }
 
         commit_sha = str(config.get("commit_sha") or "").strip().lower()
         if commit_sha:
@@ -1941,6 +1964,11 @@ class Update:
                 install_candidate,
             )
 
+        if key == "infinidysk":
+            supported, error = validate_infinidysk_source(config, self.downloader)
+            if not supported:
+                return False, error
+
         if process_name in self.process_handler.process_names:
             self.stop_process(process_name)
         with self.process_handler.setup_tracker_lock:
@@ -2849,10 +2877,34 @@ class Update:
             process_name, latest_config, now_ts + 1
         )
         Update._next_check_at[process_name] = next_due_at
-        update_status = self.scheduled_update_check(
-            process_name, latest_config, key, instance_name
-        )
-        if isinstance(update_status, dict) and update_status.get("status") == "blocked":
+        try:
+            update_status = self.scheduled_update_check(
+                process_name, latest_config, key, instance_name
+            )
+        except Exception as error:
+            # The install path already marked the operation failed and ran
+            # rollback; an exception here must not end the scheduler loop.
+            self.logger.warning(
+                "Scheduled update failed for %s: %s", process_name, error
+            )
+            # The failure payload carries the install timing fields by now.
+            payload = getattr(error, "payload", None) or {
+                "status": "error",
+                "message": str(error),
+            }
+            self._safe_record_update_status(
+                process_name,
+                {
+                    **payload,
+                    "auto_update_enabled": True,
+                    "next_check_at": next_due_at,
+                },
+            )
+            return
+        if isinstance(update_status, dict) and update_status.get("status") in {
+            "blocked",
+            "error",
+        }:
             update_status = {
                 **update_status,
                 "auto_update_enabled": True,
@@ -3259,7 +3311,7 @@ class Update:
                             status="failed",
                             message=str(error)[:1000],
                         )
-                        raise RuntimeError(error)
+                        raise ScheduledUpdateFailed(payload)
                 else:
                     payload = {"status": "updated", "message": str(error)}
                     INSTALL_CACHE.update_operation(
@@ -3286,6 +3338,10 @@ class Update:
                 False,
                 f"No updates available for {process_name}: pinned to commit {commit_sha[:12]}.",
             )
+        if key == "infinidysk":
+            supported, error = validate_infinidysk_source(config, self.downloader)
+            if not supported:
+                return False, error
 
         if key == "plex":
             return self.update_check_plex(process_name, config, key, instance_name)
