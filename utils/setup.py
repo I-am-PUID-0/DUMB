@@ -18,6 +18,12 @@ from utils.infinidysk_release_line import (
     validate_infinidysk_release,
     validate_infinidysk_source,
 )
+from utils import infinidysk_v2_runtime
+from utils.infinidysk_v2_topology import (
+    suppress_rclone,
+    validate_native_mount_target,
+    validate_selected_owners,
+)
 from utils.versions import Versions
 from utils.plex import PlexInstaller
 from utils.traefik_setup import get_traefik_proxy_url, setup_traefik
@@ -1562,6 +1568,10 @@ def _install_nzbdav_prebuilt_release(
 
 
 def setup_release_version(process_handler, config, process_name, key):
+    if key == "infinidysk" and infinidysk_v2_runtime.is_v2(config):
+        return infinidysk_v2_runtime.install_v2_runtime(
+            process_handler, process_name, config
+        )
     logger.info(f"Using release version {config['release_version']} for {process_name}")
 
     if key in {"whisparr", "whisparr-v3"}:
@@ -1943,6 +1953,8 @@ def setup_branch_version(process_handler, config, process_name, key):
 
     infinidysk_v1_verified = False
     if key == "infinidysk":
+        if infinidysk_v2_runtime.is_v2(config):
+            return False, "InfiniDysk 2.x does not support branch or commit installs"
         source_safe, source_error = _validate_infinidysk_postgres_source(config)
         if not source_safe:
             return False, source_error
@@ -2476,6 +2488,24 @@ def _setup_project_inner(
     config = CONFIG_MANAGER.get_instance(instance_name, key)
     if not config:
         raise ValueError(f"Configuration for {process_name} not found.")
+
+    if key == "infinidysk" and infinidysk_v2_runtime.is_v2(config):
+        if install_phase:
+            success, error = infinidysk_v2_runtime.install_v2_runtime(
+                process_handler, process_name, config
+            )
+            if not success:
+                return False, error
+        if configure_phase:
+            success, error = infinidysk_v2_runtime.configure_v2_runtime(
+                process_handler, process_name, config
+            )
+            if not success:
+                return False, error
+            CONFIG_MANAGER.save_config(process_name)
+            with process_handler.setup_tracker_lock:
+                process_handler.setup_tracker.add(process_name)
+        return True, None
 
     if key in {"whisparr", "whisparr-v3"}:
         try:
@@ -4958,6 +4988,21 @@ def setup_nzbdav(
     config = CONFIG_MANAGER.get("infinidysk")
     if not config:
         return False, "Configuration for InfiniDysk not found."
+
+    if infinidysk_v2_runtime.is_v2(config):
+        if install_only and configure_only:
+            return False, "Invalid InfiniDysk setup phase."
+        if not configure_only:
+            success, error = infinidysk_v2_runtime.install_v2_runtime(
+                process_handler, config.get("process_name", "InfiniDysk"), config
+            )
+            if not success:
+                return False, error
+        if not install_only:
+            return infinidysk_v2_runtime.configure_v2_runtime(
+                process_handler, config.get("process_name", "InfiniDysk"), config
+            )
+        return True, None
 
     logger.info("Starting InfiniDysk setup...")
 
@@ -11306,6 +11351,9 @@ def rclone_setup():
                 logger.debug(f"Skipping disabled Rclone instance: {instance_name}")
                 return True, None
 
+            if suppress_rclone((CONFIG_MANAGER.get("infinidysk") or {}), instance):
+                return True, None
+
             process_name = instance.get("process_name")
             from utils.dependencies import get_api_state
 
@@ -11327,6 +11375,19 @@ def rclone_setup():
             config_dir = instance["config_dir"]
             mount_name = instance["mount_name"]
             mount_dir = instance["mount_dir"]
+            native = CONFIG_MANAGER.get("infinidysk") or {}
+            if infinidysk_v2_runtime.is_v2(native):
+                safe, error = validate_selected_owners(
+                    native, (CONFIG_MANAGER.get("rclone") or {}).get("instances", {})
+                )
+                if not safe:
+                    return False, error
+                if instance.get("key_type", "").lower() == "infinidysk":
+                    safe, error = validate_native_mount_target(
+                        os.path.join(mount_dir, mount_name)
+                    )
+                    if not safe:
+                        return False, error
             os.makedirs(config_dir, exist_ok=True)
             logger.info(f"Setting up Rclone instance: {instance_name}")
 
@@ -11475,6 +11536,27 @@ def rclone_setup():
                         f"user = {username}",
                         f"pass = {obscured_password}",
                     ]
+                elif key_type == "infinidysk" and infinidysk_v2_runtime.is_v2(
+                    (CONFIG_MANAGER.get("infinidysk") or {})
+                ):
+                    native_config = CONFIG_MANAGER.get("infinidysk") or {}
+                    try:
+                        config_data[mount_name] = infinidysk_v2_runtime.rclone_remote(
+                            native_config,
+                            config_data.get(mount_name),
+                            obscure_password,
+                            (CONFIG_MANAGER.get("data_root") or "/data"),
+                        )
+                    except (OSError, ValueError):
+                        return (
+                            False,
+                            "Cannot configure native WebDAV rclone credentials; retain the existing remote or set WEBDAV_PASSWORD",
+                        )
+                    instance["wait_for_url"] = [
+                        {
+                            "url": f"http://127.0.0.1:{int(native_config.get('frontend_port') or 3000)}/healthz"
+                        }
+                    ]
                 elif key_type == "infinidysk":
                     from utils import nzbdav_db
                     from utils.nzbdav_settings import _read_nzbdav_config_values
@@ -11567,7 +11649,18 @@ def rclone_setup():
             write_config(config_file, config_data)
             chown_single(config_file, user_id, group_id)
 
-            full_path, error = ensure_directory(mount_dir, mount_name)
+            if instance.get(
+                "key_type", ""
+            ).lower() == "infinidysk" and infinidysk_v2_runtime.is_v2(
+                (CONFIG_MANAGER.get("infinidysk") or {})
+            ):
+                full_path = os.path.join(mount_dir, mount_name)
+                safe, error = validate_native_mount_target(full_path)
+                if not safe:
+                    return False, error
+                os.makedirs(full_path, exist_ok=True)
+            else:
+                full_path, error = ensure_directory(mount_dir, mount_name)
             if error:
                 return False, f"Failed to ensure mount directory: {error}"
             if os.path.exists(full_path):
@@ -11635,6 +11728,12 @@ def rclone_setup():
                             "--use-cookies": None,
                         }
                     )
+                    if infinidysk_v2_runtime.is_v2(
+                        (CONFIG_MANAGER.get("infinidysk") or {})
+                    ):
+                        required_flags.update(
+                            {"--dir-cache-time": "20s", "--links": None}
+                        )
                 rc_port = None
                 previous_rc_port = _extract_rclone_rc_port(existing)
                 is_nzbdav = instance.get("key_type", "").lower() == "infinidysk"
@@ -11683,7 +11782,13 @@ def rclone_setup():
                     f"Final rclone command for {instance['mount_name']}: {final_cmd}"
                 )
 
-                if is_nzbdav and rc_port:
+                if (
+                    is_nzbdav
+                    and rc_port
+                    and not infinidysk_v2_runtime.is_v2(
+                        (CONFIG_MANAGER.get("infinidysk") or {})
+                    )
+                ):
                     from utils.nzbdav_settings import sync_nzbdav_rclone_rc
 
                     previous_host = (

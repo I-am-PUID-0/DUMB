@@ -276,12 +276,60 @@ def start_configured_process(config_obj, updater, key_name, exit_on_error=True):
             "CLI Battery is embedded in the installed CLI Debrid; skipping its standalone process."
         )
         return True
+    if key_name in {"infinidysk", "postgres", "rclone"}:
+        from utils.infinidysk_v2_postgres import INFINIDYSK_V2_POSTGRES_MANAGER
+        from utils.infinidysk_migration_admission import v2_migration_owner
+
+        if INFINIDYSK_V2_POSTGRES_MANAGER.has_blocking_job():
+
+            def resume_service(service):
+                if not INFINIDYSK_V2_POSTGRES_MANAGER.resume_runtime_allowed(
+                    key_name, service
+                ):
+                    return False
+                name = service.get("process_name")
+                with v2_migration_owner("postgres"):
+                    from utils.infinidysk_migration_admission import (
+                        infinidysk_v2_jobs_active,
+                    )
+
+                    if infinidysk_v2_jobs_active():
+                        return False
+                    from utils.setup import configure_project
+
+                    valid, error = configure_project(updater.process_handler, name)
+                    if valid:
+                        valid, error = updater.process_handler.start_process(name)
+                if not valid:
+                    logger.error(
+                        "Native provider recovery startup for %s failed: %s",
+                        name,
+                        error,
+                    )
+                return bool(valid)
+
+            if isinstance(config_obj.get("instances"), dict):
+                return all(
+                    [
+                        resume_service(service)
+                        for service in config_obj["instances"].values()
+                        if isinstance(service, dict) and service.get("enabled")
+                    ]
+                )
+            return bool(config_obj.get("enabled") and resume_service(config_obj))
+
     all_started = True
     try:
         if "instances" in config_obj:
             any_enabled = False
             for name, instance in config_obj["instances"].items():
                 if instance.get("enabled"):
+                    from utils.infinidysk_v2_topology import suppress_rclone
+
+                    if key_name == "rclone" and suppress_rclone(
+                        config.get("infinidysk", {}), instance
+                    ):
+                        continue
                     process_name = instance.get("process_name", name)
                     auto = instance.get("auto_update", False)
                     success, error = updater.auto_update(process_name, auto)
@@ -606,15 +654,25 @@ def _collect_decypharr_mount_paths(decypharr_cfg: dict) -> list[str]:
 
 
 def _collect_mount_paths(config_manager) -> list[str]:
+    from utils.infinidysk_v2_topology import is_v2, selected_topology, suppress_rclone
+
     mount_paths = set()
+    infinidysk = config_manager.get("infinidysk", {}) or {}
     rclone_instances = config_manager.get("rclone", {}).get("instances", {}) or {}
     for instance in rclone_instances.values():
         if not isinstance(instance, dict) or not instance.get("enabled"):
+            continue
+        if suppress_rclone(infinidysk, instance):
             continue
         mount_dir = instance.get("mount_dir")
         mount_name = instance.get("mount_name")
         if mount_dir and mount_name:
             mount_paths.add(os.path.join(mount_dir, mount_name))
+
+    if infinidysk.get("enabled") and is_v2(infinidysk):
+        mount_paths.update(
+            item["path"] for item in selected_topology(infinidysk, rclone_instances)
+        )
 
     decypharr_cfg = config_manager.get("decypharr", {}) or {}
     mount_type = (decypharr_cfg.get("mount_type") or "").strip().lower()
@@ -803,6 +861,12 @@ def _collect_preinstall_targets(config_manager) -> list[tuple[str, str]]:
         if "instances" in cfg and isinstance(cfg["instances"], dict):
             for inst_cfg in cfg["instances"].values():
                 if isinstance(inst_cfg, dict) and inst_cfg.get("enabled"):
+                    from utils.infinidysk_v2_topology import suppress_rclone
+
+                    if key == "rclone" and suppress_rclone(
+                        config_manager.get("infinidysk"), inst_cfg
+                    ):
+                        continue
                     process_name = inst_cfg.get("process_name")
                     if process_name:
                         targets.append((key, process_name))
@@ -965,6 +1029,12 @@ def _collect_expected_process_names(config_manager, keys):
                     and instance.get("enabled")
                     and instance.get("process_name")
                 ):
+                    from utils.infinidysk_v2_topology import suppress_rclone
+
+                    if key == "rclone" and suppress_rclone(
+                        config_manager.get("infinidysk", {}), instance
+                    ):
+                        continue
                     names.append(instance["process_name"])
         elif cfg.get("enabled") and cfg.get("process_name"):
             names.append(cfg["process_name"])

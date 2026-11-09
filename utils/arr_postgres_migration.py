@@ -45,6 +45,7 @@ from utils.infinidysk_migration_admission import (
     INFINIDYSK_MIGRATION_ADMISSION_LOCK,
     infinidysk_external_mutation_active,
     infinidysk_namespace_migration_active,
+    infinidysk_v2_jobs_active,
 )
 from utils.postgres import initialize_postgres_databases
 from utils.port_probe import is_port_available
@@ -4280,7 +4281,10 @@ class ArrPostgresMigrationManager:
             # creating a module-import cycle.
             from utils.infinidysk_migration import INFINIDYSK_MIGRATION_MANAGER
 
-            if INFINIDYSK_MIGRATION_MANAGER.has_blocking_job():
+            if (
+                INFINIDYSK_MIGRATION_MANAGER.has_blocking_job()
+                or infinidysk_v2_jobs_active()
+            ):
                 raise ArrPostgresMigrationError(ACTIVE_NAMESPACE_MIGRATION_BLOCKER)
             if service_key == "infinidysk" and infinidysk_external_mutation_active():
                 raise ArrPostgresMigrationError(EXTERNAL_MUTATION_BLOCKER)
@@ -5237,20 +5241,11 @@ class ArrPostgresMigrationManager:
         if not preliminary:
             raise ArrPostgresMigrationError("Migration job was not found.")
         service_key = preliminary.get("service_key")
-        if service_key == "infinidysk":
-            with INFINIDYSK_MIGRATION_ADMISSION_LOCK:
-                if infinidysk_namespace_migration_active():
-                    raise ArrPostgresMigrationError(
-                        "Cannot roll back InfiniDysk while a namespace migration job is active."
-                    )
-                reservation = self._reserve_rollback(
-                    job_id,
-                    confirmation,
-                    config_manager,
-                    api_state,
-                    expected_service_key=service_key,
+        with INFINIDYSK_MIGRATION_ADMISSION_LOCK:
+            if infinidysk_namespace_migration_active() or infinidysk_v2_jobs_active():
+                raise ArrPostgresMigrationError(
+                    "Cannot roll back a service database while a namespace migration job is active or an InfiniDysk 2.x migration owns its consumers."
                 )
-        else:
             reservation = self._reserve_rollback(
                 job_id,
                 confirmation,

@@ -1,6 +1,7 @@
 from utils.global_logger import logger
 from utils.download import Downloader
 from utils.infinidysk_release_line import infinidysk_commit_on_v1
+from utils.infinidysk_v2_runtime import is_v2, runtime_dir
 from utils.config_loader import CONFIG_MANAGER
 from utils.runtime_paths import pyproject_file
 import os, subprocess, json, re, requests, shlex, urllib.parse, ast
@@ -248,7 +249,12 @@ class Versions:
             elif key == "infinidysk":
                 config = CONFIG_MANAGER.get("infinidysk") or {}
                 version_path = os.path.join(
-                    config.get("config_dir") or "/infinidysk", "version.txt"
+                    (
+                        str(runtime_dir(config))
+                        if is_v2(config)
+                        else config.get("config_dir") or "/infinidysk"
+                    ),
+                    "version.txt",
                 )
                 is_file = True
             elif key == "tautulli":
@@ -630,6 +636,9 @@ class Versions:
                     f.write(version)
             elif key == "infinidysk":
                 config = CONFIG_MANAGER.get("infinidysk") or {}
+                if is_v2(config):
+                    # Native markers are publisher provenance; never rewrite them.
+                    return None
                 version_path = version_path or os.path.join(
                     config.get("config_dir") or "/infinidysk", "version.txt"
                 )
@@ -697,6 +706,21 @@ class Versions:
     ):
         try:
             config = self._get_service_config_for_compare(key, instance_name)
+            if key == "infinidysk" and is_v2(config):
+                from utils.infinidysk_v2_runtime import (
+                    RELEASE,
+                    installed_v2_version,
+                    validate_v2_selection,
+                )
+
+                valid, error = validate_v2_selection(config)
+                current = installed_v2_version(config)
+                return bool(valid and not current), {
+                    "message": error
+                    or "Native InfiniDysk is pinned to the supported release",
+                    "current_version": current,
+                    "latest_version": RELEASE,
+                }
             if key in (
                 "decypharr",
                 "infinidysk",

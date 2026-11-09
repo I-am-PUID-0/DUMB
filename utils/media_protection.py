@@ -683,6 +683,20 @@ class MediaProtectionManager:
                 if config.get(field):
                     mounts.add(os.path.normpath(config[field]))
         elif key in {"infinidysk", "zurg"}:
+            if key == "infinidysk":
+                from utils.infinidysk_v2_topology import is_v2, selected_topology
+
+                if is_v2(config):
+                    instances = (CONFIG_MANAGER.get("rclone") or {}).get(
+                        "instances", {}
+                    )
+                    return {
+                        item["path"] for item in selected_topology(config, instances)
+                    } or {
+                        os.path.normpath(
+                            config.get("mount_path") or "/mnt/debrid/infinidysk"
+                        )
+                    }
             rclone_instances = (CONFIG_MANAGER.get("rclone", {}) or {}).get(
                 "instances", {}
             ) or {}
@@ -979,6 +993,13 @@ class MediaProtectionManager:
         except Exception:
             return False
         key, config = _process_config(process_name)
+        if key == "infinidysk":
+            from utils.infinidysk_v2_topology import is_v2, delivery_mount_ready
+
+            if is_v2(config) and not delivery_mount_ready(
+                config, (CONFIG_MANAGER.get("rclone") or {}).get("instances", {})
+            ):
+                return False
         for mount_path in self._mounts_for_target(key, config or {}):
             if not os.path.ismount(mount_path):
                 return False

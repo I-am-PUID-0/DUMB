@@ -43,6 +43,54 @@ class _ConfigManager:
 
 
 class RcloneOptimizerTests(unittest.TestCase):
+    def test_native_generation_refuses_legacy_optimizer_before_reads_or_writes(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            config = _ConfigManager(root / "cache")
+            original_get = config.get
+
+            def get(key, section=None):
+                if key == "infinidysk":
+                    return {"runtime_generation": "2"}
+                return original_get(key, section)
+
+            with (
+                patch.object(config, "get", side_effect=get),
+                patch.object(rclone_optimizer, "CONFIG_MANAGER", config),
+            ):
+                manager = rclone_optimizer.RcloneOptimizerManager(
+                    process_handler=unittest.mock.Mock(),
+                    logger=unittest.mock.Mock(),
+                    base_dir=str(root / "optimizer"),
+                )
+                self.assertEqual(manager.list_instances(), [])
+                with (
+                    patch.object(manager, "_write_job") as write,
+                    patch.object(manager, "_validate_paths") as read,
+                    patch.object(manager, "_restart_production_mount") as restart,
+                    patch.object(rclone_optimizer, "safe_urlopen") as request,
+                ):
+                    for operation in (
+                        lambda: manager.discover_content(
+                            config.instance["process_name"]
+                        ),
+                        lambda: manager.create_job(
+                            config.instance["process_name"], ["media.mkv"], "quick", {}
+                        ),
+                        lambda: manager.apply("retained-job"),
+                        lambda: manager.rollback("retained-job"),
+                        lambda: manager._nzbdav_json("/api/trace"),
+                    ):
+                        with self.assertRaisesRegex(
+                            rclone_optimizer.RcloneOptimizerError, "2.x"
+                        ):
+                            operation()
+                write.assert_not_called()
+                read.assert_not_called()
+                restart.assert_not_called()
+                request.assert_not_called()
+                self.assertEqual(manager._jobs, {})
+
     def test_nzbdav_categories_follow_enabled_arr_instance_names(self):
         config = unittest.mock.Mock()
         config.get.side_effect = lambda key, default=None: {

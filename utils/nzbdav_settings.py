@@ -843,8 +843,14 @@ def _merge_instances(existing: list[dict], auto_list: list[dict]) -> list[dict]:
 
 
 def patch_nzbdav_config():
-    """Synchronize managed InfiniDysk settings outside destructive job windows."""
+    """Synchronize managed settings using the generation-specific contract."""
+    from utils.infinidysk_v2_topology import is_v2
 
+    if is_v2(CONFIG_MANAGER.get("infinidysk")):
+        return (
+            False,
+            "InfiniDysk 2.x settings use its native API/UI; legacy automatic Arr wiring is not applied",
+        )
     from utils.infinidysk_migration_admission import (
         INFINIDYSK_MIGRATION_ADMISSION_LOCK,
         infinidysk_namespace_migration_active,

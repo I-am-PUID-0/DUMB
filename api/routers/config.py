@@ -9,6 +9,7 @@ from utils.dependencies import (
     get_optional_current_user,
 )
 from utils.config_loader import CONFIG_MANAGER, find_service_config
+from utils.infinidysk_v2_support import generation, validate_candidate
 from utils.infinidysk_migration_admission import (
     INFINIDYSK_MIGRATION_ADMISSION_LOCK,
     infinidysk_namespace_migration_active,
@@ -851,6 +852,32 @@ def _reject_infinidysk_postgres_reversal(
     candidate_postgres_config: dict | None = None,
 ) -> None:
     """Reject API edits that would break PostgreSQL data or cutover evidence."""
+
+    safe, error = validate_candidate(
+        current_service,
+        candidate_service,
+        data_root=CONFIG_MANAGER.get("data_root") or "/data",
+    )
+    if not safe:
+        raise HTTPException(status_code=400, detail=error)
+    if generation(candidate_service) == "2":
+        if candidate_postgres_config is not None:
+            guarded = ("host", "port", "user", "password", "config_dir")
+            if any(
+                current_postgres_config.get(key) != candidate_postgres_config.get(key)
+                for key in guarded
+            ):
+                from utils.infinidysk_v2_runtime import native_database_url
+
+                url = native_database_url(
+                    candidate_service, CONFIG_MANAGER.get("data_root") or "/data"
+                )
+                if str(url or "").startswith(("postgres:", "postgresql:")):
+                    raise HTTPException(
+                        status_code=409,
+                        detail="Native PostgreSQL connection changes need a coordinated provider maintenance operation.",
+                    )
+        return
 
     from utils.service_postgres import validate_infinidysk_postgres_candidate_update
 

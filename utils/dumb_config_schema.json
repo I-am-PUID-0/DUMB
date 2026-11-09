@@ -1542,6 +1542,38 @@
     "infinidysk": {
       "type": "object",
       "properties": {
+        "runtime_generation": {
+          "type": "string",
+          "enum": [
+            "1",
+            "2"
+          ]
+        },
+        "mount_backend": {
+          "type": "string",
+          "enum": [
+            "rclone",
+            "fuse"
+          ]
+        },
+        "mount_path": {
+          "type": "string",
+          "pattern": "^/[^\\u0000]*$"
+        },
+        "v2_runtime_dir": {
+          "type": "string",
+          "pattern": "^/[^\\u0000]*$"
+        },
+        "v2_data_dir": {
+          "type": "string",
+          "pattern": "^$|^/[^\\u0000]*$"
+        },
+        "v2_release_version": {
+          "type": "string",
+          "enum": [
+            "v2.0.0-beta.6"
+          ]
+        },
         "enabled": {
           "type": "boolean"
         },
@@ -4109,7 +4141,11 @@
                 },
                 "whisparr_version": {
                   "type": "string",
-                  "enum": ["", "v2", "v3"],
+                  "enum": [
+                    "",
+                    "v2",
+                    "v3"
+                  ],
                   "description": "Empty detects the existing version. v2 and v3 (Eros) select separate saved SQLite profiles; PostgreSQL requires separate instances."
                 },
                 "enabled": {

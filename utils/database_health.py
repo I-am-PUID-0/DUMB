@@ -20,6 +20,7 @@ from urllib.parse import unquote, urlparse
 
 import yaml
 from utils.whisparr_settings import whisparr_database_file
+from utils.infinidysk_v2_runtime import is_v2, native_database_url, resolve_v2_data_dir
 
 ARR_DATABASE_FILES = {
     "sonarr": "sonarr.db",
@@ -244,6 +245,13 @@ class DatabaseHealthCollector:
                             self._candidate(key, instance, str(instance_name))
                         )
             elif root.get("enabled") is True:
+                if key == "infinidysk" and is_v2(root):
+                    root = {
+                        **root,
+                        "v2_data_dir": resolve_v2_data_dir(
+                            root, config.get("data_root") or "/data"
+                        ),
+                    }
                 candidates.append(self._candidate(key, root, None))
         return sorted(candidates, key=lambda item: item["process_name"].lower())
 
@@ -399,6 +407,12 @@ class DatabaseHealthCollector:
             ]
         if key == "infinidysk":
             base = _infinidysk_config_path(service)
+            if is_v2(service):
+                url = native_database_url(service)
+                path = url.removeprefix("sqlite:").split("?", 1)[0]
+                return [("main", path)] + list(
+                    _infinidysk_auxiliary_sqlite_paths(service)
+                )
             return [("main", os.path.join(base, "db.sqlite"))] + list(
                 _infinidysk_auxiliary_sqlite_paths(service)
             )
@@ -1137,6 +1151,17 @@ def _provider_for_service(key: str, service: dict[str, Any]) -> str:
             else "sqlite"
         )
     if key == "infinidysk":
+        if is_v2(service):
+            try:
+                return (
+                    "postgresql"
+                    if native_database_url(service).startswith(
+                        ("postgres://", "postgresql://")
+                    )
+                    else "sqlite"
+                )
+            except (OSError, ValueError):
+                return "unknown"
         env = service.get("env") or {}
         provider = str(env.get("DATABASE_PROVIDER") or "").strip().lower()
         return (
@@ -1196,6 +1221,9 @@ def _altmount_database_config(service: dict[str, Any]) -> dict[str, Any]:
 def _service_postgres_connection(key, service, config):
     env = service.get("env") or {}
     if key == "infinidysk":
+        if is_v2(service):
+            url = native_database_url(service, config.get("data_root") or "/data")
+            return {"dsn": url, "database": _dsn_database(url)}
         parsed = _parse_ado_net_connection_string(
             str(env.get("DATABASE_CONNECTION_STRING") or "")
         )
@@ -1309,6 +1337,8 @@ def _parse_ado_net_connection_string(value: str) -> dict[str, str]:
 
 
 def _infinidysk_config_path(service: dict[str, Any]) -> str:
+    if is_v2(service):
+        return resolve_v2_data_dir(service)
     env = service.get("env") or {}
     return str(env.get("CONFIG_PATH") or service.get("config_dir") or "/infinidysk")
 
@@ -1317,6 +1347,11 @@ def _infinidysk_auxiliary_sqlite_paths(
     service: dict[str, Any],
 ) -> tuple[tuple[str, str], ...]:
     base = _infinidysk_config_path(service)
+    if is_v2(service):
+        path = (service.get("env") or {}).get(
+            "INFINIDYSK_METRICS_PATH"
+        ) or os.path.join(base, "metrics.sqlite")
+        return (("metrics", path),)
     return (
         ("metrics", os.path.join(base, "metrics.sqlite")),
         ("warden", os.path.join(base, "warden.db")),

@@ -10,6 +10,7 @@ from utils.logger import format_time
 from utils.versions import Versions, display_version
 from utils.download import Downloader
 from utils.infinidysk_release_line import validate_infinidysk_source
+from utils import infinidysk_v2_runtime
 from utils.setup import (
     SERVICE_MANAGED_SOURCE_KEYS,
     setup_project,
@@ -377,6 +378,8 @@ class Update:
         return not any(character.isdigit() for character in release)
 
     def _get_update_block_reason(self, config, key=None):
+        if key == "infinidysk" and infinidysk_v2_runtime.is_v2(config):
+            return "release"
         if config.get("pinned_version"):
             return "pinned_version"
         if str(config.get("commit_sha") or "").strip():
@@ -409,6 +412,8 @@ class Update:
 
     @staticmethod
     def _configured_target_label(config, block_reason):
+        if infinidysk_v2_runtime.is_v2(config):
+            return f"release {config.get('v2_release_version') or infinidysk_v2_runtime.RELEASE}"
         if block_reason == "commit":
             commit_sha = str(config.get("commit_sha") or "").strip().lower()
             return f"commit {commit_sha[:12]}"
@@ -1141,6 +1146,32 @@ class Update:
         start_time,
         next_check_at,
     ):
+        if key == "infinidysk" and infinidysk_v2_runtime.is_v2(config):
+            supported, error = infinidysk_v2_runtime.validate_v2_selection(config)
+            current = infinidysk_v2_runtime.installed_v2_version(config)
+            return {
+                "status": (
+                    "error"
+                    if not supported
+                    else "up_to_date" if current else "update_available"
+                ),
+                "reason": "unsupported_source" if not supported else "release",
+                "message": (
+                    error
+                    if not supported
+                    else "Native InfiniDysk uses the verified pinned 2.x release"
+                ),
+                "current_version": current,
+                "available_version": infinidysk_v2_runtime.RELEASE,
+                "checked_at": checked_at,
+                "auto_update_enabled": False,
+                "configured_target_kind": "release",
+                "configured_target_value": infinidysk_v2_runtime.RELEASE,
+                "configured_target_installed": bool(current),
+                "auto_update_interval": interval_hours,
+                "auto_update_start_time": start_time,
+                "next_check_at": None,
+            }
         versions = Versions()
         repo_owner = config.get("repo_owner")
         repo_name = config.get("repo_name")
@@ -1902,6 +1933,22 @@ class Update:
             INFINIDYSK_MIGRATION_ADMISSION_LOCK,
         )
 
+        native_key, native_instance = CONFIG_MANAGER.find_key_for_process(process_name)
+        native_config = (
+            CONFIG_MANAGER.get_instance(native_instance, native_key)
+            if native_key
+            else {}
+        )
+        native_blocker = self._native_provider_update_blocker(
+            process_name, native_key, native_config
+        )
+        if native_blocker:
+            return {
+                "status": "blocked",
+                "reason": "native_provider_migration",
+                "message": native_blocker,
+            }
+
         with INFINIDYSK_MIGRATION_ADMISSION_LOCK:
             key, _ = CONFIG_MANAGER.find_key_for_process(process_name)
             blocker = self._infinidysk_migration_update_blocker(key)
@@ -2176,6 +2223,23 @@ class Update:
         instance_name,
         block_reason,
     ):
+        if key == "infinidysk" and infinidysk_v2_runtime.is_v2(config):
+            success, error = infinidysk_v2_runtime.install_v2_runtime(
+                self.process_handler, process_name, config
+            )
+            if not success:
+                return False, error
+            if process_name in self.process_handler.process_names:
+                self.stop_process(process_name)
+            success, error = infinidysk_v2_runtime.configure_v2_runtime(
+                self.process_handler, process_name, config
+            )
+            if not success:
+                return False, error
+            process, error = self.start_process(
+                process_name, config, key, instance_name
+            )
+            return bool(process), error
         if key in {"whisparr", "whisparr-v3"}:
             return self._update_whisparr(
                 process_name, config, key, instance_name, force=True
@@ -3033,6 +3097,8 @@ class Update:
     def _should_run_install_phase_for_preinstalled(
         self, process_name, key, instance_name, config
     ):
+        if key == "infinidysk" and infinidysk_v2_runtime.is_v2(config):
+            return not bool(infinidysk_v2_runtime.installed_v2_version(config))
         try:
             versions = Versions()
             current_version, _ = versions.version_check(
@@ -3290,6 +3356,42 @@ class Update:
             "update", process_name, schedule_status
         )
 
+    def _native_provider_update_blocker(self, process_name, key, config):
+        if key != "infinidysk" or not infinidysk_v2_runtime.is_v2(config):
+            return None
+        running = any(
+            info.get("name") == process_name
+            and info.get("process_obj") is not None
+            and getattr(info["process_obj"], "returncode", 0) is None
+            for info in self.process_handler.processes.values()
+        )
+        if not running:
+            return None
+        try:
+            response = infinidysk_v2_runtime.native_api_request(
+                config,
+                "GET",
+                "/api/v1/database",
+                timeout=2,
+                data_root=CONFIG_MANAGER.get("data_root") or "/data",
+            )
+            body = response.get("body") or {}
+            if response.get("status") != 200 or not isinstance(body, dict):
+                return "Native provider state cannot be verified; no runtime mutation was attempted"
+            if body.get("migration"):
+                # Refresh the manager's persisted external-operation observation
+                # outside the global lifecycle lock before checking admission.
+                from utils.infinidysk_v2_postgres import INFINIDYSK_V2_POSTGRES_MANAGER
+
+                try:
+                    INFINIDYSK_V2_POSTGRES_MANAGER.status()
+                except (OSError, ValueError):
+                    pass
+                return "A native provider migration is active; runtime updates are deferred"
+        except (OSError, ValueError):
+            return "Native provider state cannot be verified; no runtime mutation was attempted"
+        return None
+
     def auto_update(
         self, process_name, enable_update, force_update_check: bool = False
     ):
@@ -3303,6 +3405,17 @@ class Update:
             reserve_infinidysk_external_mutation,
         )
 
+        native_key, native_instance = CONFIG_MANAGER.find_key_for_process(process_name)
+        native_config = (
+            CONFIG_MANAGER.get_instance(native_instance, native_key)
+            if native_key
+            else {}
+        )
+        native_blocker = self._native_provider_update_blocker(
+            process_name, native_key, native_config
+        )
+        if native_blocker:
+            return None, native_blocker
         mutation_token = None
         with INFINIDYSK_MIGRATION_ADMISSION_LOCK:
             key, _ = CONFIG_MANAGER.find_key_for_process(process_name)
@@ -3348,6 +3461,11 @@ class Update:
         config = CONFIG_MANAGER.get_instance(instance_name, key)
         if not config:
             return None, f"Configuration for {process_name} not found."
+        if key == "infinidysk" and infinidysk_v2_runtime.is_v2(config):
+            success, error = setup_project(self.process_handler, process_name)
+            if not success:
+                return None, error
+            return self.start_process(process_name, config, key, instance_name)
         try:
             self.reschedule_symlink_backup(process_name)
         except Exception as e:
@@ -3551,8 +3669,12 @@ class Update:
             infinidysk_namespace_pre_mutation_interrupted,
             infinidysk_namespace_recovery_pending,
             infinidysk_postgres_migration_active,
+            infinidysk_v2_jobs_active,
+            infinidysk_v2_recovery_pending,
         )
 
+        if infinidysk_v2_jobs_active() or infinidysk_v2_recovery_pending():
+            return "An InfiniDysk native migration owns the service lifecycle"
         if infinidysk_namespace_migration_active():
             if (
                 allow_pre_mutation_cold_boot
@@ -3732,6 +3854,13 @@ class Update:
             self.updating.release()
 
     def update_check(self, process_name, config, key, instance_name):
+        if key == "infinidysk" and infinidysk_v2_runtime.is_v2(config):
+            supported, error = infinidysk_v2_runtime.validate_v2_selection(config)
+            return False, (
+                error
+                if not supported
+                else f"No updates available: native InfiniDysk is pinned to {infinidysk_v2_runtime.RELEASE}."
+            )
         if key in {"whisparr", "whisparr-v3"}:
             return self._update_whisparr(process_name, config, key, instance_name)
         commit_sha = str(config.get("commit_sha") or "").strip().lower()
@@ -4905,7 +5034,7 @@ class Update:
             elif error:
                 self.logger.warning("Decypharr config patch failed: %s", error)
 
-        if key == "infinidysk":
+        if key == "infinidysk" and not infinidysk_v2_runtime.is_v2(config):
             if self.process_handler.shutting_down:
                 return process, "Shutdown requested"
             from utils.nzbdav_settings import patch_nzbdav_config

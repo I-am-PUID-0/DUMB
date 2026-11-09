@@ -473,6 +473,12 @@
   "infinidysk": {
     "enabled": false,
     "process_name": "InfiniDysk",
+    "runtime_generation": "1",
+    "mount_backend": "rclone",
+    "mount_path": "/mnt/debrid/infinidysk",
+    "v2_runtime_dir": "/opt/infinidysk-v2",
+    "v2_data_dir": "",
+    "v2_release_version": "v2.0.0-beta.6",
     "repo_owner": "infinidysk",
     "repo_name": "infinidysk",
     "release_version_enabled": false,

@@ -19,6 +19,7 @@ from utils.dependencies import (
     get_media_protection_manager,
 )
 from api.routers.process import process_router
+from api.routers.infinidysk_v2 import infinidysk_v2_router
 from api.routers.config import config_router
 from api.routers.health import health_router
 from api.routers.logs import logs_router
@@ -35,11 +36,13 @@ from api.routers.rclone_optimizer import rclone_optimizer_router
 from api.routers.media_protection import media_protection_router
 from utils.config_loader import CONFIG_MANAGER
 from utils.project_metadata import get_project_version
+from utils.runtime_paths import pyproject_file
 import threading
 
 _DEFAULT_ALLOWED_ORIGINS = ["http://localhost", "http://localhost:8000"]
 _UNSAFE_HTTP_METHODS = frozenset({"POST", "PUT", "PATCH", "DELETE"})
 _MIGRATION_OWNED_API_PREFIXES = (
+    "/process/infinidysk-v2/",
     "/process/infinidysk-migration/",
     "/process/postgres-migration/",
     "/process/arr-postgres-migration/",
@@ -79,8 +82,8 @@ async def lifespan(app: FastAPI):
     logger.info("WebSocket manager shutdown complete.")
 
 
-def get_version_from_pyproject(path="pyproject.toml") -> str:
-    return get_project_version(path)
+def get_version_from_pyproject(path=None) -> str:
+    return get_project_version(path or pyproject_file())
 
 
 def _normalize_cors_origins(origins):
@@ -172,6 +175,7 @@ def create_app() -> FastAPI:
 
     app.include_router(auth_router, prefix="/auth", tags=["Authentication"])
     app.include_router(process_router, prefix="/process", tags=["Process Management"])
+    app.include_router(infinidysk_v2_router, prefix="/process", tags=["InfiniDysk 2.x"])
     app.include_router(
         rclone_optimizer_router,
         prefix="/process",

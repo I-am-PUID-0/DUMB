@@ -5,6 +5,8 @@ from utils.logger import (
     redact_sensitive_log_data,
 )
 from utils.config_loader import CONFIG_MANAGER
+from utils import infinidysk_v2_runtime
+from utils.infinidysk_v2_topology import suppress_rclone
 from utils.cli_debrid_runtime import (
     cli_battery_is_managed,
     cli_battery_topology,
@@ -96,6 +98,7 @@ class ProcessHandler:
         self.processes = {}
         self.process_names = {}
         self.external_processes = {}
+        self._native_compatibility_proxies = {}
         self.subprocess_loggers = {}
         self._global_stdout = ""
         self._global_stderr = ""
@@ -455,6 +458,7 @@ class ProcessHandler:
         skip_setup = {"pgAgent"}
         key = None
         config_for_wait = None
+        native_child = None
 
         if process_name in skip_setup:
             self.logger.info(
@@ -521,6 +525,36 @@ class ProcessHandler:
                 key, instance_name = CONFIG_MANAGER.find_key_for_process(process_name)
                 config_for_wait = CONFIG_MANAGER.get_instance(instance_name, key)
 
+            if key == "rclone" and suppress_rclone(
+                (CONFIG_MANAGER.get("infinidysk") or {}), config_for_wait
+            ):
+                return (
+                    False,
+                    "Associated rclone is inactive while InfiniDysk uses native FUSE",
+                )
+
+            if key == "infinidysk" and infinidysk_v2_runtime.is_v2(config_for_wait):
+                success, error = infinidysk_v2_runtime.prepare_v2_launch(
+                    config_for_wait,
+                    user_id,
+                    group_id,
+                    data_root=(CONFIG_MANAGER.get("data_root") or "/data"),
+                    rclone_instances=(CONFIG_MANAGER.get("rclone") or {}).get(
+                        "instances", {}
+                    ),
+                )
+                if not success:
+                    return False, error
+                command = [
+                    str(
+                        infinidysk_v2_runtime.runtime_dir(config_for_wait)
+                        / "infinidysk"
+                    )
+                ]
+                config_dir = infinidysk_v2_runtime.resolve_v2_data_dir(
+                    config_for_wait, (CONFIG_MANAGER.get("data_root") or "/data")
+                )
+
             if key == "whisparr":
                 from utils.whisparr_settings import validate_whisparr_runtime
 
@@ -564,6 +598,23 @@ class ProcessHandler:
                             for mount_path in wait_mounts
                             if not os.path.ismount(mount_path)
                         ]
+                        from utils.infinidysk_v2_topology import delivery_mount_ready
+
+                        native = CONFIG_MANAGER.get("infinidysk") or {}
+                        native_path = os.path.normpath(
+                            native.get("mount_path") or "/mnt/debrid/infinidysk"
+                        )
+                        if infinidysk_v2_runtime.is_v2(native) and any(
+                            os.path.normpath(path) == native_path
+                            for path in wait_mounts
+                        ):
+                            if not delivery_mount_ready(
+                                native,
+                                (CONFIG_MANAGER.get("rclone") or {}).get(
+                                    "instances", {}
+                                ),
+                            ):
+                                missing = sorted(set(missing) | {native_path})
                         if not missing:
                             break
                         self.logger.info(
@@ -692,7 +743,11 @@ class ProcessHandler:
                             f"Failed to patch Jellyfin system.xml port: {e}"
                         )
 
-            if key == "infinidysk" and isinstance(config_for_wait, dict):
+            if (
+                key == "infinidysk"
+                and isinstance(config_for_wait, dict)
+                and not infinidysk_v2_runtime.is_v2(config_for_wait)
+            ):
                 from utils.service_postgres import (
                     infinidysk_postgres_runtime_floor,
                     service_postgres_enabled,
@@ -775,6 +830,22 @@ class ProcessHandler:
             process_env = os.environ.copy()
             if env is not None:
                 process_env.update(env)
+            if key == "infinidysk" and infinidysk_v2_runtime.is_v2(config_for_wait):
+                for name in list(process_env):
+                    if name.startswith(("INFINIDYSK_", "NZBDAV_CONFIG__")) or name in {
+                        "CONFIG_PATH",
+                        "DATABASE_PROVIDER",
+                        "DATABASE_CONNECTION_STRING",
+                    }:
+                        process_env.pop(name, None)
+                process_env.update(
+                    infinidysk_v2_runtime.build_v2_environment(
+                        config_for_wait,
+                        (CONFIG_MANAGER.get("data_root") or "/data"),
+                        user_id,
+                        group_id,
+                    )
+                )
 
             rclone_instances = CONFIG_MANAGER.get("rclone", {}).get("instances", {})
             enabled_rclone_processes = [
@@ -902,6 +973,9 @@ class ProcessHandler:
                 env=process_env,
             )
 
+            if key == "infinidysk" and infinidysk_v2_runtime.is_v2(config_for_wait):
+                native_child = process
+
             success, error = self._check_immediate_exit_and_log(
                 process,
                 process_name,
@@ -917,6 +991,28 @@ class ProcessHandler:
                     service_name=process_name,
                 )
                 return False, error
+
+            if key == "infinidysk" and infinidysk_v2_runtime.is_v2(config_for_wait):
+                from utils.infinidysk_v2_proxy import start_compatibility_proxy
+
+                previous = self._native_compatibility_proxies.pop(internal_name, None)
+                if previous is not None:
+                    previous.close()
+                try:
+                    proxy = start_compatibility_proxy(config_for_wait, process)
+                except (OSError, ValueError):
+                    self._signal_process_group(process, signal.SIGTERM)
+                    try:
+                        process.wait(timeout=5)
+                    except subprocess.TimeoutExpired:
+                        self._signal_process_group(process, signal.SIGKILL)
+                        process.wait(timeout=5)
+                    return (
+                        False,
+                        "Could not bind the retained InfiniDysk backend compatibility listener",
+                    )
+                if proxy is not None:
+                    self._native_compatibility_proxies[internal_name] = proxy
 
             # Do not start competing pipe readers until the immediate-exit
             # check has had a chance to capture short-lived helper failures.
@@ -968,6 +1064,24 @@ class ProcessHandler:
             return True, None
 
         except Exception as e:
+            if native_child is not None:
+                proxy = self._native_compatibility_proxies.pop(internal_name, None)
+                if proxy is not None:
+                    proxy.close()
+                self.process_names.pop(internal_name, None)
+                self.processes.pop(native_child.pid, None)
+                try:
+                    if native_child.poll() is None:
+                        self._signal_process_group(native_child, signal.SIGTERM)
+                        try:
+                            native_child.wait(timeout=5)
+                        except subprocess.TimeoutExpired:
+                            self._signal_process_group(native_child, signal.SIGKILL)
+                            native_child.wait(timeout=5)
+                except (OSError, subprocess.SubprocessError):
+                    self.logger.error(
+                        "Native startup rollback could not verify child termination"
+                    )
             notify_event(
                 "service.start.failed",
                 "critical",
@@ -1065,6 +1179,9 @@ class ProcessHandler:
                 internal_name = process_info.get("internal_name", process_name)
                 process_obj = process_info.get("process_obj")
                 managed_service = bool(process_info.get("managed_service"))
+                proxy = self._native_compatibility_proxies.pop(internal_name, None)
+                if proxy is not None:
+                    proxy.close()
                 intentional_stop = pid in self._intentional_stop_pids
                 self._intentional_stop_pids.discard(pid)
                 exit_code = None
@@ -1181,6 +1298,39 @@ class ProcessHandler:
             return None
 
     def stop_process(self, process_name, disable_restart=True):
+        from utils.infinidysk_migration_admission import (
+            INFINIDYSK_MIGRATION_ADMISSION_LOCK,
+            infinidysk_v2_jobs_active,
+            infinidysk_v2_recovery_pending,
+        )
+
+        with INFINIDYSK_MIGRATION_ADMISSION_LOCK:
+            key, _ = CONFIG_MANAGER.find_key_for_process(process_name)
+            sensitive = key in {
+                "infinidysk",
+                "postgres",
+                "rclone",
+                "plex",
+                "jellyfin",
+                "emby",
+                "sonarr",
+                "radarr",
+                "lidarr",
+                "readarr",
+                "whisparr",
+                "whisparr-v3",
+                "bazarr",
+            }
+            if sensitive and (
+                infinidysk_v2_jobs_active() or infinidysk_v2_recovery_pending()
+            ):
+                self.logger.warning(
+                    "Stop blocked while an InfiniDysk native migration owns the lifecycle"
+                )
+                return (
+                    False,
+                    "An InfiniDysk native migration owns the service lifecycle",
+                )
         intentional_pid = None
         try:
             process_description = process_name
@@ -1286,6 +1436,9 @@ class ProcessHandler:
                     self.subprocess_loggers[internal_name].stop_monitoring_stderr()
                     del self.subprocess_loggers[internal_name]
                     self.logger.debug(f"Stopped logging for {process_description}")
+                proxy = self._native_compatibility_proxies.pop(internal_name, None)
+                if proxy is not None:
+                    proxy.close()
                 self.process_names.pop(internal_name, None)
                 process_info = self.processes.pop(process.pid, None)
                 if process_info:
@@ -1298,6 +1451,24 @@ class ProcessHandler:
                 self.logger.warning(
                     f"{process_description} was not found or has already been stopped."
                 )
+            native = CONFIG_MANAGER.get("infinidysk") or {}
+            if (
+                key == "infinidysk"
+                and infinidysk_v2_runtime.is_v2(native)
+                and native.get("mount_backend", "rclone") == "fuse"
+            ):
+                from utils.infinidysk_v2_topology import mount_path_released
+
+                if not mount_path_released(
+                    native.get("mount_path") or "/mnt/debrid/infinidysk"
+                ):
+                    self.logger.error(
+                        "Native process stopped but its delivery mount is still occupied; explicit owner recovery is required"
+                    )
+                    return (
+                        False,
+                        "Native delivery mount remains occupied; no unmount was attempted",
+                    )
         except Exception as e:
             self.logger.error(
                 f"Error occurred while stopping {process_description}: {e}"
@@ -1343,6 +1514,10 @@ class ProcessHandler:
             if "instances" in cfg and isinstance(cfg["instances"], dict):
                 for inst_cfg in cfg["instances"].values():
                     if isinstance(inst_cfg, dict) and inst_cfg.get("enabled"):
+                        if key == "rclone" and suppress_rclone(
+                            (CONFIG_MANAGER.get("infinidysk") or {}), inst_cfg
+                        ):
+                            continue
                         pname = inst_cfg.get("process_name")
                         if pname:
                             entries.setdefault(key, []).append(pname)
@@ -1596,6 +1771,10 @@ class ProcessHandler:
     def unmount_all(self):
         rclone_instances = CONFIG_MANAGER.get("rclone", {}).get("instances", {})
         for instance_name, instance_config in rclone_instances.items():
+            if suppress_rclone(
+                (CONFIG_MANAGER.get("infinidysk") or {}), instance_config
+            ):
+                continue
             if instance_config.get("enabled", False):
                 rclone_dir = instance_config.get("mount_dir")
                 rclone_mount_name = instance_config.get("mount_name")
@@ -1836,9 +2015,13 @@ class ProcessHandler:
             INFINIDYSK_MIGRATION_ADMISSION_LOCK,
             infinidysk_namespace_migration_active,
             infinidysk_postgres_migration_active,
+            infinidysk_v2_jobs_active,
+            infinidysk_v2_recovery_pending,
         )
 
         with INFINIDYSK_MIGRATION_ADMISSION_LOCK:
+            if infinidysk_v2_jobs_active() or infinidysk_v2_recovery_pending():
+                return True
             if infinidysk_namespace_migration_active():
                 return True
             try:

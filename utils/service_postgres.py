@@ -47,7 +47,13 @@ _INFINIDYSK_INSTALL_STATE_FILENAME = ".dumb_infinidysk_install.json"
 
 
 def service_postgres_enabled(service: dict | None) -> bool:
-    return isinstance(service, dict) and service.get("postgres_enabled") is True
+    # Native InfiniDysk owns its boot URL and online provider engine. Its retained
+    # 1.x checkbox must never provision or select a native database.
+    return (
+        isinstance(service, dict)
+        and str(service.get("runtime_generation", "1")) != "2"
+        and service.get("postgres_enabled") is True
+    )
 
 
 def infinidysk_launch_config_fingerprint(service: dict | None) -> str:
@@ -1610,6 +1616,9 @@ def apply_service_postgres_config(
     """Apply a service's runtime database selection without starting it."""
     if key not in SERVICE_POSTGRES_KEYS:
         raise ValueError(f"Unsupported PostgreSQL service: {key}")
+
+    if key == "infinidysk" and str(service.get("runtime_generation", "1")) == "2":
+        return False
 
     values = postgres_connection_values(postgres_config, database)
     changed = False

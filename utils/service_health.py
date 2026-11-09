@@ -303,6 +303,13 @@ class ServiceHealthMonitor:
             return self._resolve_rclone_probe(config)
 
         spec = HTTP_PROBES.get(config_key)
+        if config_key == "infinidysk":
+            from utils.infinidysk_v2_topology import is_v2
+
+            if is_v2(config):
+                spec = HttpProbe(
+                    "InfiniDysk native health", "/healthz", "frontend_port"
+                )
         if config_key in SERVARR_KEYS:
             spec = HttpProbe("Servarr application ping", "/ping")
         if spec is None:

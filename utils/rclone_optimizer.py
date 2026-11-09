@@ -29,6 +29,7 @@ from uuid import UUID, uuid4
 import psutil
 
 from utils.config_loader import CONFIG_MANAGER
+from utils.infinidysk_v2_topology import is_v2
 from utils.nzbdav_settings import get_nzbdav_arr_categories
 from utils.notifications import notify_event
 from utils.port_probe import is_port_available
@@ -496,6 +497,8 @@ class RcloneOptimizerManager:
         return result
 
     def list_instances(self) -> list[dict[str, Any]]:
+        if is_v2(CONFIG_MANAGER.get("infinidysk")):
+            return []
         instances = (CONFIG_MANAGER.get("rclone") or {}).get("instances") or {}
         result = []
         for instance_name, instance in instances.items():
@@ -523,7 +526,15 @@ class RcloneOptimizerManager:
             )
         return result
 
+    @staticmethod
+    def _require_supported_generation():
+        if is_v2(CONFIG_MANAGER.get("infinidysk")):
+            raise RcloneOptimizerError(
+                "InfiniDysk 2.x rclone optimization is unavailable: its trace and API contracts differ from 1.x"
+            )
+
     def _resolve_instance(self, process_name: str) -> tuple[str, dict[str, Any]]:
+        self._require_supported_generation()
         for name, instance in (
             (CONFIG_MANAGER.get("rclone") or {}).get("instances") or {}
         ).items():
@@ -1484,6 +1495,7 @@ class RcloneOptimizerManager:
         }
 
     def apply(self, job_id: str) -> dict[str, Any]:
+        self._require_supported_generation()
         self._job_path(job_id)
         with self._lock:
             job = self._jobs.get(job_id)
@@ -1547,6 +1559,7 @@ class RcloneOptimizerManager:
             raise RcloneOptimizerError(str(error)) from None
 
     def rollback(self, job_id: str) -> dict[str, Any]:
+        self._require_supported_generation()
         self._job_path(job_id)
         job = self._jobs.get(job_id)
         if not job or job.get("status") != "applied" or "previous_command" not in job:
@@ -1830,6 +1843,7 @@ class RcloneOptimizerManager:
 
     def _nzbdav_json(self, path: str, method: str = "GET") -> Any:
         config = CONFIG_MANAGER.get("infinidysk") or CONFIG_MANAGER.get("nzbdav") or {}
+        self._require_supported_generation()
         api_key = (config.get("env") or {}).get("FRONTEND_BACKEND_API_KEY")
         if not api_key:
             try:

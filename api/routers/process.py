@@ -22,6 +22,9 @@ from utils.setup import (
 )
 from utils.core_services import has_core_service
 from utils.cli_debrid_runtime import cli_battery_is_embedded
+from utils.infinidysk_v2_support import versioned_capabilities, validate_candidate
+from utils.project_metadata import get_project_version
+from utils.runtime_paths import pyproject_file
 from utils.dependency_map import (
     build_conditional_dependency_map,
     filter_conditional_deps_for_instance,
@@ -498,6 +501,10 @@ def _effective_core_dependencies(
         else (CONFIG_MANAGER.config.get(core_key, {}) or {})
     )
 
+    if core_key == "infinidysk" and str(cfg.get("runtime_generation") or "1") == "2":
+        if cfg.get("mount_backend") == "fuse":
+            deps = [dep for dep in deps if dep != "rclone"]
+
     if core_key == "decypharr":
         mount_type = _normalize_dep_token(cfg.get("mount_type") or "")
         if not mount_type:
@@ -915,6 +922,8 @@ SERVICE_OPTION_DESCRIPTIONS = {
     "postgres_log_db": "Optional PostgreSQL log database name. Leave blank for DUMB's per-instance default.",
     "core_service": "Specifies which core service(s) this service applies to; e.g., decypharr, infinidysk, altmount, combined values (decypharr,infinidysk), or none (blank). Legacy nzbdav values remain accepted.",
     "webdav_password": "Password for accessing the InfiniDysk WebDAV service. Leave blank to auto-generate.",
+    "runtime_generation": "InfiniDysk runtime generation. Use the guided 2.x workflow for an existing installation.",
+    "mount_backend": "InfiniDysk 2.x delivery through historical rclone or native FUSE. Choose during the guided transition.",
     "pinned_version": "The specific binary release version to deploy, or latest.",
     "tunnel_token": "Cloudflare Tunnel token used by cloudflared to connect this DUMB instance to Cloudflare.",
     "public_url": "Public HTTPS URL for the Authelia portal, such as https://auth.example.com.",
@@ -3793,6 +3802,13 @@ def _validate_infinidysk_service_options(
     candidate.update(
         {key: value for key, value in options.items() if value is not None}
     )
+    safe, error = validate_candidate(
+        config_block,
+        candidate,
+        data_root=CONFIG_MANAGER.config.get("data_root") or "/data",
+    )
+    if not safe:
+        raise HTTPException(status_code=400, detail=error)
     from utils.service_postgres import validate_infinidysk_postgres_candidate_update
 
     postgres_config = CONFIG_MANAGER.config.get("postgres", {}) or {}
@@ -3817,6 +3833,22 @@ def _validate_postgres_service_options(config_block: dict, options: dict) -> Non
 
     infinidysk_config = CONFIG_MANAGER.config.get("infinidysk", {}) or {}
     if not isinstance(infinidysk_config, dict):
+        return
+    if str(infinidysk_config.get("runtime_generation") or "1") == "2":
+        from utils.infinidysk_v2_runtime import native_database_url
+
+        if any(
+            config_block.get(key) != candidate.get(key)
+            for key in ("host", "port", "user", "password", "config_dir")
+        ):
+            url = native_database_url(
+                infinidysk_config, CONFIG_MANAGER.config.get("data_root") or "/data"
+            )
+            if str(url or "").startswith(("postgres:", "postgresql:")):
+                raise HTTPException(
+                    status_code=409,
+                    detail="Native PostgreSQL connection changes need a coordinated provider maintenance operation.",
+                )
         return
     safe, error = validate_infinidysk_postgres_candidate_update(
         infinidysk_config,
@@ -6023,6 +6055,7 @@ async def cleanup_install_cache(
 @process_router.get("/capabilities")
 async def get_capabilities(current_user: str = Depends(get_optional_current_user)):
     return {
+        **versioned_capabilities(get_project_version(pyproject_file())),
         "optional_only_onboarding": True,
         "optional_service_options": True,
         "manual_update_check": True,

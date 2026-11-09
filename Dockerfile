@@ -63,6 +63,8 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
       postgresql-client-16 postgresql-16 postgresql-contrib-16 pgagent \
       htop bash tini gpgv && \
     test -f /usr/include/fuse/fuse.h && \
+    # Native mounts run as the configured user and are shared with media apps.
+    printf '\nuser_allow_other\n' >> /etc/fuse.conf && \
     # Python convenience + locale
     locale-gen en_US.UTF-8 && \
     update-alternatives --install /usr/bin/python python /usr/bin/python3.11 1 && \

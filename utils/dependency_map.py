@@ -18,6 +18,7 @@ from utils.arr_postgres import (
 from utils.core_services import has_core_service
 from utils.cli_debrid_runtime import cli_battery_is_embedded
 from utils.service_postgres import SERVICE_POSTGRES_KEYS, service_postgres_enabled
+from utils.infinidysk_v2_topology import is_v2, suppress_rclone
 
 
 def _service_has_enabled_instance(config_obj: dict) -> bool:
@@ -106,6 +107,28 @@ def build_conditional_dependency_map(
 
     for service_key in SERVICE_POSTGRES_KEYS:
         service_config = config_getter(service_key)
+        if service_key == "infinidysk" and is_v2(service_config):
+            from urllib.parse import urlsplit
+            from utils.infinidysk_v2_runtime import native_database_dependency_urls
+
+            try:
+                postgres = config_getter("postgres") or {}
+                for url in native_database_dependency_urls(
+                    service_config, config_getter("data_root") or "/data"
+                ):
+                    selected = urlsplit(url)
+                    if (
+                        service_config.get("enabled")
+                        and postgres.get("enabled")
+                        and selected.scheme in {"postgres", "postgresql"}
+                        and selected.hostname in {"127.0.0.1", "localhost", "::1"}
+                        and (selected.port or 5432) == int(postgres.get("port") or 5432)
+                    ):
+                        deps.setdefault(service_key, set()).add("postgres")
+            except (OSError, ValueError):
+                # Launch validates malformed boot state; never fall back to the v1 checkbox.
+                pass
+            continue
         candidates = (
             (service_config.get("instances", {}) or {}).values()
             if isinstance(service_config, dict)
@@ -171,6 +194,8 @@ def build_conditional_dependency_map(
     )
     for instance in rclone_instances.values():
         if not isinstance(instance, dict) or not instance.get("enabled"):
+            continue
+        if suppress_rclone(config_getter("infinidysk"), instance):
             continue
         if instance.get("zurg_enabled"):
             rclone_deps.add("zurg")
