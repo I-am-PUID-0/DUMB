@@ -372,6 +372,8 @@ class NativeRuntimeTests(unittest.TestCase):
             ],
         }
         values = {
+            "puid": os.geteuid() or 1000,
+            "pgid": os.getegid() or 1000,
             "infinidysk": self.service,
             "rclone": {"instances": {"one": instance}},
             "data_root": str(self.root),
@@ -387,6 +389,8 @@ class NativeRuntimeTests(unittest.TestCase):
         api.get_status.return_value = "stopped"
         with (
             patch.object(setup, "CONFIG_MANAGER", manager),
+            patch.object(setup, "user_id", values["puid"]),
+            patch.object(setup, "group_id", values["pgid"]),
             patch.object(setup, "fuse_config", return_value=(True, None)),
             patch.object(setup, "obscure_password", return_value="obscured-fixture"),
             patch.object(setup, "chown_single"),
@@ -404,6 +408,8 @@ class NativeRuntimeTests(unittest.TestCase):
         self.assertIn("--vfs-cache-max-size=17G", instance["command"])
         self.assertIn("--links", instance["command"])
         self.assertIn("--no-modtime", instance["command"])
+        self.assertIn(f"--uid={values['puid']}", instance["command"])
+        self.assertIn(f"--gid={values['pgid']}", instance["command"])
         sync.assert_not_called()
         force_directory.assert_not_called()
 

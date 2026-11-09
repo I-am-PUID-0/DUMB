@@ -1,5 +1,6 @@
 import copy
 import json
+import os
 from pathlib import Path
 import sqlite3
 import tempfile
@@ -18,8 +19,8 @@ from utils.infinidysk_v2_execution import (
 class Config:
     def __init__(self, service):
         self.config = {
-            "puid": 1000,
-            "pgid": 1000,
+            "puid": os.geteuid() or 1000,
+            "pgid": os.getegid() or 1000,
             "infinidysk": service,
             "rclone": {
                 "instances": {
