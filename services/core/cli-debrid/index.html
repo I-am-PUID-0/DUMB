@@ -785,6 +785,8 @@
       
         
       
+        
+      
     
     
     
@@ -1130,6 +1132,36 @@
     
   
     PostgreSQL Migration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../features/infinidysk-v2-migration/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-arrow-up-circle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    InfiniDysk 2 Upgrade
   
 
     
@@ -2260,6 +2292,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#persistent-data-after-installation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Persistent data after installation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#what-cli-debrid-does" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2299,10 +2342,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#stableolder-releases-standalone-cli-battery" class="md-nav__link">
+  <a href="#standalone-cli-battery" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Stable/Older Releases: Standalone CLI Battery
+        Standalone CLI Battery
       
     </span>
   </a>
@@ -5441,6 +5484,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#persistent-data-after-installation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Persistent data after installation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#what-cli-debrid-does" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -5480,10 +5534,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#stableolder-releases-standalone-cli-battery" class="md-nav__link">
+  <a href="#standalone-cli-battery" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Stable/Older Releases: Standalone CLI Battery
+        Standalone CLI Battery
       
     </span>
   </a>
@@ -5706,23 +5760,22 @@
 <h1 id="cli-debrid-core-service">CLI Debrid (Core Service)<a class="headerlink" href="#cli-debrid-core-service" title="Permanent link">#</a></h1>
 <p><strong>CLI Debrid</strong> is a core content orchestrator in the DUMB ecosystem. It automates media collection and upgrading through Debrid services (e.g. Real-Debrid), working alongside Trakt, Plex, Seerr, and various scrapers. CLI Debrid can either monitor your Plex libraries or generate symlinks for organized media delivery to Plex or similar servers.</p>
 <div class="admonition info">
-<p class="admonition-title">CLI Battery transition in the v0.7.29 pre-release</p>
-<p>Upstream <a href="https://github.com/godver3/cli_debrid/releases/tag/v0.7.29">CLI Debrid v0.7.29</a>
-is marked as a pre-release. Its
-<a href="https://github.com/godver3/cli_debrid/commit/ef4deb5bbed60826ef2aaa48be0ecb17250ea87e">CLI Battery rewrite</a>
+<p class="admonition-title">CLI Battery follows the installed layout</p>
+<p>The <a href="https://github.com/godver3/cli_debrid/commit/ef4deb5bbed60826ef2aaa48be0ecb17250ea87e">CLI Battery rewrite</a>
+introduced in <a href="https://github.com/godver3/cli_debrid/releases/tag/v0.7.29">CLI Debrid v0.7.29</a>
 converts CLI Battery from a separate Flask service on port <code>5001</code> into an
 in-process Python module imported by CLI Debrid.</p>
-<p>DUMB's current configuration model still contains the old standalone CLI
-Battery process, command, port, and static dependency. If you intentionally
-select v0.7.29 or a newer pre-release with the in-process rewrite, manually
-disable <code>cli_battery</code>; running both forms is unnecessary and the removed
-<code>cli_battery/main.py</code> command cannot serve that upstream layout. Keep CLI
-Battery enabled for stable/older CLI Debrid releases that still use port
-<code>5001</code>.</p>
-<p>Normal DUMB startup respects the disabled setting. Until DUMB's dependency
-graph becomes version-aware, a guided <strong>Start Core Service</strong> or onboarding
-action can re-enable the static dependency; verify that CLI Battery remains
-disabled after using those flows with the pre-release.</p>
+<p>DUMB recognizes the installed files rather than inferring the layout from
+a release tag, branch, or commit label. For a recognized embedded layout,
+startup and dependency handling skip the managed standalone Battery even
+when its saved toggle is enabled. For a standalone layout that still
+provides <code>cli_battery/main.py</code>, keep CLI Battery enabled; DUMB starts it
+before CLI Debrid. A separately configured Battery command or source
+directory is left under its existing configuration.</p>
+<p>Before launching CLI Debrid after a layout change, DUMB stops a tracked
+managed standalone Battery when the installed layout is embedded. If you
+return to a standalone layout, the retained enabled setting lets DUMB
+start Battery first again.</p>
 </div>
 <hr />
 <h2 id="workflow-diagram">Workflow diagram<a class="headerlink" href="#workflow-diagram" title="Permanent link">#</a></h2>
@@ -5839,9 +5892,25 @@ flowchart TD
 <li><code>log_level</code>, <code>suppress_logging</code>: Logging controls.</li>
 <li><code>port</code>: Flask web interface port.</li>
 <li><code>env</code>: Environment variable configuration used by CLI Debrid.</li>
-<li><code>env.CLI_DEBRID_BATTERY_PORT</code>: Battery API port consumed by stable/older CLI Debrid layouts. It is not present in the untouched template; DUMB creates/synchronizes it from <code>cli_battery.port</code> during setup and config updates. The v0.7.29 pre-release's in-process layout does not use this network hop.</li>
+<li><code>env.CLI_DEBRID_BATTERY_PORT</code>: Battery API port consumed by standalone CLI Debrid layouts. It is not present in the untouched template; DUMB creates/synchronizes it from <code>cli_battery.port</code> during setup and config updates. The embedded layout does not use this network hop.</li>
 <li><code>clear_on_update</code>, <code>exclude_dirs</code>: Clean old files during update while protecting data dirs.</li>
 </ul>
+<hr />
+<h2 id="persistent-data-after-installation">Persistent data after installation<a class="headerlink" href="#persistent-data-after-installation" title="Permanent link">#</a></h2>
+<p>When the configured paths use <code>&lt;config_dir&gt;/data</code>, DUMB checks that this alias
+points to <code>&lt;data_root&gt;/cli_debrid</code> after installation and before launching CLI
+Debrid. With the defaults, <code>/cli_debrid/data</code> points to <code>/data/cli_debrid</code>.
+This check also runs when an exact release is reinstalled.</p>
+<p>DUMB can restore a missing alias or replace an empty directory placeholder.
+It refuses to replace a nonempty data directory, a mounted directory, or a
+link pointing somewhere else. Existing data is retained for review. Custom
+absolute config, log, and database paths remain in use; they do not require
+changing back to the default alias.</p>
+<p>Required data directories and known writable runtime files are prepared for
+the configured service user. DUMB does not recursively change ownership of
+the whole CLI Debrid installation or unrelated data. If startup reports a
+runtime preparation error, review the exact paths in the message before
+changing their contents or ownership.</p>
 <hr />
 <h2 id="what-cli-debrid-does">What CLI Debrid Does<a class="headerlink" href="#what-cli-debrid-does" title="Permanent link">#</a></h2>
 <h3 id="intelligent-automation">Intelligent Automation<a class="headerlink" href="#intelligent-automation" title="Permanent link">#</a></h3>
@@ -5861,13 +5930,12 @@ flowchart TD
 <li>Scraping Tuning: Manual test interface to evaluate scraper priorities</li>
 </ul>
 <hr />
-<h2 id="stableolder-releases-standalone-cli-battery">Stable/Older Releases: Standalone CLI Battery<a class="headerlink" href="#stableolder-releases-standalone-cli-battery" title="Permanent link">#</a></h2>
+<h2 id="standalone-cli-battery">Standalone CLI Battery<a class="headerlink" href="#standalone-cli-battery" title="Permanent link">#</a></h2>
 <div class="admonition warning">
 <p class="admonition-title">Required only by layouts that still use the standalone service</p>
-<p>Keep CLI Battery running for stable/older CLI Debrid releases that call its
-API on port <code>5001</code>. For v0.7.29+ pre-releases carrying the in-process rewrite,
-manually disable the standalone CLI Battery service instead. See the
-transition note near the top of this page.</p>
+<p>Keep CLI Battery enabled for installed CLI Debrid layouts that call its
+API on port <code>5001</code>. DUMB skips this separate process when it recognizes
+the embedded layout. See the transition note near the top of this page.</p>
 </div>
 <div class="highlight"><pre><span></span><code><span class="nt">&quot;cli_battery&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">    </span><span class="nt">&quot;enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>

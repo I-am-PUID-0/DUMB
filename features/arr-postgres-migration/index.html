@@ -17,7 +17,7 @@
     <link rel="prev" href="../media-library-protection/">
   
   
-    <link rel="next" href="../symlinks/">
+    <link rel="next" href="../infinidysk-v2-migration/">
   
   
     
@@ -779,6 +779,8 @@
       
         
       
+        
+      
     
     
     
@@ -1327,6 +1329,36 @@
   
 </nav>
       
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../infinidysk-v2-migration/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-arrow-up-circle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    InfiniDysk 2 Upgrade
+  
+
+    
+  </span>
+  
+  
+
+      </a>
     </li>
   
 
@@ -5523,6 +5555,10 @@
 
 <h1 id="sqlite-to-postgresql-migration">SQLite to PostgreSQL Migration<a class="headerlink" href="#sqlite-to-postgresql-migration" title="Permanent link">#</a></h1>
 <p>DUMB provides a guarded tool for moving an existing supported service from SQLite to DUMB-managed PostgreSQL. Open the service page and select <strong>Database Migration</strong>.</p>
+<p>For InfiniDysk, this page describes the generation 1 adapter. Generation 2 uses
+its separate <a href="../infinidysk-v2-migration/#native-postgresql-conversion">native PostgreSQL conversion workflow</a>
+after a validated fresh installation or major upgrade; the frontend selects the
+tool for the active generation.</p>
 <p>This tool is deliberately separate from <code>postgres_enabled</code>. For most services,
 enabling PostgreSQL directly changes the database used at the next start; it
 does not copy existing SQLite data. InfiniDysk additionally blocks a direct
@@ -5823,13 +5859,13 @@ and other local state are protected alongside the PostgreSQL logical backup.</p>
         
         
           
-          <a href="../symlinks/" class="md-footer__link md-footer__link--next" aria-label="Next: Symlink Operations">
+          <a href="../infinidysk-v2-migration/" class="md-footer__link md-footer__link--next" aria-label="Next: InfiniDysk 2 Upgrade">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Symlink Operations
+                InfiniDysk 2 Upgrade
               </div>
             </div>
             <div class="md-footer__button md-icon">

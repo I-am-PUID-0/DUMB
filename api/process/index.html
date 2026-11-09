@@ -777,6 +777,8 @@
       
         
       
+        
+      
     
     
     
@@ -1122,6 +1124,36 @@
     
   
     PostgreSQL Migration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../features/infinidysk-v2-migration/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-arrow-up-circle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    InfiniDysk 2 Upgrade
   
 
     
@@ -4916,6 +4948,56 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#infinidysk-2-workflows" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        InfiniDysk 2 workflows
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="InfiniDysk 2 workflows">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#major-installation-and-upgrade" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Major installation and upgrade
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#native-generation-2-postgresql" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Native generation 2 PostgreSQL
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#conflicts-and-recovery" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Conflicts and recovery
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#infinidysk-migration" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -7179,6 +7261,56 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#infinidysk-2-workflows" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        InfiniDysk 2 workflows
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="InfiniDysk 2 workflows">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#major-installation-and-upgrade" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Major installation and upgrade
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#native-generation-2-postgresql" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Native generation 2 PostgreSQL
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#conflicts-and-recovery" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Conflicts and recovery
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#infinidysk-migration" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -7643,6 +7775,61 @@ details; DUMB's normal log redaction remains active.</p>
 <h2 id="updates-and-scheduling">Updates and scheduling<a class="headerlink" href="#updates-and-scheduling" title="Permanent link">#</a></h2>
 <h3 id="get-processupdate-status"><code>GET /process/update-status</code><a class="headerlink" href="#get-processupdate-status" title="Permanent link">#</a></h3>
 <p>Returns the last recorded update state for the required <code>process_name</code> query parameter.</p>
+<p>Scheduled work can add the following fields to <code>update_status</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>scheduler_state</code></td>
+<td><code>running</code>, <code>deferred</code>, <code>error</code>, <code>blocked</code>, <code>disabled</code>, or <code>completed</code> for the scheduled callback</td>
+</tr>
+<tr>
+<td><code>scheduler_job</code></td>
+<td><code>update</code> or <code>api</code></td>
+</tr>
+<tr>
+<td><code>scheduler_message</code></td>
+<td>Progress or outcome message for the scheduled callback</td>
+</tr>
+<tr>
+<td><code>scheduler_started_at</code></td>
+<td>Callback start time as Unix seconds</td>
+</tr>
+<tr>
+<td><code>scheduler_elapsed_seconds</code></td>
+<td>Observed running duration</td>
+</tr>
+<tr>
+<td><code>scheduler_long_running</code></td>
+<td>Whether the callback has been running for at least five minutes</td>
+</tr>
+<tr>
+<td><code>retry_after_seconds</code>, <code>next_retry_at</code></td>
+<td>Retry delay and Unix retry time when admission is deferred</td>
+</tr>
+<tr>
+<td><code>last_run_status</code></td>
+<td>Completed callback outcome, including <code>rescheduled</code> when its due time moved before execution</td>
+</tr>
+</tbody>
+</table>
+<p>These fields supplement the existing <code>status</code>, <code>message</code>, schedule, and install
+timing fields. Polling clients should display the message and tolerate absent
+fields on older backends. A long-running flag does not mean the callback has
+been stopped or its locks released. Scheduled service updates remain serial;
+other due services can report <code>deferred</code> while the active callback finishes.
+For DUMB API and DUMB Frontend, a known available update remains in <code>status</code>
+and <code>message</code> during a recheck or deferral. Read <code>scheduler_state</code> and
+<code>scheduler_message</code> for live progress; a failed recheck also records
+<code>last_check_error</code> without discarding that known result.
+Scheduled backups publish corresponding worker fields through
+<a href="#get-processsymlink-backup-status"><code>GET /process/symlink-backup-status</code></a>,
+with <code>scheduler_job: "symlink_backup"</code> and <code>next_backup_at</code>.</p>
 <h3 id="get-processupdate-notices"><code>GET /process/update-notices</code><a class="headerlink" href="#get-processupdate-notices" title="Permanent link">#</a></h3>
 <p>Returns available, informational, and recently applied update notices. <code>scope=project</code> (default) limits notices to DUMB/dmbdb; <code>scope=all</code> includes managed services.</p>
 <p>Project terminal statuses are retained by the backend in <code>/config/update_notices.json</code>. Available DUMB API/frontend entries can include <code>releases_behind</code> when the installed release is present in the bounded GitHub release history, plus <code>last_check_error</code>/<code>last_check_failed_at</code> when a transient recheck failure leaves a known available result in place. Browser dismissals are presentation-only and do not mutate this endpoint's retained state.</p>
@@ -8215,6 +8402,194 @@ hex values; job files are stored privately under <code>/config/rclone-optimizer/
 Jobs active during a DUMB restart are marked interrupted and are not resumed.</p>
 <p>See <a href="../../features/rclone-optimizer/">Rclone Streaming Optimizer</a> for test and
 provider-safety behavior.</p>
+<h2 id="infinidysk-2-workflows">InfiniDysk 2 workflows<a class="headerlink" href="#infinidysk-2-workflows" title="Permanent link">#</a></h2>
+<p>These routes are independent of the existing NzbDAV namespace migration and
+generation 1 PostgreSQL adapter. See the
+<a href="../../features/infinidysk-v2-migration/">InfiniDysk 2 upgrade guide</a> for downtime,
+containment, mount/library checks and recovery limits. Paths below are relative
+to the DUMB API; the dashboard accesses them through its <code>/api</code> proxy prefix.</p>
+<p>Clients require a valid <code>api_version &gt;= 2.24.0</code>, explicit boolean
+<code>infinidysk_v2=true</code>, <code>infinidysk_v2_migration=true</code> and numeric
+<code>infinidysk_v2_migration_protocol=1</code>. Native PostgreSQL conversion also requires
+<code>infinidysk_v2_postgres=true</code>. Missing, malformed, older or unknown versions and
+protocols disable mutations. Retained job/recovery displays remain independent
+of those new-operation controls.</p>
+<h3 id="major-installation-and-upgrade">Major installation and upgrade<a class="headerlink" href="#major-installation-and-upgrade" title="Permanent link">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Route</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>GET</code></td>
+<td><code>/process/infinidysk-v2/status</code></td>
+<td>Current generation, fresh/migration mode, mount choices, eligibility and latest retained job</td>
+</tr>
+<tr>
+<td><code>POST</code></td>
+<td><code>/process/infinidysk-v2/preview</code></td>
+<td>Review a source-bound plan and receive a short-lived authorization</td>
+</tr>
+<tr>
+<td><code>POST</code></td>
+<td><code>/process/infinidysk-v2/rehearse</code></td>
+<td>Run the actual contained native importer against retained source snapshots</td>
+</tr>
+<tr>
+<td><code>POST</code></td>
+<td><code>/process/infinidysk-v2/start</code></td>
+<td>Start an eligible fresh install or guarded major cutover</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/process/infinidysk-v2/jobs/{job_id}</code></td>
+<td>Retrieve one persisted job as <code>{"job": {...}}</code></td>
+</tr>
+<tr>
+<td><code>POST</code></td>
+<td><code>/process/infinidysk-v2/rollback</code></td>
+<td>Restore the exact retained major-migration source when authorized</td>
+</tr>
+</tbody>
+</table>
+<p>Preview body:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;mode&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;migrate&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;mount_backend&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;rclone&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;import_strategy&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;preserve&quot;</span>
+<span class="p">}</span>
+</code></pre></div>
+<p><code>mode</code> is <code>migrate</code> or <code>fresh</code>; fresh mode cannot overwrite an existing source.
+<code>mount_backend</code> is <code>rclone</code> or explicit <code>fuse</code>. The initial major workflow accepts
+only <code>import_strategy: "preserve"</code>; it does not regenerate existing outputs.
+The exact consumer-visible mount path is retained. Generation 2 uses separate
+runtime/data directories and the verified beta artifact.</p>
+<p>The preview returns <code>protocol</code>, <code>ready</code>, <code>preview_token</code>, <code>expires_at</code>,
+<code>plan_fingerprint</code>, <code>confirmation_text</code>, <code>current</code>, <code>target</code>, <code>checks</code>,
+<code>blockers</code>, <code>warnings</code>, <code>inventory</code>, <code>required_acknowledgements</code> and
+<code>rehearsal_required</code>. The public fingerprint binds a rehearsal to its plan;
+it is not an authorization token. Recorded inventory is not proof that
+unmanaged consumers or STRM URLs are absent.</p>
+<p>Rehearse and start body, using values from the current preview:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;preview_token&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&lt;current-preview-token&gt;&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;confirmation&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;MIGRATE INFINIDYSK TO V2&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;acknowledgements&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;backup&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;downtime&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;beta&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;oidc_policy&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;downstream&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span>
+<span class="w">  </span><span class="p">},</span>
+<span class="w">  </span><span class="nt">&quot;rehearsal_job_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&lt;validated-rehearsal-job-id&gt;&quot;</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>Omit <code>rehearsal_job_id</code> for the rehearsal request and for a fresh installation
+that does not require one. Always use the backend's exact confirmation text;
+fresh mode has a different phrase. A major cutover requires a completed
+rehearsal with <code>mode: "rehearsal"</code>, <code>result.validated: true</code> and the matching
+<code>plan_fingerprint</code>. Changed source facts, failed containment, skipped native
+media, an unsupported source adapter or failed identity/policy proof block
+activation. External NNTP reads are denied during the contained import, and
+there is no automatic online fallback.
+The required <code>downstream</code> review covers current Arr/media mount paths, remote
+path mappings, symlinks/STRM origins and stopped external writers/scanners.
+OIDC-configured sources remain blocked until their target policy is verified;
+the acknowledgement is not an authorization to bypass a blocker.</p>
+<p>Start/rehearse responses and <code>status.job</code> expose a public job, including its
+identity, mode, status, stage, message, fingerprint and result. Rollback is
+available only when <code>can_rollback</code> or <code>actions.rollback</code> is explicitly true.
+Send <code>job_id</code> and the exact <code>rollback_confirmation_text</code> as <code>confirmation</code> to
+the rollback route. Recovery retains the original source; later 2.x writes
+are not merged back into v1.</p>
+<h3 id="native-generation-2-postgresql">Native generation 2 PostgreSQL<a class="headerlink" href="#native-generation-2-postgresql" title="Permanent link">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Route</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>GET</code></td>
+<td><code>/process/infinidysk-v2/postgres/status</code></td>
+<td>Reconcile native provider/job state and advertise guarded actions</td>
+</tr>
+<tr>
+<td><code>POST</code></td>
+<td><code>/process/infinidysk-v2/postgres/preview</code></td>
+<td>Verify a dedicated empty destination and its physical identity</td>
+</tr>
+<tr>
+<td><code>POST</code></td>
+<td><code>/process/infinidysk-v2/postgres/start</code></td>
+<td>Retain recovery state and start native copy/synchronization</td>
+</tr>
+<tr>
+<td><code>POST</code></td>
+<td><code>/process/infinidysk-v2/postgres/cutover</code></td>
+<td>Switch only the current synchronized job to PostgreSQL</td>
+</tr>
+<tr>
+<td><code>POST</code></td>
+<td><code>/process/infinidysk-v2/postgres/cancel</code></td>
+<td>Cancel the current native job after destination identity checks</td>
+</tr>
+<tr>
+<td><code>POST</code></td>
+<td><code>/process/infinidysk-v2/postgres/rollback</code></td>
+<td>Restore the retained SQLite snapshot when its guards permit</td>
+</tr>
+</tbody>
+</table>
+<p>Managed destination preview:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span><span class="nt">&quot;target&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">&quot;use_managed_postgres&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;database&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;infinidysk_v2&quot;</span><span class="p">}}</span>
+</code></pre></div>
+<p>An external <code>target</code> supplies <code>host</code>, <code>port</code>, <code>database</code>, <code>user</code>, <code>password</code>
+and <code>sslmode</code>. Remote connections require verified TLS or explicit <code>require</code>
+mode. Passwords and connection URLs remain private and are not returned in
+public status. Preview returns the current/target summaries, physical
+<code>target_identity</code> (<code>system_identifier</code>, <code>database_oid</code>, <code>schema</code>), checks and a
+short-lived <code>preview_token</code>/<code>confirmation_text</code>.
+Provision the dedicated empty database with <code>C</code> collation and its role before previewing; choosing
+<code>use_managed_postgres</code> selects DUMB's connection settings, not database creation.</p>
+<p>Start requires that token and exact confirmation, plus
+<code>acknowledge_backup: true</code> and <code>acknowledge_destructive_target: true</code>.
+Subsequent cutover/cancel/rollback requests use the <strong>current <code>job_id</code></strong>, exact
+text from <code>status.confirmation_texts[action]</code> and both acknowledgements. They
+do not reuse an expired initial preview token after a long synchronization.
+Only strict <code>status.actions[action] == true</code> admits an action; the backend
+rechecks native state, source/target identities and recovery evidence.</p>
+<p>Cancel can truncate the dedicated destination's migration tables. Rollback
+does not merge later PostgreSQL writes into SQLite. Environment-managed
+<code>INFINIDYSK_DATABASE_URL</code> configurations disable native provider moves, and
+direct upstream cleanup routes must not bypass DUMB's checks.</p>
+<p>Confirmed cancellation can return <code>status: "cancelled"</code> and
+<code>cleanup_required: true</code> while SQLite remains usable and ordinary lifecycle is
+unblocked. Bounded cleanup warnings stay private; they can refer to source
+change-capture cleanup as well as destination tables. Keep a nonblocking review
+notice visible without interpreting it as an active transfer. A warning-directed
+managed restart may be appropriate; direct cleanup SQL is not authorized by
+the notice.</p>
+<p>Rollback does not require PostgreSQL connectivity. The wrapper durably records
+the restored SQLite device/inode before startup. A retry after delayed delivery
+checks that same live file rather than replacing newly accepted SQLite writes;
+changed file identity blocks recovery.</p>
+<h3 id="conflicts-and-recovery">Conflicts and recovery<a class="headerlink" href="#conflicts-and-recovery" title="Permanent link">#</a></h3>
+<p>An expired/mismatched preview, wrong job, changed source/target or competing
+lifecycle/migration operation returns a conflict (<code>409</code>). A backend below the
+minimum code version rejects mutations (<code>426</code>). Refresh status and obtain a
+fresh preview instead of automatically replaying a failed POST. HTTP timeouts
+do not cancel native workers. Keep retained job identities visible when status
+cannot be confirmed, and disable actions until a valid current response returns.</p>
+<p>Neither workflow falls back to <code>/infinidysk-migration/*</code>,
+<code>/postgres-migration/*</code> or the old <code>/arr-postgres-migration/*</code> routes.</p>
 <h2 id="infinidysk-migration">InfiniDysk migration<a class="headerlink" href="#infinidysk-migration" title="Permanent link">#</a></h2>
 <h3 id="get-processinfinidysk-migrationstatus"><code>GET /process/infinidysk-migration/status</code><a class="headerlink" href="#get-processinfinidysk-migrationstatus" title="Permanent link">#</a></h3>
 <p>Returns whether a legacy NzbDAV deployment needs review, whether the notice is
@@ -8698,6 +9073,30 @@ are updated when their exact process names are renamed.</p>
 <tr>
 <td><code>postgres_migration_service_keys</code></td>
 <td>Backend-authoritative service keys offered by the migration UI; clients require explicit <code>infinidysk</code> advertisement and keep the old fallback limited to legacy services</td>
+</tr>
+<tr>
+<td><code>api_version</code></td>
+<td>Authoritative API code version; generation 2 clients require valid SemVer at least <code>2.24.0</code></td>
+</tr>
+<tr>
+<td><code>infinidysk_v2</code></td>
+<td>Explicit native generation 2 runtime support; generation 1 remains the default</td>
+</tr>
+<tr>
+<td><code>infinidysk_v2_migration</code></td>
+<td>Separate guarded major installation/upgrade workflow</td>
+</tr>
+<tr>
+<td><code>infinidysk_v2_migration_protocol</code></td>
+<td>Exact supported workflow protocol; currently numeric <code>1</code></td>
+</tr>
+<tr>
+<td><code>infinidysk_v2_postgres</code></td>
+<td>Native generation 2 PostgreSQL wrapper, separate from the v1 adapter</td>
+</tr>
+<tr>
+<td><code>infinidysk_v2_rclone_optimizer</code></td>
+<td>Separate validated optimizer adapter for generation 2; currently <code>false</code>, including when rclone is retained</td>
 </tr>
 <tr>
 <td><code>arr_postgres_migration*</code></td>

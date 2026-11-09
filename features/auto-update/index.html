@@ -779,6 +779,8 @@
       
         
       
+        
+      
     
     
     
@@ -1270,6 +1272,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Update intervals">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#scheduled-work-and-deferrals" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Scheduled work and deferrals
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1569,6 +1588,36 @@
     
   
     PostgreSQL Migration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../infinidysk-v2-migration/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-arrow-up-circle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    InfiniDysk 2 Upgrade
   
 
     
@@ -5729,6 +5778,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Update intervals">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#scheduled-work-and-deferrals" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Scheduled work and deferrals
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -6441,6 +6507,28 @@ commit strategy.</p>
 <span class="p">}</span>
 </code></pre></div>
 <p>With this example, checks run once per day at 04:00. If you set <code>auto_update_interval</code> to another value (for example <code>12</code>), checks run every 12 hours anchored from the configured start time.</p>
+<h3 id="scheduled-work-and-deferrals">Scheduled work and deferrals<a class="headerlink" href="#scheduled-work-and-deferrals" title="Permanent link">#</a></h3>
+<p>DUMB uses one shared scheduler. Scheduled service update checks and installs
+run one at a time. If another scheduled update is still active, or a lifecycle
+or migration operation holds a required lock, a due update records <code>deferred</code>
+and retries on a later scheduler tick. Deferred work does not accumulate in
+an install queue, and its enabled state and source selection are checked again
+before it runs. DUMB API release checks and scheduled symlink backups use
+separate bounded workers so a slow service update does not occupy the
+scheduler loop.</p>
+<p>The dashboard Updates panel shows recorded update messages. The
+<a href="../../api/process/#get-processupdate-status">update-status API</a> also reports
+live scheduler state, progress messages, and elapsed time. DUMB API and DUMB
+Frontend retain a known available result during rechecks and deferrals;
+their <code>scheduler_state</code> and <code>scheduler_message</code> describe the active work
+separately. A scheduled operation
+that has run for five minutes is marked as long-running; DUMB logs its
+continued activity each minute. This is an observation, not a cancellation
+deadline. DUMB retains the active operation's locks and recovery state until
+it returns, and later updates remain deferred where necessary.</p>
+<p>An exception records an error and leaves the scheduler available for later
+work. A service process starting successfully does not by itself mean update
+health stabilization and cleanup have finished.</p>
 <hr />
 <h2 id="preserving-data-during-updates">Preserving data during updates<a class="headerlink" href="#preserving-data-during-updates" title="Permanent link">#</a></h2>
 <h3 id="clear-on-update">Clear on update<a class="headerlink" href="#clear-on-update" title="Permanent link">#</a></h3>
@@ -6585,6 +6673,12 @@ INFO - [Auto-Update] Update complete: frontend v1.33.0
 <li><strong>Review logs</strong> for error messages</li>
 <li><strong>Verify network connectivity</strong> to GitHub</li>
 </ol>
+<p>If the status is <code>deferred</code>, review its message and next retry time. Another
+update, lifecycle operation, or migration can temporarily prevent admission.
+For a running or long-running update, review the active service's install
+stage and logs. Elapsed time alone does not identify the blocking operation;
+collecting a thread traceback may be needed to diagnose a persistent stall.
+The scheduler does not terminate the active installer to start another one.</p>
 <h3 id="update-fails-repeatedly">Update fails repeatedly<a class="headerlink" href="#update-fails-repeatedly" title="Permanent link">#</a></h3>
 <ol>
 <li><strong>Check GitHub API rate limits</strong> - add a token if needed</li>
