@@ -1304,6 +1304,11 @@
         },
         "env": {
           "type": "object"
+        },
+        "backup_destination_id": {
+          "type": "string",
+          "pattern": "^$|^@default$|^[a-z0-9][a-z0-9_-]{0,63}$",
+          "description": "Optional registered cold backup destination; empty preserves the existing path and @default explicitly follows the shared default."
         }
       },
       "required": [
@@ -1511,6 +1516,11 @@
         },
         "api_keys": {
           "type": "object"
+        },
+        "backup_destination_id": {
+          "type": "string",
+          "pattern": "^$|^@default$|^[a-z0-9][a-z0-9_-]{0,63}$",
+          "description": "Optional registered cold backup destination; empty preserves the existing path and @default explicitly follows the shared default."
         }
       },
       "required": [
@@ -1702,6 +1712,11 @@
         },
         "env": {
           "type": "object"
+        },
+        "backup_destination_id": {
+          "type": "string",
+          "pattern": "^$|^@default$|^[a-z0-9][a-z0-9_-]{0,63}$",
+          "description": "Optional registered cold backup destination; empty preserves the existing path and @default explicitly follows the shared default."
         }
       },
       "required": [
@@ -3703,6 +3718,11 @@
         },
         "wait_for_dir": {
           "type": "string"
+        },
+        "backup_destination_id": {
+          "type": "string",
+          "pattern": "^$|^@default$|^[a-z0-9][a-z0-9_-]{0,63}$",
+          "description": "Optional registered cold backup destination; empty preserves the existing path and @default explicitly follows the shared default."
         }
       },
       "required": [
@@ -5543,6 +5563,49 @@
         "tunnel_token",
         "env"
       ]
+    },
+    "backup_storage": {
+      "type": "object",
+      "properties": {
+        "default_destination_id": {
+          "type": "string",
+          "pattern": "^$|^[a-z0-9][a-z0-9_-]{0,63}$"
+        },
+        "profiles": {
+          "type": "object",
+          "propertyNames": {
+            "pattern": "^[a-z0-9][a-z0-9_-]{0,63}$"
+          },
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "maxLength": 120
+              },
+              "path": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 4096
+              },
+              "enabled": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "name",
+              "path",
+              "enabled"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "default_destination_id",
+        "profiles"
+      ],
+      "additionalProperties": false
     }
   },
   "required": [
@@ -5585,6 +5648,7 @@
     "zurg",
     "traefik_proxy_admin",
     "authelia",
-    "cloudflared"
+    "cloudflared",
+    "backup_storage"
   ]
 }

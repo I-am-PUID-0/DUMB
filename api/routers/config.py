@@ -996,6 +996,7 @@ async def update_config(
 
         allowed_schema_keys = set((instance_schema.get("properties") or {}).keys())
         allowed_dynamic_keys = {
+            "backup_destination_id",
             "symlink_backup_enabled",
             "symlink_backup_interval",
             "symlink_backup_start_time",

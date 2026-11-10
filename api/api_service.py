@@ -20,6 +20,7 @@ from utils.dependencies import (
 )
 from api.routers.process import process_router
 from api.routers.infinidysk_v2 import infinidysk_v2_router
+from api.routers.backup_storage import backup_storage_router
 from api.routers.config import config_router
 from api.routers.health import health_router
 from api.routers.logs import logs_router
@@ -176,6 +177,9 @@ def create_app() -> FastAPI:
     app.include_router(auth_router, prefix="/auth", tags=["Authentication"])
     app.include_router(process_router, prefix="/process", tags=["Process Management"])
     app.include_router(infinidysk_v2_router, prefix="/process", tags=["InfiniDysk 2.x"])
+    app.include_router(
+        backup_storage_router, prefix="/process", tags=["Backup storage"]
+    )
     app.include_router(
         rclone_optimizer_router,
         prefix="/process",

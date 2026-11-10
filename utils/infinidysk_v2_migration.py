@@ -1382,6 +1382,23 @@ class InfiniDyskV2MigrationManager:
             )
         return result
 
+    def _owned_for_job(self, config, job):
+        records = self._owned(config, job["plan"])
+        # This passive backup preference did not exist in old job receipts.
+        # Its new empty default cannot invalidate an otherwise exact recovery
+        # fingerprint; a selected destination or any other edit still does.
+        original = (job["plan"].get("config_snapshot") or {}).get("infinidysk") or {}
+        if "backup_destination_id" not in original:
+            for record in records:
+                value = record.get("value")
+                if (
+                    record["path"] == ["infinidysk"]
+                    and isinstance(value, dict)
+                    and value.get("backup_destination_id") == ""
+                ):
+                    value.pop("backup_destination_id")
+        return records
+
     def _restore_config(self, job):
         plan = job["plan"]
         config = getattr(self.config_manager, "config", None)
@@ -1390,9 +1407,9 @@ class InfiniDyskV2MigrationManager:
                 "Managed configuration is unavailable for rollback."
             )
         expected = job.get("activation_fingerprint") or _digest(
-            self._owned(plan["config_snapshot"], plan)
+            self._owned_for_job(plan["config_snapshot"], job)
         )
-        if _digest(self._owned(config, plan)) != expected:
+        if _digest(self._owned_for_job(config, job)) != expected:
             raise InfiniDyskV2MigrationError(
                 "Task-owned configuration changed after cutover; inspect recovery before restoring it."
             )
@@ -1413,8 +1430,8 @@ class InfiniDyskV2MigrationManager:
             )
         plan = job["plan"]
         config = getattr(self.config_manager, "config", None)
-        if _digest(self._owned(config, plan)) != _digest(
-            self._owned(plan["config_snapshot"], plan)
+        if _digest(self._owned_for_job(config, job)) != _digest(
+            self._owned_for_job(plan["config_snapshot"], job)
         ):
             raise InfiniDyskV2MigrationError(
                 "Task-owned configuration changed during migration."
@@ -1449,7 +1466,7 @@ class InfiniDyskV2MigrationManager:
             for mount in plan["inventory"]["mounts"]:
                 config["rclone"]["instances"][mount["instance"]]["enabled"] = False
         self.config_manager.save_config(plan["source"]["process_name"])
-        job["activation_fingerprint"] = _digest(self._owned(config, plan))
+        job["activation_fingerprint"] = _digest(self._owned_for_job(config, job))
         self._write(self._job_path(job["job_id"]), job)
 
     def _workspace(self, job):

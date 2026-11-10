@@ -403,7 +403,8 @@
       "USER_LOGS": "/cli_debrid/data/logs/",
       "USER_DB_CONTENT": "/cli_debrid/data/db_content/",
       "CLI_DEBRID_PORT": "{port}"
-    }
+    },
+    "backup_destination_id": ""
   },
   "cli_battery": {
     "enabled": false,
@@ -468,7 +469,8 @@
     "env": {},
     "mount_type": "dfs",
     "mount_path": "/mnt/debrid/decypharr",
-    "api_keys": {}
+    "api_keys": {},
+    "backup_destination_id": ""
   },
   "infinidysk": {
     "enabled": false,
@@ -517,7 +519,8 @@
     "webdav_password": "",
     "env": {
       "SERVICE_PROVIDER": "{\"name\":\"DUMB\",\"url\":\"https://dumbarr.com\",\"disabledFeatures\":[]}"
-    }
+    },
+    "backup_destination_id": ""
   },
   "emby": {
     "enabled": false,
@@ -1236,7 +1239,8 @@
     "config_file": "/riven/backend/data/settings.json",
     "log_file": "/log/riven_backend.log",
     "env": {},
-    "wait_for_dir": ""
+    "wait_for_dir": "",
+    "backup_destination_id": ""
   },
   "riven_frontend": {
     "enabled": false,
@@ -1489,5 +1493,9 @@
         "api_key": ""
       }
     }
+  },
+  "backup_storage": {
+    "default_destination_id": "",
+    "profiles": {}
   }
 }
