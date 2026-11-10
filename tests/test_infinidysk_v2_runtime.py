@@ -220,6 +220,50 @@ class NativeRuntimeTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             runtime.native_auth(self.service)
 
+    def test_compatibility_auth_lock_preserves_saved_native_policy_and_other_auth(self):
+        runtime.native_auth(self.service, create=True)
+        data = Path(self.service["v2_data_dir"])
+        saved = data / "infinidysk.sqlite"
+        saved.write_bytes(b"saved-native-auth-local-policy")
+        before = saved.read_bytes()
+        self.service["env"] = {
+            "INFINIDYSK__Auth__Mode": "required",
+            "INFINIDYSK__AUTH__LOCAL_LOGIN": "false",
+        }
+        original_env = dict(self.service["env"])
+        environment = runtime.build_v2_environment(self.service)
+        self.assertEqual(environment["INFINIDYSK__AUTH__MODE"], "required")
+        self.assertNotIn("INFINIDYSK__Auth__Mode", environment)
+        self.assertEqual(environment["INFINIDYSK__AUTH__LOCAL_LOGIN"], "false")
+        self.assertEqual(self.service["env"], original_env)
+        self.assertEqual(saved.read_bytes(), before)
+
+    def test_disabled_compatibility_preserves_native_auth_environment(self):
+        runtime.native_auth(self.service, create=True)
+        self.service["backend_port"] = self.service["frontend_port"]
+        self.service["env"] = {"INFINIDYSK__Auth__Mode": "local"}
+        environment = runtime.build_v2_environment(self.service)
+        self.assertEqual(environment["INFINIDYSK__Auth__Mode"], "local")
+        self.assertNotIn("INFINIDYSK__AUTH__MODE", environment)
+
+    def test_conflicting_compatibility_auth_is_refused_before_auth_or_data_creation(
+        self,
+    ):
+        self.installed()
+        self.service["env"] = {"INFINIDYSK__Auth": '{"mode":"local"}'}
+        with patch.object(runtime, "native_auth") as auth:
+            with self.assertRaisesRegex(
+                ValueError, "requires native admin authentication"
+            ):
+                runtime.build_v2_environment(self.service)
+            valid, error = runtime.prepare_v2_launch(
+                self.service, os.getuid(), os.getgid()
+            )
+        self.assertFalse(valid)
+        self.assertIn("requires native admin authentication", error)
+        auth.assert_not_called()
+        self.assertFalse(Path(self.service["v2_data_dir"]).exists())
+
     def test_import_preserves_webdav_password_adoption_and_existing_rclone_secret(self):
         data = Path(self.service["v2_data_dir"])
         data.mkdir()
@@ -321,12 +365,22 @@ class NativeRuntimeTests(unittest.TestCase):
             self.assertEqual(command, [str(self.root / "program/infinidysk")])
             self.assertEqual(kwargs["cwd"], self.service["v2_data_dir"])
             self.assertEqual(kwargs["env"]["INFINIDYSK_LISTEN"], "0.0.0.0:3333")
+            self.assertEqual(kwargs["env"]["INFINIDYSK__AUTH__MODE"], "required")
+            self.assertNotIn("INFINIDYSK__Auth__Mode", kwargs["env"])
+            self.assertNotIn("INFINIDYSK__Auth", kwargs["env"])
             self.assertNotIn("DATABASE_PROVIDER", kwargs["env"])
             self.assertNotIn("DATABASE_CONNECTION_STRING", kwargs["env"])
             self.assertGreater(len(kwargs["env"]["INFINIDYSK__AUTH__API_KEY"]), 32)
             raise RuntimeError("stopped before real process launch")
 
         with (
+            patch.dict(
+                os.environ,
+                {
+                    "INFINIDYSK__Auth__Mode": "local",
+                    "INFINIDYSK__Auth": '{"mode":"local"}',
+                },
+            ),
             patch.object(processes.CONFIG_MANAGER, "get", side_effect=get),
             patch.object(
                 processes.CONFIG_MANAGER, "get_instance", return_value=self.service

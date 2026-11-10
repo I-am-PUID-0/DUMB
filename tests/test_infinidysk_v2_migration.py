@@ -230,6 +230,51 @@ class InfiniDyskV2MigrationTests(unittest.TestCase):
         saved = next((self.root / "state" / "previews").glob("*.json"))
         self.assertEqual(0o600, saved.stat().st_mode & 0o777)
 
+    def test_preview_reports_compatibility_auth_policy_without_changing_config(self):
+        original = copy.deepcopy(self.config.config)
+        preview, _ = self.preview_request()
+        policy = {
+            "enforced": True,
+            "mode": "required",
+            "reason": "legacy_compatibility_listener",
+        }
+        self.assertEqual(preview["target"]["compatibility_auth_policy"], policy)
+        self.assertTrue(
+            any("authentication mode Required" in text for text in preview["warnings"])
+        )
+        self.assertFalse(
+            self.manager.status()["current"]["compatibility_auth_policy"]["enforced"]
+        )
+        self.config.config["infinidysk"]["runtime_generation"] = "2"
+        self.assertEqual(
+            self.manager.status()["current"]["compatibility_auth_policy"], policy
+        )
+        self.config.config["infinidysk"]["runtime_generation"] = "1"
+        self.assertEqual(self.config.config, original)
+
+    def test_incompatible_auth_override_blocks_preview_and_executor_before_quiescence(
+        self,
+    ):
+        self.config.config["infinidysk"]["env"]["INFINIDYSK__Auth__Mode"] = "local"
+        before = (self.source / "db.sqlite").read_bytes()
+        preview = self.manager.preview({"mode": "migrate", "mount_backend": "rclone"})
+        self.assertFalse(preview["ready"])
+        self.assertTrue(
+            any(
+                "requires native admin authentication" in text
+                for text in preview["blockers"]
+            )
+        )
+        request = {
+            "preview_token": preview["preview_token"],
+            "confirmation": preview["confirmation_text"],
+            "acknowledgements": dict.fromkeys(ACKNOWLEDGEMENTS, True),
+        }
+        with self.assertRaises(InfiniDyskV2MigrationError):
+            self.manager.rehearse(request)
+        self.assertFalse(self.executor.calls)
+        self.assertEqual((self.source / "db.sqlite").read_bytes(), before)
+
     def test_start_requires_actual_matching_native_rehearsal(self):
         _, request = self.preview_request()
         with self.assertRaisesRegex(

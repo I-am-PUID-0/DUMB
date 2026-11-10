@@ -5,12 +5,61 @@ connections. No request/response content or credentials are inspected or logged.
 """
 
 import ipaddress
+import logging
 import select
 import socket
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
 from urllib.parse import urlsplit
+
+_LOGGER = logging.getLogger(__name__)
+_AUTH_MODE = "INFINIDYSK__AUTH__MODE"
+
+
+def _compatibility_ports(service):
+    frontend = int(service.get("frontend_port") or 3000)
+    backend = int(service.get("backend_port") or 8080)
+    if not 1 <= backend <= 65535 or not 1 <= frontend <= 65535:
+        raise ValueError("Invalid InfiniDysk compatibility listener port")
+    return backend, frontend
+
+
+def compatibility_auth_policy(service):
+    """Public launch policy, never a claim about an unprobed native setting."""
+    backend, frontend = _compatibility_ports(service)
+    enabled = backend != frontend
+    return {
+        "enforced": enabled,
+        "mode": "required" if enabled else None,
+        "reason": "legacy_compatibility_listener" if enabled else None,
+    }
+
+
+def compatibility_auth_environment(service):
+    """Lock native admin authentication without changing its saved policy.
+
+    Every TCP relay connection reaches native from loopback. Native Local mode
+    would therefore trust a remote caller, even if the relay binds to loopback
+    and another local proxy exposes it. The environment override is authoritative
+    and native rejects live changes to locked settings, preserving stored values.
+    """
+    if not compatibility_auth_policy(service)["enforced"]:
+        return {}
+    for key, value in (service.get("env") or {}).items():
+        key = str(key)
+        if not key.startswith("INFINIDYSK__"):
+            continue
+        path = key.removeprefix("INFINIDYSK__").lower().split("__")
+        if path == ["auth"] or (path == ["auth", "mode"] and value != "required"):
+            raise ValueError(
+                "The retained InfiniDysk compatibility listener requires native "
+                "admin authentication mode 'required'. Remove conflicting auth "
+                "environment overrides and use individual auth fields, or set "
+                "backend_port equal to frontend_port to disable compatibility "
+                "and retain native Local/Disabled authentication."
+            )
+    return {_AUTH_MODE: "required"}
 
 
 class CompatibilityProxy:
@@ -43,6 +92,10 @@ class CompatibilityProxy:
         )
         try:
             self.listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            # Deliberate retained legacy origin, including wildcard interfaces.
+            # Managed startup locks Required via compatibility_auth_environment,
+            # removing native Local's exemption for loopback relay connections.
+            # codeql[py/bind-socket-all-network-interfaces]
             self.listener.bind((host, port))
             self.listener.listen(max_connections)
             self.listener.settimeout(0.2)
@@ -168,12 +221,10 @@ class CompatibilityProxy:
 
 
 def start_compatibility_proxy(service, process):
-    frontend = int(service.get("frontend_port") or 3000)
-    backend = int(service.get("backend_port") or 8080)
-    if not 1 <= backend <= 65535 or not 1 <= frontend <= 65535:
-        raise ValueError("Invalid InfiniDysk compatibility listener port")
+    backend, frontend = _compatibility_ports(service)
     if backend == frontend:
         return None
+    compatibility_auth_environment(service)
     urls = str((service.get("env") or {}).get("ASPNETCORE_URLS") or "http://0.0.0.0")
     if ";" in urls:
         raise ValueError(
@@ -184,4 +235,11 @@ def start_compatibility_proxy(service, process):
         host = "127.0.0.1"
     if not host:
         raise ValueError("Cannot resolve the retained backend listener interface")
-    return CompatibilityProxy(host, backend, frontend, process=process)
+    proxy = CompatibilityProxy(host, backend, frontend, process=process)
+    _LOGGER.warning(
+        "InfiniDysk legacy compatibility listener requires native admin "
+        "authentication mode 'required', locked by DUMB for this launch. "
+        "Saved native authentication settings are unchanged. Set backend_port "
+        "equal to frontend_port to disable compatibility."
+    )
+    return proxy

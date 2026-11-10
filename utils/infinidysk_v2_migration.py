@@ -30,6 +30,10 @@ from utils.infinidysk_v2_inventory import (
     tree_fingerprint,
     tree_summary,
 )
+from utils.infinidysk_v2_proxy import (
+    compatibility_auth_environment,
+    compatibility_auth_policy,
+)
 from utils.infinidysk_v2_support import V2_RELEASE, generation, v1_data_root
 from utils.infinidysk_v2_topology import associated_rclone, rclone_mount_path
 
@@ -854,6 +858,10 @@ class InfiniDyskV2MigrationManager:
             "owned_config_paths": [["infinidysk"]],
             "blockers": blockers,
         }
+        try:
+            compatibility_auth_environment(target_service)
+        except ValueError as error:
+            plan["blockers"].append(str(error))
         if mount_backend == "fuse":
             plan["owned_config_paths"].extend(
                 ["rclone", "instances", item["instance"]]
@@ -1053,6 +1061,11 @@ class InfiniDyskV2MigrationManager:
                         ).lower()
                     ),
                     "import_strategy": "preserve",
+                    "compatibility_auth_policy": (
+                        compatibility_auth_policy(service)
+                        if generation(service) == "2"
+                        else {"enforced": False, "mode": None, "reason": None}
+                    ),
                 },
                 "supported_mount_backends": ["rclone", "fuse"],
                 "job": latest,
@@ -1103,6 +1116,9 @@ class InfiniDyskV2MigrationManager:
                     "mount_path": plan["target"]["mount_path"],
                     "runtime_dir": plan["target"]["runtime_dir"],
                     "data_dir": plan["target"]["data_dir"],
+                    "compatibility_auth_policy": compatibility_auth_policy(
+                        plan["target"]["service"]
+                    ),
                 },
                 "backup_storage": (
                     {
@@ -1147,6 +1163,15 @@ class InfiniDyskV2MigrationManager:
                 ],
                 "blockers": list(plan["blockers"]),
                 "warnings": [
+                    *(
+                        [
+                            "The retained backend compatibility listener requires native admin authentication mode Required, locked by DUMB for each launch. Saved native authentication settings are unchanged; disable compatibility by using the same backend and frontend port to retain native Local/Disabled mode."
+                        ]
+                        if compatibility_auth_policy(plan["target"]["service"])[
+                            "enforced"
+                        ]
+                        else []
+                    ),
                     *(
                         [
                             "The retained rclone owner will use --links and --dir-cache-time=20s because generation 2 does not send the old directory-refresh notifications."

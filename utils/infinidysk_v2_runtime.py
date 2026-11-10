@@ -15,6 +15,8 @@ import urllib.request
 import urllib.error
 from pathlib import Path
 
+from utils.infinidysk_v2_proxy import compatibility_auth_environment
+
 from utils.infinidysk_v2_topology import (
     is_v2 as is_v2,
     validate_native_mount_target,
@@ -208,6 +210,7 @@ def _validate_data_bootstrap(data, *, allow_v1_import=False, native_url=None):
 
 
 def build_v2_environment(service, data_root="/data", uid=1000, gid=1000):
+    auth_policy = compatibility_auth_environment(service)
     auth = native_auth(service, data_root)
     env = {
         str(k): str(v)
@@ -224,6 +227,15 @@ def build_v2_environment(service, data_root="/data", uid=1000, gid=1000):
             "PGOPTIONS",
         }
     }
+    if auth_policy:
+        # Native treats environment paths case-insensitively. Keep one canonical
+        # mode override so aliases cannot win through environment ordering.
+        env = {
+            key: value
+            for key, value in env.items()
+            if key.removeprefix("INFINIDYSK__").lower() != "auth__mode"
+        }
+        env.update(auth_policy)
     env.update(
         {
             "INFINIDYSK_CONFIG_DIR": resolve_v2_data_dir(service, data_root),
@@ -577,6 +589,7 @@ def prepare_v2_launch(
     if not installed_v2_version(service):
         return False, "Native runtime is missing or its pinned provenance changed"
     try:
+        compatibility_auth_environment(service)
         if rclone_instances is not None:
             valid, error = validate_selected_owners(service, rclone_instances)
             if not valid:
