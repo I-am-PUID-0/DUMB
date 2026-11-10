@@ -16,6 +16,12 @@
         <loc>https://dumbarr.com/features/configuration/</loc>
       </url>
       <url>
+        <loc>https://dumbarr.com/features/backup-storage/</loc>
+      </url>
+      <url>
+        <loc>https://dumbarr.com/features/installation-backups/</loc>
+      </url>
+      <url>
         <loc>https://dumbarr.com/features/usage/</loc>
       </url>
       <url>
@@ -29,6 +35,9 @@
       </url>
       <url>
         <loc>https://dumbarr.com/features/startup-lifecycle/</loc>
+      </url>
+      <url>
+        <loc>https://dumbarr.com/features/setup-checklist/</loc>
       </url>
       <url>
         <loc>https://dumbarr.com/features/auto-update/</loc>
@@ -194,6 +203,9 @@
       </url>
       <url>
         <loc>https://dumbarr.com/services/optional/tautulli/</loc>
+      </url>
+      <url>
+        <loc>https://dumbarr.com/services/optional/audiobookshelf/</loc>
       </url>
       <url>
         <loc>https://dumbarr.com/services/optional/bazarr/</loc>
