@@ -136,6 +136,106 @@ class SymlinkBackupStorageTests(unittest.TestCase):
                 REFERENCE, expected_kind="symlink_manifest"
             )
 
+    def test_managed_reader_uses_catalog_only_and_preserves_exact_bindings(self):
+        storage = Mock()
+        storage.bound_identity.return_value = {"destination_id": "nas"}
+        manifest = {
+            "manifest_type": "symlink_snapshot",
+            "process_name": "InfiniDysk",
+            "entries": [],
+        }
+        storage.read_json.return_value = manifest
+        with (
+            patch.object(helpers, "get_backup_storage", return_value=storage),
+            patch.object(
+                helpers,
+                "read_symlink_manifest",
+                side_effect=AssertionError("legacy dispatch"),
+            ),
+            patch.object(
+                helpers.os.path, "exists", side_effect=AssertionError("raw exists")
+            ),
+            patch("builtins.open", side_effect=AssertionError("raw open")),
+        ):
+            result = helpers.read_managed_symlink_manifest(
+                REFERENCE, process_name="InfiniDysk", backup_destination_id="nas"
+            )
+        self.assertIs(result, manifest)
+        storage.bound_identity.assert_called_once_with("nas")
+        storage.read_json.assert_called_once_with(
+            REFERENCE, expected_kind="symlink_manifest"
+        )
+
+    def test_managed_reader_rejects_paths_and_noncanonical_ids_before_storage(self):
+        invalid = [
+            "/reserved-example/custom/snapshot.json",
+            REFERENCE.replace("//nas/", "//../"),
+            REFERENCE.replace(NAMESPACE, "../" + NAMESPACE),
+            REFERENCE[:-32] + "not-an-artifact",
+            REFERENCE[:-32] + "A" * 32,
+            REFERENCE + "?path=/reserved-example/snapshot.json",
+            REFERENCE + "#fragment",
+            REFERENCE + "/",
+            REFERENCE.replace("//nas/", "//nas//"),
+            REFERENCE.replace("//nas/", "//nas%2fother/"),
+        ]
+        with (
+            patch.object(helpers, "get_backup_storage") as storage,
+            patch.object(
+                helpers.os.path, "exists", side_effect=AssertionError("raw exists")
+            ),
+            patch("builtins.open", side_effect=AssertionError("raw open")),
+        ):
+            for reference in invalid:
+                with self.subTest(reference=reference):
+                    with self.assertRaises((BackupStorageError, ValueError)):
+                        helpers.read_managed_symlink_manifest(reference)
+        storage.assert_not_called()
+
+    def test_reference_listing_never_enters_legacy_reader(self):
+        storage = Mock()
+        storage.read_json.return_value = {
+            "manifest_type": "symlink_snapshot",
+            "process_name": "InfiniDysk",
+            "entries": [],
+        }
+        storage.list_artifacts.return_value = [receipt()]
+        with (
+            patch.object(helpers, "get_backup_storage", return_value=storage),
+            patch.object(
+                helpers,
+                "read_symlink_manifest",
+                side_effect=AssertionError("legacy dispatch"),
+            ),
+            patch.object(
+                helpers.os.path, "exists", side_effect=AssertionError("raw exists")
+            ),
+            patch("builtins.open", side_effect=AssertionError("raw open")),
+        ):
+            result = helpers.list_symlink_backup_manifests(
+                process_name="InfiniDysk", reference=REFERENCE
+            )
+        self.assertEqual(result["files"][0]["reference"], REFERENCE)
+        storage.read_json.assert_called_once_with(
+            REFERENCE, expected_kind="symlink_manifest"
+        )
+        storage.list_artifacts.assert_called_once_with("nas", NAMESPACE)
+
+    def test_legacy_custom_absolute_manifest_still_reads_without_storage(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            source = Path(temporary, "custom", "snapshot.json")
+            source.parent.mkdir()
+            manifest = {"manifest_type": "symlink_snapshot", "entries": []}
+            source.write_text(json.dumps(manifest), encoding="utf-8")
+            with patch.object(
+                helpers,
+                "get_backup_storage",
+                side_effect=AssertionError("managed storage"),
+            ):
+                self.assertEqual(helpers.read_symlink_manifest(str(source)), manifest)
+                preview = helpers.preview_symlink_manifest_restore(str(source))
+            self.assertEqual(preview["projected_restored"], 0)
+
     def test_hash_or_binding_failure_cannot_start_restore(self):
         storage = Mock()
         storage.read_json.side_effect = ValueError("Backup content hash mismatch")

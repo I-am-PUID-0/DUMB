@@ -9,7 +9,11 @@ import json, os
 from pathlib import Path
 import re
 
-from utils.backup_storage import get_backup_storage, is_backup_reference
+from utils.backup_storage import (
+    get_backup_storage,
+    is_backup_reference,
+    parse_backup_reference,
+)
 from utils.private_files import atomic_write_private_text
 
 
@@ -411,13 +415,50 @@ def symlink_backup_namespace(process_name: str | None = None) -> str:
     return f"symlink-{slug}-{suffix}"
 
 
-def _managed_symlink_reference(reference: str) -> tuple[str, str]:
+def _managed_symlink_reference(reference: str) -> tuple[str, str, str]:
     if not is_backup_reference(reference):
         raise ValueError("A registered symlink backup reference is required.")
-    parts = reference.removeprefix("dumb-backup://").split("/")
-    if len(parts) != 3 or not re.fullmatch(r"symlink-[a-z0-9_-]{1,72}", parts[1]):
+    profile, namespace, artifact = parse_backup_reference(reference)
+    canonical = f"dumb-backup://{profile}/{namespace}/{artifact}"
+    if reference != canonical:
+        raise ValueError("A canonical registered backup reference is required.")
+    if not re.fullmatch(r"symlink-[a-z0-9_-]{1,72}", namespace):
         raise ValueError("The reference does not identify a symlink backup.")
-    return parts[0], parts[1]
+    return profile, namespace, artifact
+
+
+def read_managed_symlink_manifest(
+    reference: str,
+    *,
+    process_name: str | None = None,
+    backup_destination_id: str | None = None,
+) -> dict[str, Any]:
+    """Read only a catalog-owned, verified symlink artifact; never a local path."""
+    profile, namespace, artifact = _managed_symlink_reference(reference)
+    canonical = f"dumb-backup://{profile}/{namespace}/{artifact}"
+    storage = get_backup_storage(CONFIG_MANAGER)
+    if process_name is not None and namespace != symlink_backup_namespace(process_name):
+        raise ValueError("The backup belongs to a different service process.")
+    if backup_destination_id:
+        selected = storage.bound_identity(backup_destination_id)["destination_id"]
+        if profile != selected:
+            raise ValueError("The backup belongs to a different selected destination.")
+    manifest = storage.read_json(canonical, expected_kind="symlink_manifest")
+    if (
+        not isinstance(manifest, dict)
+        or manifest.get("manifest_type") != "symlink_snapshot"
+    ):
+        raise ValueError("The registered artifact is not a symlink snapshot.")
+    recorded_process = manifest.get("process_name")
+    if recorded_process is not None and namespace != symlink_backup_namespace(
+        recorded_process
+    ):
+        raise ValueError(
+            "The backup process identity does not match its registered namespace."
+        )
+    if not isinstance(manifest.get("entries"), list):
+        raise ValueError("Invalid manifest format: entries list is required.")
+    return manifest
 
 
 def read_symlink_manifest(
@@ -430,36 +471,15 @@ def read_symlink_manifest(
     if not source:
         raise ValueError("manifest_path is required.")
     if is_backup_reference(source):
-        profile, namespace = _managed_symlink_reference(source)
-        storage = get_backup_storage(CONFIG_MANAGER)
-        if process_name is not None and namespace != symlink_backup_namespace(
-            process_name
-        ):
-            raise ValueError("The backup belongs to a different service process.")
-        if backup_destination_id:
-            selected = storage.bound_identity(backup_destination_id)["destination_id"]
-            if profile != selected:
-                raise ValueError(
-                    "The backup belongs to a different selected destination."
-                )
-        manifest = storage.read_json(source, expected_kind="symlink_manifest")
-        if (
-            not isinstance(manifest, dict)
-            or manifest.get("manifest_type") != "symlink_snapshot"
-        ):
-            raise ValueError("The registered artifact is not a symlink snapshot.")
-        recorded_process = manifest.get("process_name")
-        if recorded_process is not None and namespace != symlink_backup_namespace(
-            recorded_process
-        ):
-            raise ValueError(
-                "The backup process identity does not match its registered namespace."
-            )
-    else:
-        if not os.path.exists(source):
-            raise ValueError(f"Manifest does not exist: {source}")
-        with open(source, "r", encoding="utf-8") as handle:
-            manifest = json.load(handle)
+        return read_managed_symlink_manifest(
+            source,
+            process_name=process_name,
+            backup_destination_id=backup_destination_id,
+        )
+    if not os.path.exists(source):
+        raise ValueError(f"Manifest does not exist: {source}")
+    with open(source, "r", encoding="utf-8") as handle:
+        manifest = json.load(handle)
     if not isinstance(manifest, dict) or not isinstance(manifest.get("entries"), list):
         raise ValueError("Invalid manifest format: entries list is required.")
     return manifest
@@ -474,8 +494,8 @@ def list_symlink_backup_manifests(
 ) -> dict[str, Any]:
     storage = get_backup_storage(CONFIG_MANAGER)
     if reference:
-        profile_id, namespace = _managed_symlink_reference(reference)
-        read_symlink_manifest(
+        profile_id, namespace, _artifact = _managed_symlink_reference(reference)
+        read_managed_symlink_manifest(
             reference,
             process_name=process_name,
             backup_destination_id=backup_destination_id,
@@ -523,7 +543,7 @@ def prune_symlink_backup_manifests(
     namespace = symlink_backup_namespace(process_name)
     profile_id = backup_destination_id
     if latest_reference:
-        written_profile, written_namespace = _managed_symlink_reference(
+        written_profile, written_namespace, _artifact = _managed_symlink_reference(
             latest_reference
         )
         if written_namespace != namespace or (
@@ -540,7 +560,8 @@ def prune_symlink_backup_manifests(
         for receipt in storage.list_artifacts(profile_id, namespace)
         if receipt.get("artifact_kind") == "symlink_manifest"
         and receipt.get("retention_scope") == "scheduled"
-        and _managed_symlink_reference(receipt["reference"]) == (profile_id, namespace)
+        and _managed_symlink_reference(receipt["reference"])[:2]
+        == (profile_id, namespace)
     ]
     if latest_reference and not any(
         receipt["reference"] == latest_reference for receipt in receipts
