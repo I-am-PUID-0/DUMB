@@ -548,8 +548,10 @@ def authenticate_nntp(item, *, allow_private=False):
             context = ssl.create_default_context()
             # Keep certificate/hostname verification and any stricter platform
             # policy; never lower an existing TLS 1.3 minimum to TLS 1.2.
-            if context.minimum_version < ssl.TLSVersion.TLSv1_2:
-                context.minimum_version = ssl.TLSVersion.TLSv1_2
+            minimum = context.minimum_version
+            context.minimum_version = (
+                ssl.TLSVersion.TLSv1_2 if minimum < ssl.TLSVersion.TLSv1_2 else minimum
+            )
             connection = context.wrap_socket(connection, server_hostname=host)
         connection.settimeout(8)
         stream = connection.makefile("rwb")
