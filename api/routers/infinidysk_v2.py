@@ -141,6 +141,30 @@ async def major_rollback(
     )
 
 
+@infinidysk_v2_router.post("/cleanup/preview")
+async def major_cleanup_preview(
+    request: dict[str, Any] = Body(...),
+    handler=Depends(get_process_handler),
+    updater=Depends(get_updater),
+    current_user=Depends(get_optional_current_user),
+):
+    return await run_in_threadpool(
+        _invoke, "major", "cleanup_preview", request, handler, updater, mutation=True
+    )
+
+
+@infinidysk_v2_router.post("/cleanup")
+async def major_cleanup(
+    request: dict[str, Any] = Body(...),
+    handler=Depends(get_process_handler),
+    updater=Depends(get_updater),
+    current_user=Depends(get_optional_current_user),
+):
+    return await run_in_threadpool(
+        _invoke, "major", "cleanup", request, handler, updater, mutation=True
+    )
+
+
 @infinidysk_v2_router.get("/postgres/status")
 async def postgres_status(
     handler=Depends(get_process_handler),

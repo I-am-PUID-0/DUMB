@@ -243,6 +243,7 @@ class InfiniDyskV2MigrationManager:
         self._thread = None
         self._active_id = None
         self._rollback_active = False
+        self._cleanup = None
 
     def configure(
         self, *, process_handler=None, updater=None, config_manager=None, executor=None
@@ -368,6 +369,12 @@ class InfiniDyskV2MigrationManager:
                 and state == "completed"
             )
         )
+        cleanup = self._cleanup_controller().public_state(job)
+        rollback = (
+            rollback
+            and not cleanup["rollback_retired"]
+            and not self._cleanup_controller().has_blocking_job(job)
+        )
         return {
             key: copy.deepcopy(job.get(key))
             for key in (
@@ -387,9 +394,24 @@ class InfiniDyskV2MigrationManager:
             "status": state,
             "state": state,
             "can_rollback": rollback,
-            "actions": {"rollback": rollback},
+            "actions": {"rollback": rollback, "cleanup": cleanup["can_cleanup"]},
             "rollback_confirmation_text": f"ROLLBACK INFINIDYSK V2 {job['job_id']}",
+            **cleanup,
         }
+
+    def _cleanup_controller(self):
+        with self._lock:
+            if self._cleanup is None:
+                from utils.infinidysk_v2_cleanup import InfiniDyskV2Cleanup
+
+                self._cleanup = InfiniDyskV2Cleanup(self)
+            return self._cleanup
+
+    def cleanup_preview(self, request):
+        return self._cleanup_controller().preview(request)
+
+    def cleanup(self, request):
+        return self._cleanup_controller().start(request)
 
     def get_job(self, job_id):
         with self._lock:
@@ -397,6 +419,8 @@ class InfiniDyskV2MigrationManager:
 
     def has_blocking_job(self):
         with self._lock:
+            if self._cleanup is not None and self._cleanup.has_blocking_job():
+                return True
             return any(
                 self._effective_status(job) in ACTIVE | RECOVERY for job in self._jobs()
             )
