@@ -63,7 +63,16 @@ class NativeMigrationAPITests(unittest.TestCase):
                     return self.request('PATCH', path, json)
             manager = Mock()
             manager.status.return_value = {'protocol': 1, 'job': None}
-            manager.preview.return_value = {'protocol': 1, 'ready': True}
+            capacity = {
+                'status': 'insufficient', 'complete': True, 'estimated': True,
+                'reserved': False, 'observed_at': 1,
+                'source': {'entries': 10, 'logical_bytes': 1024, 'root_count': 1},
+                'filesystems': [{'id': 'filesystem_1', 'roles': ['retained_backup', 'candidate'],
+                    'base_required_bytes': 100, 'safety_margin_bytes': 64,
+                    'required_bytes': 164, 'free_bytes': 100,
+                    'shortfall_bytes': 64, 'sufficient': False}],
+            }
+            manager.preview.return_value = {'protocol': 1, 'ready': False, 'capacity': capacity}
             manager.start.return_value = {'job': {'job_id': 'a' * 32}}
             manager.rollback.return_value = {'job': {'status': 'rolled_back'}}
             with patch.object(router, '_manager', return_value=manager), \
@@ -88,6 +97,10 @@ class NativeMigrationAPITests(unittest.TestCase):
                         assert client.get('/process/infinidysk-v2/status').status_code == 200
                         manager.preview.assert_not_called()
                     with patch.object(router, 'get_project_version', return_value='2.24.0'):
+                        preview = client.post('/process/infinidysk-v2/preview', json={})
+                        assert preview.status_code == 200, preview.text
+                        assert preview.json()['capacity'] == capacity
+                        assert preview.json()['ready'] is False
                         assert client.post('/process/infinidysk-v2/start', json={}).status_code == 200
                         with patch.object(router.INFINIDYSK_V2_POSTGRES_MANAGER, 'has_blocking_job', return_value=True):
                             assert client.post('/process/infinidysk-v2/start', json={}).status_code == 409

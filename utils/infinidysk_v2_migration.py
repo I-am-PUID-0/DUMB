@@ -137,26 +137,90 @@ def _source_fingerprint(path, *, scratch_root, validate_links=False, role="Sourc
         raise InfiniDyskV2MigrationError(str(error)) from error
 
 
-def _capacity_check(requirements):
-    """Read-only estimates with headroom; this does not reserve filesystem space."""
+def _unavailable_capacity():
+    return {
+        "status": "unavailable",
+        "complete": False,
+        "estimated": True,
+        "reserved": False,
+        "observed_at": int(time.time()),
+        "source": {"entries": None, "logical_bytes": None, "root_count": None},
+        "filesystems": [],
+    }
+
+
+def _format_capacity_bytes(value):
+    amount = value
+    for unit in ("B", "KiB", "MiB", "GiB", "TiB"):
+        if amount < 1024 or unit == "TiB":
+            return f"{amount:.2f} {unit}"
+        amount /= 1024
+
+
+class InfiniDyskV2CapacityError(InfiniDyskV2MigrationError):
+    """A complete capacity estimate that refuses copying but remains reviewable."""
+
+    def __init__(self, capacity):
+        self.capacity = capacity
+        detail = "; ".join(
+            f"Filesystem {row['id'].rsplit('_', 1)[-1]}: "
+            f"{_format_capacity_bytes(row['required_bytes'])} required, "
+            f"{_format_capacity_bytes(row['free_bytes'])} free, "
+            f"{_format_capacity_bytes(row['shortfall_bytes'])} short"
+            for row in capacity["filesystems"]
+            if not row["sufficient"]
+        )
+        super().__init__(
+            "Insufficient estimated free space for retained backups, candidate "
+            f"data and native database headroom. {detail}. Source copying is blocked."
+        )
+
+
+def _capacity_check(requirements, *, source=None):
+    """Complete read-only per-filesystem estimates; no storage is reserved."""
     grouped = {}
-    for destination, required in requirements:
+    for requirement in requirements:
+        destination, required = requirement[:2]
+        role = requirement[2] if len(requirement) > 2 else "retained_backup"
         parent = Path(destination)
         while not parent.exists():
             parent = parent.parent
         device = parent.stat().st_dev
-        item = grouped.setdefault(device, {"path": parent, "required": 0})
+        item = grouped.setdefault(device, {"path": parent, "required": 0, "roles": []})
         item["required"] += int(required)
-    for item in grouped.values():
+        if role not in item["roles"]:
+            item["roles"].append(role)
+    filesystems = []
+    for index, item in enumerate(grouped.values(), 1):
         margin = max(64 * 1024 * 1024, item["required"] // 10)
-        if shutil.disk_usage(item["path"]).free < item["required"] + margin:
-            raise InfiniDyskV2MigrationError(
-                "Insufficient estimated free space for retained backups, candidate data and native database headroom; no copy was started."
-            )
-    return {
-        "estimated_bytes": sum(item["required"] for item in grouped.values()),
+        required = item["required"] + margin
+        free = shutil.disk_usage(item["path"]).free
+        shortfall = max(0, required - free)
+        filesystems.append(
+            {
+                "id": f"filesystem_{index}",
+                "roles": item["roles"],
+                "base_required_bytes": item["required"],
+                "safety_margin_bytes": margin,
+                "required_bytes": required,
+                "free_bytes": free,
+                "shortfall_bytes": shortfall,
+                "sufficient": shortfall == 0,
+            }
+        )
+    sufficient = all(row["sufficient"] for row in filesystems)
+    capacity = {
+        "status": "sufficient" if sufficient else "insufficient",
+        "complete": True,
+        "estimated": True,
         "reserved": False,
+        "observed_at": int(time.time()),
+        "source": source or {"entries": 0, "logical_bytes": 0, "root_count": 0},
+        "filesystems": filesystems,
     }
+    if not sufficient:
+        raise InfiniDyskV2CapacityError(capacity)
+    return capacity
 
 
 class InfiniDyskV2MigrationManager:
@@ -464,19 +528,31 @@ class InfiniDyskV2MigrationManager:
             (
                 self.state_root,
                 sum(sizes.values()) + database_bytes + MAX_TREE_MANIFEST_BYTES,
+                "retained_backup",
             ),
-            (Path(plan["target"]["data_dir"]).parent, candidate + headroom),
+            (
+                Path(plan["target"]["data_dir"]).parent,
+                candidate + headroom,
+                "candidate",
+            ),
         ]
         if postgres_size is not None and postgres_snapshot is None:
             import tempfile
 
             requirements.extend(
                 [
-                    (self.state_root, postgres_size * 6),
-                    (tempfile.gettempdir(), postgres_size * 3),
+                    (self.state_root, postgres_size * 6, "retained_backup"),
+                    (tempfile.gettempdir(), postgres_size * 3, "postgres_temporary"),
                 ]
             )
-        return {**_capacity_check(requirements), "source_inventories": inventories}
+        return _capacity_check(
+            requirements,
+            source={
+                "entries": sum(item["entries"] for item in inventories),
+                "logical_bytes": sum(sizes.values()),
+                "root_count": len(sizes),
+            },
+        )
 
     def _plan(self, options):
         config = self._config()
@@ -739,6 +815,9 @@ class InfiniDyskV2MigrationManager:
                 if not isinstance(source_binding, dict) or any(
                     not source_binding.get(key) for key in required
                 ):
+                    # A size without a verified provider identity is not a
+                    # complete source estimate, even if it is positive.
+                    postgres_size = None
                     plan["blockers"].append(
                         "The PostgreSQL source needs a verified physical/schema identity preflight."
                     )
@@ -759,8 +838,12 @@ class InfiniDyskV2MigrationManager:
                     )
                     binding["source"]["schema"] = retained_binding["terminal_migration"]
                     plan["plan_fingerprint"] = _digest(binding)
+        plan["capacity"] = _unavailable_capacity()
         try:
             plan["capacity"] = self._copy_capacity(plan, postgres_size=postgres_size)
+        except InfiniDyskV2CapacityError as error:
+            plan["capacity"] = error.capacity
+            plan["blockers"].append(str(error))
         except (InfiniDyskV2MigrationError, OSError) as error:
             plan["blockers"].append(str(error))
         return plan
@@ -866,6 +949,7 @@ class InfiniDyskV2MigrationManager:
                     "runtime_dir": plan["target"]["runtime_dir"],
                     "data_dir": plan["target"]["data_dir"],
                 },
+                "capacity": copy.deepcopy(plan["capacity"]),
                 "checks": [
                     {
                         "name": "source_schema",

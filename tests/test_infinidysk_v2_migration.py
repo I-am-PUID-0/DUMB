@@ -609,18 +609,18 @@ class InfiniDyskV2MigrationTests(unittest.TestCase):
         for index in range(40):
             (self.source / "blobs" / f"blob-{index}").write_text("retained metadata")
         first = self.manager._plan({"mode": "migrate"})
-        summaries = first["capacity"]["source_inventories"]
-        self.assertEqual(len(summaries), 1)
-        self.assertEqual(summaries[0]["entries"], tree_summary(self.source)["entries"])
-        self.assertEqual(summaries[0]["bytes"], tree_summary(self.source)["bytes"])
+        summary = first["capacity"]["source"]
+        self.assertEqual(summary["root_count"], 1)
+        self.assertEqual(summary["entries"], tree_summary(self.source)["entries"])
+        self.assertEqual(summary["logical_bytes"], tree_summary(self.source)["bytes"])
         (self.source / "blobs" / "new-active-entry").write_text(
             "permitted before quiescence"
         )
         second = self.manager._plan({"mode": "migrate"})
         self.assertEqual(first["plan_fingerprint"], second["plan_fingerprint"])
         self.assertEqual(
-            second["capacity"]["source_inventories"][0]["entries"],
-            summaries[0]["entries"] + 1,
+            second["capacity"]["source"]["entries"],
+            summary["entries"] + 1,
         )
 
     def test_large_complete_inventory_keeps_full_copy_capacity_guard_and_small_state(
@@ -660,17 +660,156 @@ class InfiniDyskV2MigrationTests(unittest.TestCase):
         database_bytes = (self.source / "db.sqlite").stat().st_size
         capacity = plan["capacity"]
         self.assertEqual(
-            capacity["estimated_bytes"],
+            sum(row["base_required_bytes"] for row in capacity["filesystems"]),
             2 * source_bytes
             + MAX_TREE_MANIFEST_BYTES
             + 2 * database_bytes
             + max(64 * 1024**2, database_bytes * 3),
         )
-        self.assertEqual(len(capacity["source_inventories"]), 1)
-        self.assertEqual(capacity["source_inventories"][0]["entries"], 350_000)
-        self.assertIsInstance(capacity["estimated_bytes"], int)
+        self.assertEqual(capacity["source"]["root_count"], 1)
+        self.assertEqual(capacity["source"]["entries"], 350_000)
+        self.assertIsInstance(capacity["filesystems"][0]["required_bytes"], int)
         self.assertLess(len(json.dumps(capacity)), 1024)
         self.assertFalse(capacity["reserved"])
+
+    def test_preview_exposes_complete_capacity_when_space_is_sufficient_or_short(self):
+        preview, _ = self.preview_request()
+        capacity = preview["capacity"]
+        self.assertEqual(capacity["status"], "sufficient")
+        self.assertTrue(capacity["complete"])
+        self.assertTrue(capacity["estimated"])
+        self.assertFalse(capacity["reserved"])
+        self.assertIsInstance(capacity["observed_at"], int)
+        self.assertGreater(capacity["source"]["entries"], 0)
+        self.assertEqual(capacity["source"]["root_count"], 1)
+        self.assertEqual(preview["protocol"], 1)
+        with patch(
+            "utils.infinidysk_v2_migration.shutil.disk_usage",
+            return_value=SimpleNamespace(free=1),
+        ):
+            short = self.manager.preview({"mode": "migrate"})
+        self.assertFalse(short["ready"])
+        self.assertEqual(short["capacity"]["status"], "insufficient")
+        self.assertTrue(short["capacity"]["complete"])
+        row = short["capacity"]["filesystems"][0]
+        self.assertEqual(row["shortfall_bytes"], row["required_bytes"] - 1)
+        self.assertFalse(row["sufficient"])
+        self.assertTrue(
+            any(
+                "required" in message and "free" in message and "short" in message
+                for message in short["blockers"]
+            )
+        )
+        self.assertNotIn(str(self.root), json.dumps(short["capacity"]))
+
+    def test_incomplete_inventory_has_unavailable_capacity_without_partial_totals(self):
+        with patch(
+            "utils.infinidysk_v2_migration._source_summary",
+            side_effect=InfiniDyskV2MigrationError(
+                "Source inventory could not be read completely."
+            ),
+        ):
+            preview = self.manager.preview({"mode": "migrate"})
+        capacity = preview["capacity"]
+        self.assertFalse(preview["ready"])
+        self.assertEqual(capacity["status"], "unavailable")
+        self.assertFalse(capacity["complete"])
+        self.assertEqual(capacity["filesystems"], [])
+        self.assertEqual(
+            capacity["source"],
+            {"entries": None, "logical_bytes": None, "root_count": None},
+        )
+
+    def test_postgres_inspection_failure_has_unavailable_capacity(self):
+        self.config.config["infinidysk"]["postgres_enabled"] = True
+        self.executor.supported_source_providers = ("sqlite", "postgres")
+        binding = {
+            "physical_identity": "fixture-physical-identity",
+            "schema_fingerprint": "a" * 64,
+            "migration_history_fingerprint": "b" * 64,
+            "terminal_migration": "20260824160000_Add-Health-Repair-Pending",
+            "session_timezone": "UTC",
+        }
+        for invalid_binding in (binding, {"database_size_bytes": 1024**3}):
+            with self.subTest(binding_keys=sorted(invalid_binding)):
+                with patch.object(
+                    self.executor,
+                    "preflight",
+                    return_value={"blockers": [], "source_binding": invalid_binding},
+                ):
+                    preview = self.manager.preview({"mode": "migrate"})
+                self.assertFalse(preview["ready"])
+                self.assertEqual(preview["capacity"]["status"], "unavailable")
+                self.assertFalse(preview["capacity"]["complete"])
+                self.assertEqual(preview["capacity"]["filesystems"], [])
+                self.assertTrue(
+                    any("source size" in item for item in preview["blockers"])
+                )
+
+    def test_filesystem_probe_failure_returns_unavailable_without_partial_totals(self):
+        with patch(
+            "utils.infinidysk_v2_migration.shutil.disk_usage",
+            side_effect=OSError("Filesystem free space could not be measured."),
+        ):
+            preview = self.manager.preview({"mode": "migrate"})
+        self.assertFalse(preview["ready"])
+        self.assertEqual(preview["capacity"]["status"], "unavailable")
+        self.assertFalse(preview["capacity"]["complete"])
+        self.assertEqual(preview["capacity"]["filesystems"], [])
+        self.assertTrue(
+            all(value is None for value in preview["capacity"]["source"].values())
+        )
+
+    def test_capacity_free_space_changes_do_not_change_preview_fingerprint(self):
+        with patch(
+            "utils.infinidysk_v2_migration.shutil.disk_usage",
+            return_value=SimpleNamespace(free=10 * 1024**3),
+        ):
+            first = self.manager.preview({"mode": "migrate"})
+        with patch(
+            "utils.infinidysk_v2_migration.shutil.disk_usage",
+            return_value=SimpleNamespace(free=20 * 1024**3),
+        ):
+            second = self.manager.preview({"mode": "migrate"})
+        self.assertTrue(first["ready"])
+        self.assertTrue(second["ready"])
+        self.assertEqual(first["plan_fingerprint"], second["plan_fingerprint"])
+        self.assertNotEqual(
+            first["capacity"]["filesystems"][0]["free_bytes"],
+            second["capacity"]["filesystems"][0]["free_bytes"],
+        )
+
+    def test_space_lost_after_preview_blocks_dispatch_before_any_executor(self):
+        _, request = self.preview_request()
+        with patch(
+            "utils.infinidysk_v2_migration.shutil.disk_usage",
+            return_value=SimpleNamespace(free=1),
+        ):
+            with self.assertRaisesRegex(InfiniDyskV2MigrationError, "free space"):
+                self.manager.rehearse(request)
+        self.assertEqual(self.executor.calls, [])
+        self.assertIsNone(self.manager._thread)
+
+    def test_space_lost_after_dispatch_blocks_cold_copy(self):
+        self.executor.gate = threading.Event()
+        _, request = self.preview_request()
+        response = self.manager.rehearse(request)
+        try:
+            self.assertTrue(self.executor.started.wait(timeout=2))
+            with (
+                patch(
+                    "utils.infinidysk_v2_migration.shutil.disk_usage",
+                    return_value=SimpleNamespace(free=1),
+                ),
+                patch("utils.infinidysk_v2_migration.shutil.copytree") as copying,
+            ):
+                self.executor.gate.set()
+                job = self.wait(response)
+            self.assertFalse(job["result"]["validated"])
+            self.assertIn("free space", job["error"])
+            copying.assert_not_called()
+        finally:
+            self.executor.gate.set()
 
     def test_known_cold_manifest_budget_refuses_before_source_copy(self):
         for index in range(30):
@@ -760,6 +899,128 @@ class InfiniDyskV2MigrationTests(unittest.TestCase):
         binding["physical_identity"]["database_oid"] = "789"
         changed = self.manager.preview({"mode": "migrate"})
         self.assertNotEqual(first["plan_fingerprint"], changed["plan_fingerprint"])
+
+
+class InfiniDyskV2CapacityTests(unittest.TestCase):
+    def capacity(self, requirements, devices, free):
+        from utils.infinidysk_v2_migration import _capacity_check
+
+        class Destination:
+            def __init__(self, value):
+                self.value = value
+
+            def exists(self):
+                return True
+
+            def stat(self):
+                return SimpleNamespace(st_dev=devices[self.value])
+
+        def usage(path):
+            available = free[devices[path.value]]
+            if isinstance(available, Exception):
+                raise available
+            return SimpleNamespace(free=available)
+
+        with (
+            patch("utils.infinidysk_v2_migration.Path", Destination),
+            patch("utils.infinidysk_v2_migration.shutil.disk_usage", side_effect=usage),
+        ):
+            return _capacity_check(requirements)
+
+    def test_shared_filesystem_aggregates_requirements_and_preserves_shortfall_report(
+        self,
+    ):
+        from utils.infinidysk_v2_migration import InfiniDyskV2CapacityError
+
+        mib = 1024**2
+        with self.assertRaises(InfiniDyskV2CapacityError) as caught:
+            self.capacity(
+                [
+                    ("backup-private-root", 128 * mib, "retained_backup"),
+                    ("candidate-private-root", 128 * mib, "candidate"),
+                ],
+                {"backup-private-root": 91, "candidate-private-root": 91},
+                {91: 300 * mib},
+            )
+        report = caught.exception.capacity
+        self.assertEqual(report["status"], "insufficient")
+        self.assertTrue(report["complete"])
+        self.assertEqual(len(report["filesystems"]), 1)
+        row = report["filesystems"][0]
+        self.assertEqual(row["id"], "filesystem_1")
+        self.assertEqual(row["roles"], ["retained_backup", "candidate"])
+        self.assertEqual(row["base_required_bytes"], 256 * mib)
+        self.assertEqual(row["safety_margin_bytes"], 64 * mib)
+        self.assertEqual(row["required_bytes"], 320 * mib)
+        self.assertEqual(row["free_bytes"], 300 * mib)
+        self.assertEqual(row["shortfall_bytes"], 20 * mib)
+        self.assertIn("320.00 MiB required", str(caught.exception))
+        self.assertIn("20.00 MiB short", str(caught.exception))
+        self.assertNotIn("private-root", json.dumps(report))
+        self.assertNotIn("device", json.dumps(report))
+
+    def test_separate_filesystems_each_have_their_own_free_space_and_margin(self):
+        mib = 1024**2
+        report = self.capacity(
+            [
+                ("backup", 128 * mib, "retained_backup"),
+                ("candidate", 128 * mib, "candidate"),
+            ],
+            {"backup": 91, "candidate": 92},
+            {91: 192 * mib, 92: 256 * mib},
+        )
+        self.assertEqual(report["status"], "sufficient")
+        self.assertEqual(len(report["filesystems"]), 2)
+        self.assertEqual(
+            [row["free_bytes"] for row in report["filesystems"]],
+            [192 * mib, 256 * mib],
+        )
+        for row in report["filesystems"]:
+            self.assertEqual(row["required_bytes"], 192 * mib)
+            self.assertEqual(row["shortfall_bytes"], 0)
+            self.assertTrue(row["sufficient"])
+
+    def test_report_collects_all_short_filesystems_before_refusing(self):
+        from utils.infinidysk_v2_migration import InfiniDyskV2CapacityError
+
+        mib = 1024**2
+        with self.assertRaises(InfiniDyskV2CapacityError) as caught:
+            self.capacity(
+                [
+                    ("backup", 128 * mib, "retained_backup"),
+                    ("temporary", 128 * mib, "postgres_temporary"),
+                ],
+                {"backup": 91, "temporary": 92},
+                {91: 120 * mib, 92: 150 * mib},
+            )
+        self.assertEqual(
+            [
+                row["shortfall_bytes"]
+                for row in caught.exception.capacity["filesystems"]
+            ],
+            [72 * mib, 42 * mib],
+        )
+
+    def test_later_filesystem_probe_failure_never_returns_a_partial_report(self):
+        mib = 1024**2
+        with self.assertRaisesRegex(OSError, "second filesystem unavailable"):
+            self.capacity(
+                [
+                    ("backup", 128 * mib, "retained_backup"),
+                    ("candidate", 128 * mib, "candidate"),
+                ],
+                {"backup": 91, "candidate": 92},
+                {91: 256 * mib, 92: OSError("second filesystem unavailable")},
+            )
+
+    def test_ten_percent_margin_is_included_in_required_bytes(self):
+        base = 2 * 1024**3
+        report = self.capacity(
+            [("backup", base, "retained_backup")], {"backup": 91}, {91: 4 * base}
+        )
+        row = report["filesystems"][0]
+        self.assertEqual(row["safety_margin_bytes"], base // 10)
+        self.assertEqual(row["required_bytes"], base + base // 10)
 
 
 if __name__ == "__main__":
