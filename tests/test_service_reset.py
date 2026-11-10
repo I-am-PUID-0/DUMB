@@ -282,6 +282,262 @@ class ServiceResetTests(unittest.TestCase):
         )
         self.assertTrue(any("outside" in item for item in preview["warnings"]))
 
+    def _audiobookshelf_defaults(self, *, recognized_runtime=True):
+        persistent = self.data_root / "audiobookshelf"
+        config_dir = persistent / "config"
+        metadata_dir = persistent / "metadata"
+        runtime_dir = self.root / "opt" / "audiobookshelf"
+        for directory in (config_dir, metadata_dir, runtime_dir):
+            directory.mkdir(parents=True)
+        namespace = self.root / "audiobookshelf"
+        namespace.symlink_to(persistent, target_is_directory=True)
+        (config_dir / "absdatabase.sqlite").write_text("configuration")
+        (metadata_dir / "cover.jpg").write_text("metadata")
+        (persistent / "unrelated.txt").write_text("keep")
+        (runtime_dir / "incomplete-build.txt").write_text("runtime")
+        if recognized_runtime:
+            marker = runtime_dir / ".dumb-audiobookshelf.json"
+            marker.write_text(
+                json.dumps(
+                    {
+                        "version": "2.37.1",
+                        "release_tag": "v2.37.1",
+                        "install_selector": "latest",
+                        "commit_sha": "a" * 40,
+                        "node_major": 24,
+                    }
+                )
+            )
+            marker.chmod(0o644)
+        runtime_dir.chmod(0o755)
+        log_file = self.root / "log" / "audiobookshelf.log"
+        log_file.parent.mkdir()
+        log_file.write_text("log")
+        return {
+            "data_root": str(self.data_root),
+            "audiobookshelf": {
+                "enabled": False,
+                "process_name": "Audiobookshelf",
+                "config_dir": str(namespace / "config"),
+                "metadata_dir": str(namespace / "metadata"),
+                "runtime_dir": str(runtime_dir),
+                "log_file": str(log_file),
+                "release_version_enabled": False,
+                "release_version": "latest",
+                "branch_enabled": False,
+                "branch": "master",
+                "commit_sha": "",
+            },
+        }
+
+    def test_audiobookshelf_remove_clears_only_owned_leaves_and_runtime(self):
+        defaults = self._audiobookshelf_defaults()
+        config = copy.deepcopy(defaults)
+        config["audiobookshelf"]["enabled"] = True
+        media = self.root / "audiobooks"
+        media.mkdir()
+        (media / "book.mp3").write_text("keep")
+        manager = FakeConfigManager(self.root, defaults, config)
+
+        preview = build_service_reset_preview(manager, "Audiobookshelf", "remove")
+        directories = {
+            target["resolved_path"]
+            for target in preview["file_targets"]
+            if target["kind"] == "directory"
+        }
+        service = defaults["audiobookshelf"]
+        expected = {
+            os.path.realpath(service[field])
+            for field in ("config_dir", "metadata_dir", "runtime_dir")
+        }
+        self.assertEqual(directories, expected)
+        self.assertNotIn(str(self.data_root / "audiobookshelf"), directories)
+
+        result = execute_service_reset(
+            manager, FakeProcessHandler(), "Audiobookshelf", "remove", "Audiobookshelf"
+        )
+
+        for directory in expected:
+            self.assertEqual(list(Path(directory).iterdir()), [])
+        self.assertTrue((self.data_root / "audiobookshelf" / "unrelated.txt").exists())
+        self.assertTrue((media / "book.mp3").exists())
+        self.assertFalse(Path(service["log_file"]).exists())
+        self.assertEqual(manager.config["audiobookshelf"], service)
+        self.assertTrue(Path(result["config_backup_path"]).exists())
+
+    def test_audiobookshelf_reset_keeps_all_files_and_resets_source_settings(self):
+        defaults = self._audiobookshelf_defaults()
+        config = copy.deepcopy(defaults)
+        config["audiobookshelf"].update(
+            enabled=True, branch_enabled=True, branch="development", commit_sha="b" * 40
+        )
+        manager = FakeConfigManager(self.root, defaults, config)
+
+        result = execute_service_reset(
+            manager, FakeProcessHandler(), "Audiobookshelf", "reset", "Audiobookshelf"
+        )
+
+        self.assertEqual(result["file_targets"], [])
+        self.assertEqual(manager.config["audiobookshelf"], defaults["audiobookshelf"])
+        self.assertTrue(
+            Path(
+                defaults["audiobookshelf"]["config_dir"], "absdatabase.sqlite"
+            ).exists()
+        )
+        self.assertTrue(
+            Path(defaults["audiobookshelf"]["metadata_dir"], "cover.jpg").exists()
+        )
+        self.assertTrue(
+            Path(
+                defaults["audiobookshelf"]["runtime_dir"], "incomplete-build.txt"
+            ).exists()
+        )
+
+    def test_audiobookshelf_custom_directories_are_retained(self):
+        defaults = self._audiobookshelf_defaults()
+        config = copy.deepcopy(defaults)
+        custom_paths = set()
+        for field in ("config_dir", "metadata_dir", "runtime_dir"):
+            custom = self.root / "custom" / field
+            custom.mkdir(parents=True)
+            (custom / "keep.txt").write_text("keep")
+            config["audiobookshelf"][field] = str(custom)
+            custom_paths.add(str(custom))
+        manager = FakeConfigManager(self.root, defaults, config)
+
+        result = execute_service_reset(
+            manager, FakeProcessHandler(), "Audiobookshelf", "remove", "Audiobookshelf"
+        )
+
+        planned = {target["path"] for target in result["file_targets"]}
+        self.assertFalse(custom_paths & planned)
+        for custom in custom_paths:
+            self.assertTrue(Path(custom, "keep.txt").exists())
+            self.assertTrue(
+                any(
+                    custom in warning and "outside" in warning
+                    for warning in result["warnings"]
+                )
+            )
+
+    def test_audiobookshelf_unrecognized_runtime_is_retained(self):
+        defaults = self._audiobookshelf_defaults(recognized_runtime=False)
+        manager = FakeConfigManager(self.root, defaults, defaults)
+
+        result = execute_service_reset(
+            manager, FakeProcessHandler(), "Audiobookshelf", "remove", "Audiobookshelf"
+        )
+
+        runtime = defaults["audiobookshelf"]["runtime_dir"]
+        self.assertNotIn(runtime, {target["path"] for target in result["file_targets"]})
+        self.assertTrue(Path(runtime, "incomplete-build.txt").exists())
+        self.assertTrue(
+            any("recognized controller-owned" in item for item in result["warnings"])
+        )
+
+    def test_audiobookshelf_namespace_parent_is_never_a_cleanup_target(self):
+        defaults = self._audiobookshelf_defaults()
+        config = copy.deepcopy(defaults)
+        parent = self.data_root / "audiobookshelf"
+        config["audiobookshelf"]["metadata_dir"] = str(parent)
+        manager = FakeConfigManager(self.root, defaults, config)
+
+        preview = build_service_reset_preview(manager, "Audiobookshelf", "remove")
+
+        self.assertNotIn(
+            str(parent), {target["resolved_path"] for target in preview["file_targets"]}
+        )
+        self.assertTrue(
+            any(
+                str(parent) in item and "outside" in item
+                for item in preview["warnings"]
+            )
+        )
+
+    def test_audiobookshelf_aliases_into_unrelated_paths_are_retained(self):
+        defaults = self._audiobookshelf_defaults()
+        service = defaults["audiobookshelf"]
+        external = self.root / "unrelated"
+        external.mkdir()
+        (external / "keep.txt").write_text("keep")
+        runtime = Path(service["runtime_dir"])
+        for child in runtime.iterdir():
+            child.unlink()
+        runtime.rmdir()
+        runtime.symlink_to(external, target_is_directory=True)
+        config_dir = Path(service["config_dir"])
+        for child in config_dir.iterdir():
+            child.unlink()
+        config_dir.rmdir()
+        config_dir.symlink_to(external, target_is_directory=True)
+        manager = FakeConfigManager(self.root, defaults, defaults)
+
+        result = execute_service_reset(
+            manager, FakeProcessHandler(), "Audiobookshelf", "remove", "Audiobookshelf"
+        )
+
+        self.assertTrue((external / "keep.txt").exists())
+        planned = {target["path"] for target in result["file_targets"]}
+        self.assertNotIn(service["runtime_dir"], planned)
+        self.assertNotIn(service["config_dir"], planned)
+
+    def test_audiobookshelf_shared_ancestor_and_descendant_roots_are_retained(self):
+        defaults = self._audiobookshelf_defaults()
+        metadata = Path(defaults["audiobookshelf"]["metadata_dir"]).resolve()
+        for other_path in (metadata, metadata.parent, metadata / "another-service"):
+            with self.subTest(other_path=other_path):
+                config = copy.deepcopy(defaults)
+                config["other"] = {
+                    "process_name": "Other Service",
+                    "config_dir": str(other_path),
+                }
+                manager = FakeConfigManager(self.root, defaults, config)
+                preview = build_service_reset_preview(
+                    manager, "Audiobookshelf", "remove"
+                )
+                self.assertNotIn(
+                    str(metadata),
+                    {target["resolved_path"] for target in preview["file_targets"]},
+                )
+                self.assertTrue(
+                    any("Other Service" in item for item in preview["warnings"])
+                )
+
+    def test_audiobookshelf_respects_other_service_extra_directory_ownership(self):
+        defaults = self._audiobookshelf_defaults()
+        service = defaults["audiobookshelf"]
+        config = copy.deepcopy(defaults)
+        config["other"] = {
+            "process_name": "Other Service",
+            "config_dir": str(self.root / "other"),
+            "runtime_dir": service["runtime_dir"],
+            "metadata_dir": service["metadata_dir"],
+        }
+        manager = FakeConfigManager(self.root, defaults, config)
+
+        preview = build_service_reset_preview(manager, "Audiobookshelf", "remove")
+
+        planned = {target["path"] for target in preview["file_targets"]}
+        self.assertNotIn(service["runtime_dir"], planned)
+        self.assertNotIn(service["metadata_dir"], planned)
+
+    def test_other_service_cannot_remove_audiobookshelf_runtime_ancestor(self):
+        defaults = self._audiobookshelf_defaults()
+        other = {
+            "enabled": False,
+            "process_name": "Other Service",
+            "config_dir": str(self.root / "opt"),
+        }
+        defaults["other"] = other
+        manager = FakeConfigManager(self.root, defaults, defaults)
+
+        preview = build_service_reset_preview(manager, "Other Service", "remove")
+
+        self.assertNotIn(
+            other["config_dir"], {target["path"] for target in preview["file_targets"]}
+        )
+        self.assertTrue(any("Audiobookshelf" in item for item in preview["warnings"]))
+
     def test_remove_aborts_before_backup_or_deletion_when_process_stays_alive(self):
         defaults = self._arr_defaults()
         config_dir = self.root / "sonarr" / "default"

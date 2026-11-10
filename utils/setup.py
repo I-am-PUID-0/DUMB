@@ -69,6 +69,18 @@ from utils.mediastorm_installer import (
     mediastorm_runtime_ready,
     mediastorm_runtime_matches_selection,
 )
+from utils.audiobookshelf_installer import (
+    AudiobookshelfInstallError,
+    audiobookshelf_install_selector,
+    audiobookshelf_runtime_matches_selection,
+    audiobookshelf_runtime_ready,
+    install_audiobookshelf_runtime,
+    validate_audiobookshelf_node_runtime,
+)
+from utils.audiobookshelf_settings import (
+    AudiobookshelfConfigurationError,
+    audiobookshelf_launch_config,
+)
 from utils.aiostreams_installer import (
     AIOSTREAMS_OCI_REPOSITORY,
     AIOStreamsInstallError,
@@ -167,6 +179,7 @@ SERVICE_MANAGED_SOURCE_KEYS = frozenset(
         "emby",
         "profilarr",
         "aiostreams",
+        "audiobookshelf",
         "sonarr",
         "radarr",
         "lidarr",
@@ -186,6 +199,7 @@ COMMIT_PIN_SERVICE_KEYS = frozenset(
         "tautulli",
         "pulsarr",
         "maintainerr",
+        "audiobookshelf",
         "neutarr",
         "profilarr",
         "seerr",
@@ -1620,6 +1634,14 @@ def setup_release_version(process_handler, config, process_name, key):
             result["oci_reference"],
             result["image_digest"],
         )
+        return True, None
+
+    if key == "audiobookshelf":
+        try:
+            with _get_install_lock("audiobookshelf"):
+                install_audiobookshelf_runtime(config, force=True)
+        except AudiobookshelfInstallError as error:
+            return False, str(error)
         return True, None
 
     if key == "aiostreams":
@@ -3133,6 +3155,14 @@ def _setup_project_inner(
                 return False, error
         if key == "mediastorm":
             success, error = setup_mediastorm(
+                process_handler,
+                install_only=install_phase and not configure_phase,
+                configure_only=configure_phase and not install_phase,
+            )
+            if not success:
+                return False, error
+        if key == "audiobookshelf":
+            success, error = setup_audiobookshelf(
                 process_handler,
                 install_only=install_phase and not configure_phase,
                 configure_only=configure_phase and not install_phase,
@@ -8732,6 +8762,75 @@ def _validate_aiostreams_auth(config: dict) -> tuple[str | None, str | None]:
             "AIOStreams auth_password cannot contain commas or line breaks."
         )
     return username, password
+
+
+def _audiobookshelf_launch_configuration(config):
+    from utils.user_management import _filesystem_type
+
+    launch = audiobookshelf_launch_config(config)
+    filesystem = _filesystem_type(launch["config_dir"])
+    if filesystem in {"nfs", "nfs4", "cifs", "smb3", "smbfs"}:
+        raise AudiobookshelfConfigurationError(
+            "Audiobookshelf config_dir must use a local filesystem for SQLite; "
+            "select a local config directory instead of NFS or SMB."
+        )
+    validate_audiobookshelf_node_runtime()
+    return launch
+
+
+def setup_audiobookshelf(
+    process_handler, install_only: bool = False, configure_only: bool = False
+):
+    del process_handler
+    config = CONFIG_MANAGER.get("audiobookshelf")
+    if not config:
+        return False, "Audiobookshelf configuration not found."
+    if not config.get("enabled"):
+        return True, None
+    if install_only and configure_only:
+        return False, "Invalid Audiobookshelf setup phase."
+    try:
+        launch = _audiobookshelf_launch_configuration(config)
+        selector = audiobookshelf_install_selector(config)
+        runtime = launch["runtime_dir"]
+        matches = audiobookshelf_runtime_ready(runtime) and (
+            audiobookshelf_runtime_matches_selection(runtime, selector)
+        )
+        if not matches:
+            if configure_only:
+                return False, (
+                    "Audiobookshelf runtime is missing or does not match the selected "
+                    "source; run the install phase before configuration."
+                )
+            with _get_install_lock("audiobookshelf"):
+                install_audiobookshelf_runtime(config)
+        if install_only:
+            return True, None
+        for field in ("config_dir", "metadata_dir"):
+            directory = launch[field]
+            os.makedirs(directory, exist_ok=True)
+            _chown_recursive_if_needed(
+                directory, CONFIG_MANAGER.get("puid"), CONFIG_MANAGER.get("pgid")
+            )
+        previous = copy.deepcopy(config)
+        config.update(launch)
+        if config != previous:
+            try:
+                CONFIG_MANAGER.save_config(
+                    config.get("process_name") or "Audiobookshelf"
+                )
+            except Exception:
+                config.clear()
+                config.update(previous)
+                raise
+    except (
+        AudiobookshelfConfigurationError,
+        AudiobookshelfInstallError,
+        OSError,
+    ) as error:
+        return False, str(error)
+    logger.info("Audiobookshelf setup complete.")
+    return True, None
 
 
 def setup_aiostreams(

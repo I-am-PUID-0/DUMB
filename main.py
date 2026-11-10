@@ -1163,6 +1163,7 @@ def main():
             "pulsarr",
             "maintainerr",
             "aiostreams",
+            "audiobookshelf",
             "mediastorm",
             "cloudflared",
         ]

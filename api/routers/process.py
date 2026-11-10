@@ -387,6 +387,7 @@ STATIC_URLS_BY_KEY = {
     "pulsarr": "https://github.com/jamcalli/Pulsarr",
     "maintainerr": "https://github.com/Maintainerr/Maintainerr",
     "aiostreams": "https://github.com/Viren070/AIOStreams",
+    "audiobookshelf": "https://www.audiobookshelf.org",
     "mediastorm": "https://github.com/godver3/mediastorm",
     "altmount": "https://github.com/javi11/altmount",
     "traefik": "https://traefik.io/",
@@ -465,6 +466,7 @@ DEFAULT_SERVICE_PORTS = {
     "pulsarr": 3003,
     "maintainerr": 6246,
     "aiostreams": 3006,
+    "audiobookshelf": 13378,
     "mediastorm": 7777,
     "altmount": 8088,
     "traefik_proxy_admin": 3004,
@@ -588,6 +590,7 @@ CORE_SERVICE_NAMES = {
     "profilarr": "Profilarr",
     "maintainerr": "Maintainerr",
     "aiostreams": "AIOStreams",
+    "audiobookshelf": "Audiobookshelf",
     "mediastorm": "mediastorm",
     "bazarr": "Bazarr",
     "tautulli": "Tautulli",
@@ -751,6 +754,7 @@ OPTIONAL_POST_CORE = [
     "bazarr",
     "maintainerr",
     "aiostreams",
+    "audiobookshelf",
     "mediastorm",
     "cloudflared",
 ]
@@ -765,6 +769,7 @@ OPTIONAL_SERVICES = {
     "pulsarr": "Pulsarr",
     "maintainerr": "Maintainerr",
     "aiostreams": "AIOStreams",
+    "audiobookshelf": "Audiobookshelf",
     "mediastorm": "mediastorm",
     "traefik_proxy_admin": "Traefik Proxy Admin",
     "authelia": "Authelia",
@@ -837,6 +842,14 @@ AIOStreams
 - Requires a stable public HTTPS Base URL for installation on non-local Stremio clients.
 
 Documentation: https://dumbarr.com/services/optional/aiostreams""",
+    "audiobookshelf": """\
+Audiobookshelf
+- Self-hosted audiobook and podcast server with basic eBook support.
+- Organizes and streams libraries from folders already available inside DUMB.
+- Configure libraries and create the first administrator in Audiobookshelf's own UI.
+- Keeps SQLite configuration and metadata separate from the managed program files.
+
+Documentation: https://dumbarr.com/services/optional/audiobookshelf""",
     "mediastorm": """\
 mediastorm
 - Fully self-hosted streaming server for Debrid, Torrent, and Usenet sources.
@@ -958,7 +971,14 @@ def _basic_service_fields(
     return {
         key: value
         for key, value in config_block.items()
-        if key in BASIC_FIELDS and key not in hidden_fields
+        if (
+            key in BASIC_FIELDS
+            or (
+                service_key == "audiobookshelf"
+                and key in {"config_dir", "metadata_dir"}
+            )
+        )
+        and key not in hidden_fields
     }
 
 
@@ -6006,9 +6026,18 @@ async def get_optional_services(
             if resolved_token:
                 svc_opts["tunnel_token"] = resolved_token
 
-        svc_opt_desc = {
-            field: SERVICE_OPTION_DESCRIPTIONS[field] for field in svc_opts.keys()
-        }
+        option_descriptions = dict(SERVICE_OPTION_DESCRIPTIONS)
+        if key == "audiobookshelf":
+            option_descriptions.update(
+                config_dir="Persistent local directory for Audiobookshelf's SQLite database and settings; NFS/SMB is unsupported.",
+                metadata_dir="Persistent Audiobookshelf directory for covers, streams, downloads, backups and metadata.",
+                release_version_enabled="Pin Audiobookshelf to an official published release instead of following latest.",
+                release_version="Official Audiobookshelf release: latest or an exact tag such as v2.37.1.",
+                branch_enabled="Build an official Audiobookshelf branch; use manual checks and Install configured branch to advance it.",
+                branch="Official Audiobookshelf branch to build, such as master.",
+                commit_sha="Pin Audiobookshelf to a full 40-character source commit from its official repository; overrides branch and release selection.",
+            )
+        svc_opt_desc = {field: option_descriptions[field] for field in svc_opts.keys()}
         if key == "mediastorm":
             if "release_version_enabled" in svc_opt_desc:
                 svc_opt_desc["release_version_enabled"] = (

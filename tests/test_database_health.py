@@ -56,6 +56,130 @@ class DatabaseHealthCollectorTests(unittest.TestCase):
         self.assertEqual(result["services"][0]["id"], "infinidysk")
         self.assertEqual(result["services"][0]["pressure"], "disabled")
 
+    def test_audiobookshelf_monitoring_is_opt_in_at_both_levels(self):
+        service = {"enabled": True, "process_name": "Audiobookshelf"}
+        for health in (
+            {"enabled": False, "services": {"audiobookshelf": {"enabled": True}}},
+            {"enabled": True, "services": {}},
+        ):
+            with (
+                self.subTest(health=health),
+                patch("utils.database_health.sqlite3.connect") as connect,
+            ):
+                collector = DatabaseHealthCollector()
+                result = collector.snapshot(
+                    {
+                        "dumb": {"metrics": {"database_health": health}},
+                        "audiobookshelf": service,
+                    }
+                )
+            self.assertEqual(result["supported_count"], 1)
+            self.assertEqual(result["monitored_count"], 0)
+            self.assertEqual(result["services"][0]["id"], "audiobookshelf")
+            self.assertEqual(result["services"][0]["provider"], "sqlite")
+            self.assertEqual(result["services"][0]["pressure"], "disabled")
+            self.assertEqual(result["services"][0]["databases"], [])
+            connect.assert_not_called()
+
+    @staticmethod
+    def _audiobookshelf_config(config_dir, mode):
+        return {
+            "dumb": {
+                "metrics": {
+                    "database_health": {
+                        "enabled": True,
+                        "services": {"audiobookshelf": {"enabled": True, "mode": mode}},
+                    }
+                }
+            },
+            "audiobookshelf": {
+                "enabled": True,
+                "process_name": "Audiobookshelf",
+                "config_dir": str(config_dir),
+                "metadata_dir": str(Path(config_dir).parent / "metadata"),
+                "env": {"CONFIG_PATH": "/stale/unmanaged/config"},
+            },
+        }
+
+    def test_audiobookshelf_modes_use_the_managed_custom_config_sqlite_read_only(self):
+        for mode in ("standard", "enhanced"):
+            with self.subTest(mode=mode), tempfile.TemporaryDirectory() as temp_dir:
+                config_dir = Path(temp_dir) / "custom-config"
+                config_dir.mkdir()
+                db_path = config_dir / "absdatabase.sqlite"
+                with sqlite3.connect(db_path) as connection:
+                    connection.execute("CREATE TABLE sample (id INTEGER PRIMARY KEY)")
+                    connection.execute("INSERT INTO sample VALUES (1)")
+                connection.close()
+                original = db_path.read_bytes()
+                original_names = sorted(path.name for path in config_dir.iterdir())
+                with patch(
+                    "utils.database_health.sqlite3.connect", wraps=sqlite3.connect
+                ) as connect:
+                    result = DatabaseHealthCollector().snapshot(
+                        self._audiobookshelf_config(config_dir, mode)
+                    )
+                service = result["services"][0]
+                self.assertEqual("sqlite", service["provider"])
+                self.assertEqual(1, result["monitored_count"])
+                self.assertEqual(1, len(service["databases"]))
+                database = service["databases"][0]
+                self.assertEqual("main", database["role"])
+                self.assertEqual(str(db_path), database["path"])
+                self.assertTrue(database["exists"])
+                self.assertEqual(mode == "enhanced", database["enhanced_probe"])
+                if mode == "enhanced":
+                    connect.assert_called_once_with(
+                        db_path.resolve().as_uri() + "?mode=ro",
+                        uri=True,
+                        timeout=2.0,
+                    )
+                    self.assertGreater(database["page_count"], 0)
+                    self.assertNotIn("probe_error", database)
+                else:
+                    connect.assert_not_called()
+                    self.assertNotIn("page_count", database)
+                self.assertEqual(original, db_path.read_bytes())
+                self.assertEqual(
+                    original_names, sorted(path.name for path in config_dir.iterdir())
+                )
+
+    def test_audiobookshelf_missing_database_is_reported_without_creating_files(self):
+        for mode in ("standard", "enhanced"):
+            with (
+                self.subTest(mode=mode),
+                tempfile.TemporaryDirectory() as temp_dir,
+                patch("utils.database_health.sqlite3.connect") as connect,
+            ):
+                config_dir = Path(temp_dir) / "not-created-yet"
+                result = DatabaseHealthCollector().snapshot(
+                    self._audiobookshelf_config(config_dir, mode)
+                )
+                service = result["services"][0]
+                self.assertEqual("unavailable", service["pressure"])
+                self.assertFalse(service["databases"][0]["exists"])
+                self.assertEqual(
+                    str(config_dir / "absdatabase.sqlite"),
+                    service["databases"][0]["path"],
+                )
+                self.assertFalse(config_dir.exists())
+                self.assertEqual([], list(Path(temp_dir).iterdir()))
+                connect.assert_not_called()
+
+    def test_audiobookshelf_without_custom_config_uses_default_persistent_database(
+        self,
+    ):
+        collector = DatabaseHealthCollector()
+        candidate = collector._candidate(
+            "audiobookshelf",
+            {"env": {"CONFIG_PATH": "/ignored/unmanaged/config"}},
+            None,
+        )
+        self.assertEqual(
+            [("main", "/audiobookshelf/config/absdatabase.sqlite")],
+            collector._sqlite_paths(candidate),
+        )
+
     def test_database_probe_waits_until_service_startup_is_ready(self):
         process_handler = Mock()
         process_handler.is_service_ready_for_monitoring.return_value = False
@@ -662,6 +786,7 @@ class DatabaseHealthCollectorTests(unittest.TestCase):
             {
                 "altmount",
                 "aiostreams",
+                "audiobookshelf",
                 "authelia",
                 "bazarr",
                 "cli_battery",

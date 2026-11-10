@@ -41,6 +41,11 @@ UI_SERVICE_DEFS = [
     {"name": "pulsarr", "config_key": "pulsarr"},
     {"name": "maintainerr", "config_key": "maintainerr"},
     {"name": "aiostreams", "config_key": "aiostreams"},
+    {
+        "name": "audiobookshelf",
+        "config_key": "audiobookshelf",
+        "path": "/audiobookshelf/",
+    },
     {"name": "mediastorm", "config_key": "mediastorm", "path": "/admin"},
     {"name": "authelia", "config_key": "authelia"},
     {"name": "altmount", "config_key": "altmount"},

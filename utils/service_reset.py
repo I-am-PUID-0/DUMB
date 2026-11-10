@@ -90,9 +90,16 @@ PERSISTENT_DATA_NAMES = {
     "pulsarr": "pulsarr",
     "maintainerr": "maintainerr",
     "aiostreams": "aiostreams",
+    "audiobookshelf": "audiobookshelf",
     "mediastorm": "mediastorm",
     "altmount": "altmount",
 }
+
+
+def _directory_fields(service_key: str) -> tuple[str, ...]:
+    if service_key == "audiobookshelf":
+        return (*DIRECTORY_FIELDS, "runtime_dir", "metadata_dir")
+    return DIRECTORY_FIELDS
 
 
 def _normalized_absolute(path: str) -> str:
@@ -238,7 +245,7 @@ def _default_owned_roots(defaults: dict[str, Any], service_key: str) -> list[str
         else section
     )
     roots = []
-    for field in DIRECTORY_FIELDS:
+    for field in _directory_fields(service_key):
         value = template.get(field) if isinstance(template, dict) else None
         if not isinstance(value, str) or not value.startswith("/"):
             continue
@@ -285,7 +292,9 @@ def _other_owned_roots(
         process_name = str(entry.get("process_name") or "").strip()
         if not process_name or process_name == selected_process:
             continue
-        for field in DIRECTORY_FIELDS:
+        # Read extra application-owned paths for exclusion only; this does
+        # not authorize deleting these fields for services without a policy.
+        for field in (*DIRECTORY_FIELDS, "runtime_dir", "metadata_dir"):
             path = entry.get(field)
             if isinstance(path, str) and path.startswith("/"):
                 roots.append(
@@ -299,11 +308,20 @@ def _other_owned_roots(
     return roots
 
 
-def _is_shared_directory(path: str, other_roots: list[tuple[str, str]]) -> list[str]:
+def _is_shared_directory(
+    path: str,
+    other_roots: list[tuple[str, str]],
+    *,
+    protect_ancestor_roots: bool = False,
+) -> list[str]:
     resolved = os.path.realpath(path)
     owners = []
     for process_name, other in other_roots:
-        if resolved == other or _is_within(other, resolved):
+        if (
+            resolved == other
+            or _is_within(other, resolved)
+            or (protect_ancestor_roots and _is_within(resolved, other))
+        ):
             owners.append(process_name)
     return sorted(set(owners))
 
@@ -317,6 +335,25 @@ def _directory_allowed(path: str, allowed_roots: list[str]) -> bool:
     resolved = os.path.realpath(normalized)
     canonical_roots = [root for root in allowed_roots if os.path.realpath(root) == root]
     return any(_is_within(resolved, root) for root in canonical_roots)
+
+
+def _audiobookshelf_cleanup_warning(path: str, source: str) -> str | None:
+    if source == "runtime_dir" and os.path.islink(path):
+        return f"Retained symbolic-link runtime {path}."
+    if not _path_exists(path):
+        return None
+    if not os.path.isdir(path):
+        return f"Retained {path}: the configured {source} is not a directory."
+    if source == "runtime_dir":
+        from utils.audiobookshelf_installer import audiobookshelf_runtime_owned
+
+        try:
+            nonempty = bool(os.listdir(path))
+        except OSError:
+            return f"Retained {path}: runtime ownership could not be checked."
+        if nonempty and not audiobookshelf_runtime_owned(path):
+            return f"Retained {path}: it is not a recognized controller-owned Audiobookshelf runtime."
+    return None
 
 
 def _candidate_targets(
@@ -334,13 +371,20 @@ def _candidate_targets(
         config_manager.config, service_key, instance_name, current
     )
     if persistent:
-        allowed_roots.append(_normalized_absolute(persistent))
+        if service_key == "audiobookshelf":
+            # Only these managed leaves belong to Audiobookshelf. Never clear
+            # their containing namespace, which can hold unrelated siblings.
+            allowed_roots.extend(
+                os.path.join(persistent, name) for name in ("config", "metadata")
+            )
+        else:
+            allowed_roots.append(_normalized_absolute(persistent))
 
-    for field in DIRECTORY_FIELDS:
+    for field in _directory_fields(service_key):
         value = current.get(field)
         if isinstance(value, str) and value.startswith("/"):
             candidates.append((value, "directory", field))
-    if persistent:
+    if persistent and service_key != "audiobookshelf":
         candidates.append((persistent, "directory", "persistent_data"))
 
     other_roots = _other_owned_roots(config_manager.config, process_name)
@@ -354,7 +398,16 @@ def _candidate_targets(
                 f"Retained {path}: it is outside this service's DUMB-managed root."
             )
             continue
-        shared_with = _is_shared_directory(path, other_roots)
+        if service_key == "audiobookshelf":
+            warning = _audiobookshelf_cleanup_warning(path, source)
+            if warning:
+                warnings.append(warning)
+                continue
+        shared_with = _is_shared_directory(
+            path,
+            other_roots,
+            protect_ancestor_roots=service_key == "audiobookshelf",
+        )
         if shared_with:
             warnings.append(
                 f"Retained shared path {path}; it is also used by {', '.join(shared_with)}."

@@ -21,6 +21,7 @@ from utils.setup import (
     _resolve_arr_install_dir,
     _get_install_lock,
     _prepare_whisparr_profile_config,
+    _audiobookshelf_launch_configuration,
 )
 from utils.plex import PlexInstaller
 from utils.arr import ArrInstaller
@@ -32,6 +33,18 @@ from utils.mediastorm_installer import (
     mediastorm_install_selector,
     mediastorm_runtime_matches_selection,
     mediastorm_target_status,
+)
+from utils.audiobookshelf_installer import (
+    AudiobookshelfInstallError,
+    audiobookshelf_install_selector,
+    audiobookshelf_runtime_ready,
+    audiobookshelf_runtime_matches_selection,
+    audiobookshelf_target_status,
+    install_audiobookshelf_runtime,
+)
+from utils.audiobookshelf_settings import (
+    AudiobookshelfConfigurationError,
+    audiobookshelf_paths,
 )
 from utils.aiostreams_installer import (
     AIOSTREAMS_OCI_REFERENCE,
@@ -350,7 +363,7 @@ class Update:
         return f"{release}-{sha[:8]}", None
 
     def supports_manual_update(self, key, config):
-        if key == "aiostreams":
+        if key in {"aiostreams", "audiobookshelf"}:
             return True
         if key in {
             "plex",
@@ -903,6 +916,17 @@ class Update:
                 start_time,
                 next_check_at,
             )
+        if key == "audiobookshelf":
+            return self._manual_check_audiobookshelf(
+                process_name,
+                config,
+                block_reason,
+                checked_at,
+                auto_update_enabled,
+                interval_hours,
+                start_time,
+                next_check_at,
+            )
         if key == "aiostreams":
             return self._manual_check_aiostreams(
                 process_name,
@@ -1065,6 +1089,100 @@ class Update:
                 }
             )
         return payload
+
+    def _manual_check_audiobookshelf(
+        self,
+        process_name,
+        config,
+        block_reason,
+        checked_at,
+        auto_update_enabled,
+        interval_hours,
+        start_time,
+        next_check_at,
+    ):
+        del process_name
+        try:
+            target = audiobookshelf_target_status(config)
+        except AudiobookshelfInstallError as error:
+            return {
+                "status": "error",
+                "reason": "source_check_failed",
+                "message": str(error),
+                "checked_at": checked_at,
+                "auto_update_enabled": auto_update_enabled,
+                "auto_update_interval": interval_hours,
+                "auto_update_start_time": start_time,
+                "next_check_at": next_check_at,
+            }
+        installed = target["installed"]
+        payload = {
+            "status": (
+                "no_update"
+                if installed
+                else ("blocked" if block_reason else "update_available")
+            ),
+            "reason": block_reason,
+            "message": (
+                "Configured Audiobookshelf source is installed"
+                if installed
+                else "Configured Audiobookshelf source is ready to install"
+            ),
+            "current_version": target["current_version"] or "unknown",
+            "available_version": target["available_version"],
+            "current_commit_sha": target.get("current_commit_sha") or "",
+            "available_commit_sha": target["commit_sha"],
+            "checked_at": checked_at,
+            "auto_update_enabled": False if block_reason else auto_update_enabled,
+            "auto_update_interval": interval_hours,
+            "auto_update_start_time": start_time,
+            "next_check_at": None if block_reason else next_check_at,
+        }
+        if block_reason:
+            payload.update(
+                configured_target_kind=block_reason,
+                configured_target_installed=installed,
+            )
+        return payload
+
+    def _update_audiobookshelf(
+        self,
+        process_name,
+        config,
+        key,
+        instance_name,
+        *,
+        force=False,
+    ):
+        try:
+            _audiobookshelf_launch_configuration(config)
+            target = audiobookshelf_target_status(config)
+            if not force and (
+                target["installed"]
+                or audiobookshelf_install_selector(config) != "latest"
+            ):
+                return False, f"No updates available for {process_name}."
+
+            def before_activate():
+                if process_name in self.process_handler.process_names:
+                    self.stop_process(process_name)
+                with self.process_handler.setup_tracker_lock:
+                    self.process_handler.setup_tracker.discard(process_name)
+
+            with _get_install_lock("audiobookshelf"):
+                result = install_audiobookshelf_runtime(
+                    config, before_activate=before_activate, force=True
+                )
+        except (AudiobookshelfInstallError, AudiobookshelfConfigurationError) as error:
+            return False, f"Failed Audiobookshelf update: {error}"
+        success, error = configure_project(self.process_handler, process_name)
+        if not success:
+            return False, f"Failed to configure updated {process_name}: {error}"
+        process, error = self.start_process(process_name, config, key, instance_name)
+        if not process:
+            return False, f"Failed to start {process_name}: {error}"
+        version = result.get("display_version", result["version"])
+        return True, f"Updated {process_name} to {version}."
 
     def _manual_check_aiostreams(
         self,
@@ -2246,6 +2364,11 @@ class Update:
                 process_name, config, key, instance_name, force=True
             )
 
+        if key == "audiobookshelf":
+            return self._update_audiobookshelf(
+                process_name, config, key, instance_name, force=True
+            )
+
         def install_selected_source():
             # Manual fixed-release installs must bypass the scheduled-update
             # guard and same-version skip. Dedicated service installers retain
@@ -3123,6 +3246,16 @@ class Update:
     ):
         if key == "infinidysk" and infinidysk_v2_runtime.is_v2(config):
             return not bool(infinidysk_v2_runtime.installed_v2_version(config))
+        if key == "audiobookshelf":
+            try:
+                selector = audiobookshelf_install_selector(config)
+            except AudiobookshelfInstallError:
+                return True
+            runtime = config.get("runtime_dir") or "/opt/audiobookshelf"
+            return not (
+                audiobookshelf_runtime_ready(runtime)
+                and audiobookshelf_runtime_matches_selection(runtime, selector)
+            )
         try:
             versions = Versions()
             current_version, _ = versions.version_check(
@@ -3885,6 +4018,8 @@ class Update:
                 if not supported
                 else f"No updates available: native InfiniDysk is pinned to {infinidysk_v2_runtime.RELEASE}."
             )
+        if key == "audiobookshelf":
+            return self._update_audiobookshelf(process_name, config, key, instance_name)
         if key in {"whisparr", "whisparr-v3"}:
             return self._update_whisparr(process_name, config, key, instance_name)
         commit_sha = str(config.get("commit_sha") or "").strip().lower()
@@ -4690,6 +4825,16 @@ class Update:
         return normalized
 
     def _snapshot_target(self, key, config):
+        if key == "audiobookshelf":
+            try:
+                runtime = audiobookshelf_paths(config)["runtime_dir"]
+            except AudiobookshelfConfigurationError:
+                return None
+            return (
+                os.path.realpath(runtime)
+                if audiobookshelf_runtime_ready(runtime)
+                else None
+            )
         if key in {
             "plex",
             "jellyfin",

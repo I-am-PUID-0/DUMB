@@ -427,6 +427,7 @@ def migrate_symlinks():
                 ("/pulsarr", os.path.join(data_root, "pulsarr")),
                 ("/maintainerr", os.path.join(data_root, "maintainerr")),
                 ("/aiostreams", os.path.join(data_root, "aiostreams")),
+                ("/audiobookshelf", os.path.join(data_root, "audiobookshelf")),
                 ("/mediastorm", os.path.join(data_root, "mediastorm")),
                 ("/altmount", os.path.join(data_root, "altmount")),
             ]

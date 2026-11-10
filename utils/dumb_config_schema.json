@@ -5606,6 +5606,120 @@
         "profiles"
       ],
       "additionalProperties": false
+    },
+    "audiobookshelf": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "process_name": {
+          "type": "string"
+        },
+        "repo_owner": {
+          "type": "string"
+        },
+        "repo_name": {
+          "type": "string"
+        },
+        "release_version_enabled": {
+          "type": "boolean"
+        },
+        "release_version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^(?:latest|v?\\d+\\.\\d+\\.\\d+(?:-[0-9A-Za-z][0-9A-Za-z.-]*)?)$"
+        },
+        "commit_sha": {
+          "type": "string",
+          "pattern": "^(?:|[0-9a-fA-F]{40})$"
+        },
+        "branch_enabled": {
+          "type": "boolean"
+        },
+        "branch": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255
+        },
+        "suppress_logging": {
+          "type": "boolean"
+        },
+        "log_level": {
+          "type": "string"
+        },
+        "port": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535
+        },
+        "auto_update": {
+          "type": "boolean"
+        },
+        "auto_update_mode": {
+          "type": "string",
+          "enum": [
+            "install",
+            "check_only"
+          ]
+        },
+        "auto_update_interval": {
+          "type": "number"
+        },
+        "auto_update_start_time": {
+          "type": "string",
+          "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+        },
+        "runtime_dir": {
+          "type": "string",
+          "minLength": 2,
+          "pattern": "^/"
+        },
+        "config_dir": {
+          "type": "string",
+          "minLength": 2,
+          "pattern": "^/"
+        },
+        "metadata_dir": {
+          "type": "string",
+          "minLength": 2,
+          "pattern": "^/"
+        },
+        "log_file": {
+          "type": "string"
+        },
+        "command": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "env": {
+          "type": "object"
+        }
+      },
+      "required": [
+        "enabled",
+        "process_name",
+        "repo_owner",
+        "repo_name",
+        "release_version_enabled",
+        "release_version",
+        "suppress_logging",
+        "log_level",
+        "port",
+        "auto_update",
+        "auto_update_mode",
+        "auto_update_interval",
+        "auto_update_start_time",
+        "runtime_dir",
+        "config_dir",
+        "metadata_dir",
+        "log_file",
+        "command",
+        "env"
+      ]
     }
   },
   "required": [
@@ -5649,6 +5763,7 @@
     "traefik_proxy_admin",
     "authelia",
     "cloudflared",
-    "backup_storage"
+    "backup_storage",
+    "audiobookshelf"
   ]
 }

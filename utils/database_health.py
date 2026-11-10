@@ -31,6 +31,7 @@ ARR_DATABASE_FILES = {
 }
 SQLITE_SERVICE_KEYS = {
     "altmount",
+    "audiobookshelf",
     "bazarr",
     "cli_battery",
     "cli_debrid",
@@ -405,6 +406,10 @@ class DatabaseHealthCollector:
                 ("main", os.path.join(config_dir, main_file)),
                 ("logs", os.path.join(config_dir, "logs.db")),
             ]
+        if key == "audiobookshelf":
+            # CONFIG_PATH is controller-managed from config_dir at launch.
+            base = config_dir or "/audiobookshelf/config"
+            return [("main", os.path.join(base, "absdatabase.sqlite"))]
         if key == "infinidysk":
             base = _infinidysk_config_path(service)
             if is_v2(service):

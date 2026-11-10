@@ -1497,5 +1497,43 @@
   "backup_storage": {
     "default_destination_id": "",
     "profiles": {}
+  },
+  "audiobookshelf": {
+    "enabled": false,
+    "process_name": "Audiobookshelf",
+    "repo_owner": "advplyr",
+    "repo_name": "audiobookshelf",
+    "release_version_enabled": false,
+    "release_version": "latest",
+    "commit_sha": "",
+    "branch_enabled": false,
+    "branch": "master",
+    "suppress_logging": false,
+    "log_level": "INFO",
+    "port": 13378,
+    "auto_update": false,
+    "auto_update_mode": "install",
+    "auto_update_interval": 24,
+    "auto_update_start_time": "04:00",
+    "runtime_dir": "/opt/audiobookshelf",
+    "config_dir": "/audiobookshelf/config",
+    "metadata_dir": "/audiobookshelf/metadata",
+    "log_file": "/log/audiobookshelf.log",
+    "command": [
+      "node",
+      "/opt/audiobookshelf/dist-server/index.js"
+    ],
+    "env": {
+      "NODE_ENV": "production",
+      "HOST": "0.0.0.0",
+      "PORT": "13378",
+      "CONFIG_PATH": "/audiobookshelf/config",
+      "METADATA_PATH": "/audiobookshelf/metadata",
+      "ROUTER_BASE_PATH": "/audiobookshelf",
+      "ALLOW_IFRAME": "1",
+      "SKIP_BINARIES_CHECK": "1",
+      "FFMPEG_PATH": "/usr/bin/ffmpeg",
+      "FFPROBE_PATH": "/usr/bin/ffprobe"
+    }
   }
 }

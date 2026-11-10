@@ -105,6 +105,7 @@ HTTP_PROBES = {
         "AIOStreams health", "/api/v1/health", required_json_key="success"
     ),
     "mediastorm": HttpProbe("mediastorm health", "/health"),
+    "audiobookshelf": HttpProbe("Audiobookshelf health", "/healthcheck"),
 }
 
 
