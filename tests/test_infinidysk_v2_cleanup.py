@@ -2,6 +2,7 @@
 
 import copy
 import hashlib
+import json
 import os
 from pathlib import Path
 import shutil
@@ -11,6 +12,7 @@ import threading
 from types import SimpleNamespace
 import unittest
 from unittest.mock import Mock, patch
+from urllib.parse import quote
 
 from utils import infinidysk_v2_cleanup as cleanup_module
 from utils.backup_storage import BackupStorage, parse_backup_reference
@@ -531,6 +533,129 @@ class V1CleanupTests(unittest.TestCase):
         with self.assertRaises(InfiniDyskV2MigrationError):
             self._preview()
         self.assertTrue((self.data / "db.sqlite").exists())
+
+    def _move_data_for_uri_test(self):
+        previous = self.data
+        self.data = self.root / "v1 data"
+        previous.rename(self.data)
+        self.job["plan"]["source"]["data_dir"] = str(self.data)
+        fingerprints = self.job["snapshot"]["original_fingerprints"]
+        fingerprints[str(self.data)] = fingerprints.pop(str(previous))
+        fingerprint = _digest(fingerprints)
+        self.job["snapshot"]["snapshot_fingerprint"] = fingerprint
+        self.job["accepted_import"]["snapshot_fingerprint"] = fingerprint
+        self.config.config["infinidysk"]["env"]["CONFIG_PATH"] = str(self.data)
+        self.manager._write(self.manager._job_path(self.job_id), self.job)
+
+    def test_local_database_uri_consumers_block_cleanup_preview_without_source_changes(
+        self,
+    ):
+        self._move_data_for_uri_test()
+        path = str(self.data / "db.sqlite")
+        encoded = quote(path)
+        references = (
+            "file:" + path,
+            "file://" + path,
+            "file://localhost" + path,
+            "file:" + encoded + "?mode=ro&cache=shared",
+            "sqlite:" + path,
+            "sqlite://" + path,
+            "sqlite:///" + path,
+            "sqlite+pysqlite:///" + path,
+            "sqlite+aiosqlite:///" + encoded + "?mode=ro&cache=shared",
+            "sqlite:///file:" + encoded + "?uri=true&mode=ro",
+            "sqlite+aiosqlite:///file://localhost" + encoded + "?uri=true",
+            "--database='sqlite:///" + path + "?mode=ro&cache=shared'",
+            "DATABASE_URL=sqlite:///" + encoded + "?mode=ro",
+            "sqlite:////" + path,
+            "//" + path.lstrip("/"),
+        )
+        before = _source_fingerprint(self.data, scratch_root=self.manager.state_root)
+        for reference in references:
+            with self.subTest(reference=reference):
+                self.config.config["another_service"] = {
+                    "env": {"DATABASE_URL": reference}
+                }
+                preview = self._preview()
+                self.assertFalse(preview["ready"])
+                self.assertTrue(
+                    any("references the v1" in item for item in preview["blockers"])
+                )
+        self.assertEqual(
+            before, _source_fingerprint(self.data, scratch_root=self.manager.state_root)
+        )
+        self.assertIsNone(self.controller._thread)
+        self.assertFalse(
+            self.manager._read(self.manager._job_path(self.job_id)).get(
+                "rollback_retired", False
+            )
+        )
+
+    def test_remote_and_relative_database_urls_do_not_become_local_references(self):
+        self._move_data_for_uri_test()
+        path = str(self.data / "db.sqlite")
+        encoded = quote(path)
+        values = (
+            "https://example.invalid" + encoded + "?database=" + encoded,
+            "postgresql://app:reserved-example@127.0.0.1" + encoded,
+            "file://example.invalid" + encoded,
+            "file:relative/data.sqlite",
+            "sqlite+aiosqlite:///" + encoded.lstrip("/"),
+            "sqlite+pysqlite:///" + encoded.lstrip("/"),
+            "sqlite:///:memory:",
+            "file:" + quote(encoded),
+        )
+        for value in values:
+            with self.subTest(reference=value):
+                self.config.config["another_service"] = {"env": {"DATABASE_URL": value}}
+                self.assertTrue(self._preview()["ready"])
+
+    def test_saved_effective_native_database_into_v1_blocks_preview(self):
+        selection = "sqlite:" + str(self.data / "active.sqlite") + "?mode=rw"
+        (self.v2data / "database.toml").write_text("url = " + json.dumps(selection))
+        preview = self._preview()
+        self.assertFalse(preview["ready"])
+        self.assertTrue(
+            any("references the v1" in item for item in preview["blockers"])
+        )
+        self.assertIsNone(self.controller._thread)
+
+    def test_effective_native_database_is_bound_by_digest_and_rechecked_before_start(
+        self,
+    ):
+        path = self.v2data / "database.toml"
+        first = "postgresql://fixture:private-example@127.0.0.1/fixture_a"
+        second = "postgresql://fixture:private-example@127.0.0.1/fixture_b"
+        path.write_text("url = " + json.dumps(first))
+        preview = self._preview()
+        self.assertTrue(preview["ready"], preview)
+        retained = self.manager._read(
+            self.manager.state_root
+            / "cleanup-previews"
+            / (preview["preview_token"] + ".json")
+        )
+        self.assertEqual(
+            retained["binding"]["native_database"],
+            hashlib.sha256(first.encode()).hexdigest(),
+        )
+        self.assertNotIn("private-example", json.dumps(retained))
+        path.write_text("url = " + json.dumps(second))
+        with self.assertRaisesRegex(InfiniDyskV2MigrationError, "ownership changed"):
+            self.controller.start(self._request(preview))
+        self.assertIsNone(self.controller._thread)
+        self.assertFalse(self.updater.updating.locked())
+        self.assertTrue((self.data / "db.sqlite").exists())
+
+    def test_native_database_selection_read_error_blocks_without_exposing_uri(self):
+        (self.v2data / "database.toml").write_text(
+            'url = "postgresql://fixture:private-example@127.0.0.1/broken'
+        )
+        preview = self._preview()
+        self.assertFalse(preview["ready"])
+        self.assertNotIn("private-example", json.dumps(preview))
+        self.assertTrue(
+            any("database selection" in item for item in preview["blockers"])
+        )
 
 
 if __name__ == "__main__":

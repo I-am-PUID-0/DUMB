@@ -11,12 +11,14 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import re
 import secrets
 import shlex
 import sqlite3
 import stat
 import threading
 import time
+from urllib.parse import unquote, urlsplit
 
 from utils.backup_storage import (
     BackupStorageError,
@@ -41,6 +43,7 @@ from utils.infinidysk_v2_migration import (
 )
 from utils.infinidysk_v2_runtime import (
     native_api_request,
+    native_database_url,
     resolve_v2_data_dir,
     runtime_dir,
 )
@@ -56,6 +59,57 @@ INDEX_SQL = "CREATE INDEX deletion_order ON entries (root, depth DESC, path)"
 
 def _overlap(first, second):
     return paths_overlap(first, second)
+
+
+def _local_reference_path(token):
+    """Decode only local file/SQLite references, never arbitrary remote URLs."""
+    if token.startswith("/"):
+        return token
+    scheme, separator, tail = token.partition(":")
+    if not separator:
+        return None
+    scheme = scheme.lower()
+    if scheme == "file":
+        parsed = urlsplit(token)
+        if parsed.netloc.lower() not in {"", "localhost"}:
+            return None
+        path = unquote(parsed.path, errors="surrogateescape")
+        return path if path.startswith("/") else None
+    if not re.fullmatch(r"sqlite(?:\+[a-z0-9_]+)?", scheme):
+        return None
+    if tail.startswith("///"):
+        # SQLAlchemy's database follows its third slash. Only the bare
+        # sqlite dialect also accepts SQLx's three-slash absolute form.
+        database = tail[3:]
+        if database.startswith("file:"):
+            parsed = urlsplit(database)
+            if parsed.netloc.lower() not in {"", "localhost"}:
+                return None
+            path = unquote(parsed.path, errors="surrogateescape")
+            return path if path.startswith("/") else None
+        if not database.startswith("/") and scheme != "sqlite":
+            return None
+        parsed = urlsplit("file:/" + database.lstrip("/"))
+        return unquote(parsed.path, errors="surrogateescape")
+    if tail.startswith("/") and not tail.startswith("//"):
+        return unquote(urlsplit(token).path, errors="surrogateescape")
+    return None
+
+
+def _reference_tokens(value):
+    tokens = [value]
+    try:
+        tokens.extend(shlex.split(value))
+    except ValueError:
+        pass
+    for token in tokens:
+        token = token.strip("\"'")
+        # Match an actual leading flag/environment assignment. Query '='
+        # characters in a URI must remain part of that URI.
+        assignment = re.match(r"^(?:--?)?[A-Za-z_][A-Za-z0-9_.-]*=", token)
+        if assignment is not None:
+            token = token[assignment.end() :].strip("\"'")
+        yield token
 
 
 def _stamp(value):
@@ -434,18 +488,10 @@ class InfiniDyskV2Cleanup:
                 for index, item in enumerate(value):
                     references(item, (*keys, index))
             elif isinstance(value, str):
-                tokens = [value]
-                try:
-                    tokens.extend(shlex.split(value))
-                except ValueError:
-                    # Keep checking the whole scalar without shell evaluation.
-                    pass
-                for token in tokens:
-                    token = token.strip("\"'")
-                    if "=" in token and not token.startswith("/"):
-                        token = token.split("=", 1)[1].strip("\"'")
-                    if token.startswith("/"):
-                        path = Path(os.path.normpath(token))
+                for token in _reference_tokens(value):
+                    local_path = _local_reference_path(token)
+                    if local_path is not None:
+                        path = Path("/" + os.path.normpath(local_path).lstrip("/"))
                         if any(
                             path == root or root in path.parents for root in retired
                         ):
@@ -454,8 +500,20 @@ class InfiniDyskV2Cleanup:
                             )
 
         references(config)
+        try:
+            effective_database = native_database_url(
+                service, config.get("data_root") or "/data"
+            )
+        except (OSError, ValueError):
+            raise InfiniDyskV2MigrationError(
+                "The effective native database selection could not be verified safely."
+            ) from None
+        references(effective_database)
         return {
             "config": _digest(config),
+            # Native database.toml can change without managed configuration.
+            # Bind its effective selection without retaining any DSN or secret.
+            "native_database": hashlib.sha256(effective_database.encode()).hexdigest(),
             "roots": roots,
             "aliases": self._aliases(job),
         }
