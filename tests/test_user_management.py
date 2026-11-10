@@ -365,6 +365,127 @@ class UserManagementSecurityTests(unittest.TestCase):
             self.assertFalse(success)
             self.assertIn("unsafe link or mount", error)
 
+    def test_private_controller_state_names_are_preserved(self):
+        self.assertTrue(
+            {".dumb-setup", "installation-backups", "backup-storage"}
+            <= user_management.CONTROLLER_OWNED_CONFIG_ENTRIES
+        )
+
+    def test_private_tree_preflight_refuses_unsafe_entries_before_any_chown(self):
+        for unsafe in ("symlink", "hardlink", "shared_mode", "special"):
+            with self.subTest(unsafe=unsafe), tempfile.TemporaryDirectory() as temp:
+                root = Path(temp) / ".dumb-setup"
+                root.mkdir(mode=0o700)
+                record = root / "run-record.json"
+                record.write_text('{"retained":true}')
+                record.chmod(0o600)
+                if unsafe == "symlink":
+                    (root / "unsafe").symlink_to(record)
+                elif unsafe == "hardlink":
+                    os.link(record, root / "unsafe")
+                elif unsafe == "shared_mode":
+                    record.chmod(0o640)
+                else:
+                    os.mkfifo(root / "unsafe", 0o600)
+                with patch.object(user_management.os, "fchown") as change:
+                    ok, message = user_management._repair_private_controller_tree(
+                        str(root),
+                        os.geteuid() + 1,
+                        os.getegid() + 1,
+                        os.geteuid(),
+                        os.getegid(),
+                    )
+                self.assertFalse(ok)
+                self.assertIn("controller UID", message)
+                self.assertIn("Preserve existing records", message)
+                change.assert_not_called()
+                self.assertEqual(record.read_text(), '{"retained":true}')
+
+    def test_private_tree_foreign_owner_and_mount_identity_fail_closed(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp) / ".dumb-setup"
+            root.mkdir(mode=0o700)
+            record = root / "run-record.json"
+            record.write_text("{}")
+            record.chmod(0o600)
+            with patch.object(user_management.os, "fchown") as change:
+                ok, _ = user_management._repair_private_controller_tree(
+                    str(root),
+                    os.geteuid() + 1,
+                    os.getegid(),
+                    os.geteuid() + 2,
+                    os.getegid(),
+                )
+                self.assertFalse(ok)
+                change.assert_not_called()
+            with (
+                patch.object(
+                    user_management, "_controller_state_mount_id", side_effect=[1, 1, 2]
+                ),
+                patch.object(user_management.os, "fchown") as change,
+            ):
+                ok, _ = user_management._repair_private_controller_tree(
+                    str(root),
+                    os.geteuid(),
+                    os.getegid(),
+                    os.geteuid(),
+                    os.getegid(),
+                )
+                self.assertFalse(ok)
+                change.assert_not_called()
+
+    def test_private_state_never_uses_service_recursive_chown(self):
+        for name in (".dumb-setup", "installation-backups", "backup-storage"):
+            with self.subTest(name=name), tempfile.TemporaryDirectory() as temp:
+                protected = Path(temp) / name
+                protected.mkdir(mode=0o700)
+                with (
+                    patch.object(
+                        user_management,
+                        "_repair_private_controller_tree",
+                        return_value=(True, None),
+                    ) as repair,
+                    patch.object(user_management, "chown_recursive") as service_chown,
+                ):
+                    ok, error = user_management.chown_startup_directory(
+                        temp,
+                        os.geteuid(),
+                        os.getegid(),
+                        controller_owned_entries=user_management.CONTROLLER_OWNED_CONFIG_ENTRIES,
+                    )
+                self.assertTrue(ok, error)
+                repair.assert_called_once_with(
+                    str(protected),
+                    os.geteuid(),
+                    os.getegid(),
+                    os.geteuid(),
+                    os.getegid(),
+                )
+                service_chown.assert_not_called()
+
+    @unittest.skipUnless(
+        os.geteuid() == 0,
+        "Requires root only to create the historical managed-owner fixture",
+    )
+    def test_recorded_managed_owner_regression_repairs_without_changing_bytes(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp) / ".dumb-setup"
+            root.mkdir(mode=0o700)
+            record = root / ("run-" + "a" * 32 + ".json")
+            payload = b'{"run_id":"retained","status":"partial"}'
+            record.write_bytes(payload)
+            record.chmod(0o600)
+            os.chown(record, 1001, 1001)
+            os.chown(root, 1001, 1001)
+            ok, error = user_management._repair_private_controller_tree(
+                str(root), os.geteuid(), os.getegid(), 1001, 1001
+            )
+            self.assertTrue(ok, error)
+            self.assertEqual(root.stat().st_uid, os.geteuid())
+            self.assertEqual(record.stat().st_uid, os.geteuid())
+            self.assertEqual(record.read_bytes(), payload)
+            self.assertEqual(record.stat().st_mode & 0o777, 0o600)
+
 
 if __name__ == "__main__":
     unittest.main()

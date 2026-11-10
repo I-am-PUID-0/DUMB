@@ -30,7 +30,146 @@ NETWORK_FILESYSTEM_TYPES = {
     "sshfs",
 }
 NETWORK_FILESYSTEM_WORKER_LIMIT = 16
-CONTROLLER_OWNED_CONFIG_ENTRIES = frozenset({"arr-postgres-migration"})
+PRIVATE_CONTROLLER_CONFIG_ENTRIES = frozenset(
+    {".dumb-setup", "installation-backups", "backup-storage"}
+)
+CONTROLLER_OWNED_CONFIG_ENTRIES = (
+    frozenset({"arr-postgres-migration"}) | PRIVATE_CONTROLLER_CONFIG_ENTRIES
+)
+
+
+def _controller_state_mount_id(descriptor):
+    with open(f"/proc/self/fdinfo/{descriptor}", encoding="ascii") as handle:
+        for line in handle.read(16384).splitlines():
+            if line.startswith("mnt_id:"):
+                return int(line.split(":", 1)[1])
+    raise ValueError("Mount identity is unavailable.")
+
+
+def _controller_state_stamp(info):
+    return (
+        info.st_dev,
+        info.st_ino,
+        info.st_mode,
+        info.st_uid,
+        info.st_gid,
+        info.st_nlink,
+        info.st_size,
+        info.st_mtime_ns,
+        info.st_ctime_ns,
+    )
+
+
+def _repair_private_controller_tree(
+    directory, owner_uid, owner_gid, managed_uid, managed_gid
+):
+    """Repair only fixed private controller state after a complete safe preflight.
+
+    Old startup ownership traversal could assign these trees to the configured
+    service UID. That known owner is eligible for migration; links, mounts,
+    foreign owners, shared permissions and malformed file types are not.
+    Record bytes and the SetupStore validation contract remain unchanged.
+    """
+    root_fd = -1
+    rows = []
+    allowed_uids = {owner_uid, managed_uid}
+    allowed_gids = {owner_gid, managed_gid}
+
+    def inspect(descriptor, mount_id):
+        info = os.fstat(descriptor)
+        if (
+            info.st_uid not in allowed_uids
+            or info.st_gid not in allowed_gids
+            or stat.S_IMODE(info.st_mode) & 0o7077
+            or _controller_state_mount_id(descriptor) != mount_id
+        ):
+            raise ValueError("Unsafe owner, permissions or mount identity.")
+        if stat.S_ISREG(info.st_mode):
+            if info.st_nlink != 1 or info.st_size > 8 * 1024 * 1024:
+                raise ValueError("Unsafe hard link or oversized state file.")
+        elif not stat.S_ISDIR(info.st_mode):
+            raise ValueError("Unsupported state file type.")
+        return info
+
+    def walk(descriptor, relative, depth, mount_id):
+        if depth > 64 or len(rows) >= 10000:
+            raise ValueError("Private state exceeds the supported traversal bound.")
+        info = inspect(descriptor, mount_id)
+        rows.append((relative, _controller_state_stamp(info)))
+        if not stat.S_ISDIR(info.st_mode):
+            return
+        before = _controller_state_stamp(info)
+        with os.scandir(descriptor) as entries:
+            for entry in entries:
+                flags = os.O_RDONLY | os.O_NOFOLLOW | os.O_CLOEXEC | os.O_NONBLOCK
+                child = os.open(entry.name, flags, dir_fd=descriptor)
+                try:
+                    walk(
+                        child,
+                        relative + (entry.name,),
+                        depth + 1,
+                        mount_id,
+                    )
+                finally:
+                    os.close(child)
+        if before != _controller_state_stamp(os.fstat(descriptor)):
+            raise ValueError("Private state changed during validation.")
+
+    def open_relative(relative, mount_id):
+        current = os.dup(root_fd)
+        try:
+            for index, part in enumerate(relative):
+                flags = os.O_RDONLY | os.O_NOFOLLOW | os.O_CLOEXEC | os.O_NONBLOCK
+                if index < len(relative) - 1:
+                    flags |= os.O_DIRECTORY
+                child = os.open(part, flags, dir_fd=current)
+                os.close(current)
+                current = child
+                if _controller_state_mount_id(current) != mount_id:
+                    raise ValueError("Private state mount changed.")
+            return os.dup(current)
+        finally:
+            os.close(current)
+
+    try:
+        root_fd = os.open(
+            directory, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC
+        )
+        parent_fd = os.open(
+            str(Path(directory).parent),
+            os.O_RDONLY | os.O_DIRECTORY | os.O_CLOEXEC,
+        )
+        try:
+            mount_id = _controller_state_mount_id(parent_fd)
+            walk(root_fd, (), 0, mount_id)
+        finally:
+            os.close(parent_fd)
+        # No ownership changes occur until every entry has passed preflight.
+        for relative, expected in rows:
+            descriptor = open_relative(relative, mount_id)
+            try:
+                info = inspect(descriptor, mount_id)
+                if _controller_state_stamp(info) != expected:
+                    raise ValueError("Private state changed before ownership repair.")
+                if (info.st_uid, info.st_gid) != (owner_uid, owner_gid):
+                    os.fchown(descriptor, owner_uid, owner_gid)
+            finally:
+                os.close(descriptor)
+        return True, None
+    except (OSError, ValueError) as error:
+        reason = str(error) if isinstance(error, ValueError) else type(error).__name__
+        message = (
+            f"Private controller state {Path(directory).name} requires review "
+            f"(controller UID {owner_uid}, configured PUID {managed_uid}): {reason} "
+            "Preserve existing records. Restore controller ownership only for "
+            "reviewed private regular files, or recover a verified private backup; "
+            "do not delete state or follow links."
+        )
+        logger.error("%s", message)
+        return False, message
+    finally:
+        if root_fd >= 0:
+            os.close(root_fd)
 
 
 def _available_cpu_count():
@@ -240,9 +379,18 @@ def chown_startup_directory(
         with os.scandir(directory) as entries:
             for entry in entries:
                 if entry.name in controller_owned_entries:
-                    success, error = _repair_controller_owned_tree(
-                        entry.path, controller_uid, controller_gid
-                    )
+                    if entry.name in PRIVATE_CONTROLLER_CONFIG_ENTRIES:
+                        success, error = _repair_private_controller_tree(
+                            entry.path,
+                            controller_uid,
+                            controller_gid,
+                            user_id,
+                            group_id,
+                        )
+                    else:
+                        success, error = _repair_controller_owned_tree(
+                            entry.path, controller_uid, controller_gid
+                        )
                     if not success:
                         return False, error
                     skipped += 1
