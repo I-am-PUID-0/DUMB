@@ -4,6 +4,21 @@ env:
   DUMB_BUILDKIT_ENDPOINT: tcp://dumb-buildkitd:1234
 on:
   workflow_dispatch:
+    inputs:
+      frontend_source:
+        description: Frontend source
+        type: choice
+        required: true
+        default: Latest release
+        options:
+          - Latest release
+          - dmbdb dev
+          - Exact commit
+      frontend_commit:
+        description: Frontend commit SHA (Exact commit only)
+        type: string
+        required: false
+        default: ''
   pull_request:
     types:
       - closed
@@ -38,8 +53,14 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: ${{ github.sha }}
           fetch-depth: 0
           fetch-tags: true
+      - name: Validate frontend source selection
+        env:
+          FRONTEND_SOURCE_INPUT: ${{ inputs.frontend_source || 'Latest release' }}
+          FRONTEND_COMMIT_INPUT: ${{ inputs.frontend_commit || '' }}
+        run: python3 scripts/resolve_frontend_build.py --validate-only
       - name: Extract version and set environment variables
         id: setup_env_vars        
         run: |
@@ -64,6 +85,7 @@ jobs:
           echo "DEV_VERSION=$DEV_VERSION" >> $GITHUB_OUTPUT
 
   fetch-latest-tags:
+    needs: setup
     if: >
       github.event_name == 'workflow_dispatch' ||
       (github.event.pull_request.merged == true &&
@@ -72,7 +94,12 @@ jobs:
     outputs:
       SYS_STATS_TAG: ${{ steps.resolve_inputs.outputs.SYS_STATS_TAG }}
       ZILEAN_TAG: ${{ steps.resolve_inputs.outputs.ZILEAN_TAG }}
-      DUMB_FRONTEND_TAG: ${{ steps.resolve_inputs.outputs.DUMB_FRONTEND_TAG }}
+      DUMB_FRONTEND_SOURCE: ${{ steps.frontend.outputs.DUMB_FRONTEND_SOURCE }}
+      DUMB_FRONTEND_SOURCE_KIND: ${{ steps.frontend.outputs.DUMB_FRONTEND_SOURCE_KIND }}
+      DUMB_FRONTEND_REF: ${{ steps.frontend.outputs.DUMB_FRONTEND_REF }}
+      DUMB_FRONTEND_SHA: ${{ steps.frontend.outputs.DUMB_FRONTEND_SHA }}
+      DUMB_FRONTEND_PACKAGE_VERSION: ${{ steps.frontend.outputs.DUMB_FRONTEND_PACKAGE_VERSION }}
+      DUMB_FRONTEND_IMAGE_TAG: ${{ steps.frontend.outputs.DUMB_FRONTEND_IMAGE_TAG }}
       CLI_DEBRID_TAG: ${{ steps.resolve_inputs.outputs.CLI_DEBRID_TAG }}
       RCLONE_TAG: ${{ steps.resolve_inputs.outputs.RCLONE_TAG }}
       ZURG_REF: ${{ steps.resolve_inputs.outputs.ZURG_REF }}
@@ -84,6 +111,16 @@ jobs:
       APT_REFRESH: ${{ steps.resolve_inputs.outputs.APT_REFRESH }}
       DUMB_DOCS_REF: ${{ steps.resolve_inputs.outputs.DUMB_DOCS_REF }}
     steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+      - name: Resolve immutable frontend source
+        id: frontend
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          FRONTEND_SOURCE_INPUT: ${{ inputs.frontend_source || 'Latest release' }}
+          FRONTEND_COMMIT_INPUT: ${{ inputs.frontend_commit || '' }}
+        run: python3 scripts/resolve_frontend_build.py
       - name: Resolve reproducible build inputs
         id: resolve_inputs
         env:
@@ -113,7 +150,6 @@ jobs:
 
           SYS_STATS_TAG=$(latest_tag EnterpriseDB/system_stats)
           ZILEAN_TAG=$(latest_tag iPromKnight/zilean)
-          DUMB_FRONTEND_TAG=$(latest_tag nicocapalbo/dmbdb)
           CLI_DEBRID_TAG=$(latest_tag godver3/cli_debrid)
           RCLONE_RELEASE=$(latest_tag rclone/rclone)
           RCLONE_TAG=${RCLONE_RELEASE#v}
@@ -152,7 +188,7 @@ jobs:
           APT_REFRESH=$(date -u +%Y-%m-%d)
           DUMB_DOCS_REF=$(github_api https://api.github.com/repos/I-am-PUID-0/DUMB_docs/commits/master | jq -er '.sha')
 
-          for name in SYS_STATS_TAG ZILEAN_TAG DUMB_FRONTEND_TAG CLI_DEBRID_TAG RCLONE_TAG ZURG_REF \
+          for name in SYS_STATS_TAG ZILEAN_TAG CLI_DEBRID_TAG RCLONE_TAG ZURG_REF \
             GO_VERSION NPM_VERSION PNPM_VERSION PGADMIN_VERSION POETRY_VERSION APT_REFRESH DUMB_DOCS_REF; do
             value=${!name}
             [[ -n "$value" && "$value" != "null" ]] || { echo "Failed to resolve $name" >&2; exit 1; }
@@ -174,6 +210,8 @@ jobs:
       digest: ${{ steps.push.outputs.digest }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
 
       - name: Login (Docker Hub)
         uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
@@ -219,7 +257,10 @@ jobs:
           build-args: |
             SYS_STATS_TAG=${{ needs.fetch-latest-tags.outputs.SYS_STATS_TAG }}
             ZILEAN_TAG=${{ needs.fetch-latest-tags.outputs.ZILEAN_TAG }}
-            DUMB_FRONTEND_TAG=${{ needs.fetch-latest-tags.outputs.DUMB_FRONTEND_TAG }}
+            DUMB_FRONTEND_SOURCE_KIND=${{ needs.fetch-latest-tags.outputs.DUMB_FRONTEND_SOURCE_KIND }}
+            DUMB_FRONTEND_REF=${{ needs.fetch-latest-tags.outputs.DUMB_FRONTEND_REF }}
+            DUMB_FRONTEND_SHA=${{ needs.fetch-latest-tags.outputs.DUMB_FRONTEND_SHA }}
+            DUMB_FRONTEND_PACKAGE_VERSION=${{ needs.fetch-latest-tags.outputs.DUMB_FRONTEND_PACKAGE_VERSION }}
             CLI_DEBRID_TAG=${{ needs.fetch-latest-tags.outputs.CLI_DEBRID_TAG }}
             RCLONE_TAG=${{ needs.fetch-latest-tags.outputs.RCLONE_TAG }}
             ZURG_REF=${{ needs.fetch-latest-tags.outputs.ZURG_REF }}
@@ -247,6 +288,8 @@ jobs:
       digest: ${{ steps.push.outputs.digest }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
 
       - name: Login (Docker Hub)
         uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
@@ -292,7 +335,10 @@ jobs:
           build-args: |
             SYS_STATS_TAG=${{ needs.fetch-latest-tags.outputs.SYS_STATS_TAG }}
             ZILEAN_TAG=${{ needs.fetch-latest-tags.outputs.ZILEAN_TAG }}
-            DUMB_FRONTEND_TAG=${{ needs.fetch-latest-tags.outputs.DUMB_FRONTEND_TAG }}
+            DUMB_FRONTEND_SOURCE_KIND=${{ needs.fetch-latest-tags.outputs.DUMB_FRONTEND_SOURCE_KIND }}
+            DUMB_FRONTEND_REF=${{ needs.fetch-latest-tags.outputs.DUMB_FRONTEND_REF }}
+            DUMB_FRONTEND_SHA=${{ needs.fetch-latest-tags.outputs.DUMB_FRONTEND_SHA }}
+            DUMB_FRONTEND_PACKAGE_VERSION=${{ needs.fetch-latest-tags.outputs.DUMB_FRONTEND_PACKAGE_VERSION }}
             CLI_DEBRID_TAG=${{ needs.fetch-latest-tags.outputs.CLI_DEBRID_TAG }}
             RCLONE_TAG=${{ needs.fetch-latest-tags.outputs.RCLONE_TAG }}
             ZURG_REF=${{ needs.fetch-latest-tags.outputs.ZURG_REF }}
@@ -318,23 +364,31 @@ jobs:
       BRANCH_NAME:      ${{ needs.setup.outputs.BRANCH_NAME }}
       DOCKER_USER:      ${{ secrets.DOCKER_USERNAME }}
       DOCKER_PASS:      ${{ secrets.DOCKER_PASSWORD }}
+      FRONTEND_IMAGE_TAG: ${{ needs.fetch-latest-tags.outputs.DUMB_FRONTEND_IMAGE_TAG }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Determine Docker tags
         id: determine_tags
         run: |
-          if [ "${{ github.ref_name }}" = "master" ]; then
-            echo "DH_VERSION=docker.io/${{ env.DOCKER_USER }}/${{ env.REPO_NAME }}:${{ env.VERSION }}"    >> $GITHUB_ENV
-            echo "DH_LATEST=docker.io/${{ env.DOCKER_USER }}/${{ env.REPO_NAME }}:latest"                >> $GITHUB_ENV
-            echo "GH_VERSION=ghcr.io/${{ env.REPO_OWNER_LOWER }}/${{ env.REPO_NAME }}:${{ env.VERSION }}" >> $GITHUB_ENV
-            echo "GH_LATEST=ghcr.io/${{ env.REPO_OWNER_LOWER }}/${{ env.REPO_NAME }}:latest"             >> $GITHUB_ENV
-          else
-            echo "DH_VERSION=docker.io/${{ env.DOCKER_USER }}/${{ env.REPO_NAME }}:${{ env.BRANCH_NAME }}"    >> $GITHUB_ENV
-            echo "DH_LATEST=" >> $GITHUB_ENV
-            echo "GH_VERSION=ghcr.io/${{ env.REPO_OWNER_LOWER }}/${{ env.REPO_NAME }}:${{ env.BRANCH_NAME }}" >> $GITHUB_ENV
-            echo "GH_LATEST=" >> $GITHUB_ENV
-          fi
+          {
+            if [ -n "$FRONTEND_IMAGE_TAG" ]; then
+              echo "DH_VERSION=docker.io/${DOCKER_USER}/${REPO_NAME}:${FRONTEND_IMAGE_TAG}"
+              echo "DH_LATEST="
+              echo "GH_VERSION=ghcr.io/${REPO_OWNER_LOWER}/${REPO_NAME}:${FRONTEND_IMAGE_TAG}"
+              echo "GH_LATEST="
+            elif [ "$GITHUB_REF_NAME" = "master" ]; then
+              echo "DH_VERSION=docker.io/${DOCKER_USER}/${REPO_NAME}:${VERSION}"
+              echo "DH_LATEST=docker.io/${DOCKER_USER}/${REPO_NAME}:latest"
+              echo "GH_VERSION=ghcr.io/${REPO_OWNER_LOWER}/${REPO_NAME}:${VERSION}"
+              echo "GH_LATEST=ghcr.io/${REPO_OWNER_LOWER}/${REPO_NAME}:latest"
+            else
+              echo "DH_VERSION=docker.io/${DOCKER_USER}/${REPO_NAME}:${BRANCH_NAME}"
+              echo "DH_LATEST="
+              echo "GH_VERSION=ghcr.io/${REPO_OWNER_LOWER}/${REPO_NAME}:${BRANCH_NAME}"
+              echo "GH_LATEST="
+            fi
+          } >> "$GITHUB_ENV"
 
       - name: Login (Docker Hub)
         uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
@@ -387,8 +441,18 @@ jobs:
       - name: Extract Versions from Image
         env:
           IMAGE_TAG: temp-local-image
+          FRONTEND_SHA: ${{ needs.fetch-latest-tags.outputs.DUMB_FRONTEND_SHA }}
+          FRONTEND_SOURCE_KIND: ${{ needs.fetch-latest-tags.outputs.DUMB_FRONTEND_SOURCE_KIND }}
+          FRONTEND_REF: ${{ needs.fetch-latest-tags.outputs.DUMB_FRONTEND_REF }}
+          FRONTEND_PACKAGE_VERSION: ${{ needs.fetch-latest-tags.outputs.DUMB_FRONTEND_PACKAGE_VERSION }}
         run: |
+          set -Eeuo pipefail
+          trap 'if [ -n "${CONTAINER_ID:-}" ]; then docker stop "$CONTAINER_ID" >/dev/null 2>&1 || true; fi' EXIT
           CONTAINER_ID=$(docker run -d --rm --entrypoint /bin/sh $IMAGE_TAG -c "sleep 60")
+          docker exec -w / -e EXPECTED_SHA="$FRONTEND_SHA" -e EXPECTED_KIND="$FRONTEND_SOURCE_KIND" \
+            -e EXPECTED_REF="$FRONTEND_REF" -e EXPECTED_VERSION="$FRONTEND_PACKAGE_VERSION" \
+            "$CONTAINER_ID" /venv/bin/python -c \
+            'import os; from utils.frontend_source import read_installed_frontend_source; source=read_installed_frontend_source("/dumb/frontend"); assert source, "Missing or invalid built frontend provenance"; assert (source["commit_sha"],source["source_kind"],source["requested_ref"],source["package_version"]) == (os.environ["EXPECTED_SHA"],os.environ["EXPECTED_KIND"],os.environ["EXPECTED_REF"],os.environ["EXPECTED_VERSION"]), "Built frontend source differs from resolved inputs"'
           docker exec $CONTAINER_ID test -s /usr/share/doc/dumb/LICENSE
           docker exec $CONTAINER_ID test -s /usr/share/doc/dumb/THIRD_PARTY_NOTICES.md
           docker exec $CONTAINER_ID grep -q "## Apprise" /usr/share/doc/dumb/THIRD_PARTY_NOTICES.md
@@ -414,6 +478,7 @@ jobs:
           echo "PNPM_VERSION=$PNPM_VERSION" >> $GITHUB_ENV
           echo "RCLONE_VERSION=$RCLONE_VERSION" >> $GITHUB_ENV
           docker stop $CONTAINER_ID
+          CONTAINER_ID=""
           docker rmi -f temp-local-image
           docker image prune -f
 
@@ -421,18 +486,26 @@ jobs:
         env:
           DOCKER_TAGS_ALL: ${{ env.DH_VERSION }}${{ env.DH_LATEST && ', ' || '' }}${{ env.DH_LATEST }}${{ env.GH_VERSION && ', ' || '' }}${{ env.GH_VERSION }}${{ env.GH_LATEST && ', ' || '' }}${{ env.GH_LATEST }}
           VERSION: ${{ env.VERSION }}
+          FRONTEND_SOURCE: ${{ needs.fetch-latest-tags.outputs.DUMB_FRONTEND_SOURCE }}
+          FRONTEND_REF: ${{ needs.fetch-latest-tags.outputs.DUMB_FRONTEND_REF }}
+          FRONTEND_SHA: ${{ needs.fetch-latest-tags.outputs.DUMB_FRONTEND_SHA }}
+          FRONTEND_PACKAGE_VERSION: ${{ needs.fetch-latest-tags.outputs.DUMB_FRONTEND_PACKAGE_VERSION }}
+          BACKEND_SHA: ${{ github.sha }}
         run: |
           echo "## Build Summary" >> $GITHUB_STEP_SUMMARY
           echo "**Build Version:** \`${{ env.VERSION }}\`" >> $GITHUB_STEP_SUMMARY
           echo "**Git Branch:** \`${{ github.ref_name }}\`" >> $GITHUB_STEP_SUMMARY
           echo "**Docker Tags:**" >> $GITHUB_STEP_SUMMARY
           echo "\`${DOCKER_TAGS_ALL}\`" >> $GITHUB_STEP_SUMMARY
+          printf "\n**Backend commit:** \`%s\`\n**Frontend repository:** \`nicocapalbo/dmbdb\`\n**Frontend source:** \`%s\`\n**Frontend ref:** \`%s\`\n**Frontend commit:** \`%s\`\n**Frontend package version:** \`%s\`\n" \
+            "$BACKEND_SHA" "$FRONTEND_SOURCE" "$FRONTEND_REF" "$FRONTEND_SHA" "$FRONTEND_PACKAGE_VERSION" >> "$GITHUB_STEP_SUMMARY"
 
   cleanup-cache:
     name: Prune shared BuildKit and legacy local cache
-    needs: [ setup, build-amd64-digest, build-arm64-digest ]
+    needs: [ setup, fetch-latest-tags, build-amd64-digest, build-arm64-digest ]
     if: >
       always() &&
+      needs.setup.result == 'success' && needs.fetch-latest-tags.result == 'success' &&
       (github.event_name == 'workflow_dispatch' ||
       (github.event.pull_request.merged == true &&
       startsWith(github.event.pull_request.title, 'chore(master): release ')))
@@ -677,8 +750,8 @@ jobs:
                $DISCORD_WEBHOOK_URL
 
   announce-dev:
-    needs: [build-and-push, setup]
-    if: github.ref_name == 'dev'
+    needs: [build-and-push, setup, fetch-latest-tags]
+    if: github.ref_name == 'dev' && needs.fetch-latest-tags.outputs.DUMB_FRONTEND_SOURCE == 'release'
     runs-on: ubuntu-latest
     permissions:
       contents: write

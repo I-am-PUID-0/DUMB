@@ -176,9 +176,18 @@ RUN --mount=type=cache,target=/root/.cache/pip,sharing=shared \
 # Stage 4: dumb-frontend-builder
 ####################################################################################################################################################
 FROM base AS dumb-frontend-builder
-ARG DUMB_FRONTEND_TAG
-RUN curl -L https://github.com/nicocapalbo/dmbdb/archive/refs/tags/${DUMB_FRONTEND_TAG}.zip -o dumb-frontend.zip && \
-    unzip dumb-frontend.zip && mkdir -p /dumb/frontend && mv dmbdb*/* /dumb/frontend && rm dumb-frontend.zip
+ARG DUMB_FRONTEND_SOURCE_KIND
+ARG DUMB_FRONTEND_REF
+ARG DUMB_FRONTEND_SHA
+ARG DUMB_FRONTEND_PACKAGE_VERSION
+COPY utils/frontend_source.py /tmp/frontend_source.py
+RUN python3 -c 'import os,re; assert re.fullmatch(r"[0-9a-f]{40}", os.environ.get("DUMB_FRONTEND_SHA", "")), "A resolved full frontend SHA is required"' && \
+    curl --fail --silent --show-error --location --retry 3 --retry-all-errors \
+      "https://github.com/nicocapalbo/dmbdb/archive/${DUMB_FRONTEND_SHA}.zip" -o /tmp/dumb-frontend.zip && \
+    mkdir -p /tmp/dumb-frontend-source /dumb/frontend && \
+    unzip -q /tmp/dumb-frontend.zip -d /tmp/dumb-frontend-source && \
+    cp -a "/tmp/dumb-frontend-source/dmbdb-${DUMB_FRONTEND_SHA}/." /dumb/frontend/ && \
+    rm -rf /tmp/dumb-frontend.zip /tmp/dumb-frontend-source
 WORKDIR /dumb/frontend
 RUN --mount=type=cache,target=/root/.local/share/pnpm/store,sharing=locked \
     cpu_count="$(nproc)" && \
@@ -194,8 +203,9 @@ RUN --mount=type=cache,target=/root/.local/share/pnpm/store,sharing=locked \
       'fetch-retries=10' \
       'fetch-retry-factor=3' \
       'fetch-retry-mintimeout=15000' > /dumb/frontend/.npmrc && \
-    pnpm install --reporter=verbose && \
-    pnpm run build --log-level verbose && \
+    pnpm --config.manage-package-manager-versions=true install --frozen-lockfile --reporter=verbose && \
+    pnpm --config.manage-package-manager-versions=true run build --log-level verbose && \
+    PYTHONPATH=/tmp python3 -c 'import os; from frontend_source import write_frontend_source; write_frontend_source("/dumb/frontend", {"repository":"nicocapalbo/dmbdb", "source_kind":os.environ["DUMB_FRONTEND_SOURCE_KIND"], "requested_ref":os.environ["DUMB_FRONTEND_REF"], "commit_sha":os.environ["DUMB_FRONTEND_SHA"], "package_version":os.environ["DUMB_FRONTEND_PACKAGE_VERSION"]})' && \
     rm -rf node_modules .nuxt node-compile-cache .pnpm-store
 
 ####################################################################################################################################################
@@ -288,11 +298,20 @@ FROM base AS final-stage
 ARG TARGETARCH
 ARG DEV_VERSION
 ARG ZURG_REF=main
+ARG DUMB_FRONTEND_SOURCE_KIND
+ARG DUMB_FRONTEND_REF
+ARG DUMB_FRONTEND_SHA
+ARG DUMB_FRONTEND_PACKAGE_VERSION
 LABEL name="DUMB" \
       description="All-in-one Docker media automation platform for Debrid and Usenet workflows" \
       url="https://github.com/I-am-PUID-0/DUMB" \
       maintainer="I-am-PUID-0" \
-      org.opencontainers.image.licenses="GPL-3.0-only"
+      org.opencontainers.image.licenses="GPL-3.0-only" \
+      io.github.dumb.frontend.repository="nicocapalbo/dmbdb" \
+      io.github.dumb.frontend.source-kind="${DUMB_FRONTEND_SOURCE_KIND}" \
+      io.github.dumb.frontend.requested-ref="${DUMB_FRONTEND_REF}" \
+      io.github.dumb.frontend.revision="${DUMB_FRONTEND_SHA}" \
+      io.github.dumb.frontend.package-version="${DUMB_FRONTEND_PACKAGE_VERSION}"
 
 # Copy artifacts from builder stages ---------------------------------------------------------------------------------------------------------------
 COPY --from=requirements-builder /venv /venv
