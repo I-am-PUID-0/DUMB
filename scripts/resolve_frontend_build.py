@@ -126,20 +126,20 @@ def resolve_frontend_build(source, commit, backend_ref, event, api):
         ):
             raise ValueError("GitHub returned an invalid frontend release tag")
         sha = peel_tag(api, ref)
-        kind, image_tag = "release", ""
+        kind = "release"
     elif mode == "dev":
         ref = "dev"
         obj = api("git/ref/heads/dev").get("object", {})
         if obj.get("type") != "commit":
             raise ValueError("The frontend dev branch does not point to a commit")
         sha = checked_sha(obj.get("sha"))
-        kind, image_tag = "branch", "dev-frontend-dev"
+        kind = "branch"
     else:
         ref = commit
         sha = checked_sha(api("commits/" + commit).get("sha"))
         if sha != commit:
             raise ValueError("GitHub resolved a different frontend commit")
-        kind, image_tag = "commit", "dev-frontend-" + sha[:12]
+        kind = "commit"
 
     package_file = api("contents/package.json?ref=" + sha)
     if package_file.get("encoding") != "base64" or package_file.get("type") != "file":
@@ -161,7 +161,6 @@ def resolve_frontend_build(source, commit, backend_ref, event, api):
         "DUMB_FRONTEND_REF": ref,
         "DUMB_FRONTEND_SHA": sha,
         "DUMB_FRONTEND_PACKAGE_VERSION": version,
-        "DUMB_FRONTEND_IMAGE_TAG": image_tag,
     }
 
 

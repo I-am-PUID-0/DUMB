@@ -3,6 +3,7 @@ import importlib.util
 import json
 import os
 import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -59,7 +60,7 @@ class FrontendBuildResolverTests(unittest.TestCase):
         self.assertEqual(result["DUMB_FRONTEND_SHA"], SHA)
         self.assertEqual(result["DUMB_FRONTEND_REF"], "v1.91.0")
         self.assertEqual(result["DUMB_FRONTEND_SOURCE_KIND"], "release")
-        self.assertEqual(result["DUMB_FRONTEND_IMAGE_TAG"], "")
+        self.assertNotIn("DUMB_FRONTEND_IMAGE_TAG", result)
         self.assertEqual(calls[-1], "contents/package.json?ref=" + SHA)
 
     def test_dev_reads_branch_ref_once_and_pins_the_package_lookup(self):
@@ -75,9 +76,9 @@ class FrontendBuildResolverTests(unittest.TestCase):
         )
         self.assertEqual(result["DUMB_FRONTEND_SOURCE_KIND"], "branch")
         self.assertEqual(result["DUMB_FRONTEND_REF"], "dev")
-        self.assertEqual(result["DUMB_FRONTEND_IMAGE_TAG"], "dev-frontend-dev")
+        self.assertNotIn("DUMB_FRONTEND_IMAGE_TAG", result)
 
-    def test_exact_commit_verifies_full_identity_and_uses_separate_tag(self):
+    def test_exact_commit_verifies_identity_without_changing_image_channel(self):
         result, _ = self.resolve(
             "Exact commit",
             {
@@ -88,7 +89,7 @@ class FrontendBuildResolverTests(unittest.TestCase):
         )
         self.assertEqual(result["DUMB_FRONTEND_SOURCE_KIND"], "commit")
         self.assertEqual(result["DUMB_FRONTEND_REF"], SHA)
-        self.assertEqual(result["DUMB_FRONTEND_IMAGE_TAG"], "dev-frontend-" + SHA[:12])
+        self.assertNotIn("DUMB_FRONTEND_IMAGE_TAG", result)
 
     def test_invalid_selection_never_reaches_github(self):
         selections = [
@@ -198,7 +199,7 @@ class FrontendBuildResolverTests(unittest.TestCase):
                 self.assertEqual(resolver.main(), 0)
             rows = dict(line.split("=", 1) for line in output.read_text().splitlines())
             self.assertEqual(rows["DUMB_FRONTEND_SHA"], SHA)
-            self.assertEqual(len(rows), 6)
+            self.assertEqual(len(rows), 5)
 
     def test_github_redirect_refuses_to_forward_workflow_credentials(self):
         handler = resolver.NoRedirect()
@@ -218,21 +219,22 @@ class FrontendImageWorkflowTests(unittest.TestCase):
             (ROOT / ".github/workflows/docker-image.yml").read_text()
         )
 
-    def test_opt_in_tags_do_not_publish_normal_dev_release_or_latest_tags(self):
+    def test_frontend_selection_keeps_dev_tag_and_preserves_release_tags(self):
         job = self.workflow["jobs"]["build-and-push"]
         script = next(
             step["run"]
             for step in job["steps"]
             if step.get("name") == "Determine Docker tags"
         )
-        for branch, override, expected, latest in [
-            ("dev", "", "dev", ""),
-            ("master", "", "2.24.0", "latest"),
-            ("dev", "dev-frontend-dev", "dev-frontend-dev", ""),
-            ("dev", "dev-frontend-" + SHA[:12], "dev-frontend-" + SHA[:12], ""),
+        self.assertNotIn("FRONTEND_IMAGE_TAG", job["env"])
+        for branch, source, expected, latest in [
+            ("dev", "release", "dev", ""),
+            ("dev", "dev", "dev", ""),
+            ("dev", "commit", "dev", ""),
+            ("master", "release", "2.24.0", "latest"),
         ]:
             with (
-                self.subTest(branch=branch, override=override),
+                self.subTest(branch=branch, source=source),
                 tempfile.TemporaryDirectory() as directory,
             ):
                 output = Path(directory, "env")
@@ -240,7 +242,9 @@ class FrontendImageWorkflowTests(unittest.TestCase):
                     **os.environ,
                     "GITHUB_REF_NAME": branch,
                     "BRANCH_NAME": branch,
-                    "FRONTEND_IMAGE_TAG": override,
+                    "FRONTEND_SOURCE": source,
+                    # An obsolete override cannot divert the normal dev tag.
+                    "FRONTEND_IMAGE_TAG": "dev-frontend-dev",
                     "GITHUB_ENV": str(output),
                     "DOCKER_USER": "example",
                     "REPO_NAME": "dumb",
@@ -292,10 +296,55 @@ class FrontendImageWorkflowTests(unittest.TestCase):
                 build["build-args"],
             )
             self.assertNotIn("DUMB_FRONTEND_TAG=", build["build-args"])
-        self.assertIn(
-            "needs.fetch-latest-tags.outputs.DUMB_FRONTEND_SOURCE == 'release'",
-            jobs["announce-dev"]["if"],
+        self.assertEqual(jobs["announce-dev"]["if"], "github.ref == 'refs/heads/dev'")
+
+    def test_dev_tracking_and_announcement_include_each_frontend_source(self):
+        job = self.workflow["jobs"]["announce-dev"]
+        self.assertIn("build-and-push", job["needs"])
+        self.assertNotIn("always()", job["if"])
+        checkout = next(
+            step
+            for step in job["steps"]
+            if str(step.get("uses", "")).startswith("actions/checkout")
         )
+        self.assertEqual(checkout["with"]["ref"], "${{ github.sha }}")
+        announcement = next(
+            step
+            for step in job["steps"]
+            if step.get("name") == "Post dev announcement to Discord"
+        )
+        line = next(
+            line for line in announcement["run"].splitlines() if "$(python -c '" in line
+        )
+        start = line.index("$(python -c '") + len("$(python -c '")
+        renderer = line[start : line.rindex("')")]
+        for source, reference in [
+            ("release", "v1.91.0"),
+            ("dev", "dev"),
+            ("commit", SHA),
+        ]:
+            with self.subTest(source=source):
+                env = {
+                    **os.environ,
+                    "FRONTEND_SOURCE": source,
+                    "FRONTEND_REF": reference,
+                    "FRONTEND_SHA": SHA,
+                    "FRONTEND_PACKAGE_VERSION": "1.91.0",
+                    "DEV_VERSION": "2.24.0-dev.34",
+                    "BASE_LABEL": "Changes since last dev build",
+                    "COMMITS": "- backend change\n" * 300,
+                }
+                result = subprocess.run(
+                    [sys.executable, "-B", "-c", renderer],
+                    env=env,
+                    capture_output=True,
+                    text=True,
+                    timeout=5,
+                    check=True,
+                )
+                self.assertIn(source + " / " + reference + " / v1.91.0", result.stdout)
+                self.assertIn("Commit: " + SHA, result.stdout)
+                self.assertLessEqual(len(result.stdout.rstrip()), 1900)
 
 
 if __name__ == "__main__":

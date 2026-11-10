@@ -99,7 +99,6 @@ jobs:
       DUMB_FRONTEND_REF: ${{ steps.frontend.outputs.DUMB_FRONTEND_REF }}
       DUMB_FRONTEND_SHA: ${{ steps.frontend.outputs.DUMB_FRONTEND_SHA }}
       DUMB_FRONTEND_PACKAGE_VERSION: ${{ steps.frontend.outputs.DUMB_FRONTEND_PACKAGE_VERSION }}
-      DUMB_FRONTEND_IMAGE_TAG: ${{ steps.frontend.outputs.DUMB_FRONTEND_IMAGE_TAG }}
       CLI_DEBRID_TAG: ${{ steps.resolve_inputs.outputs.CLI_DEBRID_TAG }}
       RCLONE_TAG: ${{ steps.resolve_inputs.outputs.RCLONE_TAG }}
       ZURG_REF: ${{ steps.resolve_inputs.outputs.ZURG_REF }}
@@ -364,7 +363,6 @@ jobs:
       BRANCH_NAME:      ${{ needs.setup.outputs.BRANCH_NAME }}
       DOCKER_USER:      ${{ secrets.DOCKER_USERNAME }}
       DOCKER_PASS:      ${{ secrets.DOCKER_PASSWORD }}
-      FRONTEND_IMAGE_TAG: ${{ needs.fetch-latest-tags.outputs.DUMB_FRONTEND_IMAGE_TAG }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -372,12 +370,7 @@ jobs:
         id: determine_tags
         run: |
           {
-            if [ -n "$FRONTEND_IMAGE_TAG" ]; then
-              echo "DH_VERSION=docker.io/${DOCKER_USER}/${REPO_NAME}:${FRONTEND_IMAGE_TAG}"
-              echo "DH_LATEST="
-              echo "GH_VERSION=ghcr.io/${REPO_OWNER_LOWER}/${REPO_NAME}:${FRONTEND_IMAGE_TAG}"
-              echo "GH_LATEST="
-            elif [ "$GITHUB_REF_NAME" = "master" ]; then
+            if [ "$GITHUB_REF_NAME" = "master" ]; then
               echo "DH_VERSION=docker.io/${DOCKER_USER}/${REPO_NAME}:${VERSION}"
               echo "DH_LATEST=docker.io/${DOCKER_USER}/${REPO_NAME}:latest"
               echo "GH_VERSION=ghcr.io/${REPO_OWNER_LOWER}/${REPO_NAME}:${VERSION}"
@@ -751,7 +744,7 @@ jobs:
 
   announce-dev:
     needs: [build-and-push, setup, fetch-latest-tags]
-    if: github.ref_name == 'dev' && needs.fetch-latest-tags.outputs.DUMB_FRONTEND_SOURCE == 'release'
+    if: github.ref == 'refs/heads/dev'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -759,6 +752,7 @@ jobs:
       - name: Checkout code (full history)
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: ${{ github.sha }}
           fetch-depth: 0
           fetch-tags: true
       - name: Post dev announcement to Discord
@@ -768,6 +762,10 @@ jobs:
           DEV_VERSION: ${{ needs.setup.outputs.DEV_VERSION }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
+          FRONTEND_SOURCE: ${{ needs.fetch-latest-tags.outputs.DUMB_FRONTEND_SOURCE }}
+          FRONTEND_REF: ${{ needs.fetch-latest-tags.outputs.DUMB_FRONTEND_REF }}
+          FRONTEND_SHA: ${{ needs.fetch-latest-tags.outputs.DUMB_FRONTEND_SHA }}
+          FRONTEND_PACKAGE_VERSION: ${{ needs.fetch-latest-tags.outputs.DUMB_FRONTEND_PACKAGE_VERSION }}
         run: |
           set -Eeuo pipefail
 
@@ -789,11 +787,11 @@ jobs:
 
           COMMITS=$(git log ${RANGE} --pretty=format:"- %s ([%h](https://github.com/${REPO}/commit/%H))")
           if [[ -z "${COMMITS}" ]]; then
-            COMMITS="- (no new commits since last release)"
+            COMMITS="- (no new backend commits)"
           fi
 
           export COMMITS BASE_LABEL
-          ANNOUNCEMENT_BODY=" <@&1360221114541805578> $(python -c 'import os; version=os.environ.get("DEV_VERSION") or os.environ.get("VERSION","dev"); commits=os.environ.get("COMMITS","").strip(); base=os.environ.get("BASE_LABEL","").strip(); header=f"🛠️ **Dev Branch Update** (version `{version}`)\n"; label=(f"{base}\n" if base else ""); body=header+label+commits; max_len=1900; print(body[:max_len-3].rstrip()+"..." if len(body)>max_len else body)')"
+          ANNOUNCEMENT_BODY=" <@&1360221114541805578> $(python -c 'import os; version=os.environ.get("DEV_VERSION") or os.environ.get("VERSION","dev"); commits=os.environ.get("COMMITS","").strip(); base=os.environ.get("BASE_LABEL","").strip(); source=os.environ.get("FRONTEND_SOURCE","release"); ref=os.environ.get("FRONTEND_REF",""); frontend_sha=os.environ.get("FRONTEND_SHA",""); package=os.environ.get("FRONTEND_PACKAGE_VERSION",""); header=f"🛠️ **Dev Branch Update** (version `{version}`)\n"; frontend=f"**Frontend:** {source} / {ref} / v{package}\nCommit: {frontend_sha}\n"; label=(f"{base}\n" if base else ""); body=header+frontend+label+commits; max_len=1900; print(body[:max_len-3].rstrip()+"..." if len(body)>max_len else body)')"
 
           ESCAPED_BODY=$(echo "$ANNOUNCEMENT_BODY" | jq -Rsa .)
           curl -H "Content-Type: application/json" \
