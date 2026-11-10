@@ -93,6 +93,7 @@ def admit_v2_job(kind, *, existing=False):
                 or POSTGRES_MIGRATION_MANAGER.has_namespace_conflicting_job()
                 or infinidysk_v2_jobs_active()
                 or _EXTERNAL_MUTATIONS
+                or _installation_blocked()
             ):
                 raise InfiniDyskMigrationAdmissionError(EXTERNAL_MUTATION_BLOCKER)
             if not existing:
@@ -156,12 +157,21 @@ def infinidysk_namespace_pre_mutation_interrupted() -> bool:
     return INFINIDYSK_MIGRATION_MANAGER.has_pre_mutation_interrupted_job()
 
 
+def _installation_blocked():
+    from utils.installation_backup import installation_backup_blocker
+
+    return installation_backup_blocker()
+
+
 def infinidysk_recovery_blocks_service(
     service_key: str | None, process_name: str | None = None
 ) -> str | None:
     """Return a fail-closed boot blocker for migration recovery states."""
 
     key = str(service_key or "").strip().lower()
+    installation = _installation_blocked()
+    if installation and key not in {"dumb", "dumb_frontend"}:
+        return installation
     normalized_name = str(process_name or "").replace(" ", "").strip().lower()
     if infinidysk_namespace_recovery_pending() or infinidysk_v2_recovery_pending():
         # Preserve the API/frontend/Traefik control plane so the operator can
@@ -182,10 +192,26 @@ def reserve_infinidysk_external_mutation(label: str) -> str:
     """Atomically reserve a migration-adjacent filesystem/runtime mutation."""
 
     with INFINIDYSK_MIGRATION_ADMISSION_LOCK:
-        if infinidysk_namespace_migration_active() or infinidysk_v2_jobs_active():
+        if (
+            _installation_blocked()
+            or infinidysk_namespace_migration_active()
+            or infinidysk_v2_jobs_active()
+        ):
             raise InfiniDyskMigrationAdmissionError(ACTIVE_NAMESPACE_MIGRATION_BLOCKER)
         token = secrets.token_hex(16)
         _EXTERNAL_MUTATIONS[token] = str(label or "managed mutation")[:200]
+        return token
+
+
+def reserve_installation_control_write(label):
+    """Track a control-plane writer without treating notification/history as native service mutation."""
+    with INFINIDYSK_MIGRATION_ADMISSION_LOCK:
+        if _installation_blocked():
+            raise InfiniDyskMigrationAdmissionError(
+                "Installation snapshot owns control-plane persistence."
+            )
+        token = secrets.token_hex(16)
+        _EXTERNAL_MUTATIONS[token] = str(label)[:200]
         return token
 
 
@@ -203,7 +229,8 @@ def assert_infinidysk_external_mutation_reserved(token: str) -> None:
 
     with INFINIDYSK_MIGRATION_ADMISSION_LOCK:
         if (
-            token not in _EXTERNAL_MUTATIONS
+            _installation_blocked()
+            or token not in _EXTERNAL_MUTATIONS
             or infinidysk_namespace_migration_active()
             or infinidysk_v2_jobs_active()
         ):
@@ -214,4 +241,8 @@ def infinidysk_external_mutation_active() -> bool:
     """Return whether a reserved mutation blocks namespace admission."""
 
     with INFINIDYSK_MIGRATION_ADMISSION_LOCK:
-        return bool(_EXTERNAL_MUTATIONS) or infinidysk_v2_jobs_active()
+        return (
+            bool(_EXTERNAL_MUTATIONS)
+            or bool(_installation_blocked())
+            or infinidysk_v2_jobs_active()
+        )

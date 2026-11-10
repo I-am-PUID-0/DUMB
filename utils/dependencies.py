@@ -5,7 +5,7 @@ from logging import Logger
 from pathlib import Path
 import shlex
 from api.connection_manager import ConnectionManager
-from fastapi import Depends, WebSocket, WebSocketException, status
+from fastapi import Depends, HTTPException, WebSocket, WebSocketException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from typing import Optional
 
@@ -13,8 +13,15 @@ _shared_instances = {}
 
 
 def initialize_dependencies(
-    process_handler, updater, websocket_manager, metrics_manager, status_manager, logger
+    process_handler,
+    updater,
+    websocket_manager,
+    metrics_manager,
+    status_manager,
+    logger,
+    recovery_only=False,
 ):
+    _shared_instances["recovery_only"] = bool(recovery_only)
     _shared_instances["process_handler"] = process_handler
     _shared_instances["updater"] = updater
     _shared_instances["websocket_manager"] = websocket_manager
@@ -22,11 +29,23 @@ def initialize_dependencies(
     _shared_instances["status_manager"] = status_manager
     _shared_instances["logger"] = logger
     _shared_instances["api_state"] = APIState(
-        process_handler=process_handler, logger=logger
+        process_handler=process_handler,
+        logger=logger,
+        **({"read_only": True} if recovery_only else {}),
     )
     _shared_instances["metrics_collector"] = MetricsCollector(
         process_handler=process_handler, logger=logger
     )
+    if recovery_only:
+        for key in (
+            "metrics_history_manager",
+            "notification_manager",
+            "rclone_optimizer_manager",
+            "media_protection_manager",
+        ):
+            _shared_instances[key] = None
+        return
+
     from utils.config_loader import CONFIG_MANAGER
     from utils.metrics_history_store import MetricsHistoryManager
 
@@ -94,18 +113,38 @@ def get_metrics_collector() -> MetricsCollector:
 
 
 def get_metrics_history_manager():
+    if _shared_instances.get("recovery_only"):
+        raise HTTPException(
+            status_code=409,
+            detail="This persistence utility is paused during installation recovery.",
+        )
     return _shared_instances["metrics_history_manager"]
 
 
 def get_notification_manager():
+    if _shared_instances.get("recovery_only"):
+        raise HTTPException(
+            status_code=409,
+            detail="This persistence utility is paused during installation recovery.",
+        )
     return _shared_instances["notification_manager"]
 
 
 def get_rclone_optimizer_manager():
+    if _shared_instances.get("recovery_only"):
+        raise HTTPException(
+            status_code=409,
+            detail="This persistence utility is paused during installation recovery.",
+        )
     return _shared_instances["rclone_optimizer_manager"]
 
 
 def get_media_protection_manager():
+    if _shared_instances.get("recovery_only"):
+        raise HTTPException(
+            status_code=409,
+            detail="This persistence utility is paused during installation recovery.",
+        )
     return _shared_instances["media_protection_manager"]
 
 
@@ -210,3 +249,7 @@ async def get_websocket_current_user(websocket: WebSocket) -> Optional[str]:
         )
 
     return payload.sub
+
+
+def recovery_only_dependencies():
+    return bool(_shared_instances.get("recovery_only"))

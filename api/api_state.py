@@ -7,7 +7,7 @@ from utils.runtime_paths import pyproject_file
 
 
 class APIState:
-    def __init__(self, process_handler, logger):
+    def __init__(self, process_handler, logger, read_only=False):
         self.logger = logger
         self.process_handler = process_handler
         self.status_file_path = "/healthcheck/running_processes.json"
@@ -26,8 +26,9 @@ class APIState:
         )
         self._update_notices_lock = threading.Lock()
         self._update_notices = self._load_update_notices()
-        self._restore_project_update_statuses()
-        self._ensure_first_run_update_notice()
+        if not read_only:
+            self._restore_project_update_statuses()
+            self._ensure_first_run_update_notice()
         self._symlink_backup_cache = {}
         self._symlink_backup_cache_lock = threading.Lock()
         self._symlink_job_cache = {}

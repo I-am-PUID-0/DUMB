@@ -21,6 +21,7 @@ from utils.dependencies import (
 from api.routers.process import process_router
 from api.routers.infinidysk_v2 import infinidysk_v2_router
 from api.routers.backup_storage import backup_storage_router
+from api.routers.installation_backup import installation_backup_router
 from api.routers.setup import setup_router, shutdown_setup_coordinator
 from api.routers.config import config_router
 from api.routers.health import health_router
@@ -44,6 +45,7 @@ import threading
 _DEFAULT_ALLOWED_ORIGINS = ["http://localhost", "http://localhost:8000"]
 _UNSAFE_HTTP_METHODS = frozenset({"POST", "PUT", "PATCH", "DELETE"})
 _MIGRATION_OWNED_API_PREFIXES = (
+    "/process/installation-backups/",
     "/process/infinidysk-v2/",
     "/process/infinidysk-migration/",
     "/process/postgres-migration/",
@@ -71,6 +73,13 @@ def _requires_namespace_mutation_reservation(method: str, path: str) -> bool:
 async def lifespan(app: FastAPI):
     yield
     shutdown_setup_coordinator()
+    from utils.installation_backup import get_installation_backup_manager
+
+    get_installation_backup_manager(CONFIG_MANAGER).shutdown()
+    from utils.dependencies import recovery_only_dependencies
+
+    if recovery_only_dependencies():
+        return
     media_protection_manager = get_media_protection_manager()
     media_protection_manager.shutdown()
     rclone_optimizer_manager = get_rclone_optimizer_manager()
@@ -149,6 +158,46 @@ def create_app() -> FastAPI:
         namespace admission bidirectionally atomic with every API mutation.
         """
 
+        from utils.installation_backup import installation_backup_blocker
+
+        held = installation_backup_blocker()
+        safe_reads = {
+            "/process",
+            "/process/",
+            "/process/capabilities",
+            "/process/processes",
+            "/process/startup-status",
+            "/openapi.json",
+            "/scalar",
+        }
+        if (
+            held
+            and request.method.upper() in {"GET", "HEAD"}
+            and not (
+                request.url.path in safe_reads
+                or request.url.path.startswith("/process/installation-backups/")
+                or request.url.path == "/process/backup-storage"
+                or request.url.path.startswith("/auth")
+            )
+        ):
+            return JSONResponse(
+                status_code=409,
+                content={
+                    "detail": "Installation recovery owns persistence; use its status and recovery controls."
+                },
+            )
+        if (
+            request.method.upper() in _UNSAFE_HTTP_METHODS
+            and not request.url.path.startswith("/process/installation-backups/")
+            and request.url.path not in {"/auth/login", "/auth/refresh", "/auth/logout"}
+            and installation_backup_blocker()
+        ):
+            return JSONResponse(
+                status_code=409,
+                content={
+                    "detail": "Installation backup/restore recovery owns managed state."
+                },
+            )
         if not _requires_namespace_mutation_reservation(
             request.method, request.url.path
         ):
@@ -181,6 +230,9 @@ def create_app() -> FastAPI:
     app.include_router(infinidysk_v2_router, prefix="/process", tags=["InfiniDysk 2.x"])
     app.include_router(
         backup_storage_router, prefix="/process", tags=["Backup storage"]
+    )
+    app.include_router(
+        installation_backup_router, prefix="/process", tags=["Installation backups"]
     )
     app.include_router(
         setup_router, prefix="/process/setup", tags=["Arrangement Setup"]

@@ -844,7 +844,18 @@ class NotificationManager:
             self._wake_event.wait(timeout=1)
             self._wake_event.clear()
 
+    def _installation_safe_work(self, callback, *args):
+        from utils.installation_backup import installation_persistence_work
+
+        with installation_persistence_work("Notification persistence") as admitted:
+            if admitted:
+                return callback(*args)
+        return None
+
     def _deliver_due(self):
+        return self._installation_safe_work(self._deliver_due_admitted)
+
+    def _deliver_due_admitted(self):
         if not self._ensure_storage_ready():
             return
         now = time.time()
@@ -997,6 +1008,11 @@ class NotificationManager:
     def _monitor_loop(self):
         baseline_complete = False
         while not self._stop_event.is_set():
+            from utils.installation_backup import installation_backup_blocker
+
+            if installation_backup_blocker():
+                self._stop_event.wait(1)
+                continue
             config = _notification_config()
             interval = max(15, int(config.get("monitor_interval_sec", 30) or 30))
             wait_for_startup = getattr(
@@ -1007,7 +1023,9 @@ class NotificationManager:
             if config.get("enabled") and self._ensure_storage_ready():
                 try:
                     self._baselining_conditions = not baseline_complete
-                    self._collect_monitored_conditions(config)
+                    self._installation_safe_work(
+                        self._collect_monitored_conditions, config
+                    )
                     baseline_complete = True
                 except Exception as error:
                     if not self._handle_runtime_storage_error(error):
@@ -1019,7 +1037,7 @@ class NotificationManager:
                 finally:
                     self._baselining_conditions = False
                 if time.time() - self._last_prune > 3600:
-                    self._prune_history(config)
+                    self._installation_safe_work(self._prune_history, config)
             self._stop_event.wait(interval)
 
     def _collect_monitored_conditions(self, config):

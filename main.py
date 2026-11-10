@@ -11,6 +11,7 @@ from utils.core_services import get_core_services, has_core_service
 from utils.dependency_map import build_conditional_dependency_map
 from utils.cli_debrid_runtime import cli_battery_is_embedded
 from utils.startup import (
+    frontend_entrypoint_exists,
     run_migration_aware_preinstall,
     start_control_plane_before_preinstall,
 )
@@ -1041,6 +1042,151 @@ def _collect_expected_process_names(config_manager, keys):
     return names
 
 
+def _repair_boot_controller_state(config_manager):
+    """Repair only known private controller trees before any app migration."""
+    config_path = getattr(config_manager, "file_path", "/config/dumb_config.json")
+    config_root = os.path.dirname(os.path.abspath(config_path))
+    managed_uid, managed_gid = config_manager.get("puid"), config_manager.get("pgid")
+    if any(type(value) is not int or value < 0 for value in (managed_uid, managed_gid)):
+        return "Private controller state requires valid configured service UID/GID before recovery can continue."
+    installation_error = None
+    for name in sorted(user_management.PRIVATE_CONTROLLER_CONFIG_ENTRIES):
+        directory = os.path.join(config_root, name)
+        if not os.path.lexists(directory):
+            continue
+        success, error = user_management._repair_private_controller_tree(
+            directory, os.geteuid(), os.getegid(), managed_uid, managed_gid
+        )
+        if not success:
+            reason = error or "Private controller state ownership requires review."
+            if name == "installation-backups":
+                # A retained lease may be unreadable. Only this controller tree
+                # owns installation-wide recovery and must hold all consumers.
+                installation_error = reason
+            else:
+                # Setup and storage-registry state have their own strict API
+                # readers. Do not turn an unavailable optional tool into a
+                # global recovery mode, and still inspect installation state.
+                logger.error(
+                    "Private optional controller state %s is unavailable: %s",
+                    name,
+                    reason,
+                )
+                if name == "backup-storage":
+                    from utils.backup_storage import get_backup_storage
+
+                    get_backup_storage(config_manager).boot_error = reason
+    return installation_error
+
+
+def _initialize_installation_recovery(config_manager, process_handler):
+    """Decide the boot branch before normal initialization can change appdata."""
+    from utils.installation_backup import (
+        get_installation_backup_manager,
+        installation_backup_blocker,
+    )
+
+    controller = get_installation_backup_manager(config_manager, process_handler)
+    try:
+        error = _repair_boot_controller_state(config_manager)
+        if error:
+            controller.boot_error = error
+            logger.error("%s", error)
+        else:
+            controller.initialize_controller()
+    except Exception as error:
+        # Recovery details and configuration values must not escape through logs.
+        controller.boot_error = (
+            "Installation recovery state could not be initialized. Preserve private "
+            "state, review controller permissions and DUMB logs, then restart."
+        )
+        logger.error(
+            "Installation recovery initialization failed (error_type=%s).",
+            type(error).__name__,
+        )
+    hold = installation_backup_blocker()
+    if hold:
+        # Completing a recovery API action must not silently enable normal
+        # mutations in a process that never initialized the normal workers.
+        controller.boot_error = (
+            controller.boot_error
+            or "This controller started in installation recovery mode."
+        ) + " Complete recovery, then restart DUMB before normal services resume."
+    return controller, hold
+
+
+def _start_recovery_control_plane(process_handler, config_manager, reason):
+    """Serve recovery using installed artifacts; never install or configure apps."""
+    dumb_config = config_manager.get("dumb", {}) or {}
+    api_config = dumb_config.get("api_service", {}) or {}
+    frontend_config = dumb_config.get("frontend", {}) or {}
+    expected = []
+    failures = {"Installation recovery": reason}
+    if api_config.get("enabled"):
+        api_name = api_config.get("process_name") or "DUMB API"
+        expected.append(api_name)
+        try:
+            start_fastapi_process()
+            process_handler.register_external_process(api_name, os.getpid())
+        except Exception as error:
+            failures[api_name] = "Recovery API could not start; review DUMB logs."
+            logger.error(
+                "Recovery API startup failed (error_type=%s).", type(error).__name__
+            )
+    else:
+        failures["DUMB API"] = (
+            "The recovery API is disabled in the saved configuration."
+        )
+    if frontend_config.get("enabled"):
+        frontend_name = frontend_config.get("process_name") or "DUMB Frontend"
+        expected.append(frontend_name)
+        if not frontend_entrypoint_exists(frontend_config):
+            failures[frontend_name] = (
+                "Installed frontend artifacts are missing. Recovery does not install "
+                "or rebuild applications; use the authenticated recovery API."
+            )
+        elif any(
+            frontend_config.get(key)
+            for key in (
+                "wait_for_dir",
+                "wait_for_mounts",
+                "wait_for_tcp",
+                "wait_for_url",
+            )
+        ):
+            failures[frontend_name] = (
+                "The installed frontend has consumer readiness dependencies. Recovery "
+                "does not start those consumers; use the authenticated recovery API."
+            )
+        else:
+            # start_process normally calls setup_project. Only this existing
+            # frontend is marked prepared; saved update/source selectors stay intact.
+            with process_handler.setup_tracker_lock:
+                process_handler.setup_tracker.add(frontend_name)
+            success, _error = process_handler.start_process(
+                frontend_name,
+                config_dir=frontend_config.get("config_dir"),
+                command=frontend_config.get("command"),
+                suppress_logging=frontend_config.get("suppress_logging", False),
+                env=frontend_config.get("env"),
+            )
+            if not success:
+                failures[frontend_name] = (
+                    "Installed recovery frontend could not start; review DUMB logs."
+                )
+    else:
+        failures["DUMB Frontend"] = (
+            "The recovery frontend is disabled in the saved configuration."
+        )
+    process_handler.set_startup_expected_services(expected)
+    process_handler.set_recovery_required(failures)
+    logger.warning(
+        "Installation recovery requires attention. Only the configured API and "
+        "installed frontend are started. Complete recovery, then restart DUMB; "
+        "normal services and background workers remain paused."
+    )
+
+
 def main():
     log_ascii_art()
 
@@ -1049,6 +1195,9 @@ def main():
     metrics_manager = ConnectionManager()
     status_manager = ConnectionManager()
 
+    installation_backups, recovery_hold = _initialize_installation_recovery(
+        config, process_handler
+    )
     initialize_dependencies(
         process_handler=process_handler,
         updater=updater,
@@ -1056,7 +1205,15 @@ def main():
         metrics_manager=metrics_manager,
         status_manager=status_manager,
         logger=logger,
+        recovery_only=bool(recovery_hold),
     )
+    if recovery_hold:
+        _start_recovery_control_plane(
+            process_handler, config, installation_backups.boot_error
+        )
+        threading.Event().wait()
+        return
+
     process_handler.start_auto_restart_monitor()
     process_handler.set_startup_phase("initializing")
 
@@ -1065,6 +1222,8 @@ def main():
     except Exception as e:
         logger.error(f"An error occurred while creating system user: {e}")
         process_handler.shutdown(exit_code=1)
+
+    installation_backups.start_scheduler()
 
     if ensure_metrics_postgres_config(config):
         config.save_config()
@@ -1106,6 +1265,8 @@ def main():
             get_metrics_history_manager,
         )
 
+        from utils.installation_backup import installation_persistence_work
+
         collector = get_metrics_collector()
         history_manager = get_metrics_history_manager()
         while True:
@@ -1121,10 +1282,14 @@ def main():
                 interval = max(0.5, interval)
 
                 if enabled:
-                    snapshot = collector.snapshot(
-                        database_details=False, database_refresh=True
-                    )
-                    history_manager.write(snapshot)
+                    with installation_persistence_work(
+                        "Metrics history persistence"
+                    ) as admitted:
+                        if admitted:
+                            snapshot = collector.snapshot(
+                                database_details=False, database_refresh=True
+                            )
+                            history_manager.write(snapshot)
             except Exception as e:
                 logger.error(f"Metrics history worker error: {e}")
             time.sleep(interval)

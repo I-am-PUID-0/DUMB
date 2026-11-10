@@ -1,0 +1,134 @@
+"""Real FastAPI routing in a fresh interpreter avoids legacy discovery stubs."""
+
+import os
+from pathlib import Path
+import subprocess
+import sys
+import unittest
+
+
+class InstallationBackupAPITests(unittest.TestCase):
+    def test_authenticated_routes_private_validation_and_recovery_dependencies(self):
+        script = r"""
+from fastapi import FastAPI, HTTPException
+import asyncio
+import json
+from types import SimpleNamespace
+from api.routers import installation_backup as routes
+from utils.dependencies import get_optional_current_user, get_process_handler
+
+class Controller:
+    calls = []
+    def status(self):
+        self.calls.append("status")
+        return {"protocol":1,"job":None,"recovery_required":False,"schedule":{},"scope":{}}
+    def preview(self, value):
+        return {"protocol":1,"ready":True,"capacity":{"status":"sufficient"},"destination":value["destination_id"]}
+    def start(self, value):
+        return {"protocol":1,"job":{"job_id":"a"*32,"job_type":"installation_backup","status":"queued"}}
+    def restore_preview(self, value):
+        return {"protocol":1,"ready":True,"backup":{"verified":True,"archive_path":value.get("archive_path")}}
+    def restore_start(self, value):
+        return {"protocol":1,"job":{"job_id":"b"*32,"job_type":"installation_restore","status":"queued"}}
+    def update_schedule(self, value):
+        return {"protocol":1,"schedule":value}
+    def rollback(self, identifier, value):
+        return {"protocol":1,"job":{"job_id":identifier,"status":"rolled_back"}}
+controller=Controller()
+created=[]
+def factory(config, handler):
+    created.append(True)
+    return controller
+routes.get_installation_backup_manager=factory
+app=FastAPI()
+app.include_router(routes.installation_backup_router,prefix="/process")
+app.dependency_overrides[get_process_handler]=lambda: object()
+def denied():
+    raise HTTPException(status_code=401,detail="Authentication required")
+app.dependency_overrides[get_optional_current_user]=denied
+async def request(method,path,json_payload=None,content=None):
+    messages=[]
+    complete=asyncio.Event()
+    delivered=False
+    async def receive():
+        nonlocal delivered
+        if not delivered:
+            delivered=True
+            return {"type":"http.request","body":content if content is not None else json.dumps(json_payload).encode() if json_payload is not None else b"","more_body":False}
+        await complete.wait()
+        return {"type":"http.disconnect"}
+    async def send(message):
+        messages.append(message)
+        if message["type"]=="http.response.body" and not message.get("more_body"):
+            complete.set()
+    scope={"type":"http","asgi":{"version":"3.0","spec_version":"2.4"},"http_version":"1.1",
+           "method":method,"scheme":"http","path":path,"raw_path":path.encode(),"query_string":b"",
+           "root_path":"","server":("reserved.example",8000),"client":("127.0.0.1",1),
+           "headers":[(b"content-type",b"application/json")]}
+    await app(scope,receive,send)
+    status=next(x["status"] for x in messages if x["type"]=="http.response.start")
+    raw=b"".join(x.get("body",b"") for x in messages if x["type"]=="http.response.body")
+    return SimpleNamespace(status_code=status,text=raw.decode(),json=lambda:json.loads(raw))
+class Client:
+    async def __aenter__(self): return self
+    async def __aexit__(self,*_args): pass
+    async def get(self,path,**_kwargs): return await request("GET",path)
+    async def post(self,path,json=None,content=None,headers=None): return await request("POST",path,json,content)
+    async def put(self,path,json=None): return await request("PUT",path,json)
+async def prove():
+    async with Client() as client:
+        response=await client.get("/process/installation-backups/status")
+        assert response.status_code==401, response.text
+        assert not created, "unauthorized request initialized controller state"
+        app.dependency_overrides[get_optional_current_user]=lambda: "reserved-fixture-admin"
+        assert (await client.get("/process/installation-backups/status")).json()["protocol"]==1
+        preview=await client.post("/process/installation-backups/preview",json={"destination_id":"@default"})
+        assert preview.status_code==200 and preview.json()["capacity"]["status"]=="sufficient"
+        malformed=await client.post("/process/installation-backups/restore/start",json={"preview_token":"fixture","confirmation":"fixture","acknowledgements":{"downtime":"private-input-must-not-echo"}})
+        assert malformed.status_code==422 and "private-input-must-not-echo" not in malformed.text
+        huge=await client.post("/process/installation-backups/restore/preview",content=b"x"*65537,headers={"content-type":"application/json"})
+        assert huge.status_code==413
+        restore=await client.post("/process/installation-backups/restore/preview",json={"archive_path":"/reserved-example/installation.tar"})
+        assert restore.status_code==200 and restore.json()["backup"]["verified"] is True
+        schedule=await client.put("/process/installation-backups/schedule",json={"enabled":False,"destination_id":"","interval_hours":24,"keep_last":7})
+        assert schedule.status_code==200 and schedule.json()["schedule"]["enabled"] is False
+        invalid=await client.put("/process/installation-backups/schedule",json={"enabled":True,"destination_id":"fixture","interval_hours":1.5,"keep_last":7})
+        assert invalid.status_code==422
+        rollback=await client.post("/process/installation-backups/jobs/"+"a"*32+"/rollback",json={"confirmation":"ROLL BACK "+"a"*32})
+        assert rollback.status_code==200
+        from tests.test_installation_backup import ManagerTests
+        from pathlib import Path
+        import io, tarfile
+        fixture=ManagerTests("test_real_backup_restore_roundtrip_and_exact_rollback")
+        fixture.setUp()
+        original_factory=routes.get_installation_backup_manager
+        try:
+            routes.get_installation_backup_manager=lambda _config,_handler:fixture.manager
+            invalid=fixture.root/"invalid.tar"
+            invalid.write_bytes(b"private malformed archive bytes")
+            invalid.chmod(0o600)
+            response=await client.post("/process/installation-backups/restore/preview",json={"archive_path":str(invalid)})
+            assert response.status_code==200 and response.json()["ready"] is False
+            assert "private malformed archive bytes" not in response.text
+            with tarfile.open(invalid,"w") as archive:
+                info=tarfile.TarInfo("ordinary.txt")
+                info.size=1
+                archive.addfile(info,io.BytesIO(b"x"))
+            response=await client.post("/process/installation-backups/restore/preview",json={"archive_path":str(invalid)})
+            assert response.status_code==200 and response.json()["ready"] is False
+            assert fixture.handler.events==[]
+        finally:
+            routes.get_installation_backup_manager=original_factory
+            fixture.doCleanups()
+asyncio.run(prove())
+"""
+        result = subprocess.run(
+            [sys.executable, "-B", "-c", script],
+            cwd=Path(__file__).resolve().parents[1],
+            capture_output=True,
+            text=True,
+            env={**os.environ, "PYTHONDONTWRITEBYTECODE": "1"},
+            timeout=60,
+            check=False,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr[-5000:])

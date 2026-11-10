@@ -173,6 +173,19 @@ class Update:
         return payload
 
     def _dispatch_scheduled_work(self, kind, process_name, callback, *args):
+        from utils.infinidysk_migration_admission import (
+            INFINIDYSK_MIGRATION_ADMISSION_LOCK,
+        )
+        from utils.installation_backup import installation_backup_blocker
+
+        with INFINIDYSK_MIGRATION_ADMISSION_LOCK:
+            if installation_backup_blocker():
+                return False
+            return self._dispatch_scheduled_work_admitted(
+                kind, process_name, callback, *args
+            )
+
+    def _dispatch_scheduled_work_admitted(self, kind, process_name, callback, *args):
         if self.process_handler.shutting_down:
             return False
         identity = (kind, process_name)
@@ -3817,6 +3830,11 @@ class Update:
     def _infinidysk_migration_update_blocker(
         key, *, allow_pre_mutation_cold_boot: bool = False
     ):
+        from utils.installation_backup import installation_backup_blocker
+
+        installation = installation_backup_blocker()
+        if installation:
+            return installation
         """Return a safe reason while the shared admission lock is held."""
 
         from utils.infinidysk_migration_admission import (

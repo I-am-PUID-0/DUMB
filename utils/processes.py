@@ -21,7 +21,7 @@ import shlex, os, time, signal, threading, subprocess, sys, uvicorn, socket, psu
 import pwd
 from json import dump
 
-STARTUP_TERMINAL_PHASES = {"ready", "degraded", "shutting_down"}
+STARTUP_TERMINAL_PHASES = {"ready", "degraded", "recovery_required", "shutting_down"}
 
 
 def _process_identity(user_id, group_id):
@@ -181,6 +181,16 @@ class ProcessHandler:
             self.startup_completed_at = time.time()
             self.startup_phase = "degraded" if failures else "ready"
             self.startup_complete_event.set()
+        self._write_startup_state()
+        return self.get_startup_status()
+
+    def set_recovery_required(self, failures):
+        """Terminal control-plane state which never enables background restarts."""
+        with self.startup_lock:
+            self.startup_failures = dict(failures or {})
+            self.startup_completed_at = time.time()
+            self.startup_phase = "recovery_required"
+            self.startup_complete_event.clear()
         self._write_startup_state()
         return self.get_startup_status()
 
@@ -1299,6 +1309,10 @@ class ProcessHandler:
             return None
 
     def stop_process(self, process_name, disable_restart=True):
+        from utils.installation_backup import installation_backup_blocker
+
+        if not self.shutting_down and installation_backup_blocker():
+            return False, "An installation backup/restore owns the managed lifecycle."
         from utils.infinidysk_migration_admission import (
             INFINIDYSK_MIGRATION_ADMISSION_LOCK,
             infinidysk_v2_jobs_active,
@@ -2047,6 +2061,10 @@ class ProcessHandler:
             state["next_restart_time"] = None
 
     def _maybe_schedule_restart(self, process_name, reason):
+        from utils.installation_backup import installation_backup_blocker
+
+        if installation_backup_blocker():
+            return
         if (
             self.shutting_down
             or not self.is_startup_complete()

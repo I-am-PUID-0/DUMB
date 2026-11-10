@@ -5785,6 +5785,35 @@
         "command",
         "env"
       ]
+    },
+    "installation_backup": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "destination_id": {
+          "type": "string",
+          "maxLength": 64
+        },
+        "interval_hours": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 8760
+        },
+        "keep_last": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100
+        }
+      },
+      "required": [
+        "enabled",
+        "destination_id",
+        "interval_hours",
+        "keep_last"
+      ]
     }
   },
   "required": [
@@ -5829,6 +5858,7 @@
     "authelia",
     "cloudflared",
     "backup_storage",
-    "audiobookshelf"
+    "audiobookshelf",
+    "installation_backup"
   ]
 }

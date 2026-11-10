@@ -66,6 +66,9 @@ class MetricsCollector:
     ):
         from utils.config_loader import CONFIG_MANAGER
 
+        from utils.installation_backup import installation_backup_blocker
+
+        installation_paused = bool(installation_backup_blocker())
         now = time.time()
         managed = self._collect_managed_processes()
         managed_pids = {entry["pid"] for entry in managed if entry.get("pid")}
@@ -75,14 +78,22 @@ class MetricsCollector:
             "system": self._collect_system_metrics(),
             "dumb_managed": managed,
             "external": external,
-            "database_health": self.database_health.snapshot(
-                CONFIG_MANAGER.config,
-                details=database_details,
-                refresh_if_stale=database_refresh,
+            "database_health": (
+                {"services": [], "paused": True}
+                if installation_paused
+                else self.database_health.snapshot(
+                    CONFIG_MANAGER.config,
+                    details=database_details,
+                    refresh_if_stale=database_refresh,
+                )
             ),
-            "plex_status": self.plex_status.snapshot(
-                CONFIG_MANAGER.config,
-                refresh_if_stale=True,
+            "plex_status": (
+                {"sessions": [], "paused": True}
+                if installation_paused
+                else self.plex_status.snapshot(
+                    CONFIG_MANAGER.config,
+                    refresh_if_stale=True,
+                )
             ),
         }
 

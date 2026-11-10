@@ -195,7 +195,11 @@ def _directory(path, *, create=False, private=False):
                     raise BackupStorageError(
                         "The selected storage directory is missing; no local fallback was created."
                     ) from None
-                os.mkdir(part, 0o700, dir_fd=descriptor)
+                try:
+                    os.mkdir(part, 0o700, dir_fd=descriptor)
+                except FileExistsError:
+                    # Concurrent creation must still pass the no-follow open.
+                    pass
                 child = os.open(
                     part,
                     os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW,
@@ -224,7 +228,11 @@ def _child_directory(parent, name, *, create=False):
             raise BackupStorageError(
                 "The owned backup directory is missing; no local fallback was created."
             ) from None
-        os.mkdir(name, 0o700, dir_fd=parent)
+        try:
+            os.mkdir(name, 0o700, dir_fd=parent)
+        except FileExistsError:
+            # A raced entry is accepted only as a validated direct directory.
+            pass
         descriptor = os.open(
             name, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=parent
         )
@@ -351,6 +359,10 @@ class BackupStorage:
         return profile
 
     def _check_control(self):
+        if getattr(self, "boot_error", None):
+            raise BackupStorageError(
+                "The local backup registry failed private-state validation; review its retained state and restart."
+            )
         record = require_local_path(self.state_root)
         with _directory(self.state_root.parent) as parent:
             current = {

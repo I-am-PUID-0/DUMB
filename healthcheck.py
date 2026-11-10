@@ -114,7 +114,34 @@ def main():
         sys.exit(0)
 
     running_processes = load_running_processes(file_path)
-    errors = verify_processes(running_processes)
+    if phase == "recovery_required":
+        expected = set(startup_state.get("expected_services") or [])
+        missing = expected - set(running_processes)
+        errors = [
+            "Recovery control process is not running: " + name
+            for name in sorted(missing)
+        ]
+        errors.extend(
+            verify_processes(
+                {
+                    name: pid
+                    for name, pid in running_processes.items()
+                    if name in expected
+                }
+            )
+        )
+        failures = startup_state.get("failures") or {}
+        errors.extend(
+            str(reason)
+            for name, reason in failures.items()
+            if name != "Installation recovery"
+        )
+        if not expected:
+            errors.append(
+                "The configured installation recovery control plane is unavailable."
+            )
+    else:
+        errors = verify_processes(running_processes)
     if phase == "degraded":
         failures = startup_state.get("failures") or {}
         if failures:
@@ -126,7 +153,11 @@ def main():
         print(" | ".join(errors), file=sys.stderr)
         sys.exit(1)
     else:
-        print("All processes are healthy.")
+        print(
+            "Installation recovery control plane is healthy; normal services await recovery and restart."
+            if phase == "recovery_required"
+            else "All processes are healthy."
+        )
         sys.exit(0)
 
 
