@@ -2,7 +2,9 @@ import copy
 import json
 import os
 from pathlib import Path
+import shutil
 import sqlite3
+import stat
 import tempfile
 import unittest
 from types import SimpleNamespace
@@ -110,10 +112,10 @@ class ExecutionTests(unittest.TestCase):
             },
         }
         self.workspace = {
-            "candidate_data": str(self.root / "candidate"),
-            "root": str(self.root / "private"),
+            "candidate_data": str(self.root / (".target.dumb-v2-" + "b" * 32)),
+            "root": str(self.root / "private" / ("b" * 32)),
         }
-        Path(self.workspace["root"]).mkdir()
+        Path(self.workspace["root"]).mkdir(parents=True)
         self.snapshots = []
         self.oidc = False
 
@@ -127,6 +129,11 @@ class ExecutionTests(unittest.TestCase):
             return {
                 "source_schema": {"oidc_configured": self.oidc},
                 "source_database": str(self.root / "source.sqlite"),
+                "candidate_identity": {
+                    "device": candidate.stat().st_dev,
+                    "inode": candidate.stat().st_ino,
+                    "mode": stat.S_IFDIR,
+                },
             }
 
         self.workspace.update(
@@ -150,6 +157,7 @@ class ExecutionTests(unittest.TestCase):
             self.patches.append(patcher)
             patcher.start()
         self.candidate = Mock()
+        self.candidate.stopped = True
         self.candidate.__enter__ = Mock(return_value=self.candidate)
         self.candidate.__exit__ = Mock(return_value=False)
         self.candidate.wait_import.return_value = (
@@ -184,6 +192,178 @@ class ExecutionTests(unittest.TestCase):
         self.assertEqual(starts, ["InfiniDysk", "rclone InfiniDysk", "Sonarr"])
         self.assertTrue(observed)
         self.assertNotIn(("start", "Sonarr"), observed[-1])
+
+    def test_validated_rehearsal_discards_only_candidate_after_restoration(self):
+        outside = self.root / "outside.txt"
+        outside.write_text("protected")
+        receipt = Path(self.workspace["root"]) / "receipt.json"
+        receipt.write_text("retained")
+        capture = self.workspace["capture_source"]
+
+        def populated(**kwargs):
+            result = capture(**kwargs)
+            candidate = Path(self.workspace["candidate_data"])
+            (candidate / "nested").mkdir()
+            (candidate / "nested" / "payload").write_bytes(b"disposable")
+            (candidate / "outside-link").symlink_to(outside)
+            return result
+
+        self.workspace["capture_source"] = populated
+        discard = self.executor._discard_rehearsal_candidate
+
+        def checked(*args):
+            self.candidate.__exit__.assert_called_once()
+            self.workspace["accept_import"].assert_called_once()
+            self.assertEqual(self.handler.calls[-1], ("start", "Sonarr"))
+            self.assertIn(
+                "source_restored",
+                [call.args[0] for call in self.progress.call_args_list],
+            )
+            return discard(*args)
+
+        with patch.object(
+            self.executor, "_discard_rehearsal_candidate", side_effect=checked
+        ):
+            result = self.executor.rehearse(self.plan, self.workspace, self.progress)
+        self.assertTrue(result["candidate_discarded"])
+        self.assertTrue(result["source_restored"])
+        self.assertFalse(Path(self.workspace["candidate_data"]).exists())
+        self.assertEqual(outside.read_text(), "protected")
+        self.assertEqual(receipt.read_text(), "retained")
+        self.assertFalse(Path(self.plan["target"]["data_dir"]).exists())
+
+    def test_disposal_refuses_unowned_or_promoted_root_without_mutation(self):
+        snapshot = self.workspace["capture_source"]()
+        candidate = Path(self.workspace["candidate_data"])
+        with self.assertRaisesRegex(ContainedImportError, "ownership"):
+            self.executor._discard_rehearsal_candidate(self.plan, self.workspace, {})
+        self.assertTrue((candidate / "db-contract.json").exists())
+        target = Path(self.plan["target"]["data_dir"])
+        candidate.rename(target)
+        workspace = {**self.workspace, "candidate_data": str(target)}
+        with self.assertRaisesRegex(ContainedImportError, "ownership"):
+            self.executor._discard_rehearsal_candidate(self.plan, workspace, snapshot)
+        self.assertTrue((target / "db-contract.json").exists())
+
+    def test_disposal_refuses_root_replacement(self):
+        snapshot = self.workspace["capture_source"]()
+        candidate = Path(self.workspace["candidate_data"])
+        original = self.root / "retained-original-candidate"
+        candidate.rename(original)
+        candidate.mkdir()
+        marker = candidate / "foreign.txt"
+        marker.write_text("foreign")
+        with self.assertRaisesRegex(ContainedImportError, "root changed"):
+            self.executor._discard_rehearsal_candidate(
+                self.plan, self.workspace, snapshot
+            )
+        self.assertEqual(marker.read_text(), "foreign")
+        self.assertTrue((original / "db-contract.json").exists())
+
+    def test_disposal_refuses_descendant_mount_before_removing_any_file(self):
+        snapshot = self.workspace["capture_source"]()
+        candidate = Path(self.workspace["candidate_data"])
+        with (
+            patch(
+                "utils.infinidysk_v2_execution.mount_records",
+                return_value=[{"path": str(candidate / "mounted-file")}],
+            ),
+            self.assertRaisesRegex(ContainedImportError, "mount"),
+        ):
+            self.executor._discard_rehearsal_candidate(
+                self.plan, self.workspace, snapshot
+            )
+        self.assertTrue((candidate / "db-contract.json").exists())
+
+    def test_disposal_refuses_file_bind_mount_even_on_the_same_device(self):
+        from utils.infinidysk_v2_rehearsal_cleanup import _candidate_mount_id
+
+        snapshot = self.workspace["capture_source"]()
+        candidate = Path(self.workspace["candidate_data"])
+        inode = (candidate / "db-contract.json").stat().st_ino
+
+        def mount(descriptor):
+            return (
+                "foreign-file-mount"
+                if os.fstat(descriptor).st_ino == inode
+                else _candidate_mount_id(descriptor)
+            )
+
+        with (
+            patch(
+                "utils.infinidysk_v2_rehearsal_cleanup._candidate_mount_id",
+                side_effect=mount,
+            ),
+            self.assertRaisesRegex(ContainedImportError, "mounted"),
+        ):
+            self.executor._discard_rehearsal_candidate(
+                self.plan, self.workspace, snapshot
+            )
+        self.assertTrue((candidate / "db-contract.json").exists())
+
+    def test_disposal_rechecks_each_record_after_complete_preflight(self):
+        snapshot = self.workspace["capture_source"]()
+        candidate = Path(self.workspace["candidate_data"])
+        marker = candidate / "db-contract.json"
+        saved = self.root / "original-entry"
+        calls = []
+
+        def replace_after_scan(path):
+            calls.append(path)
+            if len(calls) == 2:
+                marker.rename(saved)
+                marker.write_text("foreign replacement")
+
+        with (
+            patch.object(
+                self.executor, "_assert_unmounted", side_effect=replace_after_scan
+            ),
+            self.assertRaisesRegex(ContainedImportError, "changed"),
+        ):
+            self.executor._discard_rehearsal_candidate(
+                self.plan, self.workspace, snapshot
+            )
+        self.assertEqual(marker.read_text(), "foreign replacement")
+        self.assertTrue(saved.exists())
+
+    def test_failed_acceptance_or_restore_never_discards_candidate(self):
+        for failure in ("accept", "restore", "native"):
+            with self.subTest(failure=failure):
+                if failure == "accept":
+                    self.workspace["accept_import"].side_effect = ValueError(
+                        "accept failed"
+                    )
+                    patcher = patch.object(
+                        self.executor,
+                        "_restore_original",
+                        wraps=self.executor._restore_original,
+                    )
+                elif failure == "restore":
+                    self.workspace["accept_import"].side_effect = None
+                    patcher = patch.object(
+                        self.executor,
+                        "_restore_original",
+                        side_effect=ValueError("restore failed"),
+                    )
+                else:
+                    self.candidate.stopped = False
+                    patcher = patch.object(
+                        self.executor,
+                        "_restore_original",
+                        wraps=self.executor._restore_original,
+                    )
+                with (
+                    patcher,
+                    patch.object(
+                        self.executor, "_discard_rehearsal_candidate"
+                    ) as discard,
+                ):
+                    with self.assertRaises((ValueError, ContainedImportError)):
+                        self.executor.rehearse(self.plan, self.workspace, self.progress)
+                    discard.assert_not_called()
+                candidate = Path(self.workspace["candidate_data"])
+                self.assertTrue(candidate.exists())
+                shutil.rmtree(candidate)
 
     def test_missing_delivery_mount_keeps_consumers_stopped(self):
         with patch.object(
@@ -330,6 +510,75 @@ class ExecutionTests(unittest.TestCase):
             result = self.executor.preflight(self.plan)
         self.assertTrue(any("probe failed" in x for x in result["blockers"]))
         self.assertEqual(self.handler.calls, [])
+
+
+class NativeShutdownTests(unittest.TestCase):
+    def candidate(self, root):
+        value = object.__new__(NativeCandidate)
+        value.process = Mock(pid=987654, poll=Mock(return_value=0))
+        value.output = Mock()
+        value.payload_path = root / "payload.json"
+        value.payload_path.write_text("private")
+        value.stopped = False
+        return value
+
+    def test_shutdown_waits_for_descendant_writers_after_reaping_main_process(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            candidate = self.candidate(Path(temporary))
+            with (
+                patch("utils.infinidysk_v2_execution.os.killpg"),
+                patch("utils.infinidysk_v2_execution.time.sleep"),
+                patch(
+                    "utils.infinidysk_v2_execution._native_group_has_live_members",
+                    side_effect=[True, False],
+                ) as live,
+            ):
+                candidate.__exit__()
+            candidate.process.wait.assert_called_once_with(timeout=10)
+            self.assertEqual(live.call_count, 2)
+            self.assertTrue(candidate.stopped)
+            candidate.output.close.assert_called_once()
+            self.assertFalse(candidate.payload_path.exists())
+
+    def test_unproven_native_writer_shutdown_refuses_disposal_and_closes_private_files(
+        self,
+    ):
+        with tempfile.TemporaryDirectory() as temporary:
+            candidate = self.candidate(Path(temporary))
+            with (
+                patch("utils.infinidysk_v2_execution.os.killpg"),
+                patch(
+                    "utils.infinidysk_v2_execution._native_group_has_live_members",
+                    return_value=True,
+                ),
+                patch(
+                    "utils.infinidysk_v2_execution.time.monotonic", side_effect=[0, 4]
+                ),
+            ):
+                with self.assertRaisesRegex(ContainedImportError, "live writers"):
+                    candidate.__exit__()
+            self.assertFalse(candidate.stopped)
+            candidate.output.close.assert_called_once()
+            self.assertFalse(candidate.payload_path.exists())
+
+    def test_process_group_check_ignores_zombies_but_detects_running_members(self):
+        from utils.infinidysk_v2_execution import _native_group_has_live_members
+
+        with tempfile.TemporaryDirectory() as temporary:
+            member = Path(temporary) / "12345"
+            member.mkdir()
+            for state, expected in (("Z", False), ("S", True)):
+                (member / "stat").write_bytes(
+                    b"12345 (owned-\xff worker) " + state.encode() + b" 1 987654 1 0"
+                )
+                with (
+                    patch("utils.infinidysk_v2_execution.os.killpg"),
+                    patch("utils.infinidysk_v2_execution.os.scandir") as scan,
+                ):
+                    scan.return_value.__enter__.return_value = iter(
+                        [SimpleNamespace(name=member.name, path=str(member))]
+                    )
+                    self.assertEqual(_native_group_has_live_members(987654), expected)
 
 
 class ImportInventoryTests(unittest.TestCase):

@@ -28,6 +28,7 @@ from utils.infinidysk_v2_runtime import (
     runtime_dir,
 )
 from utils.private_files import atomic_write_private_text
+from utils.infinidysk_v2_rehearsal_cleanup import discard_rehearsal_candidate
 from utils.infinidysk_v2_pg_snapshot import (
     InfiniDyskV2PostgresSnapshotError,
     create_postgres_snapshot,
@@ -45,6 +46,36 @@ from scripts.infinidysk_v2_sandbox import namespace_command
 
 class ContainedImportError(ValueError):
     pass
+
+
+def _native_group_has_live_members(group):
+    try:
+        os.killpg(group, 0)
+    except ProcessLookupError:
+        return False
+    with os.scandir("/proc") as entries:
+        count = 0
+        for entry in entries:
+            if not entry.name.isdigit():
+                continue
+            count += 1
+            if count > 16384:
+                raise ContainedImportError(
+                    "The native process-group check exceeds its bound."
+                )
+            try:
+                fields = (
+                    Path(entry.path, "stat").read_bytes().rpartition(b")")[2].split()
+                )
+            except FileNotFoundError:
+                continue
+            if len(fields) < 3:
+                raise ContainedImportError(
+                    "Native process-group shutdown could not be verified."
+                )
+            if int(fields[2]) == group and fields[0] not in {b"Z", b"X"}:
+                return True
+    return False
 
 
 _SUMMARY = re.compile(
@@ -126,6 +157,7 @@ class NativeCandidate:
         )
         self.uid, self.gid, self.timeout = uid, gid, timeout
         self.process = None
+        self.stopped = False
         self.output = None
         self.port = 17831  # A fresh private network namespace has no other listener.
         self.payload_path = self.private / "candidate-payload.json"
@@ -270,24 +302,35 @@ class NativeCandidate:
         )
 
     def __exit__(self, *unused):
+        try:
+            if self.process is not None:
+                try:
+                    os.killpg(self.process.pid, signal.SIGTERM)
+                except ProcessLookupError:
+                    pass
+                try:
+                    self.process.wait(timeout=10)
+                except subprocess.TimeoutExpired:
+                    os.killpg(self.process.pid, signal.SIGKILL)
+                    self.process.wait(timeout=5)
+                # Terminate descendants, then prove no writer survived the signal.
+                try:
+                    os.killpg(self.process.pid, signal.SIGKILL)
+                except ProcessLookupError:
+                    pass
+        finally:
+            if self.output:
+                self.output.close()
+            self.payload_path.unlink(missing_ok=True)
         if self.process is not None:
-            try:
-                os.killpg(self.process.pid, signal.SIGTERM)
-            except ProcessLookupError:
-                pass
-            try:
-                self.process.wait(timeout=10)
-            except subprocess.TimeoutExpired:
-                os.killpg(self.process.pid, signal.SIGKILL)
-                self.process.wait(timeout=5)
-            # Reap/terminate any descendants that outlived the main executable.
-            try:
-                os.killpg(self.process.pid, signal.SIGKILL)
-            except ProcessLookupError:
-                pass
-        if self.output:
-            self.output.close()
-        self.payload_path.unlink(missing_ok=True)
+            deadline = time.monotonic() + 3
+            while _native_group_has_live_members(self.process.pid):
+                if time.monotonic() >= deadline:
+                    raise ContainedImportError(
+                        "The native candidate still has live writers; its data was retained."
+                    )
+                time.sleep(0.05)
+            self.stopped = self.process.poll() is not None
 
 
 class InfiniDyskV2Executor:
@@ -455,6 +498,16 @@ class InfiniDyskV2Executor:
                 if not entry.is_symlink():
                     os.chown(entry, uid, gid, follow_symlinks=False)
 
+    def _discard_rehearsal_candidate(self, plan, workspace, snapshot):
+        try:
+            discard_rehearsal_candidate(
+                plan, workspace, snapshot, self._assert_unmounted
+            )
+        except (ValueError, OSError, sqlite3.Error) as error:
+            raise ContainedImportError(
+                f"Disposable rehearsal cleanup stopped; retain the candidate for review: {error}"
+            ) from error
+
     def _execute(self, plan, workspace, progress, *, cutover):
         uid, gid = self._execution_ids()
         was_running = self._quiesce(plan, progress)
@@ -542,8 +595,22 @@ class InfiniDyskV2Executor:
         # The manager independently verifies original hashes and this receipt.
         workspace["accept_import"](receipt)
         if not cutover:
+            if getattr(process, "stopped", False) is not True:
+                raise ContainedImportError(
+                    "Native candidate shutdown is unverified; its data was retained."
+                )
             self._restore_original(plan, was_running)
             receipt["source_restored"] = True
+            progress(
+                "source_restored",
+                "The original source and consumers were restored before disposable rehearsal cleanup.",
+            )
+            progress(
+                "discarding_rehearsal",
+                "Removing only the validated disposable rehearsal candidate; retained backups stay protected.",
+            )
+            self._discard_rehearsal_candidate(plan, workspace, snapshot)
+            receipt["candidate_discarded"] = True
             return receipt
         target = Path(plan["target"]["data_dir"])
         if target.exists():

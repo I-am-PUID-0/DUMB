@@ -7,6 +7,7 @@ The original v1 runtime/data remain the rollback source, never a reverse copy.
 
 from __future__ import annotations
 
+from contextlib import closing
 import copy
 import hashlib
 import json
@@ -495,6 +496,17 @@ class InfiniDyskV2MigrationManager:
         }
 
     def _copy_capacity(self, plan, *, postgres_size=None, postgres_snapshot=None):
+        from utils.backup_storage import (
+            BackupStorageError,
+            get_backup_storage,
+            require_local_path,
+        )
+
+        try:
+            require_local_path(self.state_root)
+            require_local_path(plan["target"]["data_dir"])
+        except BackupStorageError as error:
+            raise InfiniDyskV2MigrationError(str(error)) from error
         sizes = {}
         inventories = []
         for key in ("data_dir", "runtime_dir"):
@@ -513,7 +525,20 @@ class InfiniDyskV2MigrationManager:
                 inventories.append({"role": key, **summary})
         data = Path(plan["source"]["data_dir"])
         db = data / "db.sqlite"
-        database_bytes = db.lstat().st_size if db.is_file() else 0
+        sqlite_files = [
+            data / ("db.sqlite" + suffix) for suffix in ("", "-wal", "-shm", "-journal")
+        ]
+        database_bytes = 0
+        for item in sqlite_files:
+            try:
+                value = item.lstat()
+            except FileNotFoundError:
+                continue
+            if not stat.S_ISREG(value.st_mode):
+                raise InfiniDyskV2MigrationError(
+                    "A source SQLite file or sidecar is not a direct regular file."
+                )
+            database_bytes += value.st_size
         if postgres_snapshot:
             database_bytes = Path(postgres_snapshot["staged_sqlite"]).stat().st_size
         elif plan["source"]["provider"] in {"postgres", "postgresql"}:
@@ -536,6 +561,47 @@ class InfiniDyskV2MigrationManager:
                 "candidate",
             ),
         ]
+        selected = plan.get("backup_storage") or {}
+        if selected.get("mode") == "cold_archive":
+            try:
+                identity = get_backup_storage(self.config_manager).bound_identity(
+                    selected.get("destination_id")
+                )
+            except (BackupStorageError, OSError) as error:
+                raise InfiniDyskV2MigrationError(
+                    "The selected registered backup destination could not be verified."
+                ) from error
+            if identity["binding_fingerprint"] != selected.get("binding_fingerprint"):
+                raise InfiniDyskV2MigrationError(
+                    "The selected backup destination identity changed; preview again."
+                )
+            # Closed archives replace the full local retained-tree copy. The
+            # candidate, validation DB and canonical manifest stay local.
+            requirements[0] = (
+                self.state_root,
+                database_bytes * (2 if plan["source"]["provider"] == "sqlite" else 1)
+                + MAX_TREE_MANIFEST_BYTES
+                + MAX_STATE_BYTES,
+                "local_verification",
+            )
+            entries = sum(item["entries"] for item in inventories)
+            # No compression savings: allow bounded portable metadata/header
+            # overhead as well as the complete logical source bytes.
+            archive_bytes = (
+                sum(sizes.values()) + entries * 16 * 1024 + MAX_TREE_MANIFEST_BYTES
+            )
+            if postgres_snapshot:
+                archive_bytes += sum(
+                    Path(postgres_snapshot[key]).stat().st_size
+                    for key in ("dump_path", "staged_sqlite")
+                )
+            elif postgres_size is not None:
+                archive_bytes += postgres_size * 6
+            else:
+                archive_bytes += database_bytes
+            requirements.append(
+                (Path(identity["artifact_root"]), archive_bytes, "cold_archive")
+            )
         if postgres_size is not None and postgres_snapshot is None:
             import tempfile
 
@@ -555,6 +621,14 @@ class InfiniDyskV2MigrationManager:
         )
 
     def _plan(self, options):
+        from utils.backup_storage import BackupStorageError, paths_overlap
+
+        def overlaps(first, second):
+            try:
+                return paths_overlap(first, second)
+            except (BackupStorageError, OSError) as error:
+                raise InfiniDyskV2MigrationError(str(error)) from error
+
         config = self._config()
         service = config.get("infinidysk") or {}
         if not isinstance(service, dict):
@@ -605,19 +679,11 @@ class InfiniDyskV2MigrationManager:
             )
         for target in (target_data, target_runtime):
             for source in (source_data, source_runtime):
-                if (
-                    target == source
-                    or target in source.parents
-                    or source in target.parents
-                ):
+                if overlaps(target, source):
                     blockers.append(
                         "Generation 2 runtime/data must be separate from retained generation 1 paths."
                     )
-        if (
-            target_data == target_runtime
-            or target_data in target_runtime.parents
-            or target_runtime in target_data.parents
-        ):
+        if overlaps(target_data, target_runtime):
             blockers.append("Keep generation 2 program files separate from its data.")
         if target_data.exists() and any(target_data.iterdir()):
             blockers.append(
@@ -660,7 +726,7 @@ class InfiniDyskV2MigrationManager:
             blockers.append("DUMB is shutting down.")
         for source in (source_data, source_runtime):
             private_root = _path(self.state_root)
-            if source == private_root or source in private_root.parents:
+            if overlaps(source, private_root):
                 blockers.append(
                     "Private migration storage must be outside the retained source trees."
                 )
@@ -769,12 +835,77 @@ class InfiniDyskV2MigrationManager:
                 ["rclone", "instances", item["instance"]]
                 for item in inventory["mounts"]
             )
+        selected_id = options.get("backup_destination_id") or ""
+        if selected_id:
+            from utils.backup_storage import BackupStorageError, get_backup_storage
+
+            if not isinstance(selected_id, str):
+                plan["blockers"].append("Choose a registered backup destination.")
+                selected_id = "invalid"
+            plan["options"]["backup_destination_id"] = selected_id
+            plan["backup_storage"] = {
+                "mode": "cold_archive",
+                "destination_id": selected_id,
+                "name": "Selected cold archive storage",
+                "path": None,
+                "format": "pax_tar_v1",
+                "control_state_local": True,
+                "candidate_local": True,
+                "backups_retained": True,
+            }
+            try:
+                selected = get_backup_storage(self.config_manager).bound_identity(
+                    selected_id
+                )
+                plan["backup_storage"].update(selected)
+                protected = [
+                    source_data,
+                    source_runtime,
+                    target_data,
+                    target_runtime,
+                    self.state_root,
+                ]
+                for destination in (
+                    Path(selected["path"]),
+                    Path(selected["artifact_root"]),
+                ):
+                    candidate_prefix = f".{target_data.name}.dumb-v2-"
+                    relative = None
+                    try:
+                        relative = destination.relative_to(target_data.parent)
+                    except ValueError:
+                        pass
+                    parent_identity = _identity(target_data.parent)
+                    destination_parents = (destination, *destination.parents)
+                    reserved_candidate = (
+                        relative is not None
+                        and bool(relative.parts)
+                        and relative.parts[0].startswith(candidate_prefix)
+                    ) or any(
+                        part.name.startswith(candidate_prefix)
+                        and parent_identity is not None
+                        and _identity(part.parent) == parent_identity
+                        for part in destination_parents
+                    )
+                    if reserved_candidate or any(
+                        overlaps(destination, item) for item in protected
+                    ):
+                        plan["blockers"].append(
+                            "Choose backup storage separate from retained v1, active v2, candidate and local control paths."
+                        )
+                        break
+            except (BackupStorageError, OSError):
+                plan["blockers"].append(
+                    "The selected backup destination is unavailable or its mounted identity changed; no local fallback is allowed."
+                )
         binding = copy.deepcopy(
             {
                 key: plan[key]
                 for key in ("mode", "options", "source", "target", "inventory")
             }
         )
+        if plan.get("backup_storage"):
+            binding["backup_storage"] = copy.deepcopy(plan["backup_storage"])
         binding["source"].pop("process_identity", None)
         for item in binding["inventory"]["consumers"]:
             item.pop("process_identity", None)
@@ -905,8 +1036,8 @@ class InfiniDyskV2MigrationManager:
             }
 
     def preview(self, options=None):
+        plan = self._plan(dict(options or {}))
         with self._lock:
-            plan = self._plan(dict(options or {}))
             if self.has_blocking_job():
                 plan["blockers"].append(
                     "A major migration is active or needs recovery."
@@ -949,6 +1080,34 @@ class InfiniDyskV2MigrationManager:
                     "runtime_dir": plan["target"]["runtime_dir"],
                     "data_dir": plan["target"]["data_dir"],
                 },
+                "backup_storage": (
+                    {
+                        key: copy.deepcopy(plan["backup_storage"].get(key))
+                        for key in (
+                            "mode",
+                            "destination_id",
+                            "name",
+                            "path",
+                            "storage_type",
+                            "format",
+                            "control_state_local",
+                            "candidate_local",
+                            "backups_retained",
+                        )
+                    }
+                    if plan.get("backup_storage")
+                    else {
+                        "mode": "legacy_local_tree",
+                        "destination_id": None,
+                        "name": "Local retained backup",
+                        "path": str(self.state_root / "backups"),
+                        "storage_type": "local",
+                        "format": "local_tree_v1",
+                        "control_state_local": True,
+                        "candidate_local": True,
+                        "backups_retained": True,
+                    }
+                ),
                 "capacity": copy.deepcopy(plan["capacity"]),
                 "checks": [
                     {
@@ -1033,6 +1192,7 @@ class InfiniDyskV2MigrationManager:
         return self._start(dict(request), "cutover")
 
     def _start(self, request, mode):
+        plan, preview_path, saved = self._request_plan(request)
         with INFINIDYSK_MIGRATION_ADMISSION_LOCK, self._lock:
             if self.has_blocking_job():
                 raise InfiniDyskV2MigrationError(
@@ -1052,7 +1212,23 @@ class InfiniDyskV2MigrationManager:
                 raise InfiniDyskV2MigrationError(
                     "Another migration or managed mutation owns admission."
                 )
-            plan, preview_path, saved = self._request_plan(request)
+            latest = self._read(preview_path)
+            if (
+                not latest
+                or latest.get("used_for_start")
+                or latest["expires_at"] < int(time.time())
+                or latest["plan"]["plan_fingerprint"] != plan["plan_fingerprint"]
+            ):
+                raise InfiniDyskV2MigrationError(
+                    "The preview expired or changed before job admission."
+                )
+            if _digest(self._owned(self._config(), plan)) != _digest(
+                self._owned(plan["config_snapshot"], plan)
+            ):
+                raise InfiniDyskV2MigrationError(
+                    "Owned configuration changed before job admission; preview again."
+                )
+            saved = latest
             if mode == "cutover" and plan["mode"] == "migrate":
                 rehearsal = self._read(self._job_path(request.get("rehearsal_job_id")))
                 if (
@@ -1144,8 +1320,8 @@ class InfiniDyskV2MigrationManager:
             raise InfiniDyskV2MigrationError(
                 "The captured source database must be a direct regular file."
             )
-        with sqlite3.connect(
-            f"file:{quote(str(database))}?mode=ro", uri=True
+        with closing(
+            sqlite3.connect(f"file:{quote(str(database))}?mode=ro", uri=True)
         ) as connection:
             rows = connection.execute(
                 "SELECT MigrationId FROM __EFMigrationsHistory ORDER BY MigrationId"
@@ -1200,109 +1376,422 @@ class InfiniDyskV2MigrationManager:
 
     def _capture(self, job, workspace, postgres_snapshot=None):
         with self._lock:
-            if job.get("snapshot"):
+            if job.get("snapshot") or job.get("capture_lease"):
                 raise InfiniDyskV2MigrationError(
-                    "The source snapshot was already captured."
+                    "The source snapshot was already captured or is being captured."
                 )
-            plan = job["plan"]
-            self._assert_stopped(plan)
-            self._copy_capacity(plan, postgres_snapshot=postgres_snapshot)
-            self._progress(
-                job, "snapshotting", "Retaining the original v1 data and runtime."
-            )
-            root = self._directory(Path(workspace["root"]))
-            self._write(Path(workspace["config_backup"]), plan["config_snapshot"])
-            copied = {}
-            originals = {}
-            if plan["mode"] == "migrate" and plan["source"]["provider"] == "sqlite":
-                original_db = Path(plan["source"]["data_dir"]) / "db.sqlite"
-                info = original_db.lstat()
-                if not stat.S_ISREG(info.st_mode) or info.st_nlink != 1:
+            nonce = secrets.token_hex(16)
+            job["capture_lease"] = nonce
+            self._write(self._job_path(job["job_id"]), job)
+        plan = job["plan"]
+
+        def owner_check():
+            with self._lock:
+                if (
+                    self._active_id != job["job_id"]
+                    or job.get("worker_id") != self._worker_id
+                    or job.get("capture_lease") != nonce
+                    or job.get("status") not in ACTIVE
+                ):
                     raise InfiniDyskV2MigrationError(
-                        "The original source database is linked or unsafe."
+                        "The source capture worker no longer owns publication."
                     )
-            for label, key in (("data", "data_dir"), ("runtime", "runtime_dir")):
-                source = Path(plan["source"][key])
-                if str(source) in copied:
-                    continue
-                destination = root / f"source-{label}"
-                if source.exists():
-                    if destination.exists():
-                        raise InfiniDyskV2MigrationError(
-                            "A retained snapshot path is already occupied."
-                        )
-                    originals[str(source)] = _source_fingerprint(
-                        source,
+
+        owner_check()
+        self._assert_stopped(plan)
+        for key, expected in (
+            ("data_dir", plan["source"].get("data_identity")),
+            (
+                "runtime_dir",
+                (plan["source"].get("runtime_identity") or {}).get("directory"),
+            ),
+        ):
+            if _identity(Path(plan["source"][key])) != expected:
+                raise InfiniDyskV2MigrationError(
+                    "An original source root changed before capture."
+                )
+        self._copy_capacity(plan, postgres_snapshot=postgres_snapshot)
+        self._progress(
+            job, "snapshotting", "Retaining the complete original v1 data and runtime."
+        )
+        if (plan.get("backup_storage") or {}).get("mode") == "cold_archive":
+            snapshot = self._capture_archive(
+                job, workspace, postgres_snapshot, owner_check
+            )
+        else:
+            snapshot = self._capture_local_trees(job, workspace, postgres_snapshot)
+        with self._lock:
+            owner_check()
+            job["snapshot"] = snapshot
+            job.pop("capture_lease", None)
+            self._write(self._job_path(job["job_id"]), job)
+        return copy.deepcopy(snapshot)
+
+    def _capture_local_trees(self, job, workspace, postgres_snapshot=None):
+        plan = job["plan"]
+        root = self._directory(Path(workspace["root"]))
+        self._write(Path(workspace["config_backup"]), plan["config_snapshot"])
+        copied = {}
+        originals = {}
+        if plan["mode"] == "migrate" and plan["source"]["provider"] == "sqlite":
+            original_db = Path(plan["source"]["data_dir"]) / "db.sqlite"
+            info = original_db.lstat()
+            if not stat.S_ISREG(info.st_mode) or info.st_nlink != 1:
+                raise InfiniDyskV2MigrationError(
+                    "The original source database is linked or unsafe."
+                )
+        for label, key in (("data", "data_dir"), ("runtime", "runtime_dir")):
+            source = Path(plan["source"][key])
+            if str(source) in copied:
+                continue
+            destination = root / f"source-{label}"
+            if source.exists():
+                if destination.exists():
+                    raise InfiniDyskV2MigrationError(
+                        "A retained snapshot path is already occupied."
+                    )
+                originals[str(source)] = _source_fingerprint(
+                    source,
+                    scratch_root=root,
+                    validate_links=label == "data",
+                    role=f"Retained v1 {label}",
+                )
+                shutil.copytree(source, destination, symlinks=True)
+                if (
+                    _source_fingerprint(
+                        destination,
                         scratch_root=root,
                         validate_links=label == "data",
-                        role=f"Retained v1 {label}",
+                        role=f"Copied v1 {label}",
                     )
-                    shutil.copytree(source, destination, symlinks=True)
-                    if (
-                        _source_fingerprint(
-                            destination,
-                            scratch_root=root,
-                            validate_links=label == "data",
-                            role=f"Copied v1 {label}",
-                        )
-                        != originals[str(source)]
-                    ):
-                        raise InfiniDyskV2MigrationError(
-                            "The retained source copy did not verify."
-                        )
-                else:
-                    destination.mkdir(mode=0o700)
-                copied[str(source)] = str(destination)
-            data_snapshot = Path(copied[plan["source"]["data_dir"]])
-            schema = None
-            if plan["mode"] == "migrate":
-                database = data_snapshot / "db.sqlite"
-                if plan["source"]["provider"] in {"postgres", "postgresql"}:
-                    receipt = postgres_snapshot or {}
-                    if (
-                        receipt.get("verified_restore") is not True
-                        or receipt.get("source_read_only") is not True
-                        or not receipt.get("physical_identity")
-                    ):
-                        raise InfiniDyskV2MigrationError(
-                            "A verified independent PostgreSQL dump and read-only native snapshot are required."
-                        )
-                    staged = Path(receipt.get("staged_sqlite") or "")
-                    dump = Path(receipt.get("dump_path") or "")
-                    if (
-                        root not in staged.resolve().parents
-                        or root not in dump.resolve().parents
-                        or not staged.is_file()
-                        or not dump.is_file()
-                    ):
-                        raise InfiniDyskV2MigrationError(
-                            "PostgreSQL backup artifacts are outside this private job."
-                        )
-                    shutil.copyfile(staged, database)
-                schema = self._source_schema(database)
-            candidate = Path(workspace["candidate_data"])
-            _path(candidate.parent)
-            candidate.parent.mkdir(parents=True, exist_ok=True)
-            if candidate.exists():
+                    != originals[str(source)]
+                ):
+                    raise InfiniDyskV2MigrationError(
+                        "The retained source copy did not verify."
+                    )
+            else:
+                destination.mkdir(mode=0o700)
+            copied[str(source)] = str(destination)
+        data_snapshot = Path(copied[plan["source"]["data_dir"]])
+        schema = None
+        if plan["mode"] == "migrate":
+            database = data_snapshot / "db.sqlite"
+            if plan["source"]["provider"] in {"postgres", "postgresql"}:
+                receipt = postgres_snapshot or {}
+                if (
+                    receipt.get("verified_restore") is not True
+                    or receipt.get("source_read_only") is not True
+                    or not receipt.get("physical_identity")
+                ):
+                    raise InfiniDyskV2MigrationError(
+                        "A verified independent PostgreSQL dump and read-only native snapshot are required."
+                    )
+                staged = Path(receipt.get("staged_sqlite") or "")
+                dump = Path(receipt.get("dump_path") or "")
+                if (
+                    root not in staged.resolve().parents
+                    or root not in dump.resolve().parents
+                    or not staged.is_file()
+                    or not dump.is_file()
+                ):
+                    raise InfiniDyskV2MigrationError(
+                        "PostgreSQL backup artifacts are outside this private job."
+                    )
+                database = staged
+            schema = self._source_schema(database)
+        candidate = Path(workspace["candidate_data"])
+        _path(candidate.parent)
+        candidate.parent.mkdir(parents=True, exist_ok=True)
+        if candidate.exists():
+            raise InfiniDyskV2MigrationError("The private candidate path is occupied.")
+        candidate.mkdir(mode=0o700)
+        shutil.copytree(data_snapshot, candidate, symlinks=True, dirs_exist_ok=True)
+        os.chmod(candidate, 0o700)
+        candidate_identity = _identity(candidate)
+        if schema and plan["source"]["provider"] in {"postgres", "postgresql"}:
+            self._stage_candidate_database(candidate, database, candidate_identity)
+        snapshot = {
+            "candidate_identity": candidate_identity,
+            "source_snapshot": str(root),
+            "data_snapshot": str(data_snapshot),
+            "runtime_snapshot": copied[plan["source"]["runtime_dir"]],
+            "config_backup": workspace["config_backup"],
+            "source_schema": schema,
+            "source_database": str(data_snapshot / "db.sqlite") if schema else None,
+            "original_fingerprints": originals,
+            "snapshot_fingerprint": _digest(originals),
+            "postgres_snapshot": postgres_snapshot,
+        }
+        return snapshot
+
+    def _stage_candidate_database(self, candidate, database, expected_identity):
+        from utils.infinidysk_v2_archive import _source_leaf
+
+        with _source_leaf(candidate, "db.sqlite", expected_identity) as (parent, leaf):
+            # Remove only copied private sidecars. An old v1 SQLite WAL must
+            # never be replayed against the authoritative PostgreSQL staging DB.
+            for suffix in ("-wal", "-shm", "-journal"):
+                name = leaf + suffix
+                try:
+                    value = os.stat(name, dir_fd=parent, follow_symlinks=False)
+                except FileNotFoundError:
+                    continue
+                if not (stat.S_ISREG(value.st_mode) or stat.S_ISLNK(value.st_mode)):
+                    raise InfiniDyskV2MigrationError(
+                        "A copied database sidecar is not safely replaceable."
+                    )
+                os.unlink(name, dir_fd=parent)
+            try:
+                value = os.stat(leaf, dir_fd=parent, follow_symlinks=False)
+            except FileNotFoundError:
+                value = None
+            if value is not None and not (
+                stat.S_ISREG(value.st_mode) or stat.S_ISLNK(value.st_mode)
+            ):
                 raise InfiniDyskV2MigrationError(
-                    "The private candidate path is occupied."
+                    "The private candidate database is not safely replaceable."
                 )
-            shutil.copytree(data_snapshot, candidate, symlinks=True)
-            os.chmod(candidate, 0o700)
-            snapshot = {
-                "source_snapshot": str(root),
-                "data_snapshot": str(data_snapshot),
-                "runtime_snapshot": copied[plan["source"]["runtime_dir"]],
-                "config_backup": workspace["config_backup"],
-                "source_schema": schema,
-                "source_database": str(data_snapshot / "db.sqlite") if schema else None,
-                "original_fingerprints": originals,
-                "snapshot_fingerprint": _digest(originals),
-                "postgres_snapshot": postgres_snapshot,
-            }
-            job["snapshot"] = snapshot
-            self._write(self._job_path(job["job_id"]), job)
-            return copy.deepcopy(snapshot)
+            temporary = ".dumb-postgres-snapshot-" + secrets.token_hex(16)
+            source_fd = os.open(database, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+            try:
+                expected = os.fstat(source_fd)
+                if not stat.S_ISREG(expected.st_mode) or expected.st_nlink != 1:
+                    raise InfiniDyskV2MigrationError(
+                        "The closed staging database is linked or unsafe."
+                    )
+                target_fd = os.open(
+                    temporary,
+                    os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW,
+                    0o600,
+                    dir_fd=parent,
+                )
+                with (
+                    os.fdopen(target_fd, "wb") as target,
+                    os.fdopen(os.dup(source_fd), "rb") as source,
+                ):
+                    shutil.copyfileobj(source, target, 1024 * 1024)
+                    target.flush()
+                    os.fsync(target.fileno())
+                after = os.fstat(source_fd)
+                fields = ("st_dev", "st_ino", "st_size", "st_mtime_ns", "st_ctime_ns")
+                if any(getattr(expected, key) != getattr(after, key) for key in fields):
+                    raise InfiniDyskV2MigrationError(
+                        "The closed staging database changed during its private copy."
+                    )
+                os.replace(temporary, leaf, src_dir_fd=parent, dst_dir_fd=parent)
+                os.fsync(parent)
+            finally:
+                os.close(source_fd)
+                try:
+                    os.unlink(temporary, dir_fd=parent)
+                except FileNotFoundError:
+                    pass
+
+    def _capture_archive(self, job, workspace, postgres_snapshot, owner_check):
+        from utils.backup_storage import get_backup_storage
+        from utils.infinidysk_v2_archive import create_retained_archive, _source_leaf
+
+        plan = job["plan"]
+        root = self._directory(Path(workspace["root"]))
+        self._write(Path(workspace["config_backup"]), plan["config_snapshot"])
+        originals = {}
+        for key in ("data_dir", "runtime_dir"):
+            source = plan["source"][key]
+            if source not in originals:
+                originals[source] = _source_fingerprint(
+                    source,
+                    scratch_root=root,
+                    validate_links=source == plan["source"]["data_dir"],
+                    role="Retained v1 source",
+                )
+        validation = self._directory(root / "source-database")
+        schema = None
+        extras = {}
+        if plan["mode"] == "migrate":
+            if plan["source"]["provider"] in {"postgres", "postgresql"}:
+                proof = postgres_snapshot or {}
+                if (
+                    proof.get("verified_restore") is not True
+                    or proof.get("source_read_only") is not True
+                    or not proof.get("physical_identity")
+                ):
+                    raise InfiniDyskV2MigrationError(
+                        "A verified independent PostgreSQL dump and read-only native snapshot are required."
+                    )
+                database = Path(proof.get("staged_sqlite") or "")
+                dump = Path(proof.get("dump_path") or "")
+                if any(
+                    root not in path.resolve().parents
+                    or not path.is_file()
+                    or path.is_symlink()
+                    for path in (database, dump)
+                ):
+                    raise InfiniDyskV2MigrationError(
+                        "PostgreSQL source artifacts must remain inside this local job."
+                    )
+                extras["v1-postgres.dump"] = dump
+                metadata = root / "v1-postgres-snapshot.json"
+                if metadata.is_file():
+                    extras["v1-postgres-snapshot.json"] = metadata
+            else:
+                raw = self._directory(validation / "raw")
+                source_root = Path(plan["source"]["data_dir"])
+                for name in (
+                    "db.sqlite",
+                    "db.sqlite-wal",
+                    "db.sqlite-shm",
+                    "db.sqlite-journal",
+                ):
+                    source = source_root / name
+                    if not source.exists() and not source.is_symlink():
+                        continue
+                    value = source.lstat()
+                    if not stat.S_ISREG(value.st_mode) or value.st_nlink != 1:
+                        raise InfiniDyskV2MigrationError(
+                            "A source SQLite file or sidecar is linked or unsafe."
+                        )
+                    with _source_leaf(
+                        source_root, name, plan["source"].get("data_identity")
+                    ) as (parent, leaf):
+                        descriptor = os.open(
+                            leaf,
+                            os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK,
+                            dir_fd=parent,
+                        )
+                        with os.fdopen(descriptor, "rb") as handle:
+                            opened = os.fstat(handle.fileno())
+                            before = (
+                                value.st_dev,
+                                value.st_ino,
+                                value.st_size,
+                                value.st_mtime_ns,
+                                value.st_ctime_ns,
+                            )
+                            if (
+                                opened.st_dev,
+                                opened.st_ino,
+                                opened.st_size,
+                                opened.st_mtime_ns,
+                                opened.st_ctime_ns,
+                            ) != before:
+                                raise InfiniDyskV2MigrationError(
+                                    "A source SQLite file changed before its local validation copy."
+                                )
+                            destination_fd = os.open(
+                                raw / name,
+                                os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW,
+                                0o600,
+                            )
+                            with os.fdopen(destination_fd, "wb") as destination:
+                                shutil.copyfileobj(handle, destination, 1024 * 1024)
+                                destination.flush()
+                                os.fsync(destination.fileno())
+                            after = os.fstat(handle.fileno())
+                            if (
+                                after.st_dev,
+                                after.st_ino,
+                                after.st_size,
+                                after.st_mtime_ns,
+                                after.st_ctime_ns,
+                            ) != before:
+                                raise InfiniDyskV2MigrationError(
+                                    "A source SQLite file changed during its local validation copy."
+                                )
+                database = validation / "source-database.sqlite"
+                descriptor = os.open(
+                    database,
+                    os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW,
+                    0o600,
+                )
+                os.close(descriptor)
+                # SQLite sees only private copies here, including their WAL.
+                # Its backup API produces one closed, independently usable DB.
+                with closing(
+                    sqlite3.connect(
+                        f"file:{quote(str(raw / 'db.sqlite'))}?mode=ro", uri=True
+                    )
+                ) as original:
+                    with closing(sqlite3.connect(database)) as closed:
+                        original.backup(closed)
+                        closed.execute("PRAGMA journal_mode=DELETE")
+                        if (
+                            closed.execute("PRAGMA integrity_check").fetchone()[0]
+                            != "ok"
+                        ):
+                            raise InfiniDyskV2MigrationError(
+                                "The standalone local source database did not validate."
+                            )
+                with database.open("rb") as handle:
+                    os.fsync(handle.fileno())
+                shutil.rmtree(raw)
+            schema = self._source_schema(database)
+            extras["source-database.sqlite"] = database
+        storage = get_backup_storage(self.config_manager)
+        archived = create_retained_archive(
+            plan,
+            workspace,
+            storage,
+            originals,
+            progress=lambda stage, message=None: self._progress(job, stage, message),
+            extra_files=extras,
+            owner_check=owner_check,
+        )
+        owner_check()
+        # Catch newly created/changed source entries after archive enumeration,
+        # before they can enter an unbacked candidate or native conversion.
+        for source, fingerprint in originals.items():
+            if (
+                _source_fingerprint(
+                    source,
+                    scratch_root=root,
+                    validate_links=source == plan["source"]["data_dir"],
+                )
+                != fingerprint
+            ):
+                raise InfiniDyskV2MigrationError(
+                    "An original source changed after its complete archive was verified."
+                )
+        candidate = Path(workspace["candidate_data"])
+        _path(candidate.parent)
+        candidate.parent.mkdir(parents=True, exist_ok=True)
+        if candidate.exists() or candidate.is_symlink():
+            raise InfiniDyskV2MigrationError("The private candidate path is occupied.")
+        candidate.mkdir(mode=0o700)
+        source_data = Path(plan["source"]["data_dir"])
+        if source_data.exists():
+            shutil.copytree(source_data, candidate, symlinks=True, dirs_exist_ok=True)
+        os.chmod(candidate, 0o700)
+        candidate_identity = _identity(candidate)
+        self._progress(
+            job,
+            "snapshotting",
+            "Verifying the independent local candidate.",
+            candidate_identity=candidate_identity,
+        )
+        if (
+            _source_fingerprint(candidate, scratch_root=root, validate_links=True)
+            != originals[plan["source"]["data_dir"]]
+        ):
+            raise InfiniDyskV2MigrationError(
+                "The independent local candidate did not match its complete retained source."
+            )
+        if schema and plan["source"]["provider"] in {"postgres", "postgresql"}:
+            self._stage_candidate_database(candidate, database, candidate_identity)
+        owner_check()
+        return {
+            "format_version": 2,
+            "backup_format": "pax_tar_v1",
+            "source_snapshot": str(root),
+            "config_backup": workspace["config_backup"],
+            "source_schema": schema,
+            "source_database": str(database) if schema else None,
+            "original_fingerprints": originals,
+            "snapshot_fingerprint": _digest(originals),
+            "postgres_snapshot": postgres_snapshot,
+            "cold_archive": archived["receipt"],
+            "archive_roots": archived["archive_roots"],
+            "candidate_identity": candidate_identity,
+        }
 
     def _validate_receipt(self, job, receipt):
         required = (
@@ -1333,7 +1822,19 @@ class InfiniDyskV2MigrationManager:
             )
         return receipt
 
+    def _assert_job_owner(self, job):
+        with self._lock:
+            if (
+                self._active_id != job["job_id"]
+                or job.get("worker_id") != self._worker_id
+                or job.get("status") not in ACTIVE
+            ):
+                raise InfiniDyskV2MigrationError(
+                    "The native import worker no longer owns acceptance."
+                )
+
     def _accept(self, job, receipt):
+        self._assert_job_owner(job)
         self._validate_receipt(job, receipt)
         snapshot = job.get("snapshot")
         if not snapshot:
@@ -1358,13 +1859,15 @@ class InfiniDyskV2MigrationManager:
                 raise InfiniDyskV2MigrationError(
                     "The original v1 source changed during native execution."
                 )
-        job["accepted_import"] = {
-            "validated": True,
-            "snapshot_fingerprint": snapshot["snapshot_fingerprint"],
-            "plan_fingerprint": job["plan_fingerprint"],
-        }
-        self._write(self._job_path(job["job_id"]), job)
-        return copy.deepcopy(job["accepted_import"])
+        with self._lock:
+            self._assert_job_owner(job)
+            job["accepted_import"] = {
+                "validated": True,
+                "snapshot_fingerprint": snapshot["snapshot_fingerprint"],
+                "plan_fingerprint": job["plan_fingerprint"],
+            }
+            self._write(self._job_path(job["job_id"]), job)
+            return copy.deepcopy(job["accepted_import"])
 
     def _owned(self, config, plan):
         result = []

@@ -1,4 +1,6 @@
+from contextlib import closing
 import copy
+import hashlib
 import json
 from pathlib import Path
 import shutil
@@ -899,6 +901,465 @@ class InfiniDyskV2MigrationTests(unittest.TestCase):
         binding["physical_identity"]["database_oid"] = "789"
         changed = self.manager.preview({"mode": "migrate"})
         self.assertNotEqual(first["plan_fingerprint"], changed["plan_fingerprint"])
+
+    def archive_profile(self):
+        from utils.backup_storage import get_backup_storage
+
+        self.config.config["infinidysk"]["v2_data_dir"] = str(
+            self.root / "local" / "data-v2"
+        )
+        self.config.config["infinidysk"]["v2_runtime_dir"] = str(
+            self.root / "local" / "runtime-v2"
+        )
+        destination = self.root / "cold-storage"
+        destination.mkdir()
+        storage = get_backup_storage(self.config)
+        storage.save_profile(
+            {
+                "id": "nas",
+                "name": "Cold archive",
+                "path": str(destination),
+                "enabled": True,
+            }
+        )
+        return storage, destination
+
+    def archive_request(self):
+        preview = self.manager.preview(
+            {"mode": "migrate", "backup_destination_id": "nas"}
+        )
+        self.assertTrue(preview["ready"], preview["blockers"])
+        return preview, {
+            "preview_token": preview["preview_token"],
+            "confirmation": preview["confirmation_text"],
+            "acknowledgements": dict.fromkeys(ACKNOWLEDGEMENTS, True),
+        }
+
+    def test_selected_archive_captures_originals_without_full_local_backup_tree(self):
+        from utils.infinidysk_v2_archive import verify_retained_archive
+
+        storage, destination = self.archive_profile()
+        original = (self.source / "db.sqlite").read_bytes()
+        preview, request = self.archive_request()
+        self.assertEqual(preview["backup_storage"]["mode"], "cold_archive")
+        self.assertNotIn("binding_fingerprint", preview["backup_storage"])
+        self.assertNotIn("artifact_root", preview["backup_storage"])
+        with patch(
+            "utils.infinidysk_v2_migration.shutil.copytree", wraps=shutil.copytree
+        ) as copying:
+            job = self.wait(self.manager.rehearse(request))
+        self.assertEqual(job["status"], "rehearsed", job)
+        private = self.manager._read(self.manager._job_path(job["job_id"]))
+        snapshot = private["snapshot"]
+        workspace = self.manager._workspace(private)
+        self.assertEqual(snapshot["backup_format"], "pax_tar_v1")
+        self.assertNotIn("data_snapshot", snapshot)
+        self.assertFalse((Path(snapshot["source_snapshot"]) / "source-data").exists())
+        self.assertFalse(
+            (Path(snapshot["source_snapshot"]) / "source-runtime").exists()
+        )
+        with closing(sqlite3.connect(snapshot["source_database"])) as database:
+            self.assertEqual(
+                database.execute("SELECT Value FROM OriginalData").fetchall(),
+                [("original",)],
+            )
+        self.assertNotEqual(
+            Path(snapshot["source_database"]), self.source / "db.sqlite"
+        )
+        self.assertEqual(
+            snapshot["candidate_identity"]["inode"],
+            Path(workspace["candidate_data"]).stat().st_ino,
+        )
+        self.assertEqual(
+            (Path(workspace["candidate_data"]) / "blobs" / "original").read_text(),
+            "original metadata",
+        )
+        self.assertTrue(
+            any(
+                Path(call.args[0]) == self.source
+                and Path(call.args[1]) == Path(workspace["candidate_data"])
+                for call in copying.call_args_list
+            )
+        )
+        self.assertEqual((self.source / "db.sqlite").read_bytes(), original)
+        self.assertEqual(
+            len(storage.list_artifacts("nas", "major-" + job["job_id"])), 1
+        )
+        self.assertTrue(
+            verify_retained_archive(snapshot, private["plan"], storage)["verified"]
+        )
+
+    def test_selected_archive_capacity_moves_only_retained_tree_to_destination(self):
+        from utils.infinidysk_v2_inventory import MAX_TREE_MANIFEST_BYTES
+        from utils.infinidysk_v2_migration import MAX_STATE_BYTES
+
+        storage, _ = self.archive_profile()
+        source_bytes, entries = 64 * 1024**3, 350_000
+        summary = {"bytes": source_bytes, "entries": entries}
+        captured = []
+
+        def capacity(requirements, **kwargs):
+            captured.extend(requirements)
+            return {"status": "sufficient"}
+
+        with (
+            patch(
+                "utils.infinidysk_v2_migration._source_summary", return_value=summary
+            ),
+            patch(
+                "utils.infinidysk_v2_migration._capacity_check", side_effect=capacity
+            ),
+        ):
+            self.manager._plan({"mode": "migrate", "backup_destination_id": "nas"})
+        by_role = {role: (path, size) for path, size, role in captured}
+        database_bytes = (self.source / "db.sqlite").stat().st_size
+        self.assertEqual(
+            by_role["local_verification"][1],
+            2 * database_bytes + MAX_TREE_MANIFEST_BYTES + MAX_STATE_BYTES,
+        )
+        self.assertGreaterEqual(by_role["cold_archive"][1], source_bytes)
+        self.assertEqual(
+            by_role["cold_archive"][0],
+            Path(storage.bound_identity("nas")["artifact_root"]),
+        )
+        self.assertGreaterEqual(by_role["candidate"][1], source_bytes)
+        self.assertNotIn("retained_backup", by_role)
+
+    def test_selected_archive_destination_cannot_overlap_source_or_control(self):
+        from utils.backup_storage import get_backup_storage
+
+        storage = get_backup_storage(self.config)
+        storage.save_profile(
+            {
+                "id": "nas",
+                "name": "Unsafe overlap",
+                "path": str(self.source),
+                "enabled": True,
+            }
+        )
+        preview = self.manager.preview(
+            {"mode": "migrate", "backup_destination_id": "nas"}
+        )
+        self.assertFalse(preview["ready"])
+        self.assertTrue(any("separate" in message for message in preview["blockers"]))
+        self.assertEqual(self.executor.calls, [])
+
+    def test_selected_archive_replacement_blocks_dispatch_without_local_fallback(self):
+        self.archive_profile()
+        _, request = self.archive_request()
+        destination = self.root / "cold-storage"
+        destination.rename(self.root / "old-cold-storage")
+        destination.mkdir()
+        with self.assertRaisesRegex(
+            InfiniDyskV2MigrationError, "unavailable|identity|destination"
+        ):
+            self.manager.rehearse(request)
+        self.assertEqual(self.executor.calls, [])
+        self.assertFalse((destination / ".dumb-backups").exists())
+
+    def test_archive_io_does_not_hold_manager_status_lock(self):
+        from utils.infinidysk_v2_archive import create_retained_archive
+
+        self.archive_profile()
+        _, request = self.archive_request()
+        entered, release = threading.Event(), threading.Event()
+
+        def blocked(*args, **kwargs):
+            entered.set()
+            if not release.wait(timeout=4):
+                raise TimeoutError("fixture release was not signalled")
+            return create_retained_archive(*args, **kwargs)
+
+        with patch(
+            "utils.infinidysk_v2_archive.create_retained_archive", side_effect=blocked
+        ):
+            response = self.manager.rehearse(request)
+            try:
+                self.assertTrue(entered.wait(timeout=2))
+                self.assertTrue(self.manager._lock.acquire(timeout=0.2))
+                self.manager._lock.release()
+                status = self.manager.status()
+                self.assertEqual(status["job"]["status"], "running")
+                self.assertTrue(self.manager.has_blocking_job())
+            finally:
+                release.set()
+                job = self.wait(response)
+        self.assertEqual(job["status"], "rehearsed", job)
+
+    def test_archive_source_addition_before_acceptance_is_detected(self):
+        from utils.infinidysk_v2_archive import create_retained_archive
+
+        self.archive_profile()
+        _, request = self.archive_request()
+
+        def changed(*args, **kwargs):
+            receipt = create_retained_archive(*args, **kwargs)
+            (self.source / "blobs" / "late-entry").write_text("unbacked bytes")
+            return receipt
+
+        with (
+            patch(
+                "utils.infinidysk_v2_archive.create_retained_archive",
+                side_effect=changed,
+            ),
+            patch("utils.infinidysk_v2_migration.shutil.copytree") as copying,
+        ):
+            job = self.wait(self.manager.rehearse(request))
+        self.assertEqual(job["status"], "failed_restored", job)
+        self.assertIn("source changed", job["error"])
+        copying.assert_not_called()
+
+    def test_archive_postgres_capture_retains_original_tree_and_local_verified_staging(
+        self,
+    ):
+        from utils.infinidysk_v2_archive import verify_retained_archive
+
+        storage, _ = self.archive_profile()
+        self.config.config["infinidysk"]["postgres_enabled"] = True
+        self.executor.supported_source_providers = ("sqlite", "postgres")
+        binding = {
+            "physical_identity": {"system_identifier": "123", "database_oid": "456"},
+            "schema_fingerprint": "a" * 64,
+            "migration_history_fingerprint": "b" * 64,
+            "terminal_migration": "20260824160000_Add-Health-Repair-Pending",
+            "session_timezone": "UTC",
+            "database_size_bytes": 1024,
+        }
+        self.executor.preflight = lambda plan: {
+            "blockers": [],
+            "source_binding": binding,
+        }
+        original = (self.source / "db.sqlite").read_bytes()
+
+        def rehearse(plan, workspace, progress):
+            root = Path(workspace["root"])
+            root.mkdir(parents=True, mode=0o700)
+            staged, dump = root / "v1-postgres-import.sqlite", root / "v1-postgres.dump"
+            shutil.copyfile(self.source / "db.sqlite", staged)
+            with closing(sqlite3.connect(staged)) as database:
+                database.execute("PRAGMA journal_mode=DELETE")
+                database.execute(
+                    "INSERT INTO OriginalData VALUES('read-only PostgreSQL snapshot')"
+                )
+                database.commit()
+            dump.write_bytes(b"closed independently restore-verified fixture dump")
+            workspace["capture_source"](
+                postgres_snapshot={
+                    "staged_sqlite": str(staged),
+                    "dump_path": str(dump),
+                    "verified_restore": True,
+                    "source_read_only": True,
+                    "physical_identity": binding["physical_identity"],
+                    "source_binding": {"binding_fingerprint": "c" * 64},
+                    "restore_proof": {"verified": True, "source_binding": "c" * 64},
+                    "dump_sha256": hashlib.sha256(dump.read_bytes()).hexdigest(),
+                    "staged_sha256": hashlib.sha256(staged.read_bytes()).hexdigest(),
+                }
+            )
+            receipt = self.executor.receipt(plan)
+            workspace["accept_import"](receipt)
+            return {**receipt, "source_restored": True}
+
+        self.executor.rehearse = rehearse
+        _, request = self.archive_request()
+        job = self.wait(self.manager.rehearse(request))
+        self.assertEqual(job["status"], "rehearsed", job)
+        private = self.manager._read(self.manager._job_path(job["job_id"]))
+        snapshot = private["snapshot"]
+        self.assertEqual(
+            Path(snapshot["source_database"]),
+            Path(snapshot["source_snapshot"]) / "v1-postgres-import.sqlite",
+        )
+        self.assertTrue(snapshot["postgres_snapshot"]["verified_restore"])
+        self.assertEqual((self.source / "db.sqlite").read_bytes(), original)
+        candidate = Path(self.manager._workspace(private)["candidate_data"])
+        with sqlite3.connect(candidate / "db.sqlite") as database:
+            self.assertEqual(
+                database.execute("SELECT COUNT(*) FROM OriginalData").fetchone()[0], 2
+            )
+        self.assertTrue(
+            verify_retained_archive(snapshot, private["plan"], storage)["verified"]
+        )
+
+    def test_fresh_selected_archive_keeps_candidate_local_without_source_database(self):
+        self.archive_profile()
+        shutil.rmtree(self.source)
+        preview = self.manager.preview(
+            {"mode": "fresh", "backup_destination_id": "nas"}
+        )
+        self.assertTrue(preview["ready"], preview["blockers"])
+        request = {
+            "preview_token": preview["preview_token"],
+            "confirmation": preview["confirmation_text"],
+            "acknowledgements": dict.fromkeys(ACKNOWLEDGEMENTS, True),
+        }
+        job = self.wait(self.manager.start(request))
+        self.assertEqual(job["status"], "completed", job)
+        private = self.manager._read(self.manager._job_path(job["job_id"]))
+        self.assertIsNone(private["snapshot"]["source_database"])
+        self.assertTrue(private["snapshot"]["cold_archive"]["verified"])
+        self.assertTrue(
+            (self.root / "local" / "data-v2" / "infinidysk.sqlite").is_file()
+        )
+        self.assertFalse(self.source.exists())
+
+    def make_retained_wal(self):
+        # Produce a cold main DB + committed WAL without opening the originals.
+        raw = self.root / "wal-fixture"
+        raw.mkdir()
+        shutil.copyfile(self.source / "db.sqlite", raw / "db.sqlite")
+        database = sqlite3.connect(raw / "db.sqlite")
+        try:
+            database.execute("PRAGMA journal_mode=WAL")
+            database.execute("PRAGMA wal_autocheckpoint=0")
+            database.execute("INSERT INTO OriginalData VALUES('committed WAL only')")
+            database.commit()
+            for suffix in ("", "-wal", "-shm"):
+                shutil.copyfile(
+                    raw / ("db.sqlite" + suffix), self.source / ("db.sqlite" + suffix)
+                )
+        finally:
+            database.close()
+        return {
+            suffix: (self.source / ("db.sqlite" + suffix)).read_bytes()
+            for suffix in ("", "-wal", "-shm")
+        }
+
+    def test_archive_sqlite_wal_rows_are_in_closed_independent_validation_database(
+        self,
+    ):
+        self.archive_profile()
+        original = self.make_retained_wal()
+        _, request = self.archive_request()
+        job = self.wait(self.manager.rehearse(request))
+        self.assertEqual(job["status"], "rehearsed", job)
+        private = self.manager._read(self.manager._job_path(job["job_id"]))
+        snapshot = private["snapshot"]
+        closed = Path(snapshot["source_database"])
+        self.assertEqual(closed.name, "source-database.sqlite")
+        self.assertFalse((closed.parent / "raw").exists())
+        self.assertFalse(Path(str(closed) + "-wal").exists())
+        with sqlite3.connect(f"file:{closed}?mode=ro", uri=True) as database:
+            self.assertEqual(
+                database.execute("SELECT COUNT(*) FROM OriginalData").fetchone()[0], 2
+            )
+        self.assertEqual(snapshot["source_schema"]["tables"]["OriginalData"], 2)
+        for suffix, contents in original.items():
+            self.assertEqual(
+                (self.source / ("db.sqlite" + suffix)).read_bytes(), contents
+            )
+
+    def test_archive_capacity_includes_all_raw_sqlite_sidecars_and_closed_peak(self):
+        from utils.infinidysk_v2_inventory import MAX_TREE_MANIFEST_BYTES
+        from utils.infinidysk_v2_migration import MAX_STATE_BYTES
+
+        self.archive_profile()
+        self.make_retained_wal()
+        (self.source / "db.sqlite-journal").write_bytes(
+            b"private fixture journal bytes"
+        )
+        raw_bytes = sum(
+            (self.source / ("db.sqlite" + suffix)).stat().st_size
+            for suffix in ("", "-wal", "-shm", "-journal")
+        )
+        requirements = []
+
+        def capacity(rows, **kwargs):
+            requirements.extend(rows)
+            return {"status": "sufficient"}
+
+        with patch(
+            "utils.infinidysk_v2_migration._capacity_check", side_effect=capacity
+        ):
+            self.manager._plan({"mode": "migrate", "backup_destination_id": "nas"})
+        local = next(
+            size for _, size, role in requirements if role == "local_verification"
+        )
+        self.assertEqual(
+            local, 2 * raw_bytes + MAX_TREE_MANIFEST_BYTES + MAX_STATE_BYTES
+        )
+        archived = next(
+            size for _, size, role in requirements if role == "cold_archive"
+        )
+        self.assertGreater(archived, raw_bytes)
+
+    def test_sibling_archive_path_is_allowed_but_reserved_candidate_namespace_is_not(
+        self,
+    ):
+        storage, _ = self.archive_profile()
+        self.config.config["infinidysk"]["v2_data_dir"] = str(self.root / "data-v2")
+        self.config.config["infinidysk"]["v2_runtime_dir"] = str(
+            self.root / "runtime-v2"
+        )
+        preview, _ = self.archive_request()
+        self.assertTrue(preview["ready"])
+        reserved = self.root / (".data-v2.dumb-v2-" + "a" * 32)
+        reserved.mkdir()
+        storage.save_profile(
+            {
+                "id": "reserved",
+                "name": "Unsafe candidate",
+                "path": str(reserved),
+                "enabled": True,
+            }
+        )
+        preview = self.manager.preview(
+            {"mode": "migrate", "backup_destination_id": "reserved"}
+        )
+        self.assertFalse(preview["ready"])
+        self.assertTrue(any("separate" in value for value in preview["blockers"]))
+
+    def test_pg_candidate_stage_discards_only_copied_stale_sqlite_sidecars(self):
+        import stat
+
+        original = self.make_retained_wal()
+        staged = self.root / "verified-pg.sqlite"
+        shutil.copyfile(self.source / "db.sqlite", staged)
+        with closing(sqlite3.connect(staged)) as database:
+            database.execute("PRAGMA journal_mode=DELETE")
+            database.execute("INSERT INTO OriginalData VALUES('verified PG state')")
+            database.commit()
+        for mode in ("legacy", "archive"):
+            candidate = self.root / ("candidate-" + mode)
+            shutil.copytree(self.source, candidate)
+            value = candidate.stat()
+            identity = {
+                "device": value.st_dev,
+                "inode": value.st_ino,
+                "mode": stat.S_IFDIR,
+            }
+            self.manager._stage_candidate_database(candidate, staged, identity)
+            for suffix in ("-wal", "-shm", "-journal"):
+                self.assertFalse((candidate / ("db.sqlite" + suffix)).exists())
+            with sqlite3.connect(
+                f"file:{candidate / 'db.sqlite'}?mode=ro", uri=True
+            ) as database:
+                values = {
+                    row[0] for row in database.execute("SELECT Value FROM OriginalData")
+                }
+            self.assertEqual(values, {"original", "verified PG state"})
+        for suffix, contents in original.items():
+            self.assertEqual(
+                (self.source / ("db.sqlite" + suffix)).read_bytes(), contents
+            )
+
+    def test_legacy_plan_blocks_physical_source_control_alias_without_selected_storage(
+        self,
+    ):
+        from utils.backup_storage import paths_overlap
+
+        def aliases(first, second):
+            if {Path(first), Path(second)} == {self.source, self.manager.state_root}:
+                return True
+            return paths_overlap(first, second)
+
+        with patch("utils.backup_storage.paths_overlap", side_effect=aliases):
+            preview = self.manager.preview({"mode": "migrate"})
+        self.assertFalse(preview["ready"])
+        self.assertTrue(
+            any("outside the retained" in value for value in preview["blockers"])
+        )
+        self.assertEqual(self.executor.calls, [])
 
 
 class InfiniDyskV2CapacityTests(unittest.TestCase):

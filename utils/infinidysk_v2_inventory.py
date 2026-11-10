@@ -75,7 +75,7 @@ def _content_hash(name, directory_fd, expected):
         os.close(descriptor)
 
 
-def iter_tree(path, *, content=False, role="Source"):
+def iter_tree(path, *, content=False, role="Source", include_identity=False):
     """Yield every descendant without following links or collecting directory lists."""
     root = Path(path)
     stack = []
@@ -109,6 +109,14 @@ def iter_tree(path, *, content=False, role="Source"):
                 "mode": value.st_mode,
                 "mtime_ns": value.st_mtime_ns,
             }
+            if include_identity:
+                row["identity"] = {
+                    "device": value.st_dev,
+                    "inode": value.st_ino,
+                    "ctime_ns": value.st_ctime_ns,
+                    "uid": value.st_uid,
+                    "gid": value.st_gid,
+                }
             if not stat.S_ISDIR(value.st_mode):
                 row["size"] = value.st_size
             if stat.S_ISLNK(value.st_mode):
