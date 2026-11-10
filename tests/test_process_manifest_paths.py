@@ -1,3 +1,4 @@
+import asyncio
 import sys
 import types
 import unittest
@@ -59,7 +60,9 @@ def _install_process_router_stubs():
     sys.modules["utils.dependencies"] = dependencies
 
     config_loader = types.ModuleType("utils.config_loader")
-    config_loader.CONFIG_MANAGER = types.SimpleNamespace(get=lambda *args, **kwargs: {})
+    config_loader.CONFIG_MANAGER = types.SimpleNamespace(
+        get=lambda *args, **kwargs: {}, config={}
+    )
     config_loader.find_service_config = lambda *args, **kwargs: (None, None)
     sys.modules["utils.config_loader"] = config_loader
 
@@ -170,6 +173,219 @@ class ProcessManifestPathTests(unittest.TestCase):
         self.assertEqual(response["process_name"], "Decypharr")
         self.assertEqual(response["manifests"], [])
         self.assertEqual(response["count"], 0)
+
+    def test_profile_manifest_browser_uses_registered_namespace_not_raw_directory(self):
+        reference = "dumb-backup://nas/symlink-decypharr/" + "a" * 32
+        with (
+            patch.object(
+                process_router,
+                "find_service_config",
+                return_value={"backup_destination_id": "nas"},
+            ),
+            patch(
+                "utils.symlink_repair.list_symlink_backup_manifests",
+                return_value={
+                    "directory": "dumb-backup://nas/symlink-decypharr",
+                    "files": [{"path": reference, "sha256": "b" * 64}],
+                    "count": 1,
+                },
+            ) as listing,
+            patch.object(
+                process_router.os, "listdir", side_effect=AssertionError("raw browse")
+            ),
+        ):
+            result = process_router.symlink_backup_manifests("Decypharr")
+        listing.assert_called_once_with("nas", "Decypharr", scheduled_only=True)
+        self.assertEqual(result["manifests"][0]["path"], reference)
+        self.assertEqual(result["count"], 1)
+
+    def test_unavailable_profile_browser_does_not_fall_back_to_local_snapshots(self):
+        with (
+            patch.object(
+                process_router,
+                "find_service_config",
+                return_value={"backup_destination_id": "nas"},
+            ),
+            patch(
+                "utils.symlink_repair.list_symlink_backup_manifests",
+                side_effect=process_router.BackupStorageError("Mount unavailable"),
+            ),
+            patch.object(process_router.os, "listdir") as legacy_list,
+        ):
+            with self.assertRaises(process_router.HTTPException) as error:
+                process_router.symlink_backup_manifests("Decypharr")
+        self.assertEqual(error.exception.status_code, 409)
+        legacy_list.assert_not_called()
+
+    def test_manual_profile_browser_is_catalog_only(self):
+        response = {
+            "directory": "dumb-backup://nas/symlink-manual",
+            "files": [],
+            "count": 0,
+        }
+        with patch(
+            "utils.symlink_repair.list_symlink_backup_manifests", return_value=response
+        ) as listing:
+            result = process_router.symlink_manifest_files(
+                "/etc/passwd", backup_destination_id="nas", process_name="Manual"
+            )
+        listing.assert_called_once_with("nas", "Manual", reference=None)
+        self.assertEqual(result, response)
+
+    def test_manual_backup_explicit_profile_is_additive_and_legacy_path_is_kept(self):
+        request = types.SimpleNamespace(
+            roots=[],
+            process_name="Manual",
+            backup_path="/chosen/custom.json",
+            backup_destination_id="nas",
+            include_broken=True,
+        )
+        response = {"backup_manifest": "dumb-backup://nas/symlink-manual/" + "a" * 32}
+        with patch(
+            "utils.symlink_repair.backup_symlink_manifest", return_value=response
+        ) as writer:
+            result = asyncio.run(process_router.symlink_manifest_backup(request))
+        self.assertEqual(result, response)
+        self.assertEqual(writer.call_args.args, ([], "/chosen/custom.json", True))
+        self.assertEqual(
+            writer.call_args.kwargs,
+            {"backup_destination_id": "nas", "process_name": "Manual"},
+        )
+        request.backup_destination_id = None
+        with patch(
+            "utils.symlink_repair.backup_symlink_manifest", return_value={}
+        ) as writer:
+            asyncio.run(process_router.symlink_manifest_backup(request))
+        writer.assert_called_once_with([], "/chosen/custom.json", True)
+
+    def test_manual_backup_without_path_or_explicit_destination_is_rejected(self):
+        request = types.SimpleNamespace(
+            roots=[],
+            process_name="Manual",
+            backup_path=None,
+            backup_destination_id=None,
+            include_broken=True,
+        )
+        with patch("utils.symlink_repair.backup_symlink_manifest") as writer:
+            with self.assertRaises(process_router.HTTPException) as error:
+                asyncio.run(process_router.symlink_manifest_backup(request))
+        self.assertEqual(error.exception.status_code, 400)
+        writer.assert_not_called()
+
+    def test_managed_restore_explicit_old_profile_overrides_current_service_choice(
+        self,
+    ):
+        reference = "dumb-backup://old/symlink-manual/" + "a" * 32
+        with patch.object(
+            process_router,
+            "find_service_config",
+            return_value={"backup_destination_id": "new"},
+        ) as find:
+            options = process_router._symlink_restore_options(
+                "Manual", "old", reference
+            )
+        self.assertEqual(
+            options, {"process_name": "Manual", "backup_destination_id": "old"}
+        )
+        find.assert_not_called()
+
+    def test_managed_restore_infers_saved_profile_only_when_context_is_supplied(self):
+        reference = "dumb-backup://nas/symlink-manual/" + "a" * 32
+        with patch.object(
+            process_router,
+            "find_service_config",
+            return_value={"backup_destination_id": "nas"},
+        ):
+            options = process_router._symlink_restore_options("Manual", None, reference)
+            global_options = process_router._symlink_restore_options(
+                None, None, reference
+            )
+            legacy_options = process_router._symlink_restore_options(
+                "Manual", None, "/chosen/custom.json"
+            )
+        self.assertEqual(options["backup_destination_id"], "nas")
+        self.assertEqual(
+            global_options, {"process_name": None, "backup_destination_id": None}
+        )
+        self.assertEqual(legacy_options, {})
+
+    def test_async_manual_profile_backup_carries_selection_into_background_worker(self):
+        request = types.SimpleNamespace(
+            roots=[],
+            process_name="Manual",
+            backup_path=None,
+            backup_destination_id="nas",
+            include_broken=True,
+        )
+        state = types.SimpleNamespace(
+            create_symlink_job=lambda **_kwargs: {"job_id": "job"},
+            update_symlink_job=types.SimpleNamespace(),
+        )
+        from unittest.mock import Mock
+
+        state.update_symlink_job = Mock()
+        reference = "dumb-backup://nas/symlink-manual/" + "a" * 32
+
+        def inline_thread(*_args, **kwargs):
+            return types.SimpleNamespace(start=kwargs["target"])
+
+        with (
+            patch.object(process_router.threading, "Thread", side_effect=inline_thread),
+            patch(
+                "utils.symlink_repair.backup_symlink_manifest",
+                return_value={"backup_manifest": reference},
+            ) as writer,
+        ):
+            result = asyncio.run(
+                process_router.symlink_manifest_backup_async(request, api_state=state)
+            )
+        self.assertEqual(result["job_id"], "job")
+        self.assertEqual(
+            writer.call_args.kwargs,
+            {"backup_destination_id": "nas", "process_name": "Manual"},
+        )
+        self.assertEqual(
+            state.update_symlink_job.call_args.args[1]["result"]["backup_manifest"],
+            reference,
+        )
+
+    def test_async_managed_restore_carries_explicit_old_profile_and_process(self):
+        request = types.SimpleNamespace(
+            process_name="Manual",
+            backup_destination_id="old",
+            manifest_path="dumb-backup://old/symlink-manual/" + "a" * 32,
+            dry_run=True,
+            overwrite_existing=False,
+            restore_broken=True,
+        )
+        from unittest.mock import Mock
+
+        state = types.SimpleNamespace(
+            create_symlink_job=lambda **_kwargs: {"job_id": "job"},
+            update_symlink_job=Mock(),
+        )
+
+        def inline_thread(*_args, **kwargs):
+            return types.SimpleNamespace(start=kwargs["target"])
+
+        with (
+            patch.object(process_router.threading, "Thread", side_effect=inline_thread),
+            patch(
+                "utils.symlink_repair.restore_symlink_manifest",
+                return_value={"restored": 0},
+            ) as restore,
+        ):
+            result = asyncio.run(
+                process_router.symlink_manifest_restore_async(request, api_state=state)
+            )
+        self.assertEqual(result["job_id"], "job")
+        self.assertEqual(
+            restore.call_args.kwargs,
+            {"process_name": "Manual", "backup_destination_id": "old"},
+        )
+        self.assertEqual(
+            state.update_symlink_job.call_args.args[1]["status"], "completed"
+        )
 
 
 if __name__ == "__main__":

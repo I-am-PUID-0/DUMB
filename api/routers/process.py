@@ -61,6 +61,11 @@ from utils.infinidysk_migration_admission import (
 from utils.port_probe import is_port_available as _is_port_available
 from utils.versions import Versions
 from utils.install_cache import INSTALL_CACHE
+from utils.backup_storage import (
+    BackupStorageError,
+    is_backup_reference,
+    selected_backup_destination,
+)
 from utils.infinidysk_migration import (
     CLEANUP_CONFIRMATION,
     INFINIDYSK_MIGRATION_MANAGER,
@@ -208,12 +213,14 @@ class SymlinkRepairRequest(BaseModel):
 class SymlinkManifestBackupRequest(BaseModel):
     process_name: Optional[str] = None
     roots: Optional[List[str]] = None
-    backup_path: str
+    backup_path: Optional[str] = None
+    backup_destination_id: Optional[str] = None
     include_broken: Optional[bool] = True
 
 
 class SymlinkManifestRestoreRequest(BaseModel):
     process_name: Optional[str] = None
+    backup_destination_id: Optional[str] = None
     manifest_path: str
     dry_run: Optional[bool] = True
     overwrite_existing: Optional[bool] = False
@@ -900,6 +907,7 @@ SERVICE_OPTION_DESCRIPTIONS = {
     "symlink_backup_interval": "Hours between scheduled symlink snapshot backups.",
     "symlink_backup_start_time": "24-hour start time for the symlink-backup schedule (HH:MM).",
     "symlink_backup_path": "Backup manifest destination template. Supports {timestamp}, {date}, {time}, {process_name}, {process_slug}.",
+    "backup_destination_id": "Explicit registered backup destination for symlink snapshots. Empty preserves the configured path; @default uses the saved shared default.",
     "symlink_backup_include_broken": "Include symlink entries whose targets currently do not exist in scheduled backups.",
     "symlink_backup_roots": "Optional roots list (array or comma/newline text) to scope scheduled symlink backups.",
     "symlink_backup_retention_count": "Number of scheduled backup manifests to retain per service template (0 disables pruning).",
@@ -2980,6 +2988,23 @@ def symlink_backup_manifests(
     if not config:
         raise HTTPException(status_code=404, detail="Process not found")
 
+    backup_destination_id = selected_backup_destination(config)
+    if backup_destination_id:
+        from utils.symlink_repair import list_symlink_backup_manifests
+
+        try:
+            result = list_symlink_backup_manifests(
+                backup_destination_id, process_name, scheduled_only=True
+            )
+        except (BackupStorageError, ValueError) as error:
+            raise HTTPException(status_code=409, detail=str(error)) from None
+        return {
+            "process_name": process_name,
+            "pattern": result["directory"] + "/*",
+            "manifests": result["files"][:200],
+            "count": result["count"],
+        }
+
     template = str(config.get("symlink_backup_path") or "").strip()
     pattern = _snapshot_filename_glob(process_name, template)
     filename_pattern = os.path.basename(pattern)
@@ -3028,7 +3053,23 @@ def symlink_manifest_files(
         description="Manifest path used to resolve directory for listing",
     ),
     current_user: str = Depends(get_optional_current_user),
+    backup_destination_id: Optional[str] = Query(None),
+    process_name: Optional[str] = Query(None),
 ):
+    if backup_destination_id or is_backup_reference(manifest_path or ""):
+        from utils.symlink_repair import list_symlink_backup_manifests
+
+        try:
+            return list_symlink_backup_manifests(
+                backup_destination_id,
+                process_name,
+                reference=(
+                    manifest_path if is_backup_reference(manifest_path or "") else None
+                ),
+            )
+        except (BackupStorageError, ValueError) as error:
+            raise HTTPException(status_code=409, detail=str(error)) from None
+
     raw_path = _resolve_snapshot_manifest_path(manifest_path or "")
     directory = SYMLINK_SNAPSHOT_ROOT
 
@@ -3413,14 +3454,27 @@ async def symlink_manifest_backup(
 ):
     from utils.symlink_repair import backup_symlink_manifest
 
+    if not request.backup_path and not request.backup_destination_id:
+        raise HTTPException(
+            status_code=400, detail="Select a backup path or destination."
+        )
+    backup_options = {}
+    if request.backup_destination_id:
+        backup_options = {
+            "backup_destination_id": request.backup_destination_id,
+            "process_name": request.process_name,
+        }
     try:
         report = await run_in_threadpool(
             backup_symlink_manifest,
             request.roots,
             request.backup_path,
             bool(request.include_broken),
+            **backup_options,
         )
         return report
+    except BackupStorageError as error:
+        raise HTTPException(status_code=409, detail=str(error)) from None
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Symlink manifest backup failed: {e}"
@@ -3437,6 +3491,16 @@ async def symlink_manifest_backup_async(
 
     if not api_state:
         raise HTTPException(status_code=500, detail="API state unavailable")
+    if not request.backup_path and not request.backup_destination_id:
+        raise HTTPException(
+            status_code=400, detail="Select a backup path or destination."
+        )
+    backup_options = {}
+    if request.backup_destination_id:
+        backup_options = {
+            "backup_destination_id": request.backup_destination_id,
+            "process_name": request.process_name,
+        }
 
     process_name = str(request.process_name or "symlink-manifest").strip()
     job_payload = api_state.create_symlink_job(
@@ -3444,6 +3508,7 @@ async def symlink_manifest_backup_async(
         operation="symlink_manifest_backup",
         metadata={
             "backup_path": request.backup_path,
+            "backup_destination_id": request.backup_destination_id,
             "include_broken": bool(request.include_broken),
             "roots": request.roots or [],
         },
@@ -3480,6 +3545,7 @@ async def symlink_manifest_backup_async(
                 request.backup_path,
                 bool(request.include_broken),
                 progress_callback,
+                **backup_options,
             )
             api_state.update_symlink_job(
                 job_id,
@@ -3553,6 +3619,11 @@ async def symlink_manifest_restore(
 ):
     from utils.symlink_repair import restore_symlink_manifest
 
+    restore_options = _symlink_restore_options(
+        request.process_name,
+        request.backup_destination_id,
+        request.manifest_path,
+    )
     mutation_token = None
     try:
         if not request.dry_run:
@@ -3565,10 +3636,17 @@ async def symlink_manifest_restore(
             bool(request.dry_run),
             bool(request.overwrite_existing),
             bool(request.restore_broken),
+            **restore_options,
         )
         return report
     except InfiniDyskMigrationAdmissionError as e:
         raise HTTPException(status_code=409, detail=str(e)) from None
+    except (BackupStorageError, ValueError) as error:
+        if is_backup_reference(request.manifest_path):
+            raise HTTPException(status_code=409, detail=str(error)) from None
+        raise HTTPException(
+            status_code=500, detail=f"Symlink manifest restore failed: {error}"
+        ) from None
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Symlink manifest restore failed: {e}"
@@ -3590,9 +3668,14 @@ async def symlink_manifest_compare(
         50, ge=0, le=200, description="Maximum sample entries to return"
     ),
     current_user: str = Depends(get_optional_current_user),
+    process_name: Optional[str] = Query(None),
+    backup_destination_id: Optional[str] = Query(None),
 ):
     from utils.symlink_repair import preview_symlink_manifest_restore
 
+    restore_options = _symlink_restore_options(
+        process_name, backup_destination_id, manifest_path
+    )
     try:
         report = await run_in_threadpool(
             preview_symlink_manifest_restore,
@@ -3600,8 +3683,15 @@ async def symlink_manifest_compare(
             bool(overwrite_existing),
             bool(restore_broken),
             int(sample_limit),
+            **restore_options,
         )
         return report
+    except (BackupStorageError, ValueError) as error:
+        if is_backup_reference(manifest_path):
+            raise HTTPException(status_code=409, detail=str(error)) from None
+        raise HTTPException(
+            status_code=500, detail=f"Symlink manifest compare failed: {error}"
+        ) from None
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Symlink manifest compare failed: {e}"
@@ -3619,6 +3709,11 @@ async def symlink_manifest_restore_async(
     if not api_state:
         raise HTTPException(status_code=500, detail="API state unavailable")
 
+    restore_options = _symlink_restore_options(
+        request.process_name,
+        request.backup_destination_id,
+        request.manifest_path,
+    )
     mutation_token = None
     try:
         if not request.dry_run:
@@ -3678,6 +3773,7 @@ async def symlink_manifest_restore_async(
                 bool(request.overwrite_existing),
                 bool(request.restore_broken),
                 progress_callback,
+                **restore_options,
             )
             api_state.update_symlink_job(
                 job_id,
@@ -3947,6 +4043,21 @@ def _normalize_process_slug(value: str) -> str:
     slug = "".join(ch.lower() if ch.isalnum() else "-" for ch in str(value or ""))
     slug = slug.strip("-")
     return slug or "service"
+
+
+def _symlink_restore_options(process_name, backup_destination_id, manifest_path):
+    if not is_backup_reference(manifest_path):
+        return {}
+    if not backup_destination_id and process_name:
+        service = find_service_config(
+            getattr(CONFIG_MANAGER, "config", {}) or {}, process_name
+        )
+        if service:
+            backup_destination_id = selected_backup_destination(service)
+    return {
+        "process_name": process_name,
+        "backup_destination_id": backup_destination_id,
+    }
 
 
 def _symlink_manifest_glob_pattern(process_name: str, template: str) -> str:
@@ -6087,7 +6198,7 @@ async def get_capabilities(current_user: str = Depends(get_optional_current_user
         "symlink_backup_schedule": True,
         "backup_storage_selection": True,
         "backup_storage_protocol": 1,
-        "backup_storage_kinds": [],
+        "backup_storage_kinds": ["symlink_manifest"],
         "symlink_backup_manifest_list": True,
         "symlink_manifest_file_list": True,
         "arr_postgres_migration": True,

@@ -4,7 +4,13 @@ from utils.global_logger import logger
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Callable
+import hashlib
 import json, os
+from pathlib import Path
+import re
+
+from utils.backup_storage import get_backup_storage, is_backup_reference
+from utils.private_files import atomic_write_private_text
 
 
 @dataclass(frozen=True)
@@ -393,16 +399,188 @@ def repair_symlinks(
     return report
 
 
+def _symlink_backup_identity(process_name: str | None = None) -> str:
+    identity = str(process_name or "symlink-manifest")
+    return identity if identity.strip() else "symlink-manifest"
+
+
+def symlink_backup_namespace(process_name: str | None = None) -> str:
+    identity = _symlink_backup_identity(process_name)
+    slug = re.sub(r"[^a-z0-9_-]+", "-", identity.lower()).strip("-_")[:55] or "service"
+    suffix = hashlib.sha256(identity.encode("utf-8")).hexdigest()[:16]
+    return f"symlink-{slug}-{suffix}"
+
+
+def _managed_symlink_reference(reference: str) -> tuple[str, str]:
+    if not is_backup_reference(reference):
+        raise ValueError("A registered symlink backup reference is required.")
+    parts = reference.removeprefix("dumb-backup://").split("/")
+    if len(parts) != 3 or not re.fullmatch(r"symlink-[a-z0-9_-]{1,72}", parts[1]):
+        raise ValueError("The reference does not identify a symlink backup.")
+    return parts[0], parts[1]
+
+
+def read_symlink_manifest(
+    manifest_path: str,
+    *,
+    process_name: str | None = None,
+    backup_destination_id: str | None = None,
+) -> dict[str, Any]:
+    source = str(manifest_path or "").strip()
+    if not source:
+        raise ValueError("manifest_path is required.")
+    if is_backup_reference(source):
+        profile, namespace = _managed_symlink_reference(source)
+        storage = get_backup_storage(CONFIG_MANAGER)
+        if process_name is not None and namespace != symlink_backup_namespace(
+            process_name
+        ):
+            raise ValueError("The backup belongs to a different service process.")
+        if backup_destination_id:
+            selected = storage.bound_identity(backup_destination_id)["destination_id"]
+            if profile != selected:
+                raise ValueError(
+                    "The backup belongs to a different selected destination."
+                )
+        manifest = storage.read_json(source, expected_kind="symlink_manifest")
+        if (
+            not isinstance(manifest, dict)
+            or manifest.get("manifest_type") != "symlink_snapshot"
+        ):
+            raise ValueError("The registered artifact is not a symlink snapshot.")
+        recorded_process = manifest.get("process_name")
+        if recorded_process is not None and namespace != symlink_backup_namespace(
+            recorded_process
+        ):
+            raise ValueError(
+                "The backup process identity does not match its registered namespace."
+            )
+    else:
+        if not os.path.exists(source):
+            raise ValueError(f"Manifest does not exist: {source}")
+        with open(source, "r", encoding="utf-8") as handle:
+            manifest = json.load(handle)
+    if not isinstance(manifest, dict) or not isinstance(manifest.get("entries"), list):
+        raise ValueError("Invalid manifest format: entries list is required.")
+    return manifest
+
+
+def list_symlink_backup_manifests(
+    backup_destination_id: str | None = None,
+    process_name: str | None = None,
+    *,
+    reference: str | None = None,
+    scheduled_only: bool = False,
+) -> dict[str, Any]:
+    storage = get_backup_storage(CONFIG_MANAGER)
+    if reference:
+        profile_id, namespace = _managed_symlink_reference(reference)
+        read_symlink_manifest(
+            reference,
+            process_name=process_name,
+            backup_destination_id=backup_destination_id,
+        )
+    else:
+        profile_id = backup_destination_id
+        namespace = symlink_backup_namespace(process_name)
+    if not profile_id:
+        raise ValueError("Select a registered backup destination.")
+    if profile_id == "@default":
+        profile_id = storage.bound_identity(profile_id)["destination_id"]
+    receipts = storage.list_artifacts(profile_id, namespace)
+    rows = [
+        {
+            **receipt,
+            "path": receipt["reference"],
+            "name": receipt["artifact_id"] + ".json",
+            "modified_at": receipt["created_at"],
+        }
+        for receipt in receipts
+        if receipt.get("artifact_kind") == "symlink_manifest"
+        and (not scheduled_only or receipt.get("retention_scope") == "scheduled")
+    ]
+    rows.sort(key=lambda item: (item["modified_at"], item["name"]), reverse=True)
+    directory = f"dumb-backup://{profile_id}/{namespace}"
+    return {
+        "directory": directory,
+        "manifest_path": reference or "",
+        "files": rows[:500],
+        "count": len(rows),
+    }
+
+
+def prune_symlink_backup_manifests(
+    backup_destination_id: str,
+    process_name: str,
+    retention_count: int,
+    *,
+    latest_reference: str | None = None,
+) -> dict[str, Any]:
+    keep_count = max(0, int(retention_count))
+    if keep_count <= 0:
+        return {"pruned": 0, "kept": 0, "errors": []}
+    storage = get_backup_storage(CONFIG_MANAGER)
+    namespace = symlink_backup_namespace(process_name)
+    profile_id = backup_destination_id
+    if latest_reference:
+        written_profile, written_namespace = _managed_symlink_reference(
+            latest_reference
+        )
+        if written_namespace != namespace or (
+            profile_id != "@default" and profile_id != written_profile
+        ):
+            raise ValueError(
+                "The new backup does not match this retention destination."
+            )
+        profile_id = written_profile
+    elif profile_id == "@default":
+        profile_id = storage.bound_identity(profile_id)["destination_id"]
+    receipts = [
+        receipt
+        for receipt in storage.list_artifacts(profile_id, namespace)
+        if receipt.get("artifact_kind") == "symlink_manifest"
+        and receipt.get("retention_scope") == "scheduled"
+        and _managed_symlink_reference(receipt["reference"]) == (profile_id, namespace)
+    ]
+    if latest_reference and not any(
+        receipt["reference"] == latest_reference for receipt in receipts
+    ):
+        raise ValueError(
+            "The new verified backup receipt is missing; retention stopped."
+        )
+    receipts.sort(
+        key=lambda item: (
+            item["reference"] == latest_reference,
+            item["created_at"],
+            item["artifact_id"],
+        ),
+        reverse=True,
+    )
+    errors = []
+    pruned = 0
+    for receipt in receipts[keep_count:]:
+        try:
+            storage.delete_artifact(receipt["reference"])
+            pruned += 1
+        except Exception as error:
+            errors.append({"reference": receipt["reference"], "error": str(error)})
+    return {"pruned": pruned, "kept": min(len(receipts), keep_count), "errors": errors}
+
+
 def backup_symlink_manifest(
     roots: list[str] | None,
-    backup_path: str,
+    backup_path: str | None = None,
     include_broken: bool = True,
     progress_callback: Callable[[dict[str, Any]], None] | None = None,
     check_targets: bool = True,
+    *,
+    backup_destination_id: str | None = None,
+    process_name: str | None = None,
+    scheduled: bool = False,
 ) -> dict[str, Any]:
     destination = (backup_path or "").strip()
-    if not destination:
-        raise ValueError("backup_path is required.")
+    if not destination and not backup_destination_id:
+        raise ValueError("backup_path or a registered backup destination is required.")
 
     resolved_roots = roots or default_symlink_roots()
     symlink_paths, missing_roots = _collect_symlink_paths(resolved_roots)
@@ -468,11 +646,39 @@ def backup_symlink_manifest(
         "targets_checked": check_targets,
         "entries": entries,
     }
-    _ensure_parent_dir(destination)
-    with open(destination, "w", encoding="utf-8") as handle:
-        json.dump(manifest, handle, indent=2, sort_keys=True)
+    receipt = None
+    if backup_destination_id:
+        identity = _symlink_backup_identity(process_name)
+        manifest["process_name"] = identity
+        scope = "scheduled" if scheduled is True else "manual"
+        manifest["retention_scope"] = scope
+        receipt = get_backup_storage(CONFIG_MANAGER).write_json(
+            backup_destination_id,
+            symlink_backup_namespace(identity),
+            manifest,
+            metadata={
+                "kind": "symlink_manifest",
+                "process_name": identity,
+                "retention_scope": scope,
+            },
+        )
+        destination = receipt["reference"]
+        digest = receipt["sha256"]
+        size_bytes = receipt["size_bytes"]
+    else:
+        content = json.dumps(manifest, indent=2, sort_keys=True)
+        atomic_write_private_text(destination, content)
+        expected = content.encode("utf-8")
+        actual = Path(destination).read_bytes()
+        if actual != expected:
+            raise ValueError("The symlink backup did not pass readback verification.")
+        digest = hashlib.sha256(actual).hexdigest()
+        size_bytes = len(actual)
 
     report = {
+        "sha256": digest,
+        "size_bytes": size_bytes,
+        "verified": True,
         "backup_manifest": destination,
         "roots": resolved_roots,
         "missing_roots": missing_roots,
@@ -481,6 +687,8 @@ def backup_symlink_manifest(
         "skipped_broken": skipped_broken,
         "errors": errors,
     }
+    if receipt is not None:
+        report["storage_receipt"] = receipt
     logger.info(
         "Symlink manifest backup completed: roots=%s scanned=%s recorded=%s skipped_broken=%s errors=%s path=%s",
         len(resolved_roots),
@@ -512,18 +720,19 @@ def restore_symlink_manifest(
     overwrite_existing: bool = False,
     restore_broken: bool = True,
     progress_callback: Callable[[dict[str, Any]], None] | None = None,
+    *,
+    process_name: str | None = None,
+    backup_destination_id: str | None = None,
 ) -> dict[str, Any]:
     source = (manifest_path or "").strip()
     if not source:
         raise ValueError("manifest_path is required.")
-    if not os.path.exists(source):
-        raise ValueError(f"Manifest does not exist: {source}")
-
-    with open(source, "r", encoding="utf-8") as handle:
-        manifest = json.load(handle)
-    entries = manifest.get("entries")
-    if not isinstance(entries, list):
-        raise ValueError("Invalid manifest format: entries list is required.")
+    manifest = read_symlink_manifest(
+        source,
+        process_name=process_name,
+        backup_destination_id=backup_destination_id,
+    )
+    entries = manifest["entries"]
 
     report = {
         "manifest_path": source,
@@ -643,18 +852,19 @@ def preview_symlink_manifest_restore(
     overwrite_existing: bool = False,
     restore_broken: bool = True,
     sample_limit: int = 50,
+    *,
+    process_name: str | None = None,
+    backup_destination_id: str | None = None,
 ) -> dict[str, Any]:
     source = (manifest_path or "").strip()
     if not source:
         raise ValueError("manifest_path is required.")
-    if not os.path.exists(source):
-        raise ValueError(f"Manifest does not exist: {source}")
-
-    with open(source, "r", encoding="utf-8") as handle:
-        manifest = json.load(handle)
-    entries = manifest.get("entries")
-    if not isinstance(entries, list):
-        raise ValueError("Invalid manifest format: entries list is required.")
+    manifest = read_symlink_manifest(
+        source,
+        process_name=process_name,
+        backup_destination_id=backup_destination_id,
+    )
+    entries = manifest["entries"]
 
     report = {
         "manifest_path": source,

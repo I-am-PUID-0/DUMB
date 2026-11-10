@@ -692,6 +692,92 @@ class AutoUpdateSchedulerTests(unittest.TestCase):
             updater._safe_record_update_status.call_args.args[1]["reason"],
         )
 
+    def test_profile_symlink_schedule_uses_registered_writer_and_retention(self):
+        updater = self.updater()
+        config = {
+            "backup_destination_id": "nas",
+            "symlink_backup_path": "/legacy/chosen-{timestamp}.json",
+        }
+        reference = "dumb-backup://nas/symlink-infinidysk/" + "a" * 32
+        with (
+            patch(
+                "utils.symlink_repair.backup_symlink_manifest",
+                return_value={
+                    "backup_manifest": reference,
+                    "verified": True,
+                    "sha256": "b" * 64,
+                },
+            ) as writer,
+            patch(
+                "utils.symlink_repair.prune_symlink_backup_manifests",
+                return_value={"pruned": 1, "errors": []},
+            ) as prune,
+            patch.object(updater, "_prune_symlink_backup_manifests") as legacy_prune,
+        ):
+            result = updater._run_symlink_backup(
+                "InfiniDysk", config, "infinidysk", None, run_ts=100, next_backup_at=200
+            )
+        self.assertEqual(writer.call_args.kwargs["backup_destination_id"], "nas")
+        self.assertEqual(writer.call_args.kwargs["process_name"], "InfiniDysk")
+        self.assertIs(writer.call_args.kwargs["scheduled"], True)
+        prune.assert_called_once_with(
+            "nas", "InfiniDysk", 1, latest_reference=reference
+        )
+        legacy_prune.assert_not_called()
+        self.assertEqual(result["status"], "completed")
+        self.assertEqual(result["last_backup_manifest"], reference)
+        self.assertTrue(result["verified"])
+
+    def test_profile_schedule_failure_reports_error_without_legacy_fallback(self):
+        updater = self.updater()
+        config = {
+            "backup_destination_id": "nas",
+            "symlink_backup_path": "/legacy/chosen.json",
+        }
+        with (
+            patch(
+                "utils.symlink_repair.backup_symlink_manifest",
+                side_effect=ValueError("Selected backup mount unavailable"),
+            ) as writer,
+            patch("utils.symlink_repair.prune_symlink_backup_manifests") as prune,
+            patch.object(updater, "_prune_symlink_backup_manifests") as legacy_prune,
+        ):
+            result = updater._run_symlink_backup(
+                "InfiniDysk", config, "infinidysk", None, run_ts=100, next_backup_at=200
+            )
+        self.assertEqual(writer.call_count, 1)
+        prune.assert_not_called()
+        legacy_prune.assert_not_called()
+        self.assertEqual(result["status"], "error")
+        self.assertEqual(result["backup_destination_id"], "nas")
+        self.assertIn("mount unavailable", result["message"])
+
+    def test_empty_profile_keeps_existing_custom_schedule_path(self):
+        updater = self.updater()
+        config = {
+            "backup_destination_id": "",
+            "symlink_backup_path": "/chosen/custom.json",
+        }
+        with (
+            patch(
+                "utils.symlink_repair.backup_symlink_manifest",
+                return_value={"backup_manifest": "/chosen/custom.json"},
+            ) as writer,
+            patch("utils.symlink_repair.prune_symlink_backup_manifests") as prune,
+            patch.object(
+                updater,
+                "_prune_symlink_backup_manifests",
+                return_value={"pruned": 0, "errors": []},
+            ) as legacy_prune,
+        ):
+            updater._run_symlink_backup(
+                "InfiniDysk", config, "infinidysk", None, run_ts=100, next_backup_at=200
+            )
+        self.assertEqual(writer.call_args.kwargs["backup_path"], "/chosen/custom.json")
+        self.assertNotIn("backup_destination_id", writer.call_args.kwargs)
+        legacy_prune.assert_called_once()
+        prune.assert_not_called()
+
 
 if __name__ == "__main__":
     unittest.main()

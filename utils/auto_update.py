@@ -11,6 +11,7 @@ from utils.versions import Versions, display_version
 from utils.download import Downloader
 from utils.infinidysk_release_line import validate_infinidysk_source
 from utils import infinidysk_v2_runtime
+from utils.backup_storage import selected_backup_destination
 from utils.setup import (
     SERVICE_MANAGED_SOURCE_KEYS,
     setup_project,
@@ -2916,7 +2917,10 @@ class Update:
     ):
         if run_ts is None:
             run_ts = int(time.time())
-        from utils.symlink_repair import backup_symlink_manifest
+        from utils.symlink_repair import (
+            backup_symlink_manifest,
+            prune_symlink_backup_manifests,
+        )
 
         path_template = self.symlink_backup_path(process_name, config)
         backup_path = self._resolve_symlink_backup_path(
@@ -2933,17 +2937,33 @@ class Update:
             )
             Update._symlink_backup_next_at[process_name] = next_backup_at
 
+        backup_destination_id = selected_backup_destination(config)
         try:
-            report = backup_symlink_manifest(
-                roots=roots,
-                backup_path=backup_path,
-                include_broken=include_broken,
-            )
-            prune_report = self._prune_symlink_backup_manifests(
-                process_name=process_name,
-                path_template=path_template,
-                retention_count=retention_count,
-            )
+            backup_options = {
+                "roots": roots,
+                "backup_path": backup_path,
+                "include_broken": include_broken,
+            }
+            if backup_destination_id:
+                backup_options.update(
+                    backup_destination_id=backup_destination_id,
+                    process_name=process_name,
+                    scheduled=True,
+                )
+            report = backup_symlink_manifest(**backup_options)
+            if backup_destination_id:
+                prune_report = prune_symlink_backup_manifests(
+                    backup_destination_id,
+                    process_name,
+                    retention_count,
+                    latest_reference=report.get("backup_manifest"),
+                )
+            else:
+                prune_report = self._prune_symlink_backup_manifests(
+                    process_name=process_name,
+                    path_template=path_template,
+                    retention_count=retention_count,
+                )
             payload = {
                 "status": "completed",
                 "message": "Symlink backup completed.",
@@ -2957,6 +2977,9 @@ class Update:
                 "next_backup_at": next_backup_at,
                 "last_backup_at": run_ts,
                 "last_backup_manifest": report.get("backup_manifest"),
+                "backup_destination_id": backup_destination_id or "",
+                "sha256": report.get("sha256"),
+                "verified": report.get("verified"),
                 "scanned_symlinks": report.get("scanned_symlinks"),
                 "recorded_entries": report.get("recorded_entries"),
                 "pruned_backups": prune_report.get("pruned"),
@@ -2976,6 +2999,7 @@ class Update:
                 {
                     "status": "error",
                     "message": str(e),
+                    "backup_destination_id": backup_destination_id or "",
                     "symlink_backup_enabled": True,
                     "symlink_backup_interval": interval_hours,
                     "symlink_backup_start_time": start_time,
