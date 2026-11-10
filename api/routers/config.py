@@ -487,38 +487,44 @@ def _parse_postgresql_setting_line(line):
     if not body.strip() or body.lstrip().startswith("#"):
         return None
 
-    match = re.match(
-        r"^(?P<indent>[ \t]*)(?P<key>[A-Za-z_][A-Za-z0-9_.]*)(?P<tail>.*)$",
-        body,
-    )
-    if not match:
-        raise ValueError("invalid PostgreSQL setting name")
+    if "\n" in body:
+        raise ValueError("invalid PostgreSQL setting line")
 
-    tail = match.group("tail")
+    # Scan the key once; an overlapping key/tail regex can backtrack
+    # quadratically when a future caller supplies a malformed multiline value.
+    cursor = 0
+    while cursor < len(body) and body[cursor] in " \t":
+        cursor += 1
+    key_start = cursor
+    initial = "_ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+    if cursor == len(body) or body[cursor] not in initial:
+        raise ValueError("invalid PostgreSQL setting name")
+    cursor += 1
+    allowed = initial + "0123456789."
+    while cursor < len(body) and body[cursor] in allowed:
+        cursor += 1
+    key = body[key_start:cursor]
+    tail = body[cursor:]
     separator_match = re.match(r"^[ \t]*=[ \t]*", tail)
     if separator_match:
         separator = separator_match.group(0)
     else:
         separator_match = re.match(r"^[ \t]+", tail)
         if not separator_match:
-            raise ValueError(
-                f"PostgreSQL setting {match.group('key')} is missing a separator"
-            )
+            raise ValueError(f"PostgreSQL setting {key} is missing a separator")
         separator = separator_match.group(0)
 
     raw_value, suffix, unterminated_quote = _split_postgresql_value_comment(
         tail[len(separator) :]
     )
     if not raw_value:
-        raise ValueError(f"PostgreSQL setting {match.group('key')} has no value")
+        raise ValueError(f"PostgreSQL setting {key} has no value")
     if unterminated_quote:
-        raise ValueError(
-            f"PostgreSQL setting {match.group('key')} has an unterminated quote"
-        )
+        raise ValueError(f"PostgreSQL setting {key} has an unterminated quote")
 
     return {
-        "indent": match.group("indent"),
-        "key": match.group("key"),
+        "indent": body[:key_start],
+        "key": key,
         "separator": separator,
         "raw_value": raw_value,
         "suffix": suffix,

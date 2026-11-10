@@ -1,4 +1,6 @@
 import asyncio
+import subprocess
+import textwrap
 import sys
 import tempfile
 import types
@@ -392,6 +394,51 @@ class ConfigRouterHelperTests(unittest.TestCase):
             {"type": "integer"},
         )
         self.assertIsNone(config_router.find_schema(schema, ["radarr"]))
+
+    def test_postgresql_parser_rejects_malformed_multiline_without_backtracking(self):
+        # Exercise the actual helpers in a bounded child, independent of legacy
+        # router import doubles and without risking a hung discovery process.
+        code = textwrap.dedent(r"""
+            import ast
+            import re
+            import resource
+            from pathlib import Path
+
+            resource.setrlimit(resource.RLIMIT_CPU, (2, 2))
+            root = ast.parse(Path("api/routers/config.py").read_text())
+            names = {"_parse_postgresql_setting_line", "_split_postgresql_value_comment"}
+            definitions = [item for item in root.body if isinstance(item, ast.FunctionDef) and item.name in names]
+            assert len(definitions) == len(names)
+            namespace = {"re": re}
+            exec(compile(ast.Module(body=definitions, type_ignores=[]), "<actual-config-helpers>", "exec"), namespace)
+            parser = namespace["_parse_postgresql_setting_line"]
+            try:
+                parser("A" + "." * 131072 + "\ntrailing")
+            except ValueError:
+                pass
+            else:
+                raise AssertionError("Multiline setting was accepted")
+            parsed = parser("  custom.option = 'value # kept' \t# note\r\n")
+            assert parsed == {
+                "indent": "  ", "key": "custom.option", "separator": " = ",
+                "raw_value": "'value # kept'", "suffix": " \t# note", "newline": "\r\n",
+            }, parsed
+            for invalid in ["0setting = 1", "ésetting = 1", ".setting = 1"]:
+                try:
+                    parser(invalid)
+                except ValueError:
+                    pass
+                else:
+                    raise AssertionError("Invalid setting name accepted")
+        """)
+        completed = subprocess.run(
+            [sys.executable, "-B", "-c", code],
+            cwd=Path(__file__).resolve().parents[1],
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+        self.assertEqual(completed.returncode, 0, completed.stdout + completed.stderr)
 
     def test_parse_postgresql_conf_supports_equals_and_space_separated_values(self):
         with tempfile.TemporaryDirectory() as temp_dir:
