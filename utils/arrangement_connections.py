@@ -152,6 +152,9 @@ def _client(config, source, values, client_factory):
         host, headers={"X-Api-Key": str(key)} if key else {}, managed=True
     )
     client._setup_ownership_scope = hashlib.sha256(
+        # Private source endpoint/key scope invalidates ownership after key rotation.
+        # This is not a login verifier; preserve existing sidecar identities.
+        # codeql[py/weak-sensitive-data-hashing]
         json.dumps({"family": family, "url": host, "key": key}, sort_keys=True).encode()
     ).hexdigest()
     return client, settings
@@ -241,6 +244,9 @@ def _target(config, identifier, client_factory, payload=None):
         "major": int(version[1]),
         "client": client,
         "ownership_scope": hashlib.sha256(
+            # Private Arr endpoint/key scope prevents reusing another server's owned rows.
+            # This is not a login verifier; preserve existing sidecar identities.
+            # codeql[py/weak-sensitive-data-hashing]
             json.dumps(
                 {"family": family, "url": host, "key": key}, sort_keys=True
             ).encode()

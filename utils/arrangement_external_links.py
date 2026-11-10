@@ -92,6 +92,9 @@ def apply_external_link(
         records = read_ownership(ledger)
         source_cfg, source_url, source_key = _native(config, source)
         source_scope = hashlib.sha256(
+            # Private source endpoint/key scope invalidates ownership after key rotation.
+            # This is not a login verifier; preserve existing sidecar identities.
+            # codeql[py/weak-sensitive-data-hashing]
             json.dumps(
                 {
                     "url": source_url,
@@ -105,6 +108,9 @@ def apply_external_link(
         target_scope = (
             target.get("ownership_scope")
             or hashlib.sha256(
+                # Private target endpoint/key scope prevents ownership crossing native servers.
+                # This is not a login verifier; preserve existing sidecar identities.
+                # codeql[py/weak-sensitive-data-hashing]
                 json.dumps(
                     {
                         "url": target["url"],
@@ -260,6 +266,9 @@ def apply_external_link(
         after = desired if family == "neutarr" else public_comparison(desired)
         if family == "neutarr":
             before = existing or {}
+        # Private masked-readback equality remembers the last configured API key.
+        # This is not a login verifier; keep existing credential-change detection.
+        # codeql[py/weak-sensitive-data-hashing]
         key_digest = hashlib.sha256(target["key"].encode()).hexdigest()
         if family == "prowlarr" and owned and record.get("key_digest") == key_digest:
             for key in before:

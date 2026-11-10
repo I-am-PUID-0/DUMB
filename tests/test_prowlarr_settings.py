@@ -509,5 +509,66 @@ class ProwlarrPayloadHelperTests(unittest.TestCase):
         )
 
 
+class ProwlarrOwnershipReadTests(unittest.TestCase):
+    def test_private_legacy_ownership_is_preserved_with_configured_service_owner(self):
+        import json
+        import os
+
+        with tempfile.TemporaryDirectory() as temporary:
+            path = pathlib.Path(temporary) / ".dumb-setup-ownership.json"
+            value = {
+                "applications": {"radarr.default": 12},
+                "indexers": {},
+                "_endpoint_scope": "legacy-scope",
+            }
+            path.write_text(json.dumps(value))
+            path.chmod(0o600)
+            with (
+                mock.patch.object(
+                    prowlarr_settings,
+                    "_ownership_endpoint_scope",
+                    return_value="legacy-scope",
+                ),
+                mock.patch.object(
+                    prowlarr_settings, "_setting", return_value=os.geteuid()
+                ),
+                mock.patch.object(
+                    prowlarr_settings,
+                    "read_private_text",
+                    wraps=prowlarr_settings.read_private_text,
+                ) as reader,
+            ):
+                self.assertEqual(
+                    prowlarr_settings._load_ownership({"config_dir": temporary}), value
+                )
+            reader.assert_called_once_with(str(path), owner_ids=(os.geteuid(),))
+
+    def test_unsafe_existing_ownership_blocks_instead_of_becoming_unowned(self):
+        import json
+
+        with tempfile.TemporaryDirectory() as temporary:
+            path = pathlib.Path(temporary) / ".dumb-setup-ownership.json"
+            value = {
+                "applications": {"radarr.default": 12},
+                "indexers": {},
+                "_endpoint_scope": "legacy-scope",
+            }
+            path.write_text(json.dumps(value))
+            path.chmod(0o644)
+            before = path.read_bytes()
+            with (
+                mock.patch.object(
+                    prowlarr_settings,
+                    "_ownership_endpoint_scope",
+                    return_value="legacy-scope",
+                ),
+                mock.patch.object(prowlarr_settings, "_setting", return_value=None),
+            ):
+                with self.assertRaises(PermissionError):
+                    prowlarr_settings._load_ownership({"config_dir": temporary})
+            self.assertEqual(path.read_bytes(), before)
+            self.assertEqual(path.stat().st_mode & 0o777, 0o644)
+
+
 if __name__ == "__main__":
     unittest.main()

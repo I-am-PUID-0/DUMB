@@ -57,6 +57,9 @@ def _endpoint(resource, config, payload, factory, *, write=False):
     _, source_url, native_key = _native(config, source)
     source_key = _values(payload).get(source + "::api_key") or native_key
     client._setup_ownership_scope = hashlib.sha256(
+        # Private indexer endpoint/key scope prevents ownership crossing native servers.
+        # This is not a login verifier; preserve existing sidecar identities.
+        # codeql[py/weak-sensitive-data-hashing]
         json.dumps(
             {"family": family, "url": source_url, "key": source_key}, sort_keys=True
         ).encode()
@@ -462,6 +465,9 @@ def apply_indexers(
             )
             before, after = _comparison(existing or {}), _comparison(desired)
             credential_digest = hashlib.sha256(
+                # Private credential equality handles masked native indexer readback.
+                # This is not a login verifier; keep existing credential-change detection.
+                # codeql[py/weak-sensitive-data-hashing]
                 json.dumps(
                     {
                         key: value

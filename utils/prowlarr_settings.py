@@ -1,3 +1,4 @@
+from utils.private_files import read_private_text
 from contextvars import ContextVar
 from utils.global_logger import logger
 from utils.config_loader import CONFIG_MANAGER
@@ -476,6 +477,9 @@ def _ownership_endpoint_scope(instance):
     host = _native_host(instance, port)
     key = _parse_arr_api_key(instance.get("config_file") or "")
     return hashlib.sha256(
+        # Private endpoint/key scope prevents reusing another server's native row IDs.
+        # This is not a login verifier; preserve existing sidecar identities.
+        # codeql[py/weak-sensitive-data-hashing]
         json.dumps(
             {"family": "prowlarr", "url": host, "key": key}, sort_keys=True
         ).encode()
@@ -489,10 +493,12 @@ def _load_ownership(instance):
     path = os.path.join(config_dir, ".dumb-setup-ownership.json")
     if os.path.islink(path):
         raise ValueError("Prowlarr ownership metadata must be a regular file")
-    if not os.path.exists(path):
+    owner = _setting("puid")
+    owners = (int(owner),) if owner is not None else ()
+    try:
+        value = json.loads(read_private_text(path, owner_ids=owners))
+    except FileNotFoundError:
         return {"applications": {}, "indexers": {}}
-    with open(path, encoding="utf-8") as handle:
-        value = json.load(handle)
     if (
         not isinstance(value, dict)
         or any(
@@ -1541,6 +1547,9 @@ def _patch_prowlarr_apps(
                     )
                     continue
                 credential_digest = hashlib.sha256(
+                    # Private credential equality handles masked native application readback.
+                    # This is not a login verifier; keep existing credential-change detection.
+                    # codeql[py/weak-sensitive-data-hashing]
                     entry["api_key"].encode()
                 ).hexdigest()
                 known_credential = (ownership.get("credentials") or {}).get(

@@ -201,6 +201,9 @@ def resolve_target(
     if not match:
         raise ExternalInputError("The external Arr version could not be identified.")
     scope = hashlib.sha256(
+        # Private external endpoint/key scope binds ownership to its native identity.
+        # This is not a login verifier; preserve existing sidecar identities.
+        # codeql[py/weak-sensitive-data-hashing]
         json.dumps(
             {"family": family, "url": url.rstrip("/"), "api_key": key}, sort_keys=True
         ).encode()

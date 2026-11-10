@@ -12,6 +12,9 @@ PORT_FIELDS = ("port", "backend_port", "frontend_port", "webdav_port", "rclone_r
 def _available(port):
     try:
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as probe:
+            # Probe the wildcard listener's eventual bind semantics, then close.
+            # No listen/accept or traffic handling occurs on this socket.
+            # codeql[py/bind-socket-all-network-interfaces]
             probe.bind(("0.0.0.0", port))
         return True
     except OSError:

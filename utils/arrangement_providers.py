@@ -545,9 +545,12 @@ def authenticate_nntp(item, *, allow_private=False):
     stream = None
     try:
         if item["tls"]:
-            connection = ssl.create_default_context().wrap_socket(
-                connection, server_hostname=host
-            )
+            context = ssl.create_default_context()
+            # Keep certificate/hostname verification and any stricter platform
+            # policy; never lower an existing TLS 1.3 minimum to TLS 1.2.
+            if context.minimum_version < ssl.TLSVersion.TLSv1_2:
+                context.minimum_version = ssl.TLSVersion.TLSv1_2
+            connection = context.wrap_socket(connection, server_hostname=host)
         connection.settimeout(8)
         stream = connection.makefile("rwb")
 

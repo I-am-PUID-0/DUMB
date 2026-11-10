@@ -8,20 +8,24 @@ import os
 from pathlib import Path
 from urllib.parse import urlsplit
 
-from utils.private_files import atomic_write_private_text
+from utils.private_files import atomic_write_private_text, read_private_text
 
 
 def fingerprint(value):
+    """Legacy-compatible private configuration equality, never password storage."""
     return hashlib.sha256(
+        # Private configuration equality in ownership sidecars, not a login verifier.
+        # Keep legacy bytes; file access, not this digest, protects credential secrecy.
+        # codeql[py/weak-sensitive-data-hashing]
         json.dumps(value, sort_keys=True, separators=(",", ":")).encode("utf-8")
     ).hexdigest()
 
 
-def read_ownership(path):
+def read_ownership(path, *, owner_ids=()):
     if os.path.islink(path):
         raise ValueError("Integration ownership path must be a regular file")
     try:
-        value = json.loads(Path(path).read_text(encoding="utf-8"))
+        value = json.loads(read_private_text(path, owner_ids=owner_ids))
     except FileNotFoundError:
         return {}
     if not isinstance(value, dict):

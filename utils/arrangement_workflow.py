@@ -190,6 +190,9 @@ def _request(client, method, path, **kwargs):
 
 
 def _digest(value):
+    # Private workflow replay/cleanup bindings, never login password verification.
+    # Keep existing digest bytes so unfinished journals retain their exact scope.
+    # codeql[py/weak-sensitive-data-hashing]
     return hashlib.sha256(json.dumps(value, sort_keys=True).encode()).hexdigest()
 
 

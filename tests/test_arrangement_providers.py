@@ -678,6 +678,7 @@ class PinnedNntpAuthenticationTests(unittest.TestCase):
         connection = mock.Mock()
         connection.makefile.return_value = stream
         context = mock.Mock()
+        context.minimum_version = providers.ssl.TLSVersion.TLSv1_2
         context.wrap_socket.return_value = connection
         item = {
             "host": "news.example.invalid",
@@ -709,4 +710,84 @@ class PinnedNntpAuthenticationTests(unittest.TestCase):
             [b"AUTHINFO USER fixture\r\n", b"AUTHINFO PASS private\r\n", b"QUIT\r\n"],
         )
         self.assertTrue(stream.closed)
+        connection.close.assert_called_once()
+
+
+class NntpTlsPolicyTests(unittest.TestCase):
+    def test_minimum_is_only_raised_and_verification_policy_is_preserved(self):
+        for minimum in (
+            providers.ssl.TLSVersion.TLSv1,
+            providers.ssl.TLSVersion.TLSv1_2,
+            providers.ssl.TLSVersion.TLSv1_3,
+        ):
+            with self.subTest(minimum=minimum):
+                connection = mock.Mock()
+                stream = connection.makefile.return_value
+                stream.readline.side_effect = [b"200 Ready\r\n", b"281 Accepted\r\n"]
+                context = mock.Mock()
+                context.minimum_version = minimum
+                context.verify_mode = providers.ssl.CERT_REQUIRED
+                context.check_hostname = True
+                context.wrap_socket.return_value = connection
+                item = {
+                    "host": "news.example.invalid",
+                    "port": 563,
+                    "username": "fixture",
+                    "password": "private",
+                    "tls": True,
+                }
+                with (
+                    mock.patch.object(
+                        providers,
+                        "validate_endpoint",
+                        return_value=(None, 563, ["203.0.113.1"]),
+                    ),
+                    mock.patch.object(
+                        providers.socket, "create_connection", return_value=connection
+                    ),
+                    mock.patch.object(
+                        providers.ssl, "create_default_context", return_value=context
+                    ),
+                ):
+                    self.assertTrue(providers.authenticate_nntp(item))
+                self.assertEqual(
+                    context.minimum_version,
+                    max(minimum, providers.ssl.TLSVersion.TLSv1_2),
+                )
+                self.assertEqual(context.verify_mode, providers.ssl.CERT_REQUIRED)
+                self.assertTrue(context.check_hostname)
+                context.wrap_socket.assert_called_once_with(
+                    connection, server_hostname="news.example.invalid"
+                )
+                connection.close.assert_called_once()
+
+    def test_tls_failure_closes_connection_without_plaintext_retry(self):
+        connection = mock.Mock()
+        context = mock.Mock()
+        context.minimum_version = providers.ssl.TLSVersion.TLSv1_3
+        context.wrap_socket.side_effect = providers.ssl.SSLError("fixture TLS failure")
+        item = {
+            "host": "news.example.invalid",
+            "port": 563,
+            "username": "fixture",
+            "password": "private",
+            "tls": True,
+        }
+        with (
+            mock.patch.object(
+                providers,
+                "validate_endpoint",
+                return_value=(None, 563, ["203.0.113.1"]),
+            ),
+            mock.patch.object(
+                providers.socket, "create_connection", return_value=connection
+            ) as connect,
+            mock.patch.object(
+                providers.ssl, "create_default_context", return_value=context
+            ),
+        ):
+            with self.assertRaises(providers.ssl.SSLError):
+                providers.authenticate_nntp(item)
+        connect.assert_called_once()
+        connection.makefile.assert_not_called()
         connection.close.assert_called_once()
